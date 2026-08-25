@@ -71,9 +71,15 @@ nothing should be built in a way that locks them out either.
 - **S3** — With Pressless closed, deleted, or never installed, all his
   writing is still readable: ordinary files in an ordinary folder, one
   per entry, openable in Notepad.
-- **S4** — He installs it on Windows by following the written steps and
-  nothing in those steps is different from the ones followed on Linux,
-  other than which file is double-clicked.
+- **S4** — He installs it on Windows himself, by following the written
+  steps and asking nobody for help. The steps are complete for his
+  machine: nothing has to be installed first, and nothing has to be
+  translated from another system's instructions. Reworded 2026-08-25.
+  It read "nothing in those steps is different from the ones followed on
+  Linux, other than which file is double-clicked", which stopped being
+  true when Windows became a zip that is extracted and Linux an
+  AppImage. Identical steps were only ever a proxy for installing it
+  unaided, and it is the proxy that broke.
 - **S5** — He is asked for his publishing key exactly once, during
   setup, and never sees it again in normal use.
 - **S6** — When publishing fails — no internet, wrong key, GitHub down —
