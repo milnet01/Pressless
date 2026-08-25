@@ -300,6 +300,18 @@ nobody noticing. **The cost is real and he should be told it:
 unfinished work is not backed up.** Backing drafts up somewhere that is
 not his public site is a good later item; it is not this one.
 
+**Pressless's own folder sits beside the program file, not under the
+home directory.** Decided with the user 2026-08-25. It holds the
+photograph originals, so the default location puts hundreds of
+megabytes on a system drive that may have no room for them; choosing
+where the program file lives is how the drive gets chosen. On Linux
+that file is the AppImage, found through the `APPIMAGE` environment
+variable rather than the running process's own path, which points into
+a temporary mount. On Windows it is the extracted folder. **Where the
+folder cannot be created, Pressless stops and says so** — falling back
+to the home directory silently would fill the drive this rule exists to
+protect, and nobody would see it happen.
+
 **Published entries in `content/` are fetchable, and that is fine** —
 they are the source text of writing already on the page.
 

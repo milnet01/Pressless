@@ -37,6 +37,14 @@
   Serves no sign of success on its own; nothing else can run without it.
   Blocked-by: nothing.
   Layman: The settings file: where the site sits on this machine, and which site to publish to.
+  Progress (2026-08-25): Settings gains the rule for where Pressless's
+  own folder lives -- beside the program file, not under the home
+  directory. Decided with the user so that drafts, photograph
+  originals and the log do not land on a system drive short of space.
+  The path is derived, not typed: Settings records nothing a move of
+  the program file would invalidate. PRESS-0022 owns finding the
+  program file's real location, which on an AppImage is not the
+  running process's own path.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
@@ -383,6 +391,127 @@
   it needs, which is the whole of S4.
   Blocked-by: PRESS-0013.
   Layman: Pressless installs on Windows by following the same steps as on Linux, apart from which file is double-clicked.
+  Progress (2026-08-25): the packaging shape is decided with the user.
+  Linux ships one AppImage. Windows ships a zip that is extracted and
+  run. So this bullet's headline is now true of Linux only, and the
+  Windows install gains an extract step that Linux does not have --
+  which is a departure from S4 as discovery words it, and needs
+  settling there rather than here.
+  Pressless's own folder is created BESIDE the program file, never
+  under the home directory. It holds drafts, photograph originals and
+  the log, so on a small system drive the default location is the
+  wrong one; choosing where the AppImage sits is how the drive gets
+  chosen.
+  An AppImage runs from a temporary read-only mount, so the running
+  process's own path is not the AppImage's path. Finding the file's
+  real location is a step of this item and must be verified against a
+  built AppImage. It could not be verified from the sources on this
+  machine and is therefore not recorded as a fact anywhere.
+  Where that folder cannot be created -- a read-only or unwritable
+  location -- Pressless stops and says so, in the three-part form the
+  design requires. It must never fall back to the home directory
+  silently: that fills the drive this rule exists to protect, and
+  nobody would see it happen.
+  Correction (2026-08-25): the note above says the AppImage's own path
+  could not be verified from the sources on this machine. It can be, and
+  now is. The sibling project finbreak ships an AppImage updater that
+  resolves it from the `APPIMAGE` environment variable, and its
+  `tests/features/auto_update/spec.md` pins the behaviour both ways --
+  with the variable unset, the feature detects no installer and turns
+  itself off. So the mechanism is sourced from working code rather than
+  assumed, and the open question is closed.
+  Windows is a zip that is extracted and run, which also settles what the
+  data folder sits beside there: the extracted folder, not an installed
+  program. PRESS-0023 depends on this item and its Windows half differs
+  from finbreak's for the same reason.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
+
+- 📋 [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
+  Asked for by the user 2026-08-25. Modelled on the sibling project
+  finbreak, which ships this and has already paid for the mistakes: read
+  `tests/features/auto_update/spec.md` there before designing anything, and
+  the modules it names under `src/finbreak/services/`.
+
+  What to carry across, and why each one is not optional:
+
+  The download is verified against an Ed25519 signature before it is
+  installed, and a tampered blob or signature installs nothing. An updater
+  without this is a way to run someone else's code on his machine. The
+  private key never enters the repository, and a test scans for one.
+
+  Network access lives in a single module, with a test that fails if any
+  other module imports a network library. The design already forbids Marks
+  and the Builder from touching the network; this is how that stays true
+  once an updater exists.
+
+  On Linux the AppImage is swapped in place, staging the temporary file on
+  the same filesystem so the replace is atomic. finbreak finds the running
+  AppImage through the `APPIMAGE` environment variable -- which is also the
+  answer PRESS-0022 needs, and it is now sourced rather than assumed.
+
+  The relaunch spawns a detached process and exits; it must not re-exec in
+  place. finbreak hit exactly that bug between two releases and the app
+  closed without reopening.
+
+  Windows cannot overwrite its own running program, so the swap happens
+  out of process after Pressless exits. Our Windows build is an extracted
+  folder rather than one file, so what gets replaced differs from
+  finbreak's and the shape needs deciding.
+
+  A failed check is silent and changes nothing. A failed verification is
+  shown, in the three-part form the design requires, and leaves the
+  installed version alone.
+
+  Two things are open and are not decided here: whether updating is on by
+  default -- finbreak's is off, and its user is technical, which he is not
+  -- and what he is offered besides Update now.
+
+  Blocked-by: PRESS-0022.
+  Milestone: v0.5.0. It rides with the Publisher and the one button,
+  because that is when he starts using Pressless daily and a fix needs a
+  way to reach him. The hop from v0.1.0 to v0.5.0 is therefore the one
+  download he still does by hand, and every hop after it is automatic.
+  Recorded here rather than in the Milestones section because that
+  section's intro is store-owned prose and no verb amends it -- so its
+  sentence naming the item count was already stale when this item was
+  filed, and could not be corrected. Filed as Ants MCP feedback.
+  **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
+  Kind: feature.
+  Source: user-request-2026-08-25.
+
+## Milestones
+
+A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
+many items are done. `docs/discovery.md` § Signs it is working owns S1-S11.
+Every one of the 22 items above belongs to exactly one milestone below, and none
+belongs to two. Agreed with the user 2026-08-25.
+
+**v0.1.0 - twelve years survived.** PRESS-0001, 0003, 0004, 0005, 0006, 0007,
+0008, 0011, 0022. He installs the packaged file, points it at the WordPress
+export, and looks at his whole archive rendered on his own machine. There is no
+Publisher yet, so nothing can reach the live site: the one irreversible step,
+Import, is exercised while the stakes are zero. Holds S2, S3, S4. Deliberately
+read-only - the editor box waits for v0.5.0 so that he never has a box that
+writes to nowhere.
+
+**v0.5.0 - he publishes without a phone call.** PRESS-0002, 0009, 0010, 0012,
+0013, 0015, 0021. Adds the keyring, the Publisher, undo in one step, the editor
+box, the one button and setup. Holds S1, S5, S6, S7, S9, S10. This is the
+version that does the thing the project exists for. It is 0.5 rather than 1.0
+because it has been used by one person for a week, not a season.
+
+**v1.0.0 - all eleven, and the format is frozen.** PRESS-0014, 0016, 0017, 0018,
+0019, 0020. Adds fixed pages, photographs, templates, the cheat sheet and the
+dashboard. Holds S8 and S11, so all eleven hold. What actually makes it 1.0
+rather than 0.9 is the promise attached to it: an entry file written by 1.0
+stays readable by every later version. Before 1.0 the on-disk format of ADR-0001
+may still change; after it, S3 stops being a design intention and becomes a
+compatibility guarantee.
+
+**Every release is built by CI, including the first.** ADR-0004: PyInstaller
+does not cross-compile, so `Pressless.exe` can only be produced by a Windows
+runner, and S4 cannot be demonstrated without one. That is why PRESS-0022 sits
+in v0.1.0 rather than at the end - packaging is not the last step, it is the
+first release's precondition.

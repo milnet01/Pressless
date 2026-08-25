@@ -69,8 +69,8 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-Sweep before any push — **expect exactly one hit, this line itself**,
-because the pattern names what it is looking for. Two or more hits means
+Sweep before any push. **The only expected hits are the two pattern
+lines below**, which name what they are looking for — anything else means
 something leaked:
 
 ```
