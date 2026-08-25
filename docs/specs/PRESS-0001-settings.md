@@ -87,7 +87,7 @@ session.** §8 carries what each beat.
 class Settings:
     site_folder: Path            # where the Builder writes the finished site
     repository: str              # "owner/name" on GitHub
-    daily_prompt_filter: str     # the tag pattern the Builder excludes
+    daily_prompt_filter: str     # fnmatch glob, matched per tag -- see below
     untouchable: tuple[str, ...] # repository-root entries the Publisher leaves alone
     credentials: Credentials     # where the two secrets are kept -- never the secrets
     analytics_measurement_id: str | None
@@ -96,7 +96,7 @@ class Settings:
 class Credentials:
     store: str                   # "keyring" or "file" -- ADR-0003's two paths
     github_account: str          # the keyring account name, or the file's key name
-    google_account: str
+    google_account: str | None   # None where the dashboard was declined
 
 def load(folder: Path) -> Settings: ...
 def save(folder: Path, settings: Settings) -> None: ...
@@ -127,10 +127,28 @@ not create it, search for it, or fall back to another one.
 }
 ```
 
-`version` exists so a later shape change has something to branch on. Every
-other key is required except `analytics_measurement_id`, which is `null`
-where the writer declined the dashboard — ADR-0005 makes that step
-declinable, so its absence is a normal state rather than a broken one.
+`version` exists so a later shape change has something to branch on.
+
+**Two fields carry a declined dashboard, and both are optional:
+`analytics_measurement_id` and the `google_account` inside `credentials`.**
+ADR-0005 makes that step declinable — *"he can decline the Google step and
+lose the dashboard and nothing besides"* — so requiring the Google account
+name would leave a declined setup unable to load at all, which is the wall
+that ADR forbids. **Absent and `null` both load as `None`. Every other key
+must be present.**
+
+`daily_prompt_filter` is an **`fnmatch` glob matched against each tag,
+case-sensitively** — not a regex, not a prefix. `docs/design.md` § What may
+depend on what pins the target as WordPress's own `dailyprompt-NNNN` tag, and
+**the two readings are not merely different, they are inverted.** Measured:
+
+| tag | `fnmatch.fnmatchcase(tag, "dailyprompt-*")` | `re.fullmatch("dailyprompt-*", tag)` |
+|---|---|---|
+| `dailyprompt-1234` | `True` — excluded | `False` — published |
+| `dailyprompt` | `False` — published | `True` — excluded |
+
+A regex reading therefore publishes what the writer asked to be filtered and
+filters entries that are his own tagging habit. The glob is the contract.
 
 The `untouchable` values above are illustrative. The real ones are the
 output of § What may depend on what's rule, derived at setup against the
@@ -161,20 +179,35 @@ Keys `load()` did not recognise are carried through unchanged. `save()`
 therefore reads the existing file before writing, and a save over an
 unreadable file raises rather than discarding what it could not parse.
 
+**No existing file is not an error.** The first save, at setup, has nothing to
+read and nothing to carry through, and writes a new file. `load()`'s `NotSetUp`
+is about loading; it never reaches `save()`. Only an existing file that cannot
+be parsed raises.
+
 ### 4.5 What Settings never holds
 
-No secret value, ever — only the store name and the two account names under
-which ADR-0003's keyring or fallback file holds them. Settings is written to
+No secret value, ever — only the store name and the account names under which
+ADR-0003's keyring or fallback file holds them. Settings is written to
 disk in plain text beside the program; a key in it would sit outside the
 protection ADR-0003 exists to provide.
 
+**And no path to the fallback file.** `store: "file"` names ADR-0003's weaker
+path rather than a location: where that file lives is PRESS-0002's, which owns
+both stores. Settings records nothing that moving the program file would
+invalidate, and a stored path is exactly that.
+
 ## 5. Invariants
 
-- **INV-1** — Settings imports nothing that reaches a disk beyond its own
-  file, a network, or another Pressless part.
+- **INV-1** — `src/pressless/settings.py` imports no network module and no
+  other `pressless` module. Named modules on purpose: an import list sees what
+  is imported and not what it is used for, so *reaches no disk but its own
+  file* is not a rule this test could carry — §4.4 requires `os`, and `os`
+  reaches every disk there is. INV-7 is what holds the path rule.
   *Test:* `tests/test_settings.py::test_settings_imports_nothing_forbidden`,
-  reading `src/pressless/settings.py`'s import list.
-  *Breaks when:* an implementer imports `publisher` to validate the
+  walking the module's imports as
+  `tests/test_marks.py::test_marks_is_pure` does — which bans `os` outright,
+  and is the precedent rather than the rule here.
+  *Breaks when:* an implementer imports `pressless.publisher` to validate the
   repository name, or `urllib` to check it exists.
 
 - **INV-2** — `load()` on a folder with no settings file raises `NotSetUp`,
@@ -204,12 +237,14 @@ protection ADR-0003 exists to provide.
 
 - **INV-5** — `save()` never leaves a file that `load()` rejects. After a
   save interrupted before completion, the file on disk is the previous one.
-  *Test:* `tests/test_settings.py::test_save_is_atomic` — patch the writer
-  to raise after the temporary file is written and before the replace, then
-  load.
-  *Breaks when:* an implementer opens the target file directly and writes
-  into it. The fixture isolates the replace step: the settings value written
-  is valid, so a rejection afterwards can only come from a partial write.
+  *Test:* `tests/test_settings.py::test_save_is_atomic` — assert `save()`
+  reaches `os.replace` with `path_for(folder)` as its destination, then patch
+  the write to raise before that call and confirm `load()` still returns the
+  previous value.
+  *Breaks when:* an implementer opens the target file directly and writes into
+  it. **Asserting the mechanism is what makes the fixture bite:** against a
+  direct write there is no replace to interrupt, so the interruption half on
+  its own would pass green against the implementation it exists to reject.
 
 - **INV-6** — The field names of `Settings` and `Credentials` are exactly
   the set §4.1 lists.
@@ -222,12 +257,16 @@ protection ADR-0003 exists to provide.
   that happens not to have one, so only a rule about the set itself can fail
   when a field is added.
 
-- **INV-7** — `load()` and `save()` act on `path_for(folder)` and on no
-  other path.
-  *Test:* `tests/test_settings.py::test_only_touches_its_own_file` — run both
-  against a temporary folder and list what the folder holds afterwards.
-  *Breaks when:* a search for a settings file in a parent directory or the
-  home directory is added, which is scope decision 2 undone.
+- **INV-7** — `load()` and `save()` open no path outside `folder`, and leave
+  nothing inside it but `path_for(folder)`. §4.4's temporary file is the one
+  permitted extra path and is gone once `save()` returns.
+  *Test:* `tests/test_settings.py::test_only_touches_its_own_file` — patch the
+  filesystem calls both functions make, require every path opened to sit under
+  `folder`, then list the folder afterwards.
+  *Breaks when:* a search for a settings file in a parent directory or the home
+  directory is added, which is scope decision 2 undone. **Listing the folder
+  cannot catch that**: a read elsewhere leaves the listing identical, which is
+  why the test asserts the paths opened rather than the folder's contents.
 
 ## 6. Failure modes
 
@@ -254,10 +293,13 @@ protection ADR-0003 exists to provide.
 temporary directory and must run everywhere, unlike the archive test
 PRESS-0004 carries.
 
-One test per invariant, named in §5. Each is written and seen to fail
-against the absent module before `settings.py` exists — and per this
-project's own `CLAUDE.md`, a collection error is not a failing test: the
-collected count is what says whether an assertion ran.
+One test per invariant, named in §5. **The red run is made against a stub
+`settings.py`, never against an absent one.** With the module absent the suite
+errors at collection and collects nothing, so no assertion runs — this
+project's own `CLAUDE.md` records that trap, and calling that error a red run
+is the substitution it forbids. The stub declares every name in §4.1 and raises
+`NotImplementedError` from each function, so the red run reads as every test
+collected and every test failed. Read the collected count, not the exit code.
 
 **INV-1's test is the weak one, and it is weak in a way this project has
 already met.** Reading an import list proves what the module imports, not
@@ -268,8 +310,8 @@ loading or saving does anything.
 
 ## 8. Alternatives considered (and rejected)
 
-- **TOML.** Friendlier to hand-edit and comment. The standard library reads
-  it and does not write it, so saving would need a dependency, against
+- **TOML.** Friendlier to hand-edit and comment. The standard library has no
+  TOML writer, so saving would need a dependency, against
   `docs/design.md` § The stack, and what it rules out. Its one advantage is
   comments the writer would read, and §3 decision 1 settled that he does not
   open the file. Revisit only if that changes.
@@ -309,12 +351,15 @@ loading or saving does anything.
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
-| §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux; the Windows box named in `CLAUDE.md` is where it would be observed, tracked by PRESS-0022 |
+| §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |
 
 ## 11. Cross-doc impact
 
-- `CLAUDE.md` — the state block, and the § Build and test note about which
-  tests need an environment variable, once this suite exists.
+- `docs/design.md` § The parts — its Settings row enumerates what Settings
+  holds and does not name the Analytics id. It gains it.
+- `CLAUDE.md` — the state block only. This suite needs no environment
+  variable, so § Build and test's note about the one test that does is
+  unchanged.
 - `CHANGELOG.md` — an entry when it ships.
 - No sibling spec changes. PRESS-0004 does not read Settings.
 
@@ -322,3 +367,4 @@ loading or saving does anything.
 
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
+| 1 | 2026-08-25 | 3, cold — genre pinned `spec`, packet carried the design rules, ADR-0003 and ADR-0005 verbatim, and the tree's real test and packaging facts | 1 | 3 | 4 | 4 | **Twelve verified, twelve fixed; one dismissed as inert.** **All three lanes independently found the same two**, which is the strongest signal in the run. INV-7 said `load()` and `save()` act on `path_for(folder)` "and on no other path" while §4.4 requires a temporary file and a replace — so the two invariants could not both be satisfied, and an implementer holding INV-7 literally writes the non-atomic implementation INV-5 exists to forbid. And §7 demanded the red run be "seen to fail against the absent module", which this project's own `CLAUDE.md` says is impossible: with the module absent the suite errors at collection and no assertion runs, so the clause required exactly the substitution the sentence it cited forbids. The red run is now made against a stub raising `NotImplementedError`. **The best single finding came from one lane and got worse when measured.** `daily_prompt_filter` never pinned its matching language, and the Builder binds to it. Run rather than reasoned: `fnmatch.fnmatchcase` and `re.fullmatch` are not merely different on the two live tag shapes, they are **inverted** — a regex reading publishes the `dailyprompt-NNNN` entries the writer asked to filter and filters the bare-`dailyprompt` entries that are his own. The glob is now the contract, with the measurement in §4.2. **Three more Q4s were fixtures that could not catch the breach they named**: INV-5 patched an interruption that never fires against a direct write, INV-7 listed a folder to catch a read somewhere else, and INV-1 asked an import list to enforce "reaches no disk but its own file" while §4.4 requires `os`. **One Q2 would have locked a writer out of his own app**: `credentials.google_account` was required, and ADR-0005 makes the Google step declinable "or it becomes a wall". **Two Q3s were the first-ever call**: `save()` with no existing file was specified nowhere though setup binds to it, and nothing said where ADR-0003's fallback file lives. **One finding was this loop's own collateral**, caught by the post-fix re-read: making `google_account` optional left §4.5 still saying "the two account names". **Dismissed as true-but-inert** (found by a lane and filed as an open question rather than a finding, correctly): §2 claims every dependency rule mentioning another part grants it Settings, and rules 1, 2, 3, 7 and 9 do not — false, and no line of the built thing changes, so recorded rather than fixed. |
