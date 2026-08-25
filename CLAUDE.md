@@ -84,6 +84,15 @@ whole section exists to prevent:
 git grep -l -iE "charl|jordaan|18down" $(git rev-list --all) -- .
 ```
 
+**That searches the FILES in every commit, and not the commit MESSAGES.**
+`git grep` reads trees, so a name written into a subject line passes it
+without a hit — and a message is published by the same push. Sweep those
+separately:
+
+```
+git log --all --format='%H %s%n%b' | grep -inE "charl|jordaan|18down"
+```
+
 ### A corrected `Layman:` cannot be put back the way it was
 
 `roadmap_log` sets a bullet's `Layman:` at creation and has no verb to
