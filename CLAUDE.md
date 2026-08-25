@@ -65,6 +65,21 @@ code working. And with `marks.py` absent the suite errors at
 *collection*, so no assertion runs at all: a run that says nothing failed
 may have run nothing. Read the collected count, not the exit code.
 
+**Proving a test red before the code exists takes a stub; proving it
+CATCHES anything takes more.** `mutation_probe` refuses without a green
+baseline, so it cannot run while the tests are red — the two checks never
+overlap. What works: red the tests against a stub that declares the surface
+and raises `NotImplementedError`, then write a throwaway reference
+implementation *outside* the tree, probe that, and delete it. PRESS-0001's
+INV-7 test passed its own red run and still could not see the breach it
+names; only the probe found that.
+
+**A test that pins a name must hold its own copy of the name.**
+`tests/test_settings.py` writes `"settings.json"` out rather than importing
+`FILE_NAME` from the module under test. Share the literal and INV-5 compares
+the module against itself, so `path_for` could name any file and stay green.
+Do not tidy this into an import.
+
 **Windows is testable, and that is not obvious from anything else here.**
 Development happens on Linux and the app must run on both. A Windows 10
 test box is reachable over SSH from the maintainer's machine under the
