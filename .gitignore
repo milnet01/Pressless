@@ -1,0 +1,99 @@
+# Language-agnostic baseline. Stack-specific ignores get added once
+# the stack is chosen in design.
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak
+*.orig
+*.rej
+
+# Editor / IDE
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+.#*
+\#*\#
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Claude Code (local settings, history, allowlist — mostly personal).
+# Drop the trailing slash so the negations below can re-include
+# specific files; with `.claude/` git short-circuits at the
+# directory and ignores the !.claude/foo lines.
+.claude/*
+# Team-shared Claude Code config that SHOULD be in version control:
+!.claude/settings.json
+!.claude/workflow.md
+
+# Logs / runtime
+*.log
+*.pid
+*.sock
+
+# Coverage / sanitizers
+*.gcda
+*.gcno
+*.gcov
+coverage.*
+.coverage
+lcov.info
+
+# Core dumps
+core
+core.*
+*.core
+vgcore.*
+
+# Scratch
+scratch/
+tmp/
+Screenshot_*.png
+screenshot*.png
+
+# --- This repo is PUBLIC. Anything pushed once stays in the history. ---
+
+# The mailing list, and any other real people's personal data. The canonical
+# copy lives OUTSIDE this repo (../_private/); these patterns are the backstop
+# for a stray copy or an export written into the working tree.
+# ALL csv is ignored by default. Do not narrow this to names containing
+# "subscriber": a real WordPress export is named after the blog it came
+# from, which such a rule does not match.
+# If the app ever needs a committed CSV fixture, add an explicit !negation.
+*.csv
+subscribers/
+_private/
+
+# The WordPress export. The WXR .xml carries commenter names, email
+# addresses and IP addresses alongside the posts — only post content is ever
+# published. Canonical copy is ../_source/.
+*.wxr
+wordpress-export*.xml
+wordpress-media.tar
+_source/
+
+# Publishing credentials — GitHub token, mail-service API key. These belong in
+# a local config the app reads at runtime, never in version control.
+config.local.*
+credentials.*
+*.token
+token.txt
+
+# Generated site output. The built site is published to the writer's OWN repo, not
+# committed here, or the two copies drift.
+/build/
+/dist/
+/_site/
+/output/
+
+# Roadmap ID counter — derived per-machine cache, not source.
+# True high-water mark is the highest ID across ROADMAP.md +
+# CHANGELOG.md + docs/roadmap/*.md (roadmap-format.md § 3.5.1).
+.roadmap-counter

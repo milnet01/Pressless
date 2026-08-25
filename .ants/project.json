@@ -1,0 +1,15 @@
+{
+    "changelog": "CHANGELOG.md",
+    "docs_dir": "docs",
+    "id_format": {
+        "prefix": "PRESS"
+    },
+    "roadmap": "ROADMAP.md",
+    "source_roots": [
+        "src"
+    ],
+    "specs_dir": "docs/specs",
+    "test_roots": [
+        "tests"
+    ]
+}
