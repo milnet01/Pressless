@@ -39,6 +39,18 @@ rather than in a standard.
 
 (Filled once the stack exists.)
 
+**Windows is testable, and that is not obvious from anything else here.**
+Development happens on Linux and the app must run on both. A Windows 10
+test box is reachable over SSH from the maintainer's machine under the
+host alias `wintest`; the connection details live in that machine's SSH
+config and deliberately not in this public repository. Chrome and Edge
+are both installed.
+
+**Python is NOT installed on that box, and must not be.** A machine with
+an interpreter cannot show that the packaged executable carries
+everything it needs, which is the whole of S4. Anything the app needs at
+runtime it must bring with it.
+
 ### Roadmap IDs
 
 `PRESS-NNNN`, per `roadmap-format.md` § 3.5.1. **The roadmap is served

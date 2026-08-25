@@ -251,9 +251,13 @@ interface, and hands the Face plain numbers. Two traps:
   it draws the two letters `ZA` instead. It looks right on the Linux
   machine this is built on and wrong on the only machine he uses. So
   a small set of flag images ships with the app, keyed by country code.
-  **Verify this on his actual machine before building it** — it is a
-  claim about his Windows version, and the cost of being wrong is a
-  dashboard full of letter pairs.
+  **Measured 2026-08-25 and confirmed** on a Windows 10 22H2 box over
+  SSH, in Chromium 151, which is the kind of browser the dashboard opens
+  in: the flag sequence renders identically to its two letters forced
+  apart, and takes exactly their combined width. A control emoji
+  rendered normally in the same test, so the fonts are present and it is
+  flags specifically that are missing. His own machine is not the one
+  measured, but the claim is no longer an assumption.
 - **It needs a second credential.** Reading Analytics is a separate
   Google authorisation from the GitHub publishing key. S5 is about the
   publishing key and is not broken by this, but setup grows a second

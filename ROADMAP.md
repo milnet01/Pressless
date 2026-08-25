@@ -345,9 +345,10 @@
   It looks right on the Linux machine this is built on and wrong on the
   only machine he uses, so a small set of flag images ships with the
   app, keyed by country code.
-  Verify this on his actual machine before building it: it is a claim
-  about his Windows version, and the cost of being wrong is a dashboard
-  full of letter pairs.
+  Measured 2026-08-25 on a Windows 10 22H2 box over SSH, in Chromium 151:
+  the flag sequence renders identically to its two letters forced apart,
+  while a control emoji rendered normally. So it is flags specifically
+  that are missing, and the images are needed rather than merely prudent.
   Blocked-by: PRESS-0011, PRESS-0019.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
@@ -375,8 +376,11 @@
   (ADR-0004). The repository is public, so the minutes cost nothing.
   The written install steps must be the same on Windows and on Linux apart
   from which file is double-clicked. Claims S4.
-  The Windows build is the one nobody here can test by running it, which
-  is a risk to carry rather than one to solve.
+  The built executable is staged to a Windows test box over SSH and run
+  there before release, so his double-click is not its first exercise.
+  That box has no Python installed and must not be given one: a machine
+  with an interpreter cannot show that the executable carries everything
+  it needs, which is the whole of S4.
   Blocked-by: PRESS-0013.
   Layman: Pressless installs on Windows by following the same steps as on Linux, apart from which file is double-clicked.
   Kind: package.

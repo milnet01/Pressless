@@ -23,6 +23,11 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **The flag-rendering claim behind the dashboard design is measured rather than assumed.**
+  Confirmed on a Windows 10 test box: country flags have no glyphs and
+  must ship as images. The same box makes the packaged Windows executable
+  testable before release.
+
 - **The roadmap is served from the Ants roadmap store rather than from ROADMAP.md.**
   The file is now a generated render of the store, so a hand edit to it
   is discarded by the next write.
