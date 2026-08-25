@@ -316,6 +316,17 @@
   It cannot tell an entry from a stylesheet, and does not need to.
   Blocked-by: PRESS-0001, PRESS-0002.
   Layman: Sends the finished site to GitHub without git being installed, and never touches the few files that are not ours.
+  Blocked (2026-08-25) on a design.md decision, not on PRESS-0002's
+  contract, which is written and accepted. design.md rule 5 lets this part
+  read Settings and a folder of finished files and nothing else. The
+  publishing key lives in a separate module (see
+  docs/specs/PRESS-0002-credentials.md), which is not Settings and is not
+  listed in The parts -- and PRESS-0001 refuses to hold the secret, so
+  reaching it through Settings is not open either. So as rule 5 stands
+  this part cannot legally fetch the key it needs. Either name that module
+  in rule 5, or make the Face fetch the secret and hand it over. Section 11
+  of the PRESS-0002 spec records both routes and deliberately picks
+  neither. Do not work around it by importing anyway.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
@@ -473,6 +484,16 @@
   will answer: the last reply with the time it was fetched. Deleting that
   file costs nothing but a fresh fetch.
   Blocked-by: PRESS-0001, PRESS-0002.
+  Blocked (2026-08-25) on the same design.md decision as PRESS-0009, by
+  rule 8 rather than rule 5: this part may read Settings and talk to
+  Google and nothing else, and the Google authorisation lives in the
+  separate credentials module described by
+  docs/specs/PRESS-0002-credentials.md. That contract is written and
+  accepted; what is missing is permission for this part to call it.
+  Section 11 of that spec records the two routes and picks neither.
+  Note the authorisation is optional per ADR-0005, so whichever route is
+  taken must still let a writer decline the dashboard and lose nothing
+  else.
   **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0005.
