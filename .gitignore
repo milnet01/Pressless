@@ -1,5 +1,13 @@
-# Language-agnostic baseline. Stack-specific ignores get added once
-# the stack is chosen in design.
+# Language-agnostic baseline, plus a Python section now that PRESS-0004
+# is the first code landing under src/ (docs/design.md § The stack).
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
 
 # OS
 .DS_Store

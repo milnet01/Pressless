@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pressless"
+version = "0.0.0"
+description = "The desktop app that lets a writer manage and publish their own static site, without needing anyone else to do it for them."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+# --strict-markers is the whole mechanism (python.md § Tests): declaring
+# `markers` alone only silences the warning for names already listed, so a
+# typo'd label still exits 0 and silently drops out of a `-m` selection.
+addopts = "--strict-markers"
+markers = [
+    "archive: exercises the real WordPress export; requires PRESSLESS_ARCHIVE and is skipped cleanly otherwise (PRESS-0004 INV-5)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

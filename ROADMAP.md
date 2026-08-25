@@ -78,7 +78,7 @@
   Source: design-2026-08-24 § Logging.
   Lanes: Settings, Face.
 
-- 📋 [PRESS-0004] **Marks: one table, one parser, one renderer, used by everything that renders.**
+- 🚧 [PRESS-0004] **Marks: one table, one parser, one renderer, used by everything that renders.**
   The marks of ADR-0001: bold, italic, the site's own two colours, any
   colour he picks down to a single letter, run-wide effects such as
   rainbow, and the picture mark. Text in, structure out, structure to
@@ -112,6 +112,7 @@
   conformance run is the proof of S2 and is skipped unless
   `PRESSLESS_ARCHIVE` names an export, because that file is personal data
   and cannot live in a public repository.
+  Progress (2026-08-25): tests first. write-test is authoring the invariant tests for INV-1..INV-8; no implementation exists yet.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.
