@@ -113,6 +113,19 @@
   `PRESSLESS_ARCHIVE` names an export, because that file is personal data
   and cannot live in a public repository.
   Progress (2026-08-25): tests first. write-test is authoring the invariant tests for INV-1..INV-8; no implementation exists yet.
+  Progress (2026-08-25): tests written and proven to fail. With the module
+  absent the suite errors at collection, which proves nothing about the
+  assertions, so the red run was repeated against throwaway stubs: all nine
+  tests were collected and each reached its own assertion. INV-7 was the one
+  that passed against stubs, so it was mutated (an added disk import) to prove
+  it can fail, then restored. INV-5 was run against the real export and
+  reached the comparison. Stubs deleted; no implementation exists.
+
+  Owed when the module lands: a mutation probe. Q3 -- would a test still fail
+  if the defect returned another way -- is answered only for INV-7, because a
+  probe needs a green baseline and there is none yet. Run it against
+  src/pressless/marks.py once the suite is green, one mutation per route each
+  invariant could be broken by.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.

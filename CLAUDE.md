@@ -57,6 +57,13 @@ about it:
 PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest
 ```
 
+**Two test results mean less than they look.** `test_marks_is_pure`
+(INV-7) passes against *any* module that imports nothing forbidden — an
+empty file included — so it is evidence about imports, never about the
+code working. And with `marks.py` absent the suite errors at
+*collection*, so no assertion runs at all: a run that says nothing failed
+may have run nothing. Read the collected count, not the exit code.
+
 **Windows is testable, and that is not obvious from anything else here.**
 Development happens on Linux and the app must run on both. A Windows 10
 test box is reachable over SSH from the maintainer's machine under the
