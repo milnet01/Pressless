@@ -16,8 +16,14 @@ anything that could put the key near the repository.
 
 The key goes in the operating system's own credential store — Credential
 Manager on Windows, Secret Service on Linux — through one library that
-covers both. Where no keyring exists, a file in his profile directory
-with owner-only permissions, and Pressless says plainly that it fell back.
+covers both. Where no keyring exists, a file in Pressless's own folder
+with owner-only permissions, and Pressless says plainly that it fell back
+and names the store that answered.
+
+**Where a file cannot be made private to one user there is no fallback:
+setup stops and says so.** On Windows `os.chmod` sets only the read-only
+flag, so a file there would be readable by every account on the machine —
+which is the protection this decision exists to provide.
 
 The key is never logged, never echoed back to the screen, and never
 written into the site folder.

@@ -1,6 +1,6 @@
 # PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
 
-**Status:** accepted (2026-08-25). Two cold-eyes loops, both folded in, nothing left unfixed — the run reached the spec cap of 2. **A violent cap:** six of the last loop's ten findings landed on text the run itself wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there rather than to another gate. **One thing is open and it is not a defect in this document:** `docs/design.md`'s dependency rules 5 and 8 do not yet permit the Publisher or Insights to call this module, and §11 records the two ways out. PRESS-0009 and PRESS-0019 are blocked on that choice.
+**Status:** accepted (2026-08-25). Two cold-eyes loops, both folded in, nothing left unfixed — the run reached the spec cap of 2. **A violent cap:** six of the last loop's ten findings landed on text the run itself wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there rather than to another gate. **The one thing §11 left open is now settled:** `docs/design.md` rule 10 has the Face fetch a secret and hand it over, so rules 5 and 8 stand unchanged and PRESS-0009 and PRESS-0019 are unblocked.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -511,17 +511,12 @@ exit code.
   lets Insights read *"Settings and may talk to Google, and nothing else"*.
   This module is not Settings and § The parts does not list it, so as those
   rules stand neither part may call it — and PRESS-0001 §4.5 refuses to hold
-  the secret, so routing through Settings is not open either. Two ways out:
-  name this module in both rules, or make the Face fetch the secret and hand
-  it over. **This spec does not choose**; whoever amends `docs/design.md`
-  does, and PRESS-0009 and PRESS-0019 are blocked on that choice.
-- `docs/decisions/ADR-0003` — three corrections. It puts the fallback file in
-  the writer's profile directory, where `docs/design.md` § Where everything
-  sits on disk puts it beside the settings file. It does not contemplate a
-  platform on which the fallback is refused at all. And in
-  `docs/decisions/ADR-0003-where-the-key-lives.md`,
-  *"Pressless says plainly that it fell back"* gains *and names the store
-  that answered*.
+  the secret, so routing through Settings is not open either. **Settled
+  2026-08-25 by `docs/design.md` rule 10:** the Face fetches the secret and
+  hands it over, rules 5 and 8 unchanged.
+- `docs/decisions/ADR-0003` — three corrections, all made 2026-08-25: the
+  fallback file's home, the platform on which the fallback is refused, and
+  naming the store that answered.
 - `pyproject.toml` — gains the keyring library, the project's first runtime
   dependency.
 - `CLAUDE.md` § Build and test — *"no dependencies beyond the standard library
