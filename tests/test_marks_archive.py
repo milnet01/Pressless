@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -97,6 +98,53 @@ def _raw_text_only(bodies: list[str], has_tags) -> list[str]:
     return raw
 
 
+# --- INV-5's two divergence sets -------------------------------------
+#
+# render() is NOT wpautop(). Two inputs tell them apart, and the archive
+# contains neither -- which is a fact about the data, not a property of
+# the code, so it is asserted rather than assumed (spec INV-5).
+#
+# Both detectors are written from the spec's own rules and touch
+# pressless.marks not at all: a parser that is broken in exactly the way
+# INV-5 exists to catch must not also be the thing deciding whether
+# there was anything to catch.
+
+_CHAR_REF = re.compile(r"&(?:[A-Za-z][A-Za-z0-9]{0,30};|#[0-9]{1,7};|#[xX][0-9A-Fa-f]{1,6};)")
+
+
+def _has_bare_amp(body: str) -> bool:
+    """An '&' that does not already begin a character reference. Marks
+    escapes it to '&amp;'; wpautop() leaves it alone (spec §4.6)."""
+    return any(not _CHAR_REF.match(body, m.start()) for m in re.finditer(r"&", body))
+
+
+def _forms_a_mark(body: str) -> bool:
+    """Whether any line could form a complete mark, so render() would
+    produce markup where wpautop() emits the characters.
+
+    Deliberately conservative -- it may say yes where the parser would
+    say no, and a false positive costs a look while a false negative
+    costs the invariant. Any brace at all counts, since every brace mark
+    opens with one and the archive has no brace in it; asterisks need
+    §4.5's adjacency rule, since unpaired ones are common in the writing
+    (INV-2's own fixtures)."""
+    for line in body.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if "{" in line:
+            return True
+        for delim in ("**", "*"):
+            start = 0
+            while (i := line.find(delim, start)) >= 0:
+                rest = line[i + len(delim):]
+                # §4.5: an opener is not followed by a space, nor by
+                # another asterisk; its closer is not preceded by either.
+                if rest and not rest[0].isspace() and rest[0] != "*":
+                    j = rest.find(delim)
+                    if j > 0 and not rest[j - 1].isspace() and rest[j - 1] != "*":
+                        return True
+                start = i + 1
+    return False
+
+
 def _harmless_photo_src(name: str) -> str:
     # Raw archive text predates {photo: ...} syntax, so this should never
     # actually be called; returning the name unchanged keeps a genuine
@@ -132,6 +180,28 @@ def test_matches_wpautop():
     all_bodies = _import_population(channel, build_blog.NS)
     bodies = _raw_text_only(all_bodies, build_blog.HAS_TAGS)
     assert bodies, f"found no raw-text entries among {len(all_bodies)} in {xml_path}"
+
+    # INV-5's preconditions, checked before any comparison so a changed
+    # archive and a broken renderer cannot arrive as the same failure.
+    bare_amp = [b for b in bodies if _has_bare_amp(b)]
+    with_marks = [b for b in bodies if _forms_a_mark(b)]
+    print(f"entries with a bare '&' (Marks escapes, wpautop does not): {len(bare_amp)}")
+    print(f"entries forming a complete mark (Marks renders, wpautop does not): {len(with_marks)}")
+
+    assert not bare_amp, (
+        f"{len(bare_amp)}/{len(bodies)} raw-text entries carry a bare '&'. "
+        f"render() escapes it and wpautop() does not, so byte-identity "
+        f"cannot hold and INV-5 needs a decision, not a fix: this is new "
+        f"source material, not a fault in Marks. First one starts "
+        f"{bare_amp[0][:60]!r}"
+    )
+    assert not with_marks, (
+        f"{len(with_marks)}/{len(bodies)} raw-text entries form a complete "
+        f"mark. render() turns it into markup and wpautop() emits the "
+        f"characters, so byte-identity cannot hold. Same decision as "
+        f"above: the archive changed, Marks did not. First one starts "
+        f"{with_marks[0][:60]!r}"
+    )
 
     mismatches = []
     for raw in bodies:

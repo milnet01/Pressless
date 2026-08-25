@@ -1,6 +1,11 @@
 # PRESS-0004 — Marks: one table, one parser, one renderer
 
-**Status:** accepted (2026-08-25).
+**Status:** accepted (2026-08-25), amended the same day by implementation.
+Writing the tests showed INV-4 and INV-5 agreed only because the archive
+happens to contain nothing that separates them. §2, §4.6, §5 and §7 now
+state the difference and the test checks it. No re-gate: the document
+reached its cold-eyes cap, and this is the implementation finding the tail
+that rule 14 says it should.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
@@ -53,8 +58,13 @@ figures; §7 owns that, and they are deliberately not repeated here.
 Today's behaviour is `tools/build_blog.py::wpautop()` and
 `tools/build_blog.py::render_body()` in the sibling workspace: blank line
 starts a paragraph, single newline becomes `<br>`, `<` and `>` are escaped,
-`&` is left alone. That function is what PRESS-0008 re-homes, so Marks
-must be able to stand in for it exactly.
+`&` is left alone. That function is what PRESS-0008 re-homes.
+
+**Marks is deliberately not that function, and INV-5 owns the
+difference.** It adds a mark language, and it escapes a bare `&` where
+`wpautop()` leaves one alone. Neither difference shows on the archive,
+because nothing in the archive triggers either — a fact about the data,
+not a property of the code.
 
 ## 3. Scope decisions (agreed with the user)
 
@@ -226,8 +236,11 @@ Two different rules, and mixing them up is how an injection gets in.
 **Text:** `<` → `&lt;`, `>` → `&gt;`, and `&` → `&amp;` **only where it does
 not already begin a character reference** — that is, where it does not
 match `&(?:[A-Za-z][A-Za-z0-9]{0,30};|#[0-9]{1,7};|#[xX][0-9A-Fa-f]{1,6};)`.
-Measured: this leaves all 156 `&nbsp;`, 14 `&apos;` and 2 `&amp;` in the
-archive untouched, and there is no bare `&` anywhere in it to change.
+The archive's existing entities are left untouched; §7's run prints what
+it found rather than this prose carrying a figure that ages.
+
+**This is where the text rule departs from `wpautop()`**, which escapes
+no `&` at all. INV-5 owns that departure and checks it.
 
 **Attribute values** (a photo's `src`, whatever `photo_src` returned):
 strict — `&`, `<`, `>`, `"` and `'` are all escaped unconditionally. A
@@ -264,11 +277,20 @@ caller returning a name with a quote in it cannot break out of the tag.
   *Breaks when:* one escape helper is used for both contexts.
 
 - **INV-5** — For every raw-text entry in the archive, `render()` produces
-  output byte-identical to today's `tools/build_blog.py::wpautop()`.
+  output byte-identical to today's `tools/build_blog.py::wpautop()` —
+  **and the two functions are separable, so the test proves the reason
+  rather than relying on the result.** Exactly two inputs tell them
+  apart: a bare `&`, which Marks escapes and `wpautop()` does not, and
+  text forming a complete mark, which Marks renders and `wpautop()`
+  leaves alone. The archive contains neither. The test asserts that
+  emptiness directly and names which set stopped being empty, because an
+  agreement nothing enforces breaks silently on the next import.
   *Test:* `tests/test_marks_archive.py::test_matches_wpautop`, skipped
   unless `PRESSLESS_ARCHIVE` names a WordPress export.
-  *Breaks when:* any escaping or paragraph rule changes; and it is the
-  proof of S2 rather than a claim about it.
+  *Breaks when:* any escaping or paragraph rule changes. A non-empty
+  divergence set is **not** a fault in Marks — it is new source material
+  the migration has never seen, and it is a decision, not a bug. It is
+  the proof of S2 rather than a claim about it.
 
 - **INV-6** — Every row in `MARKS` parses: its `example` yields a structure
   whose `mark` field is that row's `name`; and **`to_html` compares against
@@ -323,7 +345,10 @@ export. It is skipped unless `PRESSLESS_ARCHIVE` points at a WXR file,
 because that file is personal data and cannot live in a public repository
 (`docs/design.md` § Where everything sits on disk). **It prints every
 figure §2 describes**, so the numbers are an output of the run rather than
-a transcription in prose that ages. What it cannot print is anything about
+a transcription in prose that ages. **It also asserts INV-5's two
+divergence sets are empty before comparing anything**, so a byte mismatch
+and a changed archive are told apart by the run and not by whoever reads
+the failure. What it cannot print is anything about
 the current built site, which is not its input.
 
 Each test is to be seen failing before the code exists — `testing.md` §1,
