@@ -2,12 +2,13 @@
 
 ## Where this project is
 
-**State:** 4 — Between items. The design was broken into `PRESS-NNNN`
-items on 2026-08-25 and `check-queue` was run: every sign S1–S11 is named
-by at least one item, and every item carries a `Blocked-by:` line.
-**Next:** pick an item and build it (`~/.claude/workflow.md` § 6).
-`PRESS-0001` and `PRESS-0004` are the two with no blockers.
-**In flight:** nothing.
+**State:** 4 — Between items, with one item ready to build:
+`PRESS-0004` (Marks) has an accepted spec at
+`docs/specs/PRESS-0004-marks.md`. `PRESS-0001` is the other unblocked one.
+**Next:** `write-test` for `PRESS-0004`, then the code (the workflow
+standard § 6). No code exists anywhere yet.
+**In flight:** nothing. The bullet is still 📋 on purpose — an accepted
+spec is not work started, and `write-spec` may not flip a status.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where
@@ -107,6 +108,36 @@ So this roadmap carries two styles — plain `Layman:` on the four bullets
 corrected on 2026-08-25, bold on the other eighteen. Both parse. **Do
 not try to reconcile them**; the attempt is what discovers the gate.
 Filed as feedback for the Ants MCP maintainer.
+
+### How documents get written here
+
+Standing instructions from the user, given 2026-08-25 while the Marks
+spec was being gated. They changed the outcome of that gate, so they are
+recorded rather than remembered.
+
+- **A fix must serve the document's stated purpose.** Ask it of the
+  *fix*, not just of the finding that prompted it: if the edit changes
+  nothing anyone builds, it does not belong, however true it is. This
+  removed a block of measured counts from the Marks spec after those
+  counts had already survived two review loops.
+- **Avoid counts and line numbers.** They go stale fast, and a stale
+  number is worse than none because a reader edits *toward* it. Where a
+  number is genuinely evidence, ship a test that prints it and cite the
+  test — the Marks spec's archive figures live in its conformance run,
+  not in its prose.
+- **Shorter prose.** Length is surface area: a reviewer finds defects in
+  explanation that directs nothing. Rationale belongs in a sentence.
+- **Everything truthful, factual, verifiable.** Run the case that would
+  refute a claim, not the one that confirms it. Two of the Marks spec's
+  worst defects — a false security rationale, and an unanchored pattern
+  that admitted a CSS payload into a `style` attribute — were found only
+  by executing them.
+
+**A trap worth knowing: a section intro written by
+`roadmap_log op:create_section` cannot be amended by any verb**, and a
+hand edit to `ROADMAP.md` is discarded by the next render. Never put a
+count, an id list or a date in one. The Milestones section carries a
+stale item count for exactly this reason; filed as Ants MCP feedback.
 
 ### Roadmap IDs
 
