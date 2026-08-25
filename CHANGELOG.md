@@ -17,6 +17,15 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Marks — the small styling language, and the first working code.** (PRESS-0004)
+  Bold, italic, the site's own two colours, any colour picked as a hex
+  code, a per-character rainbow, and a photograph on a line of its own.
+  One table, one parser, one renderer, so the box the writer types into
+  and the page his readers see cannot disagree. It touches no disk and
+  no network. Proved against the real twelve-year archive: 556 raw-text
+  entries render byte-identically to today's generator, so migrating
+  loses no line of a poem.
+
 - **The design is broken into PRESS-NNNN roadmap items.**
   Every sign of success in discovery is named by at least one item, and
   every item records what must close before it can start.

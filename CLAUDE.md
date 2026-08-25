@@ -2,11 +2,10 @@
 
 ## Where this project is
 
-**State:** 5 — Building `PRESS-0004` (Marks). Its spec is accepted and
-its tests are written and failing; `src/pressless/marks.py` does not
-exist yet.
-**Next:** write that module until the suite is green. `PRESS-0001` is the
-other unblocked item.
+**State:** 5 — Building. `PRESS-0004` (Marks) is written and its suite is
+green, including the archive run that proves S2.
+**Next:** the two fixtures the mutation probe showed INV-2 is missing, then
+the next item. `PRESS-0001` is the other unblocked one.
 **In flight:** `PRESS-0004`, 🚧 on the roadmap. Run `python3 -m pytest`
 to see where it stands — the tests are the position, not this line.
 
@@ -34,7 +33,11 @@ rather than in a standard.
 
 ### Stack
 
-(Decided in design — `docs/design.md`. Until then, undecided.)
+Python 3, the standard library's own web server for the Face, `Pillow` for
+photographs, the operating system's keyring for the publishing key, and
+PyInstaller to package one file per system. `docs/design.md` § The stack,
+and what it rules out owns the choice and the reasoning; this line records
+it rather than restating why.
 
 ### Build and test
 

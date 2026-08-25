@@ -18,10 +18,12 @@ Pressless closed, deleted, or never installed.
 
 ## Status
 
-**Not usable yet — there is no code.** What it is for and how we would
-know it works are agreed ([docs/discovery.md](docs/discovery.md)), and
-so is the shape ([docs/design.md](docs/design.md)). The work is broken
-into items in [ROADMAP.md](ROADMAP.md); none has been started.
+**Not usable yet.** What it is for and how we would know it works are
+agreed ([docs/discovery.md](docs/discovery.md)), and so is the shape
+([docs/design.md](docs/design.md)). The work is broken into items in
+[ROADMAP.md](ROADMAP.md), and the first of them is built: Marks, the
+small styling language every part that renders reads. There is no app
+around it yet — nothing here writes, builds or publishes a site.
 
 ## Install
 

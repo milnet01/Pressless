@@ -126,6 +126,38 @@
   probe needs a green baseline and there is none yet. Run it against
   src/pressless/marks.py once the suite is green, one mutation per route each
   invariant could be broken by.
+  Progress (2026-08-25): `src/pressless/marks.py` is written and the suite is
+  green — 8 pure tests, plus the archive run, which passes over 556 raw-text
+  entries with zero mismatches against today's generator and both of INV-5's
+  divergence sets empty. That run is the proof of S2.
+
+  The mutation probe this bullet owed has been run: 16 mutations against the
+  real module, one per route each invariant could be broken by. Twelve were
+  killed. Four survived and they split two ways.
+
+  Two are a real gap and are owed to `write-test`: INV-2's fixtures measure
+  NEITHER adjacency clause. Drop the opener clause or the closer clause and
+  `b**bs`, `f*cking` and the asterisk divider all still render literally,
+  because each fixture is carried by the other clause or by having no partner
+  at all. Two inputs do separate them, both verified by rendering against
+  hand-mutated copies — `**x*` for the opener (`*<em>x</em>` as written,
+  `<em>*x</em>` without) and `*x **` for the closer (literal as written,
+  `<em>x *</em>` without). Until those land, INV-2 has a passing test that
+  does not measure it.
+
+  Two survivors are correct rather than gaps. The archive cannot measure the
+  bare-`&` rule because it contains no bare `&` — INV-5 asserts that emptiness
+  itself, and INV-4's own test kills that mutation. And the body-level strip
+  is provably redundant with the per-paragraph strip: every chunk reaches
+  `_paragraph`, which strips it, so no body whitespace can survive by another
+  route. It is kept because §4.4 step 2 pins it and it mirrors the generator.
+
+  The spec was amended three times by the implementation, no re-gate (it is at
+  its cold-eyes cap and this is the tail rule 14 routes to the build): §4.5's
+  adjacency clauses are a `wrap`'s alone, or they reject §4.2's own
+  `{photo: seaside.jpg}`; an argument runs from the end of `opens` to the next
+  `}`, which nothing had said; and the gloss "so ***...*** opens nothing" was
+  false of its own rule, since scanning resumes one character on.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.
