@@ -138,6 +138,15 @@
   rather than for him.
   Serves no sign of success on its own; the error contract leans on it.
   Blocked-by: PRESS-0001.
+  Progress (2026-08-25): the design gate found this bullet AND docs/design.md
+  section What Import brings across both silent on the export's photographs,
+  while rule 9 makes Import unrepeatable -- so on the bullets as written the
+  originals stay on WordPress for good and every imported entry goes on
+  pointing at the old site. design.md now carries a fifth bullet: Import
+  carries the originals into Pressless's own folder and rewrites each entry's
+  image references to the picture mark. PRESS-0016 does not cover this -- it
+  owns the picture mark through to the web-sized copy, not the one-time
+  migration. Scope here widens accordingly.
   **Layman:** A plain diary of what the app did, kept beside the settings, with nothing secret in it.
   Kind: implement.
   Source: design-2026-08-24 § Logging.
@@ -358,6 +367,14 @@
   keyring. Still blocked until docs/design.md carries the amendment (a row
   for the credentials part in The parts, plus the hand-off sentence) and that
   amendment passes its cold-eyes gate.
+  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
+  is made -- rule 10 has the Face fetch a secret and hand it to the Publisher
+  as an argument, so rules 5 and 8 stand unchanged. Two things the same gate
+  added to this item's scope: the Publisher now also lists what sits at the
+  repository root when asked (that is how the untouchable list gets derived,
+  and nothing could derive it before), and at publish it removes a root entry
+  absent from the handed folder unless that entry is on the list -- it never
+  re-evaluates the rule there, or it would protect every page just deleted.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
@@ -530,6 +547,15 @@
   argument. Design rules 5 and 8 are NOT widened -- see PRESS-0009 for the
   reasoning. Still blocked until docs/design.md carries the amendment and
   that amendment passes its cold-eyes gate.
+  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
+  is made -- rule 10 has the Face fetch the Google authorisation and hand it
+  to Insights as an argument, so rule 8 stands unchanged and Insights stays
+  testable without a real keyring. Two things to settle before building: rule
+  8 now names the one cache file explicitly, and WHICH Analytics identifier
+  Settings holds is open -- the reporting interface is queried by a numeric
+  property id, the footer tag carries a G- measurement id, and the shipped
+  field is named analytics_measurement_id. Passing the wrong one fails every
+  fetch.
   **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0005.

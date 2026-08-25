@@ -25,7 +25,9 @@ the body verbatim. **Every single newline in the body is a line break.**
 Styling is a small set of marks the body carries inline:
 `**bold**`, `*italic*`, `{accent}word{/}` for the site's own colours,
 `{#c0453a}word{/}` for any colour he picks, and `{rainbow}word{/}` for
-run-wide effects.
+run-wide effects. **That is the styling set, not the whole mark table** —
+the picture mark is one this decision predates, and Marks owns the
+complete table, which is where a mark is added.
 
 **Anything the parser does not recognise is preserved byte-for-byte and
 never dropped.**
