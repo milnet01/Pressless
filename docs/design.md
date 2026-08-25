@@ -21,7 +21,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 
 | Part | Responsible for | Deliberately knows nothing about |
 |---|---|---|
-| **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, which repository to publish to, the Daily Prompt filter, the untouchable list, and where **both** his secrets are kept. | Everything. It depends on nothing. |
+| **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics property id. | Everything. It depends on nothing. |
 | **Store** | Everything that shapes the site: entries as marked text, the fixed pages, the templates, the header, footer and navigation, the historical comments, and any photograph an entry uses. Drafts kept apart from published. Reads, writes, lists. | GitHub, the browser |
 | **Import** | Turning the twelve years in the WordPress export into Store files, once. Run at setup and never again. | GitHub, the browser, the Face |
 | **Marks** | The small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |

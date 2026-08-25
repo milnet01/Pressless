@@ -17,6 +17,17 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Settings — the one place that holds what is true of this machine.** (PRESS-0001)
+  Where the finished site is written, which repository it is published
+  to, which tag the Builder filters, which files in that repository are
+  not ours to touch, which store the two secrets are filed under, and
+  the Analytics property id. It holds no secret itself, only the names
+  they are kept under. It reads nothing else — no store, no network, no
+  other part of Pressless — because six parts depend on it and it may
+  depend on nothing. A save is whole or not at all: a crash mid-write
+  leaves the previous settings, never half of the new ones, and a key
+  written by a later Pressless survives an older one saving over it.
+
 - **Marks — the small styling language, and the first working code.** (PRESS-0004)
   Bold, italic, the site's own two colours, any colour picked as a hex
   code, a per-character rainbow, and a photograph on a line of its own.

@@ -26,7 +26,7 @@
 > names what must close before it can start, in `Blocked-by:`
 > (`~/.claude/workflow.md` § 5, `roadmap-format.md` § 3.5).
 
-- 🚧 [PRESS-0001] **Settings holds what is true of this machine, and nothing else.**
+- ✅ [PRESS-0001] **Settings holds what is true of this machine, and nothing else.**
   Where the site folder is, which repository to publish to, the Daily
   Prompt tag filter, the untouchable-path list, and a pointer to where
   both credentials are kept. It depends on nothing, and every other part
@@ -55,6 +55,17 @@
   probed, ten killed. The survivor was INV-7's own named breach, a
   fallback searching the parent folder, and the test was strengthened
   until it died. The implementation is next.
+  Resolved (2026-08-25): src/pressless/settings.py implements §4's
+  surface; the seven invariant tests pass and the suite is green. Every
+  case in §4.3's outcome table, §4.2's two declinable fields, §4.4's
+  saving rules and §6's failure modes was executed rather than reasoned
+  about, including §6's measured read-only-file behaviour. Eleven
+  mutations probed: the eight that break an invariant all died. The
+  three that survived are the three §10 already names as guarded by
+  nothing — the version row and the two shape rows — so that gap is now
+  measured rather than predicted, and it is unchanged rather than new.
+  Every read and write names UTF-8, because Python's default is the
+  locale's and the app must run on Windows too.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
