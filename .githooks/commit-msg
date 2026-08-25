@@ -30,7 +30,17 @@ fail() {
 # --- §1.3 subject line constraints -------------------------------------
 # Length is counted in characters, not bytes — an em dash is one character
 # and three bytes, and counting bytes would reject conforming subjects.
-len=$(printf '%s' "$subject" | wc -m)
+#
+# NOT `wc -m`, which counts characters only where the LOCALE says so and
+# counts bytes under LC_ALL=C (CFG-0142). Hooks inherit the environment of
+# whatever invoked git — a CI runner, a cron job, a sudo shell with a reset
+# environment — so the C locale is not hypothetical. Measured: the standard's
+# own release example measured 29 here and 31 under LC_ALL=C.
+#
+# Deleting UTF-8 continuation bytes (0x80-0xBF) leaves one byte per character,
+# so `wc -c` then counts characters in ANY locale. `LC_ALL=C` on the tr is what
+# keeps the byte range meaning bytes.
+len=$(printf '%s' "$subject" | LC_ALL=C tr -d '\200-\277' | LC_ALL=C wc -c)
 [ "$len" -le 72 ] || fail "subject is $len characters; the limit is 72" "1.3"
 
 case "$subject" in
