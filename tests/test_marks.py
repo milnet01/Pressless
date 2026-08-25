@@ -116,14 +116,33 @@ def test_censored_words_and_divider_are_literal():
     divider line (spec §5) — not invented prettier ones, because the point
     is that real writing already contains exactly these. Breaks when the
     opener test drops its "not followed by a space or its own delimiter"
-    clause, or the closer is allowed to be missing."""
+    clause, or the closer is allowed to be missing.
+
+    The archive's three fixtures alone measure NEITHER adjacency clause —
+    measured by mutation 2026-08-25, delete either one and all three still
+    render literally, because each is carried by the other clause or by
+    having no partner at all. Each clause has two independent halves, a
+    space half and an asterisk half, so there are four routes and one
+    fixture apiece: '* a*' and '*a *' for the space halves, '*x **' and
+    '**x*' for the asterisk ones. The spec's INV-2 names all four."""
     divider = "*" * 35
-    for body in ("b**bs", "f*cking", divider):
+    for body in ("b**bs", "f*cking", divider, "*x **", "* a*", "*a *"):
         out = render(body, _no_photos)
         assert body in out, f"expected {body!r} preserved literally, got: {out!r}"
         assert "<strong>" not in out and "<em>" not in out, (
             f"unmatched asterisks in {body!r} were turned into a mark: {out!r}"
         )
+
+    # The opener clause decides WHERE the boundary falls rather than whether a
+    # mark forms, so its fixture is not a literal one and cannot join the loop
+    # above. '**x*' must open at the second asterisk, leaving the first as
+    # text; drop the clause and it opens at the first instead, rendering
+    # '<p><em>*x</em></p>' — the same tags around different text, which is
+    # exactly why an assertion on the tags alone cannot see it (spec §4.5).
+    assert render("**x*", _no_photos) == "<p>*<em>x</em></p>", (
+        f"the opener adjacency clause did not hold: an asterisk run must not "
+        f"open a mark at its first asterisk, got: {render('**x*', _no_photos)!r}"
+    )
 
 
 # --------------------------------------------------------------- INV-3 ----

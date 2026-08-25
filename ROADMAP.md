@@ -78,7 +78,7 @@
   Source: design-2026-08-24 § Logging.
   Lanes: Settings, Face.
 
-- 🚧 [PRESS-0004] **Marks: one table, one parser, one renderer, used by everything that renders.**
+- ✅ [PRESS-0004] **Marks: one table, one parser, one renderer, used by everything that renders.**
   The marks of ADR-0001: bold, italic, the site's own two colours, any
   colour he picks down to a single letter, run-wide effects such as
   rainbow, and the picture mark. Text in, structure out, structure to
@@ -158,6 +158,32 @@
   `{photo: seaside.jpg}`; an argument runs from the end of `opens` to the next
   `}`, which nothing had said; and the gloss "so ***...*** opens nothing" was
   false of its own rule, since scanning resumes one character on.
+  Resolved (2026-08-25): the INV-2 gap the probe found is closed, and the
+  item is done. `write-test` Route 4 — no reachable broken state, since the
+  module was never wrong here — so the fixtures are proven by mutation
+  rather than by a historical red run, and that is the honest label: they
+  have never been observed to fail against a defect that actually shipped.
+
+  The gap was worse than first reported. Each adjacency clause has two
+  independent halves, a space half and an asterisk half, so there were four
+  uncovered routes and the first pass covered two. The probe itself found
+  the third by surviving; checking the closer for the same split found the
+  fourth. INV-2 now carries one fixture per route — `* a*` and `*a *` for
+  the space halves, `*x **` and `**x*` for the asterisk ones. Five mutations
+  killed, and a control mutation survives, so the test discriminates rather
+  than reddening at anything.
+
+  `**x*` is the one that is not a literal fixture: that clause decides where
+  the boundary falls rather than whether a mark forms, so it asserts the
+  exact output `<p>*<em>x</em></p>`. An assertion that merely looked for the
+  absence of a tag could not see it — which is how the original fixtures
+  missed it.
+
+  `write-test` Step 2 dispatches a `test-writer` agent to author the test.
+  It did not run: this session carries an explicit no-agents instruction,
+  which global rule 15 says governs, and rule 14's carve-out reaches only
+  the review gates. The fixtures were authored inline and the red run —
+  which that skill says may never be delegated — was performed here.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.

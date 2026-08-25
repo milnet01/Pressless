@@ -283,13 +283,18 @@ caller returning a name with a quote in it cannot break out of the tag.
   line.
   *Breaks when:* the opener test drops its "not followed by a space or its
   own delimiter" clause, or the closer is allowed to be missing.
-  **The archive's own fixtures do not separate the two adjacency clauses**,
+  **The archive's own fixtures do not separate the adjacency clauses**,
   measured by mutation 2026-08-25: drop either one and `b**bs`, `f*cking`
   and the asterisk divider all still render literally, because each is
-  carried by the other clause or by having no partner at all. Two inputs do
-  separate them and are owed to the test — `**x*` for the opener, and
-  `*x **` for the closer, which is literal as written and `<em>x *</em>`
-  without it.
+  carried by the other clause or by having no partner at all. **Each clause
+  has two independent halves — a space half and an asterisk half — so there
+  are four routes**, and the test now carries one fixture apiece: `* a*`
+  and `*a *` for the space halves, `*x **` for the closer's asterisk half,
+  and `**x*` for the opener's. The first three are literal as written; the
+  fourth is `*<em>x</em>`, because that clause decides where the boundary
+  falls rather than whether a mark forms, so a fixture asserting only that
+  no tag appeared cannot see it. All five mutations are killed and a
+  control mutation survives.
 
 - **INV-3** — No mark spans a newline: no `Text` inside a `Span` contains
   `\n`, and a mark's opener and closer come from the same `Line`.

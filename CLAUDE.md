@@ -2,10 +2,10 @@
 
 ## Where this project is
 
-**State:** 5 — Building. `PRESS-0004` (Marks) is written and its suite is
-green, including the archive run that proves S2.
-**Next:** the two fixtures the mutation probe showed INV-2 is missing, then
-the next item. `PRESS-0001` is the other unblocked one.
+**State:** 5 — Building. `PRESS-0004` (Marks) is shipped: suite green, the
+archive run that proves S2 green, and every invariant measured by mutation.
+**Next:** pick an item. `PRESS-0001` is unblocked, and `PRESS-0008`,
+`PRESS-0012`, `PRESS-0016` and `PRESS-0018` are no longer waiting on Marks.
 **In flight:** `PRESS-0004`, 🚧 on the roadmap. Run `python3 -m pytest`
 to see where it stands — the tests are the position, not this line.
 
