@@ -34,9 +34,9 @@ rather than in a standard.
 
 Python 3, the standard library's own web server for the Face, `Pillow` for
 photographs, the operating system's keyring for the publishing key, and
-PyInstaller to package one file per system. `docs/design.md` § The stack,
-and what it rules out owns the choice and the reasoning; this line records
-it rather than restating why.
+PyInstaller to package one artefact per system. `docs/design.md` § The
+stack, and what it rules out owns the choice and the reasoning; this line
+records it rather than restating why.
 
 ### Build and test
 

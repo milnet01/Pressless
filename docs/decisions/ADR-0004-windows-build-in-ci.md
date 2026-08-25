@@ -6,13 +6,13 @@
 ## Context
 
 Development happens on Linux; the writer is on Windows. The stack packages
-Pressless into one double-clickable file per system, and PyInstaller
-cannot cross-compile — a Windows executable must be produced by Windows.
+Pressless into one double-clickable artefact per system, and PyInstaller
+cannot cross-compile — a Windows build must be produced by Windows.
 
 ## Decision
 
-Releases are built by GitHub Actions: the Linux file on a Linux runner,
-`Pressless.exe` on a Windows runner, both attached to the release. The
+Releases are built by GitHub Actions: the AppImage on a Linux runner, the
+Windows folder zipped on a Windows runner, both attached to the release. The
 repository is public, so the minutes cost nothing.
 
 ## Consequences
