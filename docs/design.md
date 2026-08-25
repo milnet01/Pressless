@@ -22,6 +22,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | Part | Responsible for | Deliberately knows nothing about |
 |---|---|---|
 | **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics property id. | Everything. It depends on nothing. |
+| **Credentials** | Keeping the two secrets themselves — the GitHub publishing key and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring and a file is safe. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
 | **Store** | Everything that shapes the site: entries as marked text, the fixed pages, the templates, the header, footer and navigation, the historical comments, and any photograph an entry uses. Drafts kept apart from published. Reads, writes, lists. | GitHub, the browser |
 | **Import** | Turning the twelve years in the WordPress export into Store files, once. Run at setup and never again. | GitHub, the browser, the Face |
 | **Marks** | The small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
@@ -81,6 +82,9 @@ than hoped for.
 9. **Nothing may depend on Import.** It runs once, before anything else
    has run, and is the only part that may be deleted from a working
    installation without changing what the others do.
+10. **Only the Face reaches Credentials.** It fetches a secret and hands
+    it to the Publisher or Insights as an argument, so rules 5 and 8 stay
+    literally true and both parts stay testable without a real keyring.
 
 **Where the fixed pages live.** Home, About, Music **and Privacy** are
 the Store's, not the Builder's — they are writing he edits, and the only
