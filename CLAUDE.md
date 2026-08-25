@@ -3,7 +3,7 @@
 ## Where this project is
 
 **State:** 5 — Building. **In flight:** `PRESS-0001` (Settings), 🚧 — its
-spec is accepted and gated; the tests and the code are next. **Also
+tests are written and red against a stub; the code is next. **Also
 startable:** `PRESS-0024`. Run `python3 -m pytest` for where code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
