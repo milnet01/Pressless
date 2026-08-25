@@ -26,7 +26,7 @@
 > names what must close before it can start, in `Blocked-by:`
 > (`~/.claude/workflow.md` § 5, `roadmap-format.md` § 3.5).
 
-- 📋 [PRESS-0001] **Settings holds what is true of this machine, and nothing else.**
+- 🚧 [PRESS-0001] **Settings holds what is true of this machine, and nothing else.**
   Where the site folder is, which repository to publish to, the Daily
   Prompt tag filter, the untouchable-path list, and a pointer to where
   both credentials are kept. It depends on nothing, and every other part
@@ -45,6 +45,7 @@
   the program file would invalidate. PRESS-0022 owns finding the
   program file's real location, which on an AppImage is not the
   running process's own path.
+  Picked 2026-08-25. Root of the graph: PRESS-0002, 0003, 0005, 0008, 0009, 0011 and 0019 all name it in Blocked-by, and it names nothing. Spec required -- spec-format.md § 1, first trigger: every other part binds to these keys, and the untouchable-path list is a safety boundary rather than a preference.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
@@ -593,6 +594,7 @@
   nothing has been published that the missing gate would have caught. The
   risk is the opposite one -- the hook LOOKS like protection, so a future
   session may trust it.
+  Blocked-by: nothing.
   **Layman:** Make the check that runs before publishing actually run the tests, instead of quietly doing nothing.
   Kind: chore.
   Source: in-session-2026-08-25.

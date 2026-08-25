@@ -2,12 +2,9 @@
 
 ## Where this project is
 
-**State:** 5 — Building. `PRESS-0004` (Marks) is shipped: suite green, the
-archive run that proves S2 green, and every invariant measured by mutation.
-**Next:** pick an item. `PRESS-0001` is unblocked, and `PRESS-0008`,
-`PRESS-0012`, `PRESS-0016` and `PRESS-0018` are no longer waiting on Marks.
-**In flight:** `PRESS-0004`, 🚧 on the roadmap. Run `python3 -m pytest`
-to see where it stands — the tests are the position, not this line.
+**State:** 5 — Building. **In flight:** `PRESS-0001` (Settings), 🚧 — the
+root every other part reads, and it needs a spec. **Next:** that spec,
+then the code. Run `python3 -m pytest` for where the code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where
