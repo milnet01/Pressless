@@ -36,8 +36,13 @@ paragraph of `docs/design.md`):
    writing.
 2. **Six entries already contain `*`**, and every one of them is
    self-censoring prose or a divider: `f*cking`, `sh*t`, `p*rn`, `b**bs`,
-   `f**cking`, and one line of 35 asterisks. A naive italic rule turns five
-   published poems into italics.
+   and one line of 35 asterisks. Only **two raw-text lines in the whole
+   archive carry a second asterisk** — `b**bs` and that divider; the rest
+   are lone asterisks with no partner on their line. A naive italic rule
+   run over a whole body rather than a line pairs across line breaks and
+   italicises **four** published poems. (A sixth entry carries `f**cking`,
+   but it is Gutenberg rather than raw text, so it reaches Marks only
+   through whatever PRESS-0007 writes.)
 3. **104 raw-text entries contain `&`**, always as a character reference
    (156 occurrences of `&nbsp;`, 14 of `&apos;`, 2 of `&amp;`) and **never bare** — so a
    blanket `&` → `&amp;` puts literal `&nbsp;` on 104 pages.
@@ -97,17 +102,28 @@ callable is how rule 3 is kept while the picture mark still works.
 @dataclass(frozen=True)
 class Mark:
     name: str          # "bold", "accent", "photo"
-    kind: str          # "wrap" | "standalone"
-    opens: str         # "**", "{accent}", "{photo: "
-    closes: str | None # "**", "{/}", None for standalone
+    kind: str          # "wrap" | "block"
+    opens: str         # literal prefix: "**", "{accent}", "{photo: "
+    arg: str | None    # regex the argument must match, or None
+    closes: str | None # "**", "{/}", None for a block mark
+    content: str       # "marks" | "text" -- is the body scanned further?
+    renders: str       # HTML template; "{}" is the rendered content
     example: str       # what the cheat sheet shows, and a parse fixture
     explains: str      # one plain-English line, his words not ours
 ```
 
-`MARKS` is the single source. The parser dispatches from it, and
-PRESS-0018 generates both cheat sheets from it. A mark added to the parser
-without a row is a mark the cheat sheet cannot teach — INV-6 is what makes
-that fail.
+`MARKS` is the single source **and the only route to a mark**: the scanner
+holds no delimiter literal of its own, and `to_html` no `name` branch of its
+own — both read the rows. That is what makes it true rather than intended,
+and INV-6 is what fails when it stops being so. Without `renders`, `to_html`
+would carry a second, hidden table, and a new row would parse, reach the
+cheat sheet, and render as nothing.
+
+`arg` is what lets a row describe a mark whose opener is not a fixed
+string: `{#…}` carries `^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$`, `{photo: }`
+carries the name and optional `| caption`, and every other row carries
+`None`. `content` is `"marks"` everywhere except `{rainbow}`, which is
+`"text"`.
 
 The rows:
 
@@ -119,13 +135,21 @@ The rows:
 | `{muted}word{/}` | wrap | `<span style="color:var(--muted)">word</span>` |
 | `{#c0453a}word{/}` | wrap | `<span style="color:#c0453a">word</span>` |
 | `{rainbow}word{/}` | wrap | one `<span class="mk-rainbow" style="--mk-i:N">` per character |
-| `{photo: seaside.jpg}` | standalone | `<figure><img src="…" alt=""></figure>` |
-| `{photo: seaside.jpg \| Late light}` | standalone | the same, plus `<figcaption>` |
+| `{photo: seaside.jpg}` | block | `<figure><img src="…" alt=""></figure>` |
+| `{photo: seaside.jpg \| Late light}` | block | the same, plus `<figcaption>` |
 
 `{rainbow}` emits an index rather than a colour, so the site's stylesheet
 owns the palette and Marks owns no colour decision. `N` counts characters
 from 0 within one rainbow run; whitespace is emitted bare and does not
 advance it.
+
+**A `block` mark owns its whole line, and that is what `block` means.** A
+photo mark alone on a line ends the paragraph: the `<figure>` is emitted as
+a sibling of the `<p>` elements, never inside one. A photo mark with any
+other text on its line is not a mark at all and stays literal. Without this
+rule `<figure>` lands inside `<p>`, every HTML parser closes the paragraph
+at it, and the lines after it fall outside — so the Face's preview and the
+built page would style the same entry differently.
 
 ### 4.3 The structure
 
@@ -151,25 +175,37 @@ lost line break, so no rendering bug can collapse a poem.
 
 ### 4.4 Splitting the body
 
-1. Normalise `\r\n` and `\r` to `\n`. Nothing else about the text changes.
-2. A run of one or more blank lines ends a paragraph.
-3. Every remaining newline is a `Line` boundary.
+1. Normalise `\r\n` and `\r` to `\n`.
+2. Strip the whole body.
+3. A run of blank lines ends a paragraph, where **blank means empty or
+   whitespace-only** — `wpautop()` splits on `\n\s*\n`.
+4. Strip each paragraph, and drop it if nothing is left.
+5. Every remaining newline is a `Line` boundary.
 
-Rendering: `<p>` per paragraph, `<br>\n` between lines, matching
-`wpautop()` exactly (INV-5).
+Rendering: `<p>` per paragraph, `<br>\n` between lines, paragraphs joined
+by `\n`.
+
+**Steps 2, 3 and 4 discard whitespace, deliberately, because `wpautop()`
+does.** An indented opening line comes back unindented and a whitespace-only
+paragraph disappears. Leave any of them out and INV-5 fails byte-comparison
+on the first entry with a leading newline or a trailing space — and it fails
+looking like a broken test rather than a wrong spec.
 
 ### 4.5 Scanning one line
 
 Left to right. At each position, try each `MARKS` row's `opens`, longest
 first, so `**` is tried before `*`. A row matches only when **all** of:
 
-- the opener is not immediately followed by a space or by its own
-  delimiter character — `***…***` therefore opens nothing;
+- the opener is not immediately followed by a space; and for `**` and `*`
+  not by another `*` either, so `***…***` opens nothing. **A `{…}` mark has
+  no such character**, so `{accent}{muted}word{/}{/}` opens legally and
+  nests — which is what the depth counter below is for;
 - for a `wrap`, its `closes` occurs later **on the same line**, preceded by
   a character that is neither a space nor the delimiter — `b**bs` therefore
   closes nothing;
 - for `{#…}`, the argument is 3 or 6 hexadecimal digits and nothing else;
-- for `{photo: …}`, a `}` occurs later on the same line.
+- for `{photo: …}`, a `}` occurs later on the same line **and the mark is
+  the only thing on that line** (§4.2 — it is a `block` mark).
 
 Anything that fails is emitted as literal text and scanning resumes one
 character on. The inner text of a matched `wrap` is scanned by the same
@@ -227,9 +263,12 @@ caller returning a name with a quote in it cannot break out of the tag.
   proof of S2 rather than a claim about it.
 
 - **INV-6** — Every row in `MARKS` parses: its `example` yields a structure
-  containing a node of that row's `name`, and no mark the parser recognises
-  is absent from the table.
-  *Test:* `tests/test_marks.py::test_every_table_row_parses`.
+  containing a node of that row's `name`; and **neither the scanner nor
+  `to_html` names a mark the table does not** — walking the module's AST,
+  every string literal used as a delimiter and every `name` branch is one
+  `MARKS` supplies.
+  *Test:* `tests/test_marks.py::test_every_table_row_parses` and
+  `::test_no_mark_outside_the_table`.
   *Breaks when:* a mark is added to the scanner without a row, which is
   exactly what would leave the cheat sheet teaching something that does not
   work.
@@ -260,6 +299,7 @@ what Marks returns and the Publisher uploads what the Builder wrote.
 | An unclosed mark | Literal text (INV-2). Nothing raises; the writer sees his own characters and can see the mistake in the preview. |
 | An unknown mark name — `{sparkle}x{/}` | Literal text. It is not an error: preserving what we do not understand is ADR-0001's promise about twelve years of writing. |
 | A malformed colour — `{#xyz}` | Literal text (INV-8). |
+| A photo mark sharing its line with other text | Literal text — it is a `block` mark (§4.2), so it is only a mark when it owns the line. He sees his own characters in the preview and can move it. |
 | `photo_src` raises | Marks does not catch it. The caller owns the file world and owns the failure; the Face turns it into a sentence (`docs/design.md` § Errors). |
 | `photo_src` returns a name for a picture that does not exist | A broken image on the page. Marks cannot tell — it has no disk. PRESS-0016 owns checking. |
 | An empty body | An empty document, and `render()` returns `""`. Two archive entries are empty. |
@@ -267,13 +307,16 @@ what Marks returns and the Publisher uploads what the Builder wrote.
 ## 7. Tests
 
 `tests/test_marks.py` — pure, no fixtures on disk, runs in CI. It carries
-the seven invariant tests named in §5.
+the invariant tests named in §5.
 
 `tests/test_marks_archive.py` — the INV-5 conformance run over the real
 export. It is skipped unless `PRESSLESS_ARCHIVE` points at a WXR file,
 because that file is personal data and cannot live in a public repository
-(`docs/design.md` § Where everything sits on disk). It prints the figures
-§2 asserts, so those numbers are an output rather than a transcription.
+(`docs/design.md` § Where everything sits on disk). It prints **every §2
+figure derived from the export**, so those are an output rather than a
+transcription. §2's count of built pages carrying `selectionBoundary` is
+not among them: it measures the current built site, not the export, and
+stays a dated measurement.
 
 Each test is to be seen failing before the code exists — `testing.md` §1,
 and `write-test` performs that run.
@@ -288,7 +331,7 @@ and `write-test` performs that run.
 | **Named colours as hex** | Freezes today's palette into every future page. |
 | **`{rainbow}` parsing marks inside itself** | A character counter threaded through nested rendering, for bold-inside-rainbow. Text-only is the shortest correct thing; §9 keeps it open. |
 | **Blanket `&` → `&amp;`** | Puts literal `&nbsp;` on 104 pages. |
-| **Escaping `&` never** (today's `wpautop`) | Correct for the archive, and lets a future entry typed with `&lt;` inject markup. The measured-safe conditional rule gives both. |
+| **Escaping `&` never** (today's `wpautop`) | Correct for the archive, and leaves a bare `&` in a future entry as invalid HTML. **Not a security difference** — `&lt;` matches the character-reference pattern, so both rules emit it unchanged, and an entity is never re-parsed as markup. Escaping `<` and `>` is what closes injection, and INV-4 does that unconditionally. |
 
 ## 9. Out of scope
 
@@ -296,6 +339,14 @@ and `write-test` performs that run.
   fields — the Store's, PRESS-0005.
 - The web-copy naming rule for photographs — the Builder's, PRESS-0008.
 - Generating the cheat sheet from `MARKS` — PRESS-0018.
+- **The 130 entries that are not raw text**, and with them the difference
+  between INV-5's 554 and ADR-0001's *"every one of the 616 existing
+  entries must survive a round trip"*. That promise is about the format,
+  and it binds whatever Import writes: once those entries are Store files
+  they are text with marks like any other, and INV-5's rule applies to them
+  in full. What it does not do is oblige Marks to parse HTML. Deciding what
+  Import writes for them is PRESS-0007's, and until it decides, no
+  round-trip over them can be tested here.
 - What Import writes for the 67 Gutenberg and 63 classic-HTML entries —
   PRESS-0007. Marks renders text with marks; those entries are HTML, and
   which of the two they become is Import's call to make once.
@@ -314,7 +365,7 @@ and `write-test` performs that run.
 | INV-3 | `tests/test_marks.py::test_no_mark_spans_a_newline` |
 | INV-4 | `tests/test_marks.py::test_escaping_text_and_attributes` |
 | INV-5 | `tests/test_marks_archive.py::test_matches_wpautop` — **skipped in CI**, because the archive is personal data and cannot be committed. It runs on the maintainer's machine only, and a green CI run is silent about it. |
-| INV-6 | `tests/test_marks.py::test_every_table_row_parses` |
+| INV-6 | `tests/test_marks.py::test_every_table_row_parses` + `::test_no_mark_outside_the_table` |
 | INV-7 | `tests/test_marks.py::test_marks_is_pure` |
 | INV-8 | `tests/test_marks.py::test_colour_argument_cannot_carry_css` |
 | §3.1's claim that the site has one accent and one muted ink | **nothing** — a repaint of the site could add a third named colour and this spec would not notice. It is a one-line edit to `MARKS` when it happens. |
@@ -333,3 +384,4 @@ and `write-test` performs that run.
 
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
+| 1 | 2026-08-25 | 3, cold — genre pinned `spec`; packet carried ADR-0001 whole, windows on the design's dependency rules and photograph/cheat-sheet paragraphs, the live site generator's rendering path, the site's colour tokens, and every archive figure re-measured by command. No unrunnable region: the export and the current generator are both on disk, so Q1 was fully in scope. | 1 | 3 | 3 | 2 | **Nine verified, nine fixed, none dismissed.** All three lanes read the document in full and **all three independently found the same defect**, which is the strongest signal in the run: §4.4 said normalising line endings changed nothing else, while the generator it claims byte-identity with strips the body, strips each paragraph, drops empty ones and treats a whitespace-only line as blank. An implementer following §4.4 would have failed INV-5 on the first entry with a leading newline, and the failure would have read as a broken test rather than a wrong spec. **All three also found `{photo:}` undefined**: the table called it `standalone` and nothing said what that meant structurally, while §4.3 made it a node inside a line inside a paragraph — so `<figure>` lands inside `<p>`, every parser closes the paragraph at it, and the preview and the built page style the same entry differently. `standalone` is now `block`, defined as owning its whole line. **And all three found INV-6's second clause unfalsifiable** — if the scanner dispatches from the table, *no mark the parser recognises is absent from it* is true by construction, so the one breach INV-6 exists to catch would have shipped undetected; it now pins an AST check that no delimiter literal or `name` branch exists outside `MARKS`. **Two lanes found the table could not express its own rows**: `opens` was a fixed string, so `{#…}` had no representation, and no field carried the *Becomes* column, meaning `to_html` would hold a second hidden table and a new row would parse, reach the cheat sheet and render as nothing. `Mark` gained `arg`, `content` and `renders`. **The one Q1 was my own count**: §2 claimed a naive italic rule italicises five published poems, and measurement says four — one entry carries a single lone asterisk that cannot pair — and `f**cking` was listed among raw-text collisions when it is in a Gutenberg entry. **One lane filed, and a second raised as an open question, that §8's security rationale was false**: leaving `&` unescaped was said to let `&lt;` inject markup. Executed with a real HTML parser — `&lt;script&gt;` parses as text, never as an element, and both `&` rules emit `&lt;` unchanged. The row now reads as a validity difference, which is what it is; escaping `<` and `>` is what closes injection. **Two more from one lane each:** *its own delimiter character* was defined only by the asterisk example, so a builder could read `{` as the delimiter and refuse to nest brace marks, contradicting the depth counter four lines below; and ADR-0001 promises all 616 entries round-trip while INV-5 covers 554, now reconciled as a promise about the format that binds whatever Import writes. **Three collateral fixes, all mine, caught by the sweep rather than a lane**: adding a second test to INV-6 stranded §7's *seven invariant tests* and §10's INV-6 row, and the new `block` rule created a failure mode §6 did not list. **Three lane open questions resolved clean and are not counted** — the design's disk section exists and does carry the personal-data rule, `CLAUDE.md`'s Stack and Build-and-test are both placeholders, and the missing `mk-rainbow` rule is the Builder's. Every claim a fix added was executed, including the refuting cases: the colour regex rejects `#c0453a;color:red`, which is the CSS injection INV-8 exists for. |
