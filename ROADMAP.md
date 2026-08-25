@@ -46,6 +46,7 @@
   program file's real location, which on an AppImage is not the
   running process's own path.
   Picked 2026-08-25. Root of the graph: PRESS-0002, 0003, 0005, 0008, 0009, 0011 and 0019 all name it in Blocked-by, and it names nothing. Spec required -- spec-format.md § 1, first trigger: every other part binds to these keys, and the untouchable-path list is a safety boundary rather than a preference.
+  Spec accepted 2026-08-25: docs/specs/PRESS-0001-settings.md, two cold-eyes loops, nothing deferred. Four decisions worth knowing without opening it. Settings is HANDED its folder and never derives one, which is what keeps its design row's "depends on nothing" true and leaves the AppImage location question inside PRESS-0022. The file is JSON and the writer never opens it -- asked and answered by the user that day, which is what removed the argument for TOML and its bundled dependency. An absent untouchable list is an error where an empty one is valid, so a half-finished setup cannot delete the CNAME and detach the domain. And daily_prompt_filter is an fnmatch glob rather than a regex: measured, the two readings are INVERTED on both live tag shapes, so a regex reading would publish what was asked to be filtered and filter the writer's own entries. The gate also proved section 6 false by running it -- os.replace onto a read-only file in a writable directory succeeds on Linux -- so the failure mode is the folder's permissions, not the file's.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.

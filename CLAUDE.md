@@ -94,7 +94,7 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-Sweep before any push. **The only expected hits are the two pattern
+Sweep before any push. **The only expected hits are the pattern
 lines below**, which name what they are looking for — anything else means
 something leaked:
 
