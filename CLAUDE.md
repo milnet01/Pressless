@@ -176,6 +176,16 @@ recorded rather than remembered.
   that admitted a CSS payload into a `style` attribute — were found only
   by executing them.
 
+**Prose here hard-wraps at about 70 columns, and that breaks exact-match
+editing.** A replacement string retyped from a sentence you just read will
+not match, because the line breaks fall in places you did not notice — it
+fails as a zero-count assertion, not as a wrong edit, so it is safe but it
+costs a round trip every time. Build the `old` string from the file's
+actual bytes (`sed -n 'A,Bp'`), never from memory of the sentence. The
+same wrap is why a plain `grep` returns false negatives on a quoted
+phrase: use `workspace_search` with `match_wrapped: true` before believing
+a miss.
+
 **A trap worth knowing: a section intro written by
 `roadmap_log op:create_section` cannot be amended by any verb**, and a
 hand edit to `ROADMAP.md` is discarded by the next render. Never put a
