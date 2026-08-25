@@ -3,9 +3,9 @@
 ## Where this project is
 
 **State:** 5 — Building. **In flight:** nothing. `PRESS-0001` (Settings)
-is ✅ — spec, tests and code — which clears the blocker its spec lists for
-seven items. **Also startable:** `PRESS-0024`. Run `python3 -m pytest` for
-where code stands.
+is ✅ — spec, tests and code. `PRESS-0002` has an accepted spec and no code,
+and is blocked on a `docs/design.md` decision its §11 records. **Also
+startable:** `PRESS-0024`. Run `python3 -m pytest` for where code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where

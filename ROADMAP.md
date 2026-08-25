@@ -83,6 +83,27 @@
   Claims S5 together with PRESS-0021, which is where he is asked.
   Blocked-by: PRESS-0001.
   Layman: The publishing key and the Google permission are kept where the operating system keeps other passwords, not in a file we wrote.
+  Progress (2026-08-25): the contract is written and accepted --
+  docs/specs/PRESS-0002-credentials.md, two cold-eyes loops, eighteen
+  verified findings all fixed, reached the spec cap of 2. Status stays
+  planned: no code exists yet.
+
+  Two scope choices were put to the user and answered. Windows never falls
+  back to a file, because os.chmod there sets only the read-only flag and
+  cannot make a file private to one user, so a fallback would leave a key
+  that can rewrite the live site readable by anyone using that machine.
+  And the store that answered is always named, because the keyring can
+  turn out to be a plaintext file and nothing else would distinguish it.
+
+  BLOCKED ON A DECISION THAT IS NOT THIS ITEM'S. design.md rule 5 lets the
+  Publisher read Settings and a folder of finished files and nothing else,
+  and rule 8 says the same for Insights. This module is neither, and
+  The parts does not list it, so as those rules stand neither part may
+  call the thing both depend on -- and PRESS-0001 refuses to hold the
+  secret, so routing through Settings is not open either. Either name this
+  module in both rules, or make the Face fetch the secret and hand it
+  over. PRESS-0009 and PRESS-0019 wait on that choice; the spec's
+  cross-doc section records both routes and picks neither.
   Kind: security.
   Source: design-2026-08-24 § Where everything sits on disk, ADR-0003.
   Lanes: Settings.
