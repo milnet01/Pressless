@@ -1,6 +1,6 @@
 # PRESS-0001 — Settings: what is true of this machine, and nothing else
 
-**Status:** spec draft (2026-08-25).
+**Status:** accepted (2026-08-25). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A calm cap: only three of the last loop's findings landed on text the run itself wrote, so the document held more defects than the cap held loops rather than the run repairing itself. Implementation is the third reviewer.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -16,8 +16,9 @@ After this ships there is one place that holds the facts about *this
 machine and this site* — where the finished site folder is written, which
 repository it is published to, which tag the Builder filters, which paths
 in that repository are not ours to touch, where the two credentials are
-kept, and the Analytics property id. Every other part reads it. It reads
-nothing else: no Store, no network, no other part of Pressless.
+kept, and the Analytics property id. Every part but Marks reads it — Marks is
+pure calculation and reads nothing. Settings itself reads nothing else: no
+Store, no network, no other part of Pressless.
 
 ## 2. Problem
 
@@ -127,7 +128,12 @@ not create it, search for it, or fall back to another one.
 }
 ```
 
-`version` exists so a later shape change has something to branch on.
+**`version` is the file's, not the dataclass's.** `save()` always writes
+`version: 1`; `load()` requires it, accepts `1`, and raises `SettingsError`
+naming the value for anything else — a file written by a later Pressless is not
+one this build may guess at. It is deliberately not a `Settings` field, so
+INV-6's field set does not carry it, and §4.4's carry-through does not reach it
+either: `version` is written from the schema, never from what was read.
 
 **Two fields carry a declined dashboard, and both are optional:
 `analytics_measurement_id` and the `google_account` inside `credentials`.**
@@ -150,20 +156,32 @@ depend on what pins the target as WordPress's own `dailyprompt-NNNN` tag, and
 A regex reading therefore publishes what the writer asked to be filtered and
 filters entries that are his own tagging habit. The glob is the contract.
 
+`site_folder` is **absolute**, as the example shows. It is the writer's own
+choice of where the built site goes and may sit on another drive entirely, so
+it is never resolved against `folder`.
+
 The `untouchable` values above are illustrative. The real ones are the
 output of § What may depend on what's rule, derived at setup against the
 live repository root.
 
 ### 4.3 Loading
 
-`load()` has four outcomes and they are distinguishable:
+`load()`'s outcomes, and they are distinguishable:
 
 | State | Result |
 |---|---|
 | No file at `path_for(folder)` | `NotSetUp` |
 | File present, not valid JSON | `SettingsError`, naming the file |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
+| Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name`, `credentials.store` outside `"keyring"` and `"file"` | `SettingsError`, naming the key |
 | Valid | `Settings` |
+
+**The shape row is why this is a list rather than four cases.** `repository`
+and `store` are contracts other parts read, not free strings: a `str` holding
+`"ownername"` or `"vault"` is present and correctly typed, so without the row
+`load()` accepts it and the Publisher or PRESS-0002 meets it later, with less
+to say about it.
 
 **Nothing in the failing rows writes.** A file we could not read is a file
 we do not overwrite: the writer's settings are recoverable by hand only as
@@ -181,8 +199,9 @@ unreadable file raises rather than discarding what it could not parse.
 
 **No existing file is not an error.** The first save, at setup, has nothing to
 read and nothing to carry through, and writes a new file. `load()`'s `NotSetUp`
-is about loading; it never reaches `save()`. Only an existing file that cannot
-be parsed raises.
+is about loading; it never reaches `save()`. An existing file that cannot be
+parsed raises rather than being silently discarded — and §6 carries `save()`'s
+other failures, which this rule does not speak for.
 
 ### 4.5 What Settings never holds
 
@@ -193,8 +212,10 @@ protection ADR-0003 exists to provide.
 
 **And no path to the fallback file.** `store: "file"` names ADR-0003's weaker
 path rather than a location: where that file lives is PRESS-0002's, which owns
-both stores. Settings records nothing that moving the program file would
-invalidate, and a stored path is exactly that.
+both stores. A path recorded here would be invalidated by the very move
+Settings must survive — the program file's, which `folder` follows. That
+reasoning is about **Pressless's own** files and does not reach `site_folder`,
+which is the writer's choice of somewhere else and is stored absolute.
 
 ## 5. Invariants
 
@@ -279,11 +300,19 @@ invalidate, and a stored path is exactly that.
   folder is missing and PRESS-0011 owns what the writer is told. Validating
   it here would put a filesystem question in the part that depends on
   nothing.
-- **`repository` is not `owner/name`.** Shape is checked; existence is not.
-  Existence needs the network.
-- **The file is read-only.** `save()` raises `SettingsError` naming the
-  file. This is the state a settings file copied from another machine
-  arrives in.
+- **`repository` names a repository that is not there.** §4.3 rejects the
+  wrong *shape*; existence is not checked at all, because checking it needs
+  the network. The Publisher is where a well-formed name with nothing behind
+  it surfaces.
+- **The file or its folder cannot be written.** `save()` reports whatever the
+  write raises, as a `SettingsError` naming the path, and does not probe
+  permissions first. **A read-only settings *file* is not that state on
+  Linux.** Measured: `os.replace` onto a mode-444 target in a writable
+  directory succeeds and replaces it, where a direct `open('w')` on the same
+  file raises `PermissionError`; on Windows the replace itself raises. So
+  §4.4's mechanism decides this, the folder's permissions are what bite on
+  Linux, and a settings file copied read-only from another machine is replaced
+  rather than refused.
 - **Two Pressless windows save at once.** The last write wins, whole.
   §4.4's replace is what makes "whole" true; nothing here makes it "both".
 
@@ -298,8 +327,14 @@ One test per invariant, named in §5. **The red run is made against a stub
 errors at collection and collects nothing, so no assertion runs — this
 project's own `CLAUDE.md` records that trap, and calling that error a red run
 is the substitution it forbids. The stub declares every name in §4.1 and raises
-`NotImplementedError` from each function, so the red run reads as every test
-collected and every test failed. Read the collected count, not the exit code.
+`NotImplementedError` from each function, so every test is collected.
+
+**Not every test then fails, and that is by design.** A stub declaring §4.1's
+names and importing nothing forbidden already satisfies INV-1 and INV-6, whose
+tests read the module's imports and its field names rather than its behaviour.
+The red run is every test collected with the behavioural ones failing on
+assertions; INV-1's or INV-6's going red against the stub means the stub is
+wrong, not the test. Read the collected count, not the exit code.
 
 **INV-1's test is the weak one, and it is weak in a way this project has
 already met.** Reading an import list proves what the module imports, not
@@ -321,9 +356,10 @@ loading or saving does anything.
   beside a program that publishes to the writer's live site.
 - **Settings finds its own folder.** Breaks § The parts' *depends on
   nothing*, and duplicates the AppImage location problem PRESS-0022 owns.
-- **Settings validates the paths and the repository it holds.** Every check
-  worth having needs a disk or a network, both of which its row forbids;
-  the parts that already have them are the ones that can report usefully.
+- **Settings checks that the paths and the repository it holds EXIST.** Every
+  such check needs a disk or a network, both of which its row forbids; the
+  parts that already have them are the ones that can report usefully. §4.3's
+  shape row is not this: shape is decidable from the string alone.
 - **Storing the untouchable rule instead of its output.** The rule needs the
   repository root to evaluate, which is a network read. Settings holds the
   output and §4.2 records that the rule is the contract.
@@ -351,12 +387,17 @@ loading or saving does anything.
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
+| §4.3's `version` and shape rows | **nothing** — no invariant locks them, so an implementer could drop either row and this suite stays green. They are the two rejections whose absence is silent: a missing `version` makes the file unreadable by the next Pressless, and a malformed `repository` or `store` reaches PRESS-0009 or PRESS-0002 as a value they did not expect. Worth an invariant if either is ever seen to slip |
 | §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |
 
 ## 11. Cross-doc impact
 
 - `docs/design.md` § The parts — its Settings row enumerates what Settings
   holds and does not name the Analytics id. It gains it.
+- `docs/decisions/ADR-0003` — its text covers the publishing key alone, and
+  the widening to both credentials is recorded only in PRESS-0002's roadmap
+  bullet. This spec leans on it for both, so the ADR gains the Google
+  authorisation.
 - `CLAUDE.md` — the state block only. This suite needs no environment
   variable, so § Build and test's note about the one test that does is
   unchanged.
@@ -367,4 +408,5 @@ loading or saving does anything.
 
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
-| 1 | 2026-08-25 | 3, cold — genre pinned `spec`, packet carried the design rules, ADR-0003 and ADR-0005 verbatim, and the tree's real test and packaging facts | 1 | 3 | 4 | 4 | **Twelve verified, twelve fixed; one dismissed as inert.** **All three lanes independently found the same two**, which is the strongest signal in the run. INV-7 said `load()` and `save()` act on `path_for(folder)` "and on no other path" while §4.4 requires a temporary file and a replace — so the two invariants could not both be satisfied, and an implementer holding INV-7 literally writes the non-atomic implementation INV-5 exists to forbid. And §7 demanded the red run be "seen to fail against the absent module", which this project's own `CLAUDE.md` says is impossible: with the module absent the suite errors at collection and no assertion runs, so the clause required exactly the substitution the sentence it cited forbids. The red run is now made against a stub raising `NotImplementedError`. **The best single finding came from one lane and got worse when measured.** `daily_prompt_filter` never pinned its matching language, and the Builder binds to it. Run rather than reasoned: `fnmatch.fnmatchcase` and `re.fullmatch` are not merely different on the two live tag shapes, they are **inverted** — a regex reading publishes the `dailyprompt-NNNN` entries the writer asked to filter and filters the bare-`dailyprompt` entries that are his own. The glob is now the contract, with the measurement in §4.2. **Three more Q4s were fixtures that could not catch the breach they named**: INV-5 patched an interruption that never fires against a direct write, INV-7 listed a folder to catch a read somewhere else, and INV-1 asked an import list to enforce "reaches no disk but its own file" while §4.4 requires `os`. **One Q2 would have locked a writer out of his own app**: `credentials.google_account` was required, and ADR-0005 makes the Google step declinable "or it becomes a wall". **Two Q3s were the first-ever call**: `save()` with no existing file was specified nowhere though setup binds to it, and nothing said where ADR-0003's fallback file lives. **One finding was this loop's own collateral**, caught by the post-fix re-read: making `google_account` optional left §4.5 still saying "the two account names". **Dismissed as true-but-inert** (found by a lane and filed as an open question rather than a finding, correctly): §2 claims every dependency rule mentioning another part grants it Settings, and rules 1, 2, 3, 7 and 9 do not — false, and no line of the built thing changes, so recorded rather than fixed. |
+| 1 | 2026-08-25 | 3, cold — genre pinned `spec`, packet carried the design rules, ADR-0003 and ADR-0005 verbatim, and the tree's real test and packaging facts | 1 | 4 | 4 | 4 | **Thirteen verified, TWELVE fixed, one escaped; one dismissed as inert.** *(Q2 and the counts corrected while writing loop 2's row — see that row's opening. This row first read "twelve verified, twelve fixed", which was false: a verified Q2 was never fixed.)* **All three lanes independently found the same two**, which is the strongest signal in the run. INV-7 said `load()` and `save()` act on `path_for(folder)` "and on no other path" while §4.4 requires a temporary file and a replace — so the two invariants could not both be satisfied, and an implementer holding INV-7 literally writes the non-atomic implementation INV-5 exists to forbid. And §7 demanded the red run be "seen to fail against the absent module", which this project's own `CLAUDE.md` says is impossible: with the module absent the suite errors at collection and no assertion runs, so the clause required exactly the substitution the sentence it cited forbids. The red run is now made against a stub raising `NotImplementedError`. **The best single finding came from one lane and got worse when measured.** `daily_prompt_filter` never pinned its matching language, and the Builder binds to it. Run rather than reasoned: `fnmatch.fnmatchcase` and `re.fullmatch` are not merely different on the two live tag shapes, they are **inverted** — a regex reading publishes the `dailyprompt-NNNN` entries the writer asked to filter and filters the bare-`dailyprompt` entries that are his own. The glob is now the contract, with the measurement in §4.2. **Three more Q4s were fixtures that could not catch the breach they named**: INV-5 patched an interruption that never fires against a direct write, INV-7 listed a folder to catch a read somewhere else, and INV-1 asked an import list to enforce "reaches no disk but its own file" while §4.4 requires `os`. **One Q2 would have locked a writer out of his own app**: `credentials.google_account` was required, and ADR-0005 makes the Google step declinable "or it becomes a wall". **Two Q3s were the first-ever call**: `save()` with no existing file was specified nowhere though setup binds to it, and nothing said where ADR-0003's fallback file lives. **One finding was this loop's own collateral**, caught by the post-fix re-read: making `google_account` optional left §4.5 still saying "the two account names". **Dismissed as true-but-inert** (found by a lane and filed as an open question rather than a finding, correctly): §2 claims every dependency rule mentioning another part grants it Settings, and rules 1, 2, 3, 7 and 9 do not — false, and no line of the built thing changes, so recorded rather than fixed. |
+| 2 | 2026-08-25 | 3, cold — identical brief, packet rebuilt from disk and given the measured `fnmatch`-versus-regex table, which no lane can run for itself | 2 | 5 | 3 | 0 | **Ten verified, ten fixed. Cap reached (2 for a spec); the run files its tail and ships.** **It opens with a correction to loop 1's own row.** Reconciling the ledger before writing this one showed loop 1 verified THIRTEEN findings and fixed twelve: a lane's Q2 on `repository` shape was verified and then dropped while merging, and the row asserted a clean twelve-for-twelve. Loop 2's lanes found it again independently, which is the only reason it is here. The row above is corrected rather than left standing. **The best finding is a self-defeating loop two lanes found in the file shape.** `version` was documented as a required key of the file and was not a field of `Settings`, while INV-6 pins the field set to exactly §4.1's list — so `save()` built from the dataclass writes a file with no `version`, which the very next `load()` must reject. Setup would have produced a file the app could not open. §4.2 now makes `version` the file's rather than the dataclass's, written from the schema and checked on load, and §4.3 gains the row. **One Q1 was settled by running it rather than reading it.** §6 claimed `save()` raises on a read-only file; §4.4 specifies a temporary file and `os.replace`. Measured here: the replace onto a mode-444 target in a writable directory SUCCEEDS and silently replaces it, where a direct `open('w')` on the same file raises `PermissionError` — so the document required one behaviour and its own mechanism delivered another on the platform it is developed on. Two lanes reached it by reading POSIX semantics and both flagged that it needed a run. **Three of the ten landed on text THIS RUN wrote** — the stub red run, §4.5's over-wide principle and §4.4's over-claiming *only*-clause were all loop 1 fixes. That is a low share, so this is a CALM cap: the document held more defects than the cap held loops, and shipping is right rather than the run oscillating. **Four open questions across the three lanes resolved clean and are not counted**: `test_marks_is_pure` does ban `os` outright, and two lanes independently opened the roadmap and confirmed PRESS-0022 owns both the program-file location step and the Windows staging this document attributes to it. |

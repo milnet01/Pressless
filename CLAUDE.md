@@ -2,9 +2,9 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** `PRESS-0001` (Settings), 🚧 — the
-root every other part reads, and it needs a spec. **Next:** that spec,
-then the code. Run `python3 -m pytest` for where the code stands.
+**State:** 5 — Building. **In flight:** `PRESS-0001` (Settings), 🚧 — its
+spec is accepted and gated; the tests and the code are next. **Also
+startable:** `PRESS-0024`. Run `python3 -m pytest` for where code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where
