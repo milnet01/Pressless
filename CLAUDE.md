@@ -51,6 +51,42 @@ an interpreter cannot show that the packaged executable carries
 everything it needs, which is the whole of S4. Anything the app needs at
 runtime it must bring with it.
 
+### This repository is PUBLIC, and nothing here may name the writer
+
+`milnet01/Pressless` on GitHub, MIT. The site it publishes belongs to a
+real person; **this repository is about the app, and must not identify
+him.** Write "the writer", never a name — in documents, roadmap bullets,
+commit messages and code comments alike.
+
+**What was removed on 2026-08-25, so it is not reintroduced:** his name,
+his band, his domain, his GitHub account, his audience size, and a
+hard-coded Google Analytics measurement id. The id belongs in Settings
+by dependency rule 8, which is where the design already put it — writing
+it into a document was the mistake, not just the leak.
+
+**Publishing a document is publishing its history**, which is the whole
+reason this needs saying. De-personalising a file changes nothing about
+what `git log` serves. The pre-public history was archived off-repo
+before the first push rather than published.
+
+Sweep before any push:
+`git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" -- .`
+
+### A corrected `Layman:` cannot be put back the way it was
+
+`roadmap_log` sets a bullet's `Layman:` at creation and has no verb to
+change it afterwards — the trailer is composed from a store column that
+`amend_body` cannot reach, even though `roadmap_query` shows the text
+inside `body`. The only route is to declare `Layman:` at a line start in
+the body, and **that route is one-way**: deleting the declaration does
+not fall back to the column, it clears the field, and the render gate
+refuses the write.
+
+So this roadmap carries two styles — plain `Layman:` on the four bullets
+corrected on 2026-08-25, bold on the other eighteen. Both parse. **Do
+not try to reconcile them**; the attempt is what discovers the gate.
+Filed as feedback for the Ants MCP maintainer.
+
 ### Roadmap IDs
 
 `PRESS-NNNN`, per `roadmap-format.md` § 3.5.1. **The roadmap is served
