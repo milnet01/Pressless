@@ -375,6 +375,12 @@
   and nothing could derive it before), and at publish it removes a root entry
   absent from the handed folder unless that entry is on the list -- it never
   re-evaluates the rule there, or it would protect every page just deleted.
+  Deferred from the same gate (loop 6, filed not fixed): undo publishes a new
+  commit, so after one undo "the previous state" is the state undo just
+  replaced. A second undo then restores the broken site. Settle which state the
+  fetch names -- the commit before the current one, or the last state before
+  the change being undone -- before building the fetch-back way in; the Face's
+  undo sequence binds to whichever it is.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
@@ -641,6 +647,16 @@
   data folder sits beside there: the extracted folder, not an installed
   program. PRESS-0023 depends on this item and its Windows half differs
   from finbreak's for the same reason.
+  Deferred from the docs/design.md gate, 2026-08-25 (loop 6, filed not fixed).
+  The design says Pressless's own folder sits beside the program file, and that
+  folder holds all his writing, the drafts nothing backs up, the settings file
+  and the fallback credential file. Every release ships a NEW artefact
+  (ADR-0004), and the design never says what happens to the old folder. Resolve
+  it as part of this item: the folder moves with the program, or Pressless
+  finds and migrates a previous one, or setup detects an existing one and
+  offers it. Left unresolved, a writer who unzips version 2 somewhere else gets
+  a first-run setup, no writing, and unbacked-up drafts stranded beside the old
+  artefact. PRESS-0001 section 4.5 already assumes the opposite is handled.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
