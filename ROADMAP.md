@@ -92,6 +92,26 @@
   One table of every mark it understands, which is the single source the
   cheat sheet is generated from.
   Blocked-by: nothing.
+  Progress (2026-08-25): `docs/specs/PRESS-0004-marks.md` is written and
+  accepted. Two cold-gate loops, three lanes each, eighteen verified
+  findings, all fixed; the cap for a spec is two and it bound.
+  What the spec settles that the design left open: the two named site
+  colours are `{accent}` and `{muted}` and they render as CSS variables
+  so a repaint reaches old entries; an incomplete mark is literal text,
+  which is what keeps the archive's self-censored words out of italics;
+  `<` and `>` are always escaped while a valid character reference is
+  left alone, so the entities in the existing entries survive; a picture
+  mark owns its line and renders outside the paragraph; and the mark
+  table carries its own renderer, so nothing renders from a second
+  hidden table.
+  The contract other parts bind to is `parse` / `to_html` / `render` plus
+  a `photo_src` callable the caller supplies -- that callable is how the
+  no-disk rule is kept while the picture mark still works. PRESS-0008 and
+  PRESS-0012 pass different ones.
+  Next: `write-test` for the failing tests, then the code. The archive
+  conformance run is the proof of S2 and is skipped unless
+  `PRESSLESS_ARCHIVE` names an export, because that file is personal data
+  and cannot live in a public repository.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.
