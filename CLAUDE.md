@@ -2,13 +2,13 @@
 
 ## Where this project is
 
-**State:** 4 — Between items, with one item ready to build:
-`PRESS-0004` (Marks) has an accepted spec at
-`docs/specs/PRESS-0004-marks.md`. `PRESS-0001` is the other unblocked one.
-**Next:** `write-test` for `PRESS-0004`, then the code (the workflow
-standard § 6). No code exists anywhere yet.
-**In flight:** nothing. The bullet is still 📋 on purpose — an accepted
-spec is not work started, and `write-spec` may not flip a status.
+**State:** 5 — Building `PRESS-0004` (Marks). Its spec is accepted and
+its tests are written and failing; `src/pressless/marks.py` does not
+exist yet.
+**Next:** write that module until the suite is green. `PRESS-0001` is the
+other unblocked item.
+**In flight:** `PRESS-0004`, 🚧 on the roadmap. Run `python3 -m pytest`
+to see where it stands — the tests are the position, not this line.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where
@@ -38,7 +38,24 @@ rather than in a standard.
 
 ### Build and test
 
-(Filled once the stack exists.)
+Python, no dependencies beyond the standard library and `pytest`.
+`pyproject.toml` holds the packaging and the pytest settings; `src/` is
+on the path through it, so no install step is needed.
+
+```bash
+python3 -m pytest          # the suite
+ruff check src/ tests/     # lint
+```
+
+**One test is skipped by default and it is the most important one.**
+`tests/test_marks_archive.py` proves S2 against the real WordPress
+export, which is personal data and cannot live in a public repository —
+so it runs only where that file is, and a green CI run says nothing
+about it:
+
+```bash
+PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest
+```
 
 **Windows is testable, and that is not obvious from anything else here.**
 Development happens on Linux and the app must run on both. A Windows 10
