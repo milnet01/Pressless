@@ -573,6 +573,30 @@
   Kind: feature.
   Source: user-request-2026-08-25.
 
+- 📋 [PRESS-0024] **The pre-push hook reads as a safety net and gates nothing.**
+  Measured 2026-08-25 while checking this project is still a correct
+  instance of the skeleton. `core.hooksPath` is `.githooks`, all three
+  hooks are executable, and `commit-msg` genuinely refuses a bad subject
+  (probed: exit 1). But `pre-push` prints "no local gate found, and no
+  pipeline to gate -- nothing to run" and exits 0 on every push, because
+  this repo has no CI workflow and no gate script.
+
+  Why it matters more than it looks: the suite here is fast and the
+  archive run -- the proof of S2 -- is skipped unless PRESSLESS_ARCHIVE is
+  set, so a green CI run would be silent about the most important
+  invariant even if CI existed. The one machine that can run it is the
+  maintainer's, which is exactly where pre-push fires. A hook that ran
+  `python3 -m pytest` with the archive path when that file is present
+  would turn the strongest available check into an automatic one.
+
+  Not urgent, and deliberately not done in the session that found it:
+  nothing has been published that the missing gate would have caught. The
+  risk is the opposite one -- the hook LOOKS like protection, so a future
+  session may trust it.
+  **Layman:** Make the check that runs before publishing actually run the tests, instead of quietly doing nothing.
+  Kind: chore.
+  Source: in-session-2026-08-25.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
