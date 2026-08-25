@@ -69,8 +69,20 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-Sweep before any push:
-`git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" -- .`
+Sweep before any push — **expect exactly one hit, this line itself**,
+because the pattern names what it is looking for. Two or more hits means
+something leaked:
+
+```
+git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" -- .
+```
+
+And sweep the history too, not just the tree — that is the mistake this
+whole section exists to prevent:
+
+```
+git grep -l -iE "charl|jordaan|18down" $(git rev-list --all) -- .
+```
 
 ### A corrected `Layman:` cannot be put back the way it was
 
