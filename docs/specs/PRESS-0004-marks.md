@@ -1,11 +1,17 @@
 # PRESS-0004 — Marks: one table, one parser, one renderer
 
-**Status:** accepted (2026-08-25), amended the same day by implementation.
-Writing the tests showed INV-4 and INV-5 agreed only because the archive
-happens to contain nothing that separates them. §2, §4.6, §5 and §7 now
-state the difference and the test checks it. No re-gate: the document
-reached its cold-eyes cap, and this is the implementation finding the tail
-that rule 14 says it should.
+**Status:** accepted (2026-08-25), amended three times the same day by
+implementation. Writing the tests showed INV-4 and INV-5 agreed only because
+the archive happens to contain nothing that separates them; §2, §4.6, §5 and
+§7 now state the difference and the test checks it. Writing the code then
+showed §4.5's two adjacency clauses rejected §4.2's own photo syntax, and
+that nothing said where an argument ends; §4.5 now scopes the clauses to a
+`wrap` and names the terminator. A mutation probe then showed §4.5's own
+gloss *"so `***…***` opens nothing"* was false of the rule it glossed, and
+that INV-2's fixtures measure neither adjacency clause; §4.5 and INV-2 now
+say what the rule does and which two inputs separate it. No re-gate for any
+of the three: the document reached its cold-eyes cap, and this is the
+implementation finding the tail that rule 14 says it should.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
@@ -212,13 +218,29 @@ newline, looking like a broken test rather than a wrong spec.
 Left to right. At each position, try each `MARKS` row's `opens`, longest
 first, so `**` is tried before `*`. A row matches only when **all** of:
 
-- the opener is not immediately followed by a space, and for `**` and `*`
-  not by another `*` — so `***…***` opens nothing;
+- for a `wrap`, the opener is not immediately followed by a space, and for
+  `**` and `*` not by another `*` — so an asterisk run cannot open a mark at
+  its **first** asterisk. It does not follow that `***…***` opens nothing:
+  scanning resumes one character on, and the run's later asterisks are tried
+  in turn, so `***x***` renders `*<strong>x</strong>*`. What the clause
+  decides is where the boundary falls, not whether a mark forms at all —
+  `**x*` is `*<em>x</em>` with it and `<em>*x</em>` without;
 - for a `wrap`, its `closes` occurs later **on the same line**, not
   immediately preceded by a space, and for `**` and `*` not by another `*`
   — so `b**bs` closes nothing;
-- `arg`, where the row has one, matches the argument **in full**;
+- `arg`, where the row has one, matches the argument **in full**. **The
+  argument runs from the end of `opens` to the next `}` on the line**, which
+  is why an argument-bearing row's `opens` stops short of one: every mark
+  that takes an argument is a brace mark, so there is exactly one terminator;
 - a `block` row matches only when the mark is the whole line (§4.2).
+
+**Both adjacency clauses are a `wrap`'s alone**, which is what the two
+`for a wrap` prefixes carry. Applied to a `block` row they reject `{photo:
+seaside.jpg}` — the character after `{photo:` is a space in every form §4.2
+writes — so the photo row's own `example` would fail INV-6. The clauses
+exist for the asterisk family, whose delimiters are characters the writing
+itself is full of; a `block` mark owning its whole line cannot collide that
+way and needs no such rule.
 
 Anything that fails is emitted as literal text and scanning resumes one
 character on. The inner text of a matched `wrap` is scanned by the same
@@ -261,6 +283,13 @@ caller returning a name with a quote in it cannot break out of the tag.
   line.
   *Breaks when:* the opener test drops its "not followed by a space or its
   own delimiter" clause, or the closer is allowed to be missing.
+  **The archive's own fixtures do not separate the two adjacency clauses**,
+  measured by mutation 2026-08-25: drop either one and `b**bs`, `f*cking`
+  and the asterisk divider all still render literally, because each is
+  carried by the other clause or by having no partner at all. Two inputs do
+  separate them and are owed to the test — `**x*` for the opener, and
+  `*x **` for the closer, which is literal as written and `<em>x *</em>`
+  without it.
 
 - **INV-3** — No mark spans a newline: no `Text` inside a `Span` contains
   `\n`, and a mark's opener and closer come from the same `Line`.
