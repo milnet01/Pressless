@@ -17,6 +17,15 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The two secrets are kept in the operating system's own credential store** (PRESS-0002)
+  Pressless now has one place that keeps the publishing key and the
+  Analytics key, and it puts them where the rest of your passwords
+  already live rather than in a file of its own. It tells you which
+  store answered, so a plain-file store can never pass itself off as a
+  protected one. On Windows it refuses the file fallback outright: a
+  file cannot be made private to one person there. Nothing it can go
+  wrong with ever prints the key itself.
+
 - **Settings — the one place that holds what is true of this machine.** (PRESS-0001)
   Where the finished site is written, which repository it is published
   to, which tag the Builder filters, which files in that repository are

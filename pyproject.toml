@@ -9,6 +9,11 @@ description = "The desktop app that lets a writer manage and publish their own s
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
+# The operating system's credential store, reached only by
+# src/pressless/credentials.py (PRESS-0002, ADR-0003). Pinned at the major
+# version measured: 25.x is where .backends on a chain and
+# errors.NoKeyringError were verified to behave as §4.6 records.
+dependencies = ["keyring>=25"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

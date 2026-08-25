@@ -93,6 +93,12 @@ config.local.*
 credentials.*
 *.token
 token.txt
+# ...but credentials.py is the SOURCE that reaches the store, not a
+# secret. The net above is kept broad on purpose -- a stray
+# credentials.yaml must still be caught -- so the one source file is
+# carved out by name. Without this the module is silently absent from
+# every commit while its tests are committed (found 2026-08-25).
+!src/pressless/credentials.py
 
 # Generated site output. The built site is published to the writer's OWN repo, not
 # committed here, or the two copies drift.

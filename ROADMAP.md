@@ -70,7 +70,7 @@
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
 
-- 📋 [PRESS-0002] **Both credentials live in the operating system's keyring.**
+- ✅ [PRESS-0002] **Both credentials live in the operating system's keyring.**
   The GitHub publishing key and the Google authorisation, through one
   library covering Windows Credential Manager and Linux Secret Service.
   Where no keyring exists, an owner-readable file in Pressless's own
@@ -104,6 +104,29 @@
   module in both rules, or make the Face fetch the secret and hand it
   over. PRESS-0009 and PRESS-0019 wait on that choice; the spec's
   cross-doc section records both routes and picks neither.
+  Resolved 2026-08-25. src/pressless/credentials.py and
+  tests/test_credentials.py, one test per INV-1..9. Red run made against a
+  stub, and it came out as spec §7 predicted -- nine collected, seven failing
+  on assertions, INV-1 and INV-6 green against a stub by design. Suite after:
+  24 passed, 1 skipped (the archive test, correct without PRESSLESS_ARCHIVE);
+  ruff clean.
+
+  The tests were then checked by mutation rather than trusted: eight
+  deliberate breaks -- deleting the probe before the member walk, naming the
+  nominated chain instead of the answering member, catching every exception as
+  "no store", returning the store's answer unexamined, writing the file
+  directly and chmodding after, reporting a Windows refusal as the wrong type,
+  rebuilding the file from the one secret in hand, and naming the secret in a
+  failure message -- were each caught by the invariant that names them. INV-1
+  was not probed; §5 says outright it is weak by design.
+
+  pyproject.toml gains keyring>=25, the project's first runtime dependency,
+  pinned at the major version §4.6 was measured on. CLAUDE.md § Build and test
+  no longer says the project has none.
+
+  Still owed from spec §11, and NOT done here: docs/design.md's amendment (a
+  row for this part, plus the hand-off sentence) and ADR-0003's three
+  corrections. Both are contract edits that re-arm rule 14's cold-eyes gate.
   Kind: security.
   Source: design-2026-08-24 § Where everything sits on disk, ADR-0003.
   Lanes: Settings.
@@ -327,6 +350,14 @@
   in rule 5, or make the Face fetch the secret and hand it over. Section 11
   of the PRESS-0002 spec records both routes and deliberately picks
   neither. Do not work around it by importing anyway.
+  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
+  the secret from the credentials module and hands it to the Publisher as an
+  argument. Design rules 5 and 8 are NOT widened -- rule 1 already gives the
+  Face the sequence, being handed a value is not reading a module, and a
+  Publisher that takes a token argument is testable without touching a real
+  keyring. Still blocked until docs/design.md carries the amendment (a row
+  for the credentials part in The parts, plus the hand-off sentence) and that
+  amendment passes its cold-eyes gate.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
@@ -494,6 +525,11 @@
   Note the authorisation is optional per ADR-0005, so whichever route is
   taken must still let a writer decline the dashboard and lose nothing
   else.
+  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
+  the secret from the credentials module and hands it to Insights as an
+  argument. Design rules 5 and 8 are NOT widened -- see PRESS-0009 for the
+  reasoning. Still blocked until docs/design.md carries the amendment and
+  that amendment passes its cold-eyes gate.
   **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0005.

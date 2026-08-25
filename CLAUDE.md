@@ -39,9 +39,11 @@ it rather than restating why.
 
 ### Build and test
 
-Python, no dependencies beyond the standard library and `pytest`.
-`pyproject.toml` holds the packaging and the pytest settings; `src/` is
-on the path through it, so no install step is needed.
+Python. One runtime dependency — `keyring`, the operating system's
+credential store, reached only by `credentials.py` (PRESS-0002) — plus
+`pytest` to run the suite. `pyproject.toml` holds the packaging and the
+pytest settings; `src/` is on the path through it, so no install step is
+needed beyond having those two present.
 
 ```bash
 python3 -m pytest          # the suite
