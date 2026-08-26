@@ -745,7 +745,7 @@
   through a machine-local config key, so the export path stays out of the
   public repository and the suite reports nothing skipped here. First
   GitHub run green.
-  **Layman:** Make the check that runs before publishing actually run the tests, instead of quietly doing nothing.
+  **Layman:** The check that runs before publishing now really runs the tests, instead of quietly doing nothing.
   Kind: chore.
   Source: in-session-2026-08-25.
 
