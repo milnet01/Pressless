@@ -714,7 +714,7 @@
   Kind: feature.
   Source: user-request-2026-08-25.
 
-- 📋 [PRESS-0024] **The pre-push hook reads as a safety net and gates nothing.**
+- ✅ [PRESS-0024] **The pre-push hook reads as a safety net and gates nothing.**
   Measured 2026-08-25 while checking this project is still a correct
   instance of the skeleton. `core.hooksPath` is `.githooks`, all three
   hooks are executable, and `commit-msg` genuinely refuses a bad subject
@@ -735,6 +735,16 @@
   risk is the opposite one -- the hook LOOKS like protection, so a future
   session may trust it.
   Blocked-by: nothing.
+  Resolved (2026-08-26): scripts/local-ci.sh holds the checks and
+  .github/workflows/ci.yml calls that same file, so the local run and
+  GitHub cannot drift. The gate sweeps the three surfaces a push
+  publishes -- tree, every commit's files, commit messages -- then lints
+  and runs the suite; --docs runs the sweep alone, since no test here
+  reads a document. Proven by planting a name in a staged file: exit 1,
+  naming the surface. The archive run this bullet asked for is wired
+  through a machine-local config key, so the export path stays out of the
+  public repository and the suite reports nothing skipped here. First
+  GitHub run green.
   **Layman:** Make the check that runs before publishing actually run the tests, instead of quietly doing nothing.
   Kind: chore.
   Source: in-session-2026-08-25.

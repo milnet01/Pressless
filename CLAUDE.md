@@ -5,8 +5,8 @@
 **State:** 5 — Building. **In flight:** nothing. `PRESS-0001`, `PRESS-0002`
 and `PRESS-0004` are ✅ — spec, tests and code each. `PRESS-0009` and
 `PRESS-0019` are unblocked: `docs/design.md` rule 10 made the decision they
-waited on. **Also startable:** `PRESS-0024`. Run `python3 -m pytest` for
-where code stands.
+waited on; `PRESS-0024` is ✅. Run `python3 -m pytest` for where code
+stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where
@@ -47,15 +47,30 @@ pytest settings; `src/` is on the path through it, so no install step is
 needed beyond having those two present.
 
 ```bash
-python3 -m pytest          # the suite
-ruff check src/ tests/     # lint
+./scripts/local-ci.sh      # the gate: leak sweep, lint, suite
+./scripts/local-ci.sh --docs   # documentation push: leak sweep alone
+python3 -m pytest          # the suite alone
+ruff check src/ tests/     # lint alone
 ```
+
+**`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
+that same file** — it holds no checks of its own, so the two cannot
+drift. The `pre-push` hook discovers the script by name and runs it over
+the commits being pushed, so a failing tree cannot leave this machine.
 
 **One test is skipped by default and it is the most important one.**
 `tests/test_marks_archive.py` proves S2 against the real WordPress
 export, which is personal data and cannot live in a public repository —
 so it runs only where that file is, and a green CI run says nothing
-about it:
+about it. The gate points `PRESSLESS_ARCHIVE` at a path held in a
+machine-local git config key, so it runs here without that path entering
+this repository:
+
+```bash
+git config ants.pressless.archive /path/to/wordpress-export.xml
+```
+
+Or set it for one run:
 
 ```bash
 PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest

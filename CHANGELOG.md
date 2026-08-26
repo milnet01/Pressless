@@ -17,6 +17,15 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Checks now run before anything is published, on this machine and on GitHub** (PRESS-0024)
+  One file holds the checks and GitHub runs that same file, so what
+  passes here is what passes there. Before publishing, it makes sure
+  nothing anywhere -- the files, their whole history, or the messages
+  attached to them -- names the writer, then checks the code and runs
+  the tests. The most important test needs the real blog export, which
+  cannot be published; it now runs automatically on the machine that
+  has it.
+
 - **The two secrets are kept in the operating system's own credential store** (PRESS-0002)
   Pressless now has one place that keeps the publishing key and the
   Analytics key, and it puts them where the rest of your passwords
