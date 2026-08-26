@@ -657,6 +657,16 @@
   offers it. Left unresolved, a writer who unzips version 2 somewhere else gets
   a first-run setup, no writing, and unbacked-up drafts stranded beside the old
   artefact. PRESS-0001 section 4.5 already assumes the opposite is handled.
+  Shape decided by the user (2026-08-26), and it is NOT one file per
+  system. Linux gets a single AppImage, which keeps its settings beside
+  itself where it is run from rather than under the home directory --
+  the system drive is short of space, which is the reason. Windows gets
+  a ZIP holding the app plus a batch file that starts it; the writer
+  extracts it and double-clicks the batch file. So this item's headline
+  overstates Windows: two artefacts, one shape each, not one shape twice.
+  docs/design.md § The stack and ADR-0004 both say one artefact per
+  system and need the amendment before this is built -- a direction
+  change, so that amendment owes its own cold-eyes gate.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
