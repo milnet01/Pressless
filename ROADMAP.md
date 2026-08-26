@@ -761,6 +761,34 @@
   Kind: chore.
   Source: in-session-2026-08-25.
 
+- 📋 [PRESS-0025] **CLAUDE.md records a roadmap limitation that has since been fixed.**
+  § "A corrected `Layman:` cannot be put back the way it was" is stale.
+  Measured 2026-08-26: `roadmap_log op:amend_field` shipped that day
+  (ANTS-4667) and sets the layman column directly; on the four bullets
+  that declare `Layman:` in their own body it refuses with
+  `field_shadowed_by_body` and NAMES the route, `op:amend_body`, which
+  edits the declaration in place. Both were exercised, one for real
+  (PRESS-0024) and one as a dry run (PRESS-0001).
+
+  What is still true is the one-way half: a body declaration cannot be
+  converted back to a column, so the two styles still coexist and
+  reconciling them is still not worth attempting. The section should be
+  narrowed to that, not deleted.
+
+  Not done in the session that found it because it changes an
+  instruction -- CLAUDE.md rule 14 -- so it re-arms that file's own
+  cold-eyes gate and deserves the gate rather than a quiet edit.
+
+  Two machine-local git config keys are also undocumented and are lost
+  on a fresh clone: `ants.gate.docsGlob` (unset, the pre-push hook then
+  falls back to a list commits.md § 4.2 forbids) and
+  `ants.pressless.archive` (documented in § Build and test, so only the
+  first is missing). Fold the first into the same edit.
+  Blocked-by: nothing.
+  **Layman:** A note in our own instructions says something cannot be done, which can now be done.
+  Kind: doc-fix.
+  Source: in-session-2026-08-26.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
