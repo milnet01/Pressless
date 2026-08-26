@@ -66,6 +66,7 @@
   measured rather than predicted, and it is unchanged rather than new.
   Every read and write names UTF-8, because Python's default is the
   locale's and the app must run on Windows too.
+  Progress (2026-08-26): the Analytics field is renamed to analytics_property_id and the spec took a second cold-eyes run, two loops, thirteen verified and thirteen fixed, a calm cap. Three things changed behaviour or contract rather than prose. load() now rejects a relative site_folder -- it was accepted silently, and the Builder would have resolved it against whatever directory the process started in; test_relative_site_folder_is_rejected locks it. INV-7 was an over-broad cleanup claim over the folder that also holds ADR-0003's fallback credentials file and Insights' cache, so a literal implementer would have deleted the publishing key; it is now an addition rule. And INV-5 claimed save() never leaves a file load() rejects, which is false by execution -- save() validates nothing, and §4.4 now says so.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
@@ -562,6 +563,7 @@
   property id, the footer tag carries a G- measurement id, and the shipped
   field is named analytics_measurement_id. Passing the wrong one fails every
   fetch.
+  Settled (2026-08-26) by the user: Settings holds the NUMERIC property id, and no measurement id. The field is renamed analytics_property_id across the module, its tests and PRESS-0001; docs/design.md's two-identifier bullet records the decision. Pressless never writes the site's footer tag, so it has no use for the G- form. This item's remaining blocker is gone -- it is startable.
   **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0005.
