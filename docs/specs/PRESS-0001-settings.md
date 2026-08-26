@@ -91,7 +91,7 @@ class Settings:
     daily_prompt_filter: str     # fnmatch glob, matched per tag -- see below
     untouchable: tuple[str, ...] # repository-root entries the Publisher leaves alone
     credentials: Credentials     # where the two secrets are kept -- never the secrets
-    analytics_measurement_id: str | None
+    analytics_property_id: str | None
 
 @dataclass(frozen=True)
 class Credentials:
@@ -124,7 +124,7 @@ not create it, search for it, or fall back to another one.
     "github_account": "publishing-key",
     "google_account": "analytics"
   },
-  "analytics_measurement_id": "G-XXXXXXXXXX"
+  "analytics_property_id": "123456789"
 }
 ```
 
@@ -135,8 +135,13 @@ one this build may guess at. It is deliberately not a `Settings` field, so
 INV-6's field set does not carry it, and §4.4's carry-through does not reach it
 either: `version` is written from the schema, never from what was read.
 
+**`analytics_property_id` holds the numeric property id, not the `G-…`
+tag.** Google's reporting interface is addressed by the number. The tag in
+the site's footer is a different identifier and fails every fetch; Pressless
+never writes that tag, so it does not hold one.
+
 **Two fields carry a declined dashboard, and both are optional:
-`analytics_measurement_id` and the `google_account` inside `credentials`.**
+`analytics_property_id` and the `google_account` inside `credentials`.**
 ADR-0005 makes that step declinable — *"he can decline the Google step and
 lose the dashboard and nothing besides"* — so requiring the Google account
 name would leave a declined setup unable to load at all, which is the wall

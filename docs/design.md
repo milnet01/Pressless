@@ -295,9 +295,9 @@ interface, and hands the Face plain numbers. Two traps:
 - **There are two Analytics identifiers and they are not
   interchangeable.** The site's footer tag carries a measurement id
   (`G-…`); Google's reporting interface is queried by a numeric property
-  id. Settings declares only `analytics_measurement_id` today, so which
-  of the two it holds — and whether it needs both — has to be settled
-  before Insights is built. Passing the wrong one fails every fetch.
+  id. Settled 2026-08-26: Settings holds the property id, as
+  `analytics_property_id`, and holds no measurement id — Pressless never
+  writes the footer tag. Passing the other fails every fetch.
 - **It needs a second credential.** Reading Analytics is a separate
   Google authorisation from the GitHub publishing key. S5 is about the
   publishing key and is not broken by this, but setup grows a second

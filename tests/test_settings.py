@@ -47,7 +47,7 @@ def _valid_mapping(**overrides) -> dict:
             "github_account": "publishing-key",
             "google_account": "analytics",
         },
-        "analytics_measurement_id": "G-XXXXXXXXXX",
+        "analytics_property_id": "123456789",
     }
     mapping.update(overrides)
     return {k: v for k, v in mapping.items() if v is not _ABSENT}
@@ -80,7 +80,7 @@ def _valid_settings() -> Settings:
             github_account="publishing-key",
             google_account="analytics",
         ),
-        analytics_measurement_id="G-XXXXXXXXXX",
+        analytics_property_id="123456789",
     )
 
 
@@ -287,7 +287,7 @@ _SETTINGS_FIELDS = {
     "daily_prompt_filter",
     "untouchable",
     "credentials",
-    "analytics_measurement_id",
+    "analytics_property_id",
 }
 _CREDENTIALS_FIELDS = {"store", "github_account", "google_account"}
 

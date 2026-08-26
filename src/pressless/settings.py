@@ -42,7 +42,7 @@ class Settings:
     daily_prompt_filter: str      # fnmatch glob, matched per tag (§4.2)
     untouchable: tuple[str, ...]  # repository-root entries the Publisher leaves alone
     credentials: Credentials      # where the two secrets are kept -- never the secrets
-    analytics_measurement_id: str | None
+    analytics_property_id: str | None  # the NUMERIC property id, not the G-... tag
 
 
 class NotSetUp(Exception):
@@ -129,7 +129,7 @@ def load(folder: Path) -> Settings:
             github_account=github_account,
             google_account=google_account,
         ),
-        analytics_measurement_id=_optional(raw, "analytics_measurement_id", str, target),
+        analytics_property_id=_optional(raw, "analytics_property_id", str, target),
     )
 
 
@@ -174,7 +174,7 @@ def save(folder: Path, settings: Settings) -> None:
             "github_account": settings.credentials.github_account,
             "google_account": settings.credentials.google_account,
         },
-        "analytics_measurement_id": settings.analytics_measurement_id,
+        "analytics_property_id": settings.analytics_property_id,
     })
 
     try:
