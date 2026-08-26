@@ -15,6 +15,12 @@ license = { file = "LICENSE" }
 # errors.NoKeyringError were verified to behave as §4.6 records.
 dependencies = ["keyring>=25"]
 
+# The gate's tools (scripts/local-ci.sh). Floors record what was measured, not
+# a ceiling: CI installs whatever is newest above them, so a release that
+# breaks us shows up here rather than months later.
+[project.optional-dependencies]
+dev = ["pytest>=9", "ruff>=0.16"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# The gate. GitHub runs this exact file; so does the pre-push hook.
+#
+# WHY ONE FILE. A hand-written local mirror of a workflow is correct the day
+# it is written and drifts from then on, and a drifted mirror returns green
+# for a pipeline that will fail (commits.md § 4.2). .github/workflows/ci.yml
+# calls this script and holds no checks of its own.
+#
+# --docs runs the leak sweep ALONE. No test here reads a document, so a
+# documentation-only push has no code check to run -- but this repository is
+# public and must not name the writer, and a name leaks through prose more
+# easily than through code. That sweep is never skipped.
+set -Eeuo pipefail
+cd "$(dirname "$0")/.."
+
+DOCS_ONLY=0
+[[ ${1-} == --docs ]] && DOCS_ONLY=1
+
+step() { printf '\n=== %s ===\n' "$1"; }
+fail() { printf 'FAILED: %s\n' "$1" >&2; exit 1; }
+
+# ── Leak sweep ──────────────────────────────────────────────────────────────
+# Three surfaces, because a push publishes all three: the tree, the files in
+# every commit, and the commit messages. `git grep` reads trees only, so a name
+# in a subject line passes it without a hit.
+#
+# CLAUDE.md documents these patterns, so its own lines match. Those lines carry
+# the pipe-separated pattern itself; a real leak would not. Filtering on that
+# needs no path list and no line numbers, so it cannot go stale.
+step "leak sweep"
+PAT='charl|jordaan|18down|G-Y7N2F5SNY2|192\.168'
+SELF='charl|jordaan|18down'
+# Each surface is fed in as text and matched here, so all three are matched the
+# same way -- and the commit-message surface has no matcher of its own.
+scan() {
+    local what=$1 hits
+    hits=$(grep -inE "$PAT" | grep -vF "$SELF" || true)
+    [[ -z $hits ]] || { printf '%s\n' "$hits" >&2; fail "$what names the writer"; }
+    printf 'clean: %s\n' "$what"
+}
+git grep -n -iE "$PAT" -- . | scan "tree"
+git log --all --format='%H %s%n%b'  | scan "commit messages"
+# shellcheck disable=SC2046  # the revision list must expand into arguments
+git grep -n -iE "$SELF" $(git rev-list --all) -- . | scan "history"
+
+if (( DOCS_ONLY )); then
+    printf '\ndocumentation-only: no test here reads a document, so nothing else to run.\n'
+    exit 0
+fi
+
+step "ruff"
+ruff check src/ tests/ || fail "lint"
+
+# The suite errors at COLLECTION if a module is missing, and an exit code alone
+# does not distinguish that from a clean run. -ra prints the collected count.
+step "pytest"
+python3 -m pytest -ra || fail "tests"
+
+printf '\nall checks passed\n'
