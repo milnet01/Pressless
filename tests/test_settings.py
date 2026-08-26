@@ -255,7 +255,9 @@ def test_save_is_atomic(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "replace", interrupted_replace)
 
     changed = dataclasses.replace(before, repository="someone/else.github.io")
-    with pytest.raises(Exception):
+    # Not `Exception`: save wraps the OSError, so a blind assertion here
+    # passed against any failure at all, including the wrong one.
+    with pytest.raises(SettingsError):
         save(tmp_path, changed)
 
     monkeypatch.setattr(os, "replace", real_replace)

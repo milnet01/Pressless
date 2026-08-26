@@ -147,7 +147,7 @@ def _answering_member(store) -> str | None:
     for member in _members(store):
         try:
             answer = member.get_password(SERVICE, PROBE)
-        except Exception:
+        except Exception:  # noqa: BLE001, S112 -- a backend may raise anything
             continue  # a member that cannot answer is not the one holding it
         if isinstance(answer, str) and answer == _PROBE_VALUE:
             return str(getattr(member, "name", None) or type(member).__name__)
@@ -159,7 +159,7 @@ def _delete_probe(store) -> None:
     will not give it up is not a reason to refuse one that answered."""
     try:
         store.delete_password(SERVICE, PROBE)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110 -- best effort, see the docstring
         pass
 
 
