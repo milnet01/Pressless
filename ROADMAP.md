@@ -382,6 +382,17 @@
   fetch names -- the commit before the current one, or the last state before
   the change being undone -- before building the fetch-back way in; the Face's
   undo sequence binds to whichever it is.
+  Spec accepted (2026-08-26): docs/specs/PRESS-0009-publisher.md, after two
+  cold-eyes loops that reached the spec cap. The deferred undo question above
+  is SETTLED by the user: undo steps back one publish, so pressing it twice
+  returns the site to the version the first undo replaced. The spec records
+  that as decided behaviour, not a defect, and says nothing checks it.
+  The spec is an umbrella also covering PRESS-0010 -- the gate found that this
+  item had absorbed that one's scope silently.
+  Surfaced rather than fixed: design rule 5 permits the Publisher to READ
+  Settings and a folder and names no write, while fetch-back writes a fetched
+  state to disk. Rule 8 shows the form the design uses when a part writes.
+  That amendment is the design document's own gate and is not yet made.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
@@ -392,6 +403,11 @@
   next publish would put it straight back. It is deliberately a capability
   rather than a feature, and PRESS-0015 is the sequence that uses it.
   Blocked-by: PRESS-0009.
+  Covered by docs/specs/PRESS-0009-publisher.md (2026-08-26), which is an
+  umbrella naming both ids per spec-format section 2. This bullet stays its
+  own unit of work and closes with the code that spec governs; nothing about
+  its scope moves. Section 4.5 and INV-8 are its half of the contract, and
+  the user settled its undo semantics on the same day.
   **Layman:** Reads an earlier version of the site back out of GitHub -- half of what undo needs.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
