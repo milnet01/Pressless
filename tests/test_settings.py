@@ -198,6 +198,20 @@ def test_untouchable_absent_is_an_error(tmp_path):
 # --------------------------------------------------------------- INV-4 ----
 
 
+def test_relative_site_folder_is_rejected(tmp_path):
+    """§4.3's shape row. A relative site_folder is present and correctly
+    typed, so only a shape check catches it. Left accepted, the Builder
+    resolves it against whatever directory the process happens to be in --
+    different for the Face's server and a command-line run -- and the
+    finished site lands in two places."""
+    _write(tmp_path, _valid_mapping(site_folder="site"))
+    with pytest.raises(SettingsError) as raised:
+        load(tmp_path)
+    assert "site_folder" in str(raised.value), (
+        f"the error must name the key that is wrong, got {raised.value!r}"
+    )
+
+
 def test_unknown_keys_survive_a_save(tmp_path):
     """INV-4: a key load() does not recognise is present, unchanged, in the
     file after a save() of the loaded value.

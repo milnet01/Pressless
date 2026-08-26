@@ -104,10 +104,15 @@ def load(folder: Path) -> Settings:
     github_account = _required(credentials, "github_account", str, target, "credentials.")
     google_account = _optional(credentials, "google_account", str, target, "credentials.")
 
-    # Shape, not merely type. `repository` and `store` are contracts other
-    # parts read: a str holding "ownername" or "vault" is present and
-    # correctly typed, and the part that meets it later has less to say
-    # about it than this one does (§4.3).
+    # Shape, not merely type. `repository`, `store` and `site_folder` are
+    # contracts other parts read: a str holding "ownername", "vault" or
+    # "site" is present and correctly typed, and the part that meets it
+    # later has less to say about it than this one does (§4.3).
+    if not Path(site_folder).is_absolute():
+        raise SettingsError(
+            f"{target}: site_folder is {site_folder!r}, which is not an "
+            f"absolute path"
+        )
     owner, _, name = repository.partition("/")
     if not owner or not name or "/" in name:
         raise SettingsError(
