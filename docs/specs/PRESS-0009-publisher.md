@@ -2,11 +2,17 @@
 
 **Status:** draft (2026-08-26). Not yet gated.
 **Kind:** implement.
-**Source:** ROADMAP PRESS-0009 (`docs/design.md` § The parts, § What may
-depend on what rules 5, 7 and 10; ADR-0002).
+**Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
+parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
+
+**Covers:** PRESS-0009 and PRESS-0010, as one umbrella
+(`spec-format.md` §2). PRESS-0010 is the fetch-back capability — §4.5 and
+INV-8 — and it shares this module's transport, branch resolution, failure
+types and test seam. Two specs would restate all four.
 
 **Blocked by:** PRESS-0001 and PRESS-0002, both shipped.
-**Blocker for:** the Face's publish and undo sequences.
+**Blocker for:** the Face's publish sequence; PRESS-0015, the undo
+sequence that uses fetch-back; PRESS-0014, via PRESS-0010.
 
 *Layman:* the part that sends the finished site to GitHub without git
 being installed, leaves alone the handful of files that are not ours,
@@ -110,20 +116,36 @@ class Refused(PublishError): ...           # key rejected, or no write access
 class RepositoryMissing(PublishError): ... # settings.repository resolves to nothing
 class Conflict(PublishError): ...          # the branch moved under us
 class TooLarge(PublishError): ...          # a documented GitHub limit was hit
+class RateLimited(PublishError): ...       # GitHub asked us to slow down, and retrying did not clear it
 class NoPreviousState(PublishError): ...   # nothing before the current commit
 
-def publish(settings: Settings, folder: Path, token: str,
-            message: str) -> Outcome: ...
+class Transport(Protocol):
+    """The one seam. Tests are its only other caller."""
+    def request(self, method: str, url: str, body: bytes | None,
+                headers: dict[str, str]) -> tuple[int, bytes]: ...
 
-def root_entries(settings: Settings, token: str) -> tuple[str, ...]: ...
+def publish(settings: Settings, folder: Path, token: str, message: str,
+            transport: Transport | None = None) -> Outcome: ...
+
+def root_entries(settings: Settings, token: str,
+                 transport: Transport | None = None) -> tuple[str, ...]: ...
 
 def fetch_previous(settings: Settings, token: str, into: Path,
-                   prefix: str = "") -> Fetched: ...
+                   prefix: str = "",
+                   transport: Transport | None = None) -> Fetched: ...
 ```
 
 Every failure is one of the types above. None of them carries a sentence
 for the writer — `docs/design.md` § Errors gives that job to the Face
 alone.
+
+**`transport` is the whole test seam, and it is stated here because §7
+depends on it.** `None` means the module's own `urllib.request` client.
+Nothing in Pressless passes it; tests hand in a double that answers with
+prepared responses and records every request. A module-private global
+patched by name would work equally well for tests and would leave the
+surface silent about it, which is what an implementer would otherwise
+have to invent.
 
 ### 4.2 Working out what differs, without downloading anything
 
@@ -149,6 +171,14 @@ for n in sys.argv[1:]:
 
 Both commands agreed on all three, the empty file included. The
 computation is `sha1(b"blob " + str(len(data)).encode() + b"\0" + data)`.
+
+**Which branch, and it is not configurable.** All three functions act on
+the repository's **default branch**, resolved from the repository itself
+once per call rather than stored. Settings holds no branch field, and
+adding one would change PRESS-0001's shipped file format and its setup —
+so the alternative to resolving it is hard-coding a name that is wrong for
+any repository whose default differs. §10 records that nothing here checks
+the default branch is the branch GitHub Pages actually serves from.
 
 **A truncated listing is a failure, not a smaller answer.** GitHub caps
 the recursive listing and flags a response it had to cut. Treating a cut
@@ -184,18 +214,28 @@ branch meanwhile the update is not a fast-forward and GitHub refuses it.
 That refusal becomes `Conflict`. Forcing it would silently discard the
 other write.
 
-**Writes are paced.** GitHub asks for at least a second between
-successive write requests and answers a breach with a retry hint rather
-than a plain refusal. A first publish writes the whole site and is
-therefore slow — ADR-0002 says so — and every publish after it writes a
-handful of files.
+**Writes are paced, and a breach is honoured rather than raised.**
+GitHub asks for at least a second between successive write requests, and
+answers a breach with a retry hint rather than a plain refusal. The
+Publisher waits as asked and retries, a bounded number of times; only when
+that is exhausted does it raise `RateLimited`. Raising on the first hint
+would fail a first publish for a condition GitHub expects the caller to
+wait out. A first publish writes the whole site and is therefore slow —
+ADR-0002 says so — and every publish after it writes a handful of files.
 
 ### 4.4 What is never touched
 
-Settings holds the untouchable list. A path on it is **neither written
+Settings holds the untouchable list. An entry on it is **neither written
 nor removed**, whatever the handed folder contains. Both halves matter:
 a list applied only to deletion still lets a stray file in the folder
 overwrite the entry holding the custom domain.
+
+**An entry is a bare repository-root name with no trailing slash, and it
+matches a path's FIRST segment.** So an entry naming a directory protects
+everything beneath it, and one naming a file matches only that file.
+Comparing whole paths for equality instead would leave every file inside
+an untouchable directory unprotected, which is the failure this list
+exists to prevent.
 
 Every other path is made to match the folder, deletions included, so a
 page the writer removes actually goes.
@@ -206,9 +246,15 @@ the Publisher consults. Deriving it afresh at publish would protect
 exactly the pages the writer has just deleted, because the Builder has
 stopped producing them.
 
-`root_entries` is how the list is derived. It reports what sits at the
-repository root and decides nothing; setup and the Face turn that into
-the stored list.
+`root_entries` is how the list is derived. It reports **every** entry at
+the repository root, files and directories alike, as bare names with no
+trailing slash. It decides nothing and filters nothing — rule 5 leaves it
+unable to tell a stylesheet from an entry, so it cannot know which of them
+the Builder produces. Setup and the Face remove those and store the rest.
+
+**That filtering is theirs, and `docs/design.md` names the cost of getting
+it wrong:** `content/` is ordinary Builder output, and a list that kept it
+would make a deleted poem's source text permanent on the web.
 
 ### 4.5 Fetching back
 
@@ -217,6 +263,11 @@ state into the folder it is given, optionally narrowed to a path prefix.
 It writes files and returns; it does not publish, does not touch the
 Store, and does not decide what the fetched state means. Undo is a
 sequence the Face owns, and this is one step of it.
+
+**A fetched file lands at `into` joined to its full repository-relative
+path, with `prefix` used to select and never to strip.** So `Fetched.paths`
+and the layout under `into` are the same strings, and the Face's undo step
+reads them without reconstructing anything.
 
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
@@ -249,13 +300,15 @@ behaviour.
   import walk passes against a module that does nothing. It is evidence
   about imports and never about where the key came from.
 
-- **INV-2** — A path on `settings.untouchable` is neither written nor
-  removed. This holds when the handed folder contains a file of that
-  name, and when it does not.
+- **INV-2** — An entry on `settings.untouchable` is neither written nor
+  removed, matched against a path's first segment. This holds when the
+  handed folder contains a file of that name and when it does not, and it
+  holds for every path beneath an entry naming a directory.
   *Test:* `tests/test_publisher.py::test_untouchable_is_neither_written_nor_removed`
-  — one fixture where the folder holds a *differing* file at an
-  untouchable path and one where it holds nothing there; assert the
-  recorded requests carry no tree entry for that path in either case.
+  — three fixtures: the folder holds a *differing* file at an untouchable
+  path; it holds nothing there; and the repository holds files beneath an
+  untouchable *directory*. Assert the recorded requests carry no tree
+  entry for any of them.
   *Breaks when:* an implementer applies the list to deletions only,
   which reads as protection and leaves the entry overwritable.
   **Only this rule can reject the write fixture:** every other rule in
@@ -320,32 +373,51 @@ behaviour.
   second-newest commit by listing history, which differs from the first
   parent as soon as anything is merged.
 
+- **INV-9** — Successive write requests are separated by the pacing wait,
+  and a retry hint is waited out and retried rather than raised.
+  *Test:* `tests/test_publisher.py::test_writes_are_paced_and_hints_retried`
+  — a recording transport capturing the wait between writes, plus one
+  answering the first write with a retry hint; assert the write is retried
+  and that `RateLimited` is raised only once the bound is exhausted.
+  *Breaks when:* an implementer writes as fast as the loop allows, which
+  passes every other test in this file and fails on a first publish
+  against the real service.
+
 ## 6. Failure modes
 
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
-| No answer from GitHub | `Unreachable` | unchanged |
+| No answer from GitHub, before the reference update | `Unreachable` | unchanged |
+| No answer from GitHub, **during** the reference update | `Unreachable` | **unknown — may or may not have changed** |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing | `RepositoryMissing` | unchanged |
 | Branch moved since the listing was read | `Conflict` | unchanged |
 | A documented GitHub limit was hit | `TooLarge` | unchanged |
+| Retry hints exhausted | `RateLimited` | unchanged |
 | Interrupted before the reference update | the underlying failure | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
 
-Every row says *unchanged*, and that is §4.3's property rather than a
-coincidence. The Face turns each into the three-part sentence
-`docs/design.md` § Errors requires; this module writes none of them.
+**Every row but one says *unchanged*, and the exception is the one that
+matters.** §4.3's property is that nothing a reader sees changes until the
+reference update — so a failure *during* that update is the single case
+where the site's state is genuinely unknown. Reporting it as unchanged
+would tell the writer his site had not moved when it had, which is exactly
+the S6 promise §2 says this design exists to keep. The Face must re-read
+the branch before saying anything about that case.
+
+The Face turns each row into the three-part sentence `docs/design.md`
+§ Errors requires; this module writes none of them.
 
 ## 7. Tests
 
 `tests/test_publisher.py`, following the pattern of
 `tests/test_credentials.py`.
 
-**No test here reaches the network.** The transport is supplied by the
-caller-facing seam so a test can hand in a recording double that answers
-with prepared listings and records every request made. That is what lets
-INV-3 and INV-5 assert on request *order* and *absence*, which is where
-this module's real risks are.
+**No test here reaches the network.** Every test hands in a double
+through §4.1's `transport` argument — a recorder that answers with
+prepared responses and keeps every request. That is what lets INV-3, INV-5
+and INV-9 assert on request *order*, *absence* and *spacing*, which is
+where this module's real risks are.
 
 **A recording double is the test surface, not a convenience.** ADR-0002
 notes that git's own safety checks are gone, so the checks have to be on
@@ -407,7 +479,9 @@ code, so a green INV-1 says nothing about the rest.
 | §3 decision 1's consequence — a second undo restoring the rejected version | **nothing, and nothing should** — it is the decided behaviour, recorded here so a later reader does not fix it as a bug |
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
-| Pacing being enough to avoid a refusal under load | **nothing** — observable only against the real service, on a first publish |
+| INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` |
+| Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
+| That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |
 
 ## 11. Cross-doc impact
 
@@ -416,6 +490,10 @@ code, so a green INV-1 says nothing about the rest.
   which is what §3 decision 2 records.
 - `ROADMAP.md` PRESS-0009 — its body carries the deferred undo question
   as open. §3 decision 1 settles it, and the bullet should record that.
+- `ROADMAP.md` PRESS-0010 — **absorbed into this spec as an umbrella**,
+  per the header. Its bullet stays as its own unit of work and closes with
+  the code this contract governs; nothing about its scope moves. PRESS-0014
+  and PRESS-0015, which depend on it, are unaffected.
 - `docs/decisions/ADR-0002` is unchanged and is this spec's source.
 - `CHANGELOG.md` — an entry when it ships.
 - PRESS-0001 and PRESS-0002 are unchanged. This spec consumes
@@ -428,3 +506,4 @@ code, so a green INV-1 says nothing about the rest.
 
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
+| 1 | 2026-08-26 | 3, cold — genre pinned `spec`; packet carried design.md rules 1-10, § The parts and § Errors, ADR-0002 and `settings.py` whole, and the executed blob-hash measurement. GitHub's live API declared an unrunnable region, so Q1 was out of scope there | 0 | 2 | 5 | 1 | **Eight verified, eight fixed, none dismissed. First gate on this document.** **All three lanes independently found the same two defects**, the strongest signal in the run. The spec never named **which reference it writes** — `Settings` carries no branch field, §11 claimed PRESS-0001 was unchanged, and `publish`, `root_entries` and `fetch_previous` must all agree; one builder hard-codes `main`, another resolves the default branch, a third adds a settings key and falsifies §11. And §7 required a **transport seam that §4.1 never declared**, while §1 closed the surface at "three requests and nothing else" — six of the eight invariant tests bind to that seam, so the test set rested on a contract the document did not state. Both are now in §4.1, the branch resolved per call and never stored. **The best single finding came from one lane and reaches the writer.** §6's table generalised that every failure leaves the site *unchanged*, which §4.3 supports only for an interruption **earlier than** the reference update — so a connection lost *during* that update would have had the Face tell the writer "Your site has not changed" for a publish that went out, breaking S6, the one promise §2 says this design exists to keep. That row is now split and its state named unknown. **One finding was the orchestrator's own process defect:** PRESS-0010 is a separate roadmap item whose entire scope — `fetch_previous`, `Fetched`, `NoPreviousState`, §4.5 and INV-8 — this spec had absorbed silently, because `write-spec` Step 1 item 5's id count was never run. It is now an umbrella naming both ids, per `spec-format.md` §2. **Two more were unstated contracts other parts bind to:** what the Publisher *does* with a rate-limit hint (it now waits and retries, raising the new `RateLimited` only when the bound is exhausted), and the untouchable list's string form — an entry naming a *directory* matched by equality would have deleted every file beneath it, so entries now match a path's first segment and INV-2 gains a directory fixture. **Q1 was zero**, which is what the packet bought: the two claims a lane could not check were the ones already executed before dispatch. **Three open questions resolved clean and are not counted** — § The stack does name one runtime dependency plus the imaging library, `tests/test_credentials.py` exists, and ROADMAP PRESS-0009 does carry the undo question as open. **One true finding was left unfixed as immaterial:** §9 does not name PRESS-0021 as the owner of the list's derivation, which changes nothing anyone builds. |
