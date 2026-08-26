@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** draft (2026-08-26). Not yet gated.
+**Status:** accepted (2026-08-26). Two cold-eyes loops, both folded in, nothing left unfixed — the run reached the spec cap of 2. **A cap on the violent side:** four of the last loop's seven findings landed on text the run itself wrote, three of them the one subject — the transport seam loop 1 introduced and loop 2 pinned on its remaining axes. Implementation is the better third reviewer and this document is routed there rather than to another gate. **One finding is surfaced rather than applied:** `docs/design.md` rule 5 permits the Publisher to read and names no write, while §4.5 has `fetch_previous` write a fetched state to disk. That is another document's gate.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -111,7 +111,8 @@ class Fetched:
     paths: tuple[str, ...]       # repository-relative paths written out
 
 class PublishError(Exception): ...
-class Unreachable(PublishError): ...       # no answer from GitHub
+class Unreachable(PublishError): ...       # no answer from GitHub, before the branch was touched
+class OutcomeUnknown(PublishError): ...    # the reference update was attempted and its result is unknown
 class Refused(PublishError): ...           # key rejected, or no write access
 class RepositoryMissing(PublishError): ... # settings.repository resolves to nothing
 class Conflict(PublishError): ...          # the branch moved under us
@@ -122,7 +123,9 @@ class NoPreviousState(PublishError): ...   # nothing before the current commit
 class Transport(Protocol):
     """The one seam. Tests are its only other caller."""
     def request(self, method: str, url: str, body: bytes | None,
-                headers: dict[str, str]) -> tuple[int, bytes]: ...
+                headers: dict[str, str]
+                ) -> tuple[int, dict[str, str], bytes]: ...
+    def wait(self, seconds: float) -> None: ...
 
 def publish(settings: Settings, folder: Path, token: str, message: str,
             transport: Transport | None = None) -> Outcome: ...
@@ -135,9 +138,9 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                    transport: Transport | None = None) -> Fetched: ...
 ```
 
-Every failure is one of the types above. None of them carries a sentence
-for the writer — `docs/design.md` § Errors gives that job to the Face
-alone.
+Every failure this module **raises** is one of the types above. A crash
+raises nothing and is §6's own row. None of them carries a sentence for
+the writer — `docs/design.md` § Errors gives that job to the Face alone.
 
 **`transport` is the whole test seam, and it is stated here because §7
 depends on it.** `None` means the module's own `urllib.request` client.
@@ -146,6 +149,16 @@ prepared responses and records every request. A module-private global
 patched by name would work equally well for tests and would leave the
 surface silent about it, which is what an implementer would otherwise
 have to invent.
+
+**Three things about the seam are part of the contract, because a test
+double must supply all three.** It returns the response **headers**, which
+is where a rate-limit hint arrives and without which §4.3's retry could
+not read one. It signals *no answer* by raising `OSError`; every HTTP
+status, error statuses included, is returned rather than raised, so the
+module owns the mapping to §4.1's types and a double does not have to
+guess it. And `wait` is the pacing clock: the module never calls `sleep`
+itself, so a test observes the spacing INV-9 asserts by recording calls
+rather than by waiting real seconds.
 
 ### 4.2 Working out what differs, without downloading anything
 
@@ -269,6 +282,12 @@ path, with `prefix` used to select and never to strip.** So `Fetched.paths`
 and the layout under `into` are the same strings, and the Face's undo step
 reads them without reconstructing anything.
 
+**`prefix` matches on path-segment boundaries, and a trailing slash is
+optional and ignored** — the same rule §4.4 gives the untouchable list, for
+the same reason. Matched as a bare string instead, `content` would also
+select `contents.html`, and undo would write into the Store a file the
+fetched directory never held.
+
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
 
@@ -316,11 +335,14 @@ behaviour.
 
 - **INV-3** — No request that changes the branch is made until every
   blob, the tree and the commit have succeeded. The reference update is
-  the last write of a publish.
+  the last write of a publish, and a transport failure raised *by that
+  request* surfaces as `OutcomeUnknown`, never as the `Unreachable` any
+  earlier step raises.
   *Test:* `tests/test_publisher.py::test_reference_update_is_last` — a
   recording transport; assert the reference update is the final entry,
-  and that a transport failing at the tree or commit step makes no
-  reference request at all.
+  that a transport failing at the tree or commit step makes no reference
+  request at all and raises `Unreachable`, and that one failing on the
+  reference request itself raises `OutcomeUnknown`.
   *Breaks when:* an implementer updates the branch per batch to make a
   large first publish resumable, which is the change that turns a
   half-finished publish into a half-updated site.
@@ -388,13 +410,13 @@ behaviour.
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
-| No answer from GitHub, **during** the reference update | `Unreachable` | **unknown — may or may not have changed** |
+| No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing | `RepositoryMissing` | unchanged |
 | Branch moved since the listing was read | `Conflict` | unchanged |
 | A documented GitHub limit was hit | `TooLarge` | unchanged |
 | Retry hints exhausted | `RateLimited` | unchanged |
-| Interrupted before the reference update | the underlying failure | unchanged |
+| Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
 
 **Every row but one says *unchanged*, and the exception is the one that
@@ -402,8 +424,11 @@ matters.** §4.3's property is that nothing a reader sees changes until the
 reference update — so a failure *during* that update is the single case
 where the site's state is genuinely unknown. Reporting it as unchanged
 would tell the writer his site had not moved when it had, which is exactly
-the S6 promise §2 says this design exists to keep. The Face must re-read
-the branch before saying anything about that case.
+the S6 promise §2 says this design exists to keep. `OutcomeUnknown` is a
+type of its own so the Face has something to branch on — a shared type
+would leave it unable to tell the two apart. It must say the outcome is
+unknown rather than claim either; confirming would mean reaching GitHub,
+which is by definition what has just failed.
 
 The Face turns each row into the three-part sentence `docs/design.md`
 § Errors requires; this module writes none of them.
@@ -485,9 +510,18 @@ code, so a green INV-1 says nothing about the rest.
 
 ## 11. Cross-doc impact
 
-- `docs/design.md` § The parts and § What may depend on what are
-  unchanged. This spec is written to rules 5, 7 and 10 as they stand,
-  which is what §3 decision 2 records.
+- **`docs/design.md` § What may depend on what — rule 5 needs one line,
+  and this spec does not make the change.** Rule 5 reads *"The Publisher
+  may read Settings and a folder of finished files, and nothing else"* and
+  names no write, while rule 8 shows the form the design uses when a part
+  writes, naming Insights' one cache file explicitly. §4.5 has
+  `fetch_previous` write a fetched state into a folder it is handed, so
+  rule 5 as written does not cover it, and that section is what the
+  pick-an-item gate reads. Rule 5 should gain the write in rule 8's form.
+  Surfaced rather than applied: it is another document's rule, and a
+  design change owes its own gate.
+- `docs/design.md` § The parts is unchanged, and rules 7 and 10 are used
+  as they stand — which is what §3 decision 2 records.
 - `ROADMAP.md` PRESS-0009 — its body carries the deferred undo question
   as open. §3 decision 1 settles it, and the bullet should record that.
 - `ROADMAP.md` PRESS-0010 — **absorbed into this spec as an umbrella**,
@@ -507,3 +541,4 @@ code, so a green INV-1 says nothing about the rest.
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-26 | 3, cold — genre pinned `spec`; packet carried design.md rules 1-10, § The parts and § Errors, ADR-0002 and `settings.py` whole, and the executed blob-hash measurement. GitHub's live API declared an unrunnable region, so Q1 was out of scope there | 0 | 2 | 5 | 1 | **Eight verified, eight fixed, none dismissed. First gate on this document.** **All three lanes independently found the same two defects**, the strongest signal in the run. The spec never named **which reference it writes** — `Settings` carries no branch field, §11 claimed PRESS-0001 was unchanged, and `publish`, `root_entries` and `fetch_previous` must all agree; one builder hard-codes `main`, another resolves the default branch, a third adds a settings key and falsifies §11. And §7 required a **transport seam that §4.1 never declared**, while §1 closed the surface at "three requests and nothing else" — six of the eight invariant tests bind to that seam, so the test set rested on a contract the document did not state. Both are now in §4.1, the branch resolved per call and never stored. **The best single finding came from one lane and reaches the writer.** §6's table generalised that every failure leaves the site *unchanged*, which §4.3 supports only for an interruption **earlier than** the reference update — so a connection lost *during* that update would have had the Face tell the writer "Your site has not changed" for a publish that went out, breaking S6, the one promise §2 says this design exists to keep. That row is now split and its state named unknown. **One finding was the orchestrator's own process defect:** PRESS-0010 is a separate roadmap item whose entire scope — `fetch_previous`, `Fetched`, `NoPreviousState`, §4.5 and INV-8 — this spec had absorbed silently, because `write-spec` Step 1 item 5's id count was never run. It is now an umbrella naming both ids, per `spec-format.md` §2. **Two more were unstated contracts other parts bind to:** what the Publisher *does* with a rate-limit hint (it now waits and retries, raising the new `RateLimited` only when the bound is exhausted), and the untouchable list's string form — an entry naming a *directory* matched by equality would have deleted every file beneath it, so entries now match a path's first segment and INV-2 gains a directory fixture. **Q1 was zero**, which is what the packet bought: the two claims a lane could not check were the ones already executed before dispatch. **Three open questions resolved clean and are not counted** — § The stack does name one runtime dependency plus the imaging library, `tests/test_credentials.py` exists, and ROADMAP PRESS-0009 does carry the undo question as open. **One true finding was left unfixed as immaterial:** §9 does not name PRESS-0021 as the owner of the list's derivation, which changes nothing anyone builds. |
+| 2 | 2026-08-26 | 3, cold — identical brief, packet rebuilt whole from disk and extended with § The stack, PRESS-0010's roadmap body and PRESS-0001's §10 hand-off row. GitHub's live API still an unrunnable region | 0 | 2 | 5 | 0 | **Seven verified, seven fixed; one dismissed as immaterial. Cap reached (2 for a spec); the tail is empty and the run ships.** **A cap on the violent side: four of the seven landed on text THIS RUN wrote**, each anchor checked against loop 1's ledger rather than recalled. What qualifies that reading is the shape — none of the four says loop 1's fix was *wrong*; each says it was incomplete, and three are one subject. **All three lanes independently found that subject:** loop 1 declared a `Transport` seam returning `(status, body)`, and then required §4.3 to read a rate-limit hint that conventionally arrives in a **response header** — so neither the module nor INV-9's own double could carry the signal the same loop had just mandated. Two further lanes found the seam's other unstated halves: how a transport signals *no answer at all* (INV-3 and INV-5 both assert on "a transport failing", which the Protocol never defined), and that nothing let a test control the pacing clock, so INV-9 either cost real wall-clock seconds or drove an implementer to patch `sleep` by name — the module-private route §4.1 had just rejected in writing. The seam now returns response headers, signals absence by raising `OSError` while returning every HTTP status, and carries `wait`. **The sharpest single finding was loop 1's own half-done repair.** Loop 1 split §6's row so a failure *during* the reference update no longer claimed the site was unchanged — and gave both stages the same `Unreachable` class, leaving the Face nothing to branch on, then told it to *re-read the branch*, which is the one thing it cannot do when GitHub is unreachable. `OutcomeUnknown` is now its own type, INV-3 owns both sides of the boundary, and the Face is told to report the outcome as unknown rather than confirm it. **Two pre-existing defects closed:** §4.1's "every failure is one of the types above" was falsified by §6's own *"the underlying failure"* row (a crash raises nothing, and is now its own row), and `prefix` was never pinned as byte or path-segment though §4.4 pins exactly that question for the untouchable list — matched as a bare string, `content` also selects `contents.html`. **One finding is surfaced, not applied:** design rule 5 permits the Publisher to *read* Settings and a folder and names no write, while rule 8 shows the form the design uses when a part writes — and §4.5 has `fetch_previous` write a fetched state to disk. §11 no longer claims that section is unchanged; amending it is another document's gate. **Dismissed as immaterial:** §10's *"the limits in §4.3's reasoning"* points loosely, the truncation cap being §4.2's — imprecise rather than false, and no conformer builds differently. **Routing:** not re-gated. A spec's cap is where implementation takes over, and implementation is the better third reviewer. |
