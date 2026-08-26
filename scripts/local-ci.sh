@@ -51,6 +51,25 @@ fi
 step "ruff"
 ruff check src/ tests/ || fail "lint"
 
+# The archive test proves S2 against the real WordPress export, which is
+# personal data and cannot live here -- so CI is permanently silent about the
+# project's most important invariant. The one machine that CAN run it is the
+# maintainer's, which is where the pre-push hook fires. Point a machine-local
+# config key at the export and it runs automatically:
+#
+#   git config ants.pressless.archive /path/to/wordpress-export.xml
+#
+# The path stays out of this public repository. An already-set
+# PRESSLESS_ARCHIVE wins, so CI and a one-off run are unaffected.
+if [[ -z ${PRESSLESS_ARCHIVE-} ]]; then
+    archive=$(git config --get ants.pressless.archive || true)
+    if [[ -n $archive && -f $archive ]]; then
+        export PRESSLESS_ARCHIVE="$archive"
+    elif [[ -n $archive ]]; then
+        printf 'note: ants.pressless.archive is set but %s is missing -- S2 not proven\n' "$archive"
+    fi
+fi
+
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.
 step "pytest"
