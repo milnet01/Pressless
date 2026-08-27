@@ -4,13 +4,12 @@
 
 **State:** 5 — Building. **In flight:** `PRESS-0025`. `PRESS-0001`,
 `PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010`, `PRESS-0024` and
-`PRESS-0026` are ✅. `PRESS-0019` is unblocked; the design gate that
-closed `PRESS-0026` filed `PRESS-0028` to `PRESS-0031`. Run
-`python3 -m pytest` for where code stands.
+`PRESS-0026` are ✅. Run `python3 -m pytest` for where code stands, and
+the roadmap for what is queued, blocked or newly filed.
 
 > Keep the block above true, and keep it to three facts — the state, what
-> is in flight, and what is done. They are the only position this project
-> records. Everything else about where
+> is in flight, and what is done. That is the only position this project
+> records; everything else is read off the roadmap. Everything else about where
 > work stands is read off things that cannot lie — whether a spec exists,
 > whether tests fail, what `git status` says, whether the roadmap bullet
 > is 🚧. A recorded step number starts lying the first time a session
@@ -41,10 +40,12 @@ records it rather than restating why.
 
 ### Build and test
 
-Python. One runtime dependency — `keyring`, the operating system's
-credential store, reached only by `credentials.py` (PRESS-0002). The
-gate needs `pytest` and `ruff` on top of it, which is what
-`pip install -e '.[dev]'` installs and what CI runs. `pyproject.toml`
+Python. One runtime dependency today — `keyring`, the operating system's
+credential store, reached only by `credentials.py` (PRESS-0002); `Pillow`
+joins it when photographs land, and PyInstaller when packaging does (§
+Stack). That is present state, not a cap. The gate needs `pytest` and
+`ruff` on top, which is what `pip install -e '.[dev]'` installs and what
+CI runs. `pyproject.toml`
 holds the packaging and the pytest settings; `src/` is on the path
 through it, so there is no install step beyond that one.
 
@@ -57,13 +58,14 @@ ruff check src/ tests/     # lint alone
 
 **`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
 that same file** — it holds no checks of its own, so the two cannot
-drift. The `pre-push` hook discovers the script by name and runs it over
-the commits being pushed, so a failing tree cannot leave a machine where
-the keys below are set.
+drift. The machine-wide hook discovers the script by name and runs it
+over the commits being pushed — so a failing tree cannot leave a machine
+where the keys below are set **and `~/.claude/githooks/pre-push` is
+present**. Absent either, nothing is gated.
 
-**Three git config keys make the gate work, and all are machine-local — a
-fresh clone has none of them.** Two belong here; `ants.pressless.archive`
-has its own paragraph below.
+**Three machine-local git config keys, and a fresh clone has none of
+them.** Two belong here; `ants.pressless.archive` has its own paragraph
+below.
 
 ```bash
 git config core.hooksPath .githooks
@@ -198,7 +200,7 @@ without a hit — and a message is published by the same push. Sweep those
 separately:
 
 ```
-git log --all --format='%H %s%n%b' | grep -inE "charl|jordaan|18down"
+git log --all --format='%H %s%n%b' | grep -inE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168"
 ```
 
 ### The roadmap carries two `Layman:` styles, and they stay
@@ -280,5 +282,5 @@ This file is read in full by every session on every turn, so its
 ### Overrides
 
 Any place this project deliberately departs from a global standard goes
-in `docs/standards/`, with the reason. If that directory is empty, there
-are none.
+in `docs/standards/`, with the reason. If that directory holds only its
+`README.md` index, there are none.
