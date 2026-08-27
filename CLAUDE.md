@@ -92,6 +92,28 @@ implementation *outside* the tree, probe that, and delete it. PRESS-0001's
 INV-7 test passed its own red run and still could not see the breach it
 names; only the probe found that.
 
+**The throwaway is not needed where the real implementation is next.**
+PRESS-0009 probed the shipped module instead, immediately after
+`write-code`, and that is better evidence — it measures the code that
+ships rather than a stand-in. It found INV-5's "never forced" clause
+unfalsifiable: the clause stripped spaces out of the request body and
+then searched it for a needle carrying a space of its own, so no body
+could ever match it, forced or not. The red run passed against that and
+could not have seen it. Probe after the code lands, and probe one
+mutation per route the invariant's own *Breaks when* names.
+
+**A test double written before the implementation encodes a guess about
+the request shape, and the guess can make a faithful implementation
+impossible to pass.** `tests/test_publisher.py`'s first draft answered
+every read with one generic response. The Publisher makes three reads
+whose answers have nothing in common — the repository names its default
+branch, the head commit names its tree, then the tree listing — so no
+correct implementation could satisfy it. The fix is to give the double a
+by-URL answer for each read rather than to bend the code toward the
+fixture. Watch for it whenever a double answers positionally: an
+implementation that legitimately adds one request shifts every later
+answer onto the wrong step.
+
 **A test that pins a name must hold its own copy of the name.**
 `tests/test_settings.py` writes `"settings.json"` out rather than importing
 `FILE_NAME` from the module under test. Share the literal and INV-5 compares

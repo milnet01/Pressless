@@ -861,6 +861,31 @@
   Kind: doc.
   Source: PRESS-0009 spec section 11, surfaced 2026-08-26 and not applied.
 
+- 📋 [PRESS-0027] **The suite runs in a different order here than in CI.**
+  pytest-randomly is installed on the maintainer's machine and auto-loads,
+  so the suite runs in a random order here. CI installs only the dev extra
+  -- pytest and ruff -- so it runs in file order. The gate script is shared
+  and cannot drift, but the plugin set underneath it does.
+
+  Random order is the better check: it is what catches a test that only
+  passes because an earlier one ran first. The defect is that nobody chose
+  it. A failure here may not reproduce there, and vice versa, and the
+  seed is not recorded anywhere.
+
+  Two ways out, and they are opposite: declare pytest-randomly in the dev
+  extra so CI randomises too, or pin the order for both. Declaring it is
+  the better one -- it makes the stronger check the shared one -- and it
+  costs a dependency the packaged artefact never sees, since the dev extra
+  is not a runtime dependency.
+
+  Noticed because a subagent reported test order varying between two runs
+  and the claim was checked rather than taken.
+
+  Blocked-by: nothing.
+  **Layman:** Tests run in a random order on the maintainer's machine and a fixed order on GitHub, so a failure in one place may not show up in the other.
+  Kind: test.
+  Source: observed while implementing PRESS-0009, 2026-08-27.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
