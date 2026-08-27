@@ -243,6 +243,10 @@ recorded rather than remembered.
   not in its prose.
 - **Shorter prose.** Length is surface area: a reviewer finds defects in
   explanation that directs nothing. Rationale belongs in a sentence.
+- **A review loop-log row is permanent the moment it is committed** —
+  the global rule forbids editing a landed row, so a long one can never
+  be shortened afterwards. Write it short the first time; the shorter
+  prose rule above has no second chance here.
 - **Everything truthful, factual, verifiable.** Run the case that would
   refute a claim, not the one that confirms it. Two of the Marks spec's
   worst defects — a false security rationale, and an unanchored pattern
@@ -286,5 +290,8 @@ This file is read in full by every session on every turn, so its
 ### Overrides
 
 Any place this project deliberately departs from a global standard goes
-in `docs/standards/`, with the reason. If that directory holds only its
-`README.md` index, there are none.
+in `docs/standards/`, with the reason. **`versioning-overrides.md` is
+not one of those** — it holds the answers `versioning.md` §§ 3 and 4 ask
+every project for, which is why a project following the global set
+unmodified still writes it. That directory's own `README.md` sorts the
+two, and a departure would be a third kind of file.
