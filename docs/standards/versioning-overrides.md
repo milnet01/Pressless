@@ -8,9 +8,13 @@ to this path.
 
 ## What would make this 1.0
 
-`ROADMAP.md` § Milestones owns it, agreed with the user 2026-08-25.
-Read the condition there. It is not restated here, even in summary: a
-rule stated twice is two rules that will disagree.
+**MAJOR stays 0 until every sign of success in `docs/discovery.md`
+§ Signs it is working holds, and the entry file format is frozen.**
+
+`versioning.md` § 4 requires that line in this file, so the copy is
+deliberate: `ROADMAP.md` § Milestones states the same condition and
+carries which item belongs to which milestone. Change them together —
+nothing checks that they agree.
 
 ## The breaking surfaces
 
@@ -33,8 +37,9 @@ that bumps the MINOR and resets the PATCH (`versioning.md` § 4).
 - **Where the Store keeps things.** That drafts sit outside the site
   folder, apart from published work, is already decided by
   `docs/design.md` § Where everything sits on disk, and S7 rests on it.
-  What PRESS-0005 and PRESS-0006 still choose is the layout inside that
-  folder — listed now because it is harder to unmake than to make.
+  What PRESS-0005 and PRESS-0006 still choose is the layout inside
+  Pressless's own folder — listed now because it is harder to unmake
+  than to make.
 - **How an entry names a photograph** — not built yet (PRESS-0016), for
   the same reason.
 
@@ -92,7 +97,7 @@ whether or not this file mentions it.
 |---|---|
 | A release's level matches what it changed | Nothing. `cut-release` does not choose the level, and its `Added`-forbids-a-PATCH floor is skipped while MAJOR is `0`. |
 | A surface here still has the shape described | Partly. `tests/test_settings.py::test_field_names_are_the_documented_set` pins the Settings field-name set. Nothing pins the version refusal this file names as a breach, and most other surfaces are not built. |
-| This file and `ROADMAP.md` § Milestones agree on 1.0 | Nothing mechanical. It points rather than copies, which is what keeps them from disagreeing. |
+| This file and `ROADMAP.md` § Milestones agree on 1.0 | Nothing. § 4 requires the condition stated here, so the copy is deliberate and both have to be changed together. |
 
 ## Review loop log
 
@@ -100,3 +105,4 @@ whether or not this file mentions it.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-27 | 3, cold — genre pinned `standard`, packet carried the global `versioning.md` §§ 1-4, the standards index's three cases, ROADMAP § Milestones, the two ADRs cited, discovery's signs of success, `settings.py`'s version constant and `cut-release`'s level floor | 2 | 2 | 1 | n/a | **Five verified, five fixed; one dismissed.** **All three lanes independently found the same two defects**, which is the strongest signal in the run. The `settings.json` bullet named a key changing meaning under a static version as the breach, which by implication exempted a `FILE_VERSION` bump — and `load()` refuses every version but one, so a bump discards the whole file and asks for the publishing key again, breaking S5. The bullet now names both routes. And the 1.0 section said the promise was "not restated here" while restating it almost verbatim from § Milestones, with the What-checks-this table claiming divergence was impossible because the file points rather than copies; the copy is deleted, so all three statements are true. **The Q3 came from one lane and needed ADR-0001 to see**: unrecognised text is preserved byte-for-byte, so *adding* a mark restyles archive text that has been rendering literally — a conformer could not tell whether that was a MINOR or a PATCH. **One Q1 was found by resolving a lane's open question rather than by a lane**: the not-a-surface list rested on "each is a copy of something that can be got again", which is false of a log. Each entry now carries its own reason. **Dismissed:** a lane read the undo staging area as the only route back; `fetch_previous` re-fetches it from GitHub, so the exemption stands and only its stated ground was wrong. **Before dispatch, 1b found one defect of its own** — the entry-file bullet credited ADR-0001 with "one file per entry", which is the Store's rule. **And 4a step 3 caught an over-reach in a fix**: "no code reads the log" is not something `design.md` says or this run could run, narrowed to what § Logging supports. |
 | 2 | 2026-08-27 | 3, cold — identical brief, packet rebuilt whole from disk and extended with `load()`'s executed refusal | 3 | 3 | 0 | n/a | **Six verified, six fixed; one surfaced.** **Half landed on loop 1's own fixes.** Loop 1 deleted the copied 1.0 promise and left a compressed copy under the words *not restated here*, which all three lanes found; the section now only points. Loop 1's own word *lose* was wrong about the mechanism — `load()` refuses and writes nothing, so a bad version leaves the writer unable to start rather than wiped, and sending him to setup would overwrite the one file that could be repaired. And the intro made any change to a listed surface breaking while § Setup state made only a lossy one breaking, so one migrated change had two version numbers; the section now says values, not spellings, are what is protected. **Two pre-existing Q1s.** The Store bullet said the draft layout was unchosen — `design.md` already fixes drafts outside the site folder and S7 rests on it, so a builder could have published unfinished work. And the checks table said nothing checks a surface's shape; a settings test does, while nothing pins the version refusal this file names as a breach. **Surfaced, not fixed:** the milestone numbers may be unreachable under § 4. |
+| 3 | 2026-08-27 | 3, cold — identical brief, packet rebuilt whole from disk and extended with the executed `load()` results, the settings test inventory and the spec's INV-2 / INV-6 | 0 | 2 | 1 | n/a | **Three verified, two fixed, one already surfaced. Cap reached (3 for a standard), and it is a VIOLENT cap** — a majority of this loop's findings landed on text loops 1 and 2 wrote. **All three lanes found the same defect, and it is this run's own doing.** Loop 1 read the copied 1.0 condition as a contradiction and deleted the promise; loop 2 deleted the summary that was left; loop 3 found that `versioning.md` § 4 requires the line to be stated *here*, so the file had come to breach the rule it exists to satisfy — and § 4's next bullet calls a project with no such line one whose leading zero has gone inert. The condition is stated again, with the copy declared deliberate, which is the answer no earlier loop reached. **A Q3 from two lanes:** *the layout inside that folder* had the site folder as its nearer antecedent while meaning Pressless's own, and those two are opposite surfaces — one published in full, one never. Named explicitly. **Already surfaced before this loop, not fixed:** the milestone names may not be reachable levels under § 4, which is the user's decision and is filed as its own item. **Routing:** the document is small, so the cap is not a size signal; it is not re-gated as it stands, and what re-arms the gate is an authoring edit that changes direction. |
