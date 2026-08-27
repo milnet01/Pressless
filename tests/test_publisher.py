@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import hashlib
 import inspect
 import json
@@ -84,6 +85,56 @@ def _listing(entries: list[tuple[str, str]], truncated: bool = False) -> bytes:
     ).encode("utf-8")
 
 
+def _reads(listing: bytes, default_branch: str = "main",
+           commit_sha: str = "base-commit-sha",
+           parents: tuple[str, ...] = ("parent-commit-sha",),
+           blob: bytes = b"") -> list[tuple[str, tuple[int, dict, bytes]]]:
+    """The reads §4.2 and §4.5 make, each answered by URL substring.
+
+    One generic response cannot serve them: §4.2 resolves the default
+    branch from the repository, reads the head commit, then reads the tree,
+    and those three answers have nothing in common. Answering by URL rather
+    than by call position is also what keeps these tests blind to how many
+    reads an implementation makes.
+
+    Ordered most-specific first, since "/repos/" is a substring of them all.
+    """
+    def body(payload: dict) -> tuple[int, dict, bytes]:
+        return (200, {}, json.dumps(payload).encode("utf-8"))
+
+    return [
+        ("/git/blobs/", body({
+            "content": base64.b64encode(blob).decode("ascii"),
+            "encoding": "base64",
+        })),
+        ("/git/trees", (200, {}, listing)),
+        ("/commits/", body({
+            "sha": commit_sha,
+            "parents": [{"sha": sha} for sha in parents],
+        })),
+        ("/repos/", body({"default_branch": default_branch})),
+    ]
+
+
+def _writes(blob_sha: str = "blob-sha", tree_sha: str = "tree-sha",
+            commit_sha: str = "commit-sha"
+            ) -> list[tuple[str, tuple[int, dict, bytes]]]:
+    """§4.3's four write steps, answered by URL like _reads.
+
+    A test needing one step answered differently prepends its own entry:
+    the first matching substring wins.
+    """
+    def body(status: int, payload: dict) -> tuple[int, dict, bytes]:
+        return (status, {}, json.dumps(payload).encode("utf-8"))
+
+    return [
+        ("/git/blobs", body(201, {"sha": blob_sha})),
+        ("/git/trees", body(201, {"sha": tree_sha})),
+        ("/git/commits", body(201, {"sha": commit_sha})),
+        ("/git/refs", body(200, {"object": {"sha": commit_sha}})),
+    ]
+
+
 def _is_write(method: str) -> bool:
     """Any non-GET request -- a write, in §4.3's sense."""
     return method != "GET"
@@ -136,6 +187,9 @@ class _Transport:
     `fail_on_read=True`) -- the same method-plus-URL pairing `writes`
     uses, for the same reason.
 
+    `reads` answers a GET by URL substring, first match winning;
+    `responses` stays the positional fallback for anything it does not name.
+
     `rate_limited_writes` answers that many non-GET requests with a
     429-shaped rate-limit hint before falling through to `writes` /
     `responses`; `-1` means every write is rate-limited (INV-9's
@@ -149,6 +203,7 @@ class _Transport:
     def __init__(
         self,
         responses: list[tuple[int, dict[str, str], bytes]] | None = None,
+        reads: list[tuple[str, tuple[int, dict[str, str], bytes]]] | None = None,
         writes: list[tuple[str, tuple[int, dict[str, str], bytes]]] | None = None,
         fail_at: str | None = None,
         fail_on_read: bool = False,
@@ -159,6 +214,7 @@ class _Transport:
         self._responses = list(responses) if responses is not None else [
             (200, {}, b"{}")
         ]
+        self._reads = list(reads) if reads is not None else []
         self._writes = list(writes) if writes is not None else []
         self._fail_at = fail_at
         self._fail_on_read = fail_on_read
@@ -182,6 +238,10 @@ class _Transport:
             return (429, {"Retry-After": "1"}, b'{"message": "rate limited"}')
         if _is_write(method):
             for substring, response in self._writes:
+                if substring in url:
+                    return response
+        else:
+            for substring, response in self._reads:
                 if substring in url:
                     return response
         return self._responses[min(index, len(self._responses) - 1)]
@@ -291,7 +351,7 @@ def test_untouchable_is_neither_written_nor_removed(tmp_path):
             ("vendor/lib.js", _blob_hash(b"// vendor library\n")),
         ]
     )
-    transport = _Transport(responses=[(200, {}, listing)])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
     settings = _settings(untouchable=("CNAME", ".nojekyll", "vendor"))
 
     publish(settings, tmp_path, "a-token", "a commit message", transport=transport)
@@ -347,7 +407,7 @@ def test_reference_update_is_last(tmp_path):
     # Failing at the commit write: Unreachable, and no reference request
     # is ever made.
     failing_at_commit = _Transport(
-        responses=[(200, {}, listing)], fail_at="/git/commits"
+        reads=_reads(listing), writes=_writes(), fail_at="/git/commits"
     )
     with pytest.raises(Unreachable):
         publish(settings, tmp_path, "a-token", "message", transport=failing_at_commit)
@@ -358,7 +418,7 @@ def test_reference_update_is_last(tmp_path):
 
     # Failing at the reference update itself: OutcomeUnknown, never
     # Unreachable -- the outcome is genuinely unknown.
-    failing_at_ref = _Transport(responses=[(200, {}, listing)], fail_at="/git/refs")
+    failing_at_ref = _Transport(reads=_reads(listing), writes=_writes(), fail_at="/git/refs")
     with pytest.raises(OutcomeUnknown):
         publish(settings, tmp_path, "a-token", "message", transport=failing_at_ref)
 
@@ -366,7 +426,7 @@ def test_reference_update_is_last(tmp_path):
     # §8 -- and it is the LAST request recorded. Since it is both unique
     # and last, every blob, tree and commit request necessarily precedes
     # it; no separate assertion is needed for that half.
-    clean = _Transport(responses=[(200, {}, listing)])
+    clean = _Transport(reads=_reads(listing), writes=_writes())
     publish(settings, tmp_path, "a-token", "message", transport=clean)
     reference_updates = _reference_updates(clean)
     assert len(reference_updates) == 1, (
@@ -398,7 +458,7 @@ def test_unchanged_files_are_not_uploaded(tmp_path):
     content = b"<html>unchanged</html>"
     (tmp_path / "index.html").write_bytes(content)
     listing = _listing([("index.html", _blob_hash(content))])
-    transport = _Transport(responses=[(200, {}, listing)])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
     settings = _settings()
 
     outcome = publish(settings, tmp_path, "a-token", "message", transport=transport)
@@ -436,8 +496,9 @@ def test_branch_that_moved_is_a_conflict(tmp_path):
     # status, never by dropping the connection (§4.1: every HTTP status is
     # returned, never raised).
     transport = _Transport(
-        responses=[(200, {}, listing)],
-        writes=[("/git/refs", (409, {}, b'{"message": "not a fast forward"}'))],
+        reads=_reads(listing),
+        writes=[("/git/refs", (409, {}, b'{"message": "not a fast forward"}'))]
+        + _writes(),
     )
     settings = _settings()
 
@@ -447,7 +508,10 @@ def test_branch_that_moved_is_a_conflict(tmp_path):
     forced = [
         body
         for _, _, body, _ in transport.requests
-        if body and b'"force": true' in body.replace(b" ", b"")
+        # Both sides space-stripped. A needle that still carried its own
+        # space could never match a stripped body, which made this clause
+        # unfalsifiable -- found by mutation probe, not by the red run.
+        if body and b'"force":true' in body.replace(b" ", b"")
     ]
     assert not forced, f"a request body sets force: {forced!r}"
 
@@ -470,7 +534,7 @@ def test_truncated_listing_is_refused(tmp_path):
     """
     (tmp_path / "index.html").write_text("<html>site</html>", encoding="utf-8")
     truncated = _listing([], truncated=True)
-    transport = _Transport(responses=[(200, {}, truncated)])
+    transport = _Transport(reads=_reads(truncated))
     settings = _settings()
 
     with pytest.raises(TooLarge):
@@ -528,7 +592,7 @@ def test_no_failure_names_the_key(tmp_path):
             SENTINEL,
             "message",
             transport=_Transport(
-                responses=[(200, {}, listing)], fail_at="/git/refs"
+                reads=_reads(listing), writes=_writes(), fail_at="/git/refs"
             ),
         ),
     )
@@ -571,10 +635,11 @@ def test_no_failure_names_the_key(tmp_path):
             SENTINEL,
             "message",
             transport=_Transport(
-                responses=[(200, {}, listing)],
+                reads=_reads(listing),
                 writes=[
                     ("/git/refs", (409, {}, b'{"message": "not a fast forward"}'))
-                ],
+                ]
+                + _writes(),
             ),
         ),
     )
@@ -587,7 +652,7 @@ def test_no_failure_names_the_key(tmp_path):
             tmp_path,
             SENTINEL,
             "message",
-            transport=_Transport(responses=[(200, {}, truncated)]),
+            transport=_Transport(reads=_reads(truncated)),
         ),
     )
 
@@ -600,7 +665,7 @@ def test_no_failure_names_the_key(tmp_path):
             SENTINEL,
             "message",
             transport=_Transport(
-                responses=[(200, {}, listing)], rate_limited_writes=-1
+                reads=_reads(listing), rate_limited_writes=-1
             ),
         ),
     )
@@ -633,15 +698,15 @@ def test_fetch_previous_names_its_source(tmp_path):
     second-newest commit by listing history, which differs from the first
     parent as soon as anything is merged.
     """
-    commit_response = json.dumps(
-        {
-            "sha": "current-commit-sha",
-            "parents": [{"sha": "parent-commit-sha"}, {"sha": "merged-in-sha"}],
-        }
-    ).encode("utf-8")
-    tree_response = _listing([("index.html", "some-blob-sha")])
+    # Two parents: merging changes which commit is second-newest, but never
+    # which is the FIRST parent -- and the first parent is what §4.5 names.
     transport = _Transport(
-        responses=[(200, {}, commit_response), (200, {}, tree_response)]
+        reads=_reads(
+            _listing([("index.html", "some-blob-sha")]),
+            commit_sha="current-commit-sha",
+            parents=("parent-commit-sha", "merged-in-sha"),
+            blob=b"<html>the state before this one</html>",
+        )
     )
     settings = _settings()
 
@@ -688,13 +753,8 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
     # completes. Each write step is answered by URL, not position, so an
     # extra leading read cannot shift which response lands on which step.
     retried_once = _Transport(
-        responses=[(200, {}, listing)],
-        writes=[
-            ("/git/blobs", (201, {}, b'{"sha": "blob-sha"}')),
-            ("/git/trees", (201, {}, b'{"sha": "tree-sha"}')),
-            ("/git/commits", (201, {}, b'{"sha": "commit-sha"}')),
-            ("/git/refs", (200, {}, b'{"object": {"sha": "commit-sha"}}')),
-        ],
+        reads=_reads(listing),
+        writes=_writes(),
         rate_limited_writes=1,
     )
     outcome = publish(settings, tmp_path, "a-token", "message", transport=retried_once)
@@ -710,7 +770,7 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
     # Successive writes are paced even without a rate-limit hint. Counted
     # by method, never by position, so an extra leading read changes
     # nothing here either.
-    paced = _Transport(responses=[(200, {}, listing)])
+    paced = _Transport(reads=_reads(listing), writes=_writes())
     publish(settings, tmp_path, "a-token", "message", transport=paced)
     write_count = sum(1 for method, *_ in paced.requests if _is_write(method))
     assert len(paced.waits) >= write_count - 1, (
@@ -721,7 +781,7 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
     # Retry hints exhausted: RateLimited, raised only once the bound gives
     # up, never on the first hint.
     always_limited = _Transport(
-        responses=[(200, {}, listing)], rate_limited_writes=-1
+        reads=_reads(listing), rate_limited_writes=-1
     )
     with pytest.raises(RateLimited):
         publish(settings, tmp_path, "a-token", "message", transport=always_limited)
