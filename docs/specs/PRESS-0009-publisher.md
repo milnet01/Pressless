@@ -510,16 +510,13 @@ code, so a green INV-1 says nothing about the rest.
 
 ## 11. Cross-doc impact
 
-- **`docs/design.md` § What may depend on what — rule 5 needs one line,
-  and this spec does not make the change.** Rule 5 reads *"The Publisher
-  may read Settings and a folder of finished files, and nothing else"* and
-  names no write, while rule 8 shows the form the design uses when a part
-  writes, naming Insights' one cache file explicitly. §4.5 has
-  `fetch_previous` write a fetched state into a folder it is handed, so
-  rule 5 as written does not cover it, and that section is what the
-  pick-an-item gate reads. Rule 5 should gain the write in rule 8's form.
-  Surfaced rather than applied: it is another document's rule, and a
-  design change owes its own gate.
+- **`docs/design.md` § What may depend on what — rule 5 named no write.
+  Closed by PRESS-0026 on 2026-08-27, not by this spec.** §4.5 has
+  `fetch_previous` write a fetched state into a folder it is handed, and
+  rule 5 did not cover it. Rule 5 now takes rule 8's form. Its own gate
+  found that naming the local write alone made things worse — it turned
+  an omission into an exhaustive write list that excluded the Publisher's
+  GitHub traffic — so the rule grants that traffic too.
 - `docs/design.md` § The parts is unchanged, and rules 7 and 10 are used
   as they stand — which is what §3 decision 2 records.
 - `ROADMAP.md` PRESS-0009 — its body carries the deferred undo question

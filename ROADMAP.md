@@ -887,6 +887,44 @@
   Kind: test.
   Source: observed while implementing PRESS-0009, 2026-08-27.
 
+- 📋 [PRESS-0028] **S6 is stated absolutely in discovery, and the system admits one case.**
+  docs/discovery.md S6 reads that he is never left unsure whether it went
+  out. The PRESS-0009 spec settles the exception: a failure during the
+  reference update is the one case where the site's state is genuinely
+  unknown, and confirming it would mean reaching GitHub, which is by
+  definition what has just failed. docs/design.md now says the same after
+  this gate.
+
+  So the sign of success is the only document left stating it absolutely.
+  That matters because a sign of success is what delivery is checked
+  against: as written, S6 either cannot be met or is met by a sentence
+  that contradicts it.
+
+  Amending a sign of success is a policy choice rather than a wording fix,
+  and discovery.md owes its own gate, so this was filed rather than
+  applied.
+  **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
+  Kind: doc.
+  Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
+  Lanes: Publisher, Face.
+
+- 📋 [PRESS-0029] **ADR-0005's Decision forbids the cache its own Consequences grant.**
+  The Decision paragraph reads that Insights may read Settings and talk to
+  Google, and nothing else. Its own last Consequence calls Insights the one
+  part allowed a cache, and docs/design.md rule 8 grants it one cache file
+  by name.
+
+  A builder reading the Decision alone builds no cache, and Google's rate
+  limit is the reason the cache exists.
+
+  Found by a lane during the PRESS-0026 design gate. Not carried into
+  design.md, which is already correct; ADR-0005 is a contract document with
+  its own gate ahead of it.
+  **Layman:** One decision record contradicts itself about whether the dashboard may keep a saved copy of Google's answer.
+  Kind: doc-fix.
+  Source: PRESS-0026 design gate 2026-08-27, loop 7, lane finding on a cross-reference.
+  Lanes: Insights.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
