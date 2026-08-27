@@ -1023,6 +1023,32 @@
   Source: CLAUDE.md gate 2026-08-27, loop 3, code-side finding surfaced by two lanes and confirmed by execution.
   Lanes: CI.
 
+- 📋 [PRESS-0033] **Nothing names the promises a Pressless release may not break.**
+  versioning.md section 3 says SemVer is written for something other
+  code imports, which Pressless is not -- so "the public API" has no
+  referent here and each project must name its own breaking surfaces,
+  once, in docs/standards/versioning-overrides.md. That file does not
+  exist; docs/standards/ holds only its README. Section 3 calls it the
+  one override a project otherwise following the global set still writes,
+  and the only path a merge or an audit can be told to open.
+
+  Section 4 puts a 0.x project's 1.0 exit condition in the same file.
+  Pressless HAS that condition and it is good -- ROADMAP.md section
+  Milestones, agreed with the user 2026-08-25 -- but it is not where the
+  standard says an auditor will look. The fix is a pointer rather than a
+  copy: one fact, one home.
+
+  What is genuinely missing is the surface list. Without it every future
+  release re-argues whether it broke something, and the argument happens
+  under release pressure with no record of what was promised.
+
+  Blocked-by: nothing. Needs a decision from the user on which surfaces
+  count, which is why it is filed rather than written.
+  **Layman:** Writes down what Pressless promises never to break, so a future version cannot break it by accident.
+  Kind: doc.
+  Source: in-session-2026-08-27, versioning.md sections 3 and 4.
+  Lanes: docs.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how

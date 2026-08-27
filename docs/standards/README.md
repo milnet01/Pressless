@@ -10,15 +10,23 @@ owns a standard outright.
 
 ## This directory
 
-Two things belong here, and nothing else:
+Three things belong here, and nothing else:
 
 1. **Overrides** — a deltas-only file naming where this project departs
    from a global standard, and why.
-2. **Standards this project owns outright** — a rule that is genuinely
+2. **Answers a global standard asks each project for.**
+   `versioning-overrides.md` is the one, and it is not a delta: § 3 and
+   § 4 of the global `versioning.md` refuse to supply this project's
+   breaking surfaces and its `1.0` exit condition, and pin both to that
+   path. `~/.claude/standards/README.md` § The three cases carries the
+   carve-out.
+3. **Standards this project owns outright** — a rule that is genuinely
    about this project and has no global equivalent.
 
-If this directory is empty, this project follows the global set
-unmodified. That is the common case and needs no file to say so.
+**Pressless follows the global set unmodified**, and the file named
+above does not change that. Nothing else here departs from a global
+standard; if anything ever does, it goes in a file of kind 1 with its
+reason.
 
 **A copy of a global standard does not belong here.** Two copies are two
 standards that will disagree, and the one nobody is looking at will be
