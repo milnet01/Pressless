@@ -812,7 +812,7 @@
   Kind: chore.
   Source: in-session-2026-08-25.
 
-- 📋 [PRESS-0025] **CLAUDE.md records a roadmap limitation that has since been fixed.**
+- 🚧 [PRESS-0025] **CLAUDE.md records a roadmap limitation that has since been fixed.**
   § "A corrected `Layman:` cannot be put back the way it was" is stale.
   Measured 2026-08-26: `roadmap_log op:amend_field` shipped that day
   (ANTS-4667) and sets the layman column directly; on the four bullets
@@ -836,11 +836,12 @@
   `ants.pressless.archive` (documented in § Build and test, so only the
   first is missing). Fold the first into the same edit.
   Blocked-by: nothing.
+  Started 2026-08-27. One correction to this bullet before the work: ants.gate.docsGlob is no longer unset -- it now reads docs/*|*.md|LICENSE|*.txt|*.rst, which is the hook's own fallback value. commits.md § 4.2 objects to a hook GUESSING by extension when nobody has told it, so the key being set satisfies the letter; the substance holds too, because --docs runs the leak sweep, which is the check a markdown edit in this repository can actually breach, and no test parses a document as data. What is still owed is the documenting: the key is machine-local and lost on a fresh clone.
   **Layman:** A note in our own instructions says something cannot be done, which can now be done.
   Kind: doc-fix.
   Source: in-session-2026-08-26.
 
-- 🚧 [PRESS-0026] **Design rule 5 should name the Publisher's one write.**
+- ✅ [PRESS-0026] **Design rule 5 should name the Publisher's one write.**
   Rule 5 reads that the Publisher may read Settings and a folder of
   finished files, and nothing else -- it names no write. Rule 8 shows the
   form the design already uses when a part writes, naming Insights' one
@@ -859,6 +860,11 @@
   Blocked-by: nothing. The code it describes is already shipped, so this
   is the document catching up.
   Started 2026-08-27. Scope confirmed with the user: this item alone. PRESS-0022's packaging amendment edits a different section of the same document and also needs ADR-0004, so it keeps its own gate rather than folding in here.
+  Resolved (2026-08-27). Rule 5 now names the Publisher's write, in rule 8's form: it may read Settings and a folder of finished files, may read and write GitHub, and writes to disk only into a folder it is handed. The fetched state's home is named in the disk table -- the fetch area inside Pressless's own folder, never the site folder.
+
+  The gate ran three loops and reached the ADR cap. It found that the first attempt made things worse: naming only the local write turned an omission into an exhaustive write list that excluded the Publisher's principal write to GitHub. All three lanes found that independently.
+
+  Eighteen defects were verified and fixed across the run, most of them pre-existing rather than introduced here. Four items were filed rather than fixed: PRESS-0028, PRESS-0029, PRESS-0030, PRESS-0031. The cap was violent -- two thirds of the last loop landed on text the run itself wrote -- so the document is not re-gated as it stands.
   **Layman:** A design rule says the publishing part only reads things; it now also writes one folder, so the rule needs to say so.
   Kind: doc.
   Source: PRESS-0009 spec section 11, surfaced 2026-08-26 and not applied.

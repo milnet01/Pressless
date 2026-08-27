@@ -2,10 +2,10 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** nothing. `PRESS-0001`,
-`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010` and `PRESS-0024`
-are ✅ — spec, tests and code each. `PRESS-0019` is unblocked, and
-`PRESS-0026` is the design amendment the Publisher surfaced. Run
+**State:** 5 — Building. **In flight:** `PRESS-0025`. `PRESS-0001`,
+`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010`, `PRESS-0024` and
+`PRESS-0026` are ✅. `PRESS-0019` is unblocked; the design gate that
+closed `PRESS-0026` filed `PRESS-0028` to `PRESS-0031`. Run
 `python3 -m pytest` for where code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
@@ -57,6 +57,18 @@ ruff check src/ tests/     # lint alone
 that same file** — it holds no checks of its own, so the two cannot
 drift. The `pre-push` hook discovers the script by name and runs it over
 the commits being pushed, so a failing tree cannot leave this machine.
+
+**Which paths count as documentation is a machine-local git config key,
+so a fresh clone loses it** and the shared hook falls back to guessing by
+extension, which `commits.md` § 4.2 forbids. Set it:
+
+```bash
+git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.txt|*.rst'
+```
+
+That list is right here because `--docs` runs the leak sweep, which is
+the check a markdown edit in this repository can actually breach, and no
+test reads a document as data. Narrow it if either stops being true.
 
 **One test is skipped by default and it is the most important one.**
 `tests/test_marks_archive.py` proves S2 against the real WordPress
@@ -174,20 +186,21 @@ separately:
 git log --all --format='%H %s%n%b' | grep -inE "charl|jordaan|18down"
 ```
 
-### A corrected `Layman:` cannot be put back the way it was
+### The roadmap carries two `Layman:` styles, and they stay
 
-`roadmap_log` sets a bullet's `Layman:` at creation and has no verb to
-change it afterwards — the trailer is composed from a store column that
-`amend_body` cannot reach, even though `roadmap_query` shows the text
-inside `body`. The only route is to declare `Layman:` at a line start in
-the body, and **that route is one-way**: deleting the declaration does
-not fall back to the column, it clears the field, and the render gate
-refuses the write.
+`roadmap_log op:"amend_field"` corrects a bullet's `Layman:` after
+creation (ANTS-4667). It writes the store column, so it works wherever
+the render composes that trailer — the bold-style bullets. Where the
+body declares `Layman:` at a line start it refuses
+`field_shadowed_by_body` and names `op:"amend_body"` as the route,
+because a declaration wins at render and would be re-parsed back over
+the column. Both branches verified 2026-08-27.
 
-So this roadmap carries two styles — plain `Layman:` on the four bullets
-corrected on 2026-08-25, bold on the other eighteen. Both parse. **Do
-not try to reconcile them**; the attempt is what discovers the gate.
-Filed as feedback for the Ants MCP maintainer.
+**What stays one-way is the declaration itself**: a body declaration
+cannot be turned back into a column. So the plain-style bullets
+corrected on 2026-08-25 and the bold-style rest go on parsing by
+different routes. **Leave them that way** — reconciling changes nothing
+anyone reads.
 
 ### How documents get written here
 

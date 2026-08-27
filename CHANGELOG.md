@@ -67,6 +67,11 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **The design now says what the publishing part may write, and where it goes.** (PRESS-0026)
+  The rule permitted reading only, while fetching back a previous state
+  writes files to disk. It now names that write and pins where it lands --
+  inside Pressless's own folder, never the folder that gets published.
+
 - **The flag-rendering claim behind the dashboard design is measured rather than assumed.**
   Confirmed on a Windows 10 test box: country flags have no glyphs and
   must ship as images. The same box makes the packaged Windows executable
