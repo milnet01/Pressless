@@ -16,6 +16,13 @@ deliberate: `ROADMAP.md` § Milestones states the same condition and
 carries which item belongs to which milestone. Change them together —
 nothing checks that they agree.
 
+**The version numbers in `ROADMAP.md` § Milestones name goalposts, not
+cut releases.** Decided by the user 2026-08-27; that section's opening
+line already says a number there records which signs of success hold. A
+release takes the level § 4 gives it, so a goalpost is reached at
+whatever number the ladder has produced by then — which will not be the
+number the goalpost is written as.
+
 ## The breaking surfaces
 
 A change to anything below is breaking however small the diff: someone

@@ -1064,7 +1064,7 @@
   Source: in-session-2026-08-27, versioning.md sections 3 and 4.
   Lanes: docs.
 
-- 📋 [PRESS-0034] **The milestone version numbers may not be reachable under the 0.x ladder.**
+- ✅ [PRESS-0034] **The milestone version numbers may not be reachable under the 0.x ladder.**
   versioning.md section 4: inside 0.x a BREAKING change bumps the minor
   and everything else, a new capability included, bumps the patch. The
   Milestones section plans v0.1.0, then v0.5.0 adding the keyring, the
@@ -1090,6 +1090,12 @@
   release.
 
   Blocked-by: a decision from the user.
+  Resolved (2026-08-27): the user chose reading 1 -- the milestone
+  numbers name goalposts, not cut releases. Recorded in
+  docs/standards/versioning-overrides.md, under what would make this
+  1.0, rather than in ROADMAP section Milestones: that section's intro
+  is held in the roadmap store and no verb amends one, so a hand edit
+  there is discarded by the next render.
   **Layman:** Checks whether the version numbers in the plan -- 0.1, 0.5, 1.0 -- are the numbers the rules would actually produce.
   Kind: investigate.
   Source: versioning gate on PRESS-0033, loops 2 and 3.
