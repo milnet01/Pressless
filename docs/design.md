@@ -65,10 +65,13 @@ than hoped for.
    back. That is where S7's guarantee lives, and it is the only part that
    can hold it.
 5. **The Publisher may read Settings and a folder of finished files, and
-   nothing else.** It must not be able to tell an entry from a
-   stylesheet — which is exactly why it cannot be the part that keeps a
-   draft back. A part that publishes whatever it is handed has nothing
-   to decide with, so rule 4 carries S7 and this rule does not.
+   writes only into a folder it is handed — and nothing else.** It must
+   not be able to tell an entry from a stylesheet — which is exactly why
+   it cannot be the part that keeps a draft back. A part that publishes
+   whatever it is handed has nothing to decide with, so rule 4 carries S7
+   and this rule does not. **That write is the fetch-back's**: a previous
+   state is laid out under the folder the caller names, so it never
+   reaches the Store and undo stays the Face's sequence (rule 1).
 6. **The Store may read Settings and may never PRODUCE HTML** — turning
    marked text into HTML is Marks' job and nobody else's. It may *hold*
    a fixed page written as HTML, because the code view below is editable

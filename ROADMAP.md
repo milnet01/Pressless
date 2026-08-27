@@ -839,7 +839,7 @@
   Kind: doc-fix.
   Source: in-session-2026-08-26.
 
-- 📋 [PRESS-0026] **Design rule 5 should name the Publisher's one write.**
+- 🚧 [PRESS-0026] **Design rule 5 should name the Publisher's one write.**
   Rule 5 reads that the Publisher may read Settings and a folder of
   finished files, and nothing else -- it names no write. Rule 8 shows the
   form the design already uses when a part writes, naming Insights' one
@@ -857,6 +857,7 @@
 
   Blocked-by: nothing. The code it describes is already shipped, so this
   is the document catching up.
+  Started 2026-08-27. Scope confirmed with the user: this item alone. PRESS-0022's packaging amendment edits a different section of the same document and also needs ADR-0004, so it keeps its own gate rather than folding in here.
   **Layman:** A design rule says the publishing part only reads things; it now also writes one folder, so the rule needs to say so.
   Kind: doc.
   Source: PRESS-0009 spec section 11, surfaced 2026-08-26 and not applied.
