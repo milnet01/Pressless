@@ -2,11 +2,11 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** `PRESS-0009` and `PRESS-0010` —
-the Publisher's tests are committed red against a stub, so the code is
-what remains. `PRESS-0001`, `PRESS-0002`, `PRESS-0004` and `PRESS-0024`
-are ✅. `PRESS-0019` is unblocked. Run `python3 -m pytest` for where code
-stands.
+**State:** 5 — Building. **In flight:** nothing. `PRESS-0001`,
+`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010` and `PRESS-0024`
+are ✅ — spec, tests and code each. `PRESS-0019` is unblocked, and
+`PRESS-0026` is the design amendment the Publisher surfaced. Run
+`python3 -m pytest` for where code stands.
 
 > Keep the three lines above true, and keep them to three lines. They are
 > the only position this project records. Everything else about where

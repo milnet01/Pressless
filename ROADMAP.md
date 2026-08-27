@@ -338,7 +338,7 @@
   Source: design-2026-08-24 § The parts, § What may depend on what.
   Lanes: Builder.
 
-- 🚧 [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
+- ✅ [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
   Through GitHub's own web interface rather than git, so there is nothing
   for him to install (ADR-0002). It reads the current state, works out
   which files differ, and writes one commit of those -- deletions
@@ -403,11 +403,22 @@
   reach the right entry points, not that any assertion catches a breach.
   A mutation probe settles that and needs a green baseline, so it is owed
   once the code lands.
+  Resolved (2026-08-27): src/pressless/publisher.py implements section 4.1's
+  surface -- publish, root_entries and fetch_previous. All nine invariants
+  green; the suite is 35 passed, 1 skipped; the gate passes.
+  Proved rather than asserted: a mutation probe ran 19 mutations, one per
+  route each invariant's Breaks-when names. 18 were killed. The one that
+  survived is why the probe was run -- forcing the reference update changed
+  nothing the suite measured, because INV-5's clause stripped spaces from the
+  request body and then searched it for a needle carrying a space, so it could
+  never match. The red run could not have seen that. Fixed and re-probed.
+  Carried out of this item as PRESS-0026: design rule 5 permits this part to
+  read and names no write, while fetch-back writes to disk.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
 
-- 🚧 [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
+- ✅ [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
   Read a previous commit's files back out of GitHub. On its own this is
   not S9: the Store still holds the text that caused the trouble, so his
   next publish would put it straight back. It is deliberately a capability
@@ -422,6 +433,15 @@
   INV-8's two tests -- test_fetch_previous_names_its_source and
   test_first_commit_has_no_previous_state -- are committed red in
   tests/test_publisher.py, against a stub. fetch_previous is unimplemented.
+  Resolved (2026-08-27): fetch_previous ships with PRESS-0009, its umbrella.
+  It reads the current commit's FIRST parent -- not the branch's second-newest
+  commit, which differs as soon as anything is merged -- writes that state
+  under the folder it is handed, and names the sha it fetched. A path prefix
+  selects and never strips, matched on segment boundaries, so "content" cannot
+  also select "contents.html". INV-8's two tests cover it and both mutations
+  aimed at them were killed.
+  Still only a capability, as the bullet says: PRESS-0015 is the sequence that
+  uses it.
   **Layman:** Reads an earlier version of the site back out of GitHub -- half of what undo needs.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
@@ -818,6 +838,28 @@
   **Layman:** A note in our own instructions says something cannot be done, which can now be done.
   Kind: doc-fix.
   Source: in-session-2026-08-26.
+
+- 📋 [PRESS-0026] **Design rule 5 should name the Publisher's one write.**
+  Rule 5 reads that the Publisher may read Settings and a folder of
+  finished files, and nothing else -- it names no write. Rule 8 shows the
+  form the design already uses when a part writes, naming Insights' one
+  cache file explicitly.
+
+  fetch_previous writes a fetched state into a folder it is handed, so
+  rule 5 as written does not cover it. That section is what the
+  pick-an-item gate reads, so the gap is load-bearing rather than
+  cosmetic.
+
+  Surfaced by the PRESS-0009 spec gate rather than fixed there: it is
+  another document's rule, and changing direction in a contract document
+  owes its own review-contract gate. Filed here so it did not leave the
+  roadmap when PRESS-0009 closed.
+
+  Blocked-by: nothing. The code it describes is already shipped, so this
+  is the document catching up.
+  **Layman:** A design rule says the publishing part only reads things; it now also writes one folder, so the rule needs to say so.
+  Kind: doc.
+  Source: PRESS-0009 spec section 11, surfaced 2026-08-26 and not applied.
 
 ## Milestones
 

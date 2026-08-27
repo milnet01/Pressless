@@ -17,6 +17,12 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Publisher can fetch back a previous state of the repository.** (PRESS-0010)
+  Reads an earlier version of the site back out of GitHub -- half of what undo needs.
+
+- **The Publisher makes GitHub match the folder it was handed.** (PRESS-0009)
+  Sends the finished site to GitHub without git being installed, and never touches the few files that are not ours.
+
 - **Checks now run before anything is published, on this machine and on GitHub** (PRESS-0024)
   One file holds the checks and GitHub runs that same file, so what
   passes here is what passes there. Before publishing, it makes sure
