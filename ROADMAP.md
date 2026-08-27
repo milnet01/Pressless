@@ -578,7 +578,7 @@
   Source: design-2026-08-24 § Where the cheat sheet comes from.
   Lanes: Marks, Face.
 
-- 📋 [PRESS-0019] **Insights asks Google Analytics how the site is being read.**
+- ✅ [PRESS-0019] **Insights asks Google Analytics how the site is being read.**
   The live property already on the site, through Google's reporting
   interface, handing back plain numbers: how many people, and which
   countries. Province was dropped -- what was asked for is visits by
@@ -615,6 +615,16 @@
   field is named analytics_measurement_id. Passing the wrong one fails every
   fetch.
   Settled (2026-08-26) by the user: Settings holds the NUMERIC property id, and no measurement id. The field is renamed analytics_property_id across the module, its tests and PRESS-0001; docs/design.md's two-identifier bullet records the decision. Pressless never writes the site's footer tag, so it has no use for the G- form. This item's remaining blocker is gone -- it is startable.
+  Started (2026-08-27). No spec: spec-format.md § 1's test comes back no -- one subsystem, and design rule 8 forbids anything depending on Insights, so a wrong shape is cheap to undo. Google's reporting surface verified against its own reference rather than recalled: countryId is ISO 3166-1 alpha-2, which is what the flag lookup binds to; activeUsers is the metric; the total is asked for rather than summed, because a visitor seen in two countries is counted in both rows.
+  Resolved (2026-08-27). src/pressless/insights.py, one entry point, no new
+  dependency. Sixteen invariants locked in tests/test_insights.py, proven red
+  against a stub before the code existed and then probed: nine mutations, one
+  per route the invariants name, all nine killed against a verified green
+  baseline. Decisions taken here rather than left implicit -- the token is an
+  argument and setup owns refreshing it, so design rule 10 stays literally
+  true; the window is a parameter defaulting to four weeks; a failed refetch
+  answers from the cache with the reply marked stale rather than raising,
+  which is what the dashboard's own "as of" line makes safe.
   **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0005.

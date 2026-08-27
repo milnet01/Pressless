@@ -17,6 +17,18 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Pressless can ask Google Analytics how the site is being read** (PRESS-0019)
+  Fetches the visitor numbers Google already collects -- how many
+  people, and which countries they read from -- ready for the dashboard
+  to show. Countries come back as the two-letter codes the flag pictures
+  are keyed by, and the number of people is the one Google works out
+  rather than the rows added up, which would count a visitor seen in two
+  countries twice. It keeps the last answer on disk so opening the
+  dashboard repeatedly does not spend the daily allowance Google gives,
+  and if Google cannot be reached it shows the last answer it has,
+  labelled as old, instead of an error. Setting this up is optional:
+  decline it and nothing else about writing or publishing changes.
+
 - **The Publisher can fetch back a previous state of the repository.** (PRESS-0010)
   Reads an earlier version of the site back out of GitHub -- half of what undo needs.
 
