@@ -1023,7 +1023,7 @@
   Source: CLAUDE.md gate 2026-08-27, loop 3, code-side finding surfaced by two lanes and confirmed by execution.
   Lanes: CI.
 
-- 📋 [PRESS-0033] **Nothing names the promises a Pressless release may not break.**
+- ✅ [PRESS-0033] **Nothing names the promises a Pressless release may not break.**
   versioning.md section 3 says SemVer is written for something other
   code imports, which Pressless is not -- so "the public API" has no
   referent here and each project must name its own breaking surfaces,
@@ -1044,9 +1044,55 @@
 
   Blocked-by: nothing. Needs a decision from the user on which surfaces
   count, which is why it is filed rather than written.
+  Resolved (2026-08-27). docs/standards/versioning-overrides.md holds both
+  answers section 3 and section 4 ask each project for: the breaking surfaces,
+  and the 1.0 exit condition stated in one line here as section 4 requires.
+  The surfaces are the user's decisions of 2026-08-27 -- setup state survives an
+  upgrade, published addresses are frozen -- plus the writer's own files, which
+  the user deferred. What is deliberately NOT a surface is named too, each with
+  its own reason. docs/standards/README.md corrected in the same change: it
+  called an overrides file deltas-only, and this one holds answers rather than
+  deltas.
+
+  Gated with review-contract --genre standard, three loops to the cap, three
+  cold lanes each. The cap was violent -- most of the last loop landed on text
+  the run itself had written -- so the document is not re-gated as it stands.
+  Its loop log carries the detail. PRESS-0034 carries the one question the gate
+  raised and did not decide.
   **Layman:** Writes down what Pressless promises never to break, so a future version cannot break it by accident.
   Kind: doc.
   Source: in-session-2026-08-27, versioning.md sections 3 and 4.
+  Lanes: docs.
+
+- 📋 [PRESS-0034] **The milestone version numbers may not be reachable under the 0.x ladder.**
+  versioning.md section 4: inside 0.x a BREAKING change bumps the minor
+  and everything else, a new capability included, bumps the patch. The
+  Milestones section plans v0.1.0, then v0.5.0 adding the keyring, the
+  Publisher, undo, the editor box, the one button and setup -- all
+  additive. Under section 4 those are patch bumps, so v0.5.0 is
+  unreachable without four breaking releases in between.
+
+  Raised by one lane as an open question and filed as a finding by
+  another on the next loop, both cold.
+
+  Three readings, and the user decides which:
+  1. The milestone names are labels for which signs of success hold, not
+     cut versions. Milestones' own opening line supports this -- "A
+     version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD".
+     Nothing changes but a sentence saying so.
+  2. They are literal targets, in which case this is a departure from
+     section 4 and docs/standards/versioning-overrides.md is where it has
+     to be recorded.
+  3. Renumber the milestones to what the ladder produces.
+
+  Not fixed by the gate that found it: which one is true is a decision,
+  and guessing it would put a wrong rule in the file that governs every
+  release.
+
+  Blocked-by: a decision from the user.
+  **Layman:** Checks whether the version numbers in the plan -- 0.1, 0.5, 1.0 -- are the numbers the rules would actually produce.
+  Kind: investigate.
+  Source: versioning gate on PRESS-0033, loops 2 and 3.
   Lanes: docs.
 
 ## Milestones
