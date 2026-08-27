@@ -462,6 +462,7 @@
   A test walks every failure type and fails if one has no sentence, or a
   sentence that omits what it means for his site. Claims S6.
   Blocked-by: PRESS-0001, PRESS-0003.
+  Amended by the PRESS-0026 design gate (2026-08-27). This body describes the last-resort message as an apology saying his site has not changed. docs/design.md no longer allows that unconditionally: an unforeseen failure raised after the reference update has landed would be telling him the site is unchanged when it is not. The message now says what it can honestly say -- unchanged where nothing was in flight, outcome unknown where a publish had reached its last step -- and it carries a next-step clause, because the three-part rule has no exception for point 3. The design's Errors section is the contract; build from it rather than from this line. The same gate also corrected the check: the test walks every failure type for all three parts, not for point 2 alone.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
@@ -924,6 +925,52 @@
   Kind: doc-fix.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, lane finding on a cross-reference.
   Lanes: Insights.
+
+- 📋 [PRESS-0030] **Nothing says which part builds the preview page.**
+  docs/design.md requires the preview show a real page built with the
+  change before it is published -- the promise that makes a footer edit
+  safe, and it calls that the highest-blast-radius edit in the app. The
+  same document has the preview show a photograph's original scaled in the
+  browser, which is a Face-rendered view rather than a built page.
+
+  Rule 1 lets the Face call the Builder and rule 2 requires only shared
+  Marks, not shared page assembly, so the dependency rules settle neither.
+
+  An implementer who invokes the Builder gets real page furniture and a
+  write into the site folder that the next publish then carries. One who
+  assembles inside the Face gets originals inline and writes nothing. Only
+  the first keeps the real-page promise.
+
+  Filed rather than fixed: choosing between them is a design decision, and
+  whether a preview build writes into the site folder changes what publish
+  sends.
+  **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
+  Kind: investigate.
+  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
+  Lanes: Face, Builder.
+
+- 📋 [PRESS-0031] **Undo has no stated answer for an edit made since the last publish.**
+  Undo is sourced entirely from the repository: fetch the previous state,
+  write its content/ back into the Store, rebuild, publish. Persistence
+  keeps one file per entry, renamed over the old one, so no local prior
+  version exists.
+
+  fetch_previous reads the current commit's first parent. So for an entry
+  edited but not yet published, undo overwrites the unpublished text with
+  the state before the last publish -- and the design says an undo deletes
+  nothing of his, which is then false for exactly that entry.
+
+  The gate narrowed the recoverability claim to published edits, which is
+  what S9 itself is scoped to. What it did not do is decide the behaviour:
+  undo could refuse while unpublished edits exist, keep them beside the
+  fetched text the way it keeps a fixed page, or warn and proceed.
+
+  Filed rather than fixed: the document cannot state a behaviour nobody
+  has chosen.
+  **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
+  Kind: investigate.
+  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
+  Lanes: Face, Store.
 
 ## Milestones
 
