@@ -264,6 +264,17 @@ same wrap is why a plain `grep` returns false negatives on a quoted
 phrase: use `workspace_search` with `match_wrapped: true` before believing
 a miss.
 
+**Building a review packet trips the global config lock, and the message
+names the wrong cause.** A gate assembles its brief from `~/.claude`
+files; one shell command that both reads those paths and redirects to a
+file is refused with *"the ~/.claude instruction surface is edited from a
+session whose cwd is ~/.claude"* -- although nothing under `~/.claude` is
+being written. The hook matches the command text, not its direction.
+Split the read from the write, or reuse the brief half of the previous
+packet. Do not reach for the bypass token or relaunch with the unlock
+variable: neither is warranted, because no edit to that surface is
+intended.
+
 **A trap worth knowing: a section intro written by
 `roadmap_log op:create_section` cannot be amended by any verb**, and a
 hand edit to `ROADMAP.md` is discarded by the next render. Never put a
