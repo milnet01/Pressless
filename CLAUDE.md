@@ -8,8 +8,9 @@
 closed `PRESS-0026` filed `PRESS-0028` to `PRESS-0031`. Run
 `python3 -m pytest` for where code stands.
 
-> Keep the three lines above true, and keep them to three lines. They are
-> the only position this project records. Everything else about where
+> Keep the block above true, and keep it to three facts — the state, what
+> is in flight, and what is done. They are the only position this project
+> records. Everything else about where
 > work stands is read off things that cannot lie — whether a spec exists,
 > whether tests fail, what `git status` says, whether the roadmap bullet
 > is 🚧. A recorded step number starts lying the first time a session
@@ -41,10 +42,11 @@ records it rather than restating why.
 ### Build and test
 
 Python. One runtime dependency — `keyring`, the operating system's
-credential store, reached only by `credentials.py` (PRESS-0002) — plus
-`pytest` to run the suite. `pyproject.toml` holds the packaging and the
-pytest settings; `src/` is on the path through it, so no install step is
-needed beyond having those two present.
+credential store, reached only by `credentials.py` (PRESS-0002). The
+gate needs `pytest` and `ruff` on top of it, which is what
+`pip install -e '.[dev]'` installs and what CI runs. `pyproject.toml`
+holds the packaging and the pytest settings; `src/` is on the path
+through it, so there is no install step beyond that one.
 
 ```bash
 ./scripts/local-ci.sh      # the gate: leak sweep, lint, suite
@@ -56,19 +58,31 @@ ruff check src/ tests/     # lint alone
 **`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
 that same file** — it holds no checks of its own, so the two cannot
 drift. The `pre-push` hook discovers the script by name and runs it over
-the commits being pushed, so a failing tree cannot leave this machine.
+the commits being pushed, so a failing tree cannot leave a machine where
+the keys below are set.
 
-**Which paths count as documentation is a machine-local git config key,
-so a fresh clone loses it** and the shared hook falls back to guessing by
-extension, which `commits.md` § 4.2 forbids. Set it:
+**Three git config keys make the gate work, and all are machine-local — a
+fresh clone has none of them.** Two belong here; `ants.pressless.archive`
+has its own paragraph below.
 
 ```bash
+git config core.hooksPath .githooks
 git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.txt|*.rst'
 ```
 
-That list is right here because `--docs` runs the leak sweep, which is
-the check a markdown edit in this repository can actually breach, and no
-test reads a document as data. Narrow it if either stops being true.
+**`core.hooksPath` is what makes any hook fire at all.** Unset, git looks
+in `.git/hooks`, nothing runs, and nothing says so. `.githooks/pre-push`
+only delegates to the machine-wide gate; where that is absent it prints
+`NOTHING WAS CHECKED` and exits 0, so it warns rather than blocks.
+
+**`ants.gate.docsGlob` records a decision rather than changing one.** Its
+value here is deliberately the hook's own fallback, so setting it alters
+no behaviour today. `commits.md` § 4.2 makes the *unset* key the breach: a
+shared hook cannot know what a given pipeline reads, so it has to be
+told. The wide list is right here because `--docs` runs the leak sweep,
+which is the check a markdown edit in this repository can actually
+breach, and no test reads a document as data. Narrow it if either stops
+being true — and a narrowing reverts on any clone where the key is unset.
 
 **One test is skipped by default and it is the most important one.**
 `tests/test_marks_archive.py` proves S2 against the real WordPress
@@ -162,9 +176,10 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-Sweep before any push. **The only expected hits are the pattern
-lines below**, which name what they are looking for — anything else means
-something leaked:
+Sweep before any push. **The only expected hits are the pattern lines
+themselves** — the ones below, and the copies of them in
+`scripts/local-ci.sh`, which name what they are looking for. Anything
+else means something leaked:
 
 ```
 git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" -- .
@@ -196,8 +211,10 @@ body declares `Layman:` at a line start it refuses
 because a declaration wins at render and would be re-parsed back over
 the column. Both branches verified 2026-08-27.
 
-**What stays one-way is the declaration itself**: a body declaration
-cannot be turned back into a column. So the plain-style bullets
+**What stays one-way is the declaration itself**: deleting it does not
+hand the column back. Measured 2026-08-27 — `amend_body` removing a
+`Layman:` declaration is refused by the render gate with
+`render_gate_unmet`, because the bullet would be left carrying none. So the plain-style bullets
 corrected on 2026-08-25 and the bold-style rest go on parsing by
 different routes. **Leave them that way** — reconciling changes nothing
 anyone reads.
@@ -253,6 +270,12 @@ discarded by the next write. Read it with `roadmap_query`, write it with
 named after its first user, and a prefix naming him would have said the
 opposite in every commit subject. Commit subjects
 are `<ID>: <description>`, per `commits.md`.
+
+### Review history
+
+This file is read in full by every session on every turn, so its
+`review-contract` loop log is kept in
+`docs/claude-md-review-2026-08-27.md` rather than here.
 
 ### Overrides
 

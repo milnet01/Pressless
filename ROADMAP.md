@@ -836,7 +836,7 @@
   `ants.pressless.archive` (documented in § Build and test, so only the
   first is missing). Fold the first into the same edit.
   Blocked-by: nothing.
-  Started 2026-08-27. One correction to this bullet before the work: ants.gate.docsGlob is no longer unset -- it now reads docs/*|*.md|LICENSE|*.txt|*.rst, which is the hook's own fallback value. commits.md § 4.2 objects to a hook GUESSING by extension when nobody has told it, so the key being set satisfies the letter; the substance holds too, because --docs runs the leak sweep, which is the check a markdown edit in this repository can actually breach, and no test parses a document as data. What is still owed is the documenting: the key is machine-local and lost on a fresh clone.
+  Started 2026-08-27. One correction to this bullet before the work: ants.gate.docsGlob is no longer unset -- it now reads docs/*|*.md|LICENSE|*.txt|*.rst, which is the hook's own fallback value. commits.md § 4.2 objects to a hook GUESSING by extension when nobody has told it, so the key being set satisfies the letter, and the value is right here for the reason CLAUDE.md now records rather than this bullet. What is still owed is the documenting: the key is machine-local and lost on a fresh clone.
   **Layman:** A note in our own instructions says something cannot be done, which can now be done.
   Kind: doc-fix.
   Source: in-session-2026-08-26.
