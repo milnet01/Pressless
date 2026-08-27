@@ -1,6 +1,6 @@
 # PRESS-0005 — The Store: one file per entry, drafts kept apart
 
-**Status:** spec draft (2026-08-27).
+**Status:** accepted (2026-08-27). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A calm cap: under half of the last loop's findings landed on text the run itself wrote, so the document held more defects than the cap held loops. Implementation is the third reviewer.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
 § Where everything sits on disk; ADR-0001).
@@ -57,10 +57,15 @@ and are marked so.
 2. **Drafts and published entries live in separate folders, not in one
    folder distinguished by a header field.** `docs/design.md`
    § Where everything sits on disk requires them kept apart; which
-   mechanism was open. A folder makes S7 structural: the Builder is
-   handed the published folder and has no way to reach a draft, so no
-   parsing mistake can publish unfinished writing. A header field
-   would put S7 behind a correct read of every file.
+   mechanism was open. A folder takes *parsing* out of S7: which
+   folder a file sits in is a fact about the filesystem, where a
+   header field would put S7 behind a correct read of every file. It
+   does not make S7 automatic — §4.1 hands out one folder and a
+   `draft` flag, so the Builder still has to ask for the published
+   one, and §10 records that nothing here can check that it does.
+   What the split buys is that the only remaining way to publish a
+   draft is asking for the wrong folder: one visible decision, rather
+   than a parser being wrong about one file.
    *Agreed with the user 2026-08-27.*
 3. **Both folders sit inside Pressless's own folder, outside the site
    folder.** `docs/design.md` § Where everything sits on disk, on the
@@ -76,13 +81,23 @@ and are marked so.
    one place deciding it; storing the raw value would leave the rule
    that resolves it as a second place, where a change silently moves
    every address. Resolving it is a one-time job and belongs to Import
-   (PRESS-0007). *Agreed with the user 2026-08-27.*
+   (PRESS-0007). **The rule is the one the live addresses already came
+   from** — the sibling workspace's `tools/build_blog.py::safe_slug`,
+   which decodes percent-encoding, drops marks and control characters,
+   folds to ASCII lower case and joins the rest with hyphens, falling
+   back to the WordPress post id where nothing survives. Naming it
+   here is what stops §7's archive test and PRESS-0007 resolving slugs
+   two different ways, which is the second deciding place this
+   decision exists to prevent. *Agreed with the user 2026-08-27.*
 5. **A slug is unique across the whole Store, which is stricter than
    the live site requires.** Dating the address means the site would
    allow one slug per day; the Store allows one altogether, because
    one flat folder per kind is what makes S3's "ordinary folder"
-   something a person can browse. Nothing in the archive collides,
-   which `tests/test_store_archive.py` measures. The cost is that an
+   something a person can browse. Nothing in the archive collides —
+   measured over everything Import brings, which `docs/design.md`
+   § What may depend on what makes the published entries plus the
+   drafts and private posts, not the published alone.
+   `tests/test_store_archive.py` covers all three. The cost is that an
    entry cannot reuse a slug from an earlier year, and that Import
    must stop rather than overwrite if one ever does.
    *Decided in this spec.*
@@ -121,12 +136,16 @@ class EntryNotFound(StoreError): ...
 class SlugInUse(StoreError): ...
 ```
 
-`write` is create-or-replace within one folder: the slug identifies
-the entry, so writing a slug that folder already holds replaces that
-entry. Choosing a slug for a NEW one belongs to whatever offers the
-writer it (PRESS-0012); `exists` is what it asks, and it answers for
-both folders because §3 decision 5 makes a slug unique across the
-Store.
+`write` is create-or-replace within its own folder: the slug
+identifies the entry, so writing a slug that folder already holds
+replaces that entry, and `write` consults no other folder. **Decision
+5's Store-wide uniqueness is a rule callers keep, not one `write`
+enforces.** `exists` answers across both folders: PRESS-0012 asks it
+before offering a new entry, PRESS-0007 before writing an imported
+one. `write` is left alone deliberately — Import writes both folders
+in one pass, and a `write` that consulted the other could not. Where
+the Store does enforce it is the two moves, which have somewhere to
+collide (INV-10).
 
 `publish` moves a draft into the published folder by rename, and
 `unpublish` moves one back. The reverse is required rather than
@@ -158,10 +177,23 @@ Every single newline is a line break.
   workspace, which is what the live site is built from today. Losing
   any of them costs the site its categories, its tags or its by-year
   archive.
-- **`Slug` and `Date` must be present and non-empty. `Title`,
-  `Categories` and `Tags` must be present and may be empty.** An
-  untitled entry is ordinary here, not an error — a large share of the
-  archive has no title, which `tests/test_store_archive.py` measures.
+- **A slug is one or more of `a-z`, `0-9` and `-`, and nothing else.**
+  That is what `safe_slug` already yields, so every live address
+  satisfies it. Pinned because the slug becomes a file name: an
+  unpinned one admits `/`, `\` and `..`, which write outside the
+  handed folder, and admits two slugs differing only in case, which
+  are one file on Windows and two on Linux.
+- **`Slug` and `Date` must be present and non-empty on write. `Title`,
+  `Categories` and `Tags` must be present on write and may be empty.**
+  An untitled entry is ordinary here, not an error — a large share of
+  the archive has no title, which `tests/test_store_archive.py`
+  measures. **A large share of what Import brings has no slug either**,
+  WordPress rarely giving a draft one; supplying it is PRESS-0007's,
+  by decision 4's rule, and the Store simply refuses an empty one.
+- **On read, an absent `Title`, `Categories` or `Tags` is empty rather
+  than an error.** Only `Slug` and `Date` missing is a parse failure.
+  S3 invites hand-editing, and a file someone trimmed a blank `Tags:`
+  line out of is still an entry.
 - **`Date` is `YYYY-MM-DD HH:MM:SS`.** The time is carried because
   entries share a day often enough that ordering needs it, which the
   same archive test measures.
@@ -172,9 +204,12 @@ Every single newline is a line break.
   does is refused on write rather than written and silently split on
   the next read (INV-9). A comma anywhere else is ordinary — titles
   in the archive carry them.
-- **A header value is one line.** A wrapped value would be read back
-  as a new field, so a value containing a newline is refused by the
-  same rule.
+- **A header value is one line — every header value, an unrecognised
+  field's included.** A wrapped value would be read back as a new
+  field, so a value containing a newline is refused (INV-9). The rule
+  reaches `extra` deliberately: preserving a field byte-for-byte is
+  ADR-0001's promise, and writing one back that the next read cannot
+  parse would break that promise in the act of keeping it.
 - **A field the Store does not recognise is kept byte-for-byte, and
   two of them keep their order relative to each other.** They are
   written after the recognised five rather than where they were
@@ -213,6 +248,13 @@ parseable.
 
 `list_slugs` returns the slugs in one folder, sorted, read off the
 file names rather than by opening anything.
+
+**The header's `Slug` is authoritative, and a file whose name does not
+match it is a parse failure** naming both. The two cannot then drift:
+`list_slugs` reads names and `read` reads headers, so letting them
+disagree would have the same entry answer to two slugs — and the slug
+is a breaking surface. Refusing is what keeps a hand-rename loud;
+silently preferring either one moves an address or strands a file.
 
 ### 4.5 Writing
 
@@ -264,10 +306,9 @@ line, then the body.
   destination is `path_for(...)` and that `read` still returns the
   previous entry.
   *Breaks when:* an implementer opens the target file and writes into
-  it. Asserting the destination is what makes it bite: against a
-  direct write there is no replace to interrupt, so the interruption
-  half alone would pass against the implementation it exists to
-  reject.
+  it — the patch never fires, the write completes, and the entry on
+  disk is the new one. Asserting the destination as well pins the
+  mechanism rather than only its effect.
 
 - **INV-4** — A header field the Store does not recognise is present
   and byte-identical after a `read` followed by a `write`, and two of
@@ -294,11 +335,17 @@ line, then the body.
   body carries an accented character and two line breaks, then assert
   on the raw bytes, not on decoded text. The newline belongs to the
   body: INV-9 refuses one in a title, so a fixture putting it there
-  could never reach its assertion.
+  could never reach its assertion. **Then assert the call as well** —
+  patch the open the module uses and require it named UTF-8 and an
+  explicit newline.
   *Breaks when:* an implementer opens the file in text mode without
-  naming the encoding and newline. Asserting bytes is the whole test:
-  reading it back through the same defaults that wrote it passes on
-  every platform.
+  naming either. **The byte half cannot catch that here, and this was
+  measured rather than reasoned:** on Linux the unnamed defaults are
+  already UTF-8 and LF, so the bytes come out identical and the test
+  goes green against exactly the code it exists to reject. It is
+  Windows that would write CRLF in cp1252, and §10 records that no
+  test here runs there. Asserting the call is what makes the invariant
+  bite on the platform the suite has.
 
 - **INV-7** — `list_slugs(folder, draft=False)` never returns a slug
   whose file is in the drafts folder, and `write(..., draft=True)`
@@ -322,17 +369,21 @@ line, then the body.
   than as "no extra field", because a rule about absence passes
   against every file that happens not to have one.
 
-- **INV-9** — A newline in any recognised field is refused with
-  `StoreError` and nothing is written, and so is a comma in
-  `Categories` or `Tags`. A comma in `Title` or `Slug` is written
-  unchanged: the header runs to the end of the line, so nothing splits
-  it, and refusing one would reject archive entries that exist.
+- **INV-9** — A value the format or the file system cannot carry is
+  refused with `StoreError` and nothing is written: a newline in any
+  header field, `extra` included; a comma in `Categories` or `Tags`; a
+  slug outside `a-z`, `0-9` and `-`, the empty slug included. A comma
+  in `Title` is written unchanged — the header runs to the end of the
+  line, so nothing splits it, and refusing one would reject archive
+  entries that exist.
   *Test:* `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`
-  — a newline case per field and a comma case for the two list fields,
-  each asserting the folder is unchanged afterwards; plus a title
-  carrying a comma, which must be written and read back intact. That
-  last case is what stops the rule being widened into one Import
-  cannot satisfy.
+  — a newline case for each of the four string-valued fields and for
+  an `extra` field, a comma case for the two list fields, and a slug
+  outside the legal set, each asserting the folder is unchanged
+  afterwards; plus a title carrying a comma, which must be written and
+  read back intact. `Date` needs no case: it is a `datetime`, so the
+  type refuses what this rule would. That last case is what stops the
+  rule being widened into one Import cannot satisfy.
   *Breaks when:* an implementer writes the value anyway. The
   written-nothing half is the load-bearing one: raising after a
   partial write leaves a file the next read cannot parse.
@@ -363,6 +414,10 @@ line, then the body.
 - **A file that cannot be parsed** — no blank line, a header line with
   no colon, a missing `Slug` or `Date`. `StoreError` naming the path.
   Never repaired in place (INV-2).
+- **A file whose name does not match its `Slug` header**, which a
+  hand-rename produces. `StoreError` naming both, per §4.4. Nothing is
+  moved and nothing is rewritten; the repair is the writer's, and it
+  is either name.
 - **A slug whose file name the platform cannot hold.** The archive
   carries at least one slug long enough to threaten the Windows path
   limit once the folder path is added, which
@@ -393,11 +448,16 @@ temporary directory and must run everywhere. One test per invariant in
 without it, as `tests/test_marks_archive.py` is. It reads the real
 WordPress export, writes every entry through the Store into a
 temporary folder, reads them all back, and asserts the round trip is
-faithful. It also prints the archive's measurements this spec relies
-on rather than stating them here: how many entries carry no title, how
-many share a day, the longest slug, and whether any two entries
-resolve to one slug. Those numbers are evidence and they move; the
-test is where they live.
+faithful. **It covers everything Import brings — the published
+entries, and the drafts and private posts that arrive as drafts — not
+the published alone**, because decision 5's uniqueness rule spans the
+whole Store and a measurement over one folder would not test it. It
+resolves slugs by decision 4's rule and no other. It also prints the
+archive's measurements this spec relies on rather than stating them
+here: how many entries carry no title, how many carry no slug, how
+many share a day, the longest slug, and whether any two resolve to
+one slug. Those numbers are evidence and they move; the test is where
+they live.
 
 **The red run is made against a stub `store.py`, never against an
 absent one.** With the module absent the suite errors at collection
@@ -485,6 +545,8 @@ imports.
 | That no two entries in the archive want one slug (§3 decision 5) | `tests/test_store_archive.py`, which writes the whole archive through the Store and reads it back — a collision loses an entry and the round trip fails |
 | That Import stops rather than overwriting if two entries ever do collide (§3 decision 5) | **nothing here** — `write` is create-or-replace by design, so the Store cannot tell a correction from a collision. PRESS-0007 is where that check belongs |
 | That the Builder reads only the published folder (§3 decision 2) | **nothing here** — the Store cannot check who reads it. PRESS-0008 is where a breach would show, and S7 rests on it |
+| That callers keep decision 5's Store-wide uniqueness | **half** — INV-10 catches a move onto an occupied slug, which is where the Store can see one. `write` does not look across folders by design, so a caller that never asks `exists` collides silently; PRESS-0007 and PRESS-0012 are where that is kept |
+| That a file's name and its `Slug` header agree (§4.4) | **nothing** — no invariant covers it, and the archive test cannot: it writes through the Store, so its names always match. Worth an invariant the first time a hand-rename is seen |
 | LF endings and atomic replace behaving this way on Windows | **nothing** — this suite runs on Linux, and `os.replace` is documented atomic on both. PRESS-0022 stages the built executable to a Windows box, which is the only place it would be observed |
 | The Windows path limit (§6) | **nothing** — same reason. The failure mode is named so that it is recognised rather than diagnosed |
 
@@ -506,6 +568,8 @@ imports.
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-27 | 3, cold — genre pinned `spec`; packet carried ADR-0001, four `design.md` sections, the signs of success, PRESS-0001's surface, `settings.py::save`, `build_blog.py`'s `Post` and `safe_slug`, and archive measurements taken that day | 1 | 4 | 4 | 2 | **Eleven verified, eleven fixed, none dismissed.** **All three lanes found two of them.** The Q1 was mine and structural: the draft called the slug the address, where the live address is `blog/YYYY/MM/DD/<slug>` — so a flat folder silently imposed uniqueness the site does not require. Stated as a deliberate rule instead. **The most expensive would have blocked Import**: INV-9 refused a comma in any field, and archive titles carry them. **Two fixes came from reading the design rather than the draft** — undo turns an entry into a draft, so the surface needed the reverse move, and a move that overwrites destroys work silently, which is now INV-10. Also settled: who creates the two subfolders, what the list separator is, and a constant for the recognised field names that INV-8 had nothing to bind to. A fixture asked for a newline in a title its own INV-9 refuses. |
+
+| 2 | 2026-08-27 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the archive's comma-in-title count, which loop 1 had to measure mid-run | 2 | 4 | 3 | 2 | **Eleven verified, eleven fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap — five of the eleven landed on text loop 1 wrote**, checked against its ledger rather than recall. **The worst was found by reading the design rather than the draft**: Import brings the drafts and private posts too, so the population is wider than loop 1 measured, and a large share of them carry no slug at all — which §4.2 required. Re-measured over all three statuses: still nothing collides. **The sharpest needed executing.** INV-6 asserted bytes to catch an implementation that names no encoding; run on Linux, the unnamed defaults already produce UTF-8 and LF, so the test went green against exactly the code it rejects. It now asserts the call. Also settled: the legal slug set, unpinned, admitted `..` and wrote outside the handed folder; uniqueness was stated as a Store property nothing enforced; the slug lived in file name and header with no authority named; and INV-9 left an unrecognised field free to carry a newline, breaking ADR-0001's promise in the act of keeping it. One false rationale of mine deleted — INV-3's interruption half does catch a direct write. |
 
 ## 13. Resource cost
 
