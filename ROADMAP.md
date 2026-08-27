@@ -279,6 +279,10 @@
   unfinished work is not backed up.
   Claims S3 and S7.
   Blocked-by: PRESS-0001.
+  Progress (2026-08-27): contract accepted at
+  docs/specs/PRESS-0005-store.md. Two cold-eyes loops to the spec cap,
+  three lanes each, 22 verified findings all fixed. Status stays planned
+  -- no code yet.
   **Layman:** Every entry is an ordinary text file in an ordinary folder, openable in Notepad, and unfinished ones are kept off the web.
   Kind: implement.
   Source: design-2026-08-24 § Persistence, § Where everything sits on disk.
