@@ -2,10 +2,10 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** `PRESS-0025`. `PRESS-0001`,
-`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010`, `PRESS-0024` and
-`PRESS-0026` are ✅. Run `python3 -m pytest` for where code stands, and
-the roadmap for what is queued, blocked or newly filed.
+**State:** 5 — Building. **In flight:** nothing. `PRESS-0001`,
+`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010`, `PRESS-0024`,
+`PRESS-0025` and `PRESS-0026` are ✅. Run `python3 -m pytest` for where
+code stands, and the roadmap for what is queued, blocked or newly filed.
 
 > Keep the block above true, and keep it to three facts — the state, what
 > is in flight, and what is done. That is the only position this project
@@ -42,10 +42,10 @@ records it rather than restating why.
 
 Python. One runtime dependency today — `keyring`, the operating system's
 credential store, reached only by `credentials.py` (PRESS-0002); `Pillow`
-joins it when photographs land, and PyInstaller when packaging does (§
-Stack). That is present state, not a cap. The gate needs `pytest` and
-`ruff` on top, which is what `pip install -e '.[dev]'` installs and what
-CI runs. `pyproject.toml`
+joins it when photographs land (§ Stack). That is present state, not a
+cap. The gate needs `pytest` and `ruff` on top, and PyInstaller is a
+build-time packager that belongs beside those rather than in
+`dependencies`. `pip install -e '.[dev]'` installs what CI runs. `pyproject.toml`
 holds the packaging and the pytest settings; `src/` is on the path
 through it, so there is no install step beyond that one.
 
@@ -60,8 +60,9 @@ ruff check src/ tests/     # lint alone
 that same file** — it holds no checks of its own, so the two cannot
 drift. The machine-wide hook discovers the script by name and runs it
 over the commits being pushed — so a failing tree cannot leave a machine
-where the keys below are set **and `~/.claude/githooks/pre-push` is
-present**. Absent either, nothing is gated.
+where `core.hooksPath` is set **and `~/.claude/githooks/pre-push` is
+present**. Those two decide whether anything is gated at all;
+`ants.gate.docsGlob` only decides which checks run.
 
 **Three machine-local git config keys, and a fresh clone has none of
 them.** Two belong here; `ants.pressless.archive` has its own paragraph
@@ -178,8 +179,9 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-Sweep before any push. **The only expected hits are the pattern lines
-themselves** — the ones below, and the copies of them in
+The gate sweeps all three surfaces, so where it runs this is already
+done. Sweep by hand where it does not. **The only expected hits are the
+pattern lines themselves** — the ones below, and the copies of them in
 `scripts/local-ci.sh`, which name what they are looking for. Anything
 else means something leaked:
 
@@ -191,7 +193,8 @@ And sweep the history too, not just the tree — that is the mistake this
 whole section exists to prevent:
 
 ```
-git grep -l -iE "charl|jordaan|18down" $(git rev-list --all) -- .
+git grep -n -iE "charl|jordaan|18down" $(git rev-list --all) -- . \
+  | grep -vF 'charl|jordaan|18down'
 ```
 
 **That searches the FILES in every commit, and not the commit MESSAGES.**

@@ -812,7 +812,7 @@
   Kind: chore.
   Source: in-session-2026-08-25.
 
-- 🚧 [PRESS-0025] **CLAUDE.md records a roadmap limitation that has since been fixed.**
+- ✅ [PRESS-0025] **CLAUDE.md records a roadmap limitation that has since been fixed.**
   § "A corrected `Layman:` cannot be put back the way it was" is stale.
   Measured 2026-08-26: `roadmap_log op:amend_field` shipped that day
   (ANTS-4667) and sets the layman column directly; on the four bullets
@@ -837,6 +837,11 @@
   first is missing). Fold the first into the same edit.
   Blocked-by: nothing.
   Started 2026-08-27. One correction to this bullet before the work: ants.gate.docsGlob is no longer unset -- it now reads docs/*|*.md|LICENSE|*.txt|*.rst, which is the hook's own fallback value. commits.md § 4.2 objects to a hook GUESSING by extension when nobody has told it, so the key being set satisfies the letter, and the value is right here for the reason CLAUDE.md now records rather than this bullet. What is still owed is the documenting: the key is machine-local and lost on a fresh clone.
+  Resolved (2026-08-27). The Layman: section is narrowed to the half that is still true, with both branches measured rather than asserted -- amend_field writes the column, refuses field_shadowed_by_body on a body-declared bullet and names amend_body; deleting the declaration is refused with render_gate_unmet. ants.gate.docsGlob is documented, together with core.hooksPath, which was the undocumented key that actually decides whether any hook fires.
+
+  The gate ran three loops to the standard cap and found fifteen defects, five of them in the edit this item made. The most consequential was not in that edit: the documented history sweep used git grep -l, which prints no matched line, so the rule that tells a reader which hits are expected could not be applied to it -- a real historical leak in CLAUDE.md or the gate script would have read as the self-reference. Fixed to the script's form; all three documented sweeps re-run clean as written.
+
+  PRESS-0032 filed rather than fixed: the gate script's own history pass runs a narrower pattern than its other two.
   **Layman:** A note in our own instructions says something cannot be done, which can now be done.
   Kind: doc-fix.
   Source: in-session-2026-08-26.
@@ -977,6 +982,36 @@
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
   Lanes: Face, Store.
+
+- 📋 [PRESS-0032] **The leak sweep's history pass covers fewer identifiers than its other two.**
+  scripts/local-ci.sh runs three leak surfaces. The tree and commit-message
+  passes are fed the full five-fragment pattern. The history pass runs
+  `git grep` over every revision with the three-fragment subset, and only
+  the lines that pass finds are re-matched against the full pattern -- so a
+  fragment outside the subset is never surfaced from history at all.
+
+  Confirmed by execution 2026-08-27: the three-fragment pattern does not
+  match the analytics id, so a commit whose files carried only that id
+  would go unreported by the history pass while the tree pass would catch
+  it in the working tree.
+
+  This may be deliberate -- walking every revision with a wider pattern is
+  the most expensive of the three passes, and the name fragments are the
+  higher-value subset. Nothing records that reasoning either way, which is
+  the actual defect: a narrowing nobody wrote down is indistinguishable
+  from an oversight.
+
+  Decide it, then either widen the history pattern or say in the script why
+  it is narrower. The documentation half was fixed in the same gate --
+  CLAUDE.md's hand-run history command used `git grep -l`, which prints no
+  matched line, so the "only expected hits are the pattern lines" rule
+  could not be applied to its output.
+
+  Blocked-by: nothing.
+  **Layman:** The check that stops private details reaching the public site looks for five things in today's files and only three in the older ones.
+  Kind: security.
+  Source: CLAUDE.md gate 2026-08-27, loop 3, code-side finding surfaced by two lanes and confirmed by execution.
+  Lanes: CI.
 
 ## Milestones
 
