@@ -338,7 +338,7 @@
   Source: design-2026-08-24 § The parts, § What may depend on what.
   Lanes: Builder.
 
-- 📋 [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
+- 🚧 [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
   Through GitHub's own web interface rather than git, so there is nothing
   for him to install (ADR-0002). It reads the current state, works out
   which files differ, and writes one commit of those -- deletions
@@ -393,11 +393,21 @@
   Settings and a folder and names no write, while fetch-back writes a fetched
   state to disk. Rule 8 shows the form the design uses when a part writes.
   That amendment is the design document's own gate and is not yet made.
+  Progress (2026-08-27): the nine invariant tests are written and
+  committed red, with a stub declaring the section 4.1 surface --
+  tests/test_publisher.py and src/pressless/publisher.py. INV-1 passes
+  against the stub, as the spec's section 7 says it will; the other nine
+  fail where they call into it. The implementation is what remains.
+  What that red run does NOT prove: every failure lands at the call into
+  the stub, so no assertion has executed yet. It is evidence the tests
+  reach the right entry points, not that any assertion catches a breach.
+  A mutation probe settles that and needs a green baseline, so it is owed
+  once the code lands.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
 
-- 📋 [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
+- 🚧 [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
   Read a previous commit's files back out of GitHub. On its own this is
   not S9: the Store still holds the text that caused the trouble, so his
   next publish would put it straight back. It is deliberately a capability
@@ -408,6 +418,10 @@
   own unit of work and closes with the code that spec governs; nothing about
   its scope moves. Section 4.5 and INV-8 are its half of the contract, and
   the user settled its undo semantics on the same day.
+  Progress (2026-08-27): its half of the umbrella contract is under test.
+  INV-8's two tests -- test_fetch_previous_names_its_source and
+  test_first_commit_has_no_previous_state -- are committed red in
+  tests/test_publisher.py, against a stub. fetch_previous is unimplemented.
   **Layman:** Reads an earlier version of the site back out of GitHub -- half of what undo needs.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
