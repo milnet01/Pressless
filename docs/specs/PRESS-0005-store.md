@@ -1,6 +1,7 @@
 # PRESS-0005 — The Store: one file per entry, drafts kept apart
 
 **Status:** accepted (2026-08-27). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A calm cap: under half of the last loop's findings landed on text the run itself wrote, so the document held more defects than the cap held loops. Implementation is the third reviewer.
+**Amended 2026-08-28, after implementation.** It was the third reviewer and it found two false claims: §3 decision 5 said nothing in the archive collides, and §10 said the round trip catches a collision. Both corrected. No line of the Store's contract changed, so the gate did not re-arm.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
 § Where everything sits on disk; ADR-0001).
@@ -93,13 +94,15 @@ and are marked so.
    the live site requires.** Dating the address means the site would
    allow one slug per day; the Store allows one altogether, because
    one flat folder per kind is what makes S3's "ordinary folder"
-   something a person can browse. Nothing in the archive collides —
-   measured over everything Import brings, which `docs/design.md`
-   § What may depend on what makes the published entries plus the
-   drafts and private posts, not the published alone.
-   `tests/test_store_archive.py` covers all three. The cost is that an
-   entry cannot reuse a slug from an earlier year, and that Import
-   must stop rather than overwrite if one ever does.
+   something a person can browse. **The archive does not satisfy this
+   rule**, which implementing the spec found: one slug is wanted both by
+   a published entry and by a draft whose post-id fallback resolves to
+   the same string. Both survive here, in different folders, so nothing
+   is overwritten — but Import has one address for two entries.
+   `tests/test_store_archive.py` reports it. The cost is that an entry
+   cannot reuse a slug from an earlier year, and that Import must stop
+   rather than overwrite — a case PRESS-0007 now has to handle rather
+   than merely guard against.
    *Decided in this spec.*
 
 ## 4. Design
@@ -542,7 +545,8 @@ imports.
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it is skipped wherever the export is absent, so a green CI run says nothing about it** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
-| That no two entries in the archive want one slug (§3 decision 5) | `tests/test_store_archive.py`, which writes the whole archive through the Store and reads it back — a collision loses an entry and the round trip fails |
+| That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |
+| That no two entries want one slug ACROSS the folders (§3 decision 5) | **nothing can** — both files survive in different folders, so no round trip can fail on it. The archive test reports the one the archive has; PRESS-0007 is where it is resolved |
 | That Import stops rather than overwriting if two entries ever do collide (§3 decision 5) | **nothing here** — `write` is create-or-replace by design, so the Store cannot tell a correction from a collision. PRESS-0007 is where that check belongs |
 | That the Builder reads only the published folder (§3 decision 2) | **nothing here** — the Store cannot check who reads it. PRESS-0008 is where a breach would show, and S7 rests on it |
 | That callers keep decision 5's Store-wide uniqueness | **half** — INV-10 catches a move onto an occupied slug, which is where the Store can see one. `write` does not look across folders by design, so a caller that never asks `exists` collides silently; PRESS-0007 and PRESS-0012 are where that is kept |

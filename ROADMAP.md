@@ -264,7 +264,7 @@
   Source: design-2026-08-24 § The parts, ADR-0001.
   Lanes: Marks.
 
-- 📋 [PRESS-0005] **The Store: one file per entry, with drafts kept apart from published.**
+- ✅ [PRESS-0005] **The Store: one file per entry, with drafts kept apart from published.**
   UTF-8 with LF line endings written explicitly, because Windows would
   otherwise rewrite them and every publish would look as though it touched
   the whole site. A short header, a blank line, then the body verbatim.
@@ -283,6 +283,12 @@
   docs/specs/PRESS-0005-store.md. Two cold-eyes loops to the spec cap,
   three lanes each, 22 verified findings all fixed. Status stays planned
   -- no code yet.
+  Resolved (2026-08-28): src/pressless/store.py, with
+  tests/test_store.py and tests/test_store_archive.py. All ten invariants
+  green. The whole archive round-trips with no field changed.
+  mutation_probe killed nine of ten routes; the survivor is the
+  file-name-against-Slug-header gap the spec's own coverage table already
+  records as covered by nothing.
   **Layman:** Every entry is an ordinary text file in an ordinary folder, openable in Notepad, and unfinished ones are kept off the web.
   Kind: implement.
   Source: design-2026-08-24 § Persistence, § Where everything sits on disk.
@@ -318,6 +324,13 @@
   without it the first publish rebuilds a site that has forgotten the old
   entries.
   Blocked-by: PRESS-0005, PRESS-0006.
+  Progress (2026-08-28): PRESS-0005's archive run found one slug wanted
+  by two entries -- a published entry, and a draft with no slug whose
+  post-id fallback resolves to the same string. They land in different
+  folders, so the Store loses neither, but Import has one address for two
+  entries and must stop rather than overwrite. Deciding which entry keeps
+  the slug is this item's. PRESS-0005 §3 decision 5 said nothing in the
+  archive collides; that claim is now corrected.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -1104,6 +1117,26 @@
   Kind: investigate.
   Source: versioning gate on PRESS-0033, loops 2 and 3.
   Lanes: docs.
+
+- 📋 [PRESS-0035] **The Marks archive test has never run: it looks for the generator one folder too high.**
+  tests/test_marks_archive.py resolves the sibling generator at
+  parents[2]/tools, which is one level above the workspace that holds it,
+  so the file is never found. _load_build_blog() catches every exception
+  and returns None, and the test then skips with a message saying the
+  generator is not on this machine -- which is false here. So PRESS-0004
+  INV-5, which its own spec calls the proof of the migration's S2, has
+  produced no result on any machine, and the skip is indistinguishable
+  from the expected one.
+
+  tests/test_store_archive.py finds the same file by globbing one level
+  deeper, which is the fix; that test is the evidence the path is
+  reachable. Making it run may turn it red, which is why this is its own
+  item rather than a change inside PRESS-0005.
+
+  Blocked-by: nothing.
+  **Layman:** The test that proves twelve years of writing survives the move has never actually run once -- it looks for the old site's code in the wrong folder and quietly skips instead of saying so.
+  Kind: fix.
+  Source: in-session-2026-08-28, found while building PRESS-0005.
 
 ## Milestones
 

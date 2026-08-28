@@ -17,6 +17,9 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Store: one file per entry, with drafts kept apart from published.** (PRESS-0005)
+  Every entry is an ordinary text file in an ordinary folder, openable in Notepad, and unfinished ones are kept off the web.
+
 - **Pressless can ask Google Analytics how the site is being read** (PRESS-0019)
   Fetches the visitor numbers Google already collects -- how many
   people, and which countries they read from -- ready for the dashboard

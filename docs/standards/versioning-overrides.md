@@ -44,9 +44,11 @@ that bumps the MINOR and resets the PATCH (`versioning.md` § 4).
 - **Where the Store keeps things.** That drafts sit outside the site
   folder, apart from published work, is already decided by
   `docs/design.md` § Where everything sits on disk, and S7 rests on it.
-  What PRESS-0005 and PRESS-0006 still choose is the layout inside
-  Pressless's own folder — listed now because it is harder to unmake
-  than to make.
+  PRESS-0005 has since chosen the entry half of the layout inside
+  Pressless's own folder: `published/` and `drafts/`, one `.txt` per
+  entry named by its slug. That is now a breaking surface rather than
+  an open choice. PRESS-0006 still chooses the rest — the fixed pages,
+  templates, page furniture, comments and photographs.
 - **How an entry names a photograph** — not built yet (PRESS-0016), for
   the same reason.
 

@@ -3,9 +3,9 @@
 ## Where this project is
 
 **State:** 5 — Building. **In flight:** nothing. `PRESS-0001`,
-`PRESS-0002`, `PRESS-0004`, `PRESS-0009`, `PRESS-0010`, `PRESS-0019`,
-`PRESS-0024`, `PRESS-0025`, `PRESS-0026`, `PRESS-0033` and
-`PRESS-0034` are ✅. Run
+`PRESS-0002`, `PRESS-0004`, `PRESS-0005`, `PRESS-0009`, `PRESS-0010`,
+`PRESS-0019`, `PRESS-0024`, `PRESS-0025`, `PRESS-0026`, `PRESS-0033`
+and `PRESS-0034` are ✅. Run
 `python3 -m pytest` for where
 code stands, and the roadmap for what is queued, blocked or newly filed.
 
@@ -89,13 +89,13 @@ which is the check a markdown edit in this repository can actually
 breach, and no test reads a document as data. Narrow it if either stops
 being true — and a narrowing reverts on any clone where the key is unset.
 
-**One test is skipped by default and it is the most important one.**
-`tests/test_marks_archive.py` proves S2 against the real WordPress
-export, which is personal data and cannot live in a public repository —
-so it runs only where that file is, and a green CI run says nothing
-about it. The gate points `PRESSLESS_ARCHIVE` at a path held in a
-machine-local git config key, so it runs here without that path entering
-this repository:
+**Two tests are skipped by default and they are the most important
+ones.** `tests/test_marks_archive.py` and `tests/test_store_archive.py`
+prove S2 against the real WordPress export, which is personal data and
+cannot live in a public repository — so they run only where that file
+is, and a green CI run says nothing about either. The gate points
+`PRESSLESS_ARCHIVE` at a path held in a machine-local git config key,
+so they run here without that path entering this repository:
 
 ```bash
 git config ants.pressless.archive /path/to/wordpress-export.xml
