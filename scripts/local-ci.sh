@@ -29,6 +29,9 @@ fail() { printf 'FAILED: %s\n' "$1" >&2; exit 1; }
 # needs no path list and no line numbers, so it cannot go stale.
 step "leak sweep"
 PAT='charl|jordaan|18down|G-Y7N2F5SNY2|192\.168'
+# All three surfaces search PAT. SELF is not a second pattern: it is the
+# literal fragment every line that merely QUOTES the pattern contains, which
+# is what the self-exclusion below matches on.
 SELF='charl|jordaan|18down'
 # Each surface is fed in as text and matched here, so all three are matched the
 # same way -- and the commit-message surface has no matcher of its own.
@@ -41,7 +44,7 @@ scan() {
 git grep -n -iE "$PAT" -- . | scan "tree"
 git log --all --format='%H %s%n%b'  | scan "commit messages"
 # shellcheck disable=SC2046  # the revision list must expand into arguments
-git grep -n -iE "$SELF" $(git rev-list --all) -- . | scan "history"
+git grep -n -iE "$PAT" $(git rev-list --all) -- . | scan "history"
 
 if (( DOCS_ONLY )); then
     printf '\ndocumentation-only: no test here reads a document, so nothing else to run.\n'

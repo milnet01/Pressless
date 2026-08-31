@@ -195,7 +195,7 @@ And sweep the history too, not just the tree — that is the mistake this
 whole section exists to prevent:
 
 ```
-git grep -n -iE "charl|jordaan|18down" $(git rev-list --all) -- . \
+git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" $(git rev-list --all) -- . \
   | grep -vF 'charl|jordaan|18down'
 ```
 
