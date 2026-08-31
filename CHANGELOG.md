@@ -82,6 +82,11 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **CI runs the suite in random order, as the maintainer's machine already did** (PRESS-0027)
+  pytest-randomly is declared in the dev extra rather than merely
+  installed locally, so the shared gate script no longer runs the
+  suite two different ways.
+
 - **The design now says what the publishing part may write, and where it goes.** (PRESS-0026)
   The rule permitted reading only, while fetching back a previous state
   writes files to disk. It now names that write and pins where it lands --

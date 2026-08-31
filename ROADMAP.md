@@ -901,7 +901,7 @@
   Kind: doc.
   Source: PRESS-0009 spec section 11, surfaced 2026-08-26 and not applied.
 
-- 📋 [PRESS-0027] **The suite runs in a different order here than in CI.**
+- ✅ [PRESS-0027] **The suite runs in a different order here than in CI.**
   pytest-randomly is installed on the maintainer's machine and auto-loads,
   so the suite runs in a random order here. CI installs only the dev extra
   -- pytest and ruff -- so it runs in file order. The gate script is shared
@@ -922,6 +922,13 @@
   and the claim was checked rather than taken.
 
   Blocked-by: nothing.
+  Resolved (2026-08-31): took the bullet's own better option and
+  declared the plugin in the dev extra, so the stronger check is the
+  shared one. CI installs that extra, so both sides now randomise, and
+  the seed printed in the run header reproduces any failure. The order
+  dependence this could expose was looked for before declaring it --
+  five seeds without the archive and two with it, all green. CLAUDE.md's
+  list of what the gate needs named two tools and now names three.
   **Layman:** Tests run in a random order on the maintainer's machine and a fixed order on GitHub, so a failure in one place may not show up in the other.
   Kind: test.
   Source: observed while implementing PRESS-0009, 2026-08-27.
