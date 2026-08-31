@@ -95,3 +95,11 @@ appears once something has actually shipped.)
 - **The roadmap is served from the Ants roadmap store rather than from ROADMAP.md.**
   The file is now a generated render of the store, so a hand edit to it
   is discarded by the next write.
+
+### Fixed
+
+- **The Marks archive conformance test now runs instead of always skipping** (PRESS-0035)
+  It resolved the sibling generator one directory too high, so the
+  lookup failed and the test skipped with a message saying the
+  generator was not on the machine. INV-5 had produced no result
+  anywhere; it now runs and passes.

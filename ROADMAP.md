@@ -1118,7 +1118,7 @@
   Source: versioning gate on PRESS-0033, loops 2 and 3.
   Lanes: docs.
 
-- 📋 [PRESS-0035] **The Marks archive test has never run: it looks for the generator one folder too high.**
+- ✅ [PRESS-0035] **The Marks archive test has never run: it looks for the generator one folder too high.**
   tests/test_marks_archive.py resolves the sibling generator at
   parents[2]/tools, which is one level above the workspace that holds it,
   so the file is never found. _load_build_blog() catches every exception
@@ -1134,6 +1134,17 @@
   item rather than a change inside PRESS-0005.
 
   Blocked-by: nothing.
+  Resolved (2026-08-31): the loader now globs both shapes, as
+  tests/test_store_archive.py already did, and borrows that file's
+  _exec_module helper because ruff S112 rejects the inline
+  try/except/continue. INV-5 ran for the first time and came back
+  green: every raw-text entry in the archive matches wpautop(), no
+  mismatch, and both precondition sets are empty. It was expected to
+  go red and did not, so nothing further was filed. mutation_probe
+  against the shipped marks.py killed one escaping and two paragraph
+  mutants through this test alone. The unreachable-generator skip was
+  re-checked from a checkout where the sibling is absent and still
+  skips cleanly.
   **Layman:** The test that proves twelve years of writing survives the move has never actually run once -- it looks for the old site's code in the wrong folder and quietly skips instead of saying so.
   Kind: fix.
   Source: in-session-2026-08-28, found while building PRESS-0005.
