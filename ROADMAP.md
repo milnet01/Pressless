@@ -307,6 +307,18 @@
   Templates are entries that are never published, in the same marks as
   everything else.
   Blocked-by: PRESS-0005.
+  Progress (2026-08-31): spec accepted at
+  docs/specs/PRESS-0006-pages-furniture-comments.md. Two cold-eyes loops,
+  21 verified findings, all fixed; the run reached the spec cap of 2 and
+  the tail is empty. Two decisions worth knowing before building. The
+  comments file is JSON in a folder of its own rather than text beside the
+  entry, because a comment body may hold any line and a delimiter would
+  need inventing; replies are preserved, and the export spells a top-level
+  parent `0` where the Store wants it empty. And this spec settles only
+  WHERE a photograph's original sits -- loop 2 withdrew the naming rule to
+  PRESS-0016 after measuring that most of the archive's attachment names
+  cannot satisfy a slug. Status is not flipped: a spec being accepted is
+  not work having started.
   **Layman:** His About page, the bits that appear on every page, his starting templates and the old readers' comments all live beside his entries.
   Kind: implement.
   Source: design-2026-08-24 § Where the fixed pages live.
