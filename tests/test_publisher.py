@@ -67,7 +67,8 @@ def _blob_hash(data: bytes) -> str:
     out here rather than imported, so a change to the module's own hashing
     cannot silently validate itself (the same reasoning CLAUDE.md gives for
     FILE_NAME in test_credentials.py)."""
-    return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data,
+                        usedforsecurity=False).hexdigest()
 
 
 def _listing(entries: list[tuple[str, str]], truncated: bool = False) -> bytes:

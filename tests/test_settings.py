@@ -69,21 +69,6 @@ def _write(folder: Path, mapping) -> Path:
     return target
 
 
-def _valid_settings() -> Settings:
-    return Settings(
-        site_folder=Path("/home/writer/Pressless/site"),
-        repository="owner/owner.github.io",
-        daily_prompt_filter="dailyprompt-*",
-        untouchable=("CNAME", ".nojekyll", "README.md"),
-        credentials=Credentials(
-            store="keyring",
-            github_account="publishing-key",
-            google_account="analytics",
-        ),
-        analytics_property_id="123456789",
-    )
-
-
 # --------------------------------------------------------------- INV-1 ----
 
 # Network modules, and nothing else. `os` is NOT here: §4.4 requires it, and

@@ -305,7 +305,7 @@ def _parse(data: bytes) -> dict:
 def _cached(target: Path, days: int) -> Report | None:
     """The last reply for this window, or None.
 
-    Anything unreadable, unparseable or written for another window reads as
+    Anything unreadable, unparsable or written for another window reads as
     None: the cache is a copy of something Google can be asked for again, so a
     half-written one costs a request and nothing else (INV-14).
     """

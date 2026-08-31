@@ -293,10 +293,12 @@ _ROW_BY_NAME: dict[str, Mark] = {row.name: row for row in MARKS}
 
 # Longest `opens` first, so '**' is tried before '*' and '{accent}' before '{'.
 _WRAP_MARKS: tuple[Mark, ...] = tuple(
-    sorted((row for row in MARKS if row.kind == "wrap"), key=lambda row: len(row.opens), reverse=True)
+    sorted((row for row in MARKS if row.kind == "wrap"),
+           key=lambda row: len(row.opens), reverse=True)
 )
 _BLOCK_MARKS: tuple[Mark, ...] = tuple(
-    sorted((row for row in MARKS if row.kind == "block"), key=lambda row: len(row.opens), reverse=True)
+    sorted((row for row in MARKS if row.kind == "block"),
+           key=lambda row: len(row.opens), reverse=True)
 )
 
 

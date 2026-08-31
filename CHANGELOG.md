@@ -103,6 +103,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Five findings from the first whole-tree static-analysis sweep** (PRESS-0038)
+  A dead case pattern in the pre-commit hook, a git blob hash that
+  would refuse to run under a FIPS policy, a leftover test helper, a
+  misspelling, and three lines over the project's own column limit.
+  None changes what the app does.
+
 - **The leak sweep searches every pattern on all three surfaces** (PRESS-0032)
   The history pass searched a subset, so a revision whose files
   carried only the analytics id or a private address was reported by

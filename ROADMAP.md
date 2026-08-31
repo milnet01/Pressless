@@ -1227,6 +1227,33 @@
   Kind: doc.
   Source: in-session-2026-08-31, met while gating PRESS-0006.
 
+- ✅ [PRESS-0038] **Close the check-code whole-tree sweep: five verified findings fixed, six dismissed.**
+  Fifteen tools ran; only shfmt was owed a line and skipped, for want
+  of an .editorconfig section selecting *.sh. Fixed: a dead `*/-` case
+  pattern in .githooks/pre-commit that `*-` already subsumed (verdict
+  diff over the real population moved 0 of 7); `usedforsecurity=False`
+  on both copies of the git blob hash, which leaves the digest
+  byte-identical on empty, text and binary input so PRESS-0009 INV-4
+  holds, and lets the hash work under a FIPS policy; an unused
+  `_valid_settings` helper left over from the PRESS-0001 red run;
+  `unparseable` -> `unparsable`; three lines over the project's own
+  declared 100-column limit.
+
+  Six findings dismissed to .ants_review_falsepos.jsonl with reasons:
+  bandit B310 / ruff S310 (every URL is built from a hardcoded https
+  module constant), B314 defusedxml (the input is the writer's own
+  local export, in tests skipped by default), four of the six vulture
+  hits (spec-declared surface, an unbuilt consumer, and framework
+  dispatch pytest and HTMLParser perform by name), B905 zip strict
+  (the unequal-length case is handled deliberately two lines below),
+  and the mypy/pyright correlated-optional and test-kwargs clusters.
+
+  Gate green after the fixes: 66 tests collected and passed, leak
+  sweep clean on all three surfaces.
+  **Layman:** The automatic code checkers were run over the whole project; five real problems were fixed and six false alarms were written down so nobody re-investigates them.
+  Kind: audit-fix.
+  Source: check-code --tree 2026-08-31.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how

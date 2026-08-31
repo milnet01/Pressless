@@ -101,7 +101,8 @@ def test_every_newline_survives():
     assert out.count("<br>") == 2, (
         f"expected 2 <br> for 3 lines, got {out.count('<br>')} in: {out!r}"
     )
-    for line in ("first light over the water", "still air, no bird sings", "and the tide does not answer"):
+    for line in ("first light over the water", "still air, no bird sings",
+                 "and the tide does not answer"):
         assert line in out, f"line {line!r} is missing from the rendered output: {out!r}"
 
 

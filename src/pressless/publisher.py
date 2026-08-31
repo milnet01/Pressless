@@ -146,7 +146,8 @@ def blob_hash(data: bytes) -> str:
     three agree. This is what lets an unchanged file be recognised without
     downloading it.
     """
-    return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data,
+                        usedforsecurity=False).hexdigest()
 
 
 def publish(settings: Settings, folder: Path, token: str, message: str,
