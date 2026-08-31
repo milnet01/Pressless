@@ -49,23 +49,44 @@ PRESSLESS_ARCHIVE = os.environ.get("PRESSLESS_ARCHIVE")
 pytestmark = pytest.mark.archive
 
 
-def _load_build_blog():
-    """Load the sibling generator by path. Returns None where it is not
-    on this machine, so the caller can skip rather than error."""
-    tools_dir = Path(__file__).resolve().parents[2] / "tools"
-    module_path = tools_dir / "build_blog.py"
-    if not module_path.is_file():
-        return None
-    spec = importlib.util.spec_from_file_location("press_test_build_blog_oracle", module_path)
-    if spec is None or spec.loader is None:
-        return None
-    module = importlib.util.module_from_spec(spec)
+def _exec_module(spec, module) -> bool:
+    """Run a module loaded by path. Any failure means "no oracle on this
+    machine", which is a skip rather than a test failure."""
     try:
         spec.loader.exec_module(module)
     except Exception:  # noqa: BLE001 -- any failure here means "no oracle", not a test failure
-        return None
-    sys.modules.pop("press_test_build_blog_oracle", None)
-    return module
+        return False
+    return True
+
+
+def _load_build_blog():
+    """Load the sibling generator by path. Returns None where it is not
+    on this machine, so the caller can skip rather than error.
+
+    The workspace holding it is found relatively and never named: its
+    directory name does not belong in a public repository. Both shapes are
+    tried, because the generator may sit beside this repository or inside a
+    sibling workspace one level down.
+    """
+    siblings = Path(__file__).resolve().parents[2]
+    candidates = sorted(siblings.glob("tools/build_blog.py"))
+    candidates += sorted(siblings.glob("*/tools/build_blog.py"))
+    for module_path in candidates:
+        spec = importlib.util.spec_from_file_location("press_test_build_blog_oracle", module_path)
+        if spec is None or spec.loader is None:
+            continue
+        module = importlib.util.module_from_spec(spec)
+        loaded = _exec_module(spec, module)
+        sys.modules.pop("press_test_build_blog_oracle", None)
+        if not loaded:
+            continue
+        if (
+            callable(getattr(module, "wpautop", None))
+            and isinstance(getattr(module, "NS", None), dict)
+            and getattr(module, "HAS_TAGS", None) is not None
+        ):
+            return module
+    return None
 
 
 def _import_population(channel: ET.Element, ns: dict) -> list[str]:
