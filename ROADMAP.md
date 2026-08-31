@@ -1010,7 +1010,7 @@
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
   Lanes: Face, Store.
 
-- 📋 [PRESS-0032] **The leak sweep's history pass covers fewer identifiers than its other two.**
+- ✅ [PRESS-0032] **The leak sweep's history pass covers fewer identifiers than its other two.**
   scripts/local-ci.sh runs three leak surfaces. The tree and commit-message
   passes are fed the full five-fragment pattern. The history pass runs
   `git grep` over every revision with the three-fragment subset, and only
@@ -1035,6 +1035,17 @@
   could not be applied to its output.
 
   Blocked-by: nothing.
+  Resolved (2026-08-31): decided by measurement rather than by
+  argument. The wide and narrow patterns time the same over this
+  repository's revisions, so the expense that would have justified a
+  deliberate narrowing does not exist, and the history pass now
+  searches the same pattern as the other two. The fix was proved in a
+  throwaway repository: a revision adding the analytics id, followed by
+  one deleting the file, is invisible to both the tree pass and the old
+  history pass and is caught by the new one. SELF is no longer a second
+  search pattern -- only the self-exclusion literal it was already used
+  as. CLAUDE.md's hand-run command carried the same narrowing and was
+  widened with it.
   **Layman:** The check that stops private details reaching the public site looks for five things in today's files and only three in the older ones.
   Kind: security.
   Source: CLAUDE.md gate 2026-08-27, loop 3, code-side finding surfaced by two lanes and confirmed by execution.

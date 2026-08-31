@@ -98,6 +98,11 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **The leak sweep searches every pattern on all three surfaces** (PRESS-0032)
+  The history pass searched a subset, so a revision whose files
+  carried only the analytics id or a private address was reported by
+  no surface once the file itself was gone.
+
 - **The Marks archive conformance test now runs instead of always skipping** (PRESS-0035)
   It resolved the sibling generator one directory too high, so the
   lookup failed and the test skipped with a message saying the
