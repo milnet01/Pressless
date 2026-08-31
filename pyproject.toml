@@ -20,7 +20,12 @@ dependencies = ["keyring>=25"]
 # a ceiling: CI installs whatever is newest above them, so a release that
 # breaks us shows up here rather than months later.
 [project.optional-dependencies]
-dev = ["pytest>=9", "ruff>=0.16"]
+# pytest-randomly randomises test order. PRESS-0027: it was auto-loading on
+# the maintainer's machine and absent in CI, so the two ran the suite
+# differently. Declared rather than removed -- random order is the check
+# that catches a test passing only because an earlier one ran first, and
+# the seed it prints in the run header reproduces any failure.
+dev = ["pytest>=9", "pytest-randomly>=4", "ruff>=0.16"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

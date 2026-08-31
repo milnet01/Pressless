@@ -45,11 +45,11 @@ records it rather than restating why.
 Python. One runtime dependency today — `keyring`, the operating system's
 credential store, reached only by `credentials.py` (PRESS-0002); `Pillow`
 joins it when photographs land (§ Stack). That is present state, not a
-cap. The gate needs `pytest` and `ruff` on top, and PyInstaller is a
-build-time packager that belongs beside those rather than in
-`dependencies`. `pip install -e '.[dev]'` installs what CI runs. `pyproject.toml`
-holds the packaging and the pytest settings; `src/` is on the path
-through it, so there is no install step beyond that one.
+cap. The gate needs `pytest`, `pytest-randomly` and `ruff` on top, and
+PyInstaller is a build-time packager that belongs beside those rather
+than in `dependencies`. `pip install -e '.[dev]'` installs what CI runs.
+`pyproject.toml` holds the packaging and the pytest settings; `src/` is
+on the path through it, so there is no install step beyond that one.
 
 ```bash
 ./scripts/local-ci.sh      # the gate: leak sweep, lint, suite
