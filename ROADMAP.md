@@ -1179,6 +1179,54 @@
   Kind: fix.
   Source: in-session-2026-08-28, found while building PRESS-0005.
 
+- 📋 [PRESS-0036] **Two accepted documents disagree with PRESS-0006's spec, and neither is corrected.**
+  PRESS-0006's spec records both in its § 11 and corrects neither,
+  because each belongs to a document with its own accepted status.
+
+  `docs/design.md`, under *What Import brings across*, cites the count of
+  published comments in the sentence telling Import to carry them. Import's
+  population is published, draft AND private -- PRESS-0005 § 7 fixes that --
+  so the number of comments Import carries is larger than the figure quoted
+  there. Measured while gating PRESS-0006; the published-only figure is what
+  the document names.
+
+  `docs/specs/PRESS-0005-store.md` § 1 lists the photographs among what
+  PRESS-0006 covers. PRESS-0006 settles only where an original sits; its
+  name and everything else is PRESS-0016's, which is what
+  `versioning-overrides.md` § The breaking surfaces already says.
+
+  Neither changes what anyone builds today, which is why the gate left them.
+  Both will mislead the next reader.
+
+  Blocked-by: nothing.
+  **Layman:** Two documents we already signed off say things the new plan proved wrong; nobody has gone back to fix them.
+  Kind: doc-fix.
+  Source: in-session-2026-08-31, found while gating PRESS-0006.
+
+- 📋 [PRESS-0037] **A spec's mechanical checks report themselves clean when they did not run.**
+  `spec_lint` returns `ok: true` with `findings: []` while its three
+  test-surface checks are listed in `skipped[]` and `surfaces_checked` is
+  false: the verb resolves a surface only in a `tests/features/<name>/`
+  shape, which this project does not use, so no spec here can ever turn
+  that check on. `doc_citations` returns `count: 0` and says in its own
+  hint that this is SILENT rather than clean -- it read backticked spans it
+  could not resolve.
+
+  So a clean-looking envelope covers checks that never ran, and the work
+  falls to the session: resolve the `*Test:*` clauses by hand, and resolve
+  the cited symbols by hand. That was done for PRESS-0006 and is recorded
+  in its packet, but nothing tells the next spec author to do it.
+
+  Write it into CLAUDE.md beside the existing test traps -- it is the same
+  class as `test_marks_is_pure` passing against an empty file. Filed rather
+  than written now because adding an instruction to CLAUDE.md re-arms rule
+  14's gate, which is a cost this session should not spend silently.
+
+  Blocked-by: nothing.
+  **Layman:** Two of our automatic document checks return a tick even when they checked nothing, and a future session will read that tick as a pass.
+  Kind: doc.
+  Source: in-session-2026-08-31, met while gating PRESS-0006.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
