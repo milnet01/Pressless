@@ -2244,6 +2244,197 @@
   Kind: investigate.
   Source: review-code 2026-08-31 synthesis part 4 -- tool gaps.
 
+- 📋 [PRESS-0072] **If GitHub rejects mode and type on a deletion tree entry, every publish containing a deletion fails, and nothing here can find out.**
+  The sharpest thing the sweep could NOT settle, and it had no item
+  until now.
+
+  publisher.py:198-200 sends a removal as {"path": ..., "mode":
+  "100644", "type": "blob", "sha": None}. GitHub documents deletion as
+  setting sha to null against a base_tree. Whether it ALSO accepts
+  mode and type on that entry is not stated, and PRESS-0009 10 declares
+  the live API an unrunnable region -- so no test in this repository
+  can answer it and the transport double never exercises it.
+
+  If GitHub rejects the entry, every publish containing a deletion
+  fails at the tree step. That fails SAFELY -- before the reference
+  update, so the site is unchanged -- but it means the delete half of
+  publish has never executed successfully anywhere, and the first real
+  publish that removes a file is the first test of it.
+
+  Pairs with PRESS-0045, the missing Content-Type: both are
+  assumptions about GitHub's tolerance that nothing local can check.
+
+  Route: one manual call against a scratch repository, or a recorded
+  fixture. Cheap to answer, and the answer decides whether PRESS-0015
+  (undo) rests on a working mechanism.
+  **Layman:** The way the app tells GitHub to delete a file may not be a form GitHub accepts, and there is no way to check without trying it for real.
+  Kind: investigate.
+  Source: review-code 2026-08-31 lane publisher -- open question.
+
+- 📋 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
+  Residue from two lanes' dim-7 findings that PRESS-0040 (the
+  http.client family) does not cover.
+
+  PUBLISHER
+  1. :280 -- f"git/blobs/{entry['sha']}" raises a bare KeyError on a
+  tree entry lacking sha. _blobs_in:386 correctly uses .get; this site
+  does not. Use _required.
+  2. :284 -- target.write_bytes in fetch_previous raises a bare OSError
+  on a full disk.
+  3. :397 -- path.read_bytes in _local_files raises a bare OSError on an
+  unreadable local file.
+  All three escape PRESS-0009 4.1's "every failure ... is one of the
+  types above".
+
+  CREDENTIALS
+  4. keyring's core._load_keyring_path prepends a keyring-path value
+  from ~/.config/python_keyring/keyringrc.cfg to sys.path before
+  importing the named class. So keyring.get_keyring() can execute code
+  from a user config file. Inherited from the library and nothing this
+  module can prevent beyond PRESS-0050's guard, which converts the
+  failure into a typed one but does not stop the import. Recorded so it
+  is a known property rather than a surprise.
+
+  5. OPEN, and it decides whether PRESS-0051 is live or latent: does
+  the Face format __cause__ when it logs a CredentialError? PRESS-0011
+  and PRESS-0003 own the answer. If it does, a backend message quoting
+  the secret reaches the rolling log.
+  **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
+
+- 📋 [PRESS-0074] **Eight smaller lane findings and open questions that no other item picked up.**
+  STORE
+  1. _parse_list drops whitespace-only values and strips each, so
+  categories=(" ",) round-trips to () and ("a ",) to ("a",). INV-9
+  refuses neither.
+  2. read accepts a slug the Store can never write back: only
+  stem-versus-header equality is checked, not _LEGAL_SLUG, so a
+  hand-created My_Entry.txt reads fine and fails on save.
+  3. mkstemp creates at 0600, so every save silently narrows an
+  existing entry's permissions from the umask default. Harmless, and
+  nothing documents it. Same shape as the settings-side note in
+  PRESS-0057.
+  4. OPEN: exists() raises on an illegal slug via path_for, while
+  PRESS-0005 4.1 types it -> bool and 6 does not list it among the
+  raising calls. PRESS-0012 asking "is this proposed slug free?" about
+  user-typed text gets an exception rather than False.
+  5. OPEN, PRESS-0006: a comments object MISSING one of the six fields
+  has no row in 6, which specifies only the extra-field case.
+
+  MARKS
+  6. Mark.arg is stored as a pattern STRING, so every brace on every
+  line pays an re-cache lookup rather than using a compiled object.
+  re's 512-entry cache makes this cheap, not free.
+  7. {accent}{/} parses to a Span with no children and emits an empty
+  coloured span. Harmless; not in 6.
+
+  INSIGHTS
+  8. OPEN: is AGGREGATE_PREFIX (:59-62) live or inert? The comment
+  claims Google returns aggregate rows "in the rows themselves"; the
+  lane's reading of v1beta is that RESERVED_TOTAL appears in the
+  totals[] rows instead, which would make the filter at :267 dead code
+  AND the comment wrong about the external API. Behaviourally free, but
+  _total's hard failure rests on that model.
+  9. OPEN: nothing lets the writer force a refresh -- read() has no
+  bypass for max_age_seconds, while PRESS-0020 shows when the numbers
+  were last updated, which invites a refresh button this signature
+  cannot serve.
+  **Layman:** A tidy-up list of small things the review noticed that did not fit anywhere else.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes store/marks/insights -- residue.
+
+- 📋 [PRESS-0075] **The test tree is larger than the code it tests and has never been reviewed, and three invariants are already known to be unfalsifiable.**
+  tests/ is 4,298 lines against 2,256 lines of src/. No sweep has ever
+  looked at it: check-code decides tool findings, review-code's scope
+  is production code, and review-tests has not been run on this
+  project.
+
+  This is not speculative -- the code sweep already found three
+  invariants whose test surface cannot observe the thing the invariant
+  asserts, each found by a different lane:
+
+    PRESS-0001 INV-5  fixture patches os.replace, so it cannot see the
+                      missing fsync that makes 4.4's claim untrue
+    PRESS-0002 INV-6  uses patched stores, so it proves only that the
+                      module's own literals are clean
+    PRESS-0006 INV-11 as written cannot pass against correct code
+
+  Three in one sweep, from lanes that were not looking for them,
+  suggests the population is larger.
+
+  CLAUDE.md already records two more of this kind: test_marks_is_pure
+  passes against any module importing nothing forbidden, an empty file
+  included; and with marks.py absent the suite errors at COLLECTION, so
+  a run that says nothing failed may have run nothing.
+
+  Route: review-tests. Baseline for its run: 66 collected, 66 passed
+  with PRESSLESS_ARCHIVE set; 62 passed and 4 skipped without it.
+  **Layman:** The tests have never been checked, and we already know three of them cannot fail even if the thing they check is broken.
+  Kind: test.
+  Source: review-code 2026-08-31 synthesis part 5 -- coverage gap.
+
+- 📋 [PRESS-0076] **Nothing has ever checked whether this project's dependencies, runtime, runner image or action pins are current.**
+  Explicitly out of scope for the 2026-08-31 sweep and recorded here so
+  the gap is not mistaken for a clean result. check-code holds pinact
+  but no signal selects it, so an ordinary run does not answer the pin
+  question at all, and review-code's scope excludes versions.
+
+  The surfaces that exist today:
+
+    pyproject.toml   keyring>=25 (the sole runtime dependency), plus
+                     pytest, pytest-randomly and ruff in [dev]
+    ci.yml           python-version 3.13, runs-on ubuntu-latest,
+                     actions/checkout and actions/setup-python, both
+                     already pinned to a commit sha with a version
+                     comment -- so the question is staleness rather
+                     than mutability
+    future           Pillow joins when photographs land (PRESS-0016),
+                     PyInstaller when packaging lands (PRESS-0022)
+
+  Note pyproject.toml already carries a hold reason for the keyring
+  floor -- 25 is the oldest release where .backends resolves on a chain
+  -- which is what dependencies.md asks for, so that pin is documented
+  rather than accidental.
+
+  Route: check-dependencies. Worth running before PRESS-0022, since
+  packaging is where a runtime version stops being a detail.
+  **Layman:** Nobody has checked whether the outside pieces the app relies on are up to date.
+  Kind: chore.
+  Source: review-code 2026-08-31 synthesis -- coverage gap.
+
+- 📋 [PRESS-0077] **One gate tool cannot run at all for want of a config section, and another runs against defaults nobody chose.**
+  Both reported by the whole-tree check-code run and neither is a code
+  defect. Filed because a tool that cannot run looks exactly like a
+  tool that found nothing.
+
+  1. SHFMT NEVER RUNS. It is skipped as "no config to run against",
+  correctly: .editorconfig has [*] indent_size = 2 plus sections for
+  *.md, Makefile, C/C++, Go and Python, and NONE whose glob selects
+  *.sh. check-code treats a blanket [*] as not a declaration for shell
+  -- deliberately, on a measurement where the loose reading produced
+  397 diff lines against a conforming project. So shell formatting is
+  checked by nothing. Fix: add an [*.sh] section stating the shell
+  style actually used (the hooks and local-ci.sh are 4-space), which
+  turns the tool on.
+
+  2. YAMLLINT HAS NO PROJECT CONFIG, so its defaults apply and it
+  reports 6 findings on .github/workflows/ci.yml: missing document
+  start at 4:1, truthy `on:` at 6:1 (a known GitHub Actions quirk that
+  is not a defect), two "too few spaces before comment", and two lines
+  over its 80-column default -- against a repository whose Python is
+  set to 100. Nobody chose 80 for YAML. Fix: a .yamllint pinning the
+  line length and disabling truthy for workflow files, or accept the
+  six and record that.
+
+  3. Related and already recorded in PRESS-0071 item 5: [tool.ruff]
+  sets line-length and target-version but no select, so the declared
+  100-column limit is not enforced and bugbear and the bandit rules are
+  off.
+  **Layman:** One of the automatic checkers is switched off by accident, and another is complaining about things nobody decided were wrong.
+  Kind: chore.
+  Source: check-code --tree 2026-08-31 -- config recommendations.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
