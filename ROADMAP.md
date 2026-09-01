@@ -1276,6 +1276,32 @@
 
   The fix is one shared _atomic_write helper, which PRESS-0006 will
   need three more copies of if it is not written first.
+
+  AND THE COPIES HAVE ALREADY DIVERGED -- a separate defect from the
+  missing fsync, filed here because it is the same four call sites and
+  the same fix. Verified in source: only store.py:246 passes
+  newline="\n". settings.py:192, credentials.py:242 and insights.py:362
+  do not, so on Windows those three write CRLF where store writes LF.
+
+  For settings and credentials that is harmless to JSON but means the
+  file PRESS-0001 4.2 calls a shape the installation carries between
+  machines is not byte-identical across them. For insights it is
+  harmless outright: the cache is never published and never diffed.
+
+  The point is that four copies of one idiom already disagree on one
+  parameter BEFORE PRESS-0006 adds three more, which is the argument
+  for extracting the helper now rather than later.
+
+  design.md's Persistence section states UTF-8 and LF line endings
+  written explicitly, unconditionally, so either those three sites are
+  wrong or the rule needs scoping to files git sees. The document side
+  is PRESS-0060.
+
+  EVERYTHING BELOW THIS LINE IS A GARBLED DUPLICATE OF THE THREE
+  PARAGRAPHS ABOVE AND SHOULD BE IGNORED. It was written with literal
+  backslash-n sequences instead of newlines by a bad tool payload, and
+  roadmap_log op:amend_body cannot match a backslash, so it cannot be
+  removed. Filed as Ants MCP feedback. Ignore from here to the end:\"a shape the installation carries between\nmachines\" is not byte-identical across them. For insights it is\nharmless outright -- the cache is never published and never diffed.\nThe point is that four copies of one idiom already disagree on one\nparameter BEFORE PRESS-0006 adds three more, which is the argument\nfor extracting the helper now rather than later.\n\ndesign.md's Persistence section states \"UTF-8, and LF line endings\nwritten explicitly\" unconditionally, so either the three sites are\nwrong or the rule needs scoping to files git sees -- the document\nside is PRESS-0060."
   **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
@@ -2434,6 +2460,41 @@
   **Layman:** One of the automatic checkers is switched off by accident, and another is complaining about things nobody decided were wrong.
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
+
+- 📋 [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
+  Raised as an open question by the publisher lane and not filed by
+  the first pass.
+
+  Verified in source:
+    untouchable=("CNAME",) protects remote "CNAME" -> True
+    untouchable=("CNAME",) protects local  "cname" -> False
+
+  _is_protected compares exactly. GitHub's paths are case-sensitive;
+  the Windows local filesystem is not. So a writer whose site folder
+  holds "cname" while the repository holds "CNAME" produces two
+  distinct paths: the local one is uploaded as a new file, and the
+  remote one appears in no local listing, which puts it in `removed`
+  unless the untouchable entry happens to match its exact casing.
+
+  That is the deletion PRESS-0009 2 calls unrecoverable, reached by a
+  difference in capitalisation.
+
+  Distinct from PRESS-0044, which is about the two diverged matchers
+  and fires on entry SHAPE. This one fires on entry CASE and would
+  survive that fix.
+
+  Not decided here because answering it needs the Setup spec
+  (PRESS-0021), which does not exist yet: whether Setup normalises what
+  it writes, and whether matching should be case-insensitive on Windows
+  only or everywhere, is a decision that belongs with the code that
+  derives the list.
+
+  Related and already filed: PRESS-0067 records the same
+  case-sensitivity shape in store.py, where a .TXT suffix makes
+  exists() true and list_slugs blind.
+  **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
+  Kind: investigate.
+  Source: review-code 2026-08-31 lane publisher -- open question.
 
 ## Milestones
 
