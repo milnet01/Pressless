@@ -1254,6 +1254,996 @@
   Kind: audit-fix.
   Source: check-code --tree 2026-08-31.
 
+- 📋 [PRESS-0039] **Four atomic writers call os.replace with no fsync, so three specs promise durability the code does not have.**
+  Found by three lanes independently -- the strongest signal in the
+  sweep. settings.py:192, credentials.py:242, store.py:246 and
+  insights.py:362 all use temp-plus-rename and none calls fsync.
+  rename(2) orders the namespace, not the data, so a power loss or
+  kernel panic can commit the rename before the blocks.
+
+  Three specs claim the protection: PRESS-0001 4.4 "never a truncated
+  one", PRESS-0005 INV-3 and 4.5 "the previous file rather than half an
+  entry", PRESS-0002 4.4. On ext4 the auto_da_alloc heuristic usually
+  covers it; that is the filesystem's luck rather than the code's, and
+  Windows is a first-class target.
+
+  Worst consequence is credentials': _write_file reads the file first
+  and does not catch, so a truncated one makes read() AND write() raise
+  permanently, with no message saying the recovery is deleting it.
+
+  NOT VISIBLE TO THE TEST SUITE: PRESS-0001 INV-5's fixture patches
+  os.replace, so the test that exists to prove this cannot see it.
+
+  The fix is one shared _atomic_write helper, which PRESS-0006 will
+  need three more copies of if it is not written first.
+  **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
+
+- 📋 [PRESS-0040] **Both network modules use except OSError as their typed-failure seam, and http.client.HTTPException is not one.**
+  Confirmed by execution: issubclass(http.client.HTTPException,
+  OSError) is False.
+
+  insights.py:222 and publisher.py:326 both catch OSError as the seam's
+  signal for "no answer". IncompleteRead (a truncated response body),
+  BadStatusLine, LineTooLong and InvalidURL all inherit from Exception.
+  urlopen can also raise a bare ValueError.
+
+  Both module docstrings state that every failure is one of the typed
+  exceptions; both are false.
+
+  In insights it skips the documented stale-cache fallback, so a writer
+  holding a good cache gets an unexpected-error screen instead of
+  yesterday's numbers marked stale. In publisher it is worse: on the
+  reference update it defeats OutcomeUnknown, which is the one place
+  the design has decided it must never guess.
+
+  Fix in _Urllib.request in both, catching (OSError,
+  http.client.HTTPException, ValueError) and re-raising as OSError, so
+  the seam contract is kept where it is implemented.
+  **Layman:** A half-received reply from the network escapes the app's error handling and shows an unexpected-error screen instead of the friendly message.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes insights/publisher.
+
+- 📋 [PRESS-0041] **Neither network module sets a urlopen timeout, so a black-holed connection hangs forever.**
+  Confirmed by execution: the string "timeout" appears nowhere in
+  either insights.py or publisher.py. urlopen with no timeout uses the
+  global default socket timeout, which is None unless something sets
+  one, and nothing in src/ does.
+
+  Not "slow" -- forever, with no cancellation path.
+
+  It defeats insights' stale-cache fallback and design.md rule 8's
+  promise that everything from S1 to S10 still works when Google is
+  unreachable, because the code never reaches the point of raising
+  Unreachable. In publisher, a hang on the PATCH means the writer never
+  learns whether the publish went out.
+
+  socket.timeout is a TimeoutError and therefore an OSError, so it maps
+  onto the existing Unreachable / OutcomeUnknown handling once set.
+  Expose it as a parameter so a test can drive it.
+
+  NO TOOL CATCHES THIS. Checked: bandit B113 (request_without_timeout)
+  reads the requests and httpx modules only -- its plugin source does
+  not mention urllib. This is a gap in the available tooling rather
+  than in how check-code was configured.
+  **Layman:** If the network goes strange in a particular way, the app stops responding and never recovers on its own.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes insights/publisher.
+
+- 📋 [PRESS-0042] **The owner-only guarantee on the fallback credentials file is asserted and never verified.**
+  The sweep's one raw CRITICAL, and it stays CRITICAL after
+  calibration.
+
+  ADR-0003 states a CAPABILITY test -- "where a file cannot be made
+  private to one user there is no fallback: setup stops and says so".
+  credentials.py:213 implements a PLATFORM proxy instead: it refuses
+  Windows and allows everything else.
+
+  tempfile.mkstemp requests 0600, but a mount's fmask / file_mode
+  overrides it on every filesystem that does not enforce POSIX modes --
+  vfat, exFAT, NTFS, CIFS/SMB and many FUSE mounts -- where the result
+  is typically 0644 or 0666 and chmod returns EPERM. os.replace carries
+  that permissive mode onto the target. credentials.py:231-245 never
+  stats the result, so write("file", ...) returns None for success with
+  the key readable by anyone on the machine.
+
+  WHY THIS IS NOT OUT OF SCOPE FOR A SINGLE-USER APP: PRESS-0002 3
+  decision 1 names the exact scenario as its own justification -- "the
+  writer chooses where Pressless sits, which may be a shared or
+  removable drive". Windows is refused for this reason; Linux on a USB
+  stick is the same defect and is allowed. 4.6's measurement was taken
+  on ext4 and is asserted, never checked, at runtime.
+
+  Fix: os.fstat(handle).st_mode & 0o077 on the mkstemp descriptor
+  BEFORE the secret is written into it; discard and raise NoStore where
+  any group or other bit is set. Checking the temp rather than the
+  target means the secret never touches a permissive filesystem at all,
+  and it costs one syscall on a path that already exists.
+
+  Pair with the read side: credentials.py:258 follows symlinks and
+  checks neither ownership nor mode, so on the same drive another user
+  can substitute a file and read() hands their token to the Publisher.
+  **Layman:** On some kinds of drive the file holding the publishing key can end up readable by anyone, and the app reports success anyway.
+  Kind: security.
+  Source: review-code 2026-08-31 lane credentials.
+
+- 📋 [PRESS-0043] **A missing or empty site folder deletes the whole published site in one commit and reports success.**
+  Raised from the lane's HIGH to CRITICAL in calibration: it needs no
+  adversary and no unusual input.
+
+  Confirmed by execution: Path.rglob("*") on a non-existent directory
+  returns an empty iterator with NO exception, and publish() has no
+  is_dir() guard. So publisher.py:168 gives local == {}, and :179-182
+  puts every unprotected remote path into `removed`. A clean Outcome is
+  returned.
+
+  Reached by a mis-set site_folder, an unmounted drive, or a Builder
+  that failed before writing. Nothing in the module or in Settings
+  guards it, and ADR-0002 says this class is uncaught downstream.
+
+  Fix: precondition at the top of publish() -- refuse a folder that is
+  not a directory -- plus a refusal when `uploaded` is empty and
+  `removed` covers the whole remote set. A full wipe is never a
+  legitimate publish.
+  **Layman:** If the folder the app publishes from is wrong or empty, it wipes the live site and tells you it worked.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane publisher.
+
+- 📋 [PRESS-0044] **The untouchable rule has two diverged implementations, and the one that silently protects nothing is the safety-critical one.**
+  Raised from HIGH to CRITICAL: with the item above, this is the
+  site-destruction pair. The untouchable list is the single guard
+  against the deletion PRESS-0009 2 calls unrecoverable.
+
+  publisher.py:401-409 does `path.split("/", 1)[0] in untouchable`.
+  publisher.py:412-422 (_within_prefix) rstrips a trailing slash and
+  accepts multi-segment values, and its docstring claims "the same rule
+  4.4 gives the untouchable list". It is not the same rule.
+
+  Confirmed by execution:
+    untouchable='CNAME/'          protects 'CNAME'           -> False
+    untouchable='docs/robots.txt' protects 'docs/robots.txt' -> False
+    _within_prefix('docs/robots.txt', 'docs/')               -> True
+
+  A nested entry protects NOTHING -- not even itself -- because only a
+  path's first segment is compared against the whole entry.
+
+  Nothing enforces the form: settings.py:96-101 validates only
+  isinstance(entry, str). So a hand-edited settings.json, or the Setup
+  code that has not been written yet, disables the guard with no error
+  at any layer.
+
+  Fix on both sides: normalise in _is_protected, and reject a malformed
+  entry in settings.py's loader so it is loud rather than inert.
+  **Layman:** The list of files the app promises never to touch stops working if an entry is written in a slightly different but reasonable form -- with no error anywhere.
+  Kind: security.
+  Source: review-code 2026-08-31 lane publisher.
+
+- 📋 [PRESS-0045] **No Content-Type header, so all four JSON writes go to GitHub as form-encoded.**
+  Confirmed by execution against urllib's own handler: with a JSON body
+  and no Content-Type set, the header actually sent is
+  "application/x-www-form-urlencoded". publisher.py:315-319 sets
+  Authorization, Accept and User-Agent and no Content-Type.
+  AbstractHTTPHandler.do_request_ inserts that default whenever
+  request.data is not None.
+
+  PRESS-0009 4.3 specifies four JSON writes against a documented JSON
+  API.
+
+  Whether GitHub tolerates it cannot be settled from here -- 10 of that
+  spec declares the live API an unrunnable region, and the test double
+  never runs _Urllib, so this is precisely the defect class the suite
+  cannot see. If GitHub does not tolerate it, every write fails on the
+  first real publish.
+
+  Fix: add "Content-Type": "application/json". One line, and it removes
+  the largest unverified assumption in the module.
+  **Layman:** The app tells GitHub its messages are one format while actually sending another.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane publisher.
+
+- 📋 [PRESS-0046] **OutcomeUnknown covers only the OSError branch, the rate-limit handling has three defects, and fetch_previous is not atomic.**
+  Three MEDIUMs in one module, grouped because they share the failure
+  path.
+
+  OUTCOME (publisher.py:219-222, :343-345). A 5xx ANSWER to the
+  reference update raises plain PublishError, though a 502 after the
+  ref was applied leaves state exactly as unknown as a dropped
+  connection. PRESS-0009 6 generalises every non-OutcomeUnknown row to
+  "unchanged", so the Face would tell the writer his site had not moved
+  when it may have -- the S6 breach 2 says the design exists to
+  prevent. Fix: with outcome_unknown set, map any status outside {200,
+  201, 409, 422} to OutcomeUnknown; 409/422 prove refusal and stay
+  Conflict.
+
+  RATE LIMITS (publisher.py:441-459, :465-466). (a) GitHub's PRIMARY
+  limit answers 403 with x-ratelimit-remaining: 0 and no Retry-After,
+  so it falls through to Refused and tells the writer to re-enter a key
+  that is fine; x-ratelimit-reset is never read. (b) A hintless 429
+  waits PACE_SECONDS, so MAX_RETRIES = 4 exhausts in about four seconds
+  against GitHub's documented 60. (c) max(float(after), 0.0) has no
+  upper bound, so Retry-After: 3600 becomes a one-hour blocking sleep.
+
+  FETCH (publisher.py:282-285). fetch_previous is not atomic and does
+  not clear `into`, so a partial failure leaves a hybrid of previous
+  and pre-existing files that the Face cannot distinguish from a
+  complete fetch. Undo is PRESS-0009 2's highest-value safety feature
+  and publishing a hybrid is the failure it must not produce.
+  **Layman:** Three separate ways the publishing step can mislead the writer about what happened.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane publisher.
+
+- 📋 [PRESS-0047] **An entry saved with Windows line endings is rejected, and the message misstates the cause.**
+  store.py:139-144 does text.partition("\n\n"). A CRLF file contains
+  "\r\n\r\n" and therefore no "\n\n" substring, so partition finds no
+  separator and every CRLF entry raises StoreError "has no blank line,
+  so where the header ends and the body begins is undecidable".
+
+  Confirmed by execution against a CRLF fixture.
+
+  PRESS-0005 1 (S3) invites the writer to open entries without
+  Pressless, the app ships on Windows, and a Windows editor that
+  normalises on save turns his own entry into an unreadable file with a
+  diagnosis that sends him hunting for something that is not the cause.
+
+  PRESS-0005 4.2 pins CRLF on the WRITE side and is silent on the read
+  side, so which side is wrong is a contract question -- see the
+  document item filed alongside this. The error text is wrong either
+  way.
+
+  Fix: accept "\r\n\r\n" as a separator on read, keep writing LF (4.2
+  already normalises), or at minimum detect \r\n and say so.
+  **Layman:** Open an entry in a Windows editor, save it, and the app says the file has no blank line -- pointing at a blank line that is plainly there.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane store.
+
+- 📋 [PRESS-0048] **Three holes in the extra-field guard silently corrupt an entry, including replacing the writer's title.**
+  store.py's _refuse_what_the_format_cannot_carry checks an extra
+  field's name for newline and carriage return, and for nothing else.
+  All three confirmed by execution.
+
+  1. COLON IN THE NAME (:315-317). extra=(("A:B","v"),) writes "A:B: v"
+  and reads back as ('A', 'B: v').
+
+  2. NAME COLLIDING WITH A RECOGNISED FIELD (:236) -- the worst of the
+  three, and worse than the lane reported. read's loop is last-wins, so
+  Entry(title="Real", extra=(("Title","Other"),)) reads back with
+  title='Other' and extra=(). The writer's actual title is REPLACED and
+  the extra field disappears. With "Slug" the file becomes permanently
+  unreadable via the stem check at :182.
+
+  3. NEAR MISS (:157-171). Matching is exact and the name side is never
+  stripped, so " Title: x" routes to extra and write() then emits an
+  empty "Title: " alongside the original line.
+
+  The exposed caller is Import (PRESS-0007), which builds extra from
+  the WordPress export -- so fixing this before Import is written is
+  the difference between a refusal and a corrupted archive.
+
+  Fix: refuse ":" in a name, refuse a name in RECOGNISED_FIELDS, refuse
+  an empty name; strip the name before comparing.
+  **Layman:** An unusual field name in an entry file can quietly overwrite the entry's title or scramble its contents.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane store.
+
+- 📋 [PRESS-0049] **A settings file with one undecodable byte escapes load() and save() as neither NotSetUp nor SettingsError.**
+  Confirmed by execution: the escape is a UnicodeDecodeError, which is
+  a ValueError and NOT an OSError.
+
+  settings.py:70 does target.read_text(encoding="utf-8") inside a try
+  whose arms catch FileNotFoundError and OSError. Neither matches, so
+  it escapes load() uncaught. PRESS-0001 4.3's row -- "File present,
+  not valid JSON or not decodable as UTF-8 -> SettingsError, naming the
+  file" -- is not implemented.
+
+  The intended catch EXISTS, at :78, as except (ValueError,
+  UnicodeDecodeError) around json.loads(text) where text is already a
+  str -- so json.loads can never raise UnicodeDecodeError there. The
+  guard sits in the one place it cannot fire and is absent from the
+  place it can. save() repeats it at :154/:162.
+
+  The module's own docstring at :7-9 names the triggering scenario: a
+  cp1252 write on Windows of an accented site_folder, "written here and
+  unreadable there".
+
+  Consequence: PRESS-0011, which will handle NotSetUp and
+  SettingsError, gets an exception in neither family, so a one-byte
+  corruption crashes rather than being reported.
+
+  Fix: catch UnicodeDecodeError before the OSError arm at both sites,
+  and drop the unreachable one from :78 and :162.
+  **Layman:** One corrupted character in the settings file crashes the app instead of producing the friendly message that was written for exactly that case.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane settings.
+
+- 📋 [PRESS-0050] **The one unguarded get_keyring() breaks a contract the rest of the module keeps exactly.**
+  credentials.py:62 is the only get_keyring() call in the module
+  outside a try; write() at :119-124 and _read_keyring() at :167-172
+  are both guarded. So an untyped exception escapes choose().
+
+  This breaches PRESS-0002 4.3's "Every one of these is typed, and that
+  is a requirement rather than tidiness", and the named consequence is
+  that the Face's last-resort catch tells the writer something
+  unexpected went wrong during setup.
+
+  Reachable with no adversary. keyring's core.load_config() reads
+  ~/.config/python_keyring/keyringrc.cfg and calls load_keyring()
+  outside its own except guard, so a stale config naming an uninstalled
+  backend -- the ordinary state after uninstalling keyrings.alt --
+  raises ModuleNotFoundError straight through choose(). class_.priority
+  can also raise RuntimeError by the library's documented convention.
+
+  Fix: wrap :62, raising CredentialError naming the exception type.
+  NoKeyringError cannot arise here, so the existing discriminator is
+  unaffected.
+  **Layman:** A leftover setting on the machine can make setup fail with an unexpected-error screen instead of a clear message.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane credentials.
+
+- 📋 [PRESS-0051] **A third-party backend's own error message can carry the secret into an exception INV-6 says never holds one.**
+  credentials.py:120-124 interpolates {exc} into a CredentialError, and
+  uses `from exc`. exc is a message produced by an arbitrary third-party
+  backend that was JUST HANDED the secret as an argument. The module
+  has no control over what a backend puts in its message, and `from
+  exc` additionally exposes it through __cause__ to anything that
+  formats the chain -- a traceback, or PRESS-0003's rolling log.
+
+  WHY THE TEST CANNOT SEE IT: PRESS-0002 5's INV-6 test uses patched
+  stores, so it proves only that the module's own literals are clean.
+  The invariant is stated absolutely and is checked against a
+  substitute that cannot breach it.
+
+  Fix: on this one site interpolate type(exc).__name__ instead of
+  {exc}, and use `from None` so the cause cannot carry the value into a
+  formatted chain. The other interpolation sites (:78, :171, :240,
+  :248, :262, :267) never have a secret in scope and can keep {exc}.
+
+  See also the document item on INV-6's test surface.
+  **Layman:** If the password store fails in an unusual way, its complaint could quote the publishing key back into an error message.
+  Kind: security.
+  Source: review-code 2026-08-31 lane credentials.
+
+- 📋 [PRESS-0052] **Both network modules let the Authorization header follow a cross-host redirect.**
+  Found by two lanes independently.
+
+  Confirmed by execution: urllib's HTTPRedirectHandler.redirect_request
+  source contains no Authorization handling at all -- it copies every
+  header except the content headers onto the redirect target, including
+  a different host, and follows up to 10 hops. The requests library
+  strips Authorization on a cross-host redirect; urllib does not.
+
+  publisher.py:126-131 carries "Authorization: Bearer <the publishing
+  key>", which can rewrite the writer's whole site. insights.py:137
+  carries the Google OAuth token.
+
+  TLS to a pinned hostname makes this unlikely rather than impossible,
+  and neither API legitimately redirects here.
+
+  Fix, once, shared: an opener whose redirect handler strips
+  Authorization on a host change, or refuses 3xx outright.
+  **Layman:** If a server redirected the app somewhere else, it would hand over the publishing key or the Google token to whoever answered.
+  Kind: security.
+  Source: review-code 2026-08-31 lanes insights/publisher.
+
+- 📋 [PRESS-0053] **Both file formats refuse a newer version on read and silently downgrade it on write.**
+  Found by two lanes independently, same shape in both modules.
+
+  settings.py:170-172 -- save() carries an existing file's unknown
+  keys forward while unconditionally stamping version: 1, and never
+  looks at the version it read. credentials.py:222-229 -- _write_file
+  never checks the existing version, while _read_file:191-196 does.
+
+  So the same file that the read path refuses "rather than guessing at
+  it" is guessed at on the write path. An older build run over a file
+  written by a later Pressless produces a file labelled v1 still
+  carrying v2's keys; the old build then reads it and the new build
+  rejects its own settings.
+
+  Unreachable until a v2 exists, which is exactly why it is cheap to
+  fix now.
+
+  The code matches PRESS-0001 4.2 as written, so that document needs
+  the write-side row too -- filed separately.
+  **Layman:** An older copy of the app can quietly relabel a file written by a newer one, so neither can then read it properly.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes settings/credentials.
+
+- 📋 [PRESS-0054] **A brace anywhere inside a colour mark silently kills the mark, and a deeply nested line crashes the parser.**
+  Three defects in the scanner, grouped because they share the nesting
+  path.
+
+  BRACE COUNTING (marks.py:363). `if nests and text[i] == closes[0]:
+  depth += 1` increments on ANY literal { character, not on a mark
+  opener. PRESS-0004 4.5 says "a nested {...} opener increments a depth
+  counter". So `{accent}the set {x} of things{/}` consumes the real
+  {/} as a decrement, _closes_at returns None, and the whole line falls
+  out as literal text -- the writer silently loses his colour for
+  typing a brace. A balanced variant shifts the boundary instead. Same
+  for muted, the hex colour and rainbow. 6 has no failure row for it.
+
+  UNBOUNDED RECURSION (:388 and :491). _scan recurses per nesting level
+  and node_html recurses again on render, with no depth bound. About
+  5 KB on one line raises an uncaught RecursionError, where 6 promises
+  literal text for malformed input and names photo_src as the only
+  thing that raises. Fix with a depth cap that falls back to literal --
+  the degradation the module already documents.
+
+  QUADRATIC SCAN (:352-366). _closes_at scans to end of line at every
+  position where an opener matches and no closer exists. The asterisk
+  family is short-circuited by the adjacency guards at :380-382; the
+  brace marks have no such guard. "{accent}a" * 5000 is on the order of
+  2.25e8 steps.
+  **Layman:** Type an ordinary curly bracket inside coloured text and the colour silently vanishes from the published page.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane marks.
+
+- 📋 [PRESS-0055] **The photograph mark's name reaches the caller's file world unconstrained, though the spec says the escapes are that boundary's whole defence.**
+  marks.py:208's _PHOTO_ARG captures `name` as any run of characters
+  except | and }. marks.py:177 does
+  _escape_attr(photo_src(node.name)) -- so the escape happens AFTER
+  photo_src has already been called on the raw string.
+
+  What reaches the caller: "../../../../etc/passwd", "..\\..\\", a
+  leading /, a NUL, a URL. Also "{photo:   }", since the pattern admits
+  a whitespace-only argument.
+
+  PRESS-0004 5 states "INV-4 and INV-8 are that boundary's whole
+  defence, and there is no other sanitiser downstream". `name` passes
+  through NEITHER on its way into photo_src, so that sentence is not
+  true of this path.
+
+  The HTML sink itself is safe -- _escape_attr cannot be broken out of,
+  and the lane confirmed every other sink in the module is escaped. It
+  is the CALLABLE argument that is unconstrained.
+
+  The consumer that will build a path from it is PRESS-0008, not yet
+  written. Constraining the grammar now is a one-line change;
+  constraining it after two callers exist is a contract change.
+
+  Fix: bar /, backslash, } and control characters in the name group.
+  **Layman:** A photo name in an entry is passed straight out to whatever looks the file up, without being checked first.
+  Kind: security.
+  Source: review-code 2026-08-31 lane marks.
+
+- 📋 [PRESS-0056] **Five unpinned Insights behaviours: a backwards clock, the cache folder, the property id shape, one cache slot, and a zero-visitor report.**
+  All five follow from the module having no spec (filed separately);
+  grouped because one document decides them together.
+
+  BACKWARDS CLOCK (insights.py:180). The freshness test is one-sided:
+  `now() - fetched_at < max_age_seconds`. Confirmed -- a negative age
+  always passes, so after an NTP correction, a manual clock change or a
+  restored backup the cache reads FRESH forever and shows old numbers
+  labelled current, which is worse than showing them stale. Fix:
+  require 0.0 <= age < max_age.
+
+  CACHE FOLDER (:150-151). cache_path takes a caller-supplied folder
+  with no relationship to settings.site_folder, while the comment at
+  :41-42 asserts "never the site folder, which is published in full".
+  If the Face passes it, the Builder copies it and the Publisher
+  uploads it -- country-level readership data becomes publicly
+  fetchable. The module asserts an invariant it cannot keep. Fix:
+  refuse a folder that is, or is under, settings.site_folder.
+
+  PROPERTY ID SHAPE (:202). design.md and PRESS-0001 both fix it as
+  numeric; settings.py:137 type-checks only, while repository,
+  site_folder and store all get shape checks eleven lines earlier under
+  the stated reasoning "Shape, not merely type". A pasted G- tag gives
+  "Google answered 404" instead of a sentence naming the confusion.
+
+  ONE CACHE SLOT (:322-325). _cached rejects any other window and
+  _store overwrites, so the moment the dashboard offers a second window
+  the quota guard protects nothing -- one API call per click.
+
+  ZERO VISITORS (:253-256). GA4 omits default-valued fields; if totals
+  is absent on a zero-row report, a quiet week raises instead of
+  returning zero. Open: unverified against the live API.
+  **Layman:** Five things the analytics part does that nobody ever decided, each of which can mislead or misfire.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane insights.
+
+- 📋 [PRESS-0057] **PRESS-0001 has three gaps the code cannot be blamed for: no write-side version row, shape checks for three fields of five, and an INV-5 fixture that cannot see what it tests.**
+  DOCUMENT SIDE. Gate with review-contract
+  docs/specs/PRESS-0001-settings.md --genre spec. None of these is a
+  code defect: the code conforms to what is written.
+
+  1. 4.2 says the file is "written from the schema, never from what was
+  read", and there is no row deciding what save() does when the
+  existing file's version is NEWER than this build's. The read table
+  refuses such a file; the write table has no equivalent. See
+  PRESS-0053.
+
+  2. 4.3 requires shape validation for repository, credentials.store
+  and site_folder, and type-only for untouchable and
+  analytics_property_id -- though 2 calls the untouchable list the
+  Publisher's WHOLE protection, and an entry that is empty or
+  mis-segmented silently protects nothing (PRESS-0044). The property id
+  is the one field design.md says is easy to confuse, and it is the one
+  with no shape check (PRESS-0056).
+
+  3. INV-5's prescribed fixture patches os.replace, so the invariant
+  that exists to prove a crash never leaves a truncated file cannot
+  observe the missing fsync that makes the claim untrue (PRESS-0039).
+  The test surface needs to name durability, not just atomicity.
+
+  Also open, raised by the lane and not settled: after any save() the
+  file's mode becomes 0600 from mkstemp, discarding whatever it had.
+  Nothing specifies the mode.
+  **Layman:** The settings design document is missing rules the code was never told to follow.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane settings -- document side.
+
+- 📋 [PRESS-0058] **PRESS-0002's write table has no version row, and INV-6's test surface cannot detect the breach INV-6 forbids.**
+  DOCUMENT SIDE. Gate with review-contract
+  docs/specs/PRESS-0002-credentials.md --genre spec.
+
+  1. 4.3's read table refuses a file from a later version "rather than
+  guessing at it"; the write table has no such row, so the same file is
+  guessed at on the other side. 2 point 4 flags exactly this class --
+  "an on-disk shape an installation carries forward" -- and the
+  contract implements the refusal in one direction only. Code side is
+  PRESS-0053.
+
+  2. INV-6 says no exception this module raises contains a secret
+  value, and 5's test surface uses PATCHED stores. So it proves only
+  that the module's own literals are clean, and cannot see a real
+  backend's message being interpolated into a CredentialError
+  (PRESS-0051). An invariant whose test substitutes the thing that
+  would breach it is not falsifiable.
+
+  3. Related, and the sharper one: ADR-0003 states a CAPABILITY test
+  for the fallback file, and neither that ADR nor this spec gives it a
+  test surface -- 4.6's measurement was taken once, on ext4, by hand.
+  PRESS-0042 is the code side; the contract needs an invariant that
+  binds at runtime.
+  **Layman:** The credentials design document asks for a guarantee and then checks it in a way that cannot fail.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane credentials -- document side.
+
+- 📋 [PRESS-0059] **PRESS-0004 has four passages the marks lane found wrong or unfalsifiable, including a trust-boundary sentence that is not true.**
+  DOCUMENT SIDE. Gate with review-contract
+  docs/specs/PRESS-0004-marks.md --genre spec.
+
+  1. 5 says "INV-4 and INV-8 are that boundary's whole defence, and
+  there is no other sanitiser downstream". FALSE of the photograph
+  name, which passes through neither on its way into photo_src
+  (PRESS-0055). This is the sentence an implementer of PRESS-0008 would
+  rely on.
+
+  2. 4.5 says a nested "{...} opener" increments the depth counter and
+  the code increments on any literal brace (PRESS-0054). One side is
+  wrong and 6 has no failure row either way, so a writer losing his
+  colour has no documented explanation.
+
+  3. 4.2's table specifies alt="" on every photograph. An empty alt
+  declares a DECORATIVE image; these are content images on a public
+  writing site, so a screen-reader user gets nothing where a caption
+  exists and could have been referenced. 9's out-of-scope list does not
+  mention accessibility, so this reads as unexamined rather than
+  decided. Both document and code are on the wrong side.
+
+  4. 4.6 and INV-4 state the text-escaping rule unconditionally, with
+  no carve-out for rainbow -- which escapes one character at a time, so
+  the "leave an existing character reference alone" branch can never
+  fire inside it and &nbsp; reaches the page literally. A per-character
+  span cannot hold an entity together, so the spec should say so.
+
+  5. Open, and unverifiable from this tree: INV-5 claims byte-identity
+  with a wpautop() in a sibling workspace that is not present here, so
+  nothing in this repository can check it.
+  **Layman:** The markup design document overstates what protects the published page, and specifies an accessibility choice nobody examined.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane marks -- document side.
+
+- 📋 [PRESS-0060] **PRESS-0005 claims extra fields are kept byte-for-byte, and they are not; its read side is also silent on line endings.**
+  DOCUMENT SIDE. Gate with review-contract
+  docs/specs/PRESS-0005-store.md --genre spec.
+
+  1. 4.2 says an unrecognised field is "kept byte-for-byte" and INV-4
+  asserts byte-identical after read-then-write. Both are false, and
+  measured:
+
+    before b'...\nX:   spaced   \n\nbody\n'
+    after  b'...\nCategories: \nTags: \nX: spaced\n\nbody\n'
+
+  The round trip strips the value's surrounding whitespace AND injects
+  Categories: and Tags: lines that were never in the file. The lane
+  judged the DOCUMENT the wrong side for the stripping, since 4.2
+  mandates the same normalisation for recognised fields and lists -- so
+  the claim should be "preserved, with surrounding whitespace
+  normalised". The injected lines were not reported by the lane and are
+  mine; whether they are wanted is open.
+
+  2. 4.2 pins LF on the WRITE side and says nothing about the read
+  side, so whether a CRLF entry is meant to be readable is undecided --
+  which is what makes PRESS-0047 a contract question rather than an
+  obvious bug. The app ships on Windows and S3 invites external
+  editing, so the document should choose.
+
+  3. ADR-0001 has no version marker in the entry format, deliberately,
+  while settings.py carries FILE_VERSION. Noted by the lane as a
+  recorded choice rather than a defect; confirm it is still wanted
+  before Import (PRESS-0007) writes twelve years of entries.
+  **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane store -- document side.
+
+- 📋 [PRESS-0061] **PRESS-0009 generalises every failure to "the site is unchanged", which its own 4.3 does not support, and misdescribes its own prefix rule.**
+  DOCUMENT SIDE. Gate with review-contract
+  docs/specs/PRESS-0009-publisher.md --genre spec.
+
+  1. 6's table generalises every non-OutcomeUnknown row to "unchanged".
+  4.3 supports that only for an interruption EARLIER than the reference
+  update. A 5xx ANSWER to the PATCH leaves state exactly as unknown as
+  a dropped connection, so the Face would tell the writer his site had
+  not moved when it may have -- breaking S6, the one promise 2 says the
+  design exists to keep. Loop 1 of the gate split this row for the
+  OSError case and did not reach the status case. Code side is
+  PRESS-0046.
+
+  2. 4.5 and the _within_prefix docstring both say it applies "the same
+  rule 4.4 gives the untouchable list". Measured, it does not --
+  _within_prefix accepts a trailing slash and multi-segment values and
+  _is_protected accepts neither (PRESS-0044). One rule, two
+  implementations, and the document asserts they agree.
+
+  3. 9 assigns "progress reporting during a slow first publish" to the
+  Face, and publish() exposes no callback while blocking for at least
+  862 seconds of pacing alone on ADR-0002's own first-publish figure.
+  Either the code needs a hook or 9 needs to say progress means an
+  indeterminate wait.
+
+  4. Open: 4.2 says all three entry points resolve the default branch
+  "from the repository itself once per call", and root_entries and
+  fetch_previous use commits/HEAD instead. Equivalent on GitHub today.
+  Drift or deliberate shortcut is undecided.
+  **Layman:** The publishing document promises the site is untouched after any failure, and there is one case where nobody can know that.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane publisher -- document side.
+
+- 📋 [PRESS-0062] **PRESS-0006 has an invariant that cannot pass against correct code, and two failure-table rows that collapse distinctions the Store makes.**
+  DOCUMENT SIDE, and PRESS-0006 HAS NO CODE YET -- all 24 hits for its
+  symbols are in the spec itself, which is what makes fixing it now
+  cheap. Gate with review-contract
+  docs/specs/PRESS-0006-pages-furniture-comments.md --genre spec.
+  Distinct from PRESS-0036, which covers two OTHER documents
+  disagreeing with this one.
+
+  1. INV-11 requires asserting that the module's public names are
+  exactly PRESS-0005 4.1's list plus this spec's 4.1. store.py declares
+  no __all__, so its namespace also carries os, re, tempfile,
+  dataclass, datetime, Path and annotations -- an implementer taking
+  the invariant literally gets a RED test against correct code. Loop 2
+  of that spec's own gate caught this shape once already. Fix: add
+  __all__ to store.py and have INV-11 assert against it.
+
+  2. 6's row "A folder is missing | Reading lists nothing" does not
+  separate the HANDED folder from the SUB-folder. list_slugs raises
+  StoreError for a handed path that is not a directory and returns ()
+  for a missing published/. An implementer building list_html from that
+  row makes a mistyped folder return silence.
+
+  3. read(path) raises EntryNotFound; 6 has read_comments(path) return
+  (). Both take a path and disagree, with nothing in the surface naming
+  which applies. The comments choice is well argued; it should be
+  stated on read_comments in 4.1 rather than only in a failure table.
+
+  4. Open, and it reaches PRESS-0007 and PRESS-0012: does PRESS-0005 3
+  decision 5's Store-wide slug uniqueness extend to templates and
+  comments? exists() checks only published/ and drafts/.
+  **Layman:** The newest design document asks for a test that would fail against code that is working correctly.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lane store -- PRESS-0006 read as a contract.
+
+- 📋 [PRESS-0063] **insights.py is the only module with no spec, and its source cites five invariant ids that resolve to nothing a reader may read.**
+  Every sibling module names a docs/specs/PRESS-NNNN document. This one
+  names its own test file: insights.py:3-4 says "its invariants are
+  written down in tests/test_insights.py's header, there being no
+  docs/specs file for it". The shipped source then cites INV-1, INV-2,
+  INV-7, INV-8 and INV-14, which resolve to nothing outside that
+  header.
+
+  This is the circularity verify-delivery exists to catch: the tests
+  cannot falsify a contract they ARE.
+
+  spec-format.md 1 may well have answered "no spec" correctly for the
+  BUILD decision, and the roadmap records that reasoning. The
+  consequence is separate: behaviours that needed deciding were decided
+  silently by whatever the tests happened to assert. PRESS-0056 lists
+  five of them -- the timeout, the backwards clock, the cache folder,
+  the window keying, the property id shape and the zero-visitor report
+  -- and each is a question with no answer anybody can breach.
+
+  Route: write-spec for docs/specs/PRESS-0019-insights.md, carrying the
+  invariant list currently in the test header, then review-contract.
+  Not a code fix.
+
+  Found by the lane that was told it was the only contract review the
+  module had ever had.
+
+  SHARPER THAN THE LANE PUT IT: PRESS-0019 is marked SHIPPED. So this
+  is not a module awaiting its contract -- it is the only module the
+  project has declared done without one, while its own bullet says of
+  PRESS-0002 "That contract is written and accepted" and treats that as
+  the normal state. Every other shipped module (PRESS-0001, 0002, 0004,
+  0005, 0009) names a spec. Whatever is written should therefore be a
+  contract for code that already exists and is relied on, which is a
+  different job from specifying work not yet done: fold in what the
+  implementation settled, and mark as OPEN the questions PRESS-0056
+  lists rather than inventing answers the code has not been built to.
+  **Layman:** The analytics part of the app has no design document, so its rules live only in its own tests -- which cannot prove themselves wrong.
+  Kind: doc.
+  Source: review-code 2026-08-31 lane insights.
+
+- 📋 [PRESS-0064] **Two modules that share a folder each document it as holding only their own file, and following either literally deletes the publishing key.**
+  Found by two lanes independently. A TRAP FOR THE NEXT IMPLEMENTER
+  rather than a live defect -- neither module actually sweeps, and I
+  checked: both _discard functions unlink only their own named temp
+  path.
+
+  settings.py:232 -- "Leave nothing behind in the folder but the
+  settings file (5 INV-7)".
+  insights.py:338 -- "Replace the cache with this reply, leaving
+  nothing else in the folder."
+
+  design.md:344 puts drafts, photograph originals, the settings file,
+  the rolling log, the fetch area, the Insights cache AND ADR-0003's
+  owner-only credentials fallback in that same folder.
+
+  Why this is worth an item rather than a shrug: PRESS-0001's own gate
+  already had to narrow an over-broad cleanup claim over this folder
+  ONCE (recorded on the roadmap), and the same phrasing has now
+  reappeared in a second module. An implementer who reads either
+  docstring literally and adds a tidy-up deletes the key that can
+  rewrite the site.
+
+  Fix: both docstrings to say "leaving no temporary file of its own
+  behind", and PRESS-0001 INV-7's wording checked to match.
+  **Layman:** Two files carry a comment that, if a future developer believes it, would make them delete the writer's publishing key.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 lanes insights/settings -- cross-cutting.
+
+- 📋 [PRESS-0065] **SECURITY.md ships its trust-boundary section unfilled, under a header saying an empty policy is worse than no file.**
+  SECURITY.md's Trust boundaries section reads, verbatim, "(Filled once
+  design names them.)" -- while the file's own header says "Delete this
+  file if this project has no trust boundary ... an empty policy is
+  worse than no file -- it claims a promise nobody is keeping." The
+  Supported versions and Reporting a vulnerability sections are
+  likewise still their template prompts.
+
+  This is not cosmetic. It was the missing input to this sweep's
+  threat-model calibration: review-code 4 part 3 requires re-ranking
+  raw lane severities against the project's documented threat model,
+  and there is none, so the calibration was done against design.md,
+  ADR-0003, PRESS-0009 2 and CLAUDE.md instead and had to say so.
+
+  The design HAS now named the boundaries -- the writer's own text
+  becoming HTML on a public site (PRESS-0004 5), the publishing key at
+  rest (ADR-0003), two third-party APIs over the network, and the entry
+  files on disk. Four lines would fill the section.
+
+  Also confirm the intended answer for a pre-1.0 project on Supported
+  versions, and pick a private reporting channel that is not the public
+  issue tracker -- this repository is public.
+  **Layman:** The security policy file promises to list what the app protects and against what, and that section is still the template placeholder.
+  Kind: doc-fix.
+  Source: review-code 2026-08-31 synthesis -- threat model.
+
+- 📋 [PRESS-0066] **Settings low cluster: the version gate accepts true and 1.0, the repository gate admits query strings, and two rare escapes.**
+  All confirmed by execution unless noted.
+
+  1. :84 -- `version != FILE_VERSION`. In Python True != 1 is False and
+  1.0 != 1 is False, so {"version": true} and {"version": 1.0} both
+  load as if they were 1, where 4.3 requires SettingsError for anything
+  that is not 1. Elsewhere this module isinstance-checks carefully.
+  This sits on the gate protecting every future migration.
+
+  2. :116-120 -- the owner/name shape gate. Confirmed accepted:
+  'o/n?x=y' (adds a query string to every GitHub API call), 'o/n#frag',
+  'o/n%2fz' (decoded server-side), 'o/n ' and 'o/n\tz' -- the last two
+  not reported by the lane and found in verification. Input is the
+  writer's own file so the blast radius is small, and CR/LF is blocked
+  by urllib rather than here. NOT the dismissed urlopen finding: that
+  one is the scheme, this is the path.
+
+  3. :77 -- deeply nested JSON raises RecursionError, which is neither
+  NotSetUp nor SettingsError. Same family as PRESS-0049, far cheaper.
+
+  4. :186-192 -- if os.fdopen itself raises, the raw fd from mkstemp is
+  never closed; _discard unlinks the path but leaks the descriptor.
+  Rare, real.
+
+  5. :235-236 -- `except OSError: pass` in _discard is the justified
+  kind but carries no inline comment saying why. NOTE: the lane tagged
+  this [tool: bandit B110] and that attribution is WRONG -- bandit at
+  the LOW threshold returns zero B110 hits, because that rule fires on
+  bare except:/except Exception:, not a typed except OSError. Logged to
+  the false-positive ledger.
+  **Layman:** Small holes in the settings file checks that let through values nobody intended.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane settings -- low cluster.
+
+- 📋 [PRESS-0067] **Store low cluster: Windows reserved slugs, a TOCTOU in _move that defeats INV-10, and four smaller round-trip gaps.**
+  1. :285-292 -- TOCTOU in _move. `if target.exists(): raise
+  SlugInUse(...)` then os.replace. Between the check and the rename a
+  second copy of the app -- which 6 names as a real case -- or a hand
+  copy can create the destination, and os.replace destroys it
+  silently. That is precisely what INV-10 exists to make impossible.
+  Fix: os.link then unlink on POSIX (link fails EEXIST), os.rename on
+  Windows; keep exists() only for the friendly message.
+
+  2. :50 -- _LEGAL_SLUG admits the Windows reserved device names con,
+  aux, nul, prn, com1-lpt9. published/nul.txt cannot be created on
+  Windows even with an extension, so an entry saves on Linux and fails
+  on Windows. 6 names the path-length trap and not this one.
+
+  3. :110 -- the .txt suffix match is case-sensitive while
+  path_for(...).is_file() at :90 is not on Windows, so a file named
+  entry.TXT makes exists() true and list_slugs blind to it.
+
+  4. :108 -- a stray file named exactly ".txt" yields an empty slug,
+  which then raises out of path_for in every caller that round-trips a
+  listing.
+
+  5. :252-254 -- `except BaseException: _discard; raise` re-raises
+  non-OSError failures raw, so write() can raise outside the StoreError
+  contract 4.1 and 6 state -- a UnicodeEncodeError from a lone
+  surrogate in a body, a TypeError from a non-str category.
+
+  6. :229 -- strftime truncates microseconds, so write-then-read does
+  not return an equal datetime. No invariant covers it.
+
+  7. :354-359 -- no sweep of orphaned .entry-*.tmp files, so kill -9
+  leaves litter against 4.5's "leave nothing behind".
+  **Layman:** Small entry-handling problems, including one where two copies of the app running at once could overwrite an entry.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane store -- low cluster.
+
+- 📋 [PRESS-0068] **Credentials low cluster: a PyInstaller build may report every Windows machine as having no credential store, plus three smaller items.**
+  1. PACKAGING RISK, and it belongs to PRESS-0022 rather than to this
+  file. Every keyring backend, Windows included, is discovered through
+  the keyring distribution's entry_points.txt via
+  metadata.entry_points(group='keyring.backends'). A PyInstaller bundle
+  that does not collect that metadata registers NO backend, so
+  _detect_backend falls to fail.Keyring, the probe raises
+  NoKeyringError, and on Windows choose() therefore raises NoStore --
+  on EVERY machine, with a message asserting the machine has no
+  credential store. The discriminator cannot distinguish "no metadata"
+  from "no store". Fix in the packaging item: --copy-metadata keyring
+  plus pywin32-ctypes. Recorded here so PRESS-0022 inherits it.
+
+  2. :157-163 -- ChainerBackend.delete_password returns on the first
+  member that does not raise NotImplementedError, and a member holding
+  nothing raises PasswordDeleteError, which the chainer does not catch
+  and _delete_probe swallows. So the probe can be left PERMANENTLY in
+  the writer's real keyring as Pressless / pressless-store-probe. Not a
+  secret, but 4.2's "only then deletes it" reads as an assurance. Fix:
+  delete via the answering member, not via the chain.
+
+  3. :131 -- sys.platform.startswith("win") is correct for CPython on
+  Windows but false under Cygwin and MSYS2. Marginal, and PRESS-0042's
+  mode check subsumes it correctly.
+
+  4. :180 onward -- failure messages carry the account name and the
+  full filesystem path, both of which identify the writer. Not a
+  repository leak; a bug-report and log-attachment exposure, and it
+  interacts with PRESS-0003's rolling log.
+  **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane credentials -- low cluster.
+
+- 📋 [PRESS-0069] **Publisher low cluster: a crafted tree entry can write outside the fetch folder, the key sits in a frame local INV-7 cannot reach, and five smaller items.**
+  1. :282 -- `target = Path(into) / path` with path taken verbatim from
+  GitHub's tree listing, no containment check. A crafted tree entry
+  containing .. writes outside `into` (CWE-22). Requires a hand-built
+  git object, hence low, but the fix is one line: reject unless
+  (into / path).resolve().is_relative_to(into.resolve()).
+
+  2. :315-319 -- INV-7 is tested on str() and repr(), but the key also
+  lives as a VALUE in the local headers dict of the frame that raises.
+  Any locals-dumping traceback handler or crash reporter in the Face
+  exposes it. Not a defect in this module today; it is a hole in what
+  INV-7 can promise, and PRESS-0011 is where it becomes one.
+
+  3. :392-398, :171-177 -- _local_files reads EVERY file of the site
+  into one dict before anything is compared, and b64encode + json.dumps
+  + .encode add about three further copies of each uploaded file.
+  ADR-0002 puts the first publish at ~862 files; on a
+  photograph-carrying site that is a large resident set on a modest
+  Windows box.
+
+  4. :419-422 -- `if not prefix: return True` runs BEFORE rstrip("/"),
+  so prefix="/" selects nothing rather than everything.
+
+  5. :465-468 -- a 404 on git/blobs/{sha} or commits/{branch} raises
+  RepositoryMissing ("settings.repository resolves to nothing"), a
+  false diagnosis for a missing blob or branch.
+
+  6. :163, :220, :280 -- branch name and sha are interpolated into URLs
+  unencoded; git permits % and # in a refname and a non-ASCII branch
+  raises UnicodeEncodeError out of urlopen.
+
+  7. :395-397 -- rglob("*") + is_file() follows file symlinks and
+  includes dotfiles, so anything the Builder leaves in the site folder
+  -- a .git/, an editor temp file, a symlink pointing outside -- is
+  published verbatim.
+  **Layman:** Smaller publishing issues, including one where a crash report could expose the publishing key.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lane publisher -- low cluster.
+
+- 📋 [PRESS-0070] **Marks and Insights low cluster: rainbow breaks character references, and five smaller Insights items including silent cache failure.**
+  MARKS
+  1. :163-171 -- _rainbow escapes one character at a time, so
+  _CHAR_REF_OR_AMP's "leave an existing character reference alone"
+  branch can never fire inside a rainbow: every & becomes &amp;. So
+  {rainbow}A&nbsp;B{/} puts a literal &nbsp; on the page. INV-4 and 4.6
+  state the rule unconditionally -- see PRESS-0059 for the document
+  side.
+  2. :168 -- each non-space rainbow character emits about 45 bytes, a
+  ~45x output amplification with no bound; a 10k-character line yields
+  ~450 KB of HTML on the published page.
+  3. :208 -- {photo:    } yields Photo(name=" ") and photo_src(" ") is
+  called. Fail-safe today; folded into PRESS-0055's grammar fix.
+  4. :489 -- to_html is public surface and raises a bare KeyError on a
+  Span/Photo whose mark is not a table row. 6 documents no such mode.
+
+  INSIGHTS
+  5. :359-377 -- every cache-write failure is silent. If target.parent
+  does not exist, mkstemp raises on every call, the cache is never
+  written, every dashboard open refetches, and the quota guard is
+  permanently off with NO observable difference from working
+  correctly. The swallow is right; the invisibility is not, against
+  design.md's promised rolling log (PRESS-0003).
+  6. :204 -- {"startDate": f"{days}daysAgo", "endDate": "today"} is
+  days+1 calendar days and its last day is incomplete, so the same
+  28-day question answered twice in a day gives two numbers. Fix:
+  "yesterday".
+  7. :144, :226 -- the HTTP error body is read and DISCARDED. Google's
+  400 body says which field was rejected, and design.md's Show details
+  toggle then has nothing to show. Carry a length-capped excerpt on the
+  exception, never in the writer-facing sentence.
+  8. :362 -- no newline="", so this writes CRLF on Windows against
+  design.md's "LF line endings written explicitly". settings.py:191
+  does the same, so the two have not diverged. Document side is
+  PRESS-0060.
+  **Layman:** Small display and reporting problems, including one where the app silently stops caching and nobody can tell.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes marks/insights -- low cluster.
+
+- 📋 [PRESS-0071] **No tool in the check-code set catches a missing urlopen timeout, and the sweep proved the expensive lanes earned their cost.**
+  Recorded so the next sweep does not re-derive it.
+
+  1. THE GAP. bandit's B113 (request_without_timeout) reads the
+  requests and httpx modules only -- verified by reading the plugin
+  source, which does not mention urllib. So PRESS-0041 is caught by NO
+  tool in the set. This is a gap in the AVAILABLE tooling rather than
+  in how check-code was configured, and it will not close by adding a
+  tool row. Options: a project-specific semgrep rule for
+  urlopen-without-timeout, or accept that it is a review finding.
+
+  2. NOT TOOL-DECIDABLE EITHER. ruff --select BLE returns clean on
+  src/, correctly, because the code re-raises -- so PRESS-0040 is
+  findable only by knowing HTTPException is not an OSError.
+
+  3. A DISMISSED FINDING IS NOT A CLEAN LINE. bandit B310 fired on both
+  urlopen sites and was correctly dismissed for the scheme -- and sat
+  one line from two real HIGH defects, pointing at neither.
+
+  4. THE MEASUREMENT. Zero of the eleven HIGH-and-above findings from
+  review-code were reachable by any tool in the set. On this tree the
+  expensive sweep is not redundant with check-code.
+
+  5. CONFIGURATION, separate from the above and worth a decision:
+  [tool.ruff] sets line-length and target-version but no `select`, so
+  ruff runs its default E4,E7,E9,F -- E501 is never enforced and the
+  declared 100-column limit is decorative, and bugbear (B) and the
+  bandit rules (S) are off. A supplementary run with --select E,F,B,S
+  found 191 findings, 179 of them S101 in tests. Adding `select` plus a
+  tests/** per-file-ignore for S101 is a project decision, not a
+  suppression.
+  **Layman:** A note for next time about which problems the automatic checkers can and cannot find here.
+  Kind: investigate.
+  Source: review-code 2026-08-31 synthesis part 4 -- tool gaps.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
