@@ -2,6 +2,13 @@
 
 **Status:** accepted (2026-08-27). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A calm cap: under half of the last loop's findings landed on text the run itself wrote, so the document held more defects than the cap held loops. Implementation is the third reviewer.
 **Amended 2026-08-28, after implementation.** It was the third reviewer and it found two false claims: §3 decision 5 said nothing in the archive collides, and §10 said the round trip catches a collision. Both corrected. No line of the Store's contract changed, so the gate did not re-arm.
+**Amended 2026-09-02, before implementation**, on two decisions the user
+took: the legal slug set excludes Windows's reserved device names on every
+system, and the file suffix is matched ignoring case. Both change direction,
+so the gate re-armed and ran to the spec cap of 2 again. The code is
+PRESS-0067's and is not written yet — § 10 carries two rows saying exactly
+what a green suite does not yet prove.
+
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
 § Where everything sits on disk; ADR-0001).
@@ -127,7 +134,7 @@ PUBLISHED_FOLDER = "published"
 DRAFTS_FOLDER = "drafts"
 
 def path_for(folder: Path, slug: str, *, draft: bool) -> Path: ...
-def exists(folder: Path, slug: str) -> bool: ...   # either folder
+def exists(folder: Path, slug: str) -> bool: ...   # raises on an illegal slug
 def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]: ...
 def read(path: Path) -> Entry: ...
 def write(folder: Path, entry: Entry, *, draft: bool) -> Path: ...
@@ -145,7 +152,9 @@ replaces that entry, and `write` consults no other folder. **Decision
 5's Store-wide uniqueness is a rule callers keep, not one `write`
 enforces.** `exists` answers across both folders: PRESS-0012 asks it
 before offering a new entry, PRESS-0007 before writing an imported
-one. `write` is left alone deliberately — Import writes both folders
+one. **`exists` and `path_for` raise `StoreError` on a slug outside
+§4.2's set rather than answering `False`**, so a caller handed a name
+the writer typed validates it before asking. `write` is left alone deliberately — Import writes both folders
 in one pass, and a `write` that consulted the other could not. Where
 the Store does enforce it is the two moves, which have somewhere to
 collide (INV-10).
@@ -184,8 +193,10 @@ Every single newline is a line break.
   `con`, `prn`, `aux`, `nul`, `com1`–`com9` or `lpt1`–`lpt9`.** The
   character set is what `safe_slug` already yields. The device names
   are a narrowing it does not make — decision 4's rule excludes
-  nothing — so a resolved slug is not automatically an acceptable one,
-  and PRESS-0007 handles the refusal. Pinned because the slug becomes
+  nothing — so a resolved slug is not automatically an acceptable one.
+  PRESS-0007 owns what happens next; §7's archive test, which may use
+  decision 4's rule and no other, reports such an entry rather than
+  renaming it. Pinned because the slug becomes
   a file name: an unpinned one admits `/`, `\` and `..`, which write
   outside the handed folder, and admits two slugs differing only in
   case, which are one file on Windows and two on Linux.
@@ -220,11 +231,15 @@ Every single newline is a line break.
 - **A header line is one line — every value, and an unrecognised
   field's name as well as its value.** A wrapped one would be read back
   as a new field, so a newline in any of them is refused (INV-9). The rule
-  reaches `extra` deliberately: preserving a field byte-for-byte is
-  ADR-0001's promise, and writing one back that the next read cannot
-  parse would break that promise in the act of keeping it.
-- **A field the Store does not recognise is kept byte-for-byte, and
-  two of them keep their order relative to each other.** They are
+  reaches `extra` deliberately: preserving a field is ADR-0001's
+  promise, and writing one back that the next read cannot parse would
+  break that promise in the act of keeping it.
+- **A field the Store does not recognise is never dropped or renamed,
+  and two of them keep their order relative to each other.** Its value
+  round-trips stripped of surrounding whitespace and the separator is
+  re-spelled `": "`, exactly as a recognised field's is — one rule for
+  every field rather than two — so the FIELD survives rather than the
+  line's spacing. They are
   written after the recognised five rather than where they were
   found: `Entry.extra` carries no anchor into the recognised fields,
   and inventing one would buy an ordering nothing reads. ADR-0001's
@@ -254,12 +269,14 @@ Store finds an entry.
 **`list_slugs` and `exists` match the suffix ignoring case; `path_for`
 composes it exactly.** The Store only ever writes `.txt`, but S3
 invites the writer into the folder, and a file hand-renamed to `.TXT`
-is the same file on Windows and a different one on Linux. Matched
-exactly, `list_slugs` was blind to a file the existence check could
-see; matching both the same way is what makes them agree on either
-system. Two names differing only in the suffix's case — reachable on
-Linux only, never produced by the Store — name one slug, and
-`list_slugs` returns it once.
+is the same file on Windows and a different one on Linux. **The
+divergence this removes is a Windows one**: there the platform
+resolves `<slug>.TXT` for `exists` while a case-sensitive `list_slugs`
+cannot see it, so the two disagree about whether an address is taken.
+On Linux they are blind together — consistent, but the writer's file
+is discoverable by neither. Two names differing only in the suffix's
+case — reachable on Linux only, never produced by the Store — name one
+slug, and `list_slugs` returns it once.
 
 On Linux that leaves an address reported as taken whose file `read`
 cannot open, since `path_for` composes `<slug>.txt`. That is the
@@ -345,8 +362,9 @@ line, then the body.
   mechanism rather than only its effect.
 
 - **INV-4** — A header field the Store does not recognise is present
-  and byte-identical after a `read` followed by a `write`, and two of
-  them keep their order relative to each other.
+  after a `read` followed by a `write`, with its name and its stripped
+  value unchanged, and two of them keep their order relative to each
+  other.
   *Test:* `tests/test_store.py::test_unknown_header_fields_survive`.
   *Breaks when:* `write` is built from the dataclass's five known
   fields alone. This is ADR-0001's promise, and it is the one an
@@ -490,8 +508,10 @@ WordPress export, writes every entry through the Store into a
 temporary folder, reads them all back, and asserts the round trip is
 faithful. **It covers everything Import brings — the published
 entries, and the drafts and private posts that arrive as drafts — not
-the published alone**, because decision 5's uniqueness rule spans the
-whole Store and a measurement over one folder would not test it. It
+the published alone**, because the round trip is complete only over
+everything Import brings. It REPORTS a cross-folder collision rather
+than asserting its absence: decision 5 records that the archive holds
+one, and §10 says why no round trip can fail on it. It
 resolves slugs by decision 4's rule and no other. It also prints the
 archive's measurements this spec relies on rather than stating them
 here: how many entries carry no title, how many carry no slug, how
@@ -590,6 +610,8 @@ imports.
 | That a file's name and its `Slug` header agree (§4.4) | **nothing** — no invariant covers it, and the archive test cannot: it writes through the Store, so its names always match. Worth an invariant the first time a hand-rename is seen |
 | LF endings and atomic replace behaving this way on Windows | **nothing** — this suite runs on Linux, and `os.replace` is documented atomic on both. PRESS-0022 stages the built executable to a Windows box, which is the only place it would be observed |
 | The Windows path limit (§6) | **nothing** — same reason. The failure mode is named so that it is recognised rather than diagnosed |
+| §4.2's reserved device names | **nothing yet** — the Store's one name gate is `_refuse_illegal_slug`, and it tests the character set alone, so `nul` is currently accepted. The rule was written on 2026-09-02 ahead of the code, which is PRESS-0067's; until that lands, INV-9's device-name case does not exist and a green suite says nothing about it |
+| §4.3's case-insensitive suffix | **nothing yet** — `list_slugs` matches `.txt` exactly and `exists` composes it through `path_for`, so a `.TXT` file is invisible to both. Same date, same item, same caveat |
 
 ## 11. Cross-doc impact
 
@@ -612,6 +634,7 @@ imports.
 
 | 2 | 2026-08-27 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the archive's comma-in-title count, which loop 1 had to measure mid-run | 2 | 4 | 3 | 2 | **Eleven verified, eleven fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap — five of the eleven landed on text loop 1 wrote**, checked against its ledger rather than recall. **The worst was found by reading the design rather than the draft**: Import brings the drafts and private posts too, so the population is wider than loop 1 measured, and a large share of them carry no slug at all — which §4.2 required. Re-measured over all three statuses: still nothing collides. **The sharpest needed executing.** INV-6 asserted bytes to catch an implementation that names no encoding; run on Linux, the unnamed defaults already produce UTF-8 and LF, so the test went green against exactly the code it rejects. It now asserts the call. Also settled: the legal slug set, unpinned, admitted `..` and wrote outside the handed folder; uniqueness was stated as a Store property nothing enforced; the slug lived in file name and header with no authority named; and INV-9 left an unrecognised field free to carry a newline, breaking ADR-0001's promise in the act of keeping it. One false rationale of mine deleted — INV-3's interruption half does catch a direct write. |
 | 3 | 2026-09-02 | 3, cold — genre pinned `spec`; packet carried four `store.py` windows, ADR-0001 whole, two `design.md` sections, the sibling specs by outline and both store test files by outline. Windows behaviour declared an unrunnable region | 3 | 1 | 3 | 0 | **Seven verified, five fixed, one dismissed, one deferred.** Trigger: the 2026-09-02 amendment adding the reserved-device-name exclusion and the case-insensitive suffix rule. **All three lanes independently found the same two items**, the strongest agreement this gate produces. The sharpest is lane A's alone and was confirmed by execution rather than reading: *"That is what `safe_slug` already yields, so every live address satisfies it"* was carried onto a clause `safe_slug` does not enforce — run against the real generator, `safe_slug("NUL")` returns `nul` and `safe_slug("LPT9")` returns `lpt9`, so a title CAN resolve to a refused slug and PRESS-0007 must handle it. The amendment had told Import the opposite. **The case-insensitive rule named `list_slugs` and nothing else**, so an implementer would have folded case there and left `path_for` exact — producing the same disagreement in the other direction on Linux; it now says which operations fold and states the cost. **Two pre-existing Q3s fixed:** what a blank line is on READ (the code accepts both spellings and the document directed neither), and that the one-line rule reaches an unrecognised field's NAME, which the code guards and §4.2 did not mention. **One pre-existing Q1 fixed from a lane's disclosed session knowledge:** §7 and §10 named one skip condition for the archive test and there are two — the export, and decision 4's sibling generator, unreachable in the pre-push checkout — so a green push proved less than the document claimed. **Dismissed as immaterial:** all three lanes reported that no device-name refusal exists in `store.py`. True, and the gate runs before implementation by design, so the implementer builds it either way; PRESS-0067 item 2 stays open until it lands. **Deferred to PRESS-0060:** INV-4's byte-identity claim against `read`'s `value.strip()` — verified and material, but its other half (header lines the round trip injects) is an open question this gate may not settle. **Collateral filed, not carried:** PRESS-0004 §7 and PRESS-0006 §7 understate their own archive tests' skip conditions the same way §7 here did. |
+| 4 | 2026-09-02 | 3, cold — identical brief; packet rebuilt whole from disk and extended with a window on `_refuse_illegal_slug`, the gap two loop-3 lanes named. Windows behaviour again an unrunnable region | 4 | 1 | 2 | 0 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the run exits.** **Three of the seven landed on text loop 3 wrote** — a moderate share, so a calm cap rather than an oscillating one. **All three lanes reported the same thing loop 3 dismissed**: §4.2's device names and §4.3's suffix rule describe code that does not exist. Loop 3 dismissed it as immaterial on the ground that the implementer builds it either way; said twice by six independent reads, the DISPOSITION was wrong rather than the finding — §10's job is to say what a green suite proves, and it was silent. Two rows added naming both as unenforced and citing PRESS-0067. **The sharpest of loop 3's own collateral:** *"Matched exactly, `list_slugs` was blind to a file the existence check could see"* was written unscoped and is true on Windows only — on Linux both are blind together, so a reader there would fail to reproduce it and doubt the rule. **Loop 3's other collateral:** *"PRESS-0007 handles the refusal"* said nothing about WHAT Import substitutes, while §7 forbids the archive test any rule but decision 4's — so that test could not have written such an entry at all. Measured while fixing it: no entry in the export resolves to a reserved name, so the new refusal costs the archive test nothing today. **Three pre-existing:** INV-4's *byte-identical* against `read`'s `value.strip()` — measured, `X-Note:  spaced  ` reads back `('X-Note', 'spaced')` and re-emits as `X-Note: spaced`, so an implementer taking the word literally builds a different `extra` contract; §7 implying the archive test ASSERTS cross-folder uniqueness where §10 says nothing can and decision 5 records the archive already breaking it; and `exists` given a total-looking `bool` contract when `path_for` raises `StoreError` on an illegal slug — measured — which is PRESS-0012's normal case, since its input is a name the writer typed. **Filed, not carried:** ADR-0001 and `design.md` still promise unrecognised fields *byte-for-byte*, so that claim now lives in three documents and two of them are another gate's. Added to PRESS-0060. **Across both loops of this run, half the verified findings fell inside the amended span and half were pre-existing** — as much audit as gate. |
 
 ## 13. Resource cost
 
