@@ -865,6 +865,28 @@
      question deferred here from the design gate.
   Started (2026-09-02): writing the packaging spec, per the two
   decisions above.
+  Spec accepted (2026-09-02): docs/specs/PRESS-0022-packaging.md.
+  Two cold-eyes loops, three lanes each, 22 verified findings, all fixed,
+  none deferred. The run reached the spec cap of 2 and the cap was
+  VIOLENT -- about ten of loop 2's twelve landed on text loop 1 wrote --
+  so the document is routed to implementation rather than a third gate.
+
+  What the spec settles, so it is not re-litigated: one-folder freezes on
+  both systems, wrapped as an AppImage on Linux and zipped with a batch
+  file on Windows; a new paths.py resolving the folder beside the
+  artefact, injected downward and never imported by Settings or
+  Credentials; a release workflow whose Windows job runs the suite, which
+  ADR-0004 requires and which is what finally puts this project's tests
+  on a Windows machine; and a self-check whose output shape and exit rule
+  are pinned, because three things bind to them.
+
+  Still open for the user, in section 15: whether Pressless-data is the
+  right name for the folder he will see, and whether Windows needs the
+  batch file at all now that one-folder puts the executable at the top of
+  the extracted folder.
+
+  Not started: no code, no workflow, no tests. Nothing in section 4 is
+  built.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
@@ -2462,6 +2484,35 @@
   full filesystem path, both of which identify the writer. Not a
   repository leak; a bug-report and log-attachment exposure, and it
   interacts with PRESS-0003's rolling log.
+  Item 1 fold-back (2026-09-02): the DIAGNOSIS holds and the prescribed
+  FIX does not. Measured while writing the PRESS-0022 spec, against
+  PyInstaller 6.20.0 and keyring 25.7.0.
+
+  PyInstaller ships hook-keyring.py in its own hooks directory, and its
+  two effective lines are exactly what this item asks for --
+  collect_submodules on keyring.backends, and copy_metadata on keyring.
+  It ships hook-win32ctypes.core.py for the Windows half, and keyring's
+  own metadata declares pywin32-ctypes on win32, so a Windows runner
+  installs it without being told to. Two onedir bundles were built, one
+  with the prescribed flag and one without: identical entry points, and
+  both resolved a real chained backend. The flag changes nothing.
+
+  So taking it would be a charm rather than a fix, and worse, an
+  invisible one -- a flag duplicating a shipped hook stops meaning
+  anything the day the hook changes, and nothing would notice. PRESS-0022
+  section 4.3 records the measurement and closes the risk with a check on
+  the built artefact instead, which holds whatever the hooks do. That is
+  its INV-6, and the gate found and fixed a hole in it: read the store
+  KIND, never the member name alone, because PRESS-0002 section 4.2
+  returns a file store off Windows and a member name is therefore
+  present in exactly the broken case.
+
+  What is NOT settled is Windows. keyring.backends.Windows imports
+  win32ctypes inside a function and forces a demand-import, which is the
+  shape static analysis is least likely to follow. Only running the
+  artefact on Windows answers it, which is what PRESS-0022 is for.
+
+  Items 2, 3 and 4 are untouched and this item stays open for them.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
