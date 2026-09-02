@@ -1332,6 +1332,30 @@
   PARAGRAPHS ABOVE AND SHOULD BE IGNORED. It was written with literal
   backslash-n sequences instead of newlines by a bad tool payload, and
   it cannot be removed: op:amend_body matches a literal backslash fine, but refuses any span ending at the body's own final backslash sequence, and the tail ends in one. Filed as Ants MCP feedback. Ignore from here to the end:\"a shape the installation carries between\nmachines\" is not byte-identical across them. For insights it is\nharmless outright -- the cache is never published and never diffed.\nThe point is that four copies of one idiom already disagree on one\nparameter BEFORE PRESS-0006 adds three more, which is the argument\nfor extracting the helper now rather than later.\n\ndesign.md's Persistence section states \"UTF-8, and LF line endings\nwritten explicitly\" unconditionally, so either the three sites are\nwrong or the rule needs scoping to files git sees -- the document\nside is PRESS-0060."
+  Progress (2026-09-02): NOT started, because the prescribed fix cannot
+  be built as written. Verified in the accepted specs: PRESS-0001 INV-1
+  says settings.py "imports no network module and no other pressless
+  module", and PRESS-0002 INV-1 says credentials.py "imports no other
+  pressless module". A shared _atomic_write helper is a pressless
+  module, so importing it breaches both -- and neither invariant is
+  incidental: design rule 10 and PRESS-0001's depends-on-nothing are why
+  they read that way. Verified in source: settings.py, credentials.py
+  and store.py import no pressless module today; insights.py imports
+  Settings. PRESS-0005 INV-1 forbids only the network and
+  pressless.marks, so store.py could take a helper; the other two
+  cannot. So the choice is between adding fsync inline at each of the
+  four sites -- surgical, no invariant touched, and the duplication this
+  item objects to -- or amending two accepted specs' INV-1 to permit one
+  stdlib-only helper, which is a design change owing CLAUDE.md rule 14's
+  gate on both. Inline looks right for the durability half, with the
+  helper question filed separately since PRESS-0006 adds more copies.
+  Also verified: no os.fsync anywhere in the tree, and on the newline
+  half store.py's writer already takes a newline argument while
+  settings.py, credentials.py and insights.py pass none -- that half
+  needs no decision and can land with the fsync. The directory fsync
+  that makes os.replace durable needs a platform guard: a directory
+  cannot be opened for fsync on Windows, which is a first-class target
+  here.
   **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
