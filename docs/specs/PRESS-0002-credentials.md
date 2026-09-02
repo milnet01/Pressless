@@ -15,8 +15,9 @@ anywhere a stranger on the same computer could read.
 
 After this ships, one small module answers two questions and nothing else:
 *where can a secret be kept on this machine*, and *what is the secret filed
-under this account*. Setup uses it to decide and record; the Publisher and
-Insights use it to read. It owns ADR-0003's two paths — the operating
+under this account*. Setup uses it to decide and record; the Face reads a
+secret and hands it to the Publisher or Insights as an argument
+(`docs/design.md` rule 10). It owns ADR-0003's two paths — the operating
 system's own store, and the fallback file — and it is the only code that
 touches either.
 
@@ -32,14 +33,11 @@ them.
 
 Four things make this a contract rather than a helper.
 
-1. **Three parts bind to the surface, and two of them are not yet permitted
-   to.** Setup writes both secrets, the Publisher reads the GitHub key,
-   Insights reads the Google authorisation. But `docs/design.md` § What may
-   depend on what lets the Publisher read *"Settings and a folder of finished
-   files, and nothing else"*, and Insights *"Settings and may talk to Google,
-   and nothing else"*. This module is not Settings, and § The parts does not
-   list it, so those two rules withhold rather than grant. §11 records what
-   has to change there; this spec does not decide it.
+1. **Three parts bind to the surface, and one of them reaches it.** Setup
+   writes both secrets. The Publisher and Insights need one each, and
+   `docs/design.md` rule 10 has the Face fetch it and hand it over as an
+   argument — so rules 5 and 8 stay literally true and both parts stay
+   testable without a real keyring. §11 records how that was settled.
 2. **It is a security boundary.** The GitHub key can rewrite the live site.
    The rules below are what stop it reaching a file anyone else can open, and
    there is no observable difference between a key kept safely and a key kept
@@ -168,6 +166,7 @@ nominated store is not a chain it is its own single member.
 | The store cannot be used at all | `CredentialError` |
 | The fallback file is absent | `NotStored` |
 | The fallback file is unreadable, is not valid JSON, or carries a `version` this build does not read | `CredentialError` |
+| The fallback file is a symlink, or is owned by another user (§3 decision 6) | `CredentialError` |
 
 **Not-a-string means nothing is stored, and that is measured rather than
 chosen.** §4.6 records that on the development machine an absent secret comes
@@ -186,6 +185,7 @@ by a later Pressless rather than guessing at it.
 | The store cannot be used at all | `CredentialError` |
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
+| The existing fallback file is a symlink, or is owned by another user | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
 **Every one of these is typed, and that is a requirement rather than tidiness.**
 `docs/design.md` § Errors has parts raise typed failures and a test walk the
@@ -224,15 +224,27 @@ already left a readable file behind.
 A write reads the existing file first and replaces one entry, so the other
 secret survives.
 
-A read opens the file with `O_NOFOLLOW` and refuses one whose owner is not
-the user running Pressless (§3 decision 6). Both are taken from the open
-descriptor rather than from the path, so what was checked is what is read.
+Every read of the fallback file — including the one `write()` makes first to
+keep the other secret — opens it with `O_NOFOLLOW`, so a symlink at that name
+is refused by the open rather than followed, and then refuses a file whose
+owner is not the user running Pressless (§3 decision 6). The owner is read off
+the open descriptor rather than the path, so what was checked is what is read;
+a descriptor cannot report a symlink, which is why that half is the open's
+job. Either refusal raises `CredentialError` — the file is a store that must
+not be acted on rather than an absent one, and §4.3 records why that
+distinction decides what setup does next.
 
 Each check is applied where the platform offers it and skipped where it does
 not. ADR-0003 asks for a capability test rather than a platform one, which is
-the shape §4.6's mode check already takes. Where neither is offered the read
-proceeds as it did before — that is the recovery decision 1 protects, and
-nothing on a platform without them writes this file in the first place.
+the shape §4.6's mode check already takes.
+
+Windows offers neither `O_NOFOLLOW` nor an owner to compare against, so the
+read there is unchecked — the intended end state rather than an oversight.
+Nothing on Windows writes this file (INV-2), so one found there was carried
+deliberately, and refusing it would refuse the recovery §4.3 keeps open. And
+decision 1's own finding is that Windows cannot make the file private in the
+first place, so a check that cannot run there withholds no protection the
+platform was offering.
 
 ### 4.5 What this module never does
 
@@ -407,20 +419,26 @@ once the code exists.
   a value, so every other rule here behaves identically — only the requirement
   that the two outcomes differ *by type* can fail it.
 
-- **INV-10** — a `read()` through the fallback file refuses a symlink and
-  refuses a file owned by another user, wherever the platform offers those
-  checks. It does not refuse on the file's mode.
+- **INV-10** — every read of the fallback file, `write()`'s own pre-read
+  included, refuses a symlink and refuses a file owned by another user,
+  wherever the platform offers those checks. Both raise `CredentialError`. It
+  does not refuse on the file's mode.
   *Test:* `tests/test_credentials.py::test_fallback_read_refuses_what_is_not_ours`
-  — put a symlink at the file's name pointing at another readable file and
-  assert `read()` raises rather than returning what it points at; patch the
-  owner reported for the open descriptor and assert it raises again. Then
-  write a file, widen its mode, and assert `read()` still returns the secret.
+  — put a symlink at the file's name pointing at a **well-formed** fallback
+  file holding a different secret for the same account, and assert `read()`
+  raises `CredentialError` rather than returning that secret; patch the owner
+  reported for the open descriptor and assert the same type again. Then write
+  a file, widen its mode, and assert `read()` still returns the secret.
   *Breaks when:* an implementer refuses on the mode as well, which reads as
   stricter and rejects the file a recovering machine was carried — the case
   §3 decision 1 and `write()`'s own comment protect.
-  **The permissive-mode case is what makes the pair bite:** a read refusing
-  everything unusual satisfies both refusal clauses, and only that third
-  assertion can fail it.
+  **The symlink's target must be well-formed or the clause cannot fail:**
+  pointed at any other file, an implementation with no `O_NOFOLLOW` follows
+  the link, fails to parse it, and raises `CredentialError` from §4.3's
+  not-valid-JSON row — green against the very defect the clause names.
+  **And the permissive-mode case is what stops the pair being satisfied by
+  refusing everything unusual:** only that third assertion can fail such a
+  build.
 
 ## 6. Failure modes
 
@@ -459,8 +477,8 @@ machine that runs this suite.
 
 **The file-store tests patch the platform check, and two of them need more
 than that.** INV-2 makes `write(store="file", ...)` raise on Windows however
-it is reached, and INV-5, INV-6 and INV-8 all write through the file store —
-so on Windows they would fail against a correct implementation. They set the
+it is reached, and INV-5, INV-6, INV-8 and INV-10 all write through the file
+store — so on Windows they would fail against a correct implementation. They set the
 platform to a non-Windows value, exactly as INV-2's own test sets it to
 Windows.
 
@@ -470,8 +488,13 @@ work. **And INV-5's mode read-back is held back by a built-in `skipif` on a
 real Windows host**: patching a check does not give a Windows filesystem POSIX
 permissions, so §10's row saying the mode is unenforceable there is a fact
 about the platform, not about the test. Its mechanism half — that `write()`
-reaches `os.replace` — runs everywhere. That one assertion aside, so does the
-suite.
+reaches `os.replace` — runs everywhere.
+
+**INV-10's two refusals are held back the same way**, and for a reason in the
+code rather than in the test: §4.4 skips both checks where the platform offers
+neither, so on such a host a correct implementation refuses nothing and the
+assertions would fail against it. Its permissive-mode assertion runs
+everywhere. Those two aside, so does the suite.
 
 **The red run is made against a stub `credentials.py`, never against an absent
 one.** With the module absent the suite errors at collection and no assertion
@@ -491,7 +514,7 @@ exit code.
 
 - **Talk to each operating system's store directly, with no dependency.**
   `ctypes` to Windows Credential Manager, D-Bus to Secret Service. It keeps
-  the project dependency-free, which `CLAUDE.md` § Build and test currently
+  the project dependency-free, which `CLAUDE.md` § Build and test no longer
   claims. Rejected because ADR-0003 chose one library covering both, and
   because it means two hand-written backends of which only one can ever be
   exercised on the machine that develops it.
@@ -512,6 +535,11 @@ exit code.
 - **A `forget()` for removing a secret.** Rejected as unneeded now. Declining
   the dashboard after granting it is PRESS-0021's, and `write()` already
   replaces.
+- **Refusing the fallback file on its MODE as well as its owner** (§3
+  decision 6). Rejected: a file carried from another machine is what recovery
+  reads, and its mode did not survive the journey while its ownership became
+  the writer's on the copy that carried it. A mode check reads as stricter and
+  rejects exactly that file.
 
 ## 9. Out of scope
 
@@ -538,13 +566,14 @@ exit code.
 | INV-8 | `tests/test_credentials.py::test_second_write_keeps_the_first` |
 | INV-9 | `tests/test_credentials.py::test_locked_store_is_not_an_absent_one` |
 | INV-10 | `tests/test_credentials.py::test_fallback_read_refuses_what_is_not_ours` |
+| INV-10 where the platform offers no `O_NOFOLLOW` and no owner to compare | **nothing, and nothing can** — §4.4 skips both checks there, so there is no refusal to observe. INV-2 removes the write side of that platform rather than checking it |
 | INV-10's ownership refusal against a file really owned by another user | **half** — the suite cannot create one without a second account, so that clause patches the owner the descriptor reports. The symlink refusal and the permissive-mode acceptance both run for real |
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
 | ADR-0003's capability test, where the filesystem does not enforce modes | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on ext4 where the request is honoured |
 | INV-5's file mode on Windows | **nothing, and nothing can** — §4.6's measurement is that the mode is unenforceable there. INV-2 removes the case rather than checking it |
 | No secret reaching the rolling log | **nothing here** — INV-6 covers this module's own messages. The log is the Face's and `docs/design.md` § Logging is the rule; PRESS-0011 owns the surface |
-| The Publisher and Insights actually calling this rather than reaching a store themselves | **nothing here** — INV-1 stops this module reaching them, not them reaching past it. PRESS-0009 and PRESS-0019 are where that would show |
+| The Face fetching a secret and handing it over, rather than the Publisher or Insights reaching a store themselves (design rule 10) | **nothing here** — INV-1 stops this module reaching them, not them reaching past it. PRESS-0009's and PRESS-0019's own INV-1 forbid the other direction |
 
 ## 11. Cross-doc impact
 
@@ -560,10 +589,8 @@ exit code.
 - `docs/decisions/ADR-0003` — three corrections, all made 2026-08-25: the
   fallback file's home, the platform on which the fallback is refused, and
   naming the store that answered.
-- `pyproject.toml` — gains the keyring library, the project's first runtime
-  dependency.
-- `CLAUDE.md` § Build and test — *"no dependencies beyond the standard library
-  and `pytest`"* stops being true when that lands.
+- `pyproject.toml` gained the keyring library and `CLAUDE.md` § Build and test
+  was rewritten around it. Both landed with the implementation.
 - `docs/design.md` § The stack already names the operating system's keyring,
   and § Where everything sits on disk already places the fallback file. Those
   two sections are unchanged; the two named above are not.
@@ -580,3 +607,4 @@ exit code.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-25 | 3, cold — genre pinned `spec`; packet carried the measured keyring behaviour, both ADRs, PRESS-0001's surface and invariants, design.md's dependency rules and `settings.py` whole. Windows declared an unrunnable region, so Q1 was out of scope there | 0 | 5 | 2 | 1 | **Eight verified, eight fixed; one dismissed. First gate on this document.** **Two findings were made independently by all three lanes**, the strongest signal in the run. §4.2 specified the probe as *write, read back, delete* and then asked for *the first member returning the probe value* — the value being gone by then, so `choose()` names nothing on a real machine while INV-7's patched fixture, which never deletes, stays green. And §2 claimed design.md's rules 5 and 8 put this module "inside the Settings lane", when both read *Settings … and nothing else* and § The parts lists no such part — so as those rules stand neither the Publisher nor Insights may call it, and PRESS-0001 §4.5 refuses to hold the secret, so routing through Settings is not open either. **The best single finding came from one lane and got worse when measured.** §4.3 gave *holds nothing* → `NotStored` and *not a `str`* → `CredentialError` as separate rows, while §4.6's own measurement says an absent secret comes back truthy and not a string: one observation, two rows, no precedence. Run rather than reasoned — the backend's docstring says it returns *a callable instead of None*, and the chain returns its first non-`None` answer and stops there, so `None` never occurs on the machine that runs this suite and INV-4's `None` fixture tested a signal that cannot happen. The rule is now *anything that is not a `str` means nothing is stored*, merging two rows into one. **A second measured fix:** absence and malfunction both reach `choose()` as a raise, so the fallback either never fired or fired past a locked store; `NoKeyringError` is now the named and only discriminator. **One Q4 and one Q3 were clauses that could not catch what they named** — INV-6 forced only §4.3's read failures while `write()` is the side handed a secret, and nothing said what an unrecognised fallback-file `version` does though PRESS-0021 branches on the exception. **One finding was surfaced rather than fixed:** amending design.md's dependency rules is a decision about another document, so §11 records the two ways out and this spec chooses neither. **Dismissed as true-but-inert:** `Choice.name`'s format is unpinned, and §4.5 forbids this module from judging a store, so nothing parses it. **Three open questions resolved clean and are not counted** — a present secret does return a `str` (executed, so the keyring path is reachable and the delete-last ordering is measured rather than argued), design.md § The stack does name the keyring, and PRESS-0001 §4.5 hands the fallback location here rather than stating it, which corrected §3 decision 3's wording in passing. |
 | 2 | 2026-08-25 | 3, cold — identical brief, packet rebuilt from disk and extended with the chain's read semantics read from source; Windows still an unrunnable region | 1 | 6 | 2 | 1 | **Ten verified, ten fixed. Cap reached (2 for a spec); the run files its tail and ships. A VIOLENT cap: six of the ten landed on text loop 1 wrote**, each anchor checked against loop 1's ledger rather than recalled — so the run was oscillating on the passages loop 1 rewrote, and a third loop would mostly repair the second. **The best finding is a mechanism defect one lane reached by reading the library's source.** §4.2 decided *keyring* by reading the probe back through the store, and a chain answers with its first member that answers at all — so a member answering unconditionally masks every member behind it, and the read-back can report failure while a working member holds the value. That is not hypothetical here: the masking member sits ahead of the plaintext one, so §4.6's plaintext bullet described a member a chain read can never reach, and §3 decision 2's promise to NAME the store could not have been kept. The verdict now rests on the member walk §4.2 already required for the name, which collapsed two mechanisms into one. **Two lanes independently found that `write()`'s failures were untyped** — §4.3's table was `read()`'s alone while INV-6 named *write() into an unwritable folder* as a failure to force, so `docs/design.md` § Errors would have been breached by an `OSError` reaching the Face's last-resort catch after the writer failed to save his key; §4.3 gains a `write()` table. **One lane caught a breach of this project's own rule**: INV-5's clause pointed the test at `folder / FILE_NAME`, and `CLAUDE.md` says a test that pins a name must hold its own copy and *"Do not tidy this into an import"* — as written the fallback file could be renamed to anything and stay green. **A Q4 found that loop 1's own discriminator had no checker at all**, no invariant and no `nothing` row, so an implementer could catch every exception as *no store* and ship the fallback firing against a locked keyring; INV-9 now holds it. **Three more were loop 1's collateral**: INV-6 needed both platforms while §7 pinned its tests to one, §7 named INV-1 as the only test green against the stub when INV-6 is too, and §7 claimed a platform patch keeps *runs everywhere* true when patching a check cannot give a Windows filesystem POSIX modes. **The one Q1 was the orchestrator's, found while re-reading §4.6**: its preamble said *These three* over five bullets and claimed all were executed, when the callable-prompts behaviour was read from source. The count is deleted rather than corrected and the bullet says which it is. **Three open questions resolved clean and are not counted** — all three lanes asked whether PRESS-0001 §6 says what §4.1 attributes to it, and it does; a plain grep first reported the phrase missing, which was the hard wrap rather than the document. |
+| 3 | 2026-09-02 | 3, cold — new run, armed by §3 decision 6 (rule 14). Genre pinned `spec`; packet carried `credentials.py` and its tests whole, ADR-0003, `design.md`, PRESS-0001 §4.4–4.5 and the measured `O_NOFOLLOW` and ownership behaviour. Windows an unrunnable region | 3 | 4 | 3 | 1 | **Eleven verified, eleven fixed, none dismissed.** **All three lanes:** INV-10 named no exception type where §4.3 requires every failure typed — and the two candidates are not interchangeable, `NotStored` sending setup to overwrite a key the writer still has. **Two lanes:** the new test could not fail — a symlink pointed at any ordinary file is followed, fails to parse, and raises `CredentialError` from the not-valid-JSON row, green against the defect it names. **Two lanes:** decision 6 was reachable by the other door, `write()`'s pre-read going through the same helper, so a substituted file is merged and the next read passes both checks. **One lane:** *both are taken from the open descriptor* is false of the symlink half — `fstat` never reports one, so only the open can refuse it; measured. **Two lanes:** §1 and §2 still had the Publisher and Insights reaching Credentials, which design rule 10 settled the other way and §11 already recorded. Windows' unchecked read, raised as an open question by two lanes, is now stated as intended with its reason. |
