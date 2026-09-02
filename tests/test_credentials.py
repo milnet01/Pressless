@@ -16,6 +16,7 @@ import json
 import os
 import stat
 import sys
+import traceback
 from pathlib import Path
 
 import keyring.errors
@@ -562,4 +563,49 @@ def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
         "a permissive mode was refused; §3 decision 6 checks ownership and "
         "not the mode, because a carried file's mode did not survive the "
         "journey"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0051 ----
+
+
+def test_a_backend_that_quotes_the_secret_does_not_leak_it(tmp_path,
+                                                           monkeypatch):
+    """PRESS-0051: a store's OWN error message can carry the secret, and
+    INV-6 has to hold against that too.
+
+    INV-6's own test patches stores whose failures do not quote the secret,
+    so it proves only that this module's literals are clean. The invariant
+    is stated absolutely and was checked against a substitute that could not
+    breach it. A real backend CAN breach it: write() hands it the value as
+    an argument, and nothing constrains what it puts in its message.
+
+    The chain assertion is the one that bites. `from exc` keeps the backend's
+    exception reachable as __cause__, so a formatted traceback -- or
+    PRESS-0011's rolling log -- prints it even though str() and repr() of
+    what we raise are clean.
+    """
+    _not_windows(monkeypatch)
+    _use(monkeypatch, _Store(raises=Exception(
+        f"backend failed while storing {SENTINEL}")))
+
+    with pytest.raises(CredentialError) as raised:
+        write("keyring", tmp_path, "publishing-key", SENTINEL)
+
+    assert SENTINEL not in str(raised.value), (
+        f"the failure's message quotes the secret: {raised.value!s}"
+    )
+    assert SENTINEL not in repr(raised.value), (
+        f"the failure's representation quotes the secret: {raised.value!r}"
+    )
+
+    chain = "".join(traceback.format_exception(
+        type(raised.value), raised.value, raised.value.__traceback__))
+    assert SENTINEL not in chain, (
+        "the backend's own message reaches a formatted traceback through "
+        "__cause__, so the key would land in the rolling log"
+    )
+    assert "Exception" in str(raised.value), (
+        f"the failure names neither the store nor the kind of fault, so it "
+        f"cannot be diagnosed at all: {raised.value!s}"
     )

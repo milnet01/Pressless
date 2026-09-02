@@ -120,9 +120,16 @@ def write(store: str, folder: Path, account: str, secret: str) -> None:
         try:
             keyring.get_keyring().set_password(SERVICE, account, secret)
         except Exception as exc:
+            # This backend was just handed the secret as an argument, and
+            # this module has no control over what it puts in its message --
+            # so the TYPE is named and the message is not (INV-6). `from
+            # None` rather than `from exc` because __cause__ is formatted by
+            # a traceback and by PRESS-0011's rolling log, which would carry
+            # the value there instead (PRESS-0051).
             raise CredentialError(
-                f"this machine's credential store could not be written: {exc}"
-            ) from exc
+                f"this machine's credential store could not be written "
+                f"({type(exc).__name__})"
+            ) from None
         return
     raise CredentialError(f"{store!r} is not a store this Pressless knows")
 
