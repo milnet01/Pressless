@@ -125,6 +125,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Four atomic writers call os.replace with no fsync, so three specs promise durability the code does not have.** (PRESS-0039)
+  Settings, Credentials, the Store and the Insights cache each renamed a
+  temporary over the target without syncing it first, so a power loss
+  could commit the rename before the data and leave an empty file. All
+  four now write LF explicitly as well.
+
 - **Five findings from the first whole-tree static-analysis sweep** (PRESS-0038)
   A dead case pattern in the pre-commit hook, a git blob hash that
   would refuse to run under a FIPS policy, a leftover test helper, a

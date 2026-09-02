@@ -1285,7 +1285,7 @@
   Kind: audit-fix.
   Source: check-code --tree 2026-08-31.
 
-- 📋 [PRESS-0039] **Four atomic writers call os.replace with no fsync, so three specs promise durability the code does not have.**
+- ✅ [PRESS-0039] **Four atomic writers call os.replace with no fsync, so three specs promise durability the code does not have.**
   Found by three lanes independently -- the strongest signal in the
   sweep. settings.py:192, credentials.py:242, store.py:246 and
   insights.py:362 all use temp-plus-rename and none calls fsync.
@@ -1356,6 +1356,40 @@
   that makes os.replace durable needs a platform guard: a directory
   cannot be opened for fsync on Windows, which is a first-class target
   here.
+  Resolved (2026-09-02): each of the four sites now flushes and fsyncs
+  the temporary's descriptor before os.replace, and the three that left
+  the newline to the platform now name it, so all four write LF as
+  design.md's Persistence rule requires.
+
+  Built INLINE rather than as the shared helper this item prescribes,
+  for the reason the progress note above records: that helper is
+  unbuildable without amending two accepted specs' INV-1. The helper
+  question is NOT closed by this item -- PRESS-0006 will add more copies
+  of the idiom, and extracting it is still a design change owing rule
+  14's gate on PRESS-0001 and PRESS-0002.
+
+  Scoped to the DATA fsync. The directory fsync is deliberately not
+  here: syncing the temporary before the rename is exactly what the
+  three specs promise -- the old file or the new one, never a truncated
+  one -- while a directory fsync only makes a completed save survive a
+  power cut, which no spec promises, and it is the half needing the
+  Windows platform guard.
+
+  No document change was owed: the code now conforms to design.md as
+  written, so the scoping question that paragraph raised does not arise.
+  PRESS-0060 is untouched -- it is about PRESS-0005 4.2, not this.
+
+  Tests: tests/_durability_watch.py records mkstemp, fsync and replace in
+  order and asserts each rename was preceded by an fsync of that
+  temporary's own descriptor. It reads the file size AT the sync, so an
+  fsync with no flush ahead of it fails too -- that mutation was run and
+  caught, and it leaves no trace on disk for any assertion over the file
+  to find. The newline half asserts what the code named, not the bytes,
+  because os.linesep is LF here and a byte assertion passes against the
+  defect. All seven tests were red before the change; gate green.
+
+  Not verified on Windows: the test box deliberately has no Python
+  (CLAUDE.md), and there is no packaged executable yet.
   **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
