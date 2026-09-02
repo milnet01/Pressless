@@ -1888,7 +1888,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials.
 
-- 📋 [PRESS-0051] **A third-party backend's own error message can carry the secret into an exception INV-6 says never holds one.**
+- ✅ [PRESS-0051] **A third-party backend's own error message can carry the secret into an exception INV-6 says never holds one.**
   credentials.py:120-124 interpolates {exc} into a CredentialError, and
   uses `from exc`. exc is a message produced by an arbitrary third-party
   backend that was JUST HANDED the secret as an argument. The module
@@ -1907,6 +1907,30 @@
   :248, :262, :267) never have a secret in scope and can keep {exc}.
 
   See also the document item on INV-6's test surface.
+  Resolved (2026-09-02): the site now names the exception TYPE rather
+  than the backend's message, and raises from None. Both halves were
+  needed and the second is the one a str/repr assertion cannot see --
+  __cause__ is formatted by a traceback and by PRESS-0011's rolling log,
+  so from exc would have carried the value there even with a clean
+  message.
+
+  A new test hands the module a backend whose exception message quotes
+  the secret, which is what the existing INV-6 test could not do, and
+  asserts the formatted exception chain as well as str and repr. Three
+  mutations killed: the original defect, the clean-message-but-from-exc
+  case, and an over-correction naming nothing at all.
+
+  One correction to this item's own reasoning, recorded because it was
+  checked: the other {exc} sites were said never to have a secret in
+  scope, and _write_file does take one. What makes its three sites safe
+  is narrower -- their exceptions come from mkstemp, fstat and the write
+  syscalls, none of which is handed the value, and an OSError's message
+  is an errno and a path. They keep {exc}.
+
+  The document item on INV-6's test surface is untouched by this. The
+  new test sits beside INV-6 rather than replacing its clause, so the
+  spec still describes a test that proves less than the invariant
+  claims.
   **Layman:** If the password store fails in an unusual way, its complaint could quote the publishing key back into an error message.
   Kind: security.
   Source: review-code 2026-08-31 lane credentials.

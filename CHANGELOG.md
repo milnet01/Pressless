@@ -185,6 +185,17 @@ appears once something has actually shipped.)
 
 ### Security
 
+- **If your computer's password store fails oddly, its complaint can no longer quote the publishing key back.** (PRESS-0051)
+  Pressless hands the key to your system's password store to save it. If
+  that store then failed in an unusual way, its own complaint was copied
+  into the error Pressless showed -- and the store had just been given
+  the key, so its complaint could contain it.
+
+  Pressless now records only what KIND of fault it was, never the store's
+  own wording, and it no longer keeps the original fault attached
+  underneath, where a crash report or the log would have printed it
+  anyway.
+
 - **The backup file holding your publishing key is now checked to be yours before it is read.** (PRESS-0085)
   Where your computer has no password store, Pressless keeps the key in
   a file of its own. It now refuses that file if it has been replaced by
