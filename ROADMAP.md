@@ -1331,8 +1331,7 @@
   EVERYTHING BELOW THIS LINE IS A GARBLED DUPLICATE OF THE THREE
   PARAGRAPHS ABOVE AND SHOULD BE IGNORED. It was written with literal
   backslash-n sequences instead of newlines by a bad tool payload, and
-  roadmap_log op:amend_body cannot match a backslash, so it cannot be
-  removed. Filed as Ants MCP feedback. Ignore from here to the end:\"a shape the installation carries between\nmachines\" is not byte-identical across them. For insights it is\nharmless outright -- the cache is never published and never diffed.\nThe point is that four copies of one idiom already disagree on one\nparameter BEFORE PRESS-0006 adds three more, which is the argument\nfor extracting the helper now rather than later.\n\ndesign.md's Persistence section states \"UTF-8, and LF line endings\nwritten explicitly\" unconditionally, so either the three sites are\nwrong or the rule needs scoping to files git sees -- the document\nside is PRESS-0060."
+  it cannot be removed: op:amend_body matches a literal backslash fine, but refuses any span ending at the body's own final backslash sequence, and the tail ends in one. Filed as Ants MCP feedback. Ignore from here to the end:\"a shape the installation carries between\nmachines\" is not byte-identical across them. For insights it is\nharmless outright -- the cache is never published and never diffed.\nThe point is that four copies of one idiom already disagree on one\nparameter BEFORE PRESS-0006 adds three more, which is the argument\nfor extracting the helper now rather than later.\n\ndesign.md's Persistence section states \"UTF-8, and LF line endings\nwritten explicitly\" unconditionally, so either the three sites are\nwrong or the rule needs scoping to files git sees -- the document\nside is PRESS-0060."
   **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
@@ -1425,7 +1424,7 @@
   Kind: security.
   Source: review-code 2026-08-31 lane credentials.
 
-- 📋 [PRESS-0043] **A missing or empty site folder deletes the whole published site in one commit and reports success.**
+- ✅ [PRESS-0043] **A missing or empty site folder deletes the whole published site in one commit and reports success.**
   Raised from the lane's HIGH to CRITICAL in calibration: it needs no
   adversary and no unusual input.
 
@@ -1443,11 +1442,20 @@
   not a directory -- plus a refusal when `uploaded` is empty and
   `removed` covers the whole remote set. A full wipe is never a
   legitimate publish.
+  Resolved (2026-09-02): two preconditions in publish(). A folder that
+  is not a directory is refused before the first request; a publish that
+  would remove every unprotected path while writing none is refused
+  after the listing is read and before the first write. Both raise
+  PublishError, and the spec's failure table carries both. Tests
+  test_a_site_folder_that_is_not_a_directory_is_refused and
+  test_a_publish_that_would_empty_the_site_is_refused, each proven red
+  first with DID NOT RAISE. No existing publish fixture reaches either
+  guard -- confirmed by reading the fixtures, not by running them.
   **Layman:** If the folder the app publishes from is wrong or empty, it wipes the live site and tells you it worked.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.
 
-- 📋 [PRESS-0044] **The untouchable rule has two diverged implementations, and the one that silently protects nothing is the safety-critical one.**
+- ✅ [PRESS-0044] **The untouchable rule has two diverged implementations, and the one that silently protects nothing is the safety-critical one.**
   Raised from HIGH to CRITICAL: with the item above, this is the
   site-destruction pair. The untouchable list is the single guard
   against the deletion PRESS-0009 2 calls unrecoverable.
@@ -1472,6 +1480,16 @@
 
   Fix on both sides: normalise in _is_protected, and reject a malformed
   entry in settings.py's loader so it is loud rather than inert.
+  Resolved (2026-09-02): _is_protected now ignores a trailing slash on
+  an entry, and settings.load refuses an entry it cannot resolve to a
+  root name -- one naming a path inside a directory, or empty. Both
+  sides move because a hand-written settings file reaches the Publisher
+  without passing the loader. A trailing slash is not refused at load:
+  it names one root entry unambiguously. _within_prefix's docstring no
+  longer claims a rule it does not share. Verdict diff of old against
+  new over the real population: 5 of 110 moved, every one a
+  trailing-slash entry and every one toward more protection; no
+  well-formed entry changed verdict.
   **Layman:** The list of files the app promises never to touch stops working if an entry is written in a slightly different but reasonable form -- with no error anywhere.
   Kind: security.
   Source: review-code 2026-08-31 lane publisher.
