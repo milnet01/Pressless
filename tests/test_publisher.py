@@ -19,6 +19,7 @@ import base64
 import hashlib
 import inspect
 import json
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -891,4 +892,120 @@ def test_an_untouchable_entry_with_a_trailing_slash_still_protects(tmp_path):
     paths = _tree_creation_paths(transport)
     assert paths is not None and "CNAME" not in paths, (
         f"the tree-creation request names CNAME: {paths!r}"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0052 ----
+#
+# The redirect defect of the module's own client. Every other test in this
+# file hands in a double, so `_Urllib` -- the one piece a double replaces --
+# is reached by nothing above, and these are the only tests that touch it.
+#
+# None of them opens a socket. The redirect policy is asked of the handler
+# directly and the wiring is read off the opener, so the file's "no test
+# reaches the network" rule still holds.
+
+
+def _authorised_request(url):
+    return urllib.request.Request(  # noqa: S310 -- literal url, below
+        url,
+        headers={"Authorization": "Bearer THE-PUBLISHING-KEY",
+                 "Accept": "application/json"},
+        method="GET",
+    )
+
+
+def test_a_cross_origin_redirect_drops_the_key():
+    """PRESS-0052: the Authorization header does not follow a redirect to
+    another origin.
+
+    urllib's own handler copies every header but the content ones onto the
+    target, a different host included, and follows up to ten hops -- so a
+    redirect would hand the key to whoever answered.
+
+    Breaks when an implementer takes urllib's default redirect handling,
+    which is what this module did until PRESS-0052. Nothing about the code
+    looked wrong, because the leak is in the library's behaviour rather
+    than in anything the module writes.
+    """
+    handler = publisher_module._NoCrossOriginAuth()
+    original = _authorised_request("https://api.github.com/a/b")
+
+    redirected = handler.redirect_request(
+        original, None, 302, "Found", {}, "https://elsewhere.example/x"
+    )
+
+    carried = dict(redirected.headers)
+    assert 'THE-PUBLISHING-KEY' not in str(carried), (
+        f"the key followed the redirect: {carried!r}"
+    )
+    assert carried.get("Accept") is not None, (
+        f"only the Authorization header should be dropped, but the "
+        f"ordinary headers went with it: {carried!r}"
+    )
+
+
+def test_a_same_origin_redirect_keeps_the_key():
+    """PRESS-0052: a redirect that stays on the same origin keeps the
+    header, so an endpoint that answers with a 301 still resolves.
+
+    Breaks when an implementer refuses every redirect, or strips the header
+    unconditionally. Both close the hole, both break the ordinary case, and
+    a test asserting only the cross-origin half passes against either.
+    """
+    handler = publisher_module._NoCrossOriginAuth()
+    original = _authorised_request("https://api.github.com/a/b")
+
+    redirected = handler.redirect_request(
+        original, None, 301, "Moved", {}, "https://api.github.com/c/d"
+    )
+
+    assert redirected.headers.get("Authorization") == "Bearer THE-PUBLISHING-KEY", (
+        f"a same-origin redirect lost the header: "
+        f"{dict(redirected.headers)!r}"
+    )
+
+
+@pytest.mark.parametrize("target, what", [
+    ("http://api.github.com/a/b", "a downgrade to cleartext http"),
+    ("https://api.github.com:8443/a/b", "a hop to another port"),
+])
+def test_a_same_host_change_of_origin_drops_the_key(target, what):
+    """PRESS-0052: the origin is scheme, host AND port, so the same host
+    reached another way is still somewhere else.
+
+    Breaks when an implementer compares hostnames alone. The header would
+    then ride a cleartext hop, or reach a different service on the same
+    machine -- in both cases to a host that reads as the right one.
+    """
+    handler = publisher_module._NoCrossOriginAuth()
+    original = _authorised_request("https://api.github.com/a/b")
+
+    redirected = handler.redirect_request(
+        original, None, 302, "Found", {}, target
+    )
+
+    assert "Authorization" not in dict(redirected.headers), (
+        f"the header survived {what}: {dict(redirected.headers)!r}"
+    )
+
+
+def test_the_client_installs_the_redirect_handler():
+    """PRESS-0052: the module's own client is built with that handler, and
+    the default one it replaces is not also present.
+
+    The three tests above ask the handler directly, which proves the policy
+    and says nothing about the wiring. Breaks when an implementer writes
+    the handler and leaves `urlopen` in place -- the whole fix then does
+    nothing, and every test above still passes.
+    """
+    handlers = publisher_module._Urllib()._opener.handlers
+
+    assert any(isinstance(h, publisher_module._NoCrossOriginAuth) for h in handlers), (
+        f"the client's opener carries no cross-origin handler: {handlers!r}"
+    )
+    assert not any(type(h) is urllib.request.HTTPRedirectHandler
+                   for h in handlers), (
+        f"urllib's default redirect handler is still installed beside it, "
+        f"so which one answers is not decided here: {handlers!r}"
     )

@@ -29,6 +29,7 @@ import os
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -119,6 +120,37 @@ class Transport(Protocol):
     def now(self) -> float: ...
 
 
+class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
+    """A redirect handler that drops the key when the origin changes.
+
+    urllib copies every header but the content ones onto a redirect target,
+    a different host included, and follows up to ten hops -- so a redirect
+    would hand the Authorization header to whoever answered (PRESS-0052).
+    Neither service Pressless talks to legitimately redirects across
+    origins; a same-origin redirect keeps the header, so a renamed
+    repository still resolves.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(req, fp, code, msg, headers,
+                                              newurl)
+        if redirected is None:
+            return None
+        if _origin(newurl) != _origin(req.full_url):
+            redirected.remove_header("Authorization")
+        return redirected
+
+
+def _origin(url: str) -> tuple[str, str]:
+    """Scheme, host and port -- the whole origin.
+
+    So a downgrade to cleartext, and a hop to another port on the same
+    machine, are both changes of origin. netloc carries the port.
+    """
+    parsed = urllib.parse.urlsplit(url)
+    return (parsed.scheme, parsed.netloc)
+
+
 class _Urllib:
     """The module's own client, used when no double is handed in.
 
@@ -128,13 +160,16 @@ class _Urllib:
     syntax.
     """
 
+    def __init__(self) -> None:
+        self._opener = urllib.request.build_opener(_NoCrossOriginAuth)
+
     def request(self, method: str, url: str, body: bytes | None,
                 headers: dict[str, str]
                 ) -> tuple[int, dict[str, str], bytes]:
         request = urllib.request.Request(url, data=body, headers=headers,
                                          method=method)
         try:
-            with urllib.request.urlopen(request) as response:
+            with self._opener.open(request) as response:
                 return (response.status, dict(response.headers),
                         response.read())
         except urllib.error.HTTPError as error:
