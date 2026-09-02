@@ -350,9 +350,12 @@ def fetch_previous(settings: Settings, token: str, into: Path,
             continue
         if not _within_prefix(path, prefix):
             continue
+        # _blobs_in reads the same field with .get; this site indexed it
+        # and raised a bare KeyError on an entry without one, which is
+        # neither of §4.1's types (PRESS-0073).
+        sha = _required(entry, "sha", f"a sha for {path!r}")
         blob = session.read(
-            _repo_url(settings.repository,
-                      f"git/blobs/{_segment(entry['sha'])}")
+            _repo_url(settings.repository, f"git/blobs/{_segment(sha)}")
         )
         target = Path(into) / path
         if not _within_folder(target, Path(into)):
@@ -360,8 +363,15 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                 f"the repository listing names {path!r}, which would be "
                 f"written outside the folder asked for"
             )
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(_content_of(blob))
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(_content_of(blob))
+        except OSError as exc:
+            # A full disk, or a folder that cannot be written. §4.1 says
+            # every failure is one of the types above (PRESS-0073).
+            raise PublishError(
+                f"the previous state could not be written to {target}: {exc}"
+            ) from exc
         written.append(path)
 
     return Fetched(commit=parent, paths=tuple(sorted(written)))
@@ -506,7 +516,17 @@ def _local_files(folder: Path) -> dict[str, bytes]:
             # refusing would fail a publish over something harmless.
             continue
         if path.is_file():
-            files[path.relative_to(folder).as_posix()] = path.read_bytes()
+            try:
+                content = path.read_bytes()
+            except OSError as exc:
+                # A file the writer cannot read is still a file in the site
+                # folder; the bare OSError was neither of §4.1's types
+                # (PRESS-0073).
+                raise PublishError(
+                    f"{path} is in the site folder but could not be read: "
+                    f"{exc}"
+                ) from exc
+            files[path.relative_to(folder).as_posix()] = content
     return files
 
 

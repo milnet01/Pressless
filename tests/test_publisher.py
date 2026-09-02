@@ -20,6 +20,7 @@ import hashlib
 import http.client
 import inspect
 import json
+import os
 import urllib.request
 from pathlib import Path
 
@@ -1224,3 +1225,72 @@ def test_a_symlink_in_the_site_folder_is_not_published(tmp_path):
         f"the dotfile was dropped too; only the symlink should be, since a "
         f"site legitimately carries .nojekyll: {paths!r}"
     )
+
+
+# ------------------------------------------------------------ PRESS-0073 ----
+
+
+def test_a_tree_entry_with_no_sha_is_a_typed_failure(tmp_path):
+    """PRESS-0073 item 1: the blob URL indexed entry['sha'], so an entry
+    without one raised a bare KeyError -- neither of §4.1's types, so the
+    Face has nothing to report it with.
+
+    _blobs_in reads the same field with .get and is correct; this was the
+    one site that indexed it.
+    """
+    listing = json.dumps({
+        "tree": [{"path": "index.html", "type": "blob"}],  # no sha
+        "truncated": False,
+    }).encode("utf-8")
+
+    with pytest.raises(PublishError):
+        fetch_previous(_settings(), "a-token", tmp_path,
+                       transport=_Transport(reads=_reads(listing)))
+
+
+def test_a_file_that_cannot_be_read_is_a_typed_failure(tmp_path):
+    """PRESS-0073 item 3: _local_files called read_bytes with no guard, so an
+    unreadable file in the site folder raised a bare OSError out of publish().
+
+    §4.1 says every failure is one of the types above, and an OSError
+    reaching the Face's last-resort catch tells the writer something
+    unexpected went wrong (§6).
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    unreadable = tmp_path / "locked.html"
+    unreadable.write_text("<html>locked</html>", encoding="utf-8")
+    unreadable.chmod(0o000)
+
+    if os.access(unreadable, os.R_OK):
+        pytest.skip("this user can read a mode-000 file, so the case cannot "
+                    "be reached here -- root, or a filesystem ignoring modes")
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    try:
+        with pytest.raises(PublishError):
+            publish(_settings(), tmp_path, "a-token", "a commit message",
+                    transport=_Transport(reads=_reads(listing),
+                                         writes=_writes()))
+    finally:
+        unreadable.chmod(0o644)
+
+
+def test_a_fetch_that_cannot_be_written_is_a_typed_failure(tmp_path):
+    """PRESS-0073 item 2: fetch_previous wrote each fetched file with no
+    guard, so a full disk -- or any folder that cannot be written -- raised a
+    bare OSError out of it.
+
+    A full disk is not portable to arrange; a folder that is really a file is
+    the same OSError by a route that works everywhere.
+    """
+    into = tmp_path / "into"
+    into.write_text("this is a file, not a folder", encoding="utf-8")
+
+    transport = _Transport(
+        reads=_reads(_listing([("index.html", "some-blob-sha")]),
+                     blob=b"<html>the state before</html>")
+    )
+
+    with pytest.raises(PublishError):
+        fetch_previous(_settings(), "a-token", into, transport=transport)
