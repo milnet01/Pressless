@@ -23,6 +23,7 @@ from pressless.store import (
     Entry,
     SlugInUse,
     StoreError,
+    exists,
     list_slugs,
     path_for,
     publish,
@@ -562,6 +563,11 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
         "slug with a path separator": _entry(slug="../escape"),
         "slug with an upper-case letter": _entry(slug="An-Example"),
         "empty slug": _entry(slug=""),
+        # A name Windows reserves as a device, refused on every system
+        # (§4.2). Windows resolves it whatever the extension, so there the
+        # write reaches the null device and the entry is silently gone --
+        # which is worse than a refusal, and why the rule is not per-system.
+        "slug reserved as a device name": _entry(slug="nul"),
     }
 
     failures: list[str] = []
@@ -846,4 +852,103 @@ def test_a_file_named_only_the_suffix_is_not_a_slug(tmp_path):
     )
     assert listed == ("a-real-entry",), (
         f"expected the real entry alone; got {listed!r}"
+    )
+
+
+# ------------------------------------------------- PRESS-0067 items 2, 3 ----
+
+
+def test_every_windows_device_name_is_refused_and_near_misses_are_not(tmp_path):
+    """§4.2: the reserved device names are refused on every system.
+
+    The whole set, because a rule tested on one member passes against an
+    implementation that hard-codes that member. The near misses matter as
+    much: refuse too widely and an ordinary title stops being addressable.
+
+    Breaks when the name rule is the character set alone, which admits every
+    one of these -- and on Windows the write then reaches the device rather
+    than failing, so the entry is gone with nothing said.
+    """
+    reserved = ["con", "prn", "aux", "nul"]
+    reserved += [f"com{n}" for n in range(1, 10)]
+    reserved += [f"lpt{n}" for n in range(1, 10)]
+
+    accepted = []
+    for slug in reserved:
+        try:
+            write(tmp_path, _entry(slug=slug), draft=False)
+        except StoreError:
+            continue
+        accepted.append(slug)
+    assert not accepted, (
+        f"these reserved device names were accepted as slugs: {accepted!r}. "
+        f"On Windows a file so named is not a file, so the entry is lost"
+    )
+
+    # Not reserved, and each is a name a real title could resolve to.
+    for slug in ("nul-thoughts", "com10", "console", "aux-verb", "lpt", "con-fusion"):
+        write(tmp_path, _entry(slug=slug), draft=False)
+
+
+def test_a_reserved_name_is_refused_before_anything_is_written(tmp_path):
+    """§4.2's refusal reaches `path_for` and `exists`, not only `write`.
+
+    §4.1 has PRESS-0012 ask `exists` about a name the writer typed and
+    PRESS-0007 ask it about a resolved one, so a refusal that fired only in
+    `write` would let a caller act on an address that can never hold a file.
+
+    Breaks when the check is added to `write` rather than to the one place a
+    name becomes a path.
+    """
+    (tmp_path / _PUBLISHED).mkdir()
+    before = _snapshot(tmp_path)
+
+    with pytest.raises(StoreError):
+        path_for(tmp_path, "nul", draft=False)
+    with pytest.raises(StoreError):
+        exists(tmp_path, "aux")
+
+    assert _snapshot(tmp_path) == before, "a refused name left something behind"
+
+
+def test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree(tmp_path):
+    """§4.3: `list_slugs` and `exists` match the suffix ignoring case, and a
+    slug two files claim is returned once.
+
+    The two are asserted TOGETHER because the defect was never in either
+    alone -- it was the pair disagreeing about whether an address was taken.
+    Checking one would pass against an implementation that fixed it and left
+    the other composing `.txt` exactly.
+
+    Breaks when the suffix is compared with `endswith` on the raw name, and
+    when a case-folded listing collects into a list rather than a set.
+    """
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    (published / ("hand-renamed" + _SUFFIX.upper())).write_text(
+        _WITH_AN_UNKNOWN_FIELD.replace("an-example", "hand-renamed"), encoding="utf-8"
+    )
+    write(tmp_path, _entry(slug="ordinary"), draft=False)
+
+    listed = list_slugs(tmp_path, draft=False)
+    assert "hand-renamed" in listed, (
+        f"a file ending {_SUFFIX.upper()} was not listed: {listed!r}. §4.3 "
+        f"matches the suffix ignoring case, so the Store can see a file the "
+        f"writer's editor renamed"
+    )
+    assert exists(tmp_path, "hand-renamed"), (
+        "list_slugs sees the file and exists does not, which is the "
+        "disagreement §4.3 exists to remove"
+    )
+    assert exists(tmp_path, "ordinary") and "ordinary" in listed
+
+    # Two files claiming one address -- reachable on Linux only, never
+    # produced by the Store. §4.3: they name one slug, returned once.
+    (published / ("ordinary" + _SUFFIX.upper())).write_text(
+        _WITH_AN_UNKNOWN_FIELD.replace("an-example", "ordinary"), encoding="utf-8"
+    )
+    again = list_slugs(tmp_path, draft=False)
+    assert again.count("ordinary") == 1, (
+        f"two files differing only in the suffix's case returned the slug "
+        f"{again.count('ordinary')} times: {again!r}"
     )

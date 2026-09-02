@@ -50,6 +50,19 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # differing only in case, which are one file on Windows and two on Linux.
 _LEGAL_SLUG = re.compile(r"\A[a-z0-9-]+\Z")
 
+# §4.2: refused on EVERY system, not only Windows. Windows resolves these
+# names whatever the extension, so opening `nul.txt` there reaches the null
+# device rather than failing -- the write appears to succeed and the entry is
+# gone, which is worse than a refusal. One rule rather than one per system is
+# what makes an entry that saves on one machine save on the other. The set is
+# lower case only because _LEGAL_SLUG has already refused anything else
+# (PRESS-0067).
+_RESERVED_NAMES = frozenset(
+    ("con", "prn", "aux", "nul")
+    + tuple(f"com{number}" for number in range(1, 10))
+    + tuple(f"lpt{number}" for number in range(1, 10))
+)
+
 
 class StoreError(Exception):
     """A file or a value the Store will not act on."""
@@ -82,10 +95,16 @@ def exists(folder: Path, slug: str) -> bool:
     rule callers keep, not one `write` enforces: PRESS-0012 asks before
     offering a new entry and PRESS-0007 before writing an imported one,
     and Import writes both folders in one pass (§4.1).
+
+    Answered from the same matcher `list_slugs` uses rather than by composing
+    the name and asking the platform: composing it made the two disagree on
+    Windows, where the filesystem resolves `<slug>.TXT` for one and the
+    listing could not see it (§4.3, PRESS-0067). The slug is still refused
+    here where it is illegal, so a caller handed a name the writer typed gets
+    a `StoreError` rather than `False`.
     """
-    return any(
-        path_for(folder, slug, draft=draft).is_file() for draft in (False, True)
-    )
+    _refuse_illegal_slug(slug, "a slug")
+    return any(slug in _slugs_in(folder, draft=draft) for draft in (False, True))
 
 
 def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
@@ -98,19 +117,38 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
     handed = Path(folder)
     if not handed.is_dir():
         raise StoreError(f"{handed} is not a folder")
-    subfolder = handed / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
+    return tuple(sorted(_slugs_in(handed, draft=draft)))
+
+
+def _slugs_in(handed: Path, *, draft: bool) -> set[str]:
+    """Every slug one folder holds (§4.3).
+
+    Shared by `list_slugs` and `exists` so the two cannot disagree about
+    whether an address is taken -- §4.3 makes them one rule, and two copies of
+    a matcher are two matchers that will diverge. That disagreement is what
+    PRESS-0067 was: `exists` composed the name through the platform, which
+    resolves `<slug>.TXT` on Windows, while the listing compared the suffix
+    exactly and could not see it.
+
+    A set, because two names differing only in the suffix's case name one
+    slug and §4.3 returns it once. A missing subfolder holds nothing: the
+    folders are the Store's own layout, so a fresh install needs no setup
+    step for them (§6).
+    """
+    subfolder = Path(handed) / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
     if not subfolder.is_dir():
-        return ()
-    return tuple(sorted(
+        return set()
+    suffix = FILE_SUFFIX.lower()
+    return {
         path.name[: -len(FILE_SUFFIX)]
         for path in subfolder.iterdir()
         # Longer than the suffix, because a file named exactly ".txt" leaves
         # an empty slug -- which path_for refuses, so a listing carrying one
         # cannot be handed back to the Store (PRESS-0067).
         if path.is_file()
-        and path.name.endswith(FILE_SUFFIX)
         and len(path.name) > len(FILE_SUFFIX)
-    ))
+        and path.name.lower().endswith(suffix)
+    }
 
 
 def read(path: Path) -> Entry:
@@ -674,6 +712,13 @@ def _refuse_illegal_slug(name: str, what: str) -> None:
         raise StoreError(
             f"{name!r} is not {what}: one or more of a-z, 0-9 and '-', "
             f"and nothing else"
+        )
+    if name in _RESERVED_NAMES:
+        raise StoreError(
+            f"{name!r} is not {what}: Windows reserves it as a device name, "
+            f"so a file called {name}{FILE_SUFFIX} there is not a file. It is "
+            f"refused everywhere so an entry that saves on one machine saves "
+            f"on the other"
         )
 
 
