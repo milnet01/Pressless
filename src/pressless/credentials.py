@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -238,6 +239,28 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         )
     except OSError as exc:
         raise CredentialError(f"{target} could not be written: {exc}") from exc
+
+    # ADR-0003 states a CAPABILITY test, so the mode is read off the
+    # descriptor rather than inferred from the platform. mkstemp ASKS for
+    # 0600; a mount that does not enforce POSIX modes ignores it, chmod
+    # cannot repair it, and os.replace would carry the permissive mode onto
+    # the target. Checking the temporary means the secret never reaches such
+    # a filesystem at all -- one syscall, before the write (PRESS-0042).
+    try:
+        granted = stat.S_IMODE(os.fstat(handle).st_mode)
+    except OSError as exc:
+        os.close(handle)
+        _discard(temporary)
+        raise CredentialError(f"{target} could not be written: {exc}") from exc
+    if granted & 0o077:
+        os.close(handle)
+        _discard(temporary)
+        raise NoStore(
+            f"{folder} cannot hold a file private to one user: a new file "
+            f"there is mode {granted:03o}, so the key would be readable by "
+            f"others on this machine"
+        )
+
     try:
         with os.fdopen(handle, "w", encoding="utf-8") as stream:
             json.dump(data, stream, indent=2, ensure_ascii=False)

@@ -1387,7 +1387,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes insights/publisher.
 
-- 📋 [PRESS-0042] **The owner-only guarantee on the fallback credentials file is asserted and never verified.**
+- ✅ [PRESS-0042] **The owner-only guarantee on the fallback credentials file is asserted and never verified.**
   The sweep's one raw CRITICAL, and it stays CRITICAL after
   calibration.
 
@@ -1420,6 +1420,22 @@
   Pair with the read side: credentials.py:258 follows symlinks and
   checks neither ownership nor mode, so on the same drive another user
   can substitute a file and read() hands their token to the Publisher.
+  Resolved (2026-09-02): _write_file now reads the mode off the
+  descriptor mkstemp returned, before the secret is written into it, and
+  raises NoStore where any group or other bit is set. That is ADR-0003's
+  capability test rather than the platform proxy that stood in for it,
+  and checking the temporary rather than the target means the secret
+  never reaches a filesystem that cannot keep it private. One syscall on
+  a path that already existed. Test
+  test_a_folder_that_cannot_keep_a_file_private_is_refused, proven red
+  first with DID NOT RAISE; it fakes fstat, since that is the one call
+  reporting what the mount actually granted. Verdict space read whole
+  rather than sampled: only the owner bits pass, so 0600 and 0700 are
+  allowed and every mode carrying a group or other bit is refused.
+  PRESS-0002's write table, its § 4.6 measurement and its § 10 table now
+  say so. The read side is NOT done and is filed as PRESS-0085 -- it
+  needs a decision that contradicts _write_file's own written design
+  choice, so it owes a rule 14 gate rather than a quiet edit.
   **Layman:** On some kinds of drive the file holding the publishing key can end up readable by anyone, and the app reports success anyway.
   Kind: security.
   Source: review-code 2026-08-31 lane credentials.
@@ -2695,6 +2711,39 @@
   Kind: feature.
   Source: user-request-2026-09-02.
   Lanes: Insights.
+
+- 📋 [PRESS-0085] **The fallback credentials file is read through a symlink, with neither owner nor mode checked.**
+  Split out of PRESS-0042 rather than folded into it, because the
+  write side was mandated by ADR-0003 and this side is not: it needs a
+  decision that contradicts a design choice already written down.
+
+  _read_mapping uses Path.read_text, which follows a symlink and checks
+  neither st_uid nor the mode. So on a shared or removable drive another
+  user can substitute the file and read() hands their secret to the
+  Publisher.
+
+  WHY IT WAS NOT FIXED WITH THE WRITE SIDE: _write_file's own comment
+  records the design -- "read() carries no such refusal: reading one back
+  is how such a machine is recovered". Adding a refusal to the read path
+  therefore changes direction rather than recording what was built, so it
+  owes CLAUDE.md rule 14's gate on PRESS-0002 before any code lands.
+
+  The two candidate rules are not equivalent and the choice is the work.
+  Refusing on MODE breaks the recovery case the comment protects: a file
+  carried from a machine that wrote it permissively is exactly what
+  recovery reads. Refusing on OWNERSHIP does not -- a file copied or
+  restored by the writer is owned by the writer -- and O_NOFOLLOW closes
+  the symlink half without touching either. Ownership plus O_NOFOLLOW
+  looks right; it is not obviously right, which is why it is filed.
+
+  Severity is below PRESS-0042's. The substituted secret is used against
+  settings.repository, so it fails to authenticate rather than publishing
+  anywhere the attacker chose, and os.replace replaces a symlink rather
+  than writing through it, so the write path is not a route to another
+  user's file.
+  **Layman:** Another user on a shared drive could swap the file holding the publishing key, and the app would read theirs without noticing.
+  Kind: security.
+  Source: in-session-2026-09-02, split from PRESS-0042.
 
 ## Milestones
 

@@ -173,6 +173,7 @@ by a later Pressless rather than guessing at it.
 | What it meets | What it raises |
 |---|---|
 | Windows, with `store == "file"` | `NoStore` |
+| The folder cannot hold a file private to one user | `NoStore` |
 | The store cannot be used at all | `CredentialError` |
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
@@ -258,7 +259,12 @@ once the code exists.
   decision 2.
 - **`mkstemp` creates its file owner-only and `os.replace` preserves that
   mode.** Verified by writing one, replacing a world-readable target, and
-  reading the mode back.
+  reading the mode back — on ext4. A mount that does not enforce POSIX modes
+  ignores the request and `chmod` cannot repair it, so `write()` reads the
+  mode back off the descriptor `mkstemp` returned, before the secret is
+  written into it, and raises `NoStore` where any group or other bit is set.
+  That is ADR-0003's capability test rather than a platform proxy for it, and
+  checking the temporary means the secret never reaches such a filesystem.
 - **`os.chmod` on Windows sets only the read-only flag.** All other bits are
   ignored, so no `chmod` can make a file private to one user there.
   Source: https://docs.python.org/3/library/os.html#os.chmod
@@ -499,6 +505,7 @@ exit code.
 | INV-9 | `tests/test_credentials.py::test_locked_store_is_not_an_absent_one` |
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
+| ADR-0003's capability test, where the filesystem does not enforce modes | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on ext4 where the request is honoured |
 | INV-5's file mode on Windows | **nothing, and nothing can** — §4.6's measurement is that the mode is unenforceable there. INV-2 removes the case rather than checking it |
 | No secret reaching the rolling log | **nothing here** — INV-6 covers this module's own messages. The log is the Face's and `docs/design.md` § Logging is the rule; PRESS-0011 owns the surface |
 | The Publisher and Insights actually calling this rather than reaching a store themselves | **nothing here** — INV-1 stops this module reaching them, not them reaching past it. PRESS-0009 and PRESS-0019 are where that would show |

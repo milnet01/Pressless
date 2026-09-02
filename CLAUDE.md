@@ -6,7 +6,7 @@
 `PRESS-0002`, `PRESS-0004`, `PRESS-0005`, `PRESS-0006`, `PRESS-0009`,
 `PRESS-0010`, `PRESS-0019`, `PRESS-0024`, `PRESS-0025`, `PRESS-0026`,
 `PRESS-0027`, `PRESS-0032`, `PRESS-0033`, `PRESS-0034`, `PRESS-0035`,
-`PRESS-0038`, `PRESS-0043` and `PRESS-0044` are ✅. Run
+`PRESS-0038`, `PRESS-0042`, `PRESS-0043` and `PRESS-0044` are ✅. Run
 `python3 -m pytest` for where
 code stands, and the roadmap for what is queued, blocked or newly filed.
 

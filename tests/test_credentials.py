@@ -387,3 +387,50 @@ def test_locked_store_is_not_an_absent_one(monkeypatch):
     _use(monkeypatch, _Store(raises=keyring.errors.KeyringLocked("locked")))
     with pytest.raises(CredentialError):
         choose()
+
+
+# ------------------------------------------------------------ PRESS-0042 ----
+
+
+def test_a_folder_that_cannot_keep_a_file_private_is_refused(tmp_path, monkeypatch):
+    """PRESS-0042: the owner-only guarantee is CHECKED, not asserted.
+
+    ADR-0003 states a CAPABILITY test -- "where a file cannot be made private
+    to one user there is no fallback: setup stops and says so". The module
+    implemented a PLATFORM proxy instead: it refused Windows and allowed
+    everything else. `mkstemp` asks for 0600, and a mount that does not
+    enforce POSIX modes -- vfat, exFAT, NTFS, CIFS and many FUSE mounts --
+    ignores it, `chmod` returns EPERM there, and `os.replace` carries the
+    permissive mode onto the target. §3 decision 1 names the scenario as its
+    own justification: the writer chooses where Pressless sits, which may be
+    a shared or removable drive. §4.6's measurement was taken on ext4.
+
+    The mode is read off the DESCRIPTOR `mkstemp` returned, before the secret
+    is written into it, so the secret never reaches a filesystem that cannot
+    keep it. `fstat` is the one call that reports what the mount actually
+    granted, which is why faking it is how this fixture stands in for such a
+    mount.
+
+    Breaks when an implementer trusts the mode `mkstemp` asked for. INV-5
+    cannot catch it: that test reads the mode back on ext4, where the request
+    is honoured.
+    """
+    _not_windows(monkeypatch)
+    real_fstat = os.fstat
+
+    def permissive(fd):
+        result = real_fstat(fd)
+        return os.stat_result((result.st_mode | 0o066,) + tuple(result)[1:])
+
+    monkeypatch.setattr(credentials_module.os, "fstat", permissive)
+    try:
+        with pytest.raises(NoStore):
+            write("file", tmp_path, "publishing-key", SENTINEL)
+    finally:
+        monkeypatch.undo()
+
+    left = sorted(path.name for path in tmp_path.iterdir())
+    assert left == [], (
+        f"a refused write left {left!r} behind; a folder that cannot hold a "
+        f"private file must end the call holding nothing"
+    )
