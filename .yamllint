@@ -1,0 +1,16 @@
+# yamllint ran against its own defaults until PRESS-0077, which meant an
+# 80-column limit in a project whose Python is set to 100, and a "truthy"
+# complaint about `on:` that is GitHub Actions' spelling rather than a fault.
+extends: default
+
+rules:
+  # Matches [tool.ruff] line-length. One project, one width.
+  line-length:
+    max: 100
+  # `on:` is the workflow trigger key. GitHub requires that spelling.
+  truthy:
+    check-keys: false
+  # A workflow file is a document, not a stream; a start marker adds nothing.
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1

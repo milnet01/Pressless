@@ -17,7 +17,10 @@ DOCS_ONLY=0
 [[ ${1-} == --docs ]] && DOCS_ONLY=1
 
 step() { printf '\n=== %s ===\n' "$1"; }
-fail() { printf 'FAILED: %s\n' "$1" >&2; exit 1; }
+fail() {
+    printf 'FAILED: %s\n' "$1" >&2
+    exit 1
+}
 
 # ── Leak sweep ──────────────────────────────────────────────────────────────
 # Three surfaces, because a push publishes all three: the tree, the files in
@@ -38,15 +41,18 @@ SELF='charl|jordaan|18down'
 scan() {
     local what=$1 hits
     hits=$(grep -inE "$PAT" | grep -vF "$SELF" || true)
-    [[ -z $hits ]] || { printf '%s\n' "$hits" >&2; fail "$what names the writer"; }
+    [[ -z $hits ]] || {
+        printf '%s\n' "$hits" >&2
+        fail "$what names the writer"
+    }
     printf 'clean: %s\n' "$what"
 }
 git grep -n -iE "$PAT" -- . | scan "tree"
-git log --all --format='%H %s%n%b'  | scan "commit messages"
+git log --all --format='%H %s%n%b' | scan "commit messages"
 # shellcheck disable=SC2046  # the revision list must expand into arguments
 git grep -n -iE "$PAT" $(git rev-list --all) -- . | scan "history"
 
-if (( DOCS_ONLY )); then
+if ((DOCS_ONLY)); then
     printf '\ndocumentation-only: no test here reads a document, so nothing else to run.\n'
     exit 0
 fi

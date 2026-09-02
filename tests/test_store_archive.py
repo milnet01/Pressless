@@ -200,7 +200,7 @@ def _archive_population():
 def _first_difference(expected: str, actual: str) -> str:
     """Where two bodies first diverge, as an offset and a short window —
     enough to diagnose without printing an entry into the log."""
-    for i, (a, b) in enumerate(zip(expected, actual)):
+    for i, (a, b) in enumerate(zip(expected, actual, strict=False)):
         if a != b:
             return f"offset {i}: expected {expected[i:i + 40]!r}, actual {actual[i:i + 40]!r}"
     shorter, longer = sorted((expected, actual), key=len)

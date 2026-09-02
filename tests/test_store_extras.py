@@ -527,7 +527,7 @@ def test_comments_survive_a_round_trip(tmp_path):
         f"{[comment.identifier for comment in read_back]!r} -- §4.2 keeps file "
         f"order, and ordering is the Builder's decision"
     )
-    for expected, actual in zip(comments, read_back):
+    for expected, actual in zip(comments, read_back, strict=True):
         for field in sorted(_COMMENT_FIELDS):
             assert getattr(actual, field) == getattr(expected, field), (
                 f"comment {expected.identifier!r}: field {field!r} did not "

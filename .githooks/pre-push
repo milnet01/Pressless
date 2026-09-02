@@ -24,7 +24,7 @@ set -Eeuo pipefail
 GLOBAL_HOOK="${ANTS_GLOBAL_HOOKS:-$HOME/.claude/githooks}/pre-push"
 
 if [[ -x $GLOBAL_HOOK ]]; then
-    exec "$GLOBAL_HOOK" "$@"
+  exec "$GLOBAL_HOOK" "$@"
 fi
 
 printf 'pre-push: no push gate on this machine (%s is absent).\n' "$GLOBAL_HOOK" >&2

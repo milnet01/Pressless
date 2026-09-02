@@ -45,3 +45,33 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+# Without an explicit `select`, ruff runs E4/E7/E9 + F only -- so the
+# line-length above was declared and never enforced, and the bug and
+# security rule sets were off (PRESS-0077). Chosen, not inherited.
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle -- this is what makes line-length bite
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import order
+    "B",    # bugbear -- the mutable-default and loop-variable classes
+    "S",    # bandit -- this project handles a publishing key
+    "UP",   # pyupgrade, held to target-version
+]
+
+[tool.ruff.lint.per-file-ignores]
+# A test asserts. S101 is bandit objecting to the whole practice.
+"tests/*" = ["S101"]
+# S314: these three parse the writer's OWN WordPress export, from a path he
+# configured -- not untrusted input off a network. defusedxml would be a
+# dependency bought to silence a check about a threat that is not present.
+"tests/test_marks_archive.py" = ["S101", "S314"]
+"tests/test_store_archive.py" = ["S101", "S314"]
+"tests/test_store_extras_archive.py" = ["S101", "S314"]
+# S310: both urlopen call sites build their URL from a module-level literal
+# (`API`), so the scheme is never attacker-chosen. Suppressed rather than
+# guarded because the guard would be a second place to keep the scheme true;
+# if `request()` ever takes a URL from outside, this ignore must go.
+"src/pressless/publisher.py" = ["S310"]
+"src/pressless/insights.py" = ["S310"]

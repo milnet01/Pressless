@@ -264,7 +264,7 @@ def _where_they_differ(expected: str, actual: str) -> str:
     reader's name, and neither belongs in a log. The offset is what an
     implementer needs — it says which part of the value the format lost.
     """
-    for i, (a, b) in enumerate(zip(expected, actual)):
+    for i, (a, b) in enumerate(zip(expected, actual, strict=False)):
         if a != b:
             return (
                 f"first differs at offset {i} of {len(expected)} expected "
@@ -402,7 +402,8 @@ def test_the_archives_comments_survive_a_round_trip(tmp_path):
         if len(back) != len(comments):
             short.append((key, len(comments), len(back)))
             continue
-        for position, (expected, actual) in enumerate(zip(comments, back)):
+        for position, (expected, actual) in enumerate(
+                zip(comments, back, strict=True)):
             for field in COMMENT_FIELDS:
                 want, got = _as_text(getattr(expected, field)), _as_text(getattr(actual, field))
                 if want != got:

@@ -25,6 +25,13 @@ indent_size = 4
 [*.{c,h,cpp,hpp,cc,hh}]
 indent_size = 4
 
+; Measured, not chosen: the hooks and scripts/local-ci.sh already indent
+; 4 (8 and 12 are continuations). Stated because a blanket [*] is not a
+; declaration for shell -- shfmt is skipped without this section, and a
+; skipped formatter looks exactly like one that found nothing (PRESS-0077).
+[*.sh]
+indent_size = 4
+
 [*.{go,go.mod,go.sum}]
 indent_style = tab
 indent_size = 4
