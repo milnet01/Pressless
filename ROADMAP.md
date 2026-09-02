@@ -2040,6 +2040,24 @@
   make -- it is a behaviour the document has to STATE, which per rule 14's
   carve-out records what was built and does not re-arm the gate on its
   own. Items 1 and 3 are untouched and still open.
+  Progress (2026-09-02, second note): item 1 is WIDER than this bullet
+  records, found by the review-contract run on PRESS-0005 and filed here
+  rather than carried into that document.
+
+  The byte-for-byte promise for unrecognised fields is stated in THREE
+  places, not one: PRESS-0005 (§4.2 and INV-4), ADR-0001, and design.md
+  § Persistence. PRESS-0005's two were corrected in that run — measured,
+  `X-Note:  spaced  ` reads back as ('X-Note', 'spaced') and re-emits as
+  `X-Note: spaced`, so the field survives but the line's spacing does
+  not, and an implementer taking the word literally builds a different
+  `extra` contract. The other two documents still say byte-for-byte, so
+  they now disagree with the spec where before all three agreed and were
+  wrong together.
+
+  Fixing those two is a policy statement about the format's promise
+  rather than a sentence repair, and each belongs to its own gate, which
+  is why this run filed it instead. The open half of item 1 — the header
+  lines the round trip injects — is untouched and still needs a decision.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.
