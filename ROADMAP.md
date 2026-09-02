@@ -2617,7 +2617,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
 
-- 📋 [PRESS-0069] **Publisher low cluster: a crafted tree entry can write outside the fetch folder, the key sits in a frame local INV-7 cannot reach, and five smaller items.**
+- ✅ [PRESS-0069] **Publisher low cluster: a crafted tree entry can write outside the fetch folder, the key sits in a frame local INV-7 cannot reach, and five smaller items.**
   1. :282 -- `target = Path(into) / path` with path taken verbatim from
   GitHub's tree listing, no containment check. A crafted tree entry
   containing .. writes outside `into` (CWE-22). Requires a hand-built
@@ -2652,6 +2652,28 @@
   includes dotfiles, so anything the Builder leaves in the site folder
   -- a .git/, an editor temp file, a symlink pointing outside -- is
   published verbatim.
+  Resolved (2026-09-02) for items 1, 4, 5, 6 and half of 7. Items 2 and
+  3 are not closed here and are filed as PRESS-0087 and PRESS-0088; the
+  unresolved half of item 7 is PRESS-0089.
+
+  Item 1: both sides resolved and compared before the write, so a tree
+  entry carrying .. is refused. Item 4: the empty test now runs AFTER
+  the strip, so a prefix of "/" selects the whole site rather than
+  nothing. Item 5: only a 404 on the repository itself is
+  RepositoryMissing now -- the rest say the repository is there and what
+  was asked for inside it is not. No spec change was owed: §6 already
+  gives that type one meaning, so this was code diverging from the
+  contract. Item 6: refname and sha are percent-encoded, slashes kept,
+  since a refname may legitimately be several segments deep.
+
+  Item 7 split. The symlink half is closed: is_file() follows a link, so
+  a link left in the site folder had its target read and published to a
+  public site. The dotfile half was NOT guessed at -- .nojekyll is a
+  dotfile a site needs, and the default untouchable list names it, so a
+  blanket skip would break the published site. What it needs first is a
+  rule about what the site folder may contain, which is PRESS-0089.
+
+  Five mutations run and all five killed.
   **Layman:** Smaller publishing issues, including one where a crash report could expose the publishing key.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher -- low cluster.
@@ -3287,6 +3309,65 @@
   **Layman:** The plan says which work belongs to which version, but only for the original items — most of what has been filed since is unsorted.
   Kind: doc-fix.
   Source: in-session-2026-09-02, measured while answering the user's versioning question.
+
+- 📋 [PRESS-0087] **The publishing key sits in a frame local that INV-7's test cannot reach.**
+  INV-7 is tested on str() and repr() of what is raised, and both are
+  clean. But the key also lives as a VALUE in the headers dict of the
+  frame that raises, so any locals-dumping traceback handler or crash
+  reporter prints it.
+
+  Not a defect in publisher.py today: nothing in the tree dumps locals.
+  It is a hole in what INV-7 can PROMISE, and PRESS-0011 -- the rolling
+  log and the Face's last-resort catch -- is where it becomes real. The
+  same shape as PRESS-0051, which was about __cause__ rather than
+  locals.
+
+  So the work is a decision rather than a patch: either PRESS-0011's
+  handler is forbidden from formatting locals, or the key stops living
+  in a long-lived local. Whichever is chosen, INV-7's clause should say
+  which surfaces it covers, because as written it reads as absolute and
+  is checked on two.
+  **Layman:** A crash report that lists variables could show the publishing key, even though every error message is careful never to.
+  Kind: security.
+  Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 2 on 2026-09-02.
+
+- 📋 [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
+  _local_files reads EVERY file of the site into one dict before
+  anything is compared, and the upload path adds roughly three further
+  copies of each file: b64encode, json.dumps, then .encode.
+
+  ADR-0002 puts the first publish at around 862 files. On a text-only
+  site that is nothing; on a photograph-carrying one it is a large
+  resident set on the modest Windows box PRESS-0022 targets.
+
+  Not fixed with the rest of PRESS-0069 because it is a design change
+  rather than a defect: the comparison wants a hash per file rather than
+  its bytes, and the upload wants streaming. Both alter the shape of the
+  publish loop, and INV-4 pins how files are compared.
+  **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
+  Kind: perf.
+  Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
+
+- 📋 [PRESS-0089] **Nothing decides what the publisher may find in the site folder besides the site.**
+  _local_files publishes every ordinary file under the folder. The
+  symlink half is closed -- a link's target is no longer read -- but
+  anything else the Builder leaves behind still goes up: an editor's
+  temp file, a .git directory, an OS thumbnail cache.
+
+  Dotfiles were deliberately NOT excluded when the symlink half was
+  fixed. A site legitimately carries .nojekyll, and the default
+  untouchable list names it, so a blanket dotfile skip would break the
+  published site. That makes this a decision rather than a filter to
+  write.
+
+  What it needs first is the rule: is the site folder Pressless's alone,
+  so anything unexpected in it is an error worth refusing, or is it a
+  folder the writer may also keep things in, so the publisher needs a
+  list of what it will and will not send? PRESS-0009 §4.4 answers
+  neither today.
+  **Layman:** If a stray file ends up in the folder Pressless publishes from, it gets published too.
+  Kind: investigate.
+  Source: in-session-2026-09-02, the half of PRESS-0069 item 7 that was not guessed at.
 
 ## Milestones
 

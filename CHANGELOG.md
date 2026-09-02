@@ -125,6 +125,23 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Fetching part of the site with "/" now means the whole site, not nothing.** (PRESS-0069)
+  Asking for a folder of "/" matched no file at all, and reported
+  success -- so you got an empty result that looked like a completed
+  fetch.
+
+- **Branch names with unusual characters now work.** (PRESS-0069)
+  A branch name containing a `#`, or letters outside the English
+  alphabet, was put into the web address as-is. The `#` silently cut the
+  address short and the accented letters made the request fail
+  outright. Both are now encoded properly.
+
+- **A missing branch is no longer reported as a missing repository.** (PRESS-0069)
+  If GitHub said a branch or a file was not there, Pressless told you
+  your repository setting pointed at nothing -- sending you to check a
+  setting that was correct. It now says the repository is there and the
+  thing inside it is not.
+
 - **A reply that arrives cut short is reported as a connection failure, not a crash.** (PRESS-0040)
   A reply that arrived truncated or malformed slipped past the app's
   error handling and reached you as an unexpected-error screen. It is
@@ -184,6 +201,21 @@ appears once something has actually shipped.)
   anywhere; it now runs and passes.
 
 ### Security
+
+- **A shortcut left in your site folder is no longer published.** (PRESS-0069)
+  Pressless publishes every file it finds in the site folder. If one of
+  those was a shortcut pointing somewhere else on your computer,
+  Pressless read what it pointed at and published that -- to a public
+  site. Shortcuts are now skipped.
+
+  Ordinary hidden files are still published, deliberately: .nojekyll is
+  one, and the site needs it.
+
+- **Fetching an older version of the site can no longer write files outside the folder you asked for.** (PRESS-0069)
+  When Pressless fetches back a previous version, it takes the file
+  names from GitHub's own listing. A specially crafted entry could name
+  a path that climbs out of the folder you pointed it at. It is now
+  checked before anything is written.
 
 - **If your computer's password store fails oddly, its complaint can no longer quote the publishing key back.** (PRESS-0051)
   Pressless hands the key to your system's password store to save it. If
