@@ -542,3 +542,58 @@ def test_saving_over_an_undecodable_file_is_a_typed_failure(tmp_path):
 
     with pytest.raises(SettingsError):
         save(tmp_path, settings)
+
+
+# ------------------------------------------------------------ PRESS-0053 ----
+
+
+def test_saving_over_a_newer_settings_file_is_refused(tmp_path):
+    """PRESS-0053: save() carried an existing file's unknown keys forward
+    while stamping this build's version over them, and never looked at the
+    version it had read.
+
+    So the same file the read path refuses "rather than guessing at it" was
+    guessed at on the way out: an older build produced a file labelled v1
+    still carrying v2's keys, the old build then read it, and the new build
+    rejected its own settings.
+
+    Unreachable until a version 2 exists, which is exactly why it is cheap
+    to hold now. Breaks when an implementer carries keys forward without
+    asking what wrote them.
+    """
+    _write(tmp_path, {"version": 2, "site_folder": "/writer/site",
+                      "something_new": "a key this build does not know"})
+    settings = Settings(
+        site_folder=tmp_path / "site",
+        repository="owner/name",
+        daily_prompt_filter="dailyprompt-*",
+        untouchable=("CNAME",),
+        credentials=Credentials(store="keyring",
+                                github_account="publishing-key",
+                                google_account=None),
+        analytics_property_id=None,
+    )
+
+    with pytest.raises(SettingsError):
+        save(tmp_path, settings)
+
+
+def test_the_first_save_still_works_with_no_file_to_carry(tmp_path):
+    """PRESS-0053's counter-case. The check must look only at a file that is
+    THERE: setup's first save has nothing to carry, and refusing it would
+    make the app unusable from the start.
+    """
+    settings = Settings(
+        site_folder=tmp_path / "site",
+        repository="owner/name",
+        daily_prompt_filter="dailyprompt-*",
+        untouchable=("CNAME",),
+        credentials=Credentials(store="keyring",
+                                github_account="publishing-key",
+                                google_account=None),
+        analytics_property_id=None,
+    )
+
+    save(tmp_path, settings)  # the assertion is that this does not raise
+
+    assert (tmp_path / FILE_NAME).exists(), "the first save wrote nothing"

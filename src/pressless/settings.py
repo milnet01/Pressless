@@ -195,6 +195,18 @@ def save(folder: Path, settings: Settings) -> None:
             ) from exc
         if not isinstance(carried, dict):
             raise SettingsError(f"{target} holds {type(carried).__name__}, not an object")
+        carried_version = carried.get("version")
+        if carried_version != FILE_VERSION:
+            # The read path refuses a version this build does not read
+            # "rather than guessing at it", and the write path guessed:
+            # unknown keys were carried forward under a version stamp of
+            # this build's own, so an older Pressless relabelled a file a
+            # later one wrote and neither could then read it (PRESS-0053).
+            raise SettingsError(
+                f"{target} has version {carried_version!r}; this Pressless "
+                f"writes version {FILE_VERSION}, and saving over it would "
+                f"relabel a file written by another"
+            )
 
     data = dict(carried)
     data.update({

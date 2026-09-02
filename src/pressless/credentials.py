@@ -242,6 +242,18 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
     target = folder / FILE_NAME
     # Read first and replace one entry, so the other secret survives (§4.4).
     carried = _read_mapping(target) or {}
+    if carried:
+        # _read_file refuses a version this build does not read; the write
+        # path did not look, so it relabelled a later Pressless's file as
+        # this build's while keeping that build's keys (PRESS-0053). An
+        # absent file is not this case: the first save has nothing to carry.
+        carried_version = carried.get("version")
+        if carried_version != FILE_VERSION:
+            raise CredentialError(
+                f"{target} has version {carried_version!r}; this Pressless "
+                f"writes version {FILE_VERSION}, and saving over it would "
+                f"relabel a file written by another"
+            )
     existing = carried.get("secrets")
     data = dict(carried)
     data["version"] = FILE_VERSION

@@ -658,3 +658,38 @@ def test_loading_the_store_keeps_the_absent_store_discriminator(monkeypatch):
     assert choose() == Choice("file", "file"), (
         "a machine with no store no longer falls back to the file store"
     )
+
+
+# ------------------------------------------------------------ PRESS-0053 ----
+
+
+def test_writing_over_a_newer_credentials_file_is_refused(tmp_path,
+                                                          monkeypatch):
+    """PRESS-0053: _read_file refuses a version this build does not read, and
+    _write_file never looked -- so it relabelled a later Pressless's file as
+    this build's while keeping that build's keys.
+
+    Unreachable until a version 2 exists, which is why it is cheap to hold
+    now.
+    """
+    _not_windows(monkeypatch)
+    (tmp_path / FILE_NAME).write_text(
+        '{"version": 2, "secrets": {"publishing-key": "kept"}}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CredentialError):
+        write("file", tmp_path, "publishing-key", SENTINEL)
+
+
+def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
+    """PRESS-0053's counter-case: with no file there, there is nothing to
+    carry and nothing to refuse.
+    """
+    _not_windows(monkeypatch)
+
+    write("file", tmp_path, "publishing-key", SENTINEL)
+
+    assert read("file", tmp_path, "publishing-key") == SENTINEL, (
+        "the first write into an empty folder no longer round-trips"
+    )
