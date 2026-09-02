@@ -1491,7 +1491,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
 
-- 📋 [PRESS-0040] **Both network modules use except OSError as their typed-failure seam, and http.client.HTTPException is not one.**
+- ✅ [PRESS-0040] **Both network modules use except OSError as their typed-failure seam, and http.client.HTTPException is not one.**
   Confirmed by execution: issubclass(http.client.HTTPException,
   OSError) is False.
 
@@ -1512,11 +1512,17 @@
   Fix in _Urllib.request in both, catching (OSError,
   http.client.HTTPException, ValueError) and re-raising as OSError, so
   the seam contract is kept where it is implemented.
+  Resolved (2026-09-02): _Urllib.request in both modules now catches
+  http.client.HTTPException and ValueError and re-raises them as
+  OSError, so the seam's contract is kept where it is implemented
+  rather than at each call site. The raised error names only the
+  host, so INV-7 still holds. Both module docstrings claimed every
+  failure is one of the typed exceptions; that is now true.
   **Layman:** A half-received reply from the network escapes the app's error handling and shows an unexpected-error screen instead of the friendly message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes insights/publisher.
 
-- 📋 [PRESS-0041] **Neither network module sets a urlopen timeout, so a black-holed connection hangs forever.**
+- ✅ [PRESS-0041] **Neither network module sets a urlopen timeout, so a black-holed connection hangs forever.**
   Confirmed by execution: the string "timeout" appears nowhere in
   either insights.py or publisher.py. urlopen with no timeout uses the
   global default socket timeout, which is None unless something sets
@@ -1538,6 +1544,16 @@
   reads the requests and httpx modules only -- its plugin source does
   not mention urllib. This is a gap in the available tooling rather
   than in how check-code was configured.
+  Resolved (2026-09-02): a thirty-second timeout in both modules,
+  passed on every request and exposed as a constructor argument so a
+  test can drive it. It bounds each socket operation rather than the
+  whole request, so a large first publish that keeps making progress
+  is not cut off.
+
+  Measured against a socket that accepts and never answers:
+  TimeoutError in 0.44s at a 0.4s bound, where the old code waited
+  indefinitely. socket.timeout is an OSError, so it lands on the
+  existing Unreachable / OutcomeUnknown handling unchanged.
   **Layman:** If the network goes strange in a particular way, the app stops responding and never recovers on its own.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes insights/publisher.
@@ -1894,7 +1910,7 @@
   Kind: security.
   Source: review-code 2026-08-31 lane credentials.
 
-- 📋 [PRESS-0052] **Both network modules let the Authorization header follow a cross-host redirect.**
+- ✅ [PRESS-0052] **Both network modules let the Authorization header follow a cross-host redirect.**
   Found by two lanes independently.
 
   Confirmed by execution: urllib's HTTPRedirectHandler.redirect_request
@@ -1912,6 +1928,19 @@
 
   Fix, once, shared: an opener whose redirect handler strips
   Authorization on a host change, or refuses 3xx outright.
+  Resolved (2026-09-02): both modules build their opener with a
+  redirect handler that drops Authorization when the origin changes,
+  where origin is scheme, host and port. A same-origin redirect keeps
+  the header, so a renamed repository's 301 still works.
+
+  "Fix once, shared" was not available. Each module's INV-1 forbids
+  importing any pressless module but Settings, so a shared helper
+  would breach both; two copies is below the Rule of Three.
+
+  Proved over real sockets outside the tree: a cross-origin redirect
+  is still followed and the target sees no Authorization header, a
+  same-origin one still carries it. The committed tests open no
+  socket, per both test files' own rule.
   **Layman:** If a server redirected the app somewhere else, it would hand over the publishing key or the Google token to whoever answered.
   Kind: security.
   Source: review-code 2026-08-31 lanes insights/publisher.

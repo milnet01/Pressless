@@ -125,6 +125,20 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **A reply that arrives cut short is reported as a connection failure, not a crash.** (PRESS-0040)
+  A reply that arrived truncated or malformed slipped past the app's
+  error handling and reached you as an unexpected-error screen. It is
+  now treated as what it is -- no answer -- so the dashboard falls back
+  to the numbers it already has, and a publish says plainly that it does
+  not know the outcome.
+
+- **A connection that goes quiet no longer leaves the app hanging forever.** (PRESS-0041)
+  Every request now gives up after thirty seconds. Before this, a
+  connection that was accepted and then never answered would wait
+  indefinitely with nothing able to cancel it -- so the dashboard could
+  not fall back to yesterday's numbers, and a publish could leave you
+  never learning whether it went out.
+
 - **An entry whose address is a name Windows reserves is refused everywhere, and a hand-renamed file suffix no longer hides an entry from half the app.** (PRESS-0067)
   Two more items of the same cluster. A handful of short names — con,
   nul, com1 and their kin — cannot be filenames on Windows, so an entry
@@ -168,3 +182,13 @@ appears once something has actually shipped.)
   lookup failed and the test skipped with a message saying the
   generator was not on the machine. INV-5 had produced no result
   anywhere; it now runs and passes.
+
+### Security
+
+- **The publishing key is no longer handed to a server the app was redirected to.** (PRESS-0052)
+  If something on the network answered a request by pointing the app
+  somewhere else, the app carried the key that can rewrite the whole
+  site -- or the Google sign-in -- along to whoever answered. It now
+  drops them whenever the redirect leads somewhere else, and keeps them
+  when it stays in the same place, so an address that has simply moved
+  still works.
