@@ -1622,7 +1622,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.
 
-- 📋 [PRESS-0047] **An entry saved with Windows line endings is rejected, and the message misstates the cause.**
+- ✅ [PRESS-0047] **An entry saved with Windows line endings is rejected, and the message misstates the cause.**
   store.py:139-144 does text.partition("\n\n"). A CRLF file contains
   "\r\n\r\n" and therefore no "\n\n" substring, so partition finds no
   separator and every CRLF entry raises StoreError "has no blank line,
@@ -1642,6 +1642,27 @@
 
   Fix: accept "\r\n\r\n" as a separator on read, keep writing LF (4.2
   already normalises), or at minimum detect \r\n and say so.
+  Resolved (2026-09-02): read() now accepts both spellings of the blank
+  line that ends the header and takes whichever comes FIRST. Order is the
+  part that matters -- a body may hold blank lines of its own, so a reader
+  trying "\r\n\r\n" ahead of "\n\n" splits inside the body and reports a
+  header line with no colon. That mistake has its own test, which passes
+  before the fix and so was proved by mutation rather than by a red run.
+
+  The body is unchanged by the fix: §4.4 forbids a repair and INV-5 keeps
+  every line break the writer typed, so a CRLF body stays CRLF. read()
+  still decodes bytes rather than opening text, so no newline translation
+  reaches it. Writing is untouched -- §4.2 already pins LF there.
+
+  Took the "accept \r\n\r\n on read" branch this item offered rather than
+  the minimum "detect and say so". The standing requirement is that the
+  app runs on Windows as well as on Linux, and a message that correctly
+  names the cause still leaves the writer unable to open his own entry.
+
+  This does not settle the contract question. PRESS-0005 is silent on the
+  read side, so nothing in it was contradicted, but nothing in it now
+  states the behaviour either -- PRESS-0060 still owns that, and its
+  choice is now recording what was built rather than deciding it.
   **Layman:** Open an entry in a Windows editor, save it, and the app says the file has no blank line -- pointing at a blank line that is plainly there.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store.
@@ -2012,6 +2033,13 @@
   while settings.py carries FILE_VERSION. Noted by the lane as a
   recorded choice rather than a defect; confirm it is still wanted
   before Import (PRESS-0007) writes twelve years of entries.
+  Progress (2026-09-02): item 2 narrowed by PRESS-0047, which shipped the
+  code side. read() now accepts a CRLF blank line as the header separator
+  and leaves the body exactly as found; write is unchanged and still pins
+  LF. So this item's item 2 is no longer a choice the document has to
+  make -- it is a behaviour the document has to STATE, which per rule 14's
+  carve-out records what was built and does not re-arm the gate on its
+  own. Items 1 and 3 are untouched and still open.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.

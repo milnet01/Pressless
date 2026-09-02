@@ -125,6 +125,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An entry saved with Windows line endings is rejected, and the message misstates the cause.** (PRESS-0047)
+  An entry opened and saved in a Windows editor was refused with a
+  message naming a blank line that was plainly there. Both spellings of
+  the blank line ending the header are now read, and the body is handed
+  back exactly as it was found.
+
 - **Four atomic writers call os.replace with no fsync, so three specs promise durability the code does not have.** (PRESS-0039)
   Settings, Credentials, the Store and the Insights cache each renamed a
   temporary over the target without syncing it first, so a power loss
