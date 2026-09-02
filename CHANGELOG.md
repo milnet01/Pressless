@@ -125,6 +125,24 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Three more publishing failures now explain themselves instead of showing an unexpected error.** (PRESS-0073)
+  A reply from GitHub missing a piece of information, a disk with no room
+  left while fetching an older version of the site, and a file in the site
+  folder that cannot be read. All three used to surface as an unexpected
+  error; each now says what happened.
+
+- **A leftover password-store setting on your machine no longer causes an unexpected-error screen during setup.** (PRESS-0050)
+  Your system's password store is chosen by a small config file. If that
+  file named a store that is no longer installed -- the ordinary state
+  after removing one -- setup failed with an unexpected error instead of
+  saying what went wrong.
+
+- **A settings file with one damaged character now gives a clear message instead of crashing.** (PRESS-0049)
+  If a single character in the settings file could not be read -- which
+  happens when a file written on Windows is opened elsewhere -- Pressless
+  crashed rather than telling you which file was at fault. It now names
+  the file, both when opening it and when saving over it.
+
 - **A line with a great many marks on it no longer crashes, and no longer crawls.** (PRESS-0054)
   Two ways an unusual line could go wrong. A line nesting marks
   thousands deep crashed outright, where the rule is that anything

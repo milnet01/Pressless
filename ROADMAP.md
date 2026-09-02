@@ -1858,7 +1858,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store.
 
-- 📋 [PRESS-0049] **A settings file with one undecodable byte escapes load() and save() as neither NotSetUp nor SettingsError.**
+- ✅ [PRESS-0049] **A settings file with one undecodable byte escapes load() and save() as neither NotSetUp nor SettingsError.**
   Confirmed by execution: the escape is a UnicodeDecodeError, which is
   a ValueError and NOT an OSError.
 
@@ -1884,11 +1884,22 @@
 
   Fix: catch UnicodeDecodeError before the OSError arm at both sites,
   and drop the unreachable one from :78 and :162.
+  Resolved (2026-09-02): both reads now catch UnicodeDecodeError, and
+  the unreachable half is dropped from both json arms rather than left
+  there reading as cover -- json.loads is handed a str and can never
+  raise it.
+
+  The fix is small; what made it worth checking carefully is that the
+  guard already existed, one block down, in the one place it could not
+  fire. A reader scanning for it finds it and moves on.
+
+  One mutation, killing both tests -- load() and save(), the second
+  reached while the writer is trying to save.
   **Layman:** One corrupted character in the settings file crashes the app instead of producing the friendly message that was written for exactly that case.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane settings.
 
-- 📋 [PRESS-0050] **The one unguarded get_keyring() breaks a contract the rest of the module keeps exactly.**
+- ✅ [PRESS-0050] **The one unguarded get_keyring() breaks a contract the rest of the module keeps exactly.**
   credentials.py:62 is the only get_keyring() call in the module
   outside a try; write() at :119-124 and _read_keyring() at :167-172
   are both guarded. So an untyped exception escapes choose().
@@ -1908,6 +1919,15 @@
   Fix: wrap :62, raising CredentialError naming the exception type.
   NoKeyringError cannot arise here, so the existing discriminator is
   unaffected.
+  Resolved (2026-09-02): choose()'s get_keyring() is wrapped, raising
+  CredentialError naming the exception type.
+
+  The guard is deliberately narrow and a second test holds it there.
+  NoKeyringError comes from the probe write below rather than from the
+  load, and it is §4.2's discriminator for "no store at all" -- widening
+  the new guard over the probe would stop the file fallback ever firing,
+  and a machine with no store would be told its store is broken. Two
+  mutations killed, including that widening.
   **Layman:** A leftover setting on the machine can make setup fail with an unexpected-error screen instead of a clear message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials.
@@ -2873,7 +2893,7 @@
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
 
-- 📋 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
+- 🚧 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
   Residue from two lanes' dim-7 findings that PRESS-0040 (the
   http.client family) does not cover.
 
@@ -2901,6 +2921,28 @@
   the Face format __cause__ when it logs a CredentialError? PRESS-0011
   and PRESS-0003 own the answer. If it does, a backend message quoting
   the secret reaches the rolling log.
+  Progress (2026-09-02): items 1, 2 and 3 are fixed and tested -- the
+  bare KeyError on a tree entry with no sha, the bare OSError writing a
+  fetched file, and the bare OSError reading a local one. Three
+  mutations killed. The disk-full case is arranged as a folder that is
+  really a file, which is the same OSError by a route that works on both
+  systems.
+
+  In progress rather than shipped, because two items are not code this
+  item can write.
+
+  Item 4 is a property of the keyring library, not a defect here: its
+  config file can prepend a path to sys.path before importing the
+  backend it names. PRESS-0050's guard now converts the resulting
+  failure into a typed one, which is all this module can do; it does not
+  stop the import. Recorded, which was this item's own stated purpose
+  for it.
+
+  Item 5 is the open question, and it is the reason this stays open:
+  does the Face format __cause__ when it logs a CredentialError?
+  PRESS-0011 and PRESS-0003 own the answer, and it decides whether
+  PRESS-0051 was live or latent. PRESS-0051 raises from None now, so the
+  answer no longer changes what is safe -- only what was true before it.
   **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
