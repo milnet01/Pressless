@@ -2864,7 +2864,7 @@
   Kind: chore.
   Source: review-code 2026-08-31 synthesis -- coverage gap.
 
-- 📋 [PRESS-0077] **One gate tool cannot run at all for want of a config section, and another runs against defaults nobody chose.**
+- ✅ [PRESS-0077] **One gate tool cannot run at all for want of a config section, and another runs against defaults nobody chose.**
   Both reported by the whole-tree check-code run and neither is a code
   defect. Filed because a tool that cannot run looks exactly like a
   tool that found nothing.
@@ -2892,6 +2892,31 @@
   sets line-length and target-version but no select, so the declared
   100-column limit is not enforced and bugbear and the bandit rules are
   off.
+  Resolved (2026-09-02). All three decided by the user and applied; the
+  gate is green with every tool now running.
+
+  Item 1, shfmt: .editorconfig gains an [*.sh] section at 4 spaces,
+  measured from the files rather than chosen. Turning it on was NOT free
+  -- it reformats the gate script and three hooks, all of it expanding
+  one-line brace groups. That contradicts what I told the user when
+  recommending it, and the reformat is applied rather than deferred.
+  Behaviour preserving: gate green, hooks still executable.
+
+  Item 2, yamllint: .yamllint pins the width to ruff's and disables the
+  truthy check, which was objecting to the spelling GitHub requires for
+  a workflow trigger. ci.yml is clean under it.
+
+  Item 3, ruff select: E, W, F, I, B, S, UP. Eleven findings. Four S310
+  and three S314 are suppressed with their reasons recorded beside them
+  -- both urlopen sites build their URL from a module-level literal, and
+  the archive tests parse the writer's own export. The four B905 are
+  fixed rather than suppressed: two intend truncation and now say so,
+  two sit under a length check and now assert it.
+
+  Worth recording because it bears on what this check buys: NONE of the
+  eleven was a latent bug. Every zip already handled the mismatch. The
+  value delivered is that three tools which reported nothing now actually
+  run.
   **Layman:** One of the automatic checkers is switched off by accident, and another is complaining about things nobody decided were wrong.
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
