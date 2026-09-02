@@ -1407,8 +1407,8 @@
 
   AND THE COPIES HAVE ALREADY DIVERGED -- a separate defect from the
   missing fsync, filed here because it is the same four call sites and
-  the same fix. Verified in source: only store.py:246 passes
-  newline="\n". settings.py:192, credentials.py:242 and insights.py:362
+  the same fix. Verified in source: only store.py:246 names the newline
+  explicitly. settings.py:192, credentials.py:242 and insights.py:362
   do not, so on Windows those three write CRLF where store writes LF.
 
   For settings and credentials that is harmless to JSON but means the
@@ -1425,15 +1425,11 @@
   wrong or the rule needs scoping to files git sees. The document side
   is PRESS-0060.
 
-  EVERYTHING BELOW THIS LINE IS A GARBLED DUPLICATE OF THE THREE
-  PARAGRAPHS ABOVE AND SHOULD BE IGNORED. It was written with literal
-  backslash-n sequences instead of newlines by a bad tool payload, and
-  it cannot be removed: op:amend_body matches a literal backslash fine, but refuses any span ending at the body's own final backslash sequence, and the tail ends in one. Filed as Ants MCP feedback. Appending text AFTER the tail does not lift the refusal -- measured 2026-09-02, with a resolution note already below it: the rule keys on the last backslash sequence in the body, not on the body's end. A backslash-free span in the same paragraph amends normally, so the escaping is not the obstacle. Ignore from here to the end:\"a shape the installation carries between\nmachines\" is not byte-identical across them. For insights it is\nharmless outright -- the cache is never published and never diffed.\nThe point is that four copies of one idiom already disagree on one\nparameter BEFORE PRESS-0006 adds three more, which is the argument\nfor extracting the helper now rather than later.\n\ndesign.md's Persistence section states \"UTF-8, and LF line endings\nwritten explicitly\" unconditionally, so either the three sites are\nwrong or the rule needs scoping to files git sees -- the document\nside is PRESS-0060."
   Progress (2026-09-02): NOT started, because the prescribed fix cannot
   be built as written. Verified in the accepted specs: PRESS-0001 INV-1
-  says settings.py "imports no network module and no other pressless
-  module", and PRESS-0002 INV-1 says credentials.py "imports no other
-  pressless module". A shared _atomic_write helper is a pressless
+  says settings.py imports no network module and no other pressless
+  module, and PRESS-0002 INV-1 says credentials.py imports no other
+  pressless module. A shared _atomic_write helper is a pressless
   module, so importing it breaches both -- and neither invariant is
   incidental: design rule 10 and PRESS-0001's depends-on-nothing are why
   they read that way. Verified in source: settings.py, credentials.py
@@ -1447,12 +1443,12 @@
   gate on both. Inline looks right for the durability half, with the
   helper question filed separately since PRESS-0006 adds more copies.
   Also verified: no os.fsync anywhere in the tree, and on the newline
-  half store.py's writer already takes a newline argument while
-  settings.py, credentials.py and insights.py pass none -- that half
-  needs no decision and can land with the fsync. The directory fsync
-  that makes os.replace durable needs a platform guard: a directory
-  cannot be opened for fsync on Windows, which is a first-class target
-  here.
+  half store.py's writer already names it while settings.py,
+  credentials.py and insights.py do not -- that half needs no decision
+  and can land with the fsync. The directory fsync that makes os.replace
+  durable needs a platform guard: a directory cannot be opened for fsync
+  on Windows, which is a first-class target here.
+
   Resolved (2026-09-02): each of the four sites now flushes and fsyncs
   the temporary's descriptor before os.replace, and the three that left
   the newline to the platform now name it, so all four write LF as
@@ -1476,8 +1472,8 @@
   written, so the scoping question that paragraph raised does not arise.
   PRESS-0060 is untouched -- it is about PRESS-0005 4.2, not this.
 
-  Tests: tests/_durability_watch.py records mkstemp, fsync and replace in
-  order and asserts each rename was preceded by an fsync of that
+  Tests: tests/_durability_watch.py records mkstemp, fsync and replace
+  in order and asserts each rename was preceded by an fsync of that
   temporary's own descriptor. It reads the file size AT the sync, so an
   fsync with no flush ahead of it fails too -- that mutation was run and
   caught, and it leaves no trace on disk for any assertion over the file
@@ -1487,6 +1483,11 @@
 
   Not verified on Windows: the test box deliberately has no Python
   (CLAUDE.md), and there is no packaged executable yet.
+
+  Tidied (2026-09-02): a garbled duplicate of three paragraphs above sat
+  at the end of this body, written with literal backslash-n sequences by
+  a bad tool payload. It could not be removed until the Ants MCP gained
+  op:set_body, and this body was rewritten with that verb.
   **Layman:** A power cut at the wrong moment could leave a file empty even though the code was written to make that impossible.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials/store/insights.
