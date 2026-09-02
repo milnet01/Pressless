@@ -1684,6 +1684,30 @@
 
   Fix: add "Content-Type": "application/json". One line, and it removes
   the largest unverified assumption in the module.
+  Measured (2026-09-02) against the live API, in the same throwaway
+  repository PRESS-0072 used. Both halves of this item are now settled,
+  and they point opposite ways.
+
+  The header claim is CONFIRMED. Replicating publisher.py's headers --
+  Authorization, Accept, User-Agent, no Content-Type -- and reading
+  urllib's own request object after the call:
+
+    Content-Type actually transmitted: application/x-www-form-urlencoded
+
+  So the module really does describe its JSON as form-encoded.
+
+  The CONSEQUENCE claim is refuted. GitHub accepts it: the same POST to
+  git/blobs returned 201, as did the control carrying
+  Content-Type application/json. So "if GitHub does not tolerate it,
+  every write fails on the first real publish" does not happen -- it
+  tolerates it.
+
+  This item stays open and the one-line fix is still right: sending a
+  header that contradicts the body is wrong whether or not the far end
+  is forgiving, and tolerance measured today is not a guarantee. But it
+  is no longer the largest unverified assumption in the module, because
+  it is no longer unverified. Reprioritise it as an ordinary correctness
+  fix rather than a release blocker.
   **Layman:** The app tells GitHub its messages are one format while actually sending another.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.
@@ -2155,6 +2179,28 @@
   rather than a sentence repair, and each belongs to its own gate, which
   is why this run filed it instead. The open half of item 1 — the header
   lines the round trip injects — is untouched and still needs a decision.
+  Item 1's open half is DECIDED (2026-09-02, by the user): the round trip
+  stops injecting Categories: and Tags: lines. An entry the writer never
+  gave them to comes back without them.
+
+  The reason, in his words rather than the format's: the design promises
+  everywhere else that his files survive the round trip, and twelve years
+  of imported entries would otherwise every one gain two empty lines they
+  never had. Predictable shape was the argument the other way, and it
+  lost to not silently editing files nobody asked Pressless to change.
+
+  This is a change of direction for work still to come, so the code side
+  owes PRESS-0005 an amendment and rule 14's gate, and the amendment
+  should be written before the code rather than after. What it must say
+  is narrower than deleting a feature: the emitted header carries the
+  recognised fields the entry ACTUALLY HAS, plus its unrecognised ones,
+  and nothing else.
+
+  Still open and untouched: item 3, and the wider half of item 1 -- ADR-0001
+  and design.md still promise byte-for-byte where PRESS-0005 now says
+  preserved with surrounding whitespace normalised, so those two now
+  disagree with the spec where before all three agreed and were wrong
+  together. Each belongs to its own gate.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.
@@ -2630,7 +2676,7 @@
   Kind: investigate.
   Source: review-code 2026-08-31 synthesis part 4 -- tool gaps.
 
-- 📋 [PRESS-0072] **If GitHub rejects mode and type on a deletion tree entry, every publish containing a deletion fails, and nothing here can find out.**
+- ✅ [PRESS-0072] **If GitHub rejects mode and type on a deletion tree entry, every publish containing a deletion fails, and nothing here can find out.**
   The sharpest thing the sweep could NOT settle, and it had no item
   until now.
 
@@ -2653,6 +2699,35 @@
   Route: one manual call against a scratch repository, or a recorded
   fixture. Cheap to answer, and the answer decides whether PRESS-0015
   (undo) rests on a working mechanism.
+  Resolved (2026-09-02) by execution against a throwaway private
+  repository, with the user's agreement. GitHub ACCEPTS the entry, and
+  the control reverses this item's worry.
+
+  Measured, in publisher.py's exact shape -- path, mode 100644, type
+  blob, sha null, against a base_tree:
+
+    POST git/trees  -> 201, and the returned tree no longer holds the
+                       path
+    POST git/commits, then PATCH git/refs/heads/main with force false
+                    -> 201 and 200; the file then 404s on the branch
+
+  So the whole delete path executes end to end, not merely the tree step,
+  and the reference update is a fast-forward as section 4.5 expects.
+
+  The control is the useful half. The same deletion WITHOUT mode and type
+  is REFUSED:
+
+    422  "Must supply a valid tree.mode"
+
+  So mode is REQUIRED rather than merely tolerated, and this item had the
+  risk backwards: the danger was never that Pressless sends too much, it
+  is that a later tidy-up removing mode or type from the deletion entry
+  would break every publish containing a deletion. Worth a comment at the
+  call site rather than an invariant, since the API refuses it loudly.
+
+  PRESS-0015 (undo) therefore rests on a mechanism proven to work.
+  The scratch repository was created solely for this and is being
+  removed.
   **Layman:** The way the app tells GitHub to delete a file may not be a form GitHub accepts, and there is no way to check without trying it for real.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.

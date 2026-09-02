@@ -90,6 +90,18 @@ assigns it here.
    windowed build nulls `sys.stdout`. PRESS-0013 revisits it when there
    is a Face to show.
 
+5. **The folder is named `Pressless-data`.** Decided 2026-09-02, over
+   friendlier names, because it cannot be confused with the
+   `Pressless/` folder the zip unpacks beside it. INV-8 pins the
+   literal: every installed machine binds to it, so it is cheap now and
+   a breaking change after the first release.
+
+6. **The Windows batch file stays.** Decided 2026-09-02, and one-folder
+   is why it still earns its place rather than why it stopped: §4.5's
+   program prints a report and finishes, so a double-clicked `.exe`
+   would open and close a console before the writer could read it.
+   PRESS-0013 revisits it, since a Face opens a browser instead.
+
 ## 4. Design
 
 ### 4.1 The two artefacts
@@ -436,10 +448,21 @@ proves is a property of the machine rather than of the code.
 **The release job runs three steps, and they are three because one run
 cannot serve them all.**
 
-1. **The suite**, `scripts/local-ci.sh`, on both runners. ADR-0004
-   § Consequences requires it — *"the Windows job must still run the
-   test suite rather than only producing a file"* — and this is the
-   first time any of it runs on Windows.
+1. **The suite**, `scripts/local-ci.sh`, on both runners, under
+   `shell: bash`. ADR-0004 § Consequences requires it — *"the Windows
+   job must still run the test suite rather than only producing a
+   file"* — and this is the first time any of it runs on Windows.
+
+   **Two things make that script Linux-only today, and both are this
+   item's to fix.** It invokes `python3`, which is the Linux spelling —
+   the Windows installer ships `python.exe` and a `py` launcher and
+   creates no `python3` — so the script must resolve the interpreter
+   rather than name one. And its leak sweep walks `git rev-list --all`,
+   which a shallow clone cannot answer: `ci.yml` already sets
+   `fetch-depth: 0` and says why, and the release workflow needs the
+   same on both jobs. Without it the sweep reports a clean history it
+   never fetched, which is the failure mode that comment exists to
+   prevent.
 2. **INV-7, in a clean room. Linux only**: `env -i PATH=/nonexistent`
    on the AppImage. There is no Windows form of it and none is
    invented: `windows-latest` ships Python, so a clean room cannot be
@@ -541,6 +564,10 @@ against it, and throw it away.
 - **`pyproject.toml`** — a group pinning PyInstaller (§4.4), and a
   `packaging` marker declared beside `archive` so §7's build tests skip
   cleanly without one.
+- **`scripts/local-ci.sh`** — resolves the interpreter instead of
+  naming `python3` (§7 step 1). It is the one file the pre-push hook
+  and both CI workflows share, so the change is felt on every route
+  and must keep the Linux behaviour identical.
 - **`CLAUDE.md`** — § Build and test names PyInstaller as belonging
   beside the gate's tools; once §4.4 pins it, that line describes a
   file rather than an intention.
@@ -560,6 +587,7 @@ against it, and throw it away.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-09-02 | 3, cold — genre pinned `spec`; the packet declared Windows and AppImage behaviour an unrunnable region up front, so Q1 was out of scope there | 2 | 5 | 1 | 2 | **Ten verified, ten fixed, none dismissed. All three lanes independently found the same Q4**, which is the run's strongest signal: INV-6 read the credential store's MEMBER NAME, and PRESS-0002 §4.2 returns `Choice("file", "file")` off Windows — so the invariant passed green against exactly the metadata-less bundle §4.3 exists to reject. It now requires the store KIND. Its twin: §7's red run for it was unreachable, because the metadata comes from PyInstaller's shipped hook rather than the flag §7 said to drop. **The best Q2 was a release that could never go green** — the Linux self-check ran on the frozen folder, where `$APPIMAGE` is unset, so `artefact_path()` raises `NotPackaged`; and one `env -i` run was serving both INV-6 and INV-7, while `env -i` strips the session bus a keyring member needs. §7 is now three steps and runs the wrapped AppImage. **One Q2 caught a breach of this spec's own source**: ADR-0004 requires the Windows job to run the test suite, and §4.4 had it freeze and self-check only. **Two Q2s were the design being stated Windows-first**: `Pressless-data` was called unbound when every installed machine binds to it (now INV-8), and §14's extract-over rule described nothing that happens on Linux, where each release is a differently-named file. **Both Q1s were mine, not the lanes'** — a false universal about `folder` arguments that `credentials.choose()` breaks, and a rejection of one-file resting on `sys.executable`; all three lanes flagged the second as an open question and a measurement settled it false, so the one-folder choice now stands on the unpack delay alone. Q3: nothing said how a version tag reaches the artefact filename. Resolved clean and not counted: PRESS-0002 §4.6 does support §6's non-POSIX-mount row, raised by all three lanes. |
 | 2 | 2026-09-02 | 3, cold — identical brief, packet rebuilt from disk and extended with the onefile measurement, PRESS-0002 §4.6 and ADR-0004 § Consequences | 1 | 6 | 3 | 2 | **Twelve verified, twelve fixed, none dismissed. Cap reached (2 for a spec), and it is a VIOLENT cap** — about ten of the twelve landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. So the review ends here and the document is routed to implementation rather than to a third loop; nothing in the run suggests a third would stop. **The root cause of half the loop is one thing loop 1 created**: it made `--self-check` serve three consumers — the release job's exit code, the pytest tests, the Windows box — and pinned neither its output nor its exit rule, so §6 promised a metadata-less bundle never ships while §10 said the Linux arm may skip. §4.5 now fixes three machine-readable lines and says a `store: file` answer is NOT a failure, because the program cannot tell no-store from lost-metadata. **The sharpest finding is that loop 1's own fix was circular**: it let INV-6's Linux arm skip where no store is present, and a metadata-less bundle produces exactly that observation — so the skip condition WAS the failure condition and INV-6 could never go red. §7 step 3 now CREATES the session rather than hoping for one. **Two findings were loop 1 breaking its neighbours:** §8 still rejected one-file for the `sys.executable` reason loop 1 had just deleted from §4.1, and loop 1's own Windows suite step made INV-2 and INV-3 fail on `windows-latest`, because neither fixture patched `sys.platform` and the win32 row is read first. Also fixed: `env -i` named as the Windows clean room, where that runner ships Python and no clean room can be made; INV-8 false on the `PRESSLESS_FOLDER` branch; a floor pin promising byte reproducibility; and a versioned filename in a README nothing updates. **A packet defect of mine, reported by all three lanes and recorded rather than hidden:** the PRESS-0001 and PRESS-0002 §4.1 windows were empty — a `#` comment inside a python fence read as a heading — so §2's quotation went unverified by lanes in both loops. I verified it by grep; the lanes could not, and raised it as an open question rather than a finding, which is them working. Resolved clean and not counted: libfuse locates `fusermount` by absolute path, so `env -i` does not break an AppImage mount. |
+| 2-post | 2026-09-02 | **No reviewer was dispatched.** Author-side, after the cap, while answering the section 15 questions | 1 | 0 | 1 | 0 | **Two findings, two fixed. Not a review loop** — the gate ended at loop 2's violent cap and is not re-run; this row exists because a row no dispatched review produced is otherwise written by nobody. **Q1: `scripts/local-ci.sh` cannot run on `windows-latest` as section 7 step 1 requires it to**, and section 7 was written without checking the script. It invokes `python3`, a spelling the Windows installer does not create, and its leak sweep walks `git rev-list --all`, which a shallow clone answers falsely — the exact failure `ci.yml`'s own `fetch-depth: 0` comment describes. Both are now named in step 1 and in section 11 as this item's to fix. Found by reading the script after lane D asked whether it was runnable there and I asserted section 7 without opening it. **Q3: section 15's two questions are decided** by the user — the folder stays `Pressless-data`, and the Windows batch file stays because section 4.5's program prints and exits, so a bare double-clicked `.exe` would close before it could be read. Both moved to section 3 as decisions 5 and 6, and section 15 is now empty. **Verified separately and NOT a finding:** `windows-latest` (Server 2025) does ship Python 3.9 to 3.13, so section 7 step 2's claim that no clean room can be made there holds. |
 
 ## 13. Resource cost
 
@@ -596,15 +624,5 @@ chose to extract, and §10 records that nothing checks it.
 
 ## 15. Open questions
 
-- **Is `Pressless-data` the right name for the folder the writer will
-  see beside his download?** It is accurate and it does not collide
-  with the extracted `Pressless/` folder on Windows. **Every installed
-  machine binds to it** — it is where that writer's settings, credential
-  file and writing already sit — so it is cheap to change before the
-  first release and a breaking change afterwards (INV-8).
-- **Does Windows need the batch file at all?** One-folder puts
-  `Pressless.exe` at the top of the extracted folder, so it can be
-  double-clicked directly. The batch file was decided on 2026-08-26,
-  before one-folder was chosen; it may now be an extra step rather
-  than a convenience, or it may still earn its place by keeping the
-  console open after §4.5's report.
+**None.** Both were settled by the user on 2026-09-02 and are now
+§3 decisions 5 and 6.
