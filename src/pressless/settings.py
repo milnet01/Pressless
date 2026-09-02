@@ -70,12 +70,21 @@ def load(folder: Path) -> Settings:
         text = target.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise NotSetUp(f"there is no settings file at {target}") from exc
+    except UnicodeDecodeError as exc:
+        # A UnicodeDecodeError is a ValueError and NOT an OSError, so it
+        # escaped both arms below and left load()/save() raising something
+        # in neither of this module's families -- §4.3 has this row, and
+        # the Face has nothing to report it with (PRESS-0049).
+        raise SettingsError(
+            f"{target} is not readable as UTF-8, so it cannot be parsed: "
+            f"{exc}"
+        ) from exc
     except OSError as exc:
         raise SettingsError(f"{target} could not be read: {exc}") from exc
 
     try:
         raw = json.loads(text)
-    except (ValueError, UnicodeDecodeError) as exc:
+    except ValueError as exc:
         raise SettingsError(f"{target} is not valid JSON: {exc}") from exc
     if not isinstance(raw, dict):
         raise SettingsError(f"{target} holds {type(raw).__name__}, not an object")
@@ -165,12 +174,21 @@ def save(folder: Path, settings: Settings) -> None:
         existing = target.read_text(encoding="utf-8")
     except FileNotFoundError:
         pass
+    except UnicodeDecodeError as exc:
+        # A UnicodeDecodeError is a ValueError and NOT an OSError, so it
+        # escaped both arms below and left load()/save() raising something
+        # in neither of this module's families -- §4.3 has this row, and
+        # the Face has nothing to report it with (PRESS-0049).
+        raise SettingsError(
+            f"{target} is not readable as UTF-8, so it cannot be parsed: "
+            f"{exc}"
+        ) from exc
     except OSError as exc:
         raise SettingsError(f"{target} could not be read: {exc}") from exc
     else:
         try:
             carried = json.loads(existing)
-        except (ValueError, UnicodeDecodeError) as exc:
+        except ValueError as exc:
             raise SettingsError(
                 f"{target} is not valid JSON, so saving over it would discard "
                 f"what could not be parsed: {exc}"

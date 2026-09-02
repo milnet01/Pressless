@@ -491,3 +491,54 @@ def test_save_names_the_line_endings(tmp_path, monkeypatch):
         f"{[record.newline for record in unnamed]!r}; §4.2 requires '\\n' so "
         f"the file is byte-identical on both systems"
     )
+
+
+# ------------------------------------------------------------ PRESS-0049 ----
+
+
+def test_an_undecodable_settings_file_is_a_typed_failure(tmp_path):
+    """PRESS-0049: a byte that is not UTF-8 raises UnicodeDecodeError, which
+    is a ValueError and NOT an OSError -- so it escaped both arms of load()
+    and reached the caller as neither NotSetUp nor SettingsError.
+
+    §4.3 has the row: a file present but not decodable as UTF-8 is a
+    SettingsError naming the file. It was not implemented. The guard EXISTED
+    but sat around json.loads, which is handed a str and can never raise it.
+
+    The module's own docstring names the scenario: a cp1252 write on Windows
+    of an accented site_folder, written there and unreadable here.
+
+    Breaks when an implementer catches OSError and assumes a read covers
+    every way a read can fail. Nothing looks wrong -- the guard is right
+    there, one block down.
+    """
+    target = tmp_path / FILE_NAME
+    target.write_bytes(b'{"version": 1, "site_folder": "caf\xe9"}')
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+def test_saving_over_an_undecodable_file_is_a_typed_failure(tmp_path):
+    """PRESS-0049: save() reads the existing file first, to carry through
+    keys it does not recognise, and had the same hole.
+
+    Breaks the same way, and matters more: this one is reached while the
+    writer is trying to save.
+    """
+    target = tmp_path / FILE_NAME
+    target.write_bytes(b'{"version": 1, "site_folder": "caf\xe9"}')
+
+    settings = Settings(
+        site_folder=tmp_path / "site",
+        repository="owner/name",
+        daily_prompt_filter="dailyprompt-*",
+        untouchable=("CNAME",),
+        credentials=Credentials(store="keyring",
+                                github_account="publishing-key",
+                                google_account=None),
+        analytics_property_id=None,
+    )
+
+    with pytest.raises(SettingsError):
+        save(tmp_path, settings)
