@@ -1805,7 +1805,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store.
 
-- 📋 [PRESS-0048] **Three holes in the extra-field guard silently corrupt an entry, including replacing the writer's title.**
+- ✅ [PRESS-0048] **Three holes in the extra-field guard silently corrupt an entry, including replacing the writer's title.**
   store.py's _refuse_what_the_format_cannot_carry checks an extra
   field's name for newline and carriage return, and for nothing else.
   All three confirmed by execution.
@@ -1830,6 +1830,30 @@
 
   Fix: refuse ":" in a name, refuse a name in RECOGNISED_FIELDS, refuse
   an empty name; strip the name before comparing.
+  Resolved (2026-09-02): all three, and each was reproduced before the
+  fix rather than taken from the report.
+
+  The guard now refuses an extra name that is empty once stripped, that
+  contains a colon, or that matches a recognised field once stripped.
+  read() compares the header name stripped, so a near miss is the field
+  it looks like rather than a new one -- which is what stopped
+  " Title: x" reading back as an empty title and then emitting a second,
+  empty Title line beside the original.
+
+  The collision test is parametrized over RECOGNISED_FIELDS itself
+  rather than a copy of it, so a field added to the format is refused
+  here too instead of the list going quietly out of date.
+
+  An ordinary extra field still survives a round trip, asserted -- the
+  guard could otherwise have been met by refusing every extra, which
+  would break ADR-0001's promise in the act of keeping it. Five
+  mutations killed, including that over-strict one.
+
+  The archive conformance run passes with the stricter guard, so the
+  real export carries no extra field this refuses. That matters for
+  PRESS-0007: Import builds extra straight from the export, and this
+  landing first is the difference between a refusal and a corrupted
+  archive.
   **Layman:** An unusual field name in an entry file can quietly overwrite the entry's title or scramble its contents.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store.

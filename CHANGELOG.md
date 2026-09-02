@@ -125,6 +125,22 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An unusual field name in an entry can no longer overwrite the entry's title or scramble it.** (PRESS-0048)
+  An entry file can carry extra labelled lines beyond the ones Pressless
+  knows about, and it keeps them. But three kinds of label quietly broke
+  the file.
+
+  A label containing a colon was split in the wrong place when read back.
+  A label with the same name as one Pressless already uses -- Title, for
+  instance -- REPLACED the entry's real title and then vanished; if it
+  was Slug, the file could not be opened again at all. And a label with a
+  stray space in front of it, like " Title", was treated as a new one, so
+  the entry lost its title and gained a second, empty title line.
+
+  All three are now refused when saving, before anything is written, and
+  a label with a stray space is read as the label it plainly is. Ordinary
+  extra labels are still kept exactly as before.
+
 - **Fetching part of the site with "/" now means the whole site, not nothing.** (PRESS-0069)
   Asking for a folder of "/" matched no file at all, and reported
   success -- so you got an empty result that looked like a completed
