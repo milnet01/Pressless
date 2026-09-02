@@ -99,6 +99,17 @@ def load(folder: Path) -> Settings:
                 f"{target}: untouchable[{index}] is "
                 f"{type(entry).__name__}, not a name"
             )
+        # Shape, not merely type (§4.3). PRESS-0009 §4.4 matches an entry
+        # against a path's FIRST segment, so one naming a path inside a
+        # directory protects nothing -- not even itself -- while reading as
+        # configured. A trailing slash is left alone: it names one root
+        # entry unambiguously, and the Publisher ignores it (PRESS-0044).
+        if not entry.rstrip("/") or "/" in entry.rstrip("/"):
+            raise SettingsError(
+                f"{target}: untouchable[{index}] is {entry!r}, which is not "
+                f"a repository-root name; an entry naming a path inside a "
+                f"directory protects nothing"
+            )
 
     store = _required(credentials, "store", str, target, "credentials.")
     github_account = _required(credentials, "github_account", str, target, "credentials.")

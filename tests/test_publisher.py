@@ -786,3 +786,46 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
     )
     with pytest.raises(RateLimited):
         publish(settings, tmp_path, "a-token", "message", transport=always_limited)
+
+
+# ------------------------------------------------ PRESS-0043, PRESS-0044 ----
+#
+# Two review-code findings (2026-08-31). Regression tests, not invariants:
+# §4.4 already states the rule each one holds the code to, so nothing here
+# asks the module for behaviour the spec does not already require.
+
+
+def test_an_untouchable_entry_with_a_trailing_slash_still_protects(tmp_path):
+    """PRESS-0044: a trailing slash on an untouchable entry is ignored rather
+    than trusted to be absent.
+
+    §4.4 fixes the entry's form, and `load` refuses the one malformation it
+    cannot resolve. This holds the Publisher to the rule for a settings file
+    written by hand, which reaches publish() without passing the loader.
+    Matched as written, "CNAME/" equals no path's first segment, so the entry
+    protects nothing at all and the next publish deletes the domain file.
+
+    Breaks when an implementer compares the entry verbatim -- which reads as
+    correct, because the entry is present and the list looks configured.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+
+    listing = _listing(
+        [
+            ("CNAME", _blob_hash(b"a-domain.example.test\n")),
+            ("index.html", _blob_hash(b"<html>old</html>")),
+        ]
+    )
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    outcome = publish(_settings(untouchable=("CNAME/",)), tmp_path, "a-token",
+                      "a commit message", transport=transport)
+
+    assert "CNAME" not in outcome.removed, (
+        f"an untouchable entry written \"CNAME/\" did not protect CNAME; "
+        f"removed {outcome.removed!r}"
+    )
+    paths = _tree_creation_paths(transport)
+    assert paths is not None and "CNAME" not in paths, (
+        f"the tree-creation request names CNAME: {paths!r}"
+    )

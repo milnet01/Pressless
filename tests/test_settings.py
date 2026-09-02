@@ -398,3 +398,37 @@ def test_only_touches_its_own_file(tmp_path, monkeypatch):
         f"load() on a folder with no settings file opened {outside!r} — it "
         f"searched outside the folder it was handed (spec §3 decision 2)"
     )
+
+
+# --------------------------------------------- PRESS-0044 (§4.3's shape) ----
+
+
+def test_a_nested_untouchable_entry_is_rejected(tmp_path):
+    """§4.3's shape rule, applied to the untouchable list.
+
+    PRESS-0009 §4.4 matches an entry against a path's FIRST segment, so an
+    entry naming a path inside a directory protects nothing -- not even
+    itself -- while being a str that passes every type check. Nothing at any
+    layer said so, and a guard that reads as configured and is inert is the
+    one failure this list cannot afford (PRESS-0044).
+
+    An empty entry is refused for the same reason. A trailing slash is not:
+    it names one root entry unambiguously, and the Publisher ignores it, so
+    refusing the file over it would stop a working installation loading.
+
+    Breaks when an implementer checks isinstance and stops.
+    """
+    for index, entry in enumerate(("docs/robots.txt", "a/b/c", "")):
+        folder = tmp_path / f"rejected-{index}"
+        folder.mkdir()
+        _write(folder, _valid_mapping(untouchable=[entry]))
+        with pytest.raises(SettingsError):
+            load(folder)
+
+    accepted = tmp_path / "accepted"
+    accepted.mkdir()
+    _write(accepted, _valid_mapping(untouchable=["CNAME/"]))
+    assert load(accepted).untouchable == ("CNAME/",), (
+        "a trailing slash names one root entry unambiguously and must load; "
+        "the Publisher is what ignores it"
+    )

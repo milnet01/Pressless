@@ -176,10 +176,10 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
             continue
         uploaded[path] = data
 
-    removed = sorted(
-        path for path in remote
-        if path not in local and not _is_protected(path, untouchable)
-    )
+    unprotected = [
+        path for path in remote if not _is_protected(path, untouchable)
+    ]
+    removed = sorted(path for path in unprotected if path not in local)
 
     if not uploaded and not removed:
         # Nothing differed, so nothing is written at all (§5 INV-4).
@@ -405,16 +405,26 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     and one naming a file matches only that file. Comparing whole paths for
     equality would leave every file inside an untouchable directory
     unprotected, which is the failure the list exists to prevent.
+
+    A trailing slash on an entry is ignored rather than trusted to be
+    absent. `load` fixes the form, but a settings file written by hand
+    reaches here without passing it, and an entry that silently protects
+    nothing is the one failure this list cannot afford (PRESS-0044).
     """
-    return path.split("/", 1)[0] in untouchable
+    first = path.split("/", 1)[0]
+    return any(first == entry.rstrip("/") for entry in untouchable)
 
 
 def _within_prefix(path: str, prefix: str) -> bool:
     """Whether `path` is selected by `prefix` (§4.5).
 
     Matched on path-segment boundaries, with a trailing slash optional and
-    ignored -- the same rule §4.4 gives the untouchable list. Matched as a
-    bare string instead, "content" would also select "contents.html".
+    ignored. Matched as a bare string instead, "content" would also select
+    "contents.html".
+
+    §4.4's untouchable rule shares the trailing-slash tolerance and stops
+    there: a prefix may name a path several segments deep, an untouchable
+    entry may not, and `load` refuses one that does.
     """
     if not prefix:
         return True

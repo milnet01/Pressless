@@ -188,7 +188,7 @@ live repository root.
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the file |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
-| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name`, `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute | `SettingsError`, naming the key |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name`, `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory | `SettingsError`, naming the key |
 | Valid | `Settings` |
 
 **The shape row is why this is a list rather than four cases.** `repository`
@@ -423,6 +423,7 @@ loading or saving does anything.
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
+| §4.3's `untouchable` entry shape | `tests/test_settings.py::test_a_nested_untouchable_entry_is_rejected` |
 | §4.3's `version` row, and its `repository` and `store` shapes | **nothing** — no invariant locks them, so an implementer could drop either row and this suite stays green. Their absence is silent: a missing `version` makes the file unreadable by the next Pressless, and a malformed `repository` or `store` reaches PRESS-0009 or PRESS-0002 as a value they did not expect. Worth an invariant if either is ever seen to slip |
 | §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |
 

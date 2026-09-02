@@ -493,6 +493,7 @@ code, so a green INV-1 says nothing about the rest.
 | Rule | What catches a breach |
 |------|----------------------|
 | INV-1 | `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling` |
+| §4.4's trailing-slash tolerance | `tests/test_publisher.py::test_an_untouchable_entry_with_a_trailing_slash_still_protects` |
 | INV-2 | `tests/test_publisher.py::test_untouchable_is_neither_written_nor_removed` |
 | INV-3 | `tests/test_publisher.py::test_reference_update_is_last` |
 | INV-4 | `tests/test_publisher.py::test_unchanged_files_are_not_uploaded` |
