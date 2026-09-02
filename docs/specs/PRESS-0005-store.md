@@ -181,12 +181,14 @@ Every single newline is a line break.
   any of them costs the site its categories, its tags or its by-year
   archive.
 - **A slug is one or more of `a-z`, `0-9` and `-`, and is none of
-  `con`, `prn`, `aux`, `nul`, `com1`–`com9` or `lpt1`–`lpt9`.** That is
-  what `safe_slug` already yields, so every live address satisfies it.
-  Pinned because the slug becomes a file name: an unpinned one admits
-  `/`, `\` and `..`, which write outside the handed folder, and admits
-  two slugs differing only in case, which are one file on Windows and
-  two on Linux.
+  `con`, `prn`, `aux`, `nul`, `com1`–`com9` or `lpt1`–`lpt9`.** The
+  character set is what `safe_slug` already yields. The device names
+  are a narrowing it does not make — decision 4's rule excludes
+  nothing — so a resolved slug is not automatically an acceptable one,
+  and PRESS-0007 handles the refusal. Pinned because the slug becomes
+  a file name: an unpinned one admits `/`, `\` and `..`, which write
+  outside the handed folder, and admits two slugs differing only in
+  case, which are one file on Windows and two on Linux.
 - **Those device names are refused on every system, not only on
   Windows.** Windows resolves them whatever the extension, so opening
   `nul.txt` there reaches the null device rather than failing: the
@@ -215,9 +217,9 @@ Every single newline is a line break.
   does is refused on write rather than written and silently split on
   the next read (INV-9). A comma anywhere else is ordinary — titles
   in the archive carry them.
-- **A header value is one line — every header value, an unrecognised
-  field's included.** A wrapped value would be read back as a new
-  field, so a value containing a newline is refused (INV-9). The rule
+- **A header line is one line — every value, and an unrecognised
+  field's name as well as its value.** A wrapped one would be read back
+  as a new field, so a newline in any of them is refused (INV-9). The rule
   reaches `extra` deliberately: preserving a field byte-for-byte is
   ADR-0001's promise, and writing one back that the next read cannot
   parse would break that promise in the act of keeping it.
@@ -227,8 +229,12 @@ Every single newline is a line break.
   found: `Entry.extra` carries no anchor into the recognised fields,
   and inventing one would buy an ordering nothing reads. ADR-0001's
   promise is that nothing is dropped or altered, and that holds.
-- **The header ends at the first blank line.** Everything after it is
-  body, including a line that looks like a field.
+- **The header ends at the first blank line, spelled `\n\n` or
+  `\r\n\r\n`, whichever comes first.** Everything after it is body,
+  including a line that looks like a field. Both spellings are read
+  because a Windows editor re-saves the whole file CRLF; the earlier
+  wins because a body holds blank lines of its own. The body is
+  returned exactly as found, unconverted (INV-5).
 - **LF line endings, written explicitly.** Windows would otherwise
   write CRLF, and a changed line ending is a changed file to git — so
   every publish would look as though it had touched the whole site.
@@ -245,14 +251,22 @@ Every single newline is a line break.
 is what S3 describes. The file name is the slug, and it is how the
 Store finds an entry.
 
-**The suffix is matched ignoring case.** The Store only ever writes
-`.txt`, but S3 invites the writer into the folder, and a file
-hand-renamed to `.TXT` is the same file on Windows and a different one
-on Linux. Matched exactly, `list_slugs` was blind to a file the
-existence check could see, so the two disagreed about whether an
-address was taken. Where a folder holds two names differing only in the
-suffix's case — reachable on Linux only, and never produced by the
-Store — they name one slug and `list_slugs` returns it once.
+**`list_slugs` and `exists` match the suffix ignoring case; `path_for`
+composes it exactly.** The Store only ever writes `.txt`, but S3
+invites the writer into the folder, and a file hand-renamed to `.TXT`
+is the same file on Windows and a different one on Linux. Matched
+exactly, `list_slugs` was blind to a file the existence check could
+see; matching both the same way is what makes them agree on either
+system. Two names differing only in the suffix's case — reachable on
+Linux only, never produced by the Store — name one slug, and
+`list_slugs` returns it once.
+
+On Linux that leaves an address reported as taken whose file `read`
+cannot open, since `path_for` composes `<slug>.txt`. That is the
+trade rather than an oversight: nothing writes over his file, and
+`read` raises `EntryNotFound` naming the path it looked for. The
+repair is the writer's, as §4.4 already says of a name that disagrees
+with its `Slug` header.
 
 Neither folder is the site folder. The Builder copies published
 entries into `content/` when it runs; that is PRESS-0008's, and
@@ -393,18 +407,17 @@ line, then the body.
   refused with `StoreError` and nothing is written: a newline in any
   header field, `extra` included; a comma in `Categories` or `Tags`; a
   slug outside §4.2's legal set, the empty slug and a reserved device
-  name included. A comma
-  in `Title` is written unchanged — the header runs to the end of the
-  line, so nothing splits it, and refusing one would reject archive
-  entries that exist.
+  name included. A comma in `Title` is written unchanged — the header
+  runs to the end of the line, so nothing splits it, and refusing one
+  would reject archive entries that exist.
   *Test:* `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`
-  — a newline case for each of the four string-valued fields and for
-  an `extra` field, a comma case for the two list fields, and a slug
-  outside the legal set and one reserved device name, each asserting
-  the folder is unchanged
-  afterwards; plus a title carrying a comma, which must be written and
-  read back intact. `Date` needs no case: it is a `datetime`, so the
-  type refuses what this rule would. That last case is what stops the
+  — a newline case for each of the four string-valued fields and for an
+  `extra` field's value and its name, a comma case for the two list
+  fields, and a slug outside the legal set and one reserved device
+  name, each asserting the folder is unchanged afterwards; plus a title
+  carrying a comma, which must be written and read back intact. `Date`
+  needs no case: it is a `datetime`, so the type refuses what this rule
+  would. That last case is what stops the
   rule being widened into one Import cannot satisfy.
   *Breaks when:* an implementer writes the value anyway. The
   written-nothing half is the load-bearing one: raising after a
@@ -469,7 +482,10 @@ temporary directory and must run everywhere. One test per invariant in
 §5.
 
 `tests/test_store_archive.py`, needing `PRESSLESS_ARCHIVE` and skipped
-without it, as `tests/test_marks_archive.py` is. It reads the real
+without it, as `tests/test_marks_archive.py` is. **It skips a second
+time wherever the sibling generator decision 4 names is unreachable**,
+which includes the isolated checkout the pre-push hook builds, so a
+green push proves nothing about it either. It reads the real
 WordPress export, writes every entry through the Store into a
 temporary folder, reads them all back, and asserts the round trip is
 faithful. **It covers everything Import brings — the published
@@ -564,7 +580,7 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused` |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it is skipped wherever the export is absent, so a green CI run says nothing about it** |
+| The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
 | That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |
 | That no two entries want one slug ACROSS the folders (§3 decision 5) | **nothing can** — both files survive in different folders, so no round trip can fail on it. The archive test reports the one the archive has; PRESS-0007 is where it is resolved |
@@ -595,6 +611,7 @@ imports.
 | 1 | 2026-08-27 | 3, cold — genre pinned `spec`; packet carried ADR-0001, four `design.md` sections, the signs of success, PRESS-0001's surface, `settings.py::save`, `build_blog.py`'s `Post` and `safe_slug`, and archive measurements taken that day | 1 | 4 | 4 | 2 | **Eleven verified, eleven fixed, none dismissed.** **All three lanes found two of them.** The Q1 was mine and structural: the draft called the slug the address, where the live address is `blog/YYYY/MM/DD/<slug>` — so a flat folder silently imposed uniqueness the site does not require. Stated as a deliberate rule instead. **The most expensive would have blocked Import**: INV-9 refused a comma in any field, and archive titles carry them. **Two fixes came from reading the design rather than the draft** — undo turns an entry into a draft, so the surface needed the reverse move, and a move that overwrites destroys work silently, which is now INV-10. Also settled: who creates the two subfolders, what the list separator is, and a constant for the recognised field names that INV-8 had nothing to bind to. A fixture asked for a newline in a title its own INV-9 refuses. |
 
 | 2 | 2026-08-27 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the archive's comma-in-title count, which loop 1 had to measure mid-run | 2 | 4 | 3 | 2 | **Eleven verified, eleven fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap — five of the eleven landed on text loop 1 wrote**, checked against its ledger rather than recall. **The worst was found by reading the design rather than the draft**: Import brings the drafts and private posts too, so the population is wider than loop 1 measured, and a large share of them carry no slug at all — which §4.2 required. Re-measured over all three statuses: still nothing collides. **The sharpest needed executing.** INV-6 asserted bytes to catch an implementation that names no encoding; run on Linux, the unnamed defaults already produce UTF-8 and LF, so the test went green against exactly the code it rejects. It now asserts the call. Also settled: the legal slug set, unpinned, admitted `..` and wrote outside the handed folder; uniqueness was stated as a Store property nothing enforced; the slug lived in file name and header with no authority named; and INV-9 left an unrecognised field free to carry a newline, breaking ADR-0001's promise in the act of keeping it. One false rationale of mine deleted — INV-3's interruption half does catch a direct write. |
+| 3 | 2026-09-02 | 3, cold — genre pinned `spec`; packet carried four `store.py` windows, ADR-0001 whole, two `design.md` sections, the sibling specs by outline and both store test files by outline. Windows behaviour declared an unrunnable region | 3 | 1 | 3 | 0 | **Seven verified, five fixed, one dismissed, one deferred.** Trigger: the 2026-09-02 amendment adding the reserved-device-name exclusion and the case-insensitive suffix rule. **All three lanes independently found the same two items**, the strongest agreement this gate produces. The sharpest is lane A's alone and was confirmed by execution rather than reading: *"That is what `safe_slug` already yields, so every live address satisfies it"* was carried onto a clause `safe_slug` does not enforce — run against the real generator, `safe_slug("NUL")` returns `nul` and `safe_slug("LPT9")` returns `lpt9`, so a title CAN resolve to a refused slug and PRESS-0007 must handle it. The amendment had told Import the opposite. **The case-insensitive rule named `list_slugs` and nothing else**, so an implementer would have folded case there and left `path_for` exact — producing the same disagreement in the other direction on Linux; it now says which operations fold and states the cost. **Two pre-existing Q3s fixed:** what a blank line is on READ (the code accepts both spellings and the document directed neither), and that the one-line rule reaches an unrecognised field's NAME, which the code guards and §4.2 did not mention. **One pre-existing Q1 fixed from a lane's disclosed session knowledge:** §7 and §10 named one skip condition for the archive test and there are two — the export, and decision 4's sibling generator, unreachable in the pre-push checkout — so a green push proved less than the document claimed. **Dismissed as immaterial:** all three lanes reported that no device-name refusal exists in `store.py`. True, and the gate runs before implementation by design, so the implementer builds it either way; PRESS-0067 item 2 stays open until it lands. **Deferred to PRESS-0060:** INV-4's byte-identity claim against `read`'s `value.strip()` — verified and material, but its other half (header lines the round trip injects) is an open question this gate may not settle. **Collateral filed, not carried:** PRESS-0004 §7 and PRESS-0006 §7 understate their own archive tests' skip conditions the same way §7 here did. |
 
 ## 13. Resource cost
 
