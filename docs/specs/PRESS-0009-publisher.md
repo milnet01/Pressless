@@ -199,6 +199,15 @@ listing as the repository's contents would make every missing path look
 locally-new and every deletion invisible, so a flagged response raises
 `TooLarge` rather than being used.
 
+**Two conditions on the handed folder are refused rather than published.**
+A folder that is not a directory is refused before the first request:
+`rglob` yields nothing for one and raises nothing, so it would read as a
+site with no files and every unprotected path would be deleted. And a
+publish that would remove every unprotected path while writing none is
+refused once the listing has been read and before the first write — a
+finished build is never empty, and §3 decision 1 makes that commit
+unrecoverable from inside Pressless. Both raise `PublishError`.
+
 ### 4.3 Writing the commit
 
 Four steps, in this order, and the last one is the only one that changes
@@ -409,6 +418,8 @@ behaviour.
 
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
+| The handed folder is not a directory | `PublishError` | unchanged |
+| The publish would remove every unprotected path and write none | `PublishError` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | Key rejected, or no write access | `Refused` | unchanged |
@@ -493,6 +504,7 @@ code, so a green INV-1 says nothing about the rest.
 | Rule | What catches a breach |
 |------|----------------------|
 | INV-1 | `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling` |
+| §4.2's two folder preconditions | `tests/test_publisher.py::test_a_site_folder_that_is_not_a_directory_is_refused` and `::test_a_publish_that_would_empty_the_site_is_refused` |
 | §4.4's trailing-slash tolerance | `tests/test_publisher.py::test_an_untouchable_entry_with_a_trailing_slash_still_protects` |
 | INV-2 | `tests/test_publisher.py::test_untouchable_is_neither_written_nor_removed` |
 | INV-3 | `tests/test_publisher.py::test_reference_update_is_last` |

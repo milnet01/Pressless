@@ -30,6 +30,7 @@ from pressless.publisher import (
     NoPreviousState,
     Outcome,
     OutcomeUnknown,
+    PublishError,
     RateLimited,
     Refused,
     RepositoryMissing,
@@ -793,6 +794,68 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
 # Two review-code findings (2026-08-31). Regression tests, not invariants:
 # §4.4 already states the rule each one holds the code to, so nothing here
 # asks the module for behaviour the spec does not already require.
+
+
+def test_a_site_folder_that_is_not_a_directory_is_refused(tmp_path):
+    """PRESS-0043: publish() refuses a folder that is not a directory, and
+    refuses it before it sends anything.
+
+    Path.rglob returns an empty iterator for a missing directory and raises
+    nothing. So with no precondition `local` is empty, §4.4 reads every
+    unprotected remote path as a deletion the writer asked for, and a clean
+    Outcome is returned for the commit that emptied the site. Reached by a
+    mis-set site_folder, an unmounted drive, or a Builder that failed before
+    writing -- no adversary and no unusual input.
+
+    Breaks when an implementer trusts rglob's silence. Only this rule can
+    reject the fixture: every other rule in §4.4 reads an absent local file
+    as a deletion.
+    """
+    listing = _listing([("index.html", _blob_hash(b"<html>site</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    with pytest.raises(PublishError):
+        publish(_settings(), tmp_path / "not-a-directory", "a-token",
+                "a commit message", transport=transport)
+
+    wrote = [url for method, url, _, _ in transport.requests if _is_write(method)]
+    assert not wrote, (
+        f"a refused publish made write request(s) {wrote!r}: the folder is "
+        f"checked before anything is sent"
+    )
+
+
+def test_a_publish_that_would_empty_the_site_is_refused(tmp_path):
+    """PRESS-0043: a publish removing every unprotected path and adding none
+    is refused.
+
+    The folder EXISTS and is empty, so the directory precondition above
+    cannot catch this one -- a Builder that ran and produced nothing reaches
+    here. §3 decision 1 makes the resulting commit unrecoverable from inside
+    Pressless, so the refusal is the only thing standing between an empty
+    build directory and the writer's site.
+
+    The protected entry is what keeps this distinct from "nothing differed":
+    CNAME survives, so the publish is not a no-op, it is a wipe.
+    """
+    listing = _listing(
+        [
+            ("CNAME", _blob_hash(b"a-domain.example.test\n")),
+            ("index.html", _blob_hash(b"<html>site</html>")),
+            ("about.html", _blob_hash(b"<html>about</html>")),
+        ]
+    )
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    with pytest.raises(PublishError):
+        publish(_settings(), tmp_path, "a-token", "a commit message",
+                transport=transport)
+
+    wrote = [url for method, url, _, _ in transport.requests if _is_write(method)]
+    assert not wrote, (
+        f"a refused publish made write request(s) {wrote!r}: the whole-site "
+        f"deletion is refused before the first blob is sent"
+    )
 
 
 def test_an_untouchable_entry_with_a_trailing_slash_still_protects(tmp_path):

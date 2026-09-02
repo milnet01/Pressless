@@ -158,6 +158,16 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     reader sees: blobs, one tree, one commit, one reference update. An
     interruption at any earlier point leaves the site exactly as it was.
     """
+    folder = Path(folder)
+    if not folder.is_dir():
+        # rglob on a missing directory yields nothing and raises nothing, so
+        # without this `local` is empty, §4.4 reads every unprotected remote
+        # path as a deletion the writer asked for, and the wipe is reported
+        # as a successful publish (PRESS-0043).
+        raise PublishError(
+            f"{folder} is not a directory, so there is nothing to publish"
+        )
+
     session = _Session(transport or _Urllib(), token)
     branch = _default_branch(session, settings.repository)
     head = session.read(_repo_url(settings.repository, f"commits/{branch}"))
@@ -165,7 +175,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     listing = _tree(session, settings.repository, base_commit)
     remote = _blobs_in(listing)
 
-    local = _local_files(Path(folder))
+    local = _local_files(folder)
     untouchable = settings.untouchable
 
     uploaded: dict[str, bytes] = {}
@@ -184,6 +194,15 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     if not uploaded and not removed:
         # Nothing differed, so nothing is written at all (§5 INV-4).
         return Outcome(commit="", uploaded=(), removed=())
+
+    if not uploaded and len(removed) == len(unprotected):
+        # Every unprotected path deleted and nothing written. A finished
+        # build is never empty, and §3 decision 1 makes the commit
+        # unrecoverable from inside Pressless (PRESS-0043).
+        raise PublishError(
+            f"publishing {folder} would delete every file on the site and "
+            f"add none, so it is refused"
+        )
 
     entries = []
     for path, data in uploaded.items():
