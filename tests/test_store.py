@@ -952,3 +952,114 @@ def test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree(tmp_path):
         f"two files differing only in the suffix's case returned the slug "
         f"{again.count('ordinary')} times: {again!r}"
     )
+
+
+# ------------------------------------------------------------ PRESS-0048 ----
+
+
+@pytest.mark.parametrize("name", ["A:B", "Mood: today"])
+def test_a_colon_in_an_extra_name_is_refused(tmp_path, name):
+    """PRESS-0048 item 1: a colon is what separates a name from its value, so
+    an extra field carrying one is read back split at the first colon.
+
+    Measured before the fix: extra=(("A:B", "v"),) was written as "A:B: v"
+    and read back as ("A", "B: v"). Silent -- the write succeeded.
+    """
+    before = _snapshot(tmp_path)
+
+    with pytest.raises(StoreError):
+        write(tmp_path, _entry(extra=((name, "a value"),)), draft=False)
+
+    assert _snapshot(tmp_path) == before, (
+        "the entry was refused but something was written anyway; INV-9 "
+        "requires the refusal to come before any write"
+    )
+
+
+@pytest.mark.parametrize("name", RECOGNISED_FIELDS)
+def test_an_extra_named_like_a_real_field_is_refused(tmp_path, name):
+    """PRESS-0048 item 2, the worst of the three: read()'s loop is last-wins,
+    so an extra field named like a recognised one REPLACES the entry's own
+    value and then disappears.
+
+    Measured before the fix: Entry(title="Real", extra=(("Title","Other"),))
+    read back with title='Other' and extra=(). With "Slug" the file became
+    permanently unreadable, because the stem check then disagrees with the
+    header.
+
+    Parametrized over the real list rather than a copy of it: a field added
+    to the format must be refused here too, and a hand-written list would go
+    quietly out of date.
+
+    Breaks when an implementer checks the name for line breaks only, which
+    is what the guard did.
+    """
+    before = _snapshot(tmp_path)
+
+    with pytest.raises(StoreError):
+        write(tmp_path, _entry(title="the writer's own title",
+                               extra=((name, "something else"),)), draft=False)
+
+    assert _snapshot(tmp_path) == before, (
+        "nothing may be written when the entry is refused"
+    )
+
+
+def test_an_extra_name_that_is_only_spaces_is_refused(tmp_path):
+    """PRESS-0048: a name with nothing in it but whitespace writes a header
+    line with nothing before the colon, which reads back as a field named ''.
+    """
+    with pytest.raises(StoreError):
+        write(tmp_path, _entry(extra=(("   ", "a value"),)), draft=False)
+
+
+def test_a_header_name_is_matched_with_its_spaces_ignored(tmp_path):
+    """PRESS-0048 item 3: matching was exact, so " Title: x" missed Title,
+    routed to extra, and left the entry with an EMPTY title -- and write()
+    then emitted a second, empty "Title:" line beside the original.
+
+    Breaks when an implementer compares the name before stripping it. The
+    entry still reads and still round-trips, so nothing fails; the title is
+    just quietly gone.
+    """
+    folder = tmp_path / _PUBLISHED
+    folder.mkdir()
+    target = folder / f"an-example{_SUFFIX}"
+    target.write_text(
+        " Title: the writer's real title\n"
+        "Slug: an-example\n"
+        "Date: 2014-11-09 21:32:00\n"
+        "\n"
+        "The body starts here.\n",
+        encoding="utf-8",
+    )
+
+    entry = read(target)
+
+    assert entry.title == "the writer's real title", (
+        f"a header name with a leading space missed Title and became an "
+        f"extra field, leaving the title {entry.title!r}"
+    )
+    assert entry.extra == (), (
+        f"the near-miss header was kept as an extra field as well: "
+        f"{entry.extra!r}"
+    )
+
+    write(tmp_path, entry, draft=False)
+    header = target.read_text(encoding="utf-8").split("\n\n")[0]
+    assert header.count("Title:") == 1, (
+        f"the round trip left two Title lines in the header:\n{header}"
+    )
+
+
+def test_an_ordinary_extra_field_still_survives_a_round_trip(tmp_path):
+    """PRESS-0048's counter-case, and the one that stops the guard being met
+    by refusing every extra field. ADR-0001 promises an unrecognised field is
+    kept and never dropped.
+    """
+    target = write(tmp_path, _entry(extra=(("Mood", "sunny"), ("Weather", "y"))),
+                   draft=False)
+
+    assert read(target).extra == (("Mood", "sunny"), ("Weather", "y")), (
+        f"an ordinary extra field did not survive: {read(target).extra!r}"
+    )

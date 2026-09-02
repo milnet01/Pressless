@@ -205,6 +205,10 @@ def read(path: Path) -> Entry:
         name, colon, value = line.partition(":")
         if not colon:
             raise StoreError(f"{target}: header line {line!r} has no colon")
+        # Compared stripped, so " Title: x" is the Title rather than a near
+        # miss routed to extra -- which read back as an empty title and made
+        # write() emit a second, empty "Title:" line beside it (PRESS-0048).
+        name = name.strip()
         if name == "Title":
             title = value.strip()
         elif name == "Slug":
@@ -355,6 +359,27 @@ def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:
     # keeping it. Its name carries a value too -- a newline in either splits
     # the line.
     for name, value in entry.extra:
+        # Three ways an extra field's NAME breaks the format, none of which
+        # the line-break rule below catches (PRESS-0048). Each is silent:
+        # the write succeeds and the damage appears on the next read.
+        bare = name.strip()
+        if not bare:
+            raise StoreError(
+                "an extra field has an empty name, and a header line with "
+                "nothing before its colon reads back as a field named ''"
+            )
+        if ":" in name:
+            raise StoreError(
+                f"extra field name {name!r} contains a colon, which is what "
+                f"separates a name from its value -- the next read would "
+                f"split it at the first one"
+            )
+        if bare in RECOGNISED_FIELDS:
+            raise StoreError(
+                f"extra field name {name!r} is a field this format already "
+                f"carries -- the next read is last-wins, so it would replace "
+                f"the entry's own {bare} and then vanish"
+            )
         one_line.append((f"extra name {name!r}", name))
         one_line.append((f"extra {name}", value))
 
