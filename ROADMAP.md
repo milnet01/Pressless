@@ -2271,6 +2271,39 @@
 
   7. :354-359 -- no sweep of orphaned .entry-*.tmp files, so kill -9
   leaves litter against 4.5's "leave nothing behind".
+  Progress (2026-09-02): items 1 and 4 shipped; the item stays open for
+  the other five.
+
+  Item 1 (TOCTOU): the refusal is now made by the move rather than by the
+  exists() check -- os.link then unlink on POSIX, os.rename on Windows,
+  both raising FileExistsError instead of replacing. The check stays for
+  the friendly message, which is what this item prescribed. Trade-off
+  taken knowingly: the POSIX route needs a filesystem with hard links, so
+  on one without them a move raises StoreError with the system's own
+  message rather than racing quietly. Tested by simulating the window --
+  the destination stays on disk and only the check is blinded -- so the
+  test is deterministic and an implementation resting on the check fails
+  it.
+
+  Item 4 (a file named exactly ".txt"): no longer listed, so no caller
+  round-trips an empty slug back through path_for.
+
+  NOT done, and items 2 and 3 are blocked rather than merely queued.
+  Both are Windows-parity defects whose fix contradicts the accepted spec,
+  so each owes CLAUDE.md rule 14's gate on PRESS-0005:
+
+    2. Windows reserved device names. The spec states "A slug is one or
+       more of a-z, 0-9 and -, and nothing else", so `nul` is legal by
+       the contract and rejecting it narrows what the document allows.
+
+    3. The .TXT suffix. The spec fixes the entry file as <slug>.txt; a
+       case-insensitive match widens that, and matching case-insensitively
+       on Windows alone makes the listing platform-dependent, which is its
+       own problem.
+
+  Items 5, 6 and 7 are queued and unblocked. Item 5 in particular needs a
+  read of what §4.1 and §6 actually promise about which exception type
+  escapes write(), which was not done here.
   **Layman:** Small entry-handling problems, including one where two copies of the app running at once could overwrite an entry.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store -- low cluster.

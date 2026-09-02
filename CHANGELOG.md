@@ -125,6 +125,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Publishing an entry can no longer overwrite one that appears while the check is running, and a stray file cannot break a listing.** (PRESS-0067)
+  Two items of a larger cluster. The refusal to overwrite is now made by
+  the move itself rather than by a check taken beforehand, so a second
+  copy of the app running at the same time cannot destroy an entry. A file
+  named only ".txt" is no longer read as an entry with no name.
+
 - **An entry saved with Windows line endings is rejected, and the message misstates the cause.** (PRESS-0047)
   An entry opened and saved in a Windows editor was refused with a
   message naming a blank line that was plainly there. Both spellings of
