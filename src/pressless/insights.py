@@ -62,6 +62,12 @@ DEFAULT_MAX_AGE = 3600.0
 # not countries.
 AGGREGATE_PREFIX = "RESERVED_"
 
+# Every request carries this, so a black-holed connection fails instead of
+# hanging forever (PRESS-0041). It bounds each socket operation rather than
+# the whole request, so a large upload that keeps making progress is not cut
+# off.
+TIMEOUT_SECONDS = 30.0
+
 
 @dataclass(frozen=True)
 class Country:
@@ -160,7 +166,8 @@ class _Urllib:
     syntax.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, timeout: float = TIMEOUT_SECONDS) -> None:
+        self._timeout = timeout
         self._opener = urllib.request.build_opener(_NoCrossOriginAuth)
 
     def request(self, method: str, url: str, body: bytes | None,
@@ -169,7 +176,8 @@ class _Urllib:
         request = urllib.request.Request(url, data=body, headers=headers,
                                          method=method)
         try:
-            with self._opener.open(request) as response:
+            with self._opener.open(request,
+                                   timeout=self._timeout) as response:
                 return (response.status, dict(response.headers),
                         response.read())
         except urllib.error.HTTPError as error:

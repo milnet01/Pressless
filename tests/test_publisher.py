@@ -895,15 +895,32 @@ def test_an_untouchable_entry_with_a_trailing_slash_still_protects(tmp_path):
     )
 
 
-# ------------------------------------------------------------ PRESS-0052 ----
+# ------------------------------------------------ PRESS-0052, PRESS-0041 ----
 #
-# The redirect defect of the module's own client. Every other test in this
+# Two defects of the module's own client. Every other test in this
 # file hands in a double, so `_Urllib` -- the one piece a double replaces --
 # is reached by nothing above, and these are the only tests that touch it.
 #
 # None of them opens a socket. The redirect policy is asked of the handler
-# directly and the wiring is read off the opener, so the file's "no test
-# reaches the network" rule still holds.
+# directly, and the transport seam is driven by an opener that records and
+# raises, so the file's "no test reaches the network" rule still holds.
+
+
+class _RecordingOpener:
+    """Stands in for the urllib opener, so no test here opens a socket.
+
+    Records the timeout it was handed and then raises what it was built
+    with, which is all these tests need: one asks what reaches `open`, the
+    rest ask what comes back out of a failure.
+    """
+
+    def __init__(self, raises):
+        self.timeouts = []
+        self._raises = raises
+
+    def open(self, request, timeout=None):
+        self.timeouts.append(timeout)
+        raise self._raises
 
 
 def _authorised_request(url):
@@ -1008,4 +1025,29 @@ def test_the_client_installs_the_redirect_handler():
                    for h in handlers), (
         f"urllib's default redirect handler is still installed beside it, "
         f"so which one answers is not decided here: {handlers!r}"
+    )
+
+
+def test_every_request_carries_a_timeout():
+    """PRESS-0041: a black-holed connection fails rather than hanging.
+
+    urlopen with no timeout waits on the global default socket timeout,
+    which is None unless something sets one, and nothing in src/ does.
+
+    Breaks when an implementer leaves it to the caller: there is no caller
+    that can set one, because the socket is opened in here.
+    """
+    client = publisher_module._Urllib()
+    opener = _RecordingOpener(OSError("stop here"))
+    client._opener = opener
+
+    with pytest.raises(OSError):
+        client.request("GET", f"{publisher_module.API}/x", None, {})
+
+    assert opener.timeouts == [publisher_module.TIMEOUT_SECONDS], (
+        f"the request was made with timeout {opener.timeouts!r}, not the "
+        f"module's {publisher_module.TIMEOUT_SECONDS!r}"
+    )
+    assert publisher_module.TIMEOUT_SECONDS > 0, (
+        "a timeout of zero or None is the defect this test is about"
     )
