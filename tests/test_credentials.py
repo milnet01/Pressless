@@ -490,3 +490,76 @@ def test_fallback_file_names_the_line_endings(tmp_path, monkeypatch):
         f"{[record.newline for record in unnamed]!r}; the line endings must be "
         f"named so the file does not depend on which system wrote it"
     )
+
+
+# --------------------------------------------------- PRESS-0085 (INV-10) ----
+
+
+def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
+    """INV-10: every read of the fallback file, `write()`'s pre-read included,
+    refuses a symlink and refuses a file owned by another user. Both raise
+    CredentialError. It does not refuse on the file's mode.
+
+    The symlink's target must be WELL-FORMED or the clause cannot fail:
+    pointed at any other file, an implementation with no O_NOFOLLOW follows
+    the link, fails to parse it, and raises CredentialError from §4.3's
+    not-valid-JSON row -- green against the very defect this names. Here the
+    target is a real fallback file holding a DIFFERENT secret, so following
+    the link succeeds and hands back somebody else's value.
+
+    Breaks when an implementer refuses on the mode as well, which reads as
+    stricter and rejects the file a recovering machine was carried -- the
+    case §3 decision 1 and _write_file's own comment protect. The
+    permissive-mode assertion is the one that catches that.
+
+    And breaks when an implementer guards read()'s own path and leaves
+    write()'s pre-read alone: decision 6's attack then survives, the planted
+    file being merged forward into one the writer owns and accepted by a
+    later compliant read().
+    """
+    _not_windows(monkeypatch)
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "getuid"):
+        pytest.skip("this platform offers neither check, so §4.4 skips both "
+                    "and there is no refusal to observe")
+
+    planted = tmp_path / "planted"
+    planted.mkdir()
+    write("file", planted, "publishing-key", "another-users-secret")
+
+    ours = tmp_path / "ours"
+    ours.mkdir()
+    (ours / FILE_NAME).symlink_to(planted / FILE_NAME)
+
+    with pytest.raises(CredentialError):
+        read("file", ours, "publishing-key")
+
+    with pytest.raises(CredentialError):
+        write("file", ours, "publishing-key", SENTINEL)
+
+    assert (ours / FILE_NAME).is_symlink(), (
+        "write() replaced the symlink instead of refusing it, so its pre-read "
+        "went unchecked and the planted secret was merged forward"
+    )
+
+    mine = tmp_path / "mine"
+    mine.mkdir()
+    write("file", mine, "publishing-key", SENTINEL)
+    real_fstat = os.fstat
+
+    class _SomebodyElses:
+        st_uid = os.getuid() + 1
+
+    monkeypatch.setattr(credentials_module.os, "fstat",
+                        lambda handle: _SomebodyElses())
+    with pytest.raises(CredentialError):
+        read("file", mine, "publishing-key")
+    monkeypatch.setattr(credentials_module.os, "fstat", real_fstat)
+
+    # The mode is NOT a refusal: this is the file a recovering machine
+    # carried, and it must still be readable.
+    (mine / FILE_NAME).chmod(0o644)
+    assert read("file", mine, "publishing-key") == SENTINEL, (
+        "a permissive mode was refused; §3 decision 6 checks ownership and "
+        "not the mode, because a carried file's mode did not survive the "
+        "journey"
+    )

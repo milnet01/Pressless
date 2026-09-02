@@ -281,11 +281,44 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         raise
 
 
+def _read_ours(target: Path) -> str:
+    """The file's text, refusing one that is not ours (§3 decision 6).
+
+    `O_NOFOLLOW` where the platform offers it, so a symlink at that name is
+    refused by the open rather than followed -- a descriptor cannot report a
+    symlink, which is why that half is the open's job. The owner is then read
+    off the open descriptor rather than the path, so what was checked is what
+    is read.
+
+    The mode is deliberately NOT checked. A file carried from another machine
+    is what recovery reads, and its mode did not survive the journey while its
+    ownership became the writer's on the copy that carried it -- so a mode
+    check reads as stricter and rejects exactly that file.
+    """
+    handle = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        owner = getattr(os, "getuid", None)
+        if owner is not None and os.fstat(handle).st_uid != owner():
+            raise CredentialError(
+                f"{target} is owned by another user, so it is not the file "
+                f"Pressless wrote"
+            )
+    except BaseException:
+        os.close(handle)
+        raise
+    with os.fdopen(handle, "r", encoding="utf-8") as stream:
+        return stream.read()
+
+
 def _read_mapping(target: Path) -> dict | None:
     """The file as a mapping, or None where there is no file. Raises where
-    saving over it would discard what could not be parsed (§4.3)."""
+    saving over it would discard what could not be parsed (§4.3).
+
+    Every read of the fallback file lands here, `write()`'s own pre-read
+    included, which is what puts §3 decision 6's checks on both paths.
+    """
     try:
-        text = target.read_text(encoding="utf-8")
+        text = _read_ours(target)
     except FileNotFoundError:
         return None
     except OSError as exc:
