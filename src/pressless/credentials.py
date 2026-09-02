@@ -60,7 +60,21 @@ def choose() -> Choice:
     value, and only then deletes it — the walk needs the value still to be
     there (§4.2). Takes no folder: it is a question about the machine.
     """
-    store = keyring.get_keyring()
+    try:
+        store = keyring.get_keyring()
+    except Exception as exc:
+        # The module's one unguarded call to it, and reachable with no
+        # adversary: keyring's own load_config() reads a config file and
+        # imports the backend it names, so a stale entry naming an
+        # uninstalled one raises ModuleNotFoundError straight through
+        # choose(). §4.3 requires every failure typed. NoKeyringError
+        # cannot arise from this call, so §4.2's discriminator is
+        # untouched (PRESS-0050).
+        raise CredentialError(
+            f"this machine's credential store could not be loaded "
+            f"({type(exc).__name__})"
+        ) from exc
+
     try:
         store.set_password(SERVICE, PROBE, _PROBE_VALUE)
     except keyring.errors.NoKeyringError as exc:

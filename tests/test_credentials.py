@@ -609,3 +609,52 @@ def test_a_backend_that_quotes_the_secret_does_not_leak_it(tmp_path,
         f"the failure names neither the store nor the kind of fault, so it "
         f"cannot be diagnosed at all: {raised.value!s}"
     )
+
+
+# ------------------------------------------------------------ PRESS-0050 ----
+
+
+def test_a_store_that_cannot_be_loaded_is_a_typed_failure(monkeypatch):
+    """PRESS-0050: choose()'s get_keyring() was the module's one call to it
+    outside a guard -- write() and _read_keyring() both wrap theirs -- so an
+    untyped exception escaped choose() and reached the Face's last-resort
+    catch during setup.
+
+    Reachable with no adversary. keyring's own load_config() reads a config
+    file and imports the backend it names, so a stale entry naming an
+    uninstalled one raises ModuleNotFoundError straight through. That is the
+    ordinary state after uninstalling a backend.
+
+    §4.3 requires every failure typed, and this is the one site that did not
+    keep it.
+
+    Breaks when an implementer treats get_keyring() as a lookup that cannot
+    fail. It is an import.
+    """
+    def refuses():
+        raise ModuleNotFoundError("No module named 'keyrings.alt'")
+
+    monkeypatch.setattr(credentials_module.keyring, "get_keyring", refuses)
+
+    with pytest.raises(CredentialError):
+        choose()
+
+
+def test_loading_the_store_keeps_the_absent_store_discriminator(monkeypatch):
+    """PRESS-0050's counter-case. §4.2 reads NoKeyringError as *no store* and
+    every other exception as *a store that cannot be relied on*, and that
+    discriminator is what decides whether the file fallback fires at all.
+
+    NoKeyringError cannot arise from get_keyring() itself -- it comes from
+    the probe write below it -- so wrapping the load must not swallow it.
+
+    Breaks when an implementer widens the new guard to cover the probe as
+    well: the fallback would then never fire, and a machine with no store
+    would be told its store is broken.
+    """
+    _not_windows(monkeypatch)
+    _use(monkeypatch, _Store(raises=keyring.errors.NoKeyringError("none")))
+
+    assert choose() == Choice("file", "file"), (
+        "a machine with no store no longer falls back to the file store"
+    )
