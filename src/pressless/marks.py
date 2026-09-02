@@ -317,6 +317,38 @@ _RUN_DELIMITER = "*"
 # terminator there is.
 _ARG_END = "}"
 
+# §6 promises literal text for malformed input, and names photo_src as the one
+# thing that raises. Without a bound, _scan recurses once per nesting level and
+# a few kilobytes of openers on one line raised an uncaught RecursionError
+# instead (PRESS-0054). Past this depth the rest of the line is literal, which
+# is the degradation the module already documents. Far above anything written
+# on purpose: nesting is at most a colour inside an emphasis inside a bold.
+_MAX_NESTING = 64
+
+
+def _opens_at(text: str, i: int, closes: str) -> bool:
+    """Whether a mark sharing `closes` opens at `i` (§4.5's depth counter).
+
+    Counted on an opener rather than on the closer's first character. That
+    character is '{', which the writing itself is full of, so an ordinary
+    brace used to increment the depth and swallow the real closer -- and the
+    whole line then fell out as literal, losing the mark (PRESS-0054).
+
+    Every brace mark is checked, not just this row: '{accent}{muted}x{/}{/}'
+    is nesting the scanning section names as one it must accept.
+    """
+    for row in _WRAP_MARKS:
+        if row.closes != closes:
+            continue
+        start = _content_starts(row, text, i)
+        if start is None:
+            continue
+        if row.arg is not None:
+            if not re.fullmatch(row.arg, text[i + len(row.opens) : start - 1]):
+                continue
+        return True
+    return False
+
 
 def _content_starts(row: Mark, text: str, i: int) -> int | None:
     """Where this row's opening construct ends, or None if it is not here.
@@ -347,6 +379,12 @@ def _closes_at(row: Mark, text: str, start: int) -> int | None:
     if closes is None:
         return None
     nests = row.opens != closes
+    if text.find(closes, start) < 0:
+        # Nothing further on the line can close this, so the walk below can
+        # only reach the end. Checked up front because _try_wrap asks at
+        # every position, which made an unclosable line quadratic
+        # (PRESS-0054).
+        return None
     depth = 0
     i = start
     while i < len(text):
@@ -360,13 +398,13 @@ def _closes_at(row: Mark, text: str, start: int) -> int | None:
                 i += 1
                 continue
             return i
-        if nests and text[i] == closes[0]:
+        if nests and _opens_at(text, i, closes):
             depth += 1
         i += 1
     return None
 
 
-def _try_wrap(text: str, i: int) -> tuple[Span, int] | None:
+def _try_wrap(text: str, i: int, depth: int) -> tuple[Span, int] | None:
     """The first wrap row that forms a complete mark at `i`, with the index
     just past it."""
     for row in _WRAP_MARKS:
@@ -385,18 +423,21 @@ def _try_wrap(text: str, i: int) -> tuple[Span, int] | None:
         if end is None:
             continue
         inner = text[start:end]
-        children = _scan(inner) if row.content == "marks" else (Text(inner),)
+        children = (_scan(inner, depth + 1) if row.content == "marks"
+                    else (Text(inner),))
         return Span(mark=row.name, arg=arg, children=children), end + len(row.closes or "")
     return None
 
 
-def _scan(text: str) -> tuple[Node, ...]:
+def _scan(text: str, depth: int = 0) -> tuple[Node, ...]:
     """One line's worth of nodes."""
+    if depth > _MAX_NESTING:
+        return (Text(text),)
     nodes: list[Node] = []
     literal: list[str] = []
     i = 0
     while i < len(text):
-        found = _try_wrap(text, i)
+        found = _try_wrap(text, i, depth)
         if found is None:
             literal.append(text[i])
             i += 1

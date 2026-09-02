@@ -10,6 +10,7 @@ from __future__ import annotations
 import ast
 import html.parser
 import inspect
+import time
 
 import pressless.marks as marks_module
 from pressless.marks import (
@@ -409,4 +410,104 @@ def test_colour_argument_cannot_carry_css():
     assert muted.styles == ["color:var(--muted)"], (
         f"a named colour must render only as the fixed var(--muted) "
         f"string, got: {muted.styles!r}"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0054 ----
+
+
+def _html(text: str) -> str:
+    return marks_module.to_html(parse(text), _no_photos)
+
+
+def test_an_ordinary_brace_does_not_kill_a_colour_mark():
+    """PRESS-0054: depth was counted on the closer's FIRST CHARACTER, which
+    is '{'. So any brace in the writer's own words incremented the depth,
+    the real {/} was consumed as a decrement, and the whole line fell out as
+    literal -- the colour silently gone from the published page.
+
+    §4.5 says a nested {...} OPENER increments the counter, which is what it
+    does now.
+
+    Breaks when an implementer counts the character rather than the opener.
+    Nothing raises and nothing looks wrong; the writer just loses a colour
+    for typing a brace.
+    """
+    out = _html("{accent}the set {x} of things{/}")
+
+    assert "<span" in out, (
+        f"a brace inside the mark killed it and the line came out literal: "
+        f"{out!r}"
+    )
+    assert "{x}" in out, (
+        f"the writer's own brace did not survive into the output: {out!r}"
+    )
+    assert "{accent}" not in out and "{/}" not in out, (
+        f"the mark's own delimiters leaked into the output: {out!r}"
+    )
+
+
+def test_brace_marks_still_nest_inside_one_another():
+    """PRESS-0054's counter-case. The scanning section names
+    '{accent}{muted}x{/}{/}' as nesting it must accept, so the depth counter
+    has to fire on EVERY brace mark's opener and not only the row being
+    closed.
+
+    Breaks when an implementer narrows the count to this row's own opener:
+    the inner mark's {/} is then taken as the outer one's closer, and the
+    outer span ends early.
+    """
+    nested = _html("{accent}{muted}x{/}{/}")
+    assert nested.count("<span") == 2, (
+        f"two nested colour marks did not both survive: {nested!r}"
+    )
+
+    # The same, with the argument-bearing colour row as the inner mark.
+    mixed = _html("{accent}a {#ff0000}red{/} b{/}")
+    assert mixed.count("<span") == 2 and "#ff0000" in mixed, (
+        f"a hex colour nested inside accent did not survive: {mixed!r}"
+    )
+
+
+def test_a_deeply_nested_line_degrades_to_literal_rather_than_raising():
+    """PRESS-0054: _scan recursed once per nesting level with no bound, so a
+    few kilobytes of openers on one line raised an uncaught RecursionError.
+
+    §6 promises literal text for malformed input and names photo_src as the
+    only thing that raises, so a crash breaks the contract twice over. Past
+    the bound the rest of the line is literal, which is the degradation the
+    module already documents.
+
+    Measured before the fix: 700 levels raised. Breaks when an implementer
+    removes the bound, which no ordinary input reaches.
+    """
+    deep = "{accent}" * 700 + "x" + "{/}" * 700
+
+    out = _html(deep)  # the assertion is that this returns at all
+
+    assert "x" in out, f"the line's own text was lost entirely: {out[:120]!r}"
+
+
+def test_an_unclosable_line_does_not_take_quadratic_time():
+    """PRESS-0054: _closes_at scanned to end of line at every position where
+    an opener matched and no closer existed. The asterisk family is
+    short-circuited by its adjacency guards; the brace marks had none.
+
+    Measured before the fix: 4000 openers took 8.2s and the cost quadrupled
+    each time the input doubled. It is now checked once whether the closer
+    occurs at all.
+
+    The bound is deliberately loose -- this ran in well under a tenth of a
+    second here, so it catches the defect returning without failing on a
+    slow or loaded machine.
+    """
+    line = "{accent}a" * 4000
+
+    started = time.monotonic()
+    _html(line)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 3.0, (
+        f"an unclosable line of {len(line)} characters took {elapsed:.1f}s; "
+        f"before this fix it was 8.2s and quadratic in the line's length"
     )
