@@ -54,9 +54,9 @@ Four things make this a contract rather than a helper.
 
 ## 3. Scope decisions (agreed with the user)
 
-Five choices below were preference rather than deduction. **The first two were
-put to the user on 2026-08-25 and answered; the other three were made by this
-session.** §8 carries what each beat.
+The choices below were preference rather than deduction. **Decisions 1 and 2
+were put to the user on 2026-08-25 and answered, and decision 6 on 2026-09-02;
+the rest were made in session.** §8 carries what each beat.
 
 1. **Windows never falls back to a file.** Where no operating-system store can
    be used, Windows setup stops and says so. `os.chmod` on Windows sets only
@@ -77,6 +77,15 @@ session.** §8 carries what each beat.
    writes and the same permission question asked twice.
 5. **A store's answer is a `str` or it is an error.** The measured non-string
    answer in §4.6 is not a value this module may hand to the Publisher.
+6. **A read of the fallback file checks that the file is ours, and does not
+   check its mode.** Decision 1's reason applies to the read as much as to
+   the write: the writer chooses where Pressless sits, and on a shared or
+   removable drive another user can substitute the file, so `read()` would
+   hand their secret to the Publisher. The read refuses a symlink, and
+   refuses a file owned by somebody else. It does not refuse on the mode,
+   because a file carried from another machine is what recovery reads and
+   its mode did not survive the journey, while its ownership becomes the
+   writer's on the copy that carried it.
 
 ## 4. Design
 
@@ -214,6 +223,16 @@ already left a readable file behind.
 
 A write reads the existing file first and replaces one entry, so the other
 secret survives.
+
+A read opens the file with `O_NOFOLLOW` and refuses one whose owner is not
+the user running Pressless (§3 decision 6). Both are taken from the open
+descriptor rather than from the path, so what was checked is what is read.
+
+Each check is applied where the platform offers it and skipped where it does
+not. ADR-0003 asks for a capability test rather than a platform one, which is
+the shape §4.6's mode check already takes. Where neither is offered the read
+proceeds as it did before — that is the recovery decision 1 protects, and
+nothing on a platform without them writes this file in the first place.
 
 ### 4.5 What this module never does
 
@@ -388,6 +407,21 @@ once the code exists.
   a value, so every other rule here behaves identically — only the requirement
   that the two outcomes differ *by type* can fail it.
 
+- **INV-10** — a `read()` through the fallback file refuses a symlink and
+  refuses a file owned by another user, wherever the platform offers those
+  checks. It does not refuse on the file's mode.
+  *Test:* `tests/test_credentials.py::test_fallback_read_refuses_what_is_not_ours`
+  — put a symlink at the file's name pointing at another readable file and
+  assert `read()` raises rather than returning what it points at; patch the
+  owner reported for the open descriptor and assert it raises again. Then
+  write a file, widen its mode, and assert `read()` still returns the secret.
+  *Breaks when:* an implementer refuses on the mode as well, which reads as
+  stricter and rejects the file a recovering machine was carried — the case
+  §3 decision 1 and `write()`'s own comment protect.
+  **The permissive-mode case is what makes the pair bite:** a read refusing
+  everything unusual satisfies both refusal clauses, and only that third
+  assertion can fail it.
+
 ## 6. Failure modes
 
 - **No store, on Windows.** `choose()` raises `NoStore` and setup stops.
@@ -449,7 +483,7 @@ sibling already satisfies INV-1, whose test reads the module's imports rather
 than its behaviour — and it satisfies INV-6 as well, whose assertion is that a
 sentinel appears in *no* message, which is trivially true of a stub that raises
 `NotImplementedError` from everything. The red run is every test collected with
-the other seven failing on assertions; INV-1's or INV-6's going red against the
+the rest failing on assertions; INV-1's or INV-6's going red against the
 stub means the stub is wrong, not the test. Read the collected count, not the
 exit code.
 
@@ -503,6 +537,8 @@ exit code.
 | INV-7 | `tests/test_credentials.py::test_choice_names_the_answering_store` |
 | INV-8 | `tests/test_credentials.py::test_second_write_keeps_the_first` |
 | INV-9 | `tests/test_credentials.py::test_locked_store_is_not_an_absent_one` |
+| INV-10 | `tests/test_credentials.py::test_fallback_read_refuses_what_is_not_ours` |
+| INV-10's ownership refusal against a file really owned by another user | **half** — the suite cannot create one without a second account, so that clause patches the owner the descriptor reports. The symlink refusal and the permissive-mode acceptance both run for real |
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
 | ADR-0003's capability test, where the filesystem does not enforce modes | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on ext4 where the request is honoured |
@@ -531,6 +567,9 @@ exit code.
 - `docs/design.md` § The stack already names the operating system's keyring,
   and § Where everything sits on disk already places the fallback file. Those
   two sections are unchanged; the two named above are not.
+- `docs/decisions/ADR-0003` needs no fourth correction for §3 decision 6. Its
+  capability test is the shape the read's checks take rather than something
+  they depart from.
 - `CHANGELOG.md` — an entry when it ships.
 - PRESS-0001 is unchanged. This fills the hole its §4.5 names rather than
   moving anything it holds.
