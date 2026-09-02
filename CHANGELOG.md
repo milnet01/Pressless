@@ -185,6 +185,24 @@ appears once something has actually shipped.)
 
 ### Security
 
+- **The backup file holding your publishing key is now checked to be yours before it is read.** (PRESS-0085)
+  Where your computer has no password store, Pressless keeps the key in
+  a file of its own. It now refuses that file if it has been replaced by
+  a shortcut to somewhere else, or if it belongs to another account on
+  the machine -- so on a drive you share, nobody can swap in their own
+  file and have Pressless use it.
+
+  It deliberately does NOT refuse a file whose permissions look loose.
+  That is the file you get when you carry your setup over from another
+  machine, and refusing it would block the one case the fallback exists
+  for.
+
+  Two limits, stated rather than glossed: on a memory stick or an
+  external drive formatted without ownership, every file looks like
+  yours, so the ownership half cannot help there -- the shortcut check
+  still does. And Windows offers neither check, where nothing writes
+  this file in the first place.
+
 - **The publishing key is no longer handed to a server the app was redirected to.** (PRESS-0052)
   If something on the network answered a request by pointing the app
   somewhere else, the app carried the key that can rewrite the whole

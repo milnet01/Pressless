@@ -3149,7 +3149,7 @@
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0085] **The fallback credentials file is read through a symlink, with neither owner nor mode checked.**
+- ✅ [PRESS-0085] **The fallback credentials file is read through a symlink, with neither owner nor mode checked.**
   Split out of PRESS-0042 rather than folded into it, because the
   write side was mandated by ADR-0003 and this side is not: it needs a
   decision that contradicts a design choice already written down.
@@ -3178,6 +3178,35 @@
   anywhere the attacker chose, and os.replace replaces a symlink rather
   than writing through it, so the write path is not a route to another
   user's file.
+  Resolved (2026-09-02): every read of the fallback file now goes
+  through _read_ours -- O_NOFOLLOW where the platform offers it, so a
+  symlink is refused by the open rather than followed, then the owner
+  read off the open descriptor. Both raise CredentialError. The mode is
+  not checked, which is what keeps the recovery case working.
+
+  The decision this item said it owed was taken the way it said: §3
+  decision 6 of the PRESS-0002 spec was written and re-gated under rule
+  14 before any code landed. Two cold loops, every verified finding
+  fixed, cap reached.
+
+  Two of those findings decided the shape. Guarding read() alone leaves
+  the attack intact, because write()'s pre-read would merge a planted
+  file forward into one the writer then owns, which a later compliant
+  read() accepts -- both paths already shared _read_mapping, so the fix
+  sits there. And the first draft of INV-10's test passed against the
+  defect: a symlink to any ordinary file fails to parse and raises the
+  right error for the wrong reason, so the target has to be a
+  well-formed file holding a different secret.
+
+  Scoped honestly, and the spec says so: ownership reaches a shared
+  POSIX drive and not removable media, where every file reports the
+  mounting user. The symlink refusal holds on both. Windows offers
+  neither check, so the read there is unchecked -- stated as the
+  intended end state, since nothing on Windows writes this file and
+  refusing a carried one would refuse the recovery.
+
+  Four mutations run and all four killed, including the over-strict one
+  that refuses on mode. Not verified on Windows.
   **Layman:** Another user on a shared drive could swap the file holding the publishing key, and the app would read theirs without noticing.
   Kind: security.
   Source: in-session-2026-09-02, split from PRESS-0042.
