@@ -14,6 +14,7 @@ look as though it had touched the whole site (§4.2).
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import tempfile
@@ -69,11 +70,7 @@ def path_for(folder: Path, slug: str, *, draft: bool) -> Path:
     place a slug becomes a file name, so guarding it once covers write,
     exists, publish and unpublish alike (§4.2).
     """
-    if not _LEGAL_SLUG.match(slug):
-        raise StoreError(
-            f"{slug!r} is not a slug: one or more of a-z, 0-9 and '-', "
-            f"and nothing else"
-        )
+    _refuse_illegal_slug(slug, "a slug")
     subfolder = DRAFTS_FOLDER if draft else PUBLISHED_FOLDER
     return Path(folder) / subfolder / f"{slug}{FILE_SUFFIX}"
 
@@ -212,46 +209,7 @@ def write(folder: Path, entry: Entry, *, draft: bool) -> Path:
     """
     target = path_for(folder, entry.slug, draft=draft)
     _refuse_what_the_format_cannot_carry(entry)
-
-    handed = Path(folder)
-    if not handed.is_dir():
-        # A mistyped folder is not a folder to start filling (§6).
-        raise StoreError(f"{handed} is not a folder")
-    destination = target.parent
-    try:
-        destination.mkdir(exist_ok=True)
-    except OSError as exc:
-        raise StoreError(f"{destination} could not be created: {exc}") from exc
-
-    lines = [
-        f"Title: {entry.title}",
-        f"Slug: {entry.slug}",
-        f"Date: {entry.date.strftime(_DATE_FORMAT)}",
-        f"Categories: {LIST_SEPARATOR.join(entry.categories)}",
-        f"Tags: {LIST_SEPARATOR.join(entry.tags)}",
-    ]
-    # After the recognised five, in their original order relative to each
-    # other. Entry.extra carries no anchor into the recognised fields, and
-    # inventing one would buy an ordering nothing reads (§4.2).
-    lines.extend(f"{name}: {value}" for name, value in entry.extra)
-    text = "\n".join(lines) + "\n\n" + entry.body
-
-    try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(destination), prefix=".entry-", suffix=".tmp"
-        )
-    except OSError as exc:
-        raise StoreError(f"{target} could not be written: {exc}") from exc
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(text)
-        os.replace(temporary, target)
-    except OSError as exc:
-        _discard(temporary)
-        raise StoreError(f"{target} could not be written: {exc}") from exc
-    except BaseException:
-        _discard(temporary)
-        raise
+    _write_atomically(folder, target, _entry_text(entry), prefix=".entry-", newline="\n")
     return target
 
 
@@ -357,3 +315,445 @@ def _discard(temporary: str) -> None:
         os.unlink(temporary)
     except OSError:
         pass
+
+
+# ---------------------------------------------------------------------------
+# PRESS-0006 — the rest of the Store: fixed pages, furniture, templates,
+# comments, and where a photograph's original sits.
+#
+# The contract is docs/specs/PRESS-0006-pages-furniture-comments.md. These
+# share the name rule, the atomic write, the error types and the folder handle
+# with the entry code above, which is why they are here rather than in a second
+# module (§8): one part of the design, one Store.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Comment:
+    identifier: str    # unique within its file; what a reply points at
+    author: str        # the name as given, published as it is today
+    author_url: str    # may be empty
+    date: datetime     # naive wall clock, as Entry.date is
+    body: str          # verbatim
+    parent: str        # the identifier this replies to, or "" if top level
+
+
+PAGES_FOLDER = "pages"
+FURNITURE_FOLDER = "furniture"
+TEMPLATES_FOLDER = "templates"
+COMMENTS_FOLDER = "comments"
+PHOTOGRAPHS_FOLDER = "photographs"
+HTML_SUFFIX = ".html"
+COMMENTS_SUFFIX = ".json"
+
+# §3 decision 2: the site has exactly one header, one footer and one
+# navigation. The page set is open (decision 8) and this one is not -- both
+# constants are exported because the Builder and the Face have to agree about
+# whether a fourth furniture file can exist.
+FURNITURE_NAMES = ("header", "footer", "navigation")
+
+# §4.1's six fields, in §4.1's order. The set is exact both ways: a comments
+# file missing one is unreadable, and one carrying a seventh is refused rather
+# than read, because the likeliest seventh is a field §4.5 forbids (§6).
+_COMMENT_FIELDS = ("identifier", "author", "author_url", "date", "body", "parent")
+
+
+class DanglingReply(StoreError):
+    """A reply names a parent its own set does not hold; nothing was written."""
+
+
+def html_path_for(folder: Path, kind: str, name: str) -> Path:
+    """Where the fixed page or furniture file `name` sits (§4.3).
+
+    One pair of calls serves both because a fixed page and a furniture file
+    are the same thing -- HTML held verbatim -- in different folders. Only
+    what reads them differs, and that is the Builder's business rather than
+    the Store's (§4.1).
+    """
+    subfolder = _html_subfolder(kind)
+    _refuse_illegal_slug(name, f"a {kind} name")
+    if kind == FURNITURE_FOLDER and name not in FURNITURE_NAMES:
+        raise StoreError(
+            f"{name!r} is not a furniture file: the site has one "
+            f"{', one '.join(FURNITURE_NAMES)}, and an open furniture folder "
+            f"would let a fourth exist that the Builder has no place for"
+        )
+    return Path(folder) / subfolder / f"{name}{HTML_SUFFIX}"
+
+
+def list_html(folder: Path, kind: str) -> tuple[str, ...]:
+    """The names in one HTML folder, sorted, read off the file names (§4.4).
+
+    Opens nothing, as list_slugs does. The fixed-page set is open (§3 decision
+    8): Import creates the pages the site has, and a fifth page later costs a
+    file rather than a code change.
+    """
+    return _list_names(folder, _html_subfolder(kind), HTML_SUFFIX)
+
+
+def read_html(path: Path) -> str:
+    """One page or furniture file, decoded and otherwise untouched (§4.2).
+
+    Bytes are decoded here rather than opened as text, so no newline
+    translation can reach the markup. No parse, no reformat, no reindent, no
+    entity rewriting: the file comes back as it went in, markup errors and
+    all, which is what lets the code view hand him his own file (INV-1).
+    """
+    target = Path(path)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError as exc:
+        raise StoreError(f"there is no file at {target}") from exc
+    except OSError as exc:
+        raise StoreError(f"{target} could not be read: {exc}") from exc
+
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        # Not decoded with a replacement character: that would silently change
+        # his page on the next save (§6).
+        raise StoreError(f"{target} is not UTF-8: {exc}") from exc
+
+
+def write_html(folder: Path, kind: str, name: str, html: str) -> Path:
+    """Write a page or furniture file, whole or not at all (§4.4).
+
+    Written with newline translation OFF, so the line endings he saved are the
+    line endings on disk. Entries, templates and comments take the LF rule
+    instead: a fixed page is different because the code view hands him the file
+    entire, so its bytes are his, and rewriting them on save is the
+    reformatting §3 decision 1 exists to forbid (INV-1, INV-10).
+    """
+    target = html_path_for(folder, kind, name)
+    _write_atomically(folder, target, html, prefix=".page-", newline="")
+    return target
+
+
+def template_path_for(folder: Path, name: str) -> Path:
+    """Where the template `name` sits (§4.3)."""
+    _refuse_illegal_slug(name, "a template name")
+    return Path(folder) / TEMPLATES_FOLDER / f"{name}{FILE_SUFFIX}"
+
+
+def list_templates(folder: Path) -> tuple[str, ...]:
+    """The template names, sorted, read off the file names (§4.4).
+
+    What PRESS-0017's picker binds to, and what write_template names its file
+    from.
+    """
+    return _list_names(folder, TEMPLATES_FOLDER, FILE_SUFFIX)
+
+
+def write_template(folder: Path, entry: Entry) -> Path:
+    """Write an entry file into the templates folder (§4.1).
+
+    A template IS an entry file -- the same header, the same blank line, the
+    same body, written by the same code (§4.2), so there is nothing new to
+    parse. This call exists only because `write` chooses between the two entry
+    folders and a template belongs in neither. There is no read_template for
+    the mirror reason: `read` takes a path, so it already reads one.
+
+    Nothing here can move a template into an entry folder, and no other call
+    offers to (INV-7).
+    """
+    target = template_path_for(folder, entry.slug)
+    _refuse_what_the_format_cannot_carry(entry)
+    _write_atomically(folder, target, _entry_text(entry), prefix=".entry-", newline="\n")
+    return target
+
+
+def comments_path_for(folder: Path, slug: str) -> Path:
+    """Where the comments on `slug` sit (§4.3).
+
+    A folder of their own rather than beside the entry (§3 decision 5).
+    list_slugs returns every name ending in the entry suffix, so a comments
+    file sharing that folder would be returned as an entry; a separate folder
+    settles that and leaves the entry folders one rule -- one file, one entry.
+
+    The file is named for the entry it belongs to, which is what makes it
+    findable without an index.
+    """
+    _refuse_illegal_slug(slug, "a comments slug")
+    return Path(folder) / COMMENTS_FOLDER / f"{slug}{COMMENTS_SUFFIX}"
+
+
+def read_comments(path: Path) -> tuple[Comment, ...]:
+    """The comments in one file, in the order they were written (§4.2).
+
+    An absent file is (), not an error: most entries have none, so this is the
+    ordinary case rather than a failure and the Builder needs no separate
+    existence call (§6).
+
+    Never sorted and never re-nested. Ordering is the Builder's decision, and
+    reordering at rest makes the file no longer what was written (INV-6).
+    """
+    target = Path(path)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:
+        return ()
+    except OSError as exc:
+        raise StoreError(f"{target} could not be read: {exc}") from exc
+
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise StoreError(f"{target} is not UTF-8: {exc}") from exc
+    try:
+        carried = json.loads(text)
+    except ValueError as exc:
+        # Never rewritten into something parseable (§6): a silent repair loses
+        # what was there, and these are records nobody can retype.
+        raise StoreError(f"{target} is not JSON: {exc}") from exc
+    if not isinstance(carried, list):
+        raise StoreError(
+            f"{target} holds a {type(carried).__name__}, not a list of comments"
+        )
+
+    comments: list[Comment] = []
+    for position, record in enumerate(carried):
+        if not isinstance(record, dict):
+            raise StoreError(
+                f"{target}: comment {position} is a {type(record).__name__}, "
+                f"not an object"
+            )
+        _refuse_the_wrong_comment_fields(record, position, target)
+        comments.append(Comment(
+            identifier=record["identifier"],
+            author=record["author"],
+            author_url=record["author_url"],
+            date=_parse_date(record["date"], target),
+            body=record["body"],
+            parent=record["parent"],
+        ))
+    return tuple(comments)
+
+
+def write_comments(folder: Path, slug: str, comments: tuple[Comment, ...]) -> Path:
+    """Replace the comments file for `slug` whole (§4.1).
+
+    Whole rather than one at a time: comments are read-only to the writer, so
+    Import writes each entry's set once and there is no add-one-comment call
+    to build.
+
+    JSON rather than the entry format (§3 decision 6): a comment body may
+    contain any line, including a blank one, so a text file holding many of
+    them needs a delimiter no body can produce. Comments are also the one
+    thing here he never writes -- records rather than his prose -- so the entry
+    format's reason for existing does not reach them.
+    """
+    target = comments_path_for(folder, slug)
+    _refuse_a_dangling_reply(comments, target)
+    records = [
+        {
+            "identifier": comment.identifier,
+            "author": comment.author,
+            "author_url": comment.author_url,
+            # The same format an entry's Date header uses, so one date rule
+            # covers the whole Store (§4.2).
+            "date": comment.date.strftime(_DATE_FORMAT),
+            "body": comment.body,
+            "parent": comment.parent,
+        }
+        for comment in comments
+    ]
+    text = json.dumps(records, indent=2, ensure_ascii=False) + "\n"
+    _write_atomically(folder, target, text, prefix=".comments-", newline="\n")
+    return target
+
+
+def photograph_path_for(folder: Path, name: str) -> Path:
+    """Where the original of the photograph `name` sits (§4.1).
+
+    A weaker rule than the slug one, deliberately: §3 decision 10 leaves what
+    a photograph's file may be called to PRESS-0016, and the archive's own
+    attachment names would not pass a slug rule -- most carry an underscore.
+    What is checked is the one thing a folder needs, that the name is a single
+    path component and so cannot reach outside it (INV-11).
+
+    The Store gives a photograph a place and nothing else. It neither copies
+    nor opens one, and offers no call that could: putting an original there is
+    Import's for the archive and PRESS-0016's afterwards, and the originals
+    are never copied to the site folder.
+    """
+    if (
+        not name
+        or name in (".", "..")
+        # Both separators, not just this platform's: a name carrying a
+        # backslash is one component on Linux and two on Windows, and the app
+        # runs on both.
+        or "/" in name
+        or "\\" in name
+        or os.path.basename(name) != name
+    ):
+        raise StoreError(
+            f"{name!r} is not a file name: a photograph's name is a single "
+            f"path component, so that it cannot reach outside the folder it "
+            f"was meant for"
+        )
+    return Path(folder) / PHOTOGRAPHS_FOLDER / name
+
+
+def list_photographs(folder: Path) -> tuple[str, ...]:
+    """The photograph file names, sorted, whole (§4.4).
+
+    Whole rather than stemmed, unlike every other listing here: what a
+    photograph's file is called is PRESS-0016's, so the Store cannot assume a
+    suffix to strip.
+    """
+    return _list_names(folder, PHOTOGRAPHS_FOLDER, "")
+
+
+def _html_subfolder(kind: str) -> str:
+    """Refuse a `kind` that is neither pages nor furniture, naming what was
+    passed (§6)."""
+    if kind not in (PAGES_FOLDER, FURNITURE_FOLDER):
+        raise StoreError(
+            f"kind is {kind!r}; the HTML the Store holds is either "
+            f"{PAGES_FOLDER!r} or {FURNITURE_FOLDER!r}"
+        )
+    return kind
+
+
+def _refuse_illegal_slug(name: str, what: str) -> None:
+    """The one name rule, shared by every call that turns a name into a
+    slug-shaped file name (§4.3).
+
+    This is the Store's trust boundary. Every name reaching these calls came
+    from a file the writer or the archive supplied, and a name is the only
+    thing here that decides where a write lands -- so it is guarded once,
+    where the name becomes a path, rather than in each caller (INV-3).
+    """
+    if not _LEGAL_SLUG.match(name):
+        raise StoreError(
+            f"{name!r} is not {what}: one or more of a-z, 0-9 and '-', "
+            f"and nothing else"
+        )
+
+
+def _refuse_the_wrong_comment_fields(record: dict, position: int, target: Path) -> None:
+    """§6: a comments file carrying a field the record does not have raises,
+    naming the path and the field.
+
+    Unlike an entry's unknown header field, which ADR-0001 keeps, an
+    unexpected field here is most likely one §4.5 forbids -- the email address
+    or the IP address WordPress collected around a comment.
+    """
+    unexpected = sorted(set(record) - set(_COMMENT_FIELDS))
+    if unexpected:
+        raise StoreError(
+            f"{target}: comment {position} carries {unexpected!r}, which a "
+            f"comment does not have. A comment is {list(_COMMENT_FIELDS)!r} "
+            f"and nothing else"
+        )
+    missing = sorted(set(_COMMENT_FIELDS) - set(record))
+    if missing:
+        raise StoreError(
+            f"{target}: comment {position} is missing {missing!r}"
+        )
+
+
+def _refuse_a_dangling_reply(comments: tuple[Comment, ...], target: Path) -> None:
+    """INV-5: refuse a set in which a reply names a parent that set does not
+    hold, before anything is written.
+
+    The Builder has to render a tree, and a parent that is not there is a tree
+    it cannot build; refusing at the write is where the caller still knows
+    what it dropped. The export spells a top-level comment's parent `0` and
+    the Store treats any non-empty parent as naming another comment, so a `0`
+    carried through unchanged arrives here as a dangling reply and the whole
+    archive is refused (§4.2). Turning the export's fields into a Comment is
+    PRESS-0007's.
+    """
+    held = {comment.identifier for comment in comments}
+    for comment in comments:
+        if comment.parent and comment.parent not in held:
+            raise DanglingReply(
+                f"{target}: comment {comment.identifier!r} replies to "
+                f"{comment.parent!r}, which is not in the same set; nothing "
+                f"was written"
+            )
+
+
+def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
+    """File names in one subfolder, sorted, opening nothing (§4.4).
+
+    A missing subfolder lists nothing rather than raising: these folders are
+    the Store's own layout rather than the caller's, so a fresh install needs
+    no setup step for them (§6). That is list_slugs' rule, shared rather than
+    restated. An empty `suffix` returns whole file names, which is what
+    list_photographs needs.
+    """
+    handed = Path(folder)
+    if not handed.is_dir():
+        raise StoreError(f"{handed} is not a folder")
+    destination = handed / subfolder
+    if not destination.is_dir():
+        return ()
+    return tuple(sorted(
+        path.name[: -len(suffix)] if suffix else path.name
+        for path in destination.iterdir()
+        if path.is_file() and path.name.endswith(suffix)
+    ))
+
+
+def _entry_text(entry: Entry) -> str:
+    """One entry file's text: the five recognised fields in §4.2's order, then
+    any extra fields in their original order, then the blank line, then the
+    body.
+
+    Shared by `write` and `write_template` because a template IS an entry file
+    (§4.2). Entry.extra carries no anchor into the recognised fields, and
+    inventing one would buy an ordering nothing reads.
+    """
+    lines = [
+        f"Title: {entry.title}",
+        f"Slug: {entry.slug}",
+        f"Date: {entry.date.strftime(_DATE_FORMAT)}",
+        f"Categories: {LIST_SEPARATOR.join(entry.categories)}",
+        f"Tags: {LIST_SEPARATOR.join(entry.tags)}",
+    ]
+    lines.extend(f"{name}: {value}" for name, value in entry.extra)
+    return "\n".join(lines) + "\n\n" + entry.body
+
+
+def _write_atomically(
+    folder: Path, target: Path, text: str, *, prefix: str, newline: str
+) -> None:
+    """A temporary file in the destination folder, then os.replace over the
+    target -- atomic on both systems, so an interrupted save leaves the
+    previous file rather than half a new one (§4.5, INV-9).
+
+    The destination subfolder is created; the handed folder is not. A mistyped
+    folder is not a folder to start filling (§6).
+
+    `newline` is named by every caller rather than defaulted: Python's default
+    is the platform's, so an unnamed write produces CRLF on Windows. Entries,
+    templates and comments pass "\\n"; a page passes "" to turn translation off
+    and keep the bytes it was given (§4.2).
+    """
+    handed = Path(folder)
+    if not handed.is_dir():
+        raise StoreError(f"{handed} is not a folder")
+    destination = Path(target).parent
+    try:
+        destination.mkdir(exist_ok=True)
+    except OSError as exc:
+        raise StoreError(f"{destination} could not be created: {exc}") from exc
+
+    try:
+        handle, temporary = tempfile.mkstemp(
+            dir=str(destination), prefix=prefix, suffix=".tmp"
+        )
+    except OSError as exc:
+        raise StoreError(f"{target} could not be written: {exc}") from exc
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8", newline=newline) as stream:
+            stream.write(text)
+        os.replace(temporary, target)
+    except OSError as exc:
+        _discard(temporary)
+        raise StoreError(f"{target} could not be written: {exc}") from exc
+    except BaseException:
+        _discard(temporary)
+        raise
