@@ -2728,6 +2728,18 @@
   PRESS-0015 (undo) therefore rests on a mechanism proven to work.
   The scratch repository was created solely for this and is being
   removed.
+  Correction (2026-09-02): the note above says the scratch repository "is
+  being removed". That was not true when written and is still not true.
+  The gh token carries gist, read:org, repo and workflow, and deleting a
+  repository needs delete_repo — so the delete returned 403 and
+  milnet01/gh-tree-deletion-probe is STILL PRESENT.
+
+  It is private and holds nothing but the probe. Removing it needs either
+  `gh auth refresh -h github.com -s delete_repo` and then
+  `gh repo delete milnet01/gh-tree-deletion-probe --yes`, or one click in
+  the browser. Recorded rather than left in a chat window, because the
+  finding above is settled and this loose end would otherwise outlive the
+  session that made it.
   **Layman:** The way the app tells GitHub to delete a file may not be a form GitHub accepts, and there is no way to check without trying it for real.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
@@ -3139,6 +3151,47 @@
   **Layman:** Another user on a shared drive could swap the file holding the publishing key, and the app would read theirs without noticing.
   Kind: security.
   Source: in-session-2026-09-02, split from PRESS-0042.
+
+- 📋 [PRESS-0086] **Most open items belong to no milestone, so "what gets us to v1.0.0" has no complete answer.**
+  ROADMAP section Milestones says every one of the 22 items above belongs
+  to exactly one milestone and none to two. That was true when written.
+  Measured 2026-09-02: 61 items are open, 14 of them are in a milestone,
+  and 47 are in none — everything the reviews filed (PRESS-0028 onward)
+  plus self-update.
+
+  So the milestone map answers "what gets us to v0.1.0" for the original
+  build items and is silent about the rest, which is most of the queue.
+
+  The obvious fix does not work, and that is why this is an item rather
+  than an edit. Section Milestones is a store-held section intro; no verb
+  amends one, and a hand edit to ROADMAP.md is discarded by the next
+  render. That is also why its count still reads 22. CLAUDE.md records
+  the trap.
+
+  The route that does work: put a Milestone: line on each item's own
+  body, which roadmap_log op:amend_field and op:annotate can both reach.
+  The map then lives with the items rather than in a paragraph that
+  cannot be corrected, and it stays true as items are filed. Section
+  Milestones keeps the prose about what each version MEANS, which is the
+  half worth having there and the half that does not go stale.
+
+  Decide first whether every review-fix item needs a milestone at all. A
+  defect in shipped code arguably belongs to the release that ships the
+  fix rather than to a goalpost, and forcing all 47 into three buckets
+  may be inventing structure. The question this item has to answer is
+  narrower than it looks: which of the 47 BLOCK a sign of success, and
+  which are simply work.
+
+  Priority order given by the user 2026-09-02, recorded because it
+  outranks the roadmap's own ordering and would otherwise live only in a
+  chat window:
+    1. Implement outstanding fixes from any and all reviews, backlog
+       included.
+    2. Open items that get us to v1.0.0.
+    3. Additional open items that get us to the next version.
+  **Layman:** The plan says which work belongs to which version, but only for the original items — most of what has been filed since is unsorted.
+  Kind: doc-fix.
+  Source: in-session-2026-09-02, measured while answering the user's versioning question.
 
 ## Milestones
 
