@@ -90,17 +90,26 @@ which is the check a markdown edit in this repository can actually
 breach, and no test reads a document as data. Narrow it if either stops
 being true — and a narrowing reverts on any clone where the key is unset.
 
-**Two tests are skipped by default and they are the most important
-ones.** `tests/test_marks_archive.py` and `tests/test_store_archive.py`
-prove S2 against the real WordPress export, which is personal data and
-cannot live in a public repository — so they run only where that file
-is, and a green CI run says nothing about either. The gate points
-`PRESSLESS_ARCHIVE` at a path held in a machine-local git config key,
-so they run here without that path entering this repository:
+**Three test files are skipped in CI and they are the most important
+ones.** `tests/test_marks_archive.py`, `tests/test_store_archive.py` and
+`tests/test_store_extras_archive.py` prove S2 against the real WordPress
+export, which is personal data and cannot live in a public repository —
+so they run only where that file is, and a green CI run says nothing
+about any of them. The gate points `PRESSLESS_ARCHIVE` at a path held in
+a machine-local git config key, so they run here without that path
+entering this repository:
 
 ```bash
 git config ants.pressless.archive /path/to/wordpress-export.xml
 ```
+
+**The first two need a second thing the third does not**, and it decides
+what a green push proves. They resolve a slug through the sibling
+generator in a private workspace, so they skip wherever it is
+unreachable — which includes the isolated checkout the pre-push hook
+builds. `test_store_extras_archive.py` keys comments by the export's own
+post id and needs nothing but the export, so it DOES run at pre-push.
+Read the skip reasons, not the exit code.
 
 Or set it for one run:
 
