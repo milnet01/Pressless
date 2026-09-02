@@ -1,6 +1,6 @@
 # PRESS-0022 — Package Pressless into one artefact per system
 
-**Status:** spec draft (2026-09-02).
+**Status:** accepted (2026-09-02). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. **A violent cap:** about ten of loop 2's twelve findings landed on text loop 1 wrote, so a third cold read would mostly repair the second. The document is routed to implementation rather than to another gate, and implementation is the better third reviewer. **One region no cold read could judge:** Windows and AppImage behaviour is unrunnable from this machine, which the packet declared up front — §10 records what that leaves unchecked, and PRESS-0022 exists to make it observable.
 **Kind:** package.
 **Source:** ROADMAP PRESS-0022 (`docs/design.md` § The stack, and what it
 rules out; § Where everything sits on disk; ADR-0004).
@@ -233,22 +233,29 @@ The Linux job downloads `appimagetool` and wraps the frozen folder in
 an `AppDir` with the three files an AppImage requires — `AppRun`, a
 `.desktop` file and an icon.
 
-**The tag is the version, and it reaches three places.** The workflow
-triggers on `v<X.Y.Z>`; the artefact filenames of §4.1, the README's
-named download and `pyproject.toml`'s `version` all carry the same
-`<X.Y.Z>`. `pyproject.toml` reads `0.0.0` today, and `cut-release` is
-what moves it — this item adds no version-bumping of its own, it only
-requires that the workflow reject a tag that disagrees with the
-manifest, so a mislabelled artefact cannot be published.
+**The tag is the version, and it reaches two places.** The workflow
+triggers on `v<X.Y.Z>`; the artefact filenames of §4.1 and
+`pyproject.toml`'s `version` carry the same `<X.Y.Z>`. **The README
+names no version** — it links to the latest release page, so nothing
+there goes stale and no step edits it at release time. That is what
+keeps S4's "the steps are complete" true of a README nobody updates.
+
+`pyproject.toml` reads `0.0.0` today, and `cut-release` is what moves
+it — this item adds no version-bumping of its own. It requires only
+that the workflow reject a tag disagreeing with the manifest, so a
+mislabelled artefact cannot be published.
 
 **PyInstaller is pinned in `pyproject.toml`, and nothing pins it
 today.** It is named by `CLAUDE.md` § Build and test as a build-time
 packager belonging beside the gate's tools rather than in
 `dependencies`, and it appears in no manifest, no gate script and no
 workflow. It gets its own optional-dependency group, so the two
-release runners install the same packager as each other and as anyone
-reproducing a build. A floor rather than a ceiling, matching the
-reasoning already in that file for `keyring` and the gate's tools.
+release runners install it the same way and anyone can reproduce a
+build from the manifest. **A floor, not a pin**, matching the reasoning
+already in that file for `keyring` and the gate's tools — so two builds
+months apart may use different PyInstaller releases, and a release that
+breaks us shows up on the next build rather than months later. Byte
+reproducibility is not claimed and is not a goal here.
 
 **The gate workflow is untouched.** `ci.yml` runs
 `scripts/local-ci.sh` and holds no checks of its own; releasing is a
@@ -261,14 +268,29 @@ proved without something to package, and it is deliberately the
 smallest thing that proves it. PRESS-0013 replaces its body and changes
 nothing in §4.1 to §4.4.
 
-It answers the three questions an artefact must answer, prints each as
-a line the writer could read aloud, and exits non-zero if any fails:
+It answers the three questions an artefact must answer, and prints one
+machine-readable line for each. **The report's shape is a contract**:
+§7's tests parse it and §4.4's release job reads its exit code, so it
+is fixed here rather than invented by whoever writes the program.
 
-| Question | How it is answered |
-|---|---|
-| Did it start at all? | it printed, on a machine with no interpreter |
-| Where is its folder, and can it be written? | `paths.own_folder()` then `paths.ensure()`, reporting the path |
-| Which credential store answered? | `credentials.choose()`, reporting the store KIND and the member's name |
+```
+pressless: ok
+folder: <absolute path>
+store: <keyring|file> <member name>
+```
+
+| Question | How it is answered | Line |
+|---|---|---|
+| Did it start at all? | it printed, on a machine with no interpreter | `pressless: ok` |
+| Where is its folder, and can it be written? | `paths.own_folder()` then `paths.ensure()` | `folder:` |
+| Which credential store answered? | `credentials.choose()` | `store:` |
+
+**It exits non-zero only where a question could not be answered at
+all** — `NotPackaged`, `FolderUnusable`, or `choose()` raising. **A
+`store: file` answer is not a failure here**, because this program
+cannot tell a machine with no store from a bundle that lost its
+metadata; §2 is the whole reason. Which of the two it is, is §7's to
+decide, and it decides it by controlling the machine.
 
 `--self-check` prints the same report and is what CI and the Windows
 box run. There is no other flag: the double-click and the check take
@@ -311,9 +333,13 @@ thing nothing backs up.
 - **INV-2** — Frozen on Linux, `artefact_path()` returns the path in
   `$APPIMAGE` and never a path under the running mount.
   *Test:* `tests/test_paths.py::test_appimage_path_is_not_the_mount`,
-  patching `sys.frozen`, `sys.executable` and `$APPIMAGE` to a real
-  file in a temporary directory; asserts the result is that file and
-  is not a parent of `sys.executable`.
+  patching `sys.platform` to a non-win32 value, plus `sys.frozen`,
+  `sys.executable` and `$APPIMAGE` to a real file in a temporary
+  directory; asserts the result is that file and is not a parent of
+  `sys.executable`. **`sys.platform` is part of the fixture, not
+  scenery** — §7 step 1 runs this suite on `windows-latest`, where the
+  win32 row is taken before `$APPIMAGE` is read, so an unpatched
+  fixture fails there for the platform rather than for the rule.
   *Breaks when:* the resolver falls back to `sys.executable` or
   `sys._MEIPASS` on Linux — the fixture separates them, so a resolver
   reading either returns the mount and fails.
@@ -321,7 +347,8 @@ thing nothing backs up.
 - **INV-3** — `$APPIMAGE` naming a file that does not exist is treated
   as unset.
   *Test:* `tests/test_paths.py::test_stale_appimage_is_not_an_address`
-  — set to a deleted path, expect `NotPackaged`.
+  — frozen, `sys.platform` patched non-win32, `$APPIMAGE` set to a
+  deleted path; expect `NotPackaged`.
   *Breaks when:* the resolver checks only that the variable is set. No
   other rule rejects this fixture: the variable is present and
   well-formed, so only the file-exists guard can fail it.
@@ -364,8 +391,10 @@ thing nothing backs up.
   *Breaks when:* a build stops bundling the interpreter, or a runtime
   import reaches outside the bundle.
 
-- **INV-8** — `own_folder` ends in the literal `Pressless-data`, and the
-  test holds its own copy of that string.
+- **INV-8** — On the frozen branch, `own_folder` ends in the literal
+  `Pressless-data`, and the test holds its own copy of that string.
+  `PRESSLESS_FOLDER` is the folder itself and nothing is appended to
+  it, so the override branch is outside this invariant.
   *Test:* `tests/test_paths.py::test_folder_name_is_pinned`, comparing
   against a literal written out in the test, never imported from
   `paths`.
@@ -384,7 +413,7 @@ thing nothing backs up.
 | `$APPIMAGE` unset or stale on a frozen Linux run | `NotPackaged`. Pressless stops and says it cannot tell where it is, naming what it looked for |
 | The folder's parent is read-only or full | `FolderUnusable`, naming the path. Never a fallback (INV-5) |
 | The folder is on a mount with no POSIX modes | `credentials.write` raises `NoStore` per PRESS-0002 §4.6 — correct, and newly reachable now that the writer chooses the drive |
-| The bundle registers no credential backend | `--self-check` reports it and exits non-zero, so the release never ships (INV-6) |
+| The bundle registers no credential backend | it reports `store: file`, which §4.5 does not treat as a failure. §7 step 3 is what catches it, by creating a store first — so the release never ships one (INV-6) |
 | The writer extracts, or saves, version 2 elsewhere | first-run setup, writing stranded beside version 1. Accepted (scope decision 2); §4.6 states it in both systems' steps |
 | A CI runner is unavailable | no release. ADR-0004 already names this as a concentrated dependency with no local route around it |
 
@@ -395,32 +424,47 @@ ordinary suite: they are all resolution rules, and patching
 `sys.frozen`, `sys.executable` and the environment exercises every
 branch without a build.
 
-`tests/features/packaging/` locks INV-6 and INV-7 and does not run in
-the ordinary suite — it needs a built artefact. It is marked
+`tests/features/packaging/` holds INV-6's test. It does not run in the
+ordinary suite — it needs a built artefact — so it is marked
 `packaging` and skipped cleanly when none is present, the way the
 `archive` marker already works for tests needing the export.
+`PRESSLESS_ARTEFACT` points it at the built file, exactly as
+`PRESSLESS_ARCHIVE` points the archive tests at the export.
+**INV-7 has no pytest test**: it is a workflow step, because what it
+proves is a property of the machine rather than of the code.
 
-**The release job runs three steps on each runner, and they are three
-because one run cannot serve them all.**
+**The release job runs three steps, and they are three because one run
+cannot serve them all.**
 
-1. **The suite**, `scripts/local-ci.sh`. ADR-0004 § Consequences
-   requires it — *"the Windows job must still run the test suite rather
-   than only producing a file"* — and this is the first time any of it
-   runs on Windows.
-2. **INV-7, in a clean room**: `env -i PATH=/nonexistent` on the frozen
-   artefact. It proves the bundle needs nothing outside itself.
-3. **INV-6, in the runner's ordinary environment.** It cannot share
-   step 2's: `env -i` strips the session bus a Linux keyring member
-   needs, so a credential check run there would fail for the
-   environment rather than for the bundle.
+1. **The suite**, `scripts/local-ci.sh`, on both runners. ADR-0004
+   § Consequences requires it — *"the Windows job must still run the
+   test suite rather than only producing a file"* — and this is the
+   first time any of it runs on Windows.
+2. **INV-7, in a clean room. Linux only**: `env -i PATH=/nonexistent`
+   on the AppImage. There is no Windows form of it and none is
+   invented: `windows-latest` ships Python, so a clean room cannot be
+   made there by clearing variables. **INV-7's Windows evidence is the
+   staged box**, which has no interpreter at all.
+3. **INV-6, under a session the job CREATES.** On Linux the runner is
+   headless and has no keyring, so the job starts one —
+   `dbus-run-session` with a keyring daemon — and the arm then asserts
+   rather than skipping. It cannot share step 2's environment, because
+   `env -i` would strip the very session step 3 just created.
 
-**On Linux both artefact steps run the wrapped AppImage, after
+**Step 3 must not be allowed to skip, and that is the point of creating
+the session.** The answer a metadata-less bundle gives on Linux is
+`store: file`, and so is the answer a working bundle gives on a machine
+with no store — §4.5 says why the program cannot tell them apart. A
+skip conditioned on "no store present" is therefore conditioned on
+exactly the failure it exists to catch, and INV-6 could never go red.
+Creating the store is what makes `store: file` unambiguous.
+
+**On Linux every artefact step runs the wrapped AppImage, after
 `appimagetool` — never the bare frozen folder.** `$APPIMAGE` is set by
 the AppImage runtime and by nothing else, so on the frozen folder
 `artefact_path()` raises `NotPackaged` (§4.2) and a self-check there
-fails every release for the wrong reason. It also means §4.2's AppImage
-branch — the one INV-2's patched test cannot reach — is exercised on
-every release.
+fails every release for the wrong reason. It also exercises the
+AppImage runtime, which INV-2's patched test cannot reproduce.
 
 A non-zero exit at any step fails the release. finbreak's
 `windows-build.yml` carries a clean-room step and shows it can be
@@ -443,8 +487,8 @@ against it, and throw it away.
 ## 8. Alternatives considered (and rejected)
 
 - **One-file on both systems**, as finbreak does. Rejected for §4.1's
-  reason: it costs an unpack on every launch and puts `sys.executable`
-  on a bootloader rather than where the program lives. finbreak freezes
+  reason, which is the unpack on every launch and nothing else.
+  finbreak freezes
   a GUI it can afford to start slowly and resolves its own path for
   self-update rather than for a data folder, so the trade lands
   differently there.
@@ -483,8 +527,8 @@ against it, and throw it away.
 | INV-3 | `tests/test_paths.py::test_stale_appimage_is_not_an_address` |
 | INV-4 | `tests/test_paths.py::test_override_is_ignored_when_frozen` |
 | INV-5 | `tests/test_paths.py::test_unusable_folder_never_falls_back` |
-| INV-6 | `tests/features/packaging/`, run as §7's step 3 on both release runners — in the runner's ordinary environment, never the clean room. **Half on Windows:** the runner proves the bundle resolves a keyring store, the test box proves the writer's own route, and the box is driven by hand. **A headless Linux runner with no session keyring cannot distinguish a good bundle from a broken one**, so the Linux arm asserts only where a store is present and says so when it skips |
-| INV-7 | §7's step 2, on both runners |
+| INV-6 | `tests/features/packaging/`, run as §7's step 3 on both release runners, under a session the job creates — never the clean room, and never conditioned on a store happening to be there. **Half on Windows:** the runner proves the bundle resolves a keyring store, the test box proves the writer's own route, and the box is driven by hand |
+| INV-7 | §7's step 2 on the Linux runner. **Nothing on the Windows runner** — `windows-latest` ships Python, so no clean room can be made there; the staged box is the Windows evidence and it is driven by hand |
 | §4.6's written steps, and therefore S4 | **nothing** — no check reads a README. `verify-instructions` executes such steps and is not scheduled anywhere in this project |
 | INV-8 | `tests/test_paths.py::test_folder_name_is_pinned` |
 | Scope decision 2's accepted risk | **nothing, and nothing can** — it fires on where the writer chose to extract, which the app never sees |
@@ -515,6 +559,7 @@ against it, and throw it away.
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-09-02 | 3, cold — genre pinned `spec`; the packet declared Windows and AppImage behaviour an unrunnable region up front, so Q1 was out of scope there | 2 | 5 | 1 | 2 | **Ten verified, ten fixed, none dismissed. All three lanes independently found the same Q4**, which is the run's strongest signal: INV-6 read the credential store's MEMBER NAME, and PRESS-0002 §4.2 returns `Choice("file", "file")` off Windows — so the invariant passed green against exactly the metadata-less bundle §4.3 exists to reject. It now requires the store KIND. Its twin: §7's red run for it was unreachable, because the metadata comes from PyInstaller's shipped hook rather than the flag §7 said to drop. **The best Q2 was a release that could never go green** — the Linux self-check ran on the frozen folder, where `$APPIMAGE` is unset, so `artefact_path()` raises `NotPackaged`; and one `env -i` run was serving both INV-6 and INV-7, while `env -i` strips the session bus a keyring member needs. §7 is now three steps and runs the wrapped AppImage. **One Q2 caught a breach of this spec's own source**: ADR-0004 requires the Windows job to run the test suite, and §4.4 had it freeze and self-check only. **Two Q2s were the design being stated Windows-first**: `Pressless-data` was called unbound when every installed machine binds to it (now INV-8), and §14's extract-over rule described nothing that happens on Linux, where each release is a differently-named file. **Both Q1s were mine, not the lanes'** — a false universal about `folder` arguments that `credentials.choose()` breaks, and a rejection of one-file resting on `sys.executable`; all three lanes flagged the second as an open question and a measurement settled it false, so the one-folder choice now stands on the unpack delay alone. Q3: nothing said how a version tag reaches the artefact filename. Resolved clean and not counted: PRESS-0002 §4.6 does support §6's non-POSIX-mount row, raised by all three lanes. |
+| 2 | 2026-09-02 | 3, cold — identical brief, packet rebuilt from disk and extended with the onefile measurement, PRESS-0002 §4.6 and ADR-0004 § Consequences | 1 | 6 | 3 | 2 | **Twelve verified, twelve fixed, none dismissed. Cap reached (2 for a spec), and it is a VIOLENT cap** — about ten of the twelve landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. So the review ends here and the document is routed to implementation rather than to a third loop; nothing in the run suggests a third would stop. **The root cause of half the loop is one thing loop 1 created**: it made `--self-check` serve three consumers — the release job's exit code, the pytest tests, the Windows box — and pinned neither its output nor its exit rule, so §6 promised a metadata-less bundle never ships while §10 said the Linux arm may skip. §4.5 now fixes three machine-readable lines and says a `store: file` answer is NOT a failure, because the program cannot tell no-store from lost-metadata. **The sharpest finding is that loop 1's own fix was circular**: it let INV-6's Linux arm skip where no store is present, and a metadata-less bundle produces exactly that observation — so the skip condition WAS the failure condition and INV-6 could never go red. §7 step 3 now CREATES the session rather than hoping for one. **Two findings were loop 1 breaking its neighbours:** §8 still rejected one-file for the `sys.executable` reason loop 1 had just deleted from §4.1, and loop 1's own Windows suite step made INV-2 and INV-3 fail on `windows-latest`, because neither fixture patched `sys.platform` and the win32 row is read first. Also fixed: `env -i` named as the Windows clean room, where that runner ships Python and no clean room can be made; INV-8 false on the `PRESSLESS_FOLDER` branch; a floor pin promising byte reproducibility; and a versioned filename in a README nothing updates. **A packet defect of mine, reported by all three lanes and recorded rather than hidden:** the PRESS-0001 and PRESS-0002 §4.1 windows were empty — a `#` comment inside a python fence read as a heading — so §2's quotation went unverified by lanes in both loops. I verified it by grep; the lanes could not, and raised it as an open question rather than a finding, which is them working. Resolved clean and not counted: libfuse locates `fusermount` by absolute path, so `env -i` does not break an AppImage mount. |
 
 ## 13. Resource cost
 
