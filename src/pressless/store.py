@@ -104,7 +104,12 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
     return tuple(sorted(
         path.name[: -len(FILE_SUFFIX)]
         for path in subfolder.iterdir()
-        if path.is_file() and path.name.endswith(FILE_SUFFIX)
+        # Longer than the suffix, because a file named exactly ".txt" leaves
+        # an empty slug -- which path_for refuses, so a listing carrying one
+        # cannot be handed back to the Store (PRESS-0067).
+        if path.is_file()
+        and path.name.endswith(FILE_SUFFIX)
+        and len(path.name) > len(FILE_SUFFIX)
     ))
 
 
@@ -251,17 +256,47 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     target = path_for(folder, slug, draft=not from_draft)
     if not source.is_file():
         raise EntryNotFound(f"there is no entry at {source}")
+    occupied = (
+        f"{target} already holds {slug!r}; nothing was moved. One of the "
+        f"two has to be renamed before this can go ahead"
+    )
     if target.exists():
-        raise SlugInUse(
-            f"{target} already holds {slug!r}; nothing was moved. One of the "
-            f"two has to be renamed before this can go ahead"
-        )
+        raise SlugInUse(occupied)
     try:
         target.parent.mkdir(exist_ok=True)
-        os.replace(source, target)
+        _move_without_overwriting(source, target)
+    except FileExistsError as exc:
+        # The destination appeared between the check above and the move. The
+        # check is a check, not a guarantee (PRESS-0067).
+        raise SlugInUse(occupied) from exc
     except OSError as exc:
         raise StoreError(f"{source} could not be moved to {target}: {exc}") from exc
     return target
+
+
+def _move_without_overwriting(source: Path, target: Path) -> None:
+    """Move `source` onto `target`, refusing rather than replacing it.
+
+    os.replace is silent about a destination that exists, so the refusal
+    cannot rest on the exists() check: §6 names a second copy of the app as a
+    real case, and between the check and the rename that copy -- or a hand
+    copy -- can create the destination, which the rename then destroys.
+    INV-10 says that cannot happen, so the operation itself refuses.
+
+    Two calls, because no single one refuses on both systems. os.rename
+    raises FileExistsError on Windows when the target exists and silently
+    replaces it on POSIX; os.link raises FileExistsError on POSIX. Both
+    raise the same error, so the caller branches once.
+
+    The POSIX route needs a filesystem that has hard links. On one that does
+    not, a move raises StoreError carrying the system's own message, which is
+    visible rather than quiet.
+    """
+    if os.name == "nt":
+        os.rename(source, target)
+        return
+    os.link(source, target)
+    os.unlink(source)
 
 
 def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:

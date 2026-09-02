@@ -763,3 +763,87 @@ def test_a_body_of_its_own_line_endings_does_not_end_the_header(tmp_path):
         f"the body came back as {entry.body!r}; the header ends at its own "
         f"blank line and the body's paragraph break belongs to the body"
     )
+
+
+# ------------------------------------------------------------ PRESS-0067 ----
+
+
+def test_a_move_refuses_even_when_the_check_cannot_see_the_destination(
+    tmp_path, monkeypatch
+):
+    """INV-10 again, this time against the window between the check and the
+    move rather than against the ordinary case.
+
+    _move asked `target.exists()` and then called os.replace, which is silent
+    about a destination that exists. A check is not a guarantee: §6 names a
+    second copy of the app as a real case, and between the two calls that copy
+    -- or a hand copy -- can create the destination, after which the rename
+    destroys it. INV-10 says that cannot happen.
+
+    The window is simulated rather than raced, so the test is deterministic:
+    the destination is on disk throughout, and only the check is blinded to
+    it. An implementation that refuses in the operation itself passes; one
+    that relies on the check does not.
+
+    Breaks when the refusal is the exists() check rather than the move.
+    """
+    slug = "held-in-both"
+    as_draft = Path(write(tmp_path, _entry(slug=slug, body="The draft body.\n"), draft=True))
+    as_published = Path(
+        write(tmp_path, _entry(slug=slug, body="The published body.\n"), draft=False)
+    )
+    draft_before = as_draft.read_bytes()
+    published_before = as_published.read_bytes()
+    assert draft_before != published_before, (
+        "the fixture's two files are identical, so an overwrite would leave "
+        "no trace and this test would prove nothing"
+    )
+
+    real_exists = Path.exists
+
+    def blind_to_the_destination(self, *args, **kwargs):
+        if self == as_published:
+            return False
+        return real_exists(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "exists", blind_to_the_destination)
+    try:
+        with pytest.raises(SlugInUse):
+            publish(tmp_path, slug)
+    finally:
+        monkeypatch.undo()
+
+    assert as_published.read_bytes() == published_before, (
+        "publish() overwrote the published entry once the exists() check was "
+        "blinded to it. INV-10's refusal has to be made by the move itself, "
+        "because the check cannot see what appears after it returns"
+    )
+    assert as_draft.read_bytes() == draft_before, (
+        "publish() consumed the drafts file although nothing was published"
+    )
+
+
+def test_a_file_named_only_the_suffix_is_not_a_slug(tmp_path):
+    """list_slugs reads a slug off a file name by removing the suffix, and a
+    file named exactly ".txt" leaves nothing behind.
+
+    The empty string is not a legal slug, so every caller that round-trips a
+    listing back through path_for raises on it -- a stray file in his own
+    folder breaking a listing he did not ask about.
+
+    Breaks when the suffix is stripped without checking that a name remains.
+    """
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    (published / _SUFFIX).write_text("not an entry\n", encoding="utf-8")
+    write(tmp_path, _entry(slug="a-real-entry"), draft=False)
+
+    listed = list_slugs(tmp_path, draft=False)
+
+    assert "" not in listed, (
+        f"list_slugs returned an empty slug: {listed!r}. path_for refuses it, "
+        f"so the listing cannot be handed back to the Store"
+    )
+    assert listed == ("a-real-entry",), (
+        f"expected the real entry alone; got {listed!r}"
+    )
