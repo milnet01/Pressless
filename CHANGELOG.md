@@ -125,6 +125,15 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An entry whose address is a name Windows reserves is refused everywhere, and a hand-renamed file suffix no longer hides an entry from half the app.** (PRESS-0067)
+  Two more items of the same cluster. A handful of short names — con,
+  nul, com1 and their kin — cannot be filenames on Windows, so an entry
+  addressed that way saved on Linux and vanished on Windows. They are now
+  refused on both, so an entry that saves on one machine saves on the
+  other. Separately, the two ways the app looks for an entry disagreed
+  about a file whose .txt had been renamed .TXT by hand; they now share
+  one rule and cannot disagree.
+
 - **Publishing an entry can no longer overwrite one that appears while the check is running, and a stray file cannot break a listing.** (PRESS-0067)
   Two items of a larger cluster. The refusal to overwrite is now made by
   the move itself rather than by a check taken beforehand, so a second

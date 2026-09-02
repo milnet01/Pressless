@@ -5,9 +5,9 @@
 **Amended 2026-09-02, before implementation**, on two decisions the user
 took: the legal slug set excludes Windows's reserved device names on every
 system, and the file suffix is matched ignoring case. Both change direction,
-so the gate re-armed and ran to the spec cap of 2 again. The code is
-PRESS-0067's and is not written yet — § 10 carries two rows saying exactly
-what a green suite does not yet prove.
+so the gate re-armed and ran to the spec cap of 2 again. The code landed
+the same day as PRESS-0067 items 2 and 3; § 10 names the tests, and the
+row below them says what a suite running on Linux still cannot prove.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -610,8 +610,9 @@ imports.
 | That a file's name and its `Slug` header agree (§4.4) | **nothing** — no invariant covers it, and the archive test cannot: it writes through the Store, so its names always match. Worth an invariant the first time a hand-rename is seen |
 | LF endings and atomic replace behaving this way on Windows | **nothing** — this suite runs on Linux, and `os.replace` is documented atomic on both. PRESS-0022 stages the built executable to a Windows box, which is the only place it would be observed |
 | The Windows path limit (§6) | **nothing** — same reason. The failure mode is named so that it is recognised rather than diagnosed |
-| §4.2's reserved device names | **nothing yet** — the Store's one name gate is `_refuse_illegal_slug`, and it tests the character set alone, so `nul` is currently accepted. The rule was written on 2026-09-02 ahead of the code, which is PRESS-0067's; until that lands, INV-9's device-name case does not exist and a green suite says nothing about it |
-| §4.3's case-insensitive suffix | **nothing yet** — `list_slugs` matches `.txt` exactly and `exists` composes it through `path_for`, so a `.TXT` file is invisible to both. Same date, same item, same caveat |
+| §4.2's reserved device names | `tests/test_store.py::test_every_windows_device_name_is_refused_and_near_misses_are_not`, which asserts the whole set rather than one member, plus six near misses; and `::test_a_reserved_name_is_refused_before_anything_is_written` for `path_for` and `exists`. INV-9's own test carries the case §5 names |
+| §4.3's case-insensitive suffix | `tests/test_store.py::test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree`, which asserts `list_slugs` and `exists` TOGETHER — the defect was the pair disagreeing, so either alone passes against a half-fix |
+| That a reserved name is refused on WINDOWS rather than merely refused | **nothing** — this suite runs on Linux, so what is proved here is that the Store refuses the name, not what Windows would have done with it. PRESS-0022 is where that becomes observable |
 
 ## 11. Cross-doc impact
 

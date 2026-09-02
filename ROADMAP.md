@@ -2322,6 +2322,38 @@
   Items 5, 6 and 7 are queued and unblocked. Item 5 in particular needs a
   read of what §4.1 and §6 actually promise about which exception type
   escapes write(), which was not done here.
+  Progress (2026-09-02, second note): items 2 and 3 shipped. Four of
+  seven done; items 5, 6 and 7 remain and the item stays open.
+
+  Both needed PRESS-0005 amended first, because both contradicted it —
+  the spec made `nul` a legal slug and fixed the file as `<slug>.txt`.
+  The user took both decisions, the amendment ran through rule 14's gate
+  (review-contract, two loops to the spec cap, fourteen verified
+  findings), and the code was written after it rather than before.
+
+  Item 2: the device names are refused in the one place a name becomes a
+  path, so `path_for` and `exists` refuse them as `write` does. Measured
+  while gating: `safe_slug("NUL")` returns `nul`, so Import really can
+  produce one — and no entry in the export resolves to one today, so
+  nothing existing is affected. The whole set is tested, not one member,
+  plus six near misses, because refusing too widely would stop an
+  ordinary title being addressable.
+
+  Item 3: `list_slugs` and `exists` now share ONE matcher that compares
+  the suffix ignoring case. Sharing it is the fix rather than a tidy-up —
+  the defect was never in either alone but in the pair disagreeing, and
+  the test asserts them together. Proved by mutation that fixing one
+  alone fails it. `path_for` still composes exactly, and §4.3 states what
+  that costs on Linux.
+
+  Also settled on the way: `exists` raises `StoreError` on an illegal
+  slug rather than answering `False`. It always did, through `path_for`;
+  the contract now says so, which matters because PRESS-0012 asks it
+  about a name the writer typed.
+
+  NOT proved: that any of this behaves as intended ON Windows. The suite
+  runs on Linux, and the test box has no Python by design. §10 carries a
+  row saying so. PRESS-0022 is where it becomes observable.
   **Layman:** Small entry-handling problems, including one where two copies of the app running at once could overwrite an entry.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store -- low cluster.
