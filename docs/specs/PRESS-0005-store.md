@@ -180,12 +180,20 @@ Every single newline is a line break.
   workspace, which is what the live site is built from today. Losing
   any of them costs the site its categories, its tags or its by-year
   archive.
-- **A slug is one or more of `a-z`, `0-9` and `-`, and nothing else.**
-  That is what `safe_slug` already yields, so every live address
-  satisfies it. Pinned because the slug becomes a file name: an
-  unpinned one admits `/`, `\` and `..`, which write outside the
-  handed folder, and admits two slugs differing only in case, which
-  are one file on Windows and two on Linux.
+- **A slug is one or more of `a-z`, `0-9` and `-`, and is none of
+  `con`, `prn`, `aux`, `nul`, `com1`–`com9` or `lpt1`–`lpt9`.** That is
+  what `safe_slug` already yields, so every live address satisfies it.
+  Pinned because the slug becomes a file name: an unpinned one admits
+  `/`, `\` and `..`, which write outside the handed folder, and admits
+  two slugs differing only in case, which are one file on Windows and
+  two on Linux.
+- **Those device names are refused on every system, not only on
+  Windows.** Windows resolves them whatever the extension, so opening
+  `nul.txt` there reaches the null device rather than failing: the
+  write appears to succeed and the entry is gone, which is worse than a
+  refusal. Refusing them everywhere is what makes an entry that saves
+  on one machine save on the other, and it keeps one rule rather than a
+  rule per system.
 - **`Slug` and `Date` must be present and non-empty on write. `Title`,
   `Categories` and `Tags` must be present on write and may be empty.**
   An untitled entry is ordinary here, not an error — a large share of
@@ -236,6 +244,15 @@ Every single newline is a line break.
 `.txt` so that double-clicking opens a text editor on Windows, which
 is what S3 describes. The file name is the slug, and it is how the
 Store finds an entry.
+
+**The suffix is matched ignoring case.** The Store only ever writes
+`.txt`, but S3 invites the writer into the folder, and a file
+hand-renamed to `.TXT` is the same file on Windows and a different one
+on Linux. Matched exactly, `list_slugs` was blind to a file the
+existence check could see, so the two disagreed about whether an
+address was taken. Where a folder holds two names differing only in the
+suffix's case — reachable on Linux only, and never produced by the
+Store — they name one slug and `list_slugs` returns it once.
 
 Neither folder is the site folder. The Builder copies published
 entries into `content/` when it runs; that is PRESS-0008's, and
@@ -375,14 +392,16 @@ line, then the body.
 - **INV-9** — A value the format or the file system cannot carry is
   refused with `StoreError` and nothing is written: a newline in any
   header field, `extra` included; a comma in `Categories` or `Tags`; a
-  slug outside `a-z`, `0-9` and `-`, the empty slug included. A comma
+  slug outside §4.2's legal set, the empty slug and a reserved device
+  name included. A comma
   in `Title` is written unchanged — the header runs to the end of the
   line, so nothing splits it, and refusing one would reject archive
   entries that exist.
   *Test:* `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`
   — a newline case for each of the four string-valued fields and for
   an `extra` field, a comma case for the two list fields, and a slug
-  outside the legal set, each asserting the folder is unchanged
+  outside the legal set and one reserved device name, each asserting
+  the folder is unchanged
   afterwards; plus a title carrying a comma, which must be written and
   read back intact. `Date` needs no case: it is a `datetime`, so the
   type refuses what this rule would. That last case is what stops the
@@ -421,7 +440,9 @@ line, then the body.
   hand-rename produces. `StoreError` naming both, per §4.4. Nothing is
   moved and nothing is rewritten; the repair is the writer's, and it
   is either name.
-- **A slug whose file name the platform cannot hold.** The archive
+- **A slug whose file name is too long for the platform.** Distinct
+  from §4.2's reserved device names, which are refused on every system
+  before anything is written and so never reach here. The archive
   carries at least one slug long enough to threaten the Windows path
   limit once the folder path is added, which
   `tests/test_store_archive.py` measures. The write fails and says so;
