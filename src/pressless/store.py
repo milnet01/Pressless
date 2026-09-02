@@ -133,12 +133,23 @@ def read(path: Path) -> Entry:
     except UnicodeDecodeError as exc:
         raise StoreError(f"{target} is not UTF-8: {exc}") from exc
 
-    header, separator, body = text.partition("\n\n")
-    if not separator:
+    # A blank line ends the header, and a Windows editor spells that line
+    # "\r\n\r\n" -- which contains no "\n\n" at all, so looking only for the
+    # Unix spelling rejected the writer's own entry after his editor saved it
+    # (PRESS-0047). Both are accepted and the EARLIER one wins: a body may
+    # hold blank lines of its own, and the header ends at the first.
+    # The body is handed back exactly as found either way. §4.4 forbids a
+    # repair and INV-5 keeps every line break he typed, so a CRLF body stays
+    # CRLF rather than being quietly converted.
+    breaks = [at for at in (text.find("\n\n"), text.find("\r\n\r\n")) if at >= 0]
+    if not breaks:
         raise StoreError(
             f"{target} has no blank line, so where the header ends and the "
             f"body begins is undecidable"
         )
+    at = min(breaks)
+    header = text[:at]
+    body = text[at + (4 if text.startswith("\r\n\r\n", at) else 2):]
 
     title = ""
     slug = None

@@ -667,3 +667,99 @@ def test_write_reaches_the_disk_before_the_rename(tmp_path, monkeypatch):
         monkeypatch.undo()
 
     _assert_synced_before_replace(events, "write()")
+
+
+# ------------------------------------------------------------ PRESS-0047 ----
+
+# The same entry a Windows editor leaves behind: every line break CRLF. The
+# body deliberately carries a paragraph break of its own, so the file holds
+# more than one "\r\n\r\n" and a reader that takes the wrong one is visible.
+_CRLF_ENTRY = (
+    "Title: An example\r\n"
+    "Slug: an-example\r\n"
+    "Date: 2014-11-09 21:32:00\r\n"
+    "Categories: poetry\r\n"
+    "Tags: one, two\r\n"
+    "X-Wordpress-Id: 1234\r\n"
+    "\r\n"
+    "The body starts here.\r\n"
+    "\r\n"
+    "And continues.\r\n"
+)
+
+# LF header, CRLF inside the body: the shape that punishes a reader which
+# looks for "\r\n\r\n" first rather than for whichever break comes first.
+_MIXED_ENTRY = (
+    "Title: An example\n"
+    "Slug: an-example\n"
+    "Date: 2014-11-09 21:32:00\n"
+    "\n"
+    "The body starts here.\r\n"
+    "\r\n"
+    "And continues.\r\n"
+)
+
+
+def _put(folder: Path, text: str, slug: str = "an-example") -> Path:
+    """Write an entry file byte for byte, so no newline translation reaches
+    the fixture on its way to disk."""
+    published = folder / _PUBLISHED
+    published.mkdir(exist_ok=True)
+    target = published / (slug + _SUFFIX)
+    target.write_bytes(text.encode("utf-8"))
+    return target
+
+
+def test_an_entry_with_windows_line_endings_reads(tmp_path):
+    """§4.2's blank line ends the header, and a Windows editor spells that
+    line "\\r\\n\\r\\n" -- which contains no "\\n\\n" at all.
+
+    S3 invites the writer to open his entries without Pressless, and the app
+    ships on Windows, so an editor that normalises on save turned his own
+    entry into a file the Store rejected, with a message naming a blank line
+    that is plainly there (PRESS-0047).
+
+    The body is asserted byte for byte, because INV-5 keeps every line break
+    he typed: reading a CRLF file must not quietly convert his body to LF.
+
+    Breaks when the header separator is looked for as "\\n\\n" alone.
+    """
+    entry = read(_put(tmp_path, _CRLF_ENTRY))
+
+    assert entry.slug == "an-example"
+    assert entry.title == "An example"
+    assert entry.date == _A_DATE
+    assert entry.categories == ("poetry",)
+    assert entry.tags == ("one", "two"), (
+        f"the last header field before the blank line lost its value to the "
+        f"carriage return: got {entry.tags!r}"
+    )
+    assert entry.extra == (("X-Wordpress-Id", "1234"),), (
+        f"the unrecognised field did not survive a CRLF file: {entry.extra!r}"
+    )
+    assert entry.body == "The body starts here.\r\n\r\nAnd continues.\r\n", (
+        f"the body came back as {entry.body!r}. INV-5 keeps every line break "
+        f"the writer typed, so a CRLF body stays CRLF -- and the header's own "
+        f"blank line is the one that must be consumed, not a later one"
+    )
+
+
+def test_a_body_of_its_own_line_endings_does_not_end_the_header(tmp_path):
+    """The header ends at the FIRST blank line, whichever way it is spelled.
+
+    This guards the fix rather than the defect: an LF file whose body happens
+    to contain "\\r\\n\\r\\n" reads correctly today, and a reader that looked
+    for the Windows spelling first would split inside the body and report a
+    header line with no colon. Proved by mutation rather than by a red run,
+    because the mistake it names does not exist until the fix is written.
+
+    Breaks when the two spellings are tried in a fixed order instead of the
+    earlier one winning.
+    """
+    entry = read(_put(tmp_path, _MIXED_ENTRY))
+
+    assert entry.slug == "an-example"
+    assert entry.body == "The body starts here.\r\n\r\nAnd continues.\r\n", (
+        f"the body came back as {entry.body!r}; the header ends at its own "
+        f"blank line and the body's paragraph break belongs to the body"
+    )
