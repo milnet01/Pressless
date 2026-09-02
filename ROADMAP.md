@@ -790,6 +790,30 @@
   docs/design.md § The stack and ADR-0004 both say one artefact per
   system and need the amendment before this is built -- a direction
   change, so that amendment owes its own cold-eyes gate.
+  Progress (2026-09-02): chosen by the user as the next block of work,
+  over writing the Setup spec and over finishing the rest of PRESS-0067.
+  Nothing is started.
+
+  The reason it was chosen, which is the reason to keep it next: it is
+  the only item that turns the Windows test box into EVIDENCE. Nothing
+  can run there today — the box deliberately has no Python, which is what
+  makes it a fair test of a packaged artefact — so every Windows claim
+  this project has made so far is reasoned rather than measured. Three
+  items shipped today (PRESS-0047, and PRESS-0067 items 2 and 3) address
+  Windows-only defects that no test here can execute; PRESS-0005 § 10
+  carries a row saying so.
+
+  Treat a difference in behaviour between Windows and Linux as a defect
+  rather than a platform nuance. That is a standing priority, not a
+  judgement call per item.
+
+  Inherit before starting: PRESS-0068 item 1. Every keyring backend is
+  discovered through the keyring distribution's entry-point metadata, and
+  a PyInstaller bundle that does not collect it registers NO backend — so
+  the probe raises and Pressless tells EVERY Windows user their machine
+  has no credential store. The discriminator cannot tell "no metadata"
+  from "no store". The fix belongs to this item: --copy-metadata keyring,
+  plus pywin32-ctypes. That item records it here for exactly this reason.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
