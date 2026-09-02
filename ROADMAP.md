@@ -723,7 +723,7 @@
   Source: design-2026-08-24 § The dashboard, ADR-0003.
   Lanes: Face, Settings.
 
-- 📋 [PRESS-0022] **One double-clickable file per system, built by CI from the first release.**
+- 🚧 [PRESS-0022] **One double-clickable file per system, built by CI from the first release.**
   PyInstaller packages Pressless into one file per system. It does not
   cross-compile, so the Windows file must be produced by a Windows runner:
   releases go through GitHub Actions from the very first one, not later
@@ -814,6 +814,57 @@
   has no credential store. The discriminator cannot tell "no metadata"
   from "no store". The fix belongs to this item: --copy-metadata keyring,
   plus pywin32-ctypes. That item records it here for exactly this reason.
+  Progress (2026-09-02, second note): prerequisites checked before
+  planning. Nothing built.
+
+  The design amendment this item says is owed has ALREADY LANDED, so the
+  note above is stale. docs/design.md § The stack names an AppImage on
+  Linux and a zipped extracted folder on Windows; § Where everything sits
+  on disk carries the beside-the-program-file rule and resolves the Linux
+  path through the APPIMAGE variable; ADR-0004 § Decision names both
+  shapes. That text sits inside a document gated to its cap, so rule 14
+  is discharged and this item is not waiting on it.
+
+  Recorded nowhere but here: the batch file. The decision gives Windows a
+  zip holding the app plus a batch file the writer double-clicks. Neither
+  document mentions it, and it is the whole of what S4 asks a Windows
+  user to do.
+
+  Blocked-by PRESS-0013 is real and measurable, not bookkeeping. The
+  package holds library modules only -- no entry point, no project
+  scripts table, no Face. There is nothing to package into a
+  double-clickable file today, and PRESS-0013 is itself blocked by four
+  items. The CI workflow runs the gate alone; no release build exists.
+
+  It NEEDS a spec. spec-format.md § 1 is hit three ways: a new on-disk
+  shape that is hard to reverse, a real design choice this item's own
+  body defers into it (what becomes of a previous data folder when a
+  release ships a new artefact), and a contract PRESS-0001 already
+  assumes.
+  Two decisions taken by the user (2026-09-02), both changing what this
+  item builds:
+
+  1. Build the packaging pipeline NOW, against a deliberately minimal
+     program, rather than waiting for PRESS-0013. That program starts,
+     resolves where its own folder goes, probes the credential store and
+     reports what it found. It is a real double-clickable artefact, so
+     the Windows box can answer the three questions packaging exists to
+     answer: does the bundle carry what it needs, does the Windows
+     credential store work through it, does the folder land beside the
+     artefact. The Face replaces the placeholder when PRESS-0013 lands.
+     The Blocked-by therefore constrains when this item can be CLOSED,
+     not when it can be started.
+
+  2. A new version does not migrate anything. The written install steps
+     say to extract over the old copy, so the folder is already beside
+     the new artefact. Nothing is remembered outside the app and nothing
+     is moved. The residual risk is accepted and must be stated to the
+     writer rather than engineered away: extracting elsewhere gives a
+     first-run setup with the drafts stranded beside the old artefact,
+     and drafts are the one thing nothing backs up. This closes the
+     question deferred here from the design gate.
+  Started (2026-09-02): writing the packaging spec, per the two
+  decisions above.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
