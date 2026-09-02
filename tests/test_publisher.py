@@ -1084,3 +1084,143 @@ def test_a_broken_reply_reaches_the_caller_as_oserror(broken):
     assert 'THE-PUBLISHING-KEY' not in repr(raised.value), (
         f"the failure's representation names the secret: {raised.value!r}"
     )
+
+
+# ------------------------------------------------------------ PRESS-0069 ----
+
+
+def test_a_crafted_tree_entry_cannot_write_outside_the_folder(tmp_path):
+    """PRESS-0069 item 1: a tree entry's path comes verbatim from GitHub, so
+    one carrying `..` would be written outside the folder asked for (CWE-22).
+
+    Breaks when an implementer joins the path and trusts it. It needs a
+    hand-built git object to exploit, which is why it is low -- but the
+    check is one line and the consequence is a write anywhere the process
+    can reach.
+    """
+    into = tmp_path / "into"
+    into.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+
+    transport = _Transport(
+        reads=_reads(
+            _listing([("../outside/stolen.html", "some-blob-sha")]),
+            blob=b"<html>written outside the folder</html>",
+        )
+    )
+
+    with pytest.raises(PublishError):
+        fetch_previous(_settings(), "a-token", into, transport=transport)
+
+    assert not (outside / "stolen.html").exists(), (
+        "a tree entry containing '..' was written outside the folder "
+        "fetch_previous was handed"
+    )
+
+
+def test_a_prefix_of_one_slash_selects_the_whole_site(tmp_path):
+    """PRESS-0069 item 4: `_within_prefix` tested emptiness BEFORE stripping
+    the trailing slash, so a prefix of "/" selected nothing at all rather
+    than everything.
+
+    Breaks when an implementer restores that order. It reads as correct --
+    "/" is not empty, so it looks like a real prefix -- and the failure is
+    silent: a fetch selects no file and reports success.
+    """
+    assert publisher_module._within_prefix("entries/one.html", "/"), (
+        "a prefix of '/' selected nothing; after the strip it is empty, "
+        "which means the whole site"
+    )
+    assert publisher_module._within_prefix("entries/one.html", ""), (
+        "an empty prefix must select everything"
+    )
+    assert not publisher_module._within_prefix("entries/one.html", "pages"), (
+        "a real prefix must still select on segment boundaries"
+    )
+
+
+def test_a_missing_blob_is_not_reported_as_a_missing_repository(tmp_path):
+    """PRESS-0069 item 5: every 404 raised RepositoryMissing, whose whole
+    meaning in §6 is that settings.repository resolves to nothing.
+
+    Breaks when an implementer maps the status rather than the resource: a
+    deleted branch or an absent sha then sends the writer to check a
+    setting that is correct, which is the one diagnosis §6 assigns that
+    type.
+    """
+    reads = [("/git/blobs/", (404, {}, b"{}"))] + _reads(
+        _listing([("index.html", "some-blob-sha")])
+    )
+
+    with pytest.raises(PublishError) as raised:
+        fetch_previous(_settings(), "a-token", tmp_path,
+                       transport=_Transport(reads=reads))
+
+    assert not isinstance(raised.value, RepositoryMissing), (
+        f"a 404 on a blob was reported as a missing repository: "
+        f"{raised.value!r}"
+    )
+
+    # The control: a 404 on the repository itself IS RepositoryMissing, so
+    # the fix cannot be "never raise it".
+    with pytest.raises(RepositoryMissing):
+        publish(_settings(), tmp_path, "a-token", "a commit message",
+                transport=_Transport(responses=[(404, {}, b"{}")]))
+
+
+def test_a_branch_name_reaches_the_url_encoded(tmp_path):
+    """PRESS-0069 item 6: branch and sha went into URLs unencoded. `#` in a
+    refname starts a URL fragment, so the request would be silently
+    truncated to something else.
+
+    Breaks when an implementer interpolates the name directly, which works
+    for every ordinary branch and fails only on the ones git also allows.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing, default_branch="fix#1"),
+                           writes=_writes())
+
+    publish(_settings(), tmp_path, "a-token", "a commit message",
+            transport=transport)
+
+    commit_reads = [url for method, url, _, _ in transport.requests
+                    if method == "GET" and "/commits/" in url]
+    assert commit_reads, "no commit read was made at all"
+    assert all("%23" in url and "#" not in url for url in commit_reads), (
+        f"the branch name reached the URL unencoded, so everything after "
+        f"the '#' was dropped as a fragment: {commit_reads!r}"
+    )
+
+
+def test_a_symlink_in_the_site_folder_is_not_published(tmp_path):
+    """PRESS-0069 item 7: `is_file()` follows a symlink, so a link left in
+    the site folder was read and its TARGET published to a public site.
+
+    Breaks when an implementer walks the folder without asking. Dotfiles
+    are deliberately still published -- .nojekyll is one, and the
+    untouchable list names it -- so only the link half is refused here.
+    """
+    site = tmp_path / "site"
+    site.mkdir()
+    secret = tmp_path / "not-for-publication.txt"
+    secret.write_text("a file from elsewhere on the machine", encoding="utf-8")
+    (site / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (site / "leaked.txt").symlink_to(secret)
+    (site / ".nojekyll").write_text("", encoding="utf-8")
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(untouchable=()), site, "a-token", "a commit message",
+            transport=transport)
+
+    paths = _tree_creation_paths(transport)
+    assert paths is not None and "leaked.txt" not in paths, (
+        f"a symlink's target was published: {paths!r}"
+    )
+    assert ".nojekyll" in paths, (
+        f"the dotfile was dropped too; only the symlink should be, since a "
+        f"site legitimately carries .nojekyll: {paths!r}"
+    )

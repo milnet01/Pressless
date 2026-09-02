@@ -222,7 +222,9 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 
     session = _Session(transport or _Urllib(), token)
     branch = _default_branch(session, settings.repository)
-    head = session.read(_repo_url(settings.repository, f"commits/{branch}"))
+    head = session.read(
+        _repo_url(settings.repository, f"commits/{_segment(branch)}")
+    )
     base_commit = _required(head, "sha", "the head commit")
     listing = _tree(session, settings.repository, base_commit)
     remote = _blobs_in(listing)
@@ -288,7 +290,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     # branch that moved meanwhile is not a fast-forward and GitHub refuses
     # it -- which becomes Conflict. Forcing would discard the other write.
     session.write("PATCH",
-                  _repo_url(settings.repository, f"git/refs/heads/{branch}"),
+                  _repo_url(settings.repository,
+                            f"git/refs/heads/{_segment(branch)}"),
                   {"sha": commit, "force": False},
                   outcome_unknown=True)
 
@@ -348,9 +351,15 @@ def fetch_previous(settings: Settings, token: str, into: Path,
         if not _within_prefix(path, prefix):
             continue
         blob = session.read(
-            _repo_url(settings.repository, f"git/blobs/{entry['sha']}")
+            _repo_url(settings.repository,
+                      f"git/blobs/{_segment(entry['sha'])}")
         )
         target = Path(into) / path
+        if not _within_folder(target, Path(into)):
+            raise PublishError(
+                f"the repository listing names {path!r}, which would be "
+                f"written outside the folder asked for"
+            )
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(_content_of(blob))
         written.append(path)
@@ -438,7 +447,9 @@ def _tree(session: _Session, repository: str, ref: str,
     invisible.
     """
     suffix = "?recursive=1" if recursive else ""
-    listing = session.read(_repo_url(repository, f"git/trees/{ref}{suffix}"))
+    listing = session.read(
+        _repo_url(repository, f"git/trees/{_segment(ref)}{suffix}")
+    )
     if listing.get("truncated"):
         raise TooLarge(
             "GitHub cut the repository listing short, so what differs cannot "
@@ -450,6 +461,30 @@ def _tree(session: _Session, repository: str, ref: str,
 def _repo_url(repository: str, suffix: str) -> str:
     base = f"{API}/repos/{repository}"
     return f"{base}/{suffix}" if suffix else base
+
+
+def _segment(value: str) -> str:
+    """A value safe to put in a URL path (PRESS-0069).
+
+    A refname may carry `#`, which starts a URL fragment and would silently
+    truncate the request, or a non-ASCII character, which urlopen refuses
+    outright rather than encoding. Slashes are kept: a refname may be
+    several segments deep and those are real path separators.
+    """
+    return urllib.parse.quote(value, safe="/")
+
+
+def _within_folder(target: Path, folder: Path) -> bool:
+    """Whether `target` really lands inside `folder` (PRESS-0069).
+
+    A tree entry's path comes verbatim from GitHub, so one carrying `..`
+    would otherwise be written outside the folder the caller named. Both
+    sides are resolved, so a symlinked folder compares as what it points at.
+    """
+    try:
+        return target.resolve().is_relative_to(folder.resolve())
+    except OSError:
+        return False
 
 
 def _blobs_in(listing: dict) -> dict[str, str]:
@@ -464,6 +499,12 @@ def _local_files(folder: Path) -> dict[str, bytes]:
     """Every file under `folder`, keyed by repository-relative path."""
     files = {}
     for path in sorted(folder.rglob("*")):
+        if path.is_symlink():
+            # is_file() follows the link, so without this a symlink pointing
+            # anywhere on the machine is read and published to a public site
+            # (PRESS-0069). A site needs no symlinks; skipping is safe and
+            # refusing would fail a publish over something harmless.
+            continue
         if path.is_file():
             files[path.relative_to(folder).as_posix()] = path.read_bytes()
     return files
@@ -497,9 +538,12 @@ def _within_prefix(path: str, prefix: str) -> bool:
     there: a prefix may name a path several segments deep, an untouchable
     entry may not, and `load` refuses one that does.
     """
-    if not prefix:
-        return True
     prefix = prefix.rstrip("/")
+    if not prefix:
+        # After the strip, not before it: "/" is a prefix selecting the whole
+        # site, and testing emptiness first made it select nothing instead
+        # (PRESS-0069).
+        return True
     return path == prefix or path.startswith(f"{prefix}/")
 
 
@@ -540,13 +584,32 @@ def _retry_hint(status: int, headers: dict[str, str]) -> float | None:
         return PACE_SECONDS
 
 
+def _names_the_repository(url: str) -> bool:
+    """Whether `url` is the repository itself rather than something in it.
+
+    `_repo_url` builds every URL here, so the repository root is exactly
+    `/repos/{owner}/{name}` and anything inside it is longer.
+    """
+    return len(urllib.parse.urlsplit(url).path.strip("/").split("/")) == 3
+
+
 def _failure(status: int, method: str, url: str) -> PublishError:
     """The typed failure for an HTTP status (§6). Never carries the key."""
     where = f"{method} {url}"
     if status in (401, 403):
         return Refused(f"GitHub refused the publishing key for {where}")
     if status == 404:
-        return RepositoryMissing(f"GitHub has nothing at {where}")
+        if _names_the_repository(url):
+            return RepositoryMissing(f"GitHub has nothing at {where}")
+        # The repository answered; something asked for INSIDE it is absent --
+        # a deleted branch, a sha that is not there. Reporting that as
+        # `settings.repository resolves to nothing`, which is what this type
+        # means in §6, sends the writer to check a setting that is correct
+        # (PRESS-0069).
+        return PublishError(
+            f"GitHub has no {where} -- the repository is there, but what was "
+            f"asked for inside it is not"
+        )
     if status in (409, 422):
         return Conflict(
             f"the branch moved since it was read, so {where} was refused"
