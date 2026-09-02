@@ -294,7 +294,7 @@
   Source: design-2026-08-24 § Persistence, § Where everything sits on disk.
   Lanes: Store.
 
-- 📋 [PRESS-0006] **The Store also holds the fixed pages, the page furniture, the templates and the historical comments.**
+- ✅ [PRESS-0006] **The Store also holds the fixed pages, the page furniture, the templates and the historical comments.**
   Home, About, Music and Privacy, stored as HTML and never generated from
   marks, so the plain box and the code view cannot fight. Privacy is named
   because leaving it out is a legal exposure rather than a missing page --
@@ -319,6 +319,37 @@
   PRESS-0016 after measuring that most of the archive's attachment names
   cannot satisfy a slug. Status is not flipped: a spec being accepted is
   not work having started.
+  Resolved (2026-09-02). Twelve calls added to src/pressless/store.py, not
+  a second module -- they share the name rule, the atomic write, the error
+  types and the folder handle with the entry code. Three pieces of that
+  code are now shared rather than copied: the slug rule, the entry
+  serialisation and the atomic write, so a template is written by the same
+  code that writes an entry. write() lost 39 lines with its behaviour
+  unchanged.
+
+  Eleven invariants in tests/test_store_extras.py, proven red against a
+  stub before the code existed. The conformance run writes all 78 of the
+  archive's real comments through the Store and reads them back: 0 fields
+  changed, all 18 replies resolve, and no email address or IP address the
+  export carries reaches a file the Store writes.
+
+  Probed after the code landed: 14 mutants, one per route the invariants'
+  own Breaks-when clauses name, 13 killed. Two gaps the probe found are
+  closed here rather than filed. INV-10 could not fail on Linux at all --
+  os.linesep is LF, so a write leaving the newline to the platform produces
+  the same bytes as one naming it, and newline=None survived the byte
+  assertions; the test now also asserts what the Store named at the open,
+  and test_store.py's open-watcher moved to tests/_open_watch.py so both
+  files share one. INV-11 had no backslash case, so dropping that guard
+  survived; a backslash is one name on Linux and two on Windows.
+
+  The surviving mutant is os.path.basename's guard in photograph_path_for
+  -- redundant on Linux given the two separator checks, load-bearing on
+  Windows for a drive-relative name, and unreachable by any test here.
+
+  The name rule was run over the archive's own 193 attachment names and
+  refused none, which is the evidence for decision 10 that a slug rule
+  could not have been met by the files it was written for.
   **Layman:** His About page, the bits that appear on every page, his starting templates and the old readers' comments all live beside his entries.
   Kind: implement.
   Source: design-2026-08-24 § Where the fixed pages live.

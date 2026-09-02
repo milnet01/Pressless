@@ -17,6 +17,28 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Store also holds the fixed pages, the page furniture, the templates and the historical comments.** (PRESS-0006)
+  His About page, the bits repeated on every page, the templates a new
+  piece starts from and the old readers' comments all become ordinary
+  files beside his writing, in the same folder Pressless keeps it in.
+
+  A fixed page and a header or footer are kept exactly as typed, down to
+  the line endings and any markup mistake -- so the plain box and the code
+  view can edit the same file without either tidying the other's work
+  away. A template is an ordinary entry file in a folder of its own, and
+  there is no way to publish one by accident.
+
+  The comments are the ones readers already left; the site takes no new
+  ones. Replies stay attached to what they answer, and a reply pointing at
+  a comment that is not there is refused rather than quietly dropped. What
+  never comes across is the email address and the IP address WordPress
+  collected around each comment -- a reader's own words are carried whole,
+  whatever is in them, but nothing else about them is.
+
+  Proven against the real archive: all 78 comments written out and read
+  back with nothing changed, every reply still pointing at the right
+  comment, and no address reaching any file.
+
 - **The Store: one file per entry, with drafts kept apart from published.** (PRESS-0005)
   Every entry is an ordinary text file in an ordinary folder, openable in Notepad, and unfinished ones are kept off the web.
 
