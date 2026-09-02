@@ -24,6 +24,7 @@ docs/design.md § Errors requires; this module writes none of them.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import tempfile
@@ -185,6 +186,14 @@ class _Urllib:
             # raised -- only a genuine absence of one reaches the caller as
             # OSError, which is what the seam promises.
             return (error.code, dict(error.headers or {}), error.read())
+        except (http.client.HTTPException, ValueError) as error:
+            # Neither is an OSError, and every caller of this seam catches
+            # only that (PRESS-0040) -- so a truncated body or a malformed
+            # status line would escape the typed failures the module
+            # promises. Both mean what the seam already has a word for.
+            raise OSError(
+                f"no answer from {urllib.parse.urlsplit(url).netloc}"
+            ) from error
 
     def now(self) -> float:
         return time.time()

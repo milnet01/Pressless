@@ -72,6 +72,7 @@
 from __future__ import annotations
 
 import ast
+import http.client
 import inspect
 import json
 import urllib.request
@@ -1026,9 +1027,9 @@ def test_cache_names_the_line_endings(tmp_path, monkeypatch):
     )
 
 
-# ------------------------------------------------ PRESS-0052, PRESS-0041 ----
+# ------------------------------------ PRESS-0052, PRESS-0041, PRESS-0040 ----
 #
-# Two defects of the module's own client. Every other test in this
+# The three defects of the module's own client. Every other test in this
 # file hands in a double, so `_Urllib` -- the one piece a double replaces --
 # is reached by nothing above, and these are the only tests that touch it.
 #
@@ -1181,4 +1182,36 @@ def test_every_request_carries_a_timeout():
     )
     assert insights_module.TIMEOUT_SECONDS > 0, (
         "a timeout of zero or None is the defect this test is about"
+    )
+
+
+@pytest.mark.parametrize("broken", [
+    http.client.IncompleteRead(b"half a body"),
+    http.client.BadStatusLine("not a status line"),
+    ValueError("unknown url type"),
+])
+def test_a_broken_reply_reaches_the_caller_as_oserror(broken):
+    """PRESS-0040: the seam promises that a missing answer arrives as an
+    OSError, and neither of these is one.
+
+    Every caller of this seam catches OSError alone, so a truncated body or
+    a malformed status line escaped the typed failures the module docstring
+    promises. Breaks when an implementer catches OSError more widely at the
+    call sites instead -- that leaves the seam's own contract false, and
+    the next caller written against it wrong again.
+
+    Asserted here too: what is raised still carries no secret (INV-7).
+    """
+    client = insights_module._Urllib()
+    client._opener = _RecordingOpener(broken)
+
+    with pytest.raises(OSError) as raised:
+        client.request("GET", f"{insights_module.API}/x", None,
+                       {"Authorization": "Bearer THE-ACCESS-TOKEN"})
+
+    assert 'THE-ACCESS-TOKEN' not in str(raised.value), (
+        f"the failure names the secret: {raised.value!s}"
+    )
+    assert 'THE-ACCESS-TOKEN' not in repr(raised.value), (
+        f"the failure's representation names the secret: {raised.value!r}"
     )
