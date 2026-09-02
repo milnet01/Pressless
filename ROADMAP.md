@@ -2496,6 +2496,157 @@
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
 
+- 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
+  docs/design.md § What may depend on what, rule 8: "Insights may read
+  Settings, may talk to Google, and keeps one cache file in Pressless's
+  own folder -- and nothing else." Taken literally that forbids every
+  source the writer has now asked for, so the rule is widened before any
+  of them is built rather than breached four times.
+
+  What the amendment has to settle, not just permit: whether one cache
+  file still serves N sources or each keeps its own, and whether the rule
+  names services one by one or states a shape ("read-only, outward, and
+  nothing about writing or publishing may depend on it"). The second
+  reads better and stops the rule needing an edit per service.
+
+  Rule 10 already carries the pattern for the secrets -- the Face fetches
+  each one from Credentials and hands it over as an argument -- so it
+  needs widening only in the same breath, not redesigning.
+
+  Editing design.md re-arms global rule 14's cold-eyes gate, which is the
+  real cost of this item and the reason it is filed rather than done in
+  passing.
+
+  Blocked-by: nothing.
+  **Layman:** The design says the stats part may only talk to Google. Adding YouTube, Spotify, Apple and Amazon means changing that rule first.
+  Kind: doc.
+  Source: user-request-2026-09-02.
+  Lanes: Insights, design.
+
+- 📋 [PRESS-0080] **Whether the three music services publish listening figures at all, and by what route.**
+  The three music items behind this one all assume figures can be
+  fetched. That assumption is doubtful and checking it is cheap, so it is
+  checked once here rather than discovered three times during
+  implementation.
+
+  The position to disprove, held as of filing and NOT taken as settled --
+  re-read each service's own current documentation, because this is
+  recalled rather than verified and these surfaces change:
+
+  - Spotify's Web API returns catalogue data, an artist's follower count
+    and a 0-100 popularity score. Stream counts and listener numbers are
+    Spotify for Artists', which has no public API.
+  - Apple's Music API is catalogue too. Apple Music for Artists has no
+    public API.
+  - Amazon Music for Artists has no public API.
+
+  If that holds, the honest answer for those three is not an app that
+  fetches figures. The fallback worth pricing is the export each service
+  offers a signed-in artist: a file he downloads and Pressless reads,
+  which needs no API and no secret, and shows figures dated to the last
+  download rather than live.
+
+  Deliverable: for each of the three, one of -- a usable API, a
+  downloadable export, or nothing -- with the documentation page that
+  says so. YouTube is not in scope here; its two APIs are public and its
+  item is startable.
+
+  Blocked-by: nothing.
+  **Layman:** Before building anything, find out whether Spotify, Apple and Amazon actually let an app fetch his listening figures -- they may not.
+  Kind: investigate.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0081] **Insights asks YouTube how the channel and its videos are being watched.**
+  Two levels, because the writer asked for both: the channel as a whole,
+  and the individual videos and music on it.
+
+  The startable one of the four. Google publishes two APIs and they
+  answer different questions. The Data API v3 gives public counts --
+  views, likes, comments per video, subscribers per channel -- and needs
+  only an API key. The Analytics API gives the owner-only figures --
+  watch time, how far through people get, where they came from -- and
+  needs OAuth as the channel's owner. Decide which the dashboard is
+  asking for before building; the public counts alone may be the whole
+  of what was wanted, and they are far cheaper to reach.
+
+  It sits behind the same wall PRESS-0019 put Google Analytics behind:
+  read-only, outward, and nothing about writing or publishing may depend
+  on it. If YouTube is unreachable, or he never sets it up, the rest of
+  the app is unaffected. The secret comes from the Face as an argument,
+  per design rule 10.
+
+  No spec expected -- one subsystem, and the shape is PRESS-0019's,
+  already built and tested. Confirm against spec-format.md § 1 rather
+  than assuming.
+
+  Blocked-by: PRESS-0079.
+  **Layman:** The dashboard also shows how his YouTube channel is doing, and how each video and music track on it is doing.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
+  What this fetches, and whether it can fetch anything, is PRESS-0080's
+  to answer first. The doubt is specific: Spotify's public API is a
+  catalogue API, and the stream and listener figures an artist actually
+  wants live in Spotify for Artists behind a sign-in.
+
+  So there are two shapes this could take and PRESS-0080 picks one. If
+  an API reaches the figures, this is PRESS-0019's shape again. If it
+  does not, the honest version reads an export he downloads himself,
+  shows the figures dated, and says on the dashboard when they were last
+  refreshed -- which is worth building and is not what was asked for, so
+  it goes back to him before it is built.
+
+  What is reachable without a sign-in either way, and may be enough:
+  follower count and Spotify's own popularity score for each release.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  **Layman:** The dashboard also shows how his music is doing on Spotify.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
+  Same shape as the Spotify item and the same doubt, one step worse:
+  Apple's Music API is a catalogue API, and Apple Music for Artists --
+  where the play figures are -- is believed to publish no API at all.
+  PRESS-0080 confirms or refutes that.
+
+  If it publishes none, the export route is the only one, and this item
+  becomes reading a file he downloads rather than talking to Apple.
+  That is a different feature from the one asked for, so it goes back to
+  him rather than being substituted quietly.
+
+  Apple's catalogue API also needs a developer token signed with a
+  private key from a paid developer account, which is a cost the other
+  three do not carry. Price that before committing to it.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  **Layman:** The dashboard also shows how his music is doing on Apple Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
+  The least likely of the four to be buildable as asked. Amazon Music
+  for Artists is believed to publish no public API whatever, so unlike
+  Spotify and Apple there may be no catalogue surface to fall back on
+  either. PRESS-0080 settles it.
+
+  If that holds, the only routes are an export he downloads, or nothing
+  -- and "nothing" is a real outcome to report rather than a failure to
+  work around. Do not reach for scraping the artist dashboard: it needs
+  his sign-in, it breaks whenever the page changes, and it is the kind
+  of thing that gets an account suspended.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
