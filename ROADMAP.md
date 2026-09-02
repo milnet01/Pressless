@@ -2014,7 +2014,7 @@
   Kind: security.
   Source: review-code 2026-08-31 lanes insights/publisher.
 
-- 📋 [PRESS-0053] **Both file formats refuse a newer version on read and silently downgrade it on write.**
+- ✅ [PRESS-0053] **Both file formats refuse a newer version on read and silently downgrade it on write.**
   Found by two lanes independently, same shape in both modules.
 
   settings.py:170-172 -- save() carries an existing file's unknown
@@ -2033,6 +2033,21 @@
 
   The code matches PRESS-0001 4.2 as written, so that document needs
   the write-side row too -- filed separately.
+  Resolved (2026-09-02): both write paths now refuse a file whose
+  version this build does not write, so neither relabels a file another
+  Pressless wrote.
+
+  Both checks look only at a file that is THERE -- setup's first save has
+  nothing to carry, and refusing it would make the app unusable from the
+  start. A counter-case test in each suite holds that, and it is not
+  decoration: the over-strict mutation kills five tests in settings and
+  seven in credentials, so refusing everything is not a way to pass.
+
+  Four mutations killed.
+
+  The document side stays with PRESS-0057, as this item said: PRESS-0001
+  §4.2 has no write-side version row, so the code matched the spec as
+  written and the spec is what is short.
   **Layman:** An older copy of the app can quietly relabel a file written by a newer one, so neither can then read it properly.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials.
@@ -2119,6 +2134,47 @@
   constraining it after two callers exist is a contract change.
 
   Fix: bar /, backslash, } and control characters in the name group.
+  Assessed 2026-09-02, not started, and what it needs is now precise.
+
+  Confirmed in the spec: PRESS-0004 pins no pattern for the photograph
+  name anywhere. So the code is not contradicting a written rule -- but
+  §5's "INV-4 and INV-8 are that boundary's whole defence, and there is
+  no other sanitiser downstream" is FALSE of this path, since the name
+  reaches photo_src through neither.
+
+  That makes the fix two halves, and only one of them is free. Making
+  the code defend the boundary is what turns that sentence true. But the
+  constraint itself -- bar /, backslash, } and control characters, and
+  refuse a whitespace-only name -- is a rule an implementer has to be
+  TOLD, and nothing in the spec says it today. Adding it changes what a
+  conformer builds, so it re-arms CLAUDE.md rule 14 and owes the full
+  gate. review-contract --quick is forbidden for a gate another rule
+  mandates, so there is no cheap route.
+
+  Still worth doing soon for the reason this item already gives: the
+  consumer that will build a path from the name is PRESS-0008, which is
+  not written. One caller makes this a grammar change; two make it a
+  contract change.
+
+  Sequence, so the next session does not have to work it out: amend
+  PRESS-0004 §4.2 with the name's grammar and §5 with an invariant
+  holding it, gate the spec, then write the code and the test.
+  Second reason to sequence it carefully, found while assessing it and
+  better than the first: narrowing the name's grammar narrows what
+  INPUT is accepted. A photograph mark whose name contains a slash stops
+  forming a mark and becomes literal text on the page.
+
+  Whether the writer's own twelve years contain such a name is exactly
+  what INV-5's archive conformance run would answer, and that run cannot
+  execute on this machine -- it needs a generator in a private
+  workspace. The verdict diff used for PRESS-0054 does not substitute:
+  the export is WordPress HTML rather than Pressless marks, so it says
+  nothing about photograph marks.
+
+  So the fix wants either that run, or a deliberate decision that a name
+  with a slash was never valid and any entry carrying one is to be
+  corrected. That is a decision, not a detail, which is a further reason
+  the spec amendment comes first.
   **Layman:** A photo name in an entry is passed straight out to whatever looks the file up, without being checked first.
   Kind: security.
   Source: review-code 2026-08-31 lane marks.

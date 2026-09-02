@@ -125,6 +125,16 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An older copy of Pressless can no longer quietly relabel a file a newer one wrote.** (PRESS-0053)
+  Both the settings file and the credentials file carry a version number,
+  and Pressless already refuses to READ one written by a newer version.
+  It did not check when SAVING -- so an older copy would keep the newer
+  copy's contents while stamping its own version on top, after which
+  neither could read the file properly.
+
+  This cannot happen yet, because there is only one version. Holding it
+  now is what stops it happening the first time there are two.
+
 - **Three more publishing failures now explain themselves instead of showing an unexpected error.** (PRESS-0073)
   A reply from GitHub missing a piece of information, a disk with no room
   left while fetching an older version of the site, and a file in the site
