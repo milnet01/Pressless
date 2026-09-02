@@ -3218,6 +3218,18 @@
        included.
     2. Open items that get us to v1.0.0.
     3. Additional open items that get us to the next version.
+  Decided by the user 2026-09-02, answering the question this item
+  asks: only an item that BLOCKS a sign of success needs a milestone.
+  A defect in shipped code belongs to whichever release ships the fix
+  rather than to a goalpost, so forcing every review-fix into a bucket
+  would be inventing structure.
+
+  That makes the work narrower than the item first reads. Walk the open
+  items, put a milestone line in the body of each one that blocks a
+  stated sign of success, and leave the rest unmapped on purpose --
+  unmapped is then an answer rather than a gap. Section Milestones keeps
+  the prose about what each version means, which is the half that does
+  not go stale.
   **Layman:** The plan says which work belongs to which version, but only for the original items — most of what has been filed since is unsorted.
   Kind: doc-fix.
   Source: in-session-2026-09-02, measured while answering the user's versioning question.

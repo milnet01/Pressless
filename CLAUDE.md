@@ -3,13 +3,11 @@
 ## Where this project is
 
 **State:** 5 — Building. **In flight:** `PRESS-0022` (spec accepted,
-no code). `PRESS-0001`,
-`PRESS-0002`, `PRESS-0004`, `PRESS-0005`, `PRESS-0006`, `PRESS-0009`,
-`PRESS-0010`, `PRESS-0019`, `PRESS-0024`, `PRESS-0025`, `PRESS-0026`,
-`PRESS-0027`, `PRESS-0032`, `PRESS-0033`, `PRESS-0034`, `PRESS-0035`,
-`PRESS-0038`, `PRESS-0039`, `PRESS-0042`, `PRESS-0043`, `PRESS-0044` and
-`PRESS-0047` are ✅. Run `python3 -m pytest` for where code stands, and
-the roadmap for what is queued, blocked or newly filed.
+no code). What is done is deliberately not listed here: `roadmap_query`
+with `status: "shipped"` answers it, and a list kept by hand goes stale
+the first time a session forgets it — this one had, twice. Run
+`python3 -m pytest` for where code stands, and the roadmap for what is
+queued, blocked or newly filed.
 
 > Keep the block above true, and keep it to three facts — the state, what
 > is in flight, and what is done. That is the only position this project
