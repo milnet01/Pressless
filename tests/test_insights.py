@@ -77,6 +77,8 @@ import json
 from pathlib import Path
 
 import pytest
+from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _open_watch import _watch_opens
 
 import pressless.insights as insights_module
 from pressless.insights import (
@@ -963,4 +965,61 @@ def test_http_status_maps_to_the_typed_failure(tmp_path):
     assert not isinstance(caught.value, (Refused, RateLimited, Unreachable, NotConfigured)), (
         f"500 raised {type(caught.value).__name__}, which names a cause "
         f"Google did not give; an unrecognised status is a plain InsightsError"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0039 ----
+
+
+def test_cache_reaches_the_disk_before_the_rename(tmp_path, monkeypatch):
+    """INV-8's rename is what keeps a reader from seeing a half-written cache,
+    and a rename alone does not survive a power loss.
+
+    Asserting the ORDER is the whole test: the file left on disk is identical
+    whether or not the temporary was synced, so nothing read back can tell a
+    durable write from one whose blocks are still in the kernel's cache.
+
+    Breaks when the cache is renamed unsynced, which can leave an empty file
+    that the next read has to treat as corrupt and refetch over.
+    """
+    folder = tmp_path / "state"
+    folder.mkdir()
+
+    events = _watch_durability(monkeypatch)
+    try:
+        _seed(folder, _Transport())
+    finally:
+        monkeypatch.undo()
+
+    _assert_synced_before_replace(events, "the cache write")
+
+
+def test_cache_names_the_line_endings(tmp_path, monkeypatch):
+    """design.md § Persistence: UTF-8, and LF line endings written explicitly.
+
+    Asserting what the write NAMED rather than the bytes it produced:
+    os.linesep is "\\n" on the machine running this suite, so a write that left
+    the newline to the platform produces the same bytes here as one that named
+    it, and a byte-level assertion passes against the defect it exists to
+    catch.
+
+    Breaks when the cache temporary is opened without newline="\\n", which
+    writes CRLF on Windows.
+    """
+    folder = tmp_path / "state"
+    folder.mkdir()
+
+    opens = _watch_opens(monkeypatch)
+    try:
+        _seed(folder, _Transport())
+    finally:
+        monkeypatch.undo()
+
+    writing = [record for record in opens if record.writes() and not record.binary]
+    assert writing, "no text write was recorded at all -- the watch did not fire"
+    unnamed = [record for record in writing if record.newline != "\n"]
+    assert not unnamed, (
+        f"the cache write named newline {[record.newline for record in unnamed]!r}; "
+        f"the line endings must be named so the file does not depend on which "
+        f"system wrote it"
     )

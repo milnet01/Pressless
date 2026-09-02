@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 import pytest
+from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
 from pressless.settings import (
@@ -431,4 +433,61 @@ def test_a_nested_untouchable_entry_is_rejected(tmp_path):
     assert load(accepted).untouchable == ("CNAME/",), (
         "a trailing slash names one root entry unambiguously and must load; "
         "the Publisher is what ignores it"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0039 ----
+
+
+def test_save_reaches_the_disk_before_the_rename(tmp_path, monkeypatch):
+    """§4.4's "never a truncated one" must hold against a power loss, not only
+    against an exception.
+
+    Asserting the ORDER is the whole test: the file left on disk is identical
+    whether or not the temporary was synced, so nothing read back can tell a
+    durable write from one whose blocks are still in the kernel's cache.
+
+    Breaks when save() renames an unsynced temporary, which leaves an empty
+    settings file where §4.4 promises the previous one.
+    """
+    _write(tmp_path, _valid_mapping())
+    before = load(tmp_path)
+
+    events = _watch_durability(monkeypatch)
+    try:
+        save(tmp_path, dataclasses.replace(before, repository="someone/else.github.io"))
+    finally:
+        monkeypatch.undo()
+
+    _assert_synced_before_replace(events, "save()")
+
+
+def test_save_names_the_line_endings(tmp_path, monkeypatch):
+    """§4.2's file is a shape the installation carries between machines, so its
+    bytes may not depend on which machine wrote it.
+
+    Asserting what save() NAMED rather than the bytes it produced: os.linesep
+    is "\\n" on the machine running this suite, so a write that left the
+    newline to the platform produces the same bytes here as one that named it,
+    and a byte-level assertion passes against the defect it exists to catch.
+
+    Breaks when save() opens its temporary without newline="\\n", which writes
+    CRLF on Windows.
+    """
+    _write(tmp_path, _valid_mapping())
+    before = load(tmp_path)
+
+    opens = _watch_opens(monkeypatch)
+    try:
+        save(tmp_path, before)
+    finally:
+        monkeypatch.undo()
+
+    writing = [record for record in opens if record.writes() and not record.binary]
+    assert writing, "no text write was recorded at all -- the watch did not fire"
+    unnamed = [record for record in writing if record.newline != "\n"]
+    assert not unnamed, (
+        f"save() opened a text file naming newline "
+        f"{[record.newline for record in unnamed]!r}; §4.2 requires '\\n' so "
+        f"the file is byte-identical on both systems"
     )

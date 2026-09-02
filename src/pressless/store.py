@@ -750,6 +750,11 @@ def _write_atomically(
     try:
         with os.fdopen(handle, "w", encoding="utf-8", newline=newline) as stream:
             stream.write(text)
+            # rename(2) orders the namespace, not the data, so without
+            # this a power loss can commit the rename before the blocks
+            # and leave an empty file where §4.5 promises the previous one (PRESS-0039).
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, target)
     except OSError as exc:
         _discard(temporary)

@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from _durability_watch import _assert_synced_before_replace, _watch_durability
 from _open_watch import _Open, _watch_opens  # noqa: F401 -- _Open documents the record shape
 
 import pressless.store as store_module
@@ -643,3 +644,26 @@ def test_a_move_never_overwrites(tmp_path):
             f"{direction}() altered the published file. Expected "
             f"{published_before!r}, got {as_published.read_bytes()!r}"
         )
+
+
+# ------------------------------------------------------------ PRESS-0039 ----
+
+
+def test_write_reaches_the_disk_before_the_rename(tmp_path, monkeypatch):
+    """§4.5 and INV-9's "the previous file rather than half a new one" must
+    hold against a power loss, not only against an exception.
+
+    Asserting the ORDER is the whole test: the file left on disk is identical
+    whether or not the temporary was synced, so nothing read back can tell a
+    durable write from one whose blocks are still in the kernel's cache.
+
+    Breaks when write() renames an unsynced temporary, which can leave an empty
+    entry where §4.5 promises the previous one.
+    """
+    events = _watch_durability(monkeypatch)
+    try:
+        write(tmp_path, _entry(body="The new body.\n"), draft=False)
+    finally:
+        monkeypatch.undo()
+
+    _assert_synced_before_replace(events, "write()")

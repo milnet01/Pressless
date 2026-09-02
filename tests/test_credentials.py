@@ -20,6 +20,8 @@ from pathlib import Path
 
 import keyring.errors
 import pytest
+from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _open_watch import _watch_opens
 
 import pressless.credentials as credentials_module
 from pressless.credentials import (
@@ -433,4 +435,58 @@ def test_a_folder_that_cannot_keep_a_file_private_is_refused(tmp_path, monkeypat
     assert left == [], (
         f"a refused write left {left!r} behind; a folder that cannot hold a "
         f"private file must end the call holding nothing"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0039 ----
+
+
+def test_fallback_file_reaches_the_disk_before_the_rename(tmp_path, monkeypatch):
+    """§4.4's "the previous file rather than half an entry" must hold against a
+    power loss, not only against an exception.
+
+    Asserting the ORDER is the whole test: the file left on disk is identical
+    whether or not the temporary was synced, so nothing read back can tell a
+    durable write from one whose blocks are still in the kernel's cache. This
+    module has the worst consequence of the four -- _write_file reads the file
+    first and does not catch, so a truncated one makes read AND write raise.
+
+    Breaks when write() renames an unsynced temporary, which can leave an empty
+    credentials file where §4.4 promises the previous one.
+    """
+    _not_windows(monkeypatch)
+    events = _watch_durability(monkeypatch)
+    try:
+        write("file", tmp_path, "publishing-key", SENTINEL)
+    finally:
+        monkeypatch.undo()
+
+    _assert_synced_before_replace(events, "write()")
+
+
+def test_fallback_file_names_the_line_endings(tmp_path, monkeypatch):
+    """design.md § Persistence: UTF-8, and LF line endings written explicitly.
+
+    Asserting what write() NAMED rather than the bytes it produced: os.linesep
+    is "\\n" on the machine running this suite, so a write that left the newline
+    to the platform produces the same bytes here as one that named it, and a
+    byte-level assertion passes against the defect it exists to catch.
+
+    Breaks when write() opens its temporary without newline="\\n", which writes
+    CRLF on Windows.
+    """
+    _not_windows(monkeypatch)
+    opens = _watch_opens(monkeypatch)
+    try:
+        write("file", tmp_path, "publishing-key", SENTINEL)
+    finally:
+        monkeypatch.undo()
+
+    writing = [record for record in opens if record.writes() and not record.binary]
+    assert writing, "no text write was recorded at all -- the watch did not fire"
+    unnamed = [record for record in writing if record.newline != "\n"]
+    assert not unnamed, (
+        f"write() opened a text file naming newline "
+        f"{[record.newline for record in unnamed]!r}; the line endings must be "
+        f"named so the file does not depend on which system wrote it"
     )

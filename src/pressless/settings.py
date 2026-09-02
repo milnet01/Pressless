@@ -200,9 +200,17 @@ def save(folder: Path, settings: Settings) -> None:
     except OSError as exc:
         raise SettingsError(f"{target} could not be written: {exc}") from exc
     try:
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        # newline is named rather than left to the platform: §4.2's file is
+        # a shape the installation carries between machines, so its bytes may
+        # not depend on which system wrote it (PRESS-0039).
+        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
             json.dump(data, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
+            # rename(2) orders the namespace, not the data, so without
+            # this a power loss can commit the rename before the blocks
+            # and leave an empty file where §4.4 promises the previous one (PRESS-0039).
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, target)
     except OSError as exc:
         _discard(temporary)

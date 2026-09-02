@@ -359,9 +359,16 @@ def _store(target: Path, report: Report) -> None:
     except OSError:
         return
     try:
-        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        # newline is named rather than left to the platform, so the cache is
+        # the same bytes on both systems (PRESS-0039).
+        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
             json.dump(data, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
+            # rename(2) orders the namespace, not the data, so without
+            # this a power loss can commit the rename before the blocks
+            # and leave an empty file where INV-8 promises a whole file (PRESS-0039).
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, target)
     except OSError:
         _discard(temporary)
