@@ -125,6 +125,28 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **A line with a great many marks on it no longer crashes, and no longer crawls.** (PRESS-0054)
+  Two ways an unusual line could go wrong. A line nesting marks
+  thousands deep crashed outright, where the rule is that anything
+  Pressless cannot make sense of is left as plain text. And a long line
+  of unfinished marks got slower and slower the longer it was -- four
+  thousand of them took over eight seconds.
+
+  Both are fixed: deeply nested text falls back to plain text as it
+  should, and that same line now takes about four hundredths of a
+  second.
+
+- **Typing a curly bracket inside coloured text no longer makes the colour vanish.** (PRESS-0054)
+  Colour marks are written as {accent}like this{/}. If the words in
+  between happened to contain a curly bracket of their own, Pressless
+  lost track of where the colour ended -- and the whole line came out as
+  plain text with the marks showing. Nothing warned you; the colour was
+  just gone from the published page.
+
+  Checked against your own writing: across every post in the archive,
+  including the lines that contain curly brackets, this change alters
+  nothing that was already correct.
+
 - **An unusual field name in an entry can no longer overwrite the entry's title or scramble it.** (PRESS-0048)
   An entry file can carry extra labelled lines beyond the ones Pressless
   knows about, and it keeps them. But three kinds of label quietly broke

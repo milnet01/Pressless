@@ -2017,7 +2017,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes settings/credentials.
 
-- 📋 [PRESS-0054] **A brace anywhere inside a colour mark silently kills the mark, and a deeply nested line crashes the parser.**
+- ✅ [PRESS-0054] **A brace anywhere inside a colour mark silently kills the mark, and a deeply nested line crashes the parser.**
   Three defects in the scanner, grouped because they share the nesting
   path.
 
@@ -2042,6 +2042,35 @@
   family is short-circuited by the adjacency guards at :380-382; the
   brace marks have no such guard. "{accent}a" * 5000 is on the order of
   2.25e8 steps.
+  Resolved (2026-09-02), all three, each reproduced before the fix.
+
+  Brace counting fires on an opener now, any brace mark's and with the
+  argument validated, which keeps the {accent}{muted}x{/}{/} nesting the
+  scanning section names as one it must accept. No spec change: §4.5
+  already says a nested opener increments the counter, so this was code
+  diverging from the contract.
+
+  Nesting is bounded at 64, past which the rest of the line is literal.
+  No amendment either: §6 already promises literal text for malformed
+  input and names photo_src as the only thing that raises, so an
+  implementation raising RecursionError breached it as written. The
+  number is how that promise is kept rather than a new promise -- if the
+  spec should pin it, that is a document item and not this one.
+
+  The quadratic scan is reduced rather than removed, and it is worth
+  saying which: whether the closer occurs at all is now checked once, so
+  4000 unclosed openers went from 8.2s to 0.04s, but the check is still
+  quadratic in C. 20000 openers is 0.65s.
+
+  Verdicts diffed over the real population -- 729 posts, 11,221 lines,
+  173 containing a brace -- and ZERO moved between the old scanner and
+  the new one. That is the writer's real prose, NOT the marks archive
+  conformance run, which cannot run on this machine because it needs a
+  generator in a private workspace. Evidence the change is surgical on
+  real text; not a substitute for INV-5.
+
+  Five mutations killed, including narrowing the brace family to one
+  mark and dropping the argument check.
   **Layman:** Type an ordinary curly bracket inside coloured text and the colour silently vanishes from the published page.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane marks.
