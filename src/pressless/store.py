@@ -348,9 +348,25 @@ def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:
 
     A comma in Title is fine -- the header runs to the end of the line, so
     nothing splits it, and refusing one would reject archive entries that
-    exist. Date needs no check: it is a datetime, so the type refuses what
-    this rule would.
+    exist. Date needs a check after all: being a datetime refuses neither of
+    the two things §4.2's format cannot hold (PRESS-0067 item 6).
     """
+    # A zone is refused; a fraction of a second is not. §4.2 splits them
+    # because the losses differ. An offset dropped in silence stores a wall
+    # clock from somewhere else and reads back as a fact, so the caller is
+    # made to decide -- and §4.2 names the decision, so that Import and the
+    # archive test make the same one. A fraction below the format's own
+    # resolution misorders nothing, and refusing it would reject
+    # datetime.now(), which is the value the Face has when the writer saves.
+    date = entry.date
+    if date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None:
+        raise StoreError(
+            f"Date carries the time zone {date.tzinfo}, and an entry's Date is "
+            f"written without one -- the offset would be dropped in silence and "
+            f"the entry stored at a wall clock from somewhere else. Drop the "
+            f"offset and keep the wall clock before writing"
+        )
+
     one_line = [("Title", entry.title), ("Slug", entry.slug)]
     one_line.extend((f"Categories[{i}]", v) for i, v in enumerate(entry.categories))
     one_line.extend((f"Tags[{i}]", v) for i, v in enumerate(entry.tags))

@@ -10,7 +10,7 @@ import ast
 import dataclasses
 import inspect
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -529,11 +529,16 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
     write leaves a file the next read cannot parse, so every case below asserts
     the folder is byte-for-byte unchanged afterwards.
 
-    Date needs no case -- it is a datetime, so the type refuses what this rule
-    would. The last case is the opposite direction and is what stops the rule
-    being widened into one Import cannot satisfy: a comma in a TITLE is
-    ordinary, the header runs to the end of the line, and archive titles carry
-    commas.
+    Date needs TWO cases pointing opposite ways, because being a datetime
+    refuses neither of the things the format cannot hold: a zone is refused,
+    a fraction of a second is truncated and read back at whole seconds. The
+    second is what stops the rule being met by refusing every datetime the
+    format cannot hold exactly, which would reject datetime.now().
+
+    The positive cases are the opposite direction generally, and are what stop
+    the rule being widened into one Import cannot satisfy: a comma in a TITLE
+    is ordinary, the header runs to the end of the line, and archive titles
+    carry commas.
 
     Breaks when an implementer writes the value anyway, which splits a category
     on the next read or writes a file outside the folder the Store was handed."""
@@ -573,6 +578,12 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
         # case that proves the invariant holds on that route too
         # (PRESS-0067 item 5).
         "lone surrogate in the body": _entry(body="a lone \ud800 surrogate"),
+        # A Date carrying a zone. §4.2's format has no offset field, so
+        # writing one drops it in silence and stores a wall clock from
+        # somewhere else (PRESS-0067 item 6).
+        "date carrying a zone": _entry(
+            date=datetime(2014, 11, 9, 21, 32, 0, tzinfo=timezone(timedelta(hours=2)))
+        ),
     }
 
     failures: list[str] = []
@@ -604,6 +615,23 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
     assert read(written).title == with_a_comma.title, (
         f"a title carrying a comma did not survive a round trip. Expected "
         f"{with_a_comma.title!r}, got {read(written).title!r}"
+    )
+
+    # The other positive case, and it points the opposite way to the zone
+    # case above: §4.2 truncates a fraction of a second rather than
+    # refusing it, because refusing it would reject datetime.now() -- the
+    # value the Face has when the writer saves. Without this the rule
+    # could be met by refusing every datetime the format cannot hold
+    # exactly, which is what §4.2 rules out.
+    with_microseconds = _entry(
+        slug="microseconds", date=datetime(2014, 11, 9, 21, 32, 0, 123456)
+    )
+    at_whole_seconds = Path(write(tmp_path, with_microseconds, draft=False))
+    assert read(at_whole_seconds).date == with_microseconds.date.replace(microsecond=0), (
+        f"a Date carrying microseconds was not written and read back at whole "
+        f"seconds. Expected "
+        f"{with_microseconds.date.replace(microsecond=0)!r}, got "
+        f"{read(at_whole_seconds).date!r}"
     )
 
 
