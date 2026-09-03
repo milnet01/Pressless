@@ -8,6 +8,11 @@ system, and the file suffix is matched ignoring case. Both change direction,
 so the gate re-armed and ran to the spec cap of 2 again. The code landed
 the same day as PRESS-0067 items 2 and 3; § 10 names the tests, and the
 row below them says what a suite running on Linux still cannot prove.
+**Amended 2026-09-03, before implementation**, on a decision the user took
+for PRESS-0067 item 6: a `Date` carrying a zone is refused, and one carrying
+a fraction of a second is truncated. Measured first — an aware `datetime`
+written at `21:32:00+02:00` read back as `21:32:00`, silently moving the
+entry two hours. That changes direction, so the gate re-armed.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -221,6 +226,15 @@ Every single newline is a line break.
 - **`Date` is `YYYY-MM-DD HH:MM:SS`.** The time is carried because
   entries share a day often enough that ordering needs it, which the
   same archive test measures.
+- **That format carries no zone and no fraction of a second, so the
+  two are handled differently on write.** A `datetime` carrying a zone
+  is refused (INV-9): writing it would drop the offset and store a wall
+  clock from somewhere else, which reorders entries against each other
+  by whole hours and reads back as a fact rather than as a loss. A
+  fraction of a second is truncated instead, because a second-resolution
+  format rounding below its own resolution misorders nothing, and
+  refusing it would reject `datetime.now()` — the value the Face has
+  when the writer saves.
 - **`Categories` and `Tags` are separated by `LIST_SEPARATOR`, a
   comma and a space.** Reading splits on the comma and strips the
   whitespace around each value, so a file hand-edited without the
@@ -425,18 +439,30 @@ line, then the body.
   refused with `StoreError` and nothing is written: a newline in any
   header field, `extra` included; a comma in `Categories` or `Tags`; a
   slug outside §4.2's legal set, the empty slug and a reserved device
-  name included. A comma in `Title` is written unchanged — the header
-  runs to the end of the line, so nothing splits it, and refusing one
-  would reject archive entries that exist.
+  name included; a `Date` carrying a zone. A comma in `Title` is
+  written unchanged — the header runs to the end of the line, so
+  nothing splits it, and refusing one would reject archive entries that
+  exist. A `Date`'s fraction of a second is truncated rather than
+  refused, for the reason §4.2 gives.
   *Test:* `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`
   — a newline case for each of the four string-valued fields and for an
   `extra` field's value and its name, a comma case for the two list
   fields, and a slug outside the legal set and one reserved device
   name, each asserting the folder is unchanged afterwards; plus a title
-  carrying a comma, which must be written and read back intact. `Date`
-  needs no case: it is a `datetime`, so the type refuses what this rule
-  would. That last case is what stops the
-  rule being widened into one Import cannot satisfy.
+  carrying a comma, which must be written and read back intact. That
+  last case is what stops the rule being widened into one Import cannot
+  satisfy. **`Date` needs two cases pointing opposite ways**, because
+  the type alone refuses neither: an aware `datetime` must raise, and
+  one carrying microseconds must be written and read back at whole
+  seconds. Without the second the rule could be met by refusing every
+  `datetime` the format cannot hold exactly, which is what §4.2 rules
+  out.
+  **A body UTF-8 cannot encode is a case of its own**, because the
+  up-front check reads header values and cannot see it: the refusal has
+  to come from the write. `tests/test_store.py::test_an_interruption_is_not_dressed_up_as_a_store_error`
+  bounds it from the other side — an interruption escapes as itself
+  rather than as a `StoreError`, so the rule cannot be met by catching
+  everything.
   *Breaks when:* an implementer writes the value anyway. The
   written-nothing half is the load-bearing one: raising after a
   partial write leaves a file the next read cannot parse.

@@ -568,6 +568,11 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
         # write reaches the null device and the entry is silently gone --
         # which is worse than a refusal, and why the rule is not per-system.
         "slug reserved as a device name": _entry(slug="nul"),
+        # A body UTF-8 cannot encode. The refusal comes from the write
+        # itself rather than from the up-front check, so this is the one
+        # case that proves the invariant holds on that route too
+        # (PRESS-0067 item 5).
+        "lone surrogate in the body": _entry(body="a lone \ud800 surrogate"),
     }
 
     failures: list[str] = []
@@ -599,6 +604,36 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
     assert read(written).title == with_a_comma.title, (
         f"a title carrying a comma did not survive a round trip. Expected "
         f"{with_a_comma.title!r}, got {read(written).title!r}"
+    )
+
+
+def test_an_interruption_is_not_dressed_up_as_a_store_error(tmp_path, monkeypatch):
+    """The counter-case to INV-9's widening (PRESS-0067 item 5).
+
+    INV-9 requires StoreError for a value the format cannot carry, and the
+    write catches UnicodeError to keep that promise on the encode route. The
+    cheapest way to pass that is to catch everything, which would turn a
+    Ctrl-C mid-save into a StoreError -- an interruption the writer caused,
+    reported as a fault in his entry. So this asserts the other direction:
+    what is not a format failure still escapes as itself, and the temporary
+    file is discarded either way.
+
+    Breaks when the BaseException clause raises StoreError instead of
+    re-raising, which no INV-9 case can see."""
+    (tmp_path / _PUBLISHED).mkdir()
+    before = _snapshot(tmp_path)
+
+    def interrupted_replace(src, dst, *args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(os, "replace", interrupted_replace)
+    with pytest.raises(KeyboardInterrupt):
+        write(tmp_path, _entry(), draft=False)
+    monkeypatch.undo()
+
+    assert _snapshot(tmp_path) == before, (
+        f"an interrupted write left something behind. Expected "
+        f"{sorted(before)!r}, got {sorted(_snapshot(tmp_path))!r}"
     )
 
 

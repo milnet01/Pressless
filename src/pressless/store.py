@@ -419,7 +419,15 @@ def _parse_date(value: str, target: Path) -> datetime:
 
 
 def _discard(temporary: str) -> None:
-    """Leave nothing behind in the folder but entry files (§4.5)."""
+    """Remove a temporary file whose write did not complete.
+
+    Every route out of _write_atomically passes through here, so a failed or
+    interrupted save leaves the folder as it found it. A killed process does
+    not: nothing runs, and the temporary stays. No rule forbids that -- the
+    file is not an entry, list_slugs matches the suffix so it is never listed,
+    and a sweep could not tell an orphan from a second copy of Pressless
+    writing its own (PRESS-0067 item 7).
+    """
     try:
         os.unlink(temporary)
     except OSError:
@@ -872,7 +880,13 @@ def _write_atomically(
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, target)
-    except OSError as exc:
+    # UnicodeError joins OSError because INV-9 covers it: text UTF-8 cannot
+    # encode -- a lone surrogate in a body -- is a value the format cannot
+    # carry, and the up-front check cannot see it, since it inspects header
+    # values rather than the encoded bytes (PRESS-0067 item 5). A TypeError
+    # from a caller passing the wrong type is NOT covered and still escapes
+    # raw: that is a bug in the caller, and StoreError would hide it.
+    except (OSError, UnicodeError) as exc:
         _discard(temporary)
         raise StoreError(f"{target} could not be written: {exc}") from exc
     except BaseException:
