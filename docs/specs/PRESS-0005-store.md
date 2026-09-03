@@ -12,7 +12,13 @@ row below them says what a suite running on Linux still cannot prove.
 for PRESS-0067 item 6: a `Date` carrying a zone is refused, and one carrying
 a fraction of a second is truncated. Measured first — an aware `datetime`
 written at `21:32:00+02:00` read back as `21:32:00`, silently moving the
-entry two hours. That changes direction, so the gate re-armed.
+entry two hours. That changes direction, so the gate re-armed and ran to
+the spec cap of 2, twelve verified findings, all fixed. **A cap on the
+violent side**, and §12's last row says what that means here: half of
+loop 6 landed on loop 5's own text, but in the rationale rather than in
+the rule — what §4.2 decides survived both loops unchanged. Five of the
+twelve fell inside the amendment; the other seven were audit. Routed to
+implementation, which is the better third reviewer.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -228,15 +234,15 @@ Every single newline is a line break.
   same archive test measures.
 - **That format carries no zone and no fraction of a second, so the
   two are handled differently on write.** A `datetime` carrying a zone
-  is refused (INV-9): writing it would drop the offset and store a wall
-  clock from somewhere else, which reorders entries against each other
-  by whole hours and reads back as a fact rather than as a loss.
+  is refused (INV-9): the offset would come off in silence, and what is
+  stored then reads back as a fact rather than as a loss. The refusal
+  does not recover the offset — nothing can — it makes the caller decide.
   **Whoever holds one drops the offset and keeps the wall clock, never
-  converting** — stated here, in decision 4's form, because the refusal
-  hands the question to Import and to §7's archive test at once and they
-  must answer it the same way: decision 4 makes the date supply every
-  address segment but the last, so a conversion near midnight moves an
-  entry to another day. A fraction of a second is truncated instead,
+  converting** — stated here, in decision 4's form, so that every caller
+  decides alike: the refusal hands the question to Import and to §7's
+  archive test at once, decision 4 makes the date supply every address
+  segment but the last, and a conversion near midnight moves an entry to
+  another day. A fraction of a second is truncated instead,
   because a second-resolution format dropping what falls below its own
   resolution misorders nothing, and refusing it would reject
   `datetime.now()` — the value the Face has when the writer saves.
@@ -262,7 +268,11 @@ Every single newline is a line break.
   written after the recognised five rather than where they were
   found: `Entry.extra` carries no anchor into the recognised fields,
   and inventing one would buy an ordering nothing reads. ADR-0001's
-  promise is that nothing is dropped or altered, and that holds.
+  promise is that anything the parser does not recognise is *preserved
+  byte-for-byte and never dropped*. The field is never dropped, and its
+  name and value survive; what is not kept byte-for-byte is the
+  surrounding spacing, which is the one place this format departs from
+  that wording.
 - **The header ends at the first blank line, spelled `\n\n` or
   `\r\n\r\n`, whichever comes first.** Everything after it is body,
   including a line that looks like a field. Both spellings are read
@@ -473,9 +483,7 @@ line, then the body.
   the type alone refuses neither: an aware `datetime` must raise **and
   leave the folder unchanged**, as every other refusal case here does,
   and one carrying microseconds must be written and read back at whole
-  seconds. The folder half is what stops the refusal being placed
-  inside the write path, after a temporary file exists — the trap this
-  invariant's *Breaks when* calls load-bearing. Without the second the rule could be met by refusing every
+  seconds. Without the second the rule could be met by refusing every
   `datetime` the format cannot hold exactly, which is what §4.2 rules
   out.
   **A body UTF-8 cannot encode is a case of its own**, because the
@@ -561,8 +569,11 @@ entries, and the drafts and private posts that arrive as drafts — not
 the published alone**, because the round trip is complete only over
 everything Import brings. It REPORTS a cross-folder collision rather
 than asserting its absence: decision 5 records that the archive holds
-one, and §10 says why no round trip can fail on it. It
-resolves slugs by decision 4's rule and no other. It also prints the
+one, and §10 says why no round trip can fail on it. **It reports an
+entry whose slug resolves to a reserved device name the same way**,
+rather than failing on the `StoreError` `write` raises — §4.2 requires
+it reported rather than renamed, and PRESS-0007 is where it is
+resolved. It resolves slugs by decision 4's rule and no other. It also prints the
 archive's measurements this spec relies on rather than stating them
 here: how many entries carry no title, how many carry no slug, how
 many share a day, the longest slug, and whether any two resolve to
@@ -686,6 +697,7 @@ imports.
 | 3 | 2026-09-02 | 3, cold — genre pinned `spec`; packet carried four `store.py` windows, ADR-0001 whole, two `design.md` sections, the sibling specs by outline and both store test files by outline. Windows behaviour declared an unrunnable region | 3 | 1 | 3 | 0 | **Seven verified, five fixed, one dismissed, one deferred.** Trigger: the 2026-09-02 amendment adding the reserved-device-name exclusion and the case-insensitive suffix rule. **All three lanes independently found the same two items**, the strongest agreement this gate produces. The sharpest is lane A's alone and was confirmed by execution rather than reading: *"That is what `safe_slug` already yields, so every live address satisfies it"* was carried onto a clause `safe_slug` does not enforce — run against the real generator, `safe_slug("NUL")` returns `nul` and `safe_slug("LPT9")` returns `lpt9`, so a title CAN resolve to a refused slug and PRESS-0007 must handle it. The amendment had told Import the opposite. **The case-insensitive rule named `list_slugs` and nothing else**, so an implementer would have folded case there and left `path_for` exact — producing the same disagreement in the other direction on Linux; it now says which operations fold and states the cost. **Two pre-existing Q3s fixed:** what a blank line is on READ (the code accepts both spellings and the document directed neither), and that the one-line rule reaches an unrecognised field's NAME, which the code guards and §4.2 did not mention. **One pre-existing Q1 fixed from a lane's disclosed session knowledge:** §7 and §10 named one skip condition for the archive test and there are two — the export, and decision 4's sibling generator, unreachable in the pre-push checkout — so a green push proved less than the document claimed. **Dismissed as immaterial:** all three lanes reported that no device-name refusal exists in `store.py`. True, and the gate runs before implementation by design, so the implementer builds it either way; PRESS-0067 item 2 stays open until it lands. **Deferred to PRESS-0060:** INV-4's byte-identity claim against `read`'s `value.strip()` — verified and material, but its other half (header lines the round trip injects) is an open question this gate may not settle. **Collateral filed, not carried:** PRESS-0004 §7 and PRESS-0006 §7 understate their own archive tests' skip conditions the same way §7 here did. |
 | 4 | 2026-09-02 | 3, cold — identical brief; packet rebuilt whole from disk and extended with a window on `_refuse_illegal_slug`, the gap two loop-3 lanes named. Windows behaviour again an unrunnable region | 4 | 1 | 2 | 0 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the run exits.** **Three of the seven landed on text loop 3 wrote** — a moderate share, so a calm cap rather than an oscillating one. **All three lanes reported the same thing loop 3 dismissed**: §4.2's device names and §4.3's suffix rule describe code that does not exist. Loop 3 dismissed it as immaterial on the ground that the implementer builds it either way; said twice by six independent reads, the DISPOSITION was wrong rather than the finding — §10's job is to say what a green suite proves, and it was silent. Two rows added naming both as unenforced and citing PRESS-0067. **The sharpest of loop 3's own collateral:** *"Matched exactly, `list_slugs` was blind to a file the existence check could see"* was written unscoped and is true on Windows only — on Linux both are blind together, so a reader there would fail to reproduce it and doubt the rule. **Loop 3's other collateral:** *"PRESS-0007 handles the refusal"* said nothing about WHAT Import substitutes, while §7 forbids the archive test any rule but decision 4's — so that test could not have written such an entry at all. Measured while fixing it: no entry in the export resolves to a reserved name, so the new refusal costs the archive test nothing today. **Three pre-existing:** INV-4's *byte-identical* against `read`'s `value.strip()` — measured, `X-Note:  spaced  ` reads back `('X-Note', 'spaced')` and re-emits as `X-Note: spaced`, so an implementer taking the word literally builds a different `extra` contract; §7 implying the archive test ASSERTS cross-folder uniqueness where §10 says nothing can and decision 5 records the archive already breaking it; and `exists` given a total-looking `bool` contract when `path_for` raises `StoreError` on an illegal slug — measured — which is PRESS-0012's normal case, since its input is a name the writer typed. **Filed, not carried:** ADR-0001 and `design.md` still promise unrecognised fields *byte-for-byte*, so that claim now lives in three documents and two of them are another gate's. Added to PRESS-0060. **Across both loops of this run, half the verified findings fell inside the amended span and half were pre-existing** — as much audit as gate. |
 | 5 | 2026-09-03 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, the versioning-overrides and ADR-0001 passages, and the measured aware/microsecond round trips | 3 | 3 | 1 | 1 | **Eight verified, eight fixed, none dismissed.** Trigger was the 2026-09-03 Date amendment (PRESS-0067 item 6). **Two lanes each found both §11 bullets false** — § Build and test names three skipped files including this spec's, and the versioning-overrides bullet was already updated, so an implementer working the ship checklist would have edited correct text and made a true count false. **Three landed on the amendment itself:** it refused an aware `datetime` without saying how the offset comes off, leaving Import and §7's archive test free to drop it and convert it and disagree about the address near midnight; its new INV-9 case asserted only that the write raises, not that the folder is unchanged, so a refusal placed after the temporary file exists would have passed it; and it justified truncation by *rounding*, which `strftime` does not do. **Two were pre-existing and both were run rather than reasoned.** INV-9's refusal list omitted the three unrecognised-NAME refusals the code has performed since PRESS-0048, and INV-4 read literally called them a breach — measured, a duplicate `Title` does replace the entry's own, the read being last-wins. And INV-5 and INV-6 disagreed about a CRLF body, which §4.2 makes reachable: executed, the code already emits an LF header and returns the body's own `\r\n` untouched, so the ambiguity was the document's alone. §7's one-test-per-invariant line was left behind by the tests added since — the same drift PRESS-0001's loop 4 records. |
+| 6 | 2026-09-03 | 3, cold — identical brief; packet rebuilt whole from disk | 0 | 3 | 0 | 1 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **All three lanes found the same [Q4], and it was loop 5's own fix**: the claim that asserting the folder unchanged stops an aware-`Date` refusal being placed inside the write path. Measured false — every route out of `_write_atomically` discards the temporary, so a late refusal passes that assertion too, and the lone-surrogate case four lines below endorses exactly such a placement. The sentence is deleted; the folder assertion stands as the ordinary refusal check. **A second landed on loop 5 too:** the amendment named the harm as a whole-hour reorder, which its own remedy reproduces byte-for-byte — dropping the offset is what the silent write already does. The harm is the silence, and the refusal buys a decision rather than the offset back. **Two pre-existing.** §4.2 promised §7's archive test would REPORT an entry resolving to a reserved device name, and §7's reported-not-asserted list named only the cross-folder collision, so a test built from §7 would fail on the `StoreError`. And §4.2 claimed ADR-0001's promise is that *nothing is dropped or altered* and that it holds, while ADR-0001 says *preserved byte-for-byte* and the same bullet strips spacing and re-spells the separator; quoted as written, with the spacing departure stated. **A cap on the violent side — half of this loop landed on text loop 5 wrote — but both were RATIONALE, not the rule**: what §4.2 decides (refuse a zone, truncate a fraction) survived both loops unchanged. Over the run, 5 of 12 findings fell inside the amendment that armed the gate, so the other 7 were audit. Routed to implementation. |
 
 ## 13. Resource cost
 
