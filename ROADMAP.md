@@ -2583,7 +2583,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane settings -- low cluster.
 
-- 📋 [PRESS-0067] **Store low cluster: Windows reserved slugs, a TOCTOU in _move that defeats INV-10, and four smaller round-trip gaps.**
+- ✅ [PRESS-0067] **Store low cluster: Windows reserved slugs, a TOCTOU in _move that defeats INV-10, and four smaller round-trip gaps.**
   1. :285-292 -- TOCTOU in _move. `if target.exists(): raise
   SlugInUse(...)` then os.replace. Between the check and the rename a
   second copy of the app -- which 6 names as a real case -- or a hand
@@ -2726,6 +2726,46 @@
   that too would reject `datetime.now()`. That contradicts what
   PRESS-0005 allows, so the spec was amended first and CLAUDE.md rule
   14's gate re-armed; the code follows the gate.
+  Resolved (2026-09-03): all seven items closed. Five fixed, one
+  declined with its reason recorded, one narrowed.
+
+  Item 6 landed last and needed the spec amended first, because refusing
+  an aware `datetime` narrows what §4.1's `datetime` annotation allows.
+  The user took the decision, `review-contract` ran to the spec cap of 2
+  on PRESS-0005 — twelve verified findings, all fixed — and the code was
+  written after it. Measured before any of that: an aware `datetime`
+  written at 21:32:00+02:00 read back as 21:32:00, and since decision 4
+  makes the date supply every address segment but the last, near midnight
+  that is a different published address. Worse than the finding said,
+  which reported the microsecond half alone.
+
+  The zone is refused and the fraction is truncated, because the losses
+  differ: nothing recovers an offset, so the caller is made to decide and
+  §4.2 names the decision so Import and the archive test make the same
+  one, while a fraction misorders nothing and refusing it would reject
+  `datetime.now()`. Two test cases pointing opposite ways; the positive
+  one is what stops the rule being met by refusing every `datetime` the
+  format cannot hold exactly, proved by a mutation that widens it.
+
+  Item 5 was narrowed on the evidence. The finding named §4.1 and §6 as
+  stating a StoreError-only contract and neither does; INV-9 is what
+  covers it. So the `UnicodeEncodeError` half was fixed and the
+  `TypeError` half deliberately was not — a caller passing a non-str
+  category has a bug, and a `StoreError` would hide it.
+
+  Item 7 was declined. Its cited authority does not exist: "leave nothing
+  behind" is not in §4.5 but in `_discard`'s own docstring. Every error
+  route already discards the temporary, only a killed process leaves one,
+  nothing lists it, and a sweep could not tell an orphan from a second
+  copy of Pressless writing its own.
+
+  NOT proved, and the same row §10 already carries: none of this is
+  observed on Windows. The suite runs on Linux and the test box has no
+  Python by design. PRESS-0022 is where it becomes observable.
+
+  Surfaced, not fixed: `write_comment` formats a comment date with the
+  same `_DATE_FORMAT` and has no zone guard. Comments are PRESS-0006's
+  contract and §9 puts them out of PRESS-0005.
   **Layman:** Small entry-handling problems, including one where two copies of the app running at once could overwrite an entry.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store -- low cluster.
@@ -3565,6 +3605,39 @@
   **Layman:** If a stray file ends up in the folder Pressless publishes from, it gets published too.
   Kind: investigate.
   Source: in-session-2026-09-02, the half of PRESS-0069 item 7 that was not guessed at.
+
+- 📋 [PRESS-0090] **A comment's date carrying a zone is still written silently, where an entry's is now refused.**
+  `write_comment` formats a comment's date with the same `_DATE_FORMAT`
+  as an entry's and applies no zone check, so an aware `datetime` has
+  its offset dropped in silence — the defect PRESS-0067 item 6 just
+  fixed for entries, on the other path.
+
+  Surfaced rather than fixed there on purpose: comments are
+  PRESS-0006's contract, and PRESS-0005 §9 puts them out of scope, so
+  fixing it under PRESS-0067 would have been an edit no spec asked for.
+
+  Two things to settle before writing code, and the second may make
+  this a no-op:
+
+  1. Whether PRESS-0006 wants the same rule. An entry's date decides
+     its published address (PRESS-0005 decision 4), which is what made
+     the entry case sharp; a comment's date is displayed rather than
+     addressed, so the harm is smaller and the answer may legitimately
+     differ.
+
+  2. Whether an aware value can reach `write_comment` at all. The
+     WordPress export's `wp:comment_date` is wall-clock with no zone,
+     parsed by `strptime`, so Import cannot produce one today — the
+     same measurement that settled the entry side. If nothing can
+     reach it, the honest fix may be a line in PRESS-0006 saying so
+     rather than a guard.
+
+  If it does want the rule, it is the same three lines and the same
+  pair of tests: refuse before anything is written, and a positive
+  case so the fix cannot pass by refusing every date.
+  **Layman:** Old readers' comments can still be stored at the wrong time, in the way entries no longer can.
+  Kind: review-fix.
+  Source: in-session-2026-09-03, surfaced while closing PRESS-0067 item 6.
 
 ## Milestones
 

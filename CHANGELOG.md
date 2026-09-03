@@ -125,6 +125,17 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An entry dated with a time zone is refused instead of being silently moved by hours.** (PRESS-0067)
+  An entry file records the date and time you wrote at, with no time zone.
+  Handing Pressless a date that carried one used to store the clock reading
+  and drop the zone without saying so — which could put the entry hours
+  away from when it was written, and near midnight give it a different
+  published address.
+
+  It now refuses that date and says what to do instead. A date with
+  fractions of a second is still accepted, rounded down to the second, so
+  saving with the current time goes on working.
+
 - **An entry carrying a character that cannot be saved now says so, instead of showing an unexpected error.** (PRESS-0067)
   A few characters cannot be written to a text file at all. Pasting one
   into an entry used to reach the unexpected-error screen; it is now
