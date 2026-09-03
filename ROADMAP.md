@@ -2384,6 +2384,33 @@
   preserved with surrounding whitespace normalised, so those two now
   disagree with the spec where before all three agreed and were wrong
   together. Each belongs to its own gate.
+  Progress (2026-09-03): PRESS-0005's §4.2 wording moved again, in the
+  review-contract run that gated PRESS-0067 item 6. A cold lane found
+  that §4.2 still asserted "ADR-0001's promise is that nothing is
+  dropped or altered, and that holds" — which is both a misquotation
+  (ADR-0001 says *preserved byte-for-byte and never dropped*) and a
+  contradiction of the same bullet, which strips spacing and re-spells
+  the separator.
+
+  §4.2 now quotes ADR-0001 as written and states the departure: the
+  field is never dropped and its name and value survive; the surrounding
+  spacing is not kept byte-for-byte.
+
+  That does NOT close this item. It makes PRESS-0005 honest about the
+  gap rather than closing it, so the wider half of item 1 stands exactly
+  as recorded — ADR-0001 and design.md still promise byte-for-byte, and
+  each is its own gate. What has changed is that PRESS-0005 now names
+  the disagreement instead of papering over it, so whoever takes those
+  two documents has the sentence to work from.
+
+  Also unresolved and worth knowing before that gate: whether ADR-0001's
+  "anything the parser does not recognise" means the MARKS parser or the
+  entry parser. In ADR-0001 the sentence sits under the styling set,
+  which reads as marks; `versioning-overrides.md` glosses it the same
+  way. If it is marks-only, the Store's header stripping never breached
+  it and the wider half of item 1 is a wording fix. If it reaches header
+  fields, it is a breaking-surface question. Nobody has decided, and the
+  answer changes how big that gate is.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.

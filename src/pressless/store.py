@@ -862,7 +862,7 @@ def _write_atomically(
 ) -> None:
     """A temporary file in the destination folder, then os.replace over the
     target -- atomic on both systems, so an interrupted save leaves the
-    previous file rather than half a new one (§4.5, INV-9).
+    previous file rather than half a new one (§4.5, INV-3).
 
     The destination subfolder is created; the handed folder is not. A mistyped
     folder is not a folder to start filling (§6).
