@@ -125,6 +125,15 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An entry carrying a character that cannot be saved now says so, instead of showing an unexpected error.** (PRESS-0067)
+  A few characters cannot be written to a text file at all. Pasting one
+  into an entry used to reach the unexpected-error screen; it is now
+  refused the way any other unsaveable entry is, with nothing written and
+  the previous version of the entry untouched.
+
+  Interrupting a save yourself is still reported as an interruption, not
+  as a fault in your writing.
+
 - **An older copy of Pressless can no longer quietly relabel a file a newer one wrote.** (PRESS-0053)
   Both the settings file and the credentials file carry a version number,
   and Pressless already refuses to READ one written by a newer version.

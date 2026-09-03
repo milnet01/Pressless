@@ -2680,6 +2680,52 @@
   NOT proved: that any of this behaves as intended ON Windows. The suite
   runs on Linux, and the test box has no Python by design. §10 carries a
   row saying so. PRESS-0022 is where it becomes observable.
+  Progress (2026-09-03): items 5 and 7 closed; six of seven done. Item
+  6 is in flight and the item stays open.
+
+  Item 5 (the exception contract). The finding named §4.1 and §6 as
+  stating a StoreError-only contract for `write`. Neither does — no
+  sentence there says which exception types may escape. INV-9 is what
+  covers it: "a value the format or the file system cannot carry is
+  refused with `StoreError` and nothing is written". A lone surrogate in
+  a body is such a value, and `write` raised `UnicodeEncodeError`.
+  Measured before fixing.
+
+  `_write_atomically` now catches `UnicodeError` beside `OSError`. The
+  up-front check could not have caught it — it reads header values, not
+  the encoded bytes — so the refusal has to come from the write. The
+  finding's other example, a `TypeError` from a non-str category, was
+  NOT fixed: that is a caller passing the wrong type, and turning it
+  into a `StoreError` would hide the caller's bug rather than keep a
+  promise. The comment on the catch says so.
+
+  Two tests, and the second is the counter-case: INV-9's table gains a
+  lone-surrogate body, and a new test asserts a `KeyboardInterrupt`
+  mid-save escapes as itself. Without it the rule could be met by
+  catching everything, which would report an interruption the writer
+  caused as a fault in his entry. Mutation-probed both directions and
+  both mutants died.
+
+  Item 7 (orphaned temporary files) — DECLINED, and the finding's cited
+  authority does not exist. "Leave nothing behind" is not in §4.5; it is
+  `_discard`'s own docstring paraphrasing itself, which is where the
+  finding read it. So no contract is breached. Every error route already
+  discards the temporary, `BaseException` included, so only a killed
+  process leaves one; `list_slugs` matches the suffix and never lists it;
+  and a sweep could not tell an orphan from a second copy of Pressless
+  writing its own, mkstemp names being random. That would need an age
+  heuristic and a race, for litter nothing can see. The docstring now
+  states what is true and why there is no sweep, so the next reader does
+  not re-derive it. Decided by the user.
+
+  Item 6 (the Date field) is in flight. Measured first, and it is worse
+  than the finding says: microseconds truncate, but an aware `datetime`
+  silently loses its zone — one written at 21:32:00+02:00 reads back as
+  21:32:00, moving the entry two hours. The user chose to refuse an
+  aware `datetime` and keep truncating the fraction, because refusing
+  that too would reject `datetime.now()`. That contradicts what
+  PRESS-0005 allows, so the spec was amended first and CLAUDE.md rule
+  14's gate re-armed; the code follows the gate.
   **Layman:** Small entry-handling problems, including one where two copies of the app running at once could overwrite an entry.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store -- low cluster.
