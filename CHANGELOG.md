@@ -129,6 +129,10 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **An entry no longer gains header lines it never had when it is saved** (PRESS-0060)
+  Saving an entry written without a Categories or Tags line added an
+  empty one of each. Every imported entry would have gained two.
+
 - **A file whose `Slug` header is not a legal slug is refused when it is read** (PRESS-0074)
   Only the file name and the header were compared, so a hand-created
   file agreeing with its own header opened as an entry the Store then

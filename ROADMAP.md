@@ -2504,6 +2504,43 @@
   it and the wider half of item 1 is a wording fix. If it reaches header
   fields, it is a breaking-surface question. Nobody has decided, and the
   answer changes how big that gate is.
+  Worked 2026-09-04. Item 1's decided half is DONE, spec first then code,
+  as this bullet sequenced it.
+
+  PRESS-0005 4.2 and 4.5 now say the emitted header carries only the
+  recognised fields the entry has; _entry_text implements it; two tests
+  pin it, one asserting the emitted BYTES because a re-read cannot tell an
+  omitted line from an empty one. The archive round trip passes, so the
+  writer's real entries survive the rule. Gate green, 187 passed.
+
+  The gate ran to the spec cap of 2 and is recorded in the spec's own loop
+  log as rows 6 and 7. Ten verified findings, ten fixed. Roughly three fell
+  inside the amended span; the rest were pre-existing, so it was as much
+  audit as gate. Two are worth knowing here: decision 4 credited the
+  sibling generator's safe_slug with a post-id fallback that belongs to its
+  caller -- found by all three lanes of loop 7, and it would have had
+  Import resolve a large share of drafts to the empty slug; and 7 stated
+  its stub rule unconditionally, so an implementer would have stubbed out
+  the shipped module to get this amendment's red run.
+
+  FILED, NOT FIXED: PRESS-0093, the code half of a gap loop 7 found in
+  4.3 -- publish onto a destination differing only in the suffix's case
+  succeeds, leaving one folder holding two files that name one slug. A
+  docs gate may not edit code.
+
+  STILL OPEN on this item, unchanged:
+  - Item 3, ADR-0001 having no version marker. Needs a confirmation that
+    the choice is still wanted before Import writes twelve years.
+  - Item 1's WIDER half. ADR-0001 and design.md still promise unrecognised
+    fields byte-for-byte where PRESS-0005 now says preserved with
+    surrounding spacing normalised. Each is its own gate, and both are
+    still blocked on the question this bullet already records: whether
+    ADR-0001's "anything the parser does not recognise" means the MARKS
+    parser or the entry parser. Nobody has decided, and the answer changes
+    how big that gate is.
+
+  Item 2 was already closed before this session: 4.2 states the read side's
+  line endings in its blank-line bullet.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.
@@ -4111,6 +4148,49 @@
   **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
+
+- 📋 [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
+  MEASURED 2026-09-04, on Linux:
+
+    drafts/a-slug.txt written by the Store
+    published/a-slug.TXT created by hand
+    store.exists(folder, "a-slug")  -> True
+    store.publish(folder, "a-slug") -> SUCCEEDS, no SlugInUse
+    published/ then holds ['a-slug.TXT', 'a-slug.txt']
+
+  _move composes both paths with path_for, which spells the suffix
+  exactly, and then tests target.exists(). So a destination differing only
+  in the suffix's case is invisible to it, while the Store's own exists()
+  folds case and reports the address taken. The two disagree.
+
+  PRESS-0005 6 requires SlugInUse "onto a slug the published folder
+  already holds" and INV-10 requires it "given a slug held in both
+  folders". Held by whose reading is the question, and the spec was silent
+  until loop 7 -- which stated the current behaviour as the trade rather
+  than deciding it, because a docs gate may not change code.
+
+  WHAT IS ACTUALLY LOST. Nothing is overwritten, so no writing is
+  destroyed. But the writer ends with two files naming one address, and
+  read() opens only the .txt -- so his hand-made .TXT is stranded and
+  invisible from that moment, with nothing said.
+
+  REACHABLE ON LINUX ONLY, and never produced by the Store: it needs a
+  file the writer renamed himself, which S3 invites. On Windows the two
+  names are one file and the platform refuses the move.
+
+  THE DECISION, which is why this is filed rather than fixed: either the
+  moves consult the folded view, and a .TXT destination becomes SlugInUse
+  -- consistent with exists(), and it makes a hand-renamed file block a
+  publish; or the exact view stands and the spec's trade is kept, in which
+  case the honest fix is that publish reports the stranded file rather
+  than leaving it silent. The second is smaller and matches 4.3's stated
+  preference for not writing over his file.
+
+  Related: PRESS-0067 closed the list_slugs/exists half of exactly this
+  shape. This is the half that pair fix did not reach.
+  **Layman:** Publishing an entry can quietly leave two copies of it, and the writer's own copy is the one that gets stranded.
+  Kind: fix.
+  Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
 
 ## Milestones
 
