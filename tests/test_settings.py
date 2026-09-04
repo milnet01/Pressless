@@ -734,3 +734,34 @@ def test_a_declined_dashboard_still_loads(tmp_path):
 
     _write(tmp_path, _valid_mapping(analytics_property_id=_ABSENT))
     assert load(tmp_path).analytics_property_id is None
+
+
+@pytest.mark.parametrize("version", [True, 1.0])
+def test_a_save_over_a_version_that_is_not_the_number_one_is_refused(
+    tmp_path, version
+):
+    """§4.2 pins the version test by type as well as value, and §4.4 says
+    save()'s gate is that same test. It was not: load() checked both and
+    save() compared with != alone, so a file this build cannot read was one
+    it would happily overwrite -- relabelled to 1 with its unrecognised keys
+    carried forward, which is the PRESS-0053 harm the refusal exists to stop.
+
+    Found by review-contract loop 5 on PRESS-0001, by two lanes.
+    """
+    source = tmp_path / "source"
+    source.mkdir()
+    _write(source, _valid_mapping())
+    settings = load(source)
+
+    target = tmp_path / "target"
+    target.mkdir()
+    _write(target, _valid_mapping(version=version, stranger="keep me"))
+
+    with pytest.raises(SettingsError):
+        save(target, settings)
+
+    held = json.loads((target / FILE_NAME).read_text(encoding="utf-8"))
+    assert held["version"] == version and held["stranger"] == "keep me", (
+        f"the refused file was rewritten: version is {held.get('version')!r} "
+        f"and the stranger key is {'present' if 'stranger' in held else 'gone'}"
+    )

@@ -228,7 +228,11 @@ def save(folder: Path, settings: Settings) -> None:
         if not isinstance(carried, dict):
             raise SettingsError(f"{target} holds {type(carried).__name__}, not an object")
         carried_version = carried.get("version")
-        if carried_version != FILE_VERSION:
+        # The same test load() makes, type and value (§4.2). Comparing with
+        # != alone left the two ends disagreeing: a file load() refuses was
+        # one save() accepted, relabelled and carried forward -- PRESS-0053's
+        # harm by the route PRESS-0066 closed on the read side only.
+        if type(carried_version) is not int or carried_version != FILE_VERSION:
             # The read path refuses a version this build does not read
             # "rather than guessing at it", and the write path guessed:
             # unknown keys were carried forward under a version stamp of

@@ -453,7 +453,7 @@ loading or saving does anything.
 | §4.3's not-decodable-as-UTF-8 row | `tests/test_settings.py::test_an_undecodable_settings_file_is_a_typed_failure` and `::test_saving_over_an_undecodable_file_is_a_typed_failure` |
 | §4.2's `\n` line endings | `tests/test_settings.py::test_save_names_the_line_endings` |
 | §4.4's sync before the replace | `tests/test_settings.py::test_save_reaches_the_disk_before_the_rename` |
-| §4.4's refusal to save over another build's file | `tests/test_settings.py::test_saving_over_a_newer_settings_file_is_refused`, with `::test_the_first_save_still_works_with_no_file_to_carry` holding the no-file case it must not catch |
+| §4.4's refusal to save over another build's file | `tests/test_settings.py::test_saving_over_a_newer_settings_file_is_refused` and `::test_a_save_over_a_version_that_is_not_the_number_one_is_refused`, with `::test_the_first_save_still_works_with_no_file_to_carry` holding the no-file case it must not catch. The second is the one that pairs the gate with `load()`'s: without it the two ends can disagree and the suite stays green |
 | §4.3's `analytics_property_id` shape | `tests/test_settings.py::test_a_property_id_that_is_not_numeric_is_refused` and `::test_a_declined_dashboard_still_loads`. The second is the half that matters: ADR-0005 makes the Google step declinable, so the rule has to reject a pasted tag without rejecting a writer who declined |
 | §4.3's not-valid-JSON row, on input that exhausts the parser | `tests/test_settings.py::test_deeply_nested_json_is_a_typed_failure` |
 | `save()` leaving no descriptor behind when it cannot open its temporary file | `tests/test_settings.py::test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor` |
