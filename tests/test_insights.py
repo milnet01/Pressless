@@ -1215,3 +1215,102 @@ def test_a_broken_reply_reaches_the_caller_as_oserror(broken):
     assert 'THE-ACCESS-TOKEN' not in repr(raised.value), (
         f"the failure's representation names the secret: {raised.value!r}"
     )
+
+
+# ---------------------------------------------- PRESS-0056, PRESS-0070 ----
+#
+# Review-code findings (2026-08-31). Regression tests, not invariants: this
+# module has no spec (PRESS-0063), so each one is held to a rule the module's
+# own header, docs/design.md or its own docstring already states.
+
+
+def test_a_clock_that_moved_backwards_does_not_freeze_the_cache(tmp_path):
+    """PRESS-0056: the freshness test was one-sided -- now() - fetched_at <
+    max_age -- so a NEGATIVE age passed it. After an NTP correction, a manual
+    clock change or a restored backup the cache read FRESH forever and showed
+    old numbers labelled current, which is worse than showing them stale.
+    """
+    transport = _Transport()
+    _seed(tmp_path, transport)
+    assert len(transport.requests) == 1, "the seeding fetch did not happen"
+
+    # The clock moves backwards, so the cached reply now claims to have been
+    # fetched in the future.
+    transport.clock = NOW - 86400.0
+
+    read(_settings(), "a-token", tmp_path, client=transport,
+         max_age_seconds=3600.0)
+
+    assert len(transport.requests) == 2, (
+        "a cache whose fetched_at is in the future answered as fresh; a "
+        "negative age is not an age"
+    )
+
+
+def test_a_cache_folder_inside_the_site_folder_is_refused(tmp_path):
+    """PRESS-0056: the module's header says the cache is "never the site
+    folder, which is published in full", and nothing enforced it -- cache_path
+    took a caller-supplied folder with no relationship to
+    settings.site_folder. If the Face passes one, the Builder copies the file
+    and the Publisher uploads it, and country-level readership becomes
+    publicly fetchable.
+    """
+    site = tmp_path / "site"
+    (site / "assets").mkdir(parents=True)
+    settings = _settings(site_folder=site)
+    transport = _Transport()
+
+    for folder in (site, site / "assets"):
+        with pytest.raises(InsightsError):
+            read(settings, "a-token", folder, client=transport)
+
+    assert not transport.requests, (
+        "a request was made on the writer's behalf before the folder was "
+        "refused"
+    )
+
+
+def test_a_window_with_no_visitors_reads_as_zero(tmp_path):
+    """PRESS-0056: GA4 omits default-valued fields, so a window nobody read
+    can come back carrying neither rows nor a totals block -- and that raised,
+    turning a quiet week into an error.
+
+    Narrow on purpose: only an answer with NO rows at all reads as zero. One
+    carrying rows but no total is still refused, because summing those is the
+    overstated number that refusal exists to keep out -- which is what
+    test_answer_without_totals_is_refused holds.
+    """
+    transport = _Transport(default=_ok(json.dumps({"rowCount": 0}).encode("utf-8")))
+
+    report = read(_settings(), "a-token", tmp_path, client=transport)
+
+    assert report.people == 0 and report.countries == (), (
+        f"a window with no visitors did not read as zero; got "
+        f"people={report.people!r}, countries={report.countries!r}"
+    )
+
+
+def test_googles_own_reason_is_carried_on_the_failure(tmp_path):
+    """PRESS-0070: the HTTP error body was read and then discarded. Google's
+    400 body names the field it rejected, so design.md's "Show details"
+    toggle had nothing to show.
+
+    The excerpt rides on the exception and never in the writer-facing
+    sentence, which is the three-part one design.md § Errors requires.
+    """
+    body = json.dumps({
+        "error": {"message": "Field dateRanges[0].startDate had an invalid value"}
+    }).encode("utf-8")
+    transport = _Transport(default=(400, {}, body))
+
+    with pytest.raises(InsightsError) as caught:
+        read(_settings(), "a-token", tmp_path, client=transport)
+
+    assert "dateRanges" in (getattr(caught.value, "detail", None) or ""), (
+        f"Google's own reason did not reach the failure; detail was "
+        f"{getattr(caught.value, 'detail', None)!r}"
+    )
+    assert "dateRanges" not in str(caught.value), (
+        "Google's raw reason reached the writer-facing sentence, which "
+        "design.md § Errors owns"
+    )

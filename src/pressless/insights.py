@@ -45,6 +45,11 @@ API = "https://analyticsdata.googleapis.com/v1beta"
 CACHE_NAME = "insights.json"
 CACHE_VERSION = 1
 
+# How much of Google's own error body to carry on a failure. Enough for the
+# field name its 400 names; short enough that a long reply cannot become the
+# message (PRESS-0070).
+DETAIL_LIMIT = 500
+
 # Four weeks. Long enough that a quiet week does not read as a dead site, short
 # enough to still be about now; well inside Google's own data retention. The
 # window is a parameter so the dashboard can offer others without changing this
@@ -88,6 +93,14 @@ class Report:
 
 class InsightsError(Exception):
     """Anything this module refuses to act on."""
+
+    def __init__(self, message: str, detail: str | None = None) -> None:
+        super().__init__(message)
+        # Google's own words about what it rejected, capped. It rides HERE and
+        # never in the message: the writer-facing sentence is the three-part
+        # one docs/design.md § Errors requires, and this is what its "Show
+        # details" toggle has to show. Read and discarded before (PRESS-0070).
+        self.detail = detail
 
 
 class NotConfigured(InsightsError):
@@ -203,6 +216,18 @@ def cache_path(folder: Path) -> Path:
     return Path(folder) / CACHE_NAME
 
 
+def _within(target: Path, folder: Path) -> bool:
+    """Whether `target` really sits inside `folder`, itself included.
+
+    Both sides resolved, so a symlink compares as what it points at -- the
+    shape publisher.py's _within_folder takes, for the same reason.
+    """
+    try:
+        return target.resolve().is_relative_to(folder.resolve())
+    except OSError:
+        return False
+
+
 def read(settings: Settings, token: str, folder: Path, *,
          days: int = DEFAULT_DAYS,
          max_age_seconds: float = DEFAULT_MAX_AGE,
@@ -225,12 +250,28 @@ def read(settings: Settings, token: str, folder: Path, *,
             "never set up"
         )
 
+    folder = Path(folder)
+    if _within(folder, Path(settings.site_folder)):
+        # The header's rule, enforced rather than asserted. The site folder is
+        # published in full, so a cache kept inside it would put country-level
+        # readership on a public site (PRESS-0056).
+        raise InsightsError(
+            f"{folder} is inside the site folder, which is published in full, "
+            f"so the cache may not be kept there"
+        )
+
     transport = client if client is not None else _Urllib()
     target = cache_path(folder)
     cached = _cached(target, days)
 
-    if cached is not None and transport.now() - cached.fetched_at < max_age_seconds:
-        return cached
+    if cached is not None:
+        # Both ends of the window. A one-sided test let a NEGATIVE age pass,
+        # so after an NTP correction, a manual clock change or a restored
+        # backup the cache read FRESH forever and showed old numbers labelled
+        # current -- worse than showing them stale (PRESS-0056).
+        age = transport.now() - cached.fetched_at
+        if 0.0 <= age < max_age_seconds:
+            return cached
 
     try:
         report = _fetch(transport, property_id, token, days)
@@ -275,13 +316,13 @@ def _fetch(transport: Transport, property_id: str, token: str,
         raise Unreachable("no answer from Google") from exc
 
     if status != 200:
-        raise _failure(status)
+        raise _failure(status, data)
 
     answer = _parse(data)
     return Report(_total(answer), _countries(answer), days, when, False)
 
 
-def _failure(status: int) -> InsightsError:
+def _failure(status: int, data: bytes = b"") -> InsightsError:
     """The typed failure for an HTTP status. Never names the token.
 
     401 and 403 are one answer to the writer — the authorisation Pressless
@@ -289,11 +330,22 @@ def _failure(status: int) -> InsightsError:
     being what Google returns for a valid token pointed at somebody else's
     property.
     """
+    detail = _detail(data)
     if status in (401, 403):
-        return Refused(f"Google refused the authorisation ({status})")
+        return Refused(f"Google refused the authorisation ({status})", detail)
     if status == 429:
-        return RateLimited("Google asked us to slow down")
-    return InsightsError(f"Google answered {status}")
+        return RateLimited("Google asked us to slow down", detail)
+    return InsightsError(f"Google answered {status}", detail)
+
+
+def _detail(data: bytes) -> str | None:
+    """Google's own words about what it rejected, capped.
+
+    Never parsed for meaning: an error body is not a contract, and a failure
+    that depends on its shape fails twice.
+    """
+    text = data.decode("utf-8", errors="replace").strip()
+    return text[:DETAIL_LIMIT] if text else None
 
 
 def _total(answer: dict) -> int:
@@ -304,6 +356,14 @@ def _total(answer: dict) -> int:
     """
     totals = answer.get("totals")
     if not isinstance(totals, list) or not totals:
+        if not answer.get("rows"):
+            # GA4 omits default-valued fields, so a window nobody read comes
+            # back with neither rows nor a total, and refusing that turned a
+            # quiet week into an error. Only the NO-rows case: an answer
+            # carrying rows and no total is still refused, because summing
+            # those is the overstated number this refusal keeps out
+            # (PRESS-0056).
+            return 0
         raise InsightsError("Google's answer does not name a total")
     return _number(totals[0], "the total")
 
