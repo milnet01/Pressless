@@ -93,17 +93,18 @@ def choose() -> Choice:
             f"this machine's credential store could not be used: {exc}"
         ) from exc
 
+    answering = None
     try:
         answering = _answering_member(store)
     finally:
-        _delete_probe(store)
+        _delete_probe(store, answering)
 
     if answering is None:
         raise CredentialError(
             "this machine's credential store accepted a value, and no part of "
             "it returned that value when asked"
         )
-    return Choice(_KEYRING, answering)
+    return Choice(_KEYRING, _member_name(answering))
 
 
 def read(store: str, folder: Path, account: str) -> str:
@@ -165,22 +166,39 @@ def _members(store):
     return tuple(getattr(store, "backends", None) or (store,))
 
 
-def _answering_member(store) -> str | None:
+def _answering_member(store):
+    """The member that returned the probe, or None.
+
+    The member itself rather than its name, because the delete has to be
+    addressed to it and the chain cannot be relied on to find it again.
+    """
     for member in _members(store):
         try:
             answer = member.get_password(SERVICE, PROBE)
         except Exception:  # noqa: BLE001, S112 -- a backend may raise anything
             continue  # a member that cannot answer is not the one holding it
         if isinstance(answer, str) and answer == _PROBE_VALUE:
-            return str(getattr(member, "name", None) or type(member).__name__)
+            return member
     return None
 
 
-def _delete_probe(store) -> None:
+def _member_name(member) -> str:
+    return str(getattr(member, "name", None) or type(member).__name__)
+
+
+def _delete_probe(store, member=None) -> None:
     """Best effort, and last. The probe is not a secret, and a store that
-    will not give it up is not a reason to refuse one that answered."""
+    will not give it up is not a reason to refuse one that answered.
+
+    Addressed to the member that answered, where one did. A chain's
+    delete_password returns on its first member that does not raise
+    NotImplementedError, and a member holding nothing raises
+    PasswordDeleteError -- which this catch would swallow, leaving the probe
+    in the writer's real keyring for good and §4.2's "only then deletes it"
+    reading as an assurance (PRESS-0068 item 2).
+    """
     try:
-        store.delete_password(SERVICE, PROBE)
+        (store if member is None else member).delete_password(SERVICE, PROBE)
     except Exception:  # noqa: BLE001, S110 -- best effort, see the docstring
         pass
 

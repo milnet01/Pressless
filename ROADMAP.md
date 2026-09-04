@@ -2926,6 +2926,42 @@
   artefact on Windows answers it, which is what PRESS-0022 is for.
 
   Items 2, 3 and 4 are untouched and this item stays open for them.
+  Progress (2026-09-04). Item 2 is FIXED. _answering_member now returns
+  the member rather than its name, choose() hands that member to
+  _delete_probe, and the delete is addressed to it; _member_name carries
+  the naming half. Deleting through the chain was the defect: its
+  delete_password returns on the first member that does not raise
+  NotImplementedError, a member holding nothing raises
+  PasswordDeleteError, and the best-effort catch swallowed it, so the
+  probe stayed in the writer's real keyring for good. No spec was edited
+  -- §4.2 already asserts the probe is deleted and INV-7 already requires
+  the delete to come after the walk, so this implements both rather than
+  narrowing either, and rule 14 asked for no gate.
+
+  INV-7's own fixture cannot see this defect: its chain records a delete
+  and pops from its own empty values, so the ordering assertion passes
+  while the holder keeps the probe. The new test asserts the EFFECT --
+  the answering member holds nothing afterwards -- against a chain that
+  raises PasswordDeleteError the way the library does. A mutation probe
+  killed all four routes: delete sent to the chain, the caller dropping
+  the member argument, delete sent to the first member instead of the
+  answering one, and the name taken from something other than the member.
+
+  Item 3 is DECLINED. sys.platform.startswith("win") is false under
+  Cygwin and MSYS2, but the finding's own assessment is that PRESS-0042's
+  mode check subsumes it, and the supported install path is the packaged
+  artefact (PRESS-0022), where sys.platform is win32. Running from source
+  under those shells is not an install route this project offers.
+
+  Item 4 is OPEN and needs a decision, not a fix. Confirmed as a real
+  exposure: `account` is Settings.credentials.github_account, so a
+  credential failure names the writer's own account, and `target` is a
+  full path carrying his home directory. Nothing here is a repository
+  leak, and no invariant covers it -- INV-6 forbids naming the SECRET and
+  says nothing about the account -- so quieting these messages is a new
+  rule, which means amending PRESS-0002 §4.3 and re-arming rule 14's
+  gate. It also trades diagnosability against anonymity, and it interacts
+  with PRESS-0003's rolling log. Put to the user rather than decided here.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.

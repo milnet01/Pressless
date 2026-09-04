@@ -693,3 +693,54 @@ def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
     assert read("file", tmp_path, "publishing-key") == SENTINEL, (
         "the first write into an empty folder no longer round-trips"
     )
+
+
+# ------------------------------------------------------------ PRESS-0068 ----
+
+
+def test_the_probe_is_deleted_from_the_member_that_held_it(monkeypatch):
+    """PRESS-0068 item 2: choose() deletes the probe through the member that
+    ANSWERED, not through the chain.
+
+    A real ChainerBackend.delete_password returns on its first member that
+    does not raise NotImplementedError, and a member holding nothing raises
+    PasswordDeleteError -- which the chainer does not catch and the
+    best-effort delete swallows. The probe would then sit in the writer's
+    real keyring for good, while §4.2's "only then deletes it" reads as an
+    assurance that it does not.
+
+    INV-7's own fixture cannot see this: its chain records a delete and pops
+    from its own empty values, so the ordering assertion passes while the
+    holder keeps the probe. This asserts the effect rather than the event.
+
+    Breaks when the delete is addressed to the chain again, or to the first
+    member rather than the answering one.
+    """
+    events = []
+    silent = _Store(name="holds nothing", events=events)
+    holder = _Store(name="the answering member", events=events)
+    chain = _Store(name="chainer", events=events, backends=[silent, holder])
+
+    def chain_set(service, account, secret):
+        events.append(("set", "chainer"))
+        holder._values[(service, account)] = secret
+
+    def chain_delete(service, account):
+        # The library's own behaviour: the first member that does not raise
+        # NotImplementedError wins the call, and one holding nothing raises
+        # PasswordDeleteError rather than returning quietly.
+        events.append(("delete", "chainer"))
+        raise keyring.errors.PasswordDeleteError("this member holds nothing")
+
+    chain.set_password = chain_set
+    chain.delete_password = chain_delete
+    _use(monkeypatch, chain)
+
+    choose()
+
+    assert holder._values == {}, (
+        f"the probe is still held by the member that answered: "
+        f"{holder._values!r}. The delete went to the chain, whose first "
+        f"member raised, and the best-effort catch swallowed it -- so on a "
+        f"real machine the probe stays in the writer's keyring for good"
+    )
