@@ -186,8 +186,12 @@ Both commands agreed on all three, the empty file included. The
 computation is `sha1(b"blob " + str(len(data)).encode() + b"\0" + data)`.
 
 **Which branch, and it is not configurable.** All three functions act on
-the repository's **default branch**, resolved from the repository itself
-once per call rather than stored. Settings holds no branch field, and
+the repository's **default branch**, never on a stored name, and they
+reach it two ways. `publish` asks the repository for the branch and then
+reads that branch's head, because it needs the name again for the
+reference update. `root_entries` and `fetch_previous` read `commits/HEAD`,
+which GitHub resolves to the same branch's head, and neither needs the
+name — so each spends one request rather than two. Settings holds no branch field, and
 adding one would change PRESS-0001's shipped file format and its setup —
 so the alternative to resolving it is hard-coding a name that is wrong for
 any repository whose default differs. §10 records that nothing here checks
@@ -301,10 +305,12 @@ and the layout under `into` are the same strings, and the Face's undo step
 reads them without reconstructing anything.
 
 **`prefix` matches on path-segment boundaries, and a trailing slash is
-optional and ignored** — the same rule §4.4 gives the untouchable list, for
-the same reason. Matched as a bare string instead, `content` would also
-select `contents.html`, and undo would write into the Store a file the
-fetched directory never held.
+optional and ignored.** Matched as a bare string instead, `content` would
+also select `contents.html`, and undo would write into the Store a file the
+fetched directory never held. §4.4's untouchable rule shares the
+trailing-slash tolerance and stops there: a prefix may name a path several
+segments deep, an untouchable entry may not, and PRESS-0001's `load`
+refuses one that does.
 
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
@@ -515,7 +521,11 @@ code, so a green INV-1 says nothing about the rest.
   this module supplies one step of it.
 - **Deriving and storing the untouchable list.** `root_entries` reports;
   setup and the Face decide and store.
-- **Progress reporting during a slow first publish.** The Face's.
+- **Progress reporting during a slow first publish.** The Face's — and
+  `publish` hands it nothing to state a proportion from: it takes no
+  callback and returns only once the commit is made. So the Face can show
+  that a publish is running and not how far through it is. §4.3 owns why a
+  first publish is the slow one.
 - **Photograph originals.** They never reach the site folder, so this
   module never sees one.
 
