@@ -2574,11 +2574,37 @@
   "from the repository itself once per call", and root_entries and
   fetch_previous use commits/HEAD instead. Equivalent on GitHub today.
   Drift or deliberate shortcut is undecided.
+  Progress (2026-09-05). All four items settled in the document; the gate this
+  bullet asks for has NOT run yet, so the item stays open.
+
+  Item 1 was already fixed and is not re-fixed: section 6 now carries its own
+  row and prose for a server error answering the reference update, and section
+  4.3 backs the unchanged verdict on every other row. Verified rather than taken
+  on trust.
+
+  Item 2 fixed. Section 4.5 called the prefix rule "the same rule 4.4 gives the
+  untouchable list". Measured, only the trailing-slash tolerance is shared:
+  _within_prefix accepts a multi-segment value, and settings.load refuses an
+  untouchable entry carrying an interior slash. The docstring had already been
+  corrected; the spec had not. Code side stays PRESS-0044.
+
+  Item 3 fixed. Section 9 gave progress reporting to the Face while publish
+  takes no callback and returns only once the commit is made. It now says what
+  the Face can show -- that a publish is running, not how far through. A hook
+  stays open as a later choice; no code changed.
+
+  Item 4 fixed, the user deciding to correct the document rather than the code.
+  Measured: publish resolves the default branch and then reads that branch's
+  head; root_entries and fetch_previous read commits/HEAD, which resolves to the
+  same branch's head in one request. No behaviour a user sees differs.
+
+  NEXT: review-contract docs/specs/PRESS-0009-publisher.md --genre spec. Commit
+  975bdec is its baseline.
   **Layman:** The publishing document promises the site is untouched after any failure, and there is one case where nobody can know that.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane publisher -- document side.
 
-- 📋 [PRESS-0062] **PRESS-0006 has an invariant that cannot pass against correct code, and two failure-table rows that collapse distinctions the Store makes.**
+- ✅ [PRESS-0062] **PRESS-0006 has an invariant that cannot pass against correct code, and two failure-table rows that collapse distinctions the Store makes.**
   DOCUMENT SIDE, and PRESS-0006 HAS NO CODE YET -- all 24 hits for its
   symbols are in the spec itself, which is what makes fixing it now
   cheap. Gate with review-contract
@@ -2608,6 +2634,32 @@
   4. Open, and it reaches PRESS-0007 and PRESS-0012: does PRESS-0005 3
   decision 5's Store-wide slug uniqueness extend to templates and
   comments? exists() checks only published/ and drafts/.
+  Resolved (2026-09-05). All four items done, and two changed shape once read
+  against the code rather than against this bullet. The bullet's premise that
+  PRESS-0006 has no code yet is STALE: store.py carries its whole surface and
+  tests/test_store_extras.py implements every invariant. So item 1 needed no
+  __all__ -- the shipped test already excludes imported names by reading the
+  module's AST -- and the fix was to state that rule in INV-11. Item 2's folder
+  row was split; item 3 put read_comments' empty result on the call in 4.1;
+  item 4 became decision 11, the user deciding slug uniqueness covers entries
+  only.
+
+  Then the gate, two loops, three cold lanes each, capped and calm. Fourteen
+  verified, fourteen fixed, none dismissed. Loop 3 found seven, not one a Q1 --
+  every defect was a rule the code keeps that the document never stated,
+  including two the project had already measured by mutation probe and fixed in
+  the tests without writing back: INV-10's byte half cannot fail on Linux, and
+  INV-11's clause had no backslash case. Re-measured both here. All three lanes
+  found the zoned comment date, which PRESS-0090 left unwritten on purpose
+  because naming it re-arms this gate; it is INV-12. One Q2 was a leak risk in a
+  public repository -- INV-11 said to use a name the archive actually carries,
+  where section 7 forbids the archive reaching a fixture.
+
+  Loop 4 found seven more and falsified a rationale loop 3 had just written: the
+  Store CAN see two comments sharing an identifier, since each call is handed
+  the whole set. INV-13 follows, decided by the user. Its code and test halves,
+  with two other test-case gaps, are PRESS-0094 -- filed rather than done, since
+  a docs gate does not edit code.
   **Layman:** The newest design document asks for a test that would fail against code that is working correctly.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- PRESS-0006 read as a contract.
