@@ -209,6 +209,14 @@ PRESS-0005's `read` raises `EntryNotFound` for a missing entry. Most
 entries have none, so absence is the ordinary case rather than a failure
 and the Builder needs no separate existence call.
 
+**`Comment.identifier`'s uniqueness is the caller's rule, not one
+`write_comments` enforces** — the footing PRESS-0005 §4.1 gives slug
+uniqueness. The Store refuses a reply whose parent is absent because it
+can see that in the set it was handed; two comments sharing an identifier
+it cannot tell from a correction. The conformance run in § 7 keys them
+from the export's own `comment_id`; Import (PRESS-0007) is where a
+duplicate would arise.
+
 `write_comments` replaces the file whole. Comments are read-only to the
 writer, so there is no add-one-comment call to build; Import writes each
 entry's comments once.
@@ -276,7 +284,10 @@ normalisation, no re-save of a file whose markup it finds untidy. A file
 that cannot be parsed raises `StoreError` naming the path.
 
 `list_html` and `list_templates` read file names and open nothing, as
-`list_slugs` does.
+`list_slugs` does. `list_photographs` opens nothing either, but returns
+WHOLE file names where the other three drop the suffix: decision 10
+leaves what a photograph's file is called to PRESS-0016, so there is no
+suffix the Store may assume it can strip.
 
 Writing takes the same route as PRESS-0005 §4.5: a temporary file in the
 destination folder, then `os.replace` over the target.
@@ -407,18 +418,26 @@ refusing at the write is where the caller still knows what it dropped.
   *Test:* `tests/test_store_extras.py::test_encodings_are_as_specified`
   — write a page whose text carries a CRLF and a non-ASCII character and
   assert the CRLF is still there; write a comments file whose body
-  carries a CRLF and assert the JSON's own line endings are LF.
+  carries a CRLF and assert the JSON's own line endings are LF. **Then
+  assert the call as well** — patch the open the module uses and require
+  UTF-8 named, with `newline=""` for a page and `newline="\n"` for a
+  comments file. The byte half cannot catch the breach on Linux, where a
+  named newline and an unnamed one produce the same file; PRESS-0005
+  INV-6 measured that and this takes its remedy.
   *Breaks when:* an implementer applies one newline rule to everything.
   LF everywhere rewrites his page, which decision 1 forbids.
 
 - **INV-11** — A photograph's original has a place in Pressless's own
   folder and no route to the site folder: `photograph_path_for` refuses
-  any name that is not a single path component, and the Store offers no
-  call that copies one anywhere.
+  any name that is not a single path component — both separators, not
+  only the running platform's — and the Store offers no call that copies
+  one anywhere.
   *Test:* `tests/test_store_extras.py::test_photographs_stay_where_they_are`
-  — assert `photograph_path_for` refuses `..`, a name containing a
-  separator and an absolute path, accepts a name the archive actually
-  carries, and lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
+  — assert `photograph_path_for` refuses `..`, an absolute path, a name
+  carrying `/` and one carrying `\`, accepts a name of the SHAPE the
+  archive carries — underscores and an extension, invented rather than
+  copied, because § 7 writes nothing of the archive into a fixture — and
+  lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
   public names are exactly PRESS-0005 § 4.1's list together with this
   spec's § 4.1, so a copy-a-photograph call cannot be added without this
   test failing. **Public names are the module's own top-level definitions
@@ -429,18 +448,34 @@ refusing at the write is where the caller still knows what it dropped.
   the site folder to save the Builder a step, which publishes the full
   original of every photograph he has.
 
+- **INV-12** — `write_comments` refuses a `Comment` whose `date` carries
+  a zone, and writes nothing.
+  *Test:* `tests/test_store_extras.py::test_a_comment_date_carrying_a_zone_is_refused`
+  — write a good set, attempt one carrying an aware date, and assert the
+  folder is byte-identical afterwards; then write a naive date and a
+  `tzinfo` yielding no offset, which Python calls naive, so the guard
+  cannot pass by refusing every date.
+  *Breaks when:* an implementer calls `strftime` on whatever is handed
+  in, or keys the guard on `tzinfo` being present rather than on its
+  yielding an offset. §4.2's format holds no offset, so an aware value
+  reads back naive and the round trip loses part of a field — refusing is
+  what makes INV-6 holdable rather than a narrowing of it, and it is the
+  rule PRESS-0005 gives an entry's `Date`.
+
 ## 6. Failure modes
 
 | What happens | What the Store does |
 |---|---|
 | One of the Store's own sub-folders is missing | Reading lists nothing; writing creates it. The layout is the Store's rather than the caller's, as PRESS-0005 has it for the entry folders |
 | The folder handed in is not a folder | `StoreError` naming it. That path is the caller's rather than the Store's, so a mistyped one is an error and never an empty listing |
+| No page or furniture file at that path | `StoreError` naming it. Unlike an absent comments file, absence here is not the ordinary case: a page the Builder asks for and cannot find is a fault rather than an empty set |
 | A page file is not valid UTF-8 | `StoreError` naming the path. It is not read with a replacement character, which would silently change his page on the next save |
 | No comments file for a slug | `read_comments` returns `()`. Most entries have none, so this is the ordinary case rather than an error, and the Builder needs no separate existence call |
 | A comments file is not valid JSON | `StoreError` naming the path. It is never rewritten into something parseable |
 | A comments file holds a field the record does not have | `StoreError` naming the path and the field. Unlike an entry's unknown header field, which ADR-0001 keeps, an unexpected field here is most likely one this spec forbids |
 | A comments file is missing one of the record's fields | `StoreError` naming the path and the field. The pair with the row above: a record is the whole set and nothing else, so neither an extra nor an absence is read past |
 | A reply points at a parent that is absent | `DanglingReply`, and nothing is written (INV-5) |
+| A comment's date carries a time zone | `StoreError` naming the comment, and nothing is written (INV-12) |
 | A name is not a legal slug | `StoreError` (INV-3) |
 | `kind` is neither pages nor furniture | `StoreError` naming what was passed |
 | A furniture name outside `FURNITURE_NAMES` | `StoreError` naming it and the three that are allowed |
@@ -466,7 +501,7 @@ get written here gives: a number in prose goes stale and a reader edits
 toward it.
 
 **`tests/test_store_extras.py` always runs**; it needs nothing but a
-temporary folder, and it is what checks INV-1 to INV-11.
+temporary folder, and it is what checks INV-1 to INV-12.
 `tests/test_store_extras_archive.py` alone skips cleanly where
 `PRESSLESS_ARCHIVE` is unset, as PRESS-0004's and PRESS-0005's archive
 runs do, so a green CI run says nothing about the archive. Nothing from
@@ -549,6 +584,7 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-9 atomic writes | `test_writes_are_atomic` |
 | INV-10 encodings | `test_encodings_are_as_specified` |
 | INV-11 photographs stay put | `test_photographs_stay_where_they_are` |
+| INV-12 a zoned comment date refused | `test_a_comment_date_carrying_a_zone_is_refused` |
 | That a photograph's file name is well formed | **nothing here** — decision 10 withdrew that rule to PRESS-0016; only reaching outside the folder is refused |
 | That the plain box leaves the tags alone | **nothing here** — the Store holds the bytes and INV-1 proves it gives them back; whether the Face's box edits only the words is PRESS-0014's |
 | That the Builder never renders a template as a page | **nothing here** — INV-7 proves the Store offers no route to publish one; what the Builder does with `templates/` is PRESS-0008's |
@@ -575,6 +611,7 @@ other way — the box edits the words in place and leaves the tags alone.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-31 | 3, cold — genre pinned `spec`, packet carried the Store's `path_for` and `list_slugs` windows, PRESS-0005 §§1/4.1/4.3/4.5/4.6/5/7, the four `design.md` passages this spec rests on, `versioning-overrides.md` § The breaking surfaces and the measured shape of the export's comments | 1 | 4 | 3 | 2 | **Ten verified, ten fixed, one collateral; nothing dismissed.** **Three defects were found independently by all three lanes.** The name rule was stated as covering the whole Store and enumerated three kinds, leaving the slug `comments_path_for` takes — supplied by the archive — unguarded, so an implementer could write outside the folder with the suite green. `FURNITURE_NAMES` was exported with nothing saying what it constrained, so the Builder and the Face would have disagreed about whether a fourth furniture file can exist. And INV-4 ordered a byte search for an address that INV-6 requires a body to carry verbatim: a correct implementation had to fail it, and the repair an implementer would reach for is scrubbing a reader's words. Measured against the real export before fixing — no body, author name or url carries an email- or IP-shaped string — so the conflict was latent rather than a live conformance failure, and the invariant is now scoped to the fields WordPress collected. **Two lanes found a clause that could not fail.** INV-8 asserted comments do not change `list_slugs`, which filters on the entry suffix — a `.json` file in the entry folder is invisible to it, so the layout could be breached with the test green; it now asserts the folder listing. INV-11 asserted the module exposes "no call taking a destination outside the handed folder", which nothing could observe. **One lane alone found the sharpest Q2:** § 7 said "Both skip cleanly where `PRESSLESS_ARCHIVE` is unset", whose nearest antecedent is the unit suite — so an implementer would have put a module-level skip on the file that checks all eleven invariants, and CI would have gone green having run none of them. **The one Q1 came from resolving a lane's open question rather than from a lane:** the LF rule was attributed to PRESS-0005 § 4.5, which covers the atomic write; it lives in § 4.2 and INV-6. **Five open questions resolved clean** and are not in the tally — `Entry.date` is naive (`_parse_date` carries a DTZ007 waiver), the entry `Date` format is pinned, the 1.0 promise is where it was cited, `store.write` does create its folder, and the Privacy page is linked from every page today. |
 | 2 | 2026-08-31 | 3, cold — identical brief, packet rebuilt whole from disk and extended with PRESS-0005 § 4.2's bullets, the `_parse_date` waiver, `store.write`'s `mkdir`, and the measured absence of email- or IP-shaped text in the export's comment bodies | 1 | 6 | 3 | 1 | **Eleven verified, eleven fixed. Cap reached (2 for a spec), and it is a VIOLENT cap** — seven of the eleven landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. **The cause is identifiable rather than diffuse, and it is removed rather than repaired:** loop 1 took on the photograph material, and five of this loop's findings were its consequences. `versioning-overrides.md` gives "how an entry names a photograph" to PRESS-0016, and the archive settles it — most of the export's attachment names carry an underscore, so loop 1's slug-plus-extension rule could not be met by the files it was written for. Decision 10 now withdraws the name to PRESS-0016 and keeps only what a folder needs: a single path component. **Two lanes found the Builder contradiction, which is the run's most consequential.** The spec put templates "in a folder the Builder does not read", while `docs/design.md` § Where everything sits on disk copies templates into `content/` and hangs undo's wholeness on their being there — so a Builder built from this spec would have left the writer's templates unrecoverable. Never rendered as a page is the rule; never read is not. **All three lanes found INV-11's test could not pass:** it asserted the module's public names are exactly § 4.1's, on a § 4.1 that is an addition to a module already exporting the entry surface. **Two lanes found no rule for the commonest call there is** — `read_comments` on an entry with no comments; it now returns `()`. **One lane found the trap that would have failed the whole archive:** the export spells a top-level comment's parent `0`, the Store treats any non-empty parent as naming another comment, so a `0` carried through is a dangling reply and every comment is refused. **Routing: implementation.** A third loop is not filed — a majority of this one repaired the last, and the text that caused it is deleted rather than rewritten, so what a further cold read would find is not what this one found. |
+| 3 | 2026-09-04 | 3, cold — genre pinned `spec`; packet rebuilt whole from disk and extended with the shipped `store.py` and `test_store_extras.py`, which loops 1 and 2 predate | 0 | 1 | 5 | 1 | **Seven verified, seven fixed, none dismissed. Not one Q1** — every defect was a rule the code keeps and the document never stated. **All three lanes found the zoned comment date**, which PRESS-0090 left unwritten here on purpose because naming it re-arms this gate; INV-12 now carries it. **Two of the seven are the spec lagging its own tests**, both found by mutation probe when this item was built and never written back: INV-10's byte half cannot fail on Linux, where a named newline and an unnamed one produce identical bytes — re-measured here for a page and a comments file — and INV-11's clause listed no backslash case, which is what let dropping that guard survive. **The Q2 is a leak risk**: INV-11 said to use "a name the archive actually carries" where § 7 forbids the archive reaching a fixture, in a public repository. **Three more, two lanes each**: `list_photographs` returns whole names where every sibling listing is stemmed; a missing page or furniture file had no failure row though `read_html` raises; `Comment.identifier`'s uniqueness was owned by nobody and is now the caller's, on PRESS-0005 § 4.1's footing. **One open question resolved clean and is not in the tally** — § 11 says Import carries more comments than `design.md` quotes, and the conformance run prints 78 against 70 on published entries alone. |
 
 ## 13. Resource cost
 
