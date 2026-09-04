@@ -422,6 +422,7 @@ refusing at the write is where the caller still knows what it dropped.
 | No comments file for a slug | `read_comments` returns `()`. Most entries have none, so this is the ordinary case rather than an error, and the Builder needs no separate existence call |
 | A comments file is not valid JSON | `StoreError` naming the path. It is never rewritten into something parseable |
 | A comments file holds a field the record does not have | `StoreError` naming the path and the field. Unlike an entry's unknown header field, which ADR-0001 keeps, an unexpected field here is most likely one this spec forbids |
+| A comments file is missing one of the record's fields | `StoreError` naming the path and the field. The pair with the row above: a record is the whole set and nothing else, so neither an extra nor an absence is read past |
 | A reply points at a parent that is absent | `DanglingReply`, and nothing is written (INV-5) |
 | A name is not a legal slug | `StoreError` (INV-3) |
 | `kind` is neither pages nor furniture | `StoreError` naming what was passed |
