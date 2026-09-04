@@ -129,6 +129,14 @@ overturn, and none of the cited ones is.
     except the one thing a folder needs — that it is a single path
     component, so it cannot reach outside (INV-11).
 
+11. **PRESS-0005 decision 5's slug uniqueness covers entries only, and
+    not templates or comments.** **(decided here.)** That rule exists to
+    keep one flat folder per kind browsable, and each kind here has a
+    folder of its own. So a template may take a name a published entry
+    has, and a comments file must, being named for the entry it belongs
+    to. `exists` asks the two entry folders and is right to; PRESS-0007
+    and PRESS-0012 inherit no wider rule.
+
 ## 4. Design
 
 ### 4.1 The public surface
@@ -195,6 +203,11 @@ The Store gives a photograph a place and refuses a name that could reach
 outside it. It neither copies nor opens one: putting an original there is
 Import's for the archive (`docs/design.md` § What may depend on what,
 under *What Import brings across*) and PRESS-0016's afterwards.
+
+`read_comments` returns `()` for an entry with no comments file, where
+PRESS-0005's `read` raises `EntryNotFound` for a missing entry. Most
+entries have none, so absence is the ordinary case rather than a failure
+and the Builder needs no separate existence call.
 
 `write_comments` replaces the file whole. Comments are read-only to the
 writer, so there is no add-one-comment call to build; Import writes each
@@ -408,7 +421,10 @@ refusing at the write is where the caller still knows what it dropped.
   carries, and lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
   public names are exactly PRESS-0005 § 4.1's list together with this
   spec's § 4.1, so a copy-a-photograph call cannot be added without this
-  test failing.
+  test failing. **Public names are the module's own top-level definitions
+  with no leading underscore, read off its source**: an import binds a
+  module-level name exactly as an assignment does, so `dir()` would count
+  `os` and `Path` as surface and fail this against correct code.
   *Breaks when:* an implementer has the Store copy an original toward
   the site folder to save the Builder a step, which publishes the full
   original of every photograph he has.
@@ -417,7 +433,8 @@ refusing at the write is where the caller still knows what it dropped.
 
 | What happens | What the Store does |
 |---|---|
-| A folder is missing | Reading lists nothing; writing creates it. The layout is the Store's rather than the caller's, as PRESS-0005 has it for the entry folders |
+| One of the Store's own sub-folders is missing | Reading lists nothing; writing creates it. The layout is the Store's rather than the caller's, as PRESS-0005 has it for the entry folders |
+| The folder handed in is not a folder | `StoreError` naming it. That path is the caller's rather than the Store's, so a mistyped one is an error and never an empty listing |
 | A page file is not valid UTF-8 | `StoreError` naming the path. It is not read with a replacement character, which would silently change his page on the next save |
 | No comments file for a slug | `read_comments` returns `()`. Most entries have none, so this is the ordinary case rather than an error, and the Builder needs no separate existence call |
 | A comments file is not valid JSON | `StoreError` naming the path. It is never rewritten into something parseable |
