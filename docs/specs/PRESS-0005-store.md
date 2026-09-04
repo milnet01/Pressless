@@ -2,6 +2,11 @@
 
 **Status:** accepted (2026-08-27). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A calm cap: under half of the last loop's findings landed on text the run itself wrote, so the document held more defects than the cap held loops. Implementation is the third reviewer.
 **Amended 2026-08-28, after implementation.** It was the third reviewer and it found two false claims: §3 decision 5 said nothing in the archive collides, and §10 said the round trip catches a collision. Both corrected. No line of the Store's contract changed, so the gate did not re-arm.
+**Amended 2026-09-04, before implementation**, on a decision the user
+took: the emitted header carries only the recognised fields the entry has,
+so an entry never given a `Categories` line comes back without one. That
+changes direction, so the gate re-armed and ran to the spec cap of 2. The
+code has not landed; §10 names the test still to be written.
 **Amended 2026-09-02, before implementation**, on two decisions the user
 took: the legal slug set excludes Windows's reserved device names on every
 system, and the file suffix is matched ignoring case. Both change direction,
@@ -103,8 +108,11 @@ and are marked so.
    (PRESS-0007). **The rule is the one the live addresses already came
    from** — the sibling workspace's `tools/build_blog.py::safe_slug`,
    which decodes percent-encoding, drops marks and control characters,
-   folds to ASCII lower case and joins the rest with hyphens, falling
-   back to the WordPress post id where nothing survives. Naming it
+   folds to ASCII lower case and joins the rest with hyphens. Where
+   nothing survives it returns the empty string and the CALLER falls
+   back to the WordPress post id, as the generator's own `Post` does —
+   so the rule is the pair, and it takes the export item rather than
+   the raw slug alone. Naming it
    here is what stops §7's archive test and PRESS-0007 resolving slugs
    two different ways, which is the second deciding place this
    decision exists to prevent. *Agreed with the user 2026-08-27.*
@@ -322,6 +330,13 @@ discoverable by neither. Two names differing only in the suffix's
 case — reachable on Linux only, never produced by the Store — name one
 slug, and `list_slugs` returns it once.
 
+**`publish` and `unpublish` compose both paths with `path_for`, so a
+destination differing only in the suffix's case is not a collision they
+can see.** That is the same trade, applied to the moves: `exists`
+reports the address taken and the move still goes ahead, leaving two
+files naming one slug. §6's `SlugInUse` and INV-10 are about a
+destination `path_for` can see.
+
 On Linux that leaves an address reported as taken whose file `read`
 cannot open, since `path_for` composes `<slug>.txt`. That is the
 trade rather than an oversight: nothing writes over his file, and
@@ -494,11 +509,11 @@ is true of a template is PRESS-0006's (§9).
   refused, for the reason §4.2 gives.
   *Test:* `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`
   — a newline case for `Title`, for a `Categories` value, for a `Tags`
-  value, and for an `extra` field's name and its value; a slug's newline
-  needs no case of its own, being refused by §4.2's legal set before the
-  format check runs, a comma case for the two list
-  fields, and a slug outside the legal set and one reserved device
-  name, each asserting the folder is unchanged afterwards; plus a title
+  value, and for an `extra` field's name and its value; a comma case for
+  the two list fields; and a slug outside the legal set, the empty slug
+  and one reserved device name, each asserting the folder is unchanged
+  afterwards. A slug's newline needs no case of its own, being refused
+  by §4.2's legal set before the format check runs; plus a title
   carrying a comma, which must be written and read back intact. That
   last case is what stops the rule being widened into one Import cannot
   satisfy. **`Date` needs two cases pointing opposite ways**, because
@@ -581,9 +596,9 @@ Two files.
 temporary directory and must run everywhere. At least one test per
 invariant in §5 — at least, because INV-9 also carries the test that
 bounds it. Some rules here have no invariant and are covered by tests
-§10's table names instead: §4.2's reserved device names, §4.3's
-case-insensitive suffix, and §4.2's rule that the header carries only
-what the entry has.
+§10's table names instead: §4.3's case-insensitive suffix, and §4.2's
+rule that the header carries only what the entry has. The reserved
+device names are not among them — INV-9 carries that case.
 
 `tests/test_store_archive.py`, needing `PRESSLESS_ARCHIVE` and skipped
 without it, as `tests/test_marks_archive.py` is. **It skips a second
@@ -608,11 +623,14 @@ many share a day, the longest slug, and whether any two resolve to
 one slug. Those numbers are evidence and they move; the test is where
 they live.
 
-**The red run is made against a stub `store.py`, never against an
-absent one.** With the module absent the suite errors at collection
-and no assertion runs, which this project's `CLAUDE.md` records as a
-trap. The stub declares every name in §4.1 and raises
-`NotImplementedError`, so every test is collected.
+**For the FIRST implementation, the red run is made against a stub
+`store.py`, never against an absent one.** With the module absent the
+suite errors at collection and no assertion runs, which this project's
+`CLAUDE.md` records as a trap. The stub declares every name in §4.1 and raises
+`NotImplementedError`, so every test is collected. **A later
+amendment reds its new test against the shipped module instead** —
+stubbing the module out would destroy work the amendment does not
+touch.
 
 **Not every test then goes red, and that is expected.** A stub that
 declares §4.1's names and imports nothing forbidden already satisfies
@@ -728,6 +746,7 @@ gated before implementation, so the row states what will check it |
 | 4 | 2026-09-02 | 3, cold — identical brief; packet rebuilt whole from disk and extended with a window on `_refuse_illegal_slug`, the gap two loop-3 lanes named. Windows behaviour again an unrunnable region | 4 | 1 | 2 | 0 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the run exits.** **Three of the seven landed on text loop 3 wrote** — a moderate share, so a calm cap rather than an oscillating one. **All three lanes reported the same thing loop 3 dismissed**: §4.2's device names and §4.3's suffix rule describe code that does not exist. Loop 3 dismissed it as immaterial on the ground that the implementer builds it either way; said twice by six independent reads, the DISPOSITION was wrong rather than the finding — §10's job is to say what a green suite proves, and it was silent. Two rows added naming both as unenforced and citing PRESS-0067. **The sharpest of loop 3's own collateral:** *"Matched exactly, `list_slugs` was blind to a file the existence check could see"* was written unscoped and is true on Windows only — on Linux both are blind together, so a reader there would fail to reproduce it and doubt the rule. **Loop 3's other collateral:** *"PRESS-0007 handles the refusal"* said nothing about WHAT Import substitutes, while §7 forbids the archive test any rule but decision 4's — so that test could not have written such an entry at all. Measured while fixing it: no entry in the export resolves to a reserved name, so the new refusal costs the archive test nothing today. **Three pre-existing:** INV-4's *byte-identical* against `read`'s `value.strip()` — measured, `X-Note:  spaced  ` reads back `('X-Note', 'spaced')` and re-emits as `X-Note: spaced`, so an implementer taking the word literally builds a different `extra` contract; §7 implying the archive test ASSERTS cross-folder uniqueness where §10 says nothing can and decision 5 records the archive already breaking it; and `exists` given a total-looking `bool` contract when `path_for` raises `StoreError` on an illegal slug — measured — which is PRESS-0012's normal case, since its input is a name the writer typed. **Filed, not carried:** ADR-0001 and `design.md` still promise unrecognised fields *byte-for-byte*, so that claim now lives in three documents and two of them are another gate's. Added to PRESS-0060. **Across both loops of this run, half the verified findings fell inside the amended span and half were pre-existing** — as much audit as gate. |
 | 5 | 2026-09-03 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, the versioning-overrides and ADR-0001 passages, and the measured aware/microsecond round trips | 3 | 3 | 1 | 1 | **Eight verified, eight fixed, none dismissed.** Trigger was the 2026-09-03 Date amendment (PRESS-0067 item 6). **Two lanes each found both §11 bullets false** — § Build and test names three skipped files including this spec's, and the versioning-overrides bullet was already updated, so an implementer working the ship checklist would have edited correct text and made a true count false. **Three landed on the amendment itself:** it refused an aware `datetime` without saying how the offset comes off, leaving Import and §7's archive test free to drop it and convert it and disagree about the address near midnight; its new INV-9 case asserted only that the write raises, not that the folder is unchanged, so a refusal placed after the temporary file exists would have passed it; and it justified truncation by *rounding*, which `strftime` does not do. **Two were pre-existing and both were run rather than reasoned.** INV-9's refusal list omitted the three unrecognised-NAME refusals the code has performed since PRESS-0048, and INV-4 read literally called them a breach — measured, a duplicate `Title` does replace the entry's own, the read being last-wins. And INV-5 and INV-6 disagreed about a CRLF body, which §4.2 makes reachable: executed, the code already emits an LF header and returns the body's own `\r\n` untouched, so the ambiguity was the document's alone. §7's one-test-per-invariant line was left behind by the tests added since — the same drift PRESS-0001's loop 4 records. |
 | 6 | 2026-09-04 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, ADR-0001 whole, two `design.md` sections and both store test files by outline. Windows, the WordPress export and the sibling generator declared unrunnable | 1 | 2 | 2 | 1 | **Six verified, six fixed, none dismissed.** Trigger: the amendment making the emitted header carry only the fields the entry has. **All three lanes found the same Q3** — that rule is stated of the header while `_entry_text` is shared with `write_template`, so one builder strips a blank template's `Title:` line and another keeps it, and PRESS-0006 binds to whichever ships. **Two lanes found INV-4 false, and executing it settled it**: `  X-Note : 5` reads back `('X-Note', '5')`, so the name is stripped exactly as the value is, and an implementer holding INV-4 emits different bytes in a format §2 calls a breaking surface. **Two found this run's own collateral** — §7 closes its list of no-invariant rules at two and the amendment made a third. **One lane found §4.2 never states the read-side name rule the code performs**, so a verbatim matcher routes ` Title: x` to `extra` and INV-9 then refuses the write: the file opens and can never be saved. **One found INV-9's test naming "the four string-valued fields" where §4.1 declares three**, both readings containing a case that cannot bite. **The orchestrator found §4.3's "On Linux they are blind together" false of shipped code** — run here, `list_slugs` and `exists` both see a `.TXT` and `read` raises. **A packet defect of mine, caught by a lane**: I declared the sibling generator unreachable and it is reachable, so claims resting on it went unreviewed this loop. `surfaces_checked` is false throughout — three test-surface checks never ran, which is silence rather than a pass. |
+| 7 | 2026-09-04 | 3, cold — identical brief; packet rebuilt whole from disk and corrected: loop 6 wrongly declared the sibling generator unreachable, so its two definitions are windowed here | 1 | 2 | 1 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap** — none of the four landed on text this run wrote, and only one on a line it edited. **All three lanes found the same Q1, and loop 6's packet defect had hidden it**: decision 4 credited `safe_slug` with falling back to the WordPress post id, and the fallback is the CALLER's — measured, `safe_slug('')` and `safe_slug('---')` both return `''`. §7 binds the archive test to *decision 4's rule and no other*, so an implementer calling `safe_slug` alone gets the empty slug the Store refuses, for the large share of drafts WordPress gave no slug; decision 5's recorded collision, which rests on the fallback, also becomes unreachable. **One lane found §7's stub rule stated unconditionally** in a document whose own header says it was amended after implementation — an implementer would stub out the shipped module to get this amendment's red run. **One found §4.3 assigning a suffix view to three calls and none to the moves**; run here, `exists` reports the address taken, `publish` proceeds, and one folder ends with `a-slug.TXT` and `a-slug.txt`. Filed for the code side. **One found §7 listing the reserved device names as having no invariant**, which INV-9's own test clause contradicts. **Across the run, roughly three of ten verified findings fell inside the gated span** — as much audit as gate. `surfaces_checked` false throughout: three test-surface checks never ran, which is silence rather than a pass. |
 | 6 | 2026-09-03 | 3, cold — identical brief; packet rebuilt whole from disk | 0 | 3 | 0 | 1 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **All three lanes found the same [Q4], and it was loop 5's own fix**: the claim that asserting the folder unchanged stops an aware-`Date` refusal being placed inside the write path. Measured false — every route out of `_write_atomically` discards the temporary, so a late refusal passes that assertion too, and the lone-surrogate case four lines below endorses exactly such a placement. The sentence is deleted; the folder assertion stands as the ordinary refusal check. **A second landed on loop 5 too:** the amendment named the harm as a whole-hour reorder, which its own remedy reproduces byte-for-byte — dropping the offset is what the silent write already does. The harm is the silence, and the refusal buys a decision rather than the offset back. **Two pre-existing.** §4.2 promised §7's archive test would REPORT an entry resolving to a reserved device name, and §7's reported-not-asserted list named only the cross-folder collision, so a test built from §7 would fail on the `StoreError`. And §4.2 claimed ADR-0001's promise is that *nothing is dropped or altered* and that it holds, while ADR-0001 says *preserved byte-for-byte* and the same bullet strips spacing and re-spells the separator; quoted as written, with the spacing departure stated. **A cap on the violent side — half of this loop landed on text loop 5 wrote — but both were RATIONALE, not the rule**: what §4.2 decides (refuse a zone, truncate a fraction) survived both loops unchanged. Over the run, 5 of 12 findings fell inside the amendment that armed the gate, so the other 7 were audit. Routed to implementation. |
 
 ## 13. Resource cost
