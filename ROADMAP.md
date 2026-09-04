@@ -2197,6 +2197,36 @@
   with a slash was never valid and any entry carrying one is to be
   corrected. That is a decision, not a detail, which is a further reason
   the spec amendment comes first.
+  DEFERRED TO ME by the user 2026-09-04, so this is the decision rather
+  than a proposal. It differs from the two branches this bullet describes,
+  and the difference is the point.
+
+  DO NOT bar the slash wholesale. That is the only part of the fix that
+  could turn an existing entry into literal text on the page, and it is
+  the only part the archive run was needed to make safe. Every hazard this
+  bullet actually names is reachable without it.
+
+  The grammar to amend PRESS-0004 4.2 with: refuse a backslash, a colon,
+  any control character, a leading slash, any `..` segment, and a name
+  that is whitespace only. Allow an interior slash.
+
+  Why that covers the named exposure. "../../../../etc/passwd" and
+  "..\\..\\" carry a `..` segment; a leading slash is barred outright; NUL
+  is a control character; a URL and a Windows drive path both need the
+  colon. Traversal above the handed folder requires `..` or a leading
+  slash, so barring those two closes it whatever the interior looks like.
+  An interior slash alone is a plausible folder name a writer would use
+  and is not a traversal.
+
+  This needs no archive run, which is what unblocks it. If that run ever
+  becomes available it can still tell us whether a `..` or a colon appears
+  in a real name -- but those are corrections rather than a question,
+  because no such name was ever meant to work.
+
+  Sequence is unchanged and still applies: amend 4.2 with the grammar and
+  5 with an invariant holding it, gate the spec, then the code and test.
+  Section 5's claim that the escapes are the boundary's whole defence
+  becomes true only when the code enforces this.
   **Layman:** A photo name in an entry is passed straight out to whatever looks the file up, without being checked first.
   Kind: security.
   Source: review-code 2026-08-31 lane marks.
@@ -3891,6 +3921,21 @@
   folder the writer may also keep things in, so the publisher needs a
   list of what it will and will not send? PRESS-0009 §4.4 answers
   neither today.
+  DECIDED by the user 2026-09-04: the site folder is Pressless's alone.
+  Anything in it the Builder did not produce is an error, and the publish
+  refuses naming the file rather than sending it.
+
+  That settles the question this item said PRESS-0009 4.4 answers neither
+  way, so the item is no longer blocked. What it now needs, in order: 4.4
+  amended with the rule, the spec gated (the rule changes what an
+  implementer builds, so rule 14 applies), then _local_files refusing
+  rather than filtering.
+
+  Note for whoever writes it: refusing is not the same as skipping. A skip
+  publishes a correct site and says nothing; a refusal is what makes the
+  stray file visible, which is the whole point of choosing this branch.
+  The untouchable list is unaffected -- .nojekyll is Builder output or a
+  listed entry, not an unexpected file.
   **Layman:** If a stray file ends up in the folder Pressless publishes from, it gets published too.
   Kind: investigate.
   Source: in-session-2026-09-02, the half of PRESS-0069 item 7 that was not guessed at.
