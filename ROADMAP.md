@@ -2224,6 +2224,22 @@
   ZERO VISITORS (:253-256). GA4 omits default-valued fields; if totals
   is absent on a zero-row report, a quiet week raises instead of
   returning zero. Open: unverified against the live API.
+  Progress (2026-09-04): items 1, 2 and 5 fixed in 21969df, each proved
+  red first. The freshness test is bounded at both ends; read() refuses a
+  cache folder inside the site folder before any request; a window with no
+  rows and no total reads as zero. That last is deliberately narrow -- an
+  answer carrying rows but no total is still refused, since summing them
+  is the overstated number that refusal exists to keep out -- and remains
+  unverified against the live API, as the finding said.
+
+  Items 3 and 4 are NOT done, and neither is a coding decision. Item 3
+  (property id shape) needs a PRESS-0001 §4.3 row: that table enumerates
+  the shape refusals and does not list this field, so adding the check
+  re-arms CLAUDE.md rule 14. §4.1 and design.md already call the field
+  numeric, so the check conforms to them -- it is the refusal table that
+  is silent. Item 4 (one cache slot) is a design question the module has
+  no spec to answer: it is latent until the dashboard offers a second
+  window, so it belongs with PRESS-0063. Both put to the user.
   **Layman:** Five things the analytics part does that nobody ever decided, each of which can mislead or misfire.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane insights.
@@ -2979,6 +2995,23 @@
   design.md's "LF line endings written explicitly". settings.py:191
   does the same, so the two have not diverged. Document side is
   PRESS-0060.
+  Progress (2026-09-04): item 7 fixed in 21969df -- a capped excerpt of
+  Google's error body now rides on the exception, never in the
+  writer-facing sentence.
+
+  Item 8 needs NO code change and is closed on inspection: it reports
+  insights.py and settings.py writing CRLF for want of a newline argument,
+  and both already name one. PRESS-0039 covers it.
+
+  Item 3 belongs to PRESS-0055 by the finding's own words. Item 5 (silent
+  cache-write failure) needs the rolling log PRESS-0003 files -- the
+  swallow is right and the invisibility is not, and there is nowhere yet
+  to make it visible. Item 6 (the window ends at "today", so the same
+  question answered twice in a day gives two numbers) has a named fix, but
+  it changes what the writer reads on the dashboard and an existing test
+  pins the current range; put to the user rather than decided here. Marks
+  items 1, 2 and 4 are untouched -- a separate file and a separate
+  reading.
   **Layman:** Small display and reporting problems, including one where the app silently stops caching and nobody can tell.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes marks/insights -- low cluster.
