@@ -2962,6 +2962,12 @@
   rule, which means amending PRESS-0002 §4.3 and re-arming rule 14's
   gate. It also trades diagnosability against anonymity, and it interacts
   with PRESS-0003's rolling log. Put to the user rather than decided here.
+  Item 4, the two options put to the user (2026-09-04), neither chosen
+  yet: (a) leave the messages as they are and revisit when PRESS-0003's
+  rolling log exists, since that is what turns a one-off message into a
+  stored record; or (b) drop the account name and shorten the path now,
+  which means amending PRESS-0002 §4.3 and paying for rule 14's gate.
+  Nothing else in this item is outstanding.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
@@ -3348,6 +3354,22 @@
 
   Route: review-tests. Baseline for its run: 66 collected, 66 passed
   with PRESSLESS_ARCHIVE set; 62 passed and 4 skipped without it.
+  Known gap (2026-09-04), found by mutation probe while closing
+  PRESS-0070 and recorded here because this item is where test-tree gaps
+  belong. Nothing pins PRESS-0004 §4.2's rule that whitespace inside a
+  rainbow is emitted bare and does not advance the index: the guard can
+  be removed and the suite stays green. Pre-existing rather than new --
+  the rainbow row had no tests at all until PRESS-0070 -- so it was left
+  alone rather than widening that item's scope.
+
+  The same probe found two live examples of the wider defect this item
+  names. PRESS-0068's INV-7 fixture could not catch its own bug: the fake
+  chain recorded a delete and popped from its own empty values, so the
+  ordering assertion passed while the probe stayed in the holder. And a
+  test docstring claimed to catch a condition it did not measure. Both
+  are now closed. The lesson for this item's eventual sweep: run the
+  probe rather than reading the assertions, because a test that passes
+  and a test that watches look identical from the outside.
   **Layman:** The tests have never been checked, and we already know three of them cannot fail even if the thing they check is broken.
   Kind: test.
   Source: review-code 2026-08-31 synthesis part 5 -- coverage gap.
@@ -3938,6 +3960,13 @@
   gave the retry a fixed wait and a bound; the backoff is not implemented.
   The same page warns that "Continuing to make requests while you are rate
   limited may result in the banning of your integration."
+  Approved (2026-09-04): the user agreed to a throwaway GitHub repository
+  for step one, on the PRESS-0072 precedent. Step one is unchanged and is
+  the cheap decisive one -- establish whether blob creation counts as
+  content-generating. If it does not, this item is void. gh is
+  authenticated as the main account with repo scope; it still lacks
+  delete_repo, so the scratch repository from PRESS-0072 is still there
+  and a new one will persist too. Not started.
   **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
