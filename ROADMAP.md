@@ -1729,7 +1729,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.
 
-- 📋 [PRESS-0046] **OutcomeUnknown covers only the OSError branch, the rate-limit handling has three defects, and fetch_previous is not atomic.**
+- ✅ [PRESS-0046] **OutcomeUnknown covers only the OSError branch, the rate-limit handling has three defects, and fetch_previous is not atomic.**
   Three MEDIUMs in one module, grouped because they share the failure
   path.
 
@@ -1756,6 +1756,19 @@
   and pre-existing files that the Face cannot distinguish from a
   complete fetch. Undo is PRESS-0009 2's highest-value safety feature
   and publishing a hybrid is the failure it must not produce.
+  Resolved (2026-09-04): all three fixed in f375cc6, each test run red
+  against the old code first. OUTCOME narrowed from the finding's own
+  prescription: it asked for every status outside {200, 201, 409, 422},
+  which would contradict §6's Refused row and hide a rejected key behind
+  "your site may have moved". Only a 5xx is genuinely ambiguous, since
+  GitHub authenticates and validates before it acts. RATE LIMITS all
+  three: the primary limit's x-ratelimit-reset is read, a hintless breach
+  waits the documented minute, and a hint too long to honour raises
+  RateLimited rather than sleeping. Verdict-diffed over 96 status/header
+  combinations -- 8 moved, 88 unchanged, including every 403 carrying no
+  rate-limit header. FETCH stages inside the target and moves into place
+  only once every file is fetched. Spec §4.3, §4.5, §6 and §10 updated;
+  rule 14 answered No in the commit body.
   **Layman:** Three separate ways the publishing step can mislead the writer about what happened.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.

@@ -125,6 +125,14 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Publishing reports a server error honestly, waits out GitHub's real rate limits, and never leaves a half-fetched folder** (PRESS-0046)
+  A server error answering the last step of a publish now says the outcome
+  is unknown rather than claiming the site did not move. GitHub's main rate
+  limit is waited out instead of being read as a rejected key, a slow-down
+  with no interval waits the minute GitHub asks for, and a wait too long to
+  sit through is reported rather than slept. Fetching the previous state
+  puts nothing in the folder until every file has arrived.
+
 - **An entry dated with a time zone is refused instead of being silently moved by hours.** (PRESS-0067)
   An entry file records the date and time you wrote at, with no time zone.
   Handing Pressless a date that carried one used to store the clock reading
