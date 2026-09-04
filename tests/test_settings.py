@@ -597,3 +597,107 @@ def test_the_first_save_still_works_with_no_file_to_carry(tmp_path):
     save(tmp_path, settings)  # the assertion is that this does not raise
 
     assert (tmp_path / FILE_NAME).exists(), "the first save wrote nothing"
+
+
+# ------------------------------------------------------------ PRESS-0066 ----
+#
+# Four review-code findings (2026-08-31). Regression tests, not invariants:
+# §4.3's table already requires SettingsError for each of the first three, so
+# nothing here asks the module for behaviour the spec does not state.
+
+
+@pytest.mark.parametrize("version, what", [
+    (True, "a JSON boolean"),
+    (1.0, "a JSON number that is not the integer"),
+])
+def test_a_version_that_is_not_the_number_one_is_refused(tmp_path, version, what):
+    """§4.3: version absent or not 1 is a SettingsError. The gate compared
+    with != alone, and in Python True != 1 and 1.0 != 1 are both False -- so
+    both loaded as if the file said 1.
+
+    This sits on the gate protecting every future migration: a file some
+    other build wrote would be read as one this build understands.
+    """
+    _write(tmp_path, _valid_mapping(version=version))
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+@pytest.mark.parametrize("repository", [
+    "owner/name?x=y",     # a query string on every GitHub API call
+    "owner/name#frag",    # a fragment, which truncates the request
+    "owner/name%2fz",     # decoded server-side into another path segment
+    "owner/name ",        # trailing space
+    "owner/name\tz",      # an embedded tab
+])
+def test_a_repository_carrying_url_punctuation_is_refused(tmp_path, repository):
+    """§4.3: a repository whose SHAPE is not owner/name is a SettingsError.
+    The gate only split on the first slash and checked both halves were
+    non-empty, so anything without a second slash passed -- and the value
+    goes straight into an API URL.
+
+    Neither half of a GitHub name holds anything but letters, digits and
+    . _ - , so refusing the rest states the shape rather than guessing it.
+    """
+    _write(tmp_path, _valid_mapping(repository=repository))
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+def test_a_repository_with_the_punctuation_github_allows_still_loads(tmp_path):
+    """The other side of the rule above: a real repository name carries dots,
+    dashes and underscores, and refusing those would reject the writer's own
+    site -- the default GitHub Pages repository is named for its owner and
+    ends in a dot-separated domain.
+    """
+    _write(tmp_path, _valid_mapping(repository="the-owner_1/owner.github.io"))
+
+    assert load(tmp_path).repository == "the-owner_1/owner.github.io"
+
+
+def test_deeply_nested_json_is_a_typed_failure(tmp_path):
+    """§4.3: a file that is not valid JSON is a SettingsError. json.loads
+    raises RecursionError on deep nesting, which is not a ValueError, so it
+    escaped both arms and left load() raising something in neither of this
+    module's families -- the same family as PRESS-0049, far cheaper.
+    """
+    _write(tmp_path, "[" * 200_000 + "]" * 200_000)
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+def test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor(
+    tmp_path, monkeypatch
+):
+    """mkstemp hands back a RAW descriptor, and only os.fdopen takes
+    ownership of it. Where fdopen itself raised, _discard unlinked the path
+    and the descriptor stayed open for the life of the process -- one leaked
+    per failed save.
+    """
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+
+    handed = []
+    real_mkstemp = settings_module.tempfile.mkstemp
+
+    def recording_mkstemp(*args, **kwargs):
+        handle, path = real_mkstemp(*args, **kwargs)
+        handed.append(handle)
+        return handle, path
+
+    def refusing_fdopen(*args, **kwargs):
+        raise OSError("no descriptors left")
+
+    monkeypatch.setattr(settings_module.tempfile, "mkstemp", recording_mkstemp)
+    monkeypatch.setattr(settings_module.os, "fdopen", refusing_fdopen)
+
+    with pytest.raises(SettingsError):
+        save(tmp_path, settings)
+
+    assert handed, "mkstemp was never reached, so this test proved nothing"
+    with pytest.raises(OSError):
+        # An open descriptor answers fstat; a closed one raises EBADF.
+        os.fstat(handed[0])

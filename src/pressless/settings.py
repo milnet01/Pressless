@@ -25,6 +25,14 @@ FILE_VERSION = 1
 
 _STORES = ("keyring", "file")
 
+# Neither half of a GitHub owner/name holds anything else, so this states the
+# shape §4.3 requires rather than guessing at it. The value goes straight into
+# an API URL, where "?", "#", "%" and whitespace change what is asked for or
+# truncate it (PRESS-0066).
+_NAME_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+)
+
 
 @dataclass(frozen=True)
 class Credentials:
@@ -84,13 +92,21 @@ def load(folder: Path) -> Settings:
 
     try:
         raw = json.loads(text)
-    except ValueError as exc:
+    except (ValueError, RecursionError) as exc:
+        # RecursionError is not a ValueError, so deeply nested JSON escaped
+        # both arms and left load() raising something in neither of this
+        # module's families -- §4.3 has this row (PRESS-0066), the same
+        # family as PRESS-0049 and far cheaper.
         raise SettingsError(f"{target} is not valid JSON: {exc}") from exc
     if not isinstance(raw, dict):
         raise SettingsError(f"{target} holds {type(raw).__name__}, not an object")
 
     version = raw.get("version")
-    if version != FILE_VERSION:
+    # The type is checked as well as the value. A bool IS an int in Python, so
+    # `!=` alone accepted `true`, and a float 1.0 compares equal to 1 too --
+    # both loaded as if the file said 1. §4.3 refuses anything that is not the
+    # number 1, and this gate guards every future migration (PRESS-0066).
+    if type(version) is not int or version != FILE_VERSION:
         raise SettingsError(
             f"{target} has version {version!r}; this Pressless reads "
             f"version {FILE_VERSION}"
@@ -134,7 +150,9 @@ def load(folder: Path) -> Settings:
             f"absolute path"
         )
     owner, _, name = repository.partition("/")
-    if not owner or not name or "/" in name:
+    # The character check subsumes the second-slash one that stood here: "/"
+    # is not a name character either (PRESS-0066).
+    if not owner or not name or not _NAME_CHARS.issuperset(owner + name):
         raise SettingsError(
             f"{target}: repository is {repository!r}, not \"owner/name\""
         )
@@ -188,7 +206,7 @@ def save(folder: Path, settings: Settings) -> None:
     else:
         try:
             carried = json.loads(existing)
-        except ValueError as exc:
+        except (ValueError, RecursionError) as exc:
             raise SettingsError(
                 f"{target} is not valid JSON, so saving over it would discard "
                 f"what could not be parsed: {exc}"
@@ -233,7 +251,16 @@ def save(folder: Path, settings: Settings) -> None:
         # newline is named rather than left to the platform: §4.2's file is
         # a shape the installation carries between machines, so its bytes may
         # not depend on which system wrote it (PRESS-0039).
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
+        try:
+            stream = os.fdopen(handle, "w", encoding="utf-8", newline="\n")
+        except BaseException:
+            # mkstemp hands back a RAW descriptor and only fdopen takes
+            # ownership of it, so a failure HERE leaked one per failed save:
+            # _discard unlinks the path and cannot close a descriptor
+            # (PRESS-0066).
+            os.close(handle)
+            raise
+        with stream:
             json.dump(data, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
             # rename(2) orders the namespace, not the data, so without
@@ -282,4 +309,9 @@ def _discard(temporary: str) -> None:
     try:
         os.unlink(temporary)
     except OSError:
+        # Swallowed deliberately: this runs while a failure is already on its
+        # way up, and a temporary file that cannot be removed must not replace
+        # the SettingsError saying what actually went wrong. What is left
+        # behind is inert -- nothing reads it, and the next save writes its
+        # own (PRESS-0066).
         pass

@@ -424,7 +424,11 @@ loading or saving does anything.
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
 | §4.3's `untouchable` entry shape | `tests/test_settings.py::test_a_nested_untouchable_entry_is_rejected` |
-| §4.3's `version` row, and its `repository` and `store` shapes | **nothing** — no invariant locks them, so an implementer could drop either row and this suite stays green. Their absence is silent: a missing `version` makes the file unreadable by the next Pressless, and a malformed `repository` or `store` reaches PRESS-0009 or PRESS-0002 as a value they did not expect. Worth an invariant if either is ever seen to slip |
+| §4.3's `version` row | `tests/test_settings.py::test_a_version_that_is_not_the_number_one_is_refused`. Added after both slipped: comparing with `!=` alone accepted `true` and `1.0`, because a bool is an int in Python and a float compares equal (PRESS-0066) |
+| §4.3's `repository` shape | `tests/test_settings.py::test_a_repository_carrying_url_punctuation_is_refused` and `::test_a_repository_with_the_punctuation_github_allows_still_loads`. The second is the half that matters: the value reaches an API URL, so the rule has to reject punctuation without rejecting the writer's own site |
+| §4.3's `store` shape | **nothing** — no invariant locks it, so an implementer could drop the row and this suite stays green. Its absence is silent: a malformed `store` reaches PRESS-0002 as a value it did not expect. Worth an invariant if it is ever seen to slip |
+| §4.3's not-valid-JSON row, on input that exhausts the parser | `tests/test_settings.py::test_deeply_nested_json_is_a_typed_failure` |
+| `save()` leaving no descriptor behind when it cannot open its temporary file | `tests/test_settings.py::test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor` |
 | §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |
 
 ## 11. Cross-doc impact
