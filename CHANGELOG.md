@@ -17,6 +17,10 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **A test pinning that every network open passes a timeout** (PRESS-0071)
+  No static-analysis tool in the project's set reads urllib, so this
+  guard could have been removed without anything noticing.
+
 - **The Store also holds the fixed pages, the page furniture, the templates and the historical comments.** (PRESS-0006)
   His About page, the bits repeated on every page, the templates a new
   piece starts from and the old readers' comments all become ordinary

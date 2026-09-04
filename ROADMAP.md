@@ -3140,7 +3140,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes marks/insights -- low cluster.
 
-- 📋 [PRESS-0071] **No tool in the check-code set catches a missing urlopen timeout, and the sweep proved the expensive lanes earned their cost.**
+- ✅ [PRESS-0071] **No tool in the check-code set catches a missing urlopen timeout, and the sweep proved the expensive lanes earned their cost.**
   Recorded so the next sweep does not re-derive it.
 
   1. THE GAP. bandit's B113 (request_without_timeout) reads the
@@ -3171,6 +3171,33 @@
   found 191 findings, 179 of them S101 in tests. Adding `select` plus a
   tests/** per-file-ignore for S101 is a project decision, not a
   suppression.
+  Worked 2026-09-04.
+
+  Item 1 CLOSED, by a third option the item did not list. No semgrep rule
+  and no accepting it as a review-only finding: tests/test_network_timeouts.py
+  walks the AST for every network open in src/ and asserts each passes a
+  timeout. That is this project's existing idiom, so it costs no dependency
+  and runs in the gate already. It walks all of src/ rather than the two
+  modules that open a socket today, so a third is covered when it is
+  written. Probed: removing either opener's timeout kills it, and so does a
+  matcher recognising nothing or a glob finding no source.
+
+  Item 5 was already CLOSED, by PRESS-0077, before this session. Measured
+  today: [tool.ruff.lint] sets select = E, W, F, I, B, S, UP with reasoned
+  per-file ignores, and ruff --select E,F,B,S over src/ and tests/ is
+  clean. The 100-column limit is enforced. This item's text still reads as
+  though the decision is outstanding; it is not.
+
+  Items 2, 3 and 4 are a RECORD rather than work -- what the tools can and
+  cannot decide on this tree, and the measurement that zero of the eleven
+  HIGH findings were tool-reachable. Nothing to do; they are the reason the
+  item says "recorded so the next sweep does not re-derive it".
+
+  So every actionable half of this item is now done.
+  Resolved 2026-09-04. The investigation is concluded and both actionable
+  halves are closed; items 2 to 4 stay in the body as the record they were
+  filed to be. Flipped rather than left open because a 📋 says work is
+  outstanding, and none is.
   **Layman:** A note for next time about which problems the automatic checkers can and cannot find here.
   Kind: investigate.
   Source: review-code 2026-08-31 synthesis part 4 -- tool gaps.
