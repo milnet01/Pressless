@@ -125,6 +125,19 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Saving settings no longer overwrites a file written by a different version of Pressless** (PRESS-0001)
+  The check that stops one version relabelling another version's settings
+  file was stricter when reading than when writing, so a file Pressless
+  refuses to open was one it would happily save over.
+
+- **The dashboard stops trusting a clock that went backwards, keeps its cache out of the published folder, and reads a quiet week as zero** (PRESS-0056)
+  A cache whose timestamp is in the future is refetched rather than treated
+  as fresh for ever. The cache is refused a home inside the folder that gets
+  published, so readership figures cannot end up on the public site. A week
+  nobody read now reports zero instead of an error. And a property id that
+  is not the numeric one is refused at the point it is entered, rather than
+  becoming a puzzling failure from Google later.
+
 - **The settings file is checked properly before Pressless acts on it** (PRESS-0066)
   A version written by another Pressless is no longer mistaken for one this
   build understands. A repository name carrying punctuation that would

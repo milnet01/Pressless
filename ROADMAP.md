@@ -2192,7 +2192,7 @@
   Kind: security.
   Source: review-code 2026-08-31 lane marks.
 
-- 📋 [PRESS-0056] **Five unpinned Insights behaviours: a backwards clock, the cache folder, the property id shape, one cache slot, and a zero-visitor report.**
+- ✅ [PRESS-0056] **Five unpinned Insights behaviours: a backwards clock, the cache folder, the property id shape, one cache slot, and a zero-visitor report.**
   All five follow from the module having no spec (filed separately);
   grouped because one document decides them together.
 
@@ -2240,6 +2240,21 @@
   is silent. Item 4 (one cache slot) is a design question the module has
   no spec to answer: it is latent until the dashboard offers a second
   window, so it belongs with PRESS-0063. Both put to the user.
+  Resolved (2026-09-04): items 1, 2 and 5 in 21969df; item 3 in 7583759
+  with the PRESS-0001 §4.3 amendment, gated by review-contract to its cap
+  (loops 4 and 5, ten verified and ten fixed, plus one filed as
+  PRESS-0091). Item 4 is NOT fixed and is not outstanding here: the user
+  routed the one-cache-slot question to the Insights spec, PRESS-0063,
+  which is where how many windows to cache gets decided. It is latent
+  until the dashboard offers a second window.
+
+  The gate paid for itself twice over on the way. It found that loop 4's
+  own fix left save()'s version gate looser than load()'s, so a file
+  load() refuses was one save() would relabel and carry forward -- the
+  PRESS-0053 harm by the route PRESS-0066 closed on the read side only.
+  Fixed in 5ad9a4e. It also found §4.3 pinned no character set for
+  repository while the code enforces one, and that INV-2's own fixture
+  cannot falsify its "neither is the other" clause.
   **Layman:** Five things the analytics part does that nobody ever decided, each of which can mislead or misfire.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane insights.
@@ -2547,6 +2562,13 @@
   different job from specifying work not yet done: fold in what the
   implementation settled, and mark as OPEN the questions PRESS-0056
   lists rather than inventing answers the code has not been built to.
+  Carries an obligation from PRESS-0056 (2026-09-04, user's decision):
+  item 4, the single cache slot. _cached refuses any window but the one
+  stored and _store overwrites, so the quota guard protects nothing the
+  moment the dashboard offers a second window. Nothing is broken while
+  only one window is offered, and how many to cache is a design question
+  this spec is the place to answer. Deciding it changes the cache file
+  format, so it wants a CACHE_VERSION bump.
   **Layman:** The analytics part of the app has no design document, so its rules live only in its own tests -- which cannot prove themselves wrong.
   Kind: doc.
   Source: review-code 2026-08-31 lane insights.
@@ -3012,6 +3034,22 @@
   pins the current range; put to the user rather than decided here. Marks
   items 1, 2 and 4 are untouched -- a separate file and a separate
   reading.
+  Progress (2026-09-04), on the user's decisions. Item 6 is DECIDED, not
+  fixed: the window goes on ending at "today". The fresher number was
+  chosen over the one that holds still, and the code now says so at the
+  dateRanges site so the next reader does not "fix" it. Item 5 is routed
+  to PRESS-0003, which files the rolling log -- the swallow is right and
+  there is nowhere yet to make it visible.
+
+  Still open, and all in marks.py: items 1, 2 and 4. Item 4 (to_html
+  raising a bare KeyError on a mark that is not a table row) looks like a
+  decline on the precedent set for PRESS-0067 item 5 -- parse() turns an
+  unknown mark into literal text by §6, so reaching that line means a
+  caller hand-built a Document, which is a programming error a typed
+  failure would hide. Item 1 (rainbow breaking character references) has
+  two possible answers and PRESS-0059 proposes the document one; item 2
+  (the unbounded output amplification) needs a bound nobody has chosen.
+  None is decided here.
   **Layman:** Small display and reporting problems, including one where the app silently stops caching and nobody can tell.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes marks/insights -- low cluster.
@@ -3722,6 +3760,32 @@
   **Layman:** Old readers' comments can still be stored at the wrong time, in the way entries no longer can.
   Kind: review-fix.
   Source: in-session-2026-09-03, surfaced while closing PRESS-0067 item 6.
+
+- 📋 [PRESS-0091] **design.md's untouchable rule matches on a path's first segment, which a stored entry carrying a trailing slash never equals.**
+  DOCUMENT SIDE, and it belongs to docs/design.md rather than to
+  PRESS-0001. Gate with review-contract docs/design.md --genre adr.
+
+  § What may depend on what has the Publisher remove any path absent from
+  the folder it was handed "unless its first segment is on the list". A
+  first-segment comparison against a list entry "CNAME/" does not equal the
+  root entry "CNAME": the stored string carries the slash and the entry
+  does not. PRESS-0001 §4.3 admits the trailing slash, and its test
+  asserts such a value loads, so the slash does reach the Publisher.
+
+  The CODE is already correct and is not what needs changing: _is_protected
+  compares first == entry.rstrip("/"). What is missing is the design rule
+  saying so, and PRESS-0009 §4.4 says it where design.md does not.
+
+  An implementer of the Publisher who reads the design rule literally --
+  and it is the rule PRESS-0001 §2 calls this list's whole protection --
+  deletes CNAME and detaches the custom domain, which is the exact loss
+  that section names.
+
+  Found by one lane; the other two verified the code side independently and
+  did not reach the design rule.
+  **Layman:** The rule protecting the writer's domain name is written in a way that would not protect it.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-04 loop 5 on PRESS-0001, filed out of scope.
 
 ## Milestones
 
