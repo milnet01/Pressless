@@ -2982,7 +2982,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher -- low cluster.
 
-- 📋 [PRESS-0070] **Marks and Insights low cluster: rainbow breaks character references, and five smaller Insights items including silent cache failure.**
+- ✅ [PRESS-0070] **Marks and Insights low cluster: rainbow breaks character references, and five smaller Insights items including silent cache failure.**
   MARKS
   1. :163-171 -- _rainbow escapes one character at a time, so
   _CHAR_REF_OR_AMP's "leave an existing character reference alone"
@@ -3050,6 +3050,31 @@
   two possible answers and PRESS-0059 proposes the document one; item 2
   (the unbounded output amplification) needs a bound nobody has chosen.
   None is decided here.
+  Progress (2026-09-04), on the user's decisions. Items 2 and 4 are
+  DECLINED, not fixed. Item 2 (unbounded rainbow output amplification): a
+  rainbow only ever comes from what the writer types, since the import
+  carries no Pressless marks, so the size is already bounded by hand
+  typing; a cap would silently drop what was asked for and nobody has a
+  number to justify. Item 4 (to_html raising a bare KeyError on a mark
+  that is not a table row): declined on the PRESS-0067 item 5 precedent --
+  parse() turns an unknown mark into literal text, so reaching that line
+  means a caller hand-built a Document, and a typed failure would hide a
+  programming error. Item 1 (rainbow breaking character references) is to
+  be FIXED in the code: the spec is right as written, so no document edit
+  and no contract gate.
+  Resolved (2026-09-04). Every item now has a disposition. Item 1 is
+  FIXED: _rainbow walks character-reference-or-character units, built from
+  _CHAR_REF_OR_AMP's own pattern so §4.6's grammar keeps one copy, and a
+  reference takes one span per §4.2. INV-4 and §4.6 state the rule with no
+  carve-out for {rainbow}, so the spec was right and no document was
+  edited. Verified by a verdict diff of the old walk against the new over
+  the archive's own prose: every line whose output moved carries a
+  character reference, and none moved without one. The gate ran with the
+  export present, so INV-5's byte-identity run still holds. A mutation
+  probe over the routes the defect could return by found the test pinned
+  one entity name; a numeric reference now closes that route. Items 2 and
+  4 are declined and items 3, 5 and 6 were routed or decided earlier; item
+  8 needed no code change.
   **Layman:** Small display and reporting problems, including one where the app silently stops caching and nobody can tell.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes marks/insights -- low cluster.

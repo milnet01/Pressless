@@ -511,3 +511,55 @@ def test_an_unclosable_line_does_not_take_quadratic_time():
         f"an unclosable line of {len(line)} characters took {elapsed:.1f}s; "
         f"before this fix it was 8.2s and quadratic in the line's length"
     )
+
+
+# ------------------------------------------------------------ PRESS-0070 ----
+
+
+def test_rainbow_leaves_a_character_reference_intact():
+    """PRESS-0070 item 1: _rainbow calls _escape_text one character at a
+    time, so the multi-character lookahead _CHAR_REF_OR_AMP needs in order
+    to recognise an existing reference never gets to run --
+    {rainbow}A&nbsp;B{/} escapes the '&' on its own and lets 'nbsp;' through
+    as separate literal characters, so the browser shows a literal
+    '&nbsp;' instead of a non-breaking space. INV-4 and spec §4.6 say an
+    existing character reference is left alone, unconditionally; that rule
+    names no carve-out for {rainbow}.
+
+    Breaks when a per-character escape or wrap replaces the walk that
+    treats a character reference as one unit. The failure raises nothing
+    and produces no malformed HTML -- only the entity's own meaning is
+    lost, which is why the archive conformance run (INV-5) cannot see it:
+    {rainbow} is not in the raw-text archive at all.
+    """
+    entity_run = render("{rainbow}A&nbsp;B{/}", _no_photos)
+    assert "&nbsp;" in entity_run, (
+        f"an existing character reference inside {{rainbow}} must survive "
+        f"as one unbroken unit so the browser renders it as an entity "
+        f"rather than as separated literal characters; expected the "
+        f"substring '&nbsp;' somewhere in the output, got: {entity_run!r}"
+    )
+    assert "&amp;nbsp;" not in entity_run, (
+        f"the reference was re-escaped rather than dropped mid-entity, "
+        f"which is the other way this same rule breaks: {entity_run!r}"
+    )
+
+    # A NUMERIC reference exercises §4.6's grammar rather than one known
+    # entity name: a walk that recognises only '&nbsp;' passes every
+    # assertion above, measured by mutation probe 2026-09-04.
+    numeric_run = render("{rainbow}A&#8217;B{/}", _no_photos)
+    assert "&#8217;" in numeric_run, (
+        f"a numeric character reference must survive as one unit too, or "
+        f"the walk is pinned to a list of entity names rather than to "
+        f"§4.6's grammar; got: {numeric_run!r}"
+    )
+
+    # A bare '&' inside {rainbow} is not a character reference and must
+    # still be escaped -- the fix must stop treating every '&' alike, not
+    # stop escaping altogether.
+    bare_amp = render("{rainbow}A & B{/}", _no_photos)
+    assert "&amp;" in bare_amp, (
+        f"a bare '&' inside {{rainbow}} (not part of a character "
+        f"reference) must still be escaped per INV-4; expected '&amp;' "
+        f"in the output, got: {bare_amp!r}"
+    )

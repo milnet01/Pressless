@@ -99,6 +99,11 @@ _CHAR_REF_OR_AMP = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{0,30};|#[0-9]{1,7};|#[xX][0-9A-Fa-f]{1,6};)?"
 )
 
+# One rainbow step: a character reference the text already carries, or any
+# single character. Built from the pattern above so §4.6's grammar has one
+# copy -- a second would be a second rule.
+_RAINBOW_UNIT = re.compile(f"{_CHAR_REF_OR_AMP.pattern}|.", re.DOTALL)
+
 
 def _escape_text(value: str) -> str:
     """INV-4, text half: '<' and '>' always; '&' only where it does not
@@ -155,17 +160,20 @@ def _rainbow(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
     the palette and Marks owns no colour decision (§4.2). Whitespace is
     emitted bare and does not advance the count.
 
-    The only row that ignores its rendered children and walks the characters
-    itself — its `content` is "text", so nothing inside it is a mark.
+    The only row that ignores its rendered children and walks its own text
+    itself — its `content` is "text", so nothing inside it is a mark. A
+    character reference is one character and takes one span.
     """
     out: list[str] = []
     index = 0
-    for char in "".join(n.value for n in node.children if isinstance(n, Text)):
-        if char.isspace():
-            out.append(_escape_text(char))
+    text = "".join(n.value for n in node.children if isinstance(n, Text))
+    for found in _RAINBOW_UNIT.finditer(text):
+        unit = found.group(0)
+        if unit.isspace():
+            out.append(_escape_text(unit))
             continue
         out.append(
-            f'<span class="mk-rainbow" style="--mk-i:{index}">{_escape_text(char)}</span>'
+            f'<span class="mk-rainbow" style="--mk-i:{index}">{_escape_text(unit)}</span>'
         )
         index += 1
     return "".join(out)
