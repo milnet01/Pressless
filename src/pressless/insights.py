@@ -63,9 +63,11 @@ DEFAULT_DAYS = 28
 # so nothing is passed off as newer than it is.
 DEFAULT_MAX_AGE = 3600.0
 
-# Google returns aggregate rows — the metricAggregations we asked for — in the
-# rows themselves, marked in the dimension rather than separated out. They are
-# not countries.
+# `metricAggregations` marks its aggregate row in the dimension rather than by
+# position. `_total` reads that aggregate from the answer's own `totals`, so
+# this filter is the guard for the other reading of Google's wording -- that
+# such a row can also appear among the country rows, where it is not a
+# country. Which of the two Google does is not settled here (PRESS-0074).
 AGGREGATE_PREFIX = "RESERVED_"
 
 # Every request carries this, so a black-holed connection fails instead of
