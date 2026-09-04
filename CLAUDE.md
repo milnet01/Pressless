@@ -3,8 +3,9 @@
 ## Where this project is
 
 **State:** 5 — Building. **In flight:** `PRESS-0022` (spec accepted, no
-code) and `PRESS-0073` (its code items done, waiting on `PRESS-0011` for
-the rest). What is done is deliberately not listed here: `roadmap_query`
+code), `PRESS-0073` (its code items done, waiting on `PRESS-0011` for
+the rest) and `PRESS-0061` (its document side done; the gate that bullet
+asks for has not run). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
