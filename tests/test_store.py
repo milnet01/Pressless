@@ -1126,3 +1126,37 @@ def test_an_ordinary_extra_field_still_survives_a_round_trip(tmp_path):
     assert read(target).extra == (("Mood", "sunny"), ("Weather", "y")), (
         f"an ordinary extra field did not survive: {read(target).extra!r}"
     )
+
+
+# ------------------------------------------------------- PRESS-0074 item 2 ----
+
+
+def test_a_header_slug_the_store_cannot_write_is_refused_on_read(tmp_path):
+    """§4.2: a slug is one or more of a-z, 0-9 and '-', stated of a slug and
+    not only of one being written.
+
+    Only the stem and the header were compared, so a hand-created
+    My_Entry.txt agreeing with its own header read as an Entry the Store can
+    never save: write raises on the same slug read had just accepted, so the
+    refusal reached the writer after he had edited rather than when he opened.
+
+    Breaks when the check is put in write alone -- read then returns the
+    entry and the assertion below fails on the read, not on the save.
+    """
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    target = published / f"My_Entry{_SUFFIX}"
+    target.write_text(
+        "Title: T\nSlug: My_Entry\nDate: 2020-01-01 00:00:00\n\nbody\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(StoreError) as refusal:
+        read(target)
+
+    assert "My_Entry" in str(refusal.value), (
+        f"the refusal does not name the slug: {refusal.value!r}"
+    )
+    assert target.read_text(encoding="utf-8").startswith("Title: T"), (
+        "the refused file was rewritten; read writes nothing (INV-2)"
+    )

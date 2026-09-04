@@ -231,6 +231,15 @@ def read(path: Path) -> Entry:
     # archive.
     if not slug:
         raise StoreError(f"{target} has no Slug, so it names no address")
+    # §4.2 states the slug rule of a slug, not only of one being written. A
+    # hand-created file agreeing with its own header otherwise read as an
+    # Entry `write` refuses, so the refusal reached him after he had edited
+    # rather than when he opened it (PRESS-0074). The one rule is reused
+    # rather than restated (INV-3); only the path is added.
+    try:
+        _refuse_illegal_slug(slug, "a slug")
+    except StoreError as exc:
+        raise StoreError(f"{target}: {exc}") from exc
     if date is None:
         raise StoreError(f"{target} has no Date")
 

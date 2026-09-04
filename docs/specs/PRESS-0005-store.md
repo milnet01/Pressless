@@ -526,6 +526,11 @@ line, then the body.
   hand-rename produces. `StoreError` naming both, per §4.4. Nothing is
   moved and nothing is rewritten; the repair is the writer's, and it
   is either name.
+- **A file whose `Slug` header is not a legal slug**, which a
+  hand-created file produces. `StoreError` naming the path and the
+  slug. §4.2's rule is stated of a slug rather than only of one being
+  written, so it is refused when the file is opened; without that the
+  entry read and only its save was refused.
 - **A slug whose file name is too long for the platform.** Distinct
   from §4.2's reserved device names, which are refused on every system
   before anything is written and so never reach here. The archive
