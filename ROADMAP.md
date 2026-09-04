@@ -3787,6 +3787,63 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-04 loop 5 on PRESS-0001, filed out of scope.
 
+- 📋 [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
+  Not a credentials problem, and no token raises this. The Publisher
+  already authenticates (publisher.py sends Authorization: Bearer on every
+  request), so the PRIMARY limit is 5,000 requests an hour and is not what
+  bites. The SECONDARY limit is, and it is per-account behaviour rather
+  than quota.
+
+  MEASURED AGAINST THE DOCUMENTATION (2026-09-04,
+  docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api):
+  "no more than 80 content-generating requests per minute and no more than
+  500 content-generating requests per hour are allowed."
+
+  Against publish()'s own shape: one POST /git/blobs per changed file, then
+  one tree, one commit, one reference update. ADR-0002 fixes the first
+  publish at roughly 862 files, so about 865 content-creating requests.
+
+  The per-minute cap is already satisfied -- PACE_SECONDS spaces writes a
+  second apart, which is 60 a minute against a cap of 80, and matches the
+  documentation's own "wait at least one second between each request".
+
+  The hourly cap is not. The budget runs out after roughly eight minutes of
+  writing, short by around 365 requests.
+
+  WHY A RETRY DOES NOT RESCUE IT. INV-3 makes the reference update the last
+  write, so nothing has been committed when the limit hits: the site is
+  correctly unchanged, which is the invariant working. But the blobs
+  written are referenced by no commit, and the next attempt computes what
+  differs against the repository's tree -- which is still empty of them. So
+  the retry re-uploads from the beginning, spends its new budget, and stops
+  in the same place. The first publish never completes.
+
+  WHAT WOULD ACTUALLY FIX IT is fewer requests, not more quota. The tree
+  endpoint accepts inline content, which would collapse every blob POST
+  into the single tree call -- about three content-creating requests for
+  the whole first publish. PRESS-0009 4.3 rejected that, and its stated
+  reason was re-checked today and still holds: the documentation for
+  tree[].content says only "The content you want this file to have. GitHub
+  will write this blob out and use that SHA for this entry", and states
+  nothing about encoding, size limits or binary support -- which matters
+  because photographs are binary. That is now a trade against a first
+  publish that cannot finish, which is not the trade that was made.
+
+  ONE RESIDUAL UNCERTAINTY, stated rather than assumed: GitHub does not
+  enumerate which endpoints count as content-generating. Blob, tree and
+  commit creation are the obvious reading and the conservative one. If
+  blob creation is not counted, this item is void -- so establishing that
+  is the first step, and it is cheap against a scratch repository.
+
+  SMALLER, SEPARATE: the documentation prescribes exponentially increasing
+  waits between retries and an error after a bounded number. PRESS-0046
+  gave the retry a fixed wait and a bound; the backoff is not implemented.
+  The same page warns that "Continuing to make requests while you are rate
+  limited may result in the banning of your integration."
+  **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
+  Kind: investigate.
+  Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
