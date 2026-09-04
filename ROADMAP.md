@@ -2295,6 +2295,16 @@
   Also open, raised by the lane and not settled: after any save() the
   file's mode becomes 0600 from mkstemp, discarding whatever it had.
   Nothing specifies the mode.
+  2026-09-04: the 0600 note in this bullet's tail has a Store-side twin.
+  PRESS-0074 item 3 raised the same unsettled question about store.py's
+  write, and measurement there confirms the behaviour on both paths -- a
+  fresh write is 0600, and a rewrite narrows an existing 0644 back to it.
+  Nothing specifies the mode in PRESS-0001 or PRESS-0005.
+
+  Settle it once here and apply the answer to both documents. Deciding it
+  in one alone is a direction change in that document and leaves the other
+  saying nothing, which is how the two drift. PRESS-0074 is closed on
+  every other count and defers this item rather than pre-empting it.
   **Layman:** The settings design document is missing rules the code was never told to follow.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane settings -- document side.
@@ -3287,7 +3297,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
 
-- 📋 [PRESS-0074] **Eight smaller lane findings and open questions that no other item picked up.**
+- ✅ [PRESS-0074] **Eight smaller lane findings and open questions that no other item picked up.**
   STORE
   1. _parse_list drops whitespace-only values and strips each, so
   categories=(" ",) round-trips to () and ("a ",) to ("a",). INV-9
@@ -3324,6 +3334,44 @@
   bypass for max_age_seconds, while PRESS-0020 shows when the numbers
   were last updated, which invites a refresh button this signature
   cannot serve.
+  Worked 2026-09-04. Every item was executed before it was judged, and
+  three of the four OPEN questions were settled by that run rather than by
+  reading.
+
+  FIXED. Item 2 -- confirmed: read returned an Entry write then refuses.
+  The guard is in read now, reusing _refuse_illegal_slug; PRESS-0005 6
+  gained a row. No gate: 4.2 states the rule of a slug, not only of one
+  being written, so this implements it. Item 5 -- the code already refuses
+  a missing field; only PRESS-0006 6 lacked the row, now added. Item 8 --
+  the comment asserted the aggregate is NOT separated out while _total
+  reads it from totals, two models of one API in one module. The comment
+  now states what the code does and marks the rest unsettled; the filter
+  stands. Which reading is right could not be measured here: the analytics
+  MCP exposes no metric_aggregations argument, so no available caller
+  makes _fetch's request.
+
+  CLOSED, NOT A DEFECT. Item 4 -- already fixed. exists calls
+  _refuse_illegal_slug directly and PRESS-0005 4.1 and 6 both say it
+  raises; the PRESS-0005 loop-4 gate closed it. Item 9 -- wrong as stated.
+  max_age_seconds IS the bypass: measured, read(..., max_age_seconds=0)
+  refetches past a fresh cache and returns stale=False. PRESS-0020 needs
+  no new signature.
+
+  DECLINED. Item 1 -- the strip is documented and a whitespace-only
+  category is not a category; no invariant claims a byte round trip for
+  Categories or Tags. Item 6 -- re's cache makes it cheap, and a compiled
+  object is the over-engineering the item itself hedges. Item 7 -- an
+  empty coloured span is inert in the page.
+
+  STILL OPEN, and it is the same question as PRESS-0057's. Item 3 --
+  measured: a fresh write is 0600 and a rewrite narrows an existing 0644
+  back to it. PRESS-0057's tail carries the identical unsettled note on
+  the settings side. What the mode SHOULD be is one decision for both
+  documents, and taking it here would change direction in PRESS-0005
+  alone. Settle it on PRESS-0057's gate and apply the answer to both.
+  Resolved 2026-09-04. Three fixed, two closed as not defects, three
+  declined; item 3 is now PRESS-0057's, which owns the decision for both
+  documents. Nothing here is left unrouted.
   **Layman:** A tidy-up list of small things the review noticed that did not fit anywhere else.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes store/marks/insights -- residue.

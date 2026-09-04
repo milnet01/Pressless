@@ -125,6 +125,11 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **A file whose `Slug` header is not a legal slug is refused when it is read** (PRESS-0074)
+  Only the file name and the header were compared, so a hand-created
+  file agreeing with its own header opened as an entry the Store then
+  refused to save.
+
 - **Saving settings no longer overwrites a file written by a different version of Pressless** (PRESS-0001)
   The check that stops one version relabelling another version's settings
   file was stricter when reading than when writing, so a file Pressless
