@@ -4192,6 +4192,42 @@
   Kind: fix.
   Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
 
+- 📋 [PRESS-0094] **The Store checks the comment identifiers it is handed, and two invariants get the test case that would falsify them.**
+  CODE SIDE. PRESS-0006's gate settled all three on the document; the
+  code and the suite have not caught up. Nothing here is a defect the
+  suite can currently see, which is the point.
+
+  1. INV-13, new. `write_comments` refuses a set carrying an empty
+  identifier or two that are equal, and writes nothing. Decided by the
+  user 2026-09-05. Both are visible in the set handed in, which is the
+  ground `_refuse_a_dangling_reply` and `_refuse_a_zoned_date` already
+  stand on, so it is a third guard beside them rather than a new kind of
+  check. The empty one is the sharp case: "" is also `parent`'s top-level
+  sentinel, so a reply naming that comment is read as top-level and lost
+  rather than refused -- INV-5 passes on a reply whose parent is gone.
+  Test named in the spec as `test_unsound_identifiers_are_refused`, with a
+  positive case so the guard cannot pass by refusing every set. Probe it
+  after the code lands, one mutation per route the Breaks-when names.
+
+  2. INV-3's test has no reserved-device-name case. `_refuse_illegal_slug`
+  refuses `con`, `prn`, `aux`, `nul`, `com1`-`com9` and `lpt1`-`lpt9`, and
+  `_ILLEGAL_NAMES` in the suite carries five cases, none of them a device
+  name. So a hand-rolled character check passes every listed case and lets
+  `pages/nul.html` through -- which on Windows reaches the null device.
+  The spec now names the case; add it.
+
+  3. INV-10 never reaches `write_template`. That call writes with
+  `newline="\n"`, and nothing asserts it: the suite's INV-10 test watches
+  `write_html` and `write_comments` only, and the spec used to delegate the
+  template half to PRESS-0005 INV-6, whose test exercises `write` -- a call
+  that predates `write_template`. Measured 2026-09-04: on Linux a file
+  written with the newline named and one written without are byte
+  identical, so only a call assertion bites. The spec now puts the test
+  here; add the template case to it.
+  **Layman:** Three small gaps between what the comments design now promises and what the code and tests actually do.
+  Kind: implement.
+  Source: review-contract 2026-09-05 loop 4 on PRESS-0006 -- code side of three findings.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
