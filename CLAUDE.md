@@ -186,6 +186,18 @@ hard-coded Google Analytics measurement id. The id belongs in Settings
 by dependency rule 8, which is where the design already put it — writing
 it into a document was the mistake, not just the leak.
 
+**The sibling generator's own source names him, and so does the
+directory it sits in.** Decision 4 sends you there — `safe_slug` is the
+one place a slug is resolved — and the three archive tests import it, so
+a session reading it is normal rather than exceptional. Its docstrings
+carry his name, and the sibling directory is named after him, so the
+PATH is an identifier even when the code is not. Never write either into
+this repository, a commit message, or a review packet a lane might quote
+back. Refer to it as the sibling workspace and window the function
+bodies you need. Found 2026-09-04 while building a `review-contract`
+packet: the window stopped one line above the name by luck, not design.
+The leak sweep below would not have caught the directory name.
+
 **Publishing a document is publishing its history**, which is the whole
 reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
