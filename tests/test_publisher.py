@@ -1458,3 +1458,51 @@ def test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was(tmp_path):
         f"a fetch that failed part-way left {left!r} in the folder; nothing "
         f"may land there until every file has been fetched"
     )
+
+
+# ------------------------------------------------------------ PRESS-0045 ----
+
+
+def test_json_writes_declare_themselves_as_json(tmp_path):
+    """PRESS-0045: §4.3's four write steps carry JSON bodies against a
+    JSON API, so each must say so.
+
+    With no Content-Type set, urllib inserts
+    "application/x-www-form-urlencoded" whenever a body is present --
+    measured against urllib's own AbstractHTTPHandler.do_request_ -- so
+    the module described every JSON write as a form. GitHub was measured
+    tolerating it (2026-09-02), which is why this is a correctness fix
+    rather than a release blocker; tolerance today is not a guarantee.
+
+    A read carries no body and urllib inserts nothing for one, so a read
+    must NOT claim a content type either: the header describes the body,
+    and a request with no body has none to describe.
+
+    Breaks when the header is set unconditionally for every request
+    rather than only where a body exists, or dropped again as redundant
+    because the far end happens to forgive it.
+    """
+    (tmp_path / "index.html").write_bytes(b"<html>changed</html>")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    writes = [(m, u, h) for m, u, _, h in transport.requests if _is_write(m)]
+    assert writes, (
+        "the fixture made no write request at all, so this test proves "
+        "nothing about what a write declares"
+    )
+    for method, url, headers in writes:
+        assert headers.get("Content-Type") == "application/json", (
+            f"{method} {url} sends a JSON body, but its headers are "
+            f"{headers!r}; with Content-Type unset urllib transmits the "
+            f"body as application/x-www-form-urlencoded"
+        )
+
+    bodyless = [(m, u, h) for m, u, b, h in transport.requests if b is None]
+    for method, url, headers in bodyless:
+        assert "Content-Type" not in headers, (
+            f"{method} {url} carries no body, so it must not declare a "
+            f"content type for one: {headers!r}"
+        )

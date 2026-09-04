@@ -456,6 +456,11 @@ class _Session:
             "Accept": "application/vnd.github+json",
             "User-Agent": "Pressless",
         }
+        if body is not None:
+            # urllib inserts application/x-www-form-urlencoded whenever a
+            # body is present and this is unset, which describes §4.3's
+            # JSON as a form. A body-less read has nothing to declare.
+            headers["Content-Type"] = "application/json"
         attempts = 0
         while True:
             try:

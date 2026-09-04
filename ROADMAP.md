@@ -1682,7 +1682,7 @@
   Kind: security.
   Source: review-code 2026-08-31 lane publisher.
 
-- 📋 [PRESS-0045] **No Content-Type header, so all four JSON writes go to GitHub as form-encoded.**
+- ✅ [PRESS-0045] **No Content-Type header, so all four JSON writes go to GitHub as form-encoded.**
   Confirmed by execution against urllib's own handler: with a JSON body
   and no Content-Type set, the header actually sent is
   "application/x-www-form-urlencoded". publisher.py:315-319 sets
@@ -1725,6 +1725,15 @@
   is no longer the largest unverified assumption in the module, because
   it is no longer unverified. Reprioritise it as an ordinary correctness
   fix rather than a release blocker.
+  Resolved (2026-09-04). _call now sets Content-Type: application/json,
+  but only where a body exists. The condition is not decoration: measured
+  against urllib's own handler, a body-less GET has no default inserted,
+  so declaring a type for a request with no body would be a second wrong
+  claim rather than a fix. No spec invariant governs request headers, so
+  no document was edited. A regression test asserts the header on every
+  §4.3 write and its absence on every body-less request; a mutation probe
+  killed all three routes the defect could return by -- dropped as
+  redundant, set unconditionally, and set to the wrong value.
   **Layman:** The app tells GitHub its messages are one format while actually sending another.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane publisher.
