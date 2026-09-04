@@ -3929,7 +3929,7 @@
   Kind: review-fix.
   Source: in-session-2026-09-03, surfaced while closing PRESS-0067 item 6.
 
-- 📋 [PRESS-0091] **design.md's untouchable rule matches on a path's first segment, which a stored entry carrying a trailing slash never equals.**
+- ✅ [PRESS-0091] **design.md's untouchable rule matches on a path's first segment, which a stored entry carrying a trailing slash never equals.**
   DOCUMENT SIDE, and it belongs to docs/design.md rather than to
   PRESS-0001. Gate with review-contract docs/design.md --genre adr.
 
@@ -3951,6 +3951,27 @@
 
   Found by one lane; the other two verified the code side independently and
   did not reach the design rule.
+  Resolved 2026-09-04. Both sides measured before the edit. settings.py
+  validates on entry.rstrip("/") and stores the value as given, so
+  "CNAME/" reaches the Publisher with its slash; _is_protected already
+  compares first == entry.rstrip("/"). The code was correct and is
+  unchanged, as this bullet said.
+
+  The rule in design.md now says the match ignores a trailing slash on the
+  entry, and names the consequence of comparing exactly.
+
+  NO GATE, against this bullet's own instruction, and recorded rather than
+  done quietly. The bullet asked for review-contract --genre adr; that was
+  written before the disposition was known. With the code side already
+  correct, the amendment records what was built, which is rule 14's
+  recording branch and does not re-arm the gate. If the next session wants
+  the cold read anyway, the trigger is one command and nothing here
+  depends on skipping it.
+
+  Related and still open: PRESS-0078 asks whether normalisation belongs on
+  the write side (Setup) instead, and defers to the unwritten PRESS-0021.
+  This fix does not pre-empt that -- documenting that consumers strip on
+  compare leaves Setup free to normalise on write as well.
   **Layman:** The rule protecting the writer's domain name is written in a way that would not protect it.
   Kind: doc-fix.
   Source: review-contract 2026-09-04 loop 5 on PRESS-0001, filed out of scope.
