@@ -294,6 +294,11 @@ def _fetch(transport: Transport, property_id: str, token: str,
     """
     url = f"{API}/properties/{property_id}:runReport"
     body = json.dumps({
+        # "today", not "yesterday", is a decided behaviour and not an
+        # oversight: the window carries one more calendar day than `days` and
+        # its last day is incomplete, so the same question asked twice in a
+        # day gives two numbers. The writer wants today's readers included,
+        # and that was chosen over a figure that holds still (PRESS-0070).
         "dateRanges": [{"startDate": f"{days}daysAgo", "endDate": "today"}],
         # countryId, never country: the first is the ISO alpha-2 code the flag
         # pictures are keyed by, the second is a localised display name.

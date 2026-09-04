@@ -161,6 +161,20 @@ def load(folder: Path) -> Settings:
             f"{target}: credentials.store is {store!r}, not one of "
             f"{' or '.join(repr(s) for s in _STORES)}"
         )
+    analytics_property_id = _optional(raw, "analytics_property_id", str, target)
+    # Shape, like the three above. §4.2 fixes this as the numeric property id
+    # and says the G-... tag is a different identifier that fails every fetch,
+    # so a pasted tag reached Google as a 404 the writer could not read
+    # (PRESS-0056). isascii() as well, because isdigit() is true of full-width
+    # and superscript digits, which Google's URL is not.
+    if analytics_property_id is not None and not (
+        analytics_property_id.isascii() and analytics_property_id.isdigit()
+    ):
+        raise SettingsError(
+            f"{target}: analytics_property_id is {analytics_property_id!r}, "
+            f"not the numeric property id; the tag in the site's footer is a "
+            f"different identifier and fails every fetch"
+        )
 
     return Settings(
         site_folder=Path(site_folder),
@@ -172,7 +186,7 @@ def load(folder: Path) -> Settings:
             github_account=github_account,
             google_account=google_account,
         ),
-        analytics_property_id=_optional(raw, "analytics_property_id", str, target),
+        analytics_property_id=analytics_property_id,
     )
 
 

@@ -188,7 +188,7 @@ live repository root.
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the file |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
-| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name`, `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory | `SettingsError`, naming the key |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name`, `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory, `analytics_property_id` present and not the numeric id §4.2 fixes it as | `SettingsError`, naming the key |
 | Valid | `Settings` |
 
 **The shape row is why this is a list rather than four cases.** `repository`
@@ -427,6 +427,7 @@ loading or saving does anything.
 | §4.3's `version` row | `tests/test_settings.py::test_a_version_that_is_not_the_number_one_is_refused`. Added after both slipped: comparing with `!=` alone accepted `true` and `1.0`, because a bool is an int in Python and a float compares equal (PRESS-0066) |
 | §4.3's `repository` shape | `tests/test_settings.py::test_a_repository_carrying_url_punctuation_is_refused` and `::test_a_repository_with_the_punctuation_github_allows_still_loads`. The second is the half that matters: the value reaches an API URL, so the rule has to reject punctuation without rejecting the writer's own site |
 | §4.3's `store` shape | **nothing** — no invariant locks it, so an implementer could drop the row and this suite stays green. Its absence is silent: a malformed `store` reaches PRESS-0002 as a value it did not expect. Worth an invariant if it is ever seen to slip |
+| §4.3's `analytics_property_id` shape | `tests/test_settings.py::test_a_property_id_that_is_not_numeric_is_refused` and `::test_a_declined_dashboard_still_loads`. The second is the half that matters: ADR-0005 makes the Google step declinable, so the rule has to reject a pasted tag without rejecting a writer who declined |
 | §4.3's not-valid-JSON row, on input that exhausts the parser | `tests/test_settings.py::test_deeply_nested_json_is_a_typed_failure` |
 | `save()` leaving no descriptor behind when it cannot open its temporary file | `tests/test_settings.py::test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor` |
 | §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |

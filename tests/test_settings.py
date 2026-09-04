@@ -701,3 +701,36 @@ def test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor(
     with pytest.raises(OSError):
         # An open descriptor answers fstat; a closed one raises EBADF.
         os.fstat(handed[0])
+
+
+@pytest.mark.parametrize("property_id", [
+    "G-ABC123DEF4",          # the tag from the site's footer
+    "properties/123456789",  # Google's own resource name for it
+    "123456789 ",            # a trailing space off a paste
+    "12 34",
+    "abc",
+    "",                      # neither a property id nor a declined dashboard
+])
+def test_a_property_id_that_is_not_numeric_is_refused(tmp_path, property_id):
+    """§4.2 fixes this field as the numeric property id, "not the `G-…`
+    tag" -- "a different identifier" that "fails every fetch". §4.3
+    type-checked it and stopped, so a pasted tag loaded happily and the
+    writer got "Google answered 404" instead of a sentence naming the
+    confusion (PRESS-0056).
+    """
+    _write(tmp_path, _valid_mapping(analytics_property_id=property_id))
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+def test_a_declined_dashboard_still_loads(tmp_path):
+    """The other side of that rule. ADR-0005 makes the Google step
+    declinable, and §4.2 says the field is optional -- so absent and null
+    must both survive the shape check above.
+    """
+    _write(tmp_path, _valid_mapping(analytics_property_id=None))
+    assert load(tmp_path).analytics_property_id is None
+
+    _write(tmp_path, _valid_mapping(analytics_property_id=_ABSENT))
+    assert load(tmp_path).analytics_property_id is None
