@@ -12,7 +12,7 @@ import ast
 import dataclasses
 import inspect
 import os
-from datetime import datetime
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 
 import pytest
@@ -867,4 +867,75 @@ def test_photographs_stay_where_they_are(tmp_path):
         f"with PRESS-0006 §4.1's. Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0090 ----
+
+
+def test_a_comment_date_carrying_a_zone_is_refused(tmp_path):
+    """PRESS-0090: write_comments refuses an aware datetime and writes
+    nothing, as an entry's Date is refused (PRESS-0067 item 6).
+
+    INV-6 is why the rule is the same on this path. §4.2's format holds no
+    offset, so an aware value written by strftime reads back naive and the
+    round trip loses part of a field. Refusing it is what makes INV-6
+    holdable; writing it silently stores a wall clock from somewhere else
+    and reads back as a fact.
+
+    The positive case is what stops the guard passing by refusing every
+    date -- a naive value must still be written.
+
+    Breaks when the guard runs after the file is written, or when it keys
+    on tzinfo being present rather than on it yielding an offset.
+    """
+    written = Path(write_comments(tmp_path, "an-example", (_comment("1"),)))
+    before = _snapshot(tmp_path)
+
+    aware = (_comment("2", date=_A_DATE.replace(tzinfo=timezone.utc)),)
+    try:
+        write_comments(tmp_path, "an-example", aware)
+    except StoreError:
+        pass
+    except Exception as exc:
+        raise AssertionError(
+            f"write_comments raised {exc!r} for a comment date carrying a "
+            f"time zone; StoreError is this module's typed refusal"
+        ) from exc
+    else:
+        raise AssertionError(
+            "write_comments accepted a comment date carrying a time zone; "
+            "strftime drops the offset, so it reads back as a wall clock "
+            "from somewhere else and INV-6's round trip loses it"
+        )
+
+    assert _snapshot(tmp_path) == before, (
+        "the refusal changed the folder; nothing may be written when a "
+        "comment's date is refused, a temporary file included"
+    )
+
+    naive = (_comment("3", body="Still accepted.\n"),)
+    assert Path(write_comments(tmp_path, "an-example", naive)) == written, (
+        "a naive comment date was refused as well, so the guard rejects "
+        "every date rather than an aware one"
+    )
+
+    # A tzinfo yielding no offset is NAIVE by Python's own definition, so it
+    # must still be written. Without this the two-part condition can be
+    # halved and nothing notices -- measured by mutation probe 2026-09-04.
+    class _NoOffset(tzinfo):
+        def utcoffset(self, when):
+            return None
+
+        def dst(self, when):
+            return None
+
+        def tzname(self, when):
+            return None
+
+    offsetless = (_comment("4", date=_A_DATE.replace(tzinfo=_NoOffset())),)
+    assert Path(write_comments(tmp_path, "an-example", offsetless)) == written, (
+        "a date whose tzinfo yields no offset was refused; Python calls such "
+        "a value naive, and this guard keys on the offset rather than on "
+        "tzinfo merely being present"
     )

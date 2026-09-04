@@ -677,6 +677,7 @@ def write_comments(folder: Path, slug: str, comments: tuple[Comment, ...]) -> Pa
     """
     target = comments_path_for(folder, slug)
     _refuse_a_dangling_reply(comments, target)
+    _refuse_a_zoned_date(comments, target)
     records = [
         {
             "identifier": comment.identifier,
@@ -811,6 +812,34 @@ def _refuse_a_dangling_reply(comments: tuple[Comment, ...], target: Path) -> Non
             raise DanglingReply(
                 f"{target}: comment {comment.identifier!r} replies to "
                 f"{comment.parent!r}, which is not in the same set; nothing "
+                f"was written"
+            )
+
+
+def _refuse_a_zoned_date(comments: tuple[Comment, ...], target: Path) -> None:
+    """INV-6: refuse a comment whose date carries a zone, before anything is
+    written -- the rule an entry's Date already takes (PRESS-0067 item 6).
+
+    §4.2's format holds no offset, so strftime would drop one in silence and
+    the value would read back as a wall clock from somewhere else. That is
+    part of a field lost across the round trip INV-6 requires, so refusing is
+    what makes INV-6 holdable. A fraction of a second is not refused, for the
+    reason the entry path gives: it misorders nothing, and refusing it would
+    reject datetime.now().
+
+    Nothing in the tree can reach this today -- read_comments builds every
+    date with strptime -- so the caller it is written for is Import
+    (PRESS-0007), which is why it is here before that caller exists.
+    """
+    for comment in comments:
+        date = comment.date
+        if date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None:
+            raise StoreError(
+                f"{target}: comment {comment.identifier!r} carries the time "
+                f"zone {date.tzinfo}, and a comment's date is written without "
+                f"one -- the offset would be dropped in silence and the "
+                f"comment stored at a wall clock from somewhere else. Drop "
+                f"the offset and keep the wall clock before writing; nothing "
                 f"was written"
             )
 

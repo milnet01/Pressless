@@ -3762,7 +3762,7 @@
   Kind: investigate.
   Source: in-session-2026-09-02, the half of PRESS-0069 item 7 that was not guessed at.
 
-- 📋 [PRESS-0090] **A comment's date carrying a zone is still written silently, where an entry's is now refused.**
+- ✅ [PRESS-0090] **A comment's date carrying a zone is still written silently, where an entry's is now refused.**
   `write_comment` formats a comment's date with the same `_DATE_FORMAT`
   as an entry's and applies no zone check, so an aware `datetime` has
   its offset dropped in silence — the defect PRESS-0067 item 6 just
@@ -3791,6 +3791,34 @@
   If it does want the rule, it is the same three lines and the same
   pair of tests: refuse before anything is written, and a positive
   case so the fix cannot pass by refusing every date.
+  Resolved (2026-09-04). Both questions this bullet raised were settled by
+  measurement rather than by choosing.
+
+  Question 2, whether an aware value can reach the write: not today. No
+  import module exists, and read_comments builds every date through
+  strptime, so the only in-tree route yields a naive value. That does NOT
+  make the item a no-op -- Import (PRESS-0007) is the caller it is written
+  for, and it is unwritten, so the guard is cheaper in place before its
+  caller exists than retrofitted after.
+
+  Question 1, whether PRESS-0006 wants the rule: INV-6 answers it. A round
+  trip must return every field unchanged, and an aware value cannot, since
+  §4.2's format holds no offset -- strftime drops it and strptime reads
+  back naive. Refusing therefore IMPLEMENTS INV-6 rather than narrowing
+  past it, so no spec was amended and rule 14 asked for no gate. Note the
+  finding named write_comment; the function is write_comments.
+
+  _refuse_a_zoned_date mirrors _refuse_a_dangling_reply and runs before
+  anything is written. Tests cover the refusal, that the folder is
+  byte-identical afterwards, and two positive cases. A mutation probe over
+  four return routes initially left one alive -- halving the two-part
+  condition went unnoticed -- so a tzinfo yielding no offset, which Python
+  calls naive, is now pinned as accepted. All four routes are killed.
+
+  STILL OPEN, and deliberately not done here: PRESS-0006 §4.2 does not
+  NAME this decision the way PRESS-0005 §4.2 does for an entry. Adding it
+  would narrow the documented contract and so re-arms rule 14's gate. The
+  error message carries the instruction meanwhile.
   **Layman:** Old readers' comments can still be stored at the wrong time, in the way entries no longer can.
   Kind: review-fix.
   Source: in-session-2026-09-03, surfaced while closing PRESS-0067 item 6.
