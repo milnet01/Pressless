@@ -125,6 +125,14 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **The settings file is checked properly before Pressless acts on it** (PRESS-0066)
+  A version written by another Pressless is no longer mistaken for one this
+  build understands. A repository name carrying punctuation that would
+  change what gets asked of GitHub is refused, while every real repository
+  name still loads. A settings file too deeply nested to parse now gets a
+  sentence rather than a crash, and a save that cannot get started no
+  longer leaves a file handle open.
+
 - **Publishing reports a server error honestly, waits out GitHub's real rate limits, and never leaves a half-fetched folder** (PRESS-0046)
   A server error answering the last step of a publish now says the outcome
   is unknown rather than claiming the site did not move. GitHub's main rate

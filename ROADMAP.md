@@ -2589,7 +2589,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 synthesis -- threat model.
 
-- 📋 [PRESS-0066] **Settings low cluster: the version gate accepts true and 1.0, the repository gate admits query strings, and two rare escapes.**
+- ✅ [PRESS-0066] **Settings low cluster: the version gate accepts true and 1.0, the repository gate admits query strings, and two rare escapes.**
   All confirmed by execution unless noted.
 
   1. :84 -- `version != FILE_VERSION`. In Python True != 1 is False and
@@ -2619,6 +2619,17 @@
   the LOW threshold returns zero B110 hits, because that rule fires on
   bare except:/except Exception:, not a typed except OSError. Logged to
   the false-positive ledger.
+  Resolved (2026-09-04): all five closed in 0a1c559. Every claim was
+  re-confirmed by execution first -- the stale line numbers aside, all
+  five were real. Item 1 now checks the type with the value, since a bool
+  is an int in Python. Item 2 states GitHub's own name grammar; the
+  second-slash clause went with it as dead code. Verdict-diffed over 46
+  values: 18 moved, every one a reject that belongs, and all twelve real
+  repository names still load. Items 3 and 4 are one-line and one-block
+  fixes. Item 5 wanted no code change and now carries its reason inline;
+  the [tool: bandit B110] attribution stays wrong and stays in the ledger.
+  Spec §10 corrected -- it claimed nothing checked the version and
+  repository shapes, which these tests now do.
   **Layman:** Small holes in the settings file checks that let through values nobody intended.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane settings -- low cluster.
