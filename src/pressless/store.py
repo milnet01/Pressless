@@ -876,21 +876,32 @@ def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
 
 
 def _entry_text(entry: Entry) -> str:
-    """One entry file's text: the five recognised fields in §4.2's order, then
-    any extra fields in their original order, then the blank line, then the
-    body.
+    """One entry file's text: the recognised fields the entry HAS, in §4.2's
+    order, then any extra fields in their original order, then the blank line,
+    then the body.
+
+    Slug and Date are always written and are never empty; Title, Categories
+    and Tags appear only where they carry a value (§4.2). Writing the five
+    unconditionally added two empty lines to every entry of twelve imported
+    years -- Pressless editing files nobody asked it to change, against a
+    design that promises elsewhere they survive the round trip. Nothing is
+    lost by it: `read` takes an absent one as empty, so an omitted line and an
+    empty one parse alike.
 
     Shared by `write` and `write_template` because a template IS an entry file
-    (§4.2). Entry.extra carries no anchor into the recognised fields, and
-    inventing one would buy an ordering nothing reads.
+    (§4.2), and the rule is the emitter's, so it reaches both. Entry.extra
+    carries no anchor into the recognised fields, and inventing one would buy
+    an ordering nothing reads.
     """
-    lines = [
-        f"Title: {entry.title}",
-        f"Slug: {entry.slug}",
-        f"Date: {entry.date.strftime(_DATE_FORMAT)}",
-        f"Categories: {LIST_SEPARATOR.join(entry.categories)}",
-        f"Tags: {LIST_SEPARATOR.join(entry.tags)}",
-    ]
+    lines = []
+    if entry.title:
+        lines.append(f"Title: {entry.title}")
+    lines.append(f"Slug: {entry.slug}")
+    lines.append(f"Date: {entry.date.strftime(_DATE_FORMAT)}")
+    if entry.categories:
+        lines.append(f"Categories: {LIST_SEPARATOR.join(entry.categories)}")
+    if entry.tags:
+        lines.append(f"Tags: {LIST_SEPARATOR.join(entry.tags)}")
     lines.extend(f"{name}: {value}" for name, value in entry.extra)
     return "\n".join(lines) + "\n\n" + entry.body
 

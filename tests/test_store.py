@@ -1160,3 +1160,60 @@ def test_a_header_slug_the_store_cannot_write_is_refused_on_read(tmp_path):
     assert target.read_text(encoding="utf-8").startswith("Title: T"), (
         "the refused file was rewritten; read writes nothing (INV-2)"
     )
+
+
+# ------------------------------------------------------- PRESS-0060 item 1 ----
+
+
+def test_an_absent_recognised_field_is_not_written_back(tmp_path):
+    """§4.2: the header carries what the entry has and nothing else.
+
+    Asserts the emitted BYTES. A re-read cannot see this: §4.2 reads an absent
+    Title, Categories or Tags as empty, so an omitted line and an empty one
+    produce the same Entry and an assertion on the round trip passes against
+    either.
+
+    Breaks when the header is built from the five names unconditionally, which
+    adds two lines to every entry of twelve imported years -- Pressless
+    editing files nobody asked it to change.
+    """
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    target = published / f"an-example{_SUFFIX}"
+    target.write_bytes(
+        b"Slug: an-example\nDate: 2014-11-09 21:32:00\n\nbody\n"
+    )
+
+    write(tmp_path, read(target), draft=False)
+
+    written = target.read_bytes()
+    # All three, because each is a separate branch: a fixture carrying a
+    # title leaves the Title branch unexercised, and an untitled entry is
+    # the archive's common case rather than an edge one (§4.2).
+    for absent in (b"Title:", b"Categories:", b"Tags:"):
+        assert absent not in written, (
+            f"a {absent.decode()} line was added to an entry that never had "
+            f"one: {written!r}"
+        )
+    assert written == (
+        b"Slug: an-example\nDate: 2014-11-09 21:32:00\n\nbody\n"
+    ), f"the entry did not survive its own round trip: {written!r}"
+
+
+def test_a_recognised_field_the_entry_has_is_still_written(tmp_path):
+    """The other half of §4.2's rule: omission is for an EMPTY value only.
+
+    Without this the rule above is satisfied by an emitter that drops
+    Categories and Tags always, which would lose the site its categories and
+    its tags -- what §4.2 says losing them costs.
+    """
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    target = write(tmp_path, _entry(slug="an-example", title="A title",
+                                    categories=("poetry",),
+                                    tags=("one", "two")), draft=False)
+
+    written = target.read_bytes()
+    assert b"Title: A title\n" in written, f"title lost: {written!r}"
+    assert b"Categories: poetry\n" in written, f"categories lost: {written!r}"
+    assert b"Tags: one, two\n" in written, f"tags lost: {written!r}"
