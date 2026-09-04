@@ -218,13 +218,23 @@ Every single newline is a line break.
   refusal. Refusing them everywhere is what makes an entry that saves
   on one machine save on the other, and it keeps one rule rather than a
   rule per system.
-- **`Slug` and `Date` must be present and non-empty on write. `Title`,
-  `Categories` and `Tags` must be present on write and may be empty.**
-  An untitled entry is ordinary here, not an error — a large share of
-  the archive has no title, which `tests/test_store_archive.py`
-  measures. **A large share of what Import brings has no slug either**,
+- **`Slug` and `Date` are always written and are never empty. `Title`,
+  `Categories` and `Tags` are written only where the entry has a
+  value.** An untitled entry is ordinary here, not an error — a large
+  share of the archive has no title, which
+  `tests/test_store_archive.py` measures. **A large share of what Import brings has no slug either**,
   WordPress rarely giving a draft one; supplying it is PRESS-0007's,
   by decision 4's rule, and the Store simply refuses an empty one.
+- **The header carries what the entry has and nothing else.** A file
+  the writer never gave a `Categories` line comes back without one.
+  Writing the five unconditionally would add two empty lines to every
+  entry of twelve imported years, which is Pressless editing files
+  nobody asked it to change — and the design promises everywhere else
+  that his files survive the round trip. Predictable shape is the
+  argument the other way and it loses to that. Nothing is lost either
+  way: the read rule below takes an absent `Title`, `Categories` or
+  `Tags` as empty, so an omitted line and an empty one parse alike.
+  *Agreed with the user 2026-09-02.*
 - **On read, an absent `Title`, `Categories` or `Tags` is empty rather
   than an error.** Only `Slug` and `Date` missing is a parse failure.
   S3 invites hand-editing, and a file someone trimmed a blank `Tags:`
@@ -343,9 +353,11 @@ target, which is atomic on both Windows and Linux — so a crash
 mid-save leaves the previous file rather than half an entry. This is
 the shape `src/pressless/settings.py::save` already uses.
 
-The five recognised fields are written first, in the order §4.2 lists
-them, then any `extra` fields in their original order, then the blank
-line, then the body.
+The recognised fields the entry has are written first, in the order
+§4.2 lists them, then any `extra` fields in their original order, then
+the blank line, then the body. `Slug` and `Date` are always among
+them; `Title`, `Categories` and `Tags` appear only where they carry a
+value (§4.2).
 
 ### 4.6 What the Store never does
 
@@ -677,6 +689,7 @@ imports.
 | LF endings and atomic replace behaving this way on Windows | **nothing** — this suite runs on Linux, and `os.replace` is documented atomic on both. PRESS-0022 stages the built executable to a Windows box, which is the only place it would be observed |
 | The Windows path limit (§6) | **nothing** — same reason. The failure mode is named so that it is recognised rather than diagnosed |
 | §4.2's reserved device names | `tests/test_store.py::test_every_windows_device_name_is_refused_and_near_misses_are_not`, which asserts the whole set rather than one member, plus six near misses; and `::test_a_reserved_name_is_refused_before_anything_is_written` for `path_for` and `exists`. INV-9's own test carries the case §5 names |
+| §4.2's rule that the header carries only what the entry has | `tests/test_store.py::test_an_absent_recognised_field_is_not_written_back`, which asserts the emitted bytes rather than a re-read — a re-read cannot see the difference, since an omitted line and an empty one parse alike, so an assertion on the round-tripped `Entry` passes against either |
 | §4.3's case-insensitive suffix | `tests/test_store.py::test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree`, which asserts `list_slugs` and `exists` TOGETHER — the defect was the pair disagreeing, so either alone passes against a half-fix |
 | That a reserved name is refused on WINDOWS rather than merely refused | **nothing** — this suite runs on Linux, so what is proved here is that the Store refuses the name, not what Windows would have done with it. PRESS-0022 is where that becomes observable |
 
