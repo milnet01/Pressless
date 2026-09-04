@@ -245,6 +245,15 @@ would fail a first publish for a condition GitHub expects the caller to
 wait out. A first publish writes the whole site and is therefore slow —
 ADR-0002 says so — and every publish after it writes a handful of files.
 
+**The hint arrives two ways, and one too long to honour is refused.** A
+secondary limit answers 429, or 403 carrying a `Retry-After`. The primary
+limit sends no `Retry-After` at all: it reports a spent budget as
+`x-ratelimit-remaining: 0` and names when it resets. Reading only
+`Retry-After` made that an ordinary refusal, which sends the writer to
+replace a key that is perfectly good. A hint naming longer than a publish
+will block for raises `RateLimited` rather than being slept out, so the
+writer is told rather than left waiting (PRESS-0046).
+
 ### 4.4 What is never touched
 
 Settings holds the untouchable list. An entry on it is **neither written
@@ -299,6 +308,11 @@ fetched directory never held.
 
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
+
+**Nothing lands in `into` until every file has been fetched.** Written as
+they go, a failure part-way leaves a mixture of the previous state and
+whatever was already there — which the Face cannot tell from a complete
+fetch, and undo is the feature that must not produce one (PRESS-0046).
 
 **The consequence of §3 decision 1 lives here.** A second `fetch_previous`
 called after an undo has been published reads the parent of the undo
@@ -422,6 +436,7 @@ behaviour.
 | The publish would remove every unprotected path and write none | `PublishError` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| GitHub answers a server error **to** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing | `RepositoryMissing` | unchanged |
 | Branch moved since the listing was read | `Conflict` | unchanged |
@@ -435,7 +450,12 @@ matters.** §4.3's property is that nothing a reader sees changes until the
 reference update — so a failure *during* that update is the single case
 where the site's state is genuinely unknown. Reporting it as unchanged
 would tell the writer his site had not moved when it had, which is exactly
-the S6 promise §2 says this design exists to keep. `OutcomeUnknown` is a
+the S6 promise §2 says this design exists to keep. **A server error is that
+same case and not a refusal**: a gateway can fail after the update was
+applied, so it leaves the state exactly as unknown as a dropped connection
+does. Every other status is a definitive answer — GitHub authenticates and
+validates before it acts — so each keeps its own row and its *unchanged*
+(PRESS-0046). `OutcomeUnknown` is a
 type of its own so the Face has something to branch on — a shared type
 would leave it unable to tell the two apart. It must say the outcome is
 unknown rather than claim either; confirming would mean reaching GitHub,
@@ -518,6 +538,9 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` |
+| §6's server-error route to `OutcomeUnknown` | `tests/test_publisher.py::test_a_server_error_on_the_reference_update_is_outcome_unknown`, which also holds a refusal to its own row |
+| §4.3's two hint shapes, and the bound on one | `tests/test_publisher.py::test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal`, `::test_a_rate_limit_naming_no_interval_waits_the_documented_minute` and `::test_a_wait_longer_than_the_bound_is_refused_rather_than_slept` |
+| §4.5's all-or-nothing fetch | `tests/test_publisher.py::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` |
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
 | That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |
 

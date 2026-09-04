@@ -20,6 +20,9 @@ import base64
 import hashlib
 import http.client
 import json
+import os
+import shutil
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -37,6 +40,18 @@ API = "https://api.github.com"
 # wait is honoured and the write retried; only an exhausted bound raises.
 PACE_SECONDS = 1.0
 MAX_RETRIES = 4
+
+# What to wait when GitHub says slow down and names no interval. Its own
+# documentation asks for at least a minute; waiting PACE_SECONDS instead spent
+# the whole retry bound in about four seconds, so the retry could not clear a
+# limit it had never waited out (PRESS-0046).
+RATE_LIMIT_SECONDS = 60.0
+
+# The longest wait honoured. A secondary limit asks for seconds; the PRIMARY
+# one names a reset that can be most of an hour away, and sleeping that out
+# would block with nothing said to the writer. A longer ask raises RateLimited
+# instead, which §6 already gives the Face a row for (PRESS-0046).
+MAX_WAIT_SECONDS = 120.0
 
 # Every blob is written with the ordinary file mode. §4.3 takes one rule for
 # prose and photographs alike rather than two split by a property of the file.
@@ -332,6 +347,12 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     A fetched file lands at `into` joined to its full repository-relative
     path, with `prefix` used to SELECT and never to strip, so Fetched.paths
     and the layout under `into` are the same strings.
+
+    Nothing lands in `into` until every file has been fetched. Writing them
+    as it went left a failure part-way through as a mixture of the previous
+    state and whatever was already there, which the Face cannot tell from a
+    complete fetch -- and undo is the feature that must not produce one
+    (PRESS-0046).
     """
     session = _Session(transport or _Urllib(), token)
     current = session.read(_repo_url(settings.repository, "commits/HEAD"))
@@ -343,36 +364,64 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     parent = _required(parents[0], "sha", "the first parent")
 
     listing = _tree(session, settings.repository, parent)
-    written = []
-    for entry in listing.get("tree", []):
-        path = entry.get("path")
-        if not path or entry.get("type") != "blob":
-            continue
-        if not _within_prefix(path, prefix):
-            continue
-        # _blobs_in reads the same field with .get; this site indexed it
-        # and raised a bare KeyError on an entry without one, which is
-        # neither of §4.1's types (PRESS-0073).
-        sha = _required(entry, "sha", f"a sha for {path!r}")
-        blob = session.read(
-            _repo_url(settings.repository, f"git/blobs/{_segment(sha)}")
-        )
-        target = Path(into) / path
-        if not _within_folder(target, Path(into)):
-            raise PublishError(
-                f"the repository listing names {path!r}, which would be "
-                f"written outside the folder asked for"
+    into = Path(into)
+    try:
+        # Staged inside `into` rather than beside it, so the move at the end
+        # is a rename on one filesystem rather than a copy that can fail
+        # half-done. The same temp-then-replace shape settings.save uses.
+        into.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(dir=into, prefix=".fetch-"))
+    except OSError as exc:
+        # A full disk, or a folder that cannot be written. §4.1 says every
+        # failure is one of the types above (PRESS-0073).
+        raise PublishError(
+            f"the previous state could not be written to {into}: {exc}"
+        ) from exc
+
+    try:
+        written = []
+        for entry in listing.get("tree", []):
+            path = entry.get("path")
+            if not path or entry.get("type") != "blob":
+                continue
+            if not _within_prefix(path, prefix):
+                continue
+            # _blobs_in reads the same field with .get; this site indexed it
+            # and raised a bare KeyError on an entry without one, which is
+            # neither of §4.1's types (PRESS-0073).
+            sha = _required(entry, "sha", f"a sha for {path!r}")
+            blob = session.read(
+                _repo_url(settings.repository, f"git/blobs/{_segment(sha)}")
             )
+            target = staging / path
+            if not _within_folder(target, staging):
+                raise PublishError(
+                    f"the repository listing names {path!r}, which would be "
+                    f"written outside the folder asked for"
+                )
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(_content_of(blob))
+            except OSError as exc:
+                raise PublishError(
+                    f"the previous state could not be written to {into}: "
+                    f"{exc}"
+                ) from exc
+            written.append(path)
+
         try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(_content_of(blob))
+            # Every directory first, so the moves that follow are renames
+            # with nothing left to fail on.
+            for path in written:
+                (into / path).parent.mkdir(parents=True, exist_ok=True)
+            for path in written:
+                os.replace(staging / path, into / path)
         except OSError as exc:
-            # A full disk, or a folder that cannot be written. §4.1 says
-            # every failure is one of the types above (PRESS-0073).
             raise PublishError(
-                f"the previous state could not be written to {target}: {exc}"
+                f"the previous state could not be written to {into}: {exc}"
             ) from exc
-        written.append(path)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
 
     return Fetched(commit=parent, paths=tuple(sorted(written)))
 
@@ -421,6 +470,13 @@ class _Session:
 
             hint = _retry_hint(status, response_headers)
             if hint is not None:
+                if hint > MAX_WAIT_SECONDS:
+                    # Honouring it would block for as long as GitHub asked,
+                    # with nothing said to the writer (PRESS-0046).
+                    raise RateLimited(
+                        f"GitHub asked us to wait {hint:.0f}s on {method} "
+                        f"{url}, longer than a publish will block for"
+                    )
                 attempts += 1
                 if attempts > MAX_RETRIES:
                     raise RateLimited(
@@ -432,6 +488,19 @@ class _Session:
 
             if status in (200, 201):
                 return _parse(data)
+            if outcome_unknown and status >= 500:
+                # An answer, but not one that says whether the branch moved:
+                # a gateway can fail after the update was applied, which
+                # leaves the site exactly as unknown as a dropped connection
+                # does. §6's OutcomeUnknown row reads "no answer" and this is
+                # its other route (PRESS-0046). Every other status is a
+                # definitive refusal -- GitHub authenticates and validates
+                # before it acts -- so those keep their own type and their
+                # row's "unchanged".
+                raise OutcomeUnknown(
+                    f"GitHub answered {status} to the reference update, so "
+                    f"whether the site moved is unknown"
+                )
             raise _failure(status, method, url)
 
 
@@ -587,21 +656,33 @@ def _retry_hint(status: int, headers: dict[str, str]) -> float | None:
     """The wait GitHub asked for, or None where it asked for none.
 
     A breach of the write pace is answered with a hint rather than a plain
-    refusal (§4.3), so it is honoured rather than raised. GitHub sends it as
-    429, and as 403 carrying a Retry-After -- a 403 without one is an
-    ordinary refusal and must not be retried.
+    refusal (§4.3), so it is honoured rather than raised. GitHub sends it two
+    ways. A SECONDARY limit answers 429, or 403 carrying a Retry-After. The
+    PRIMARY limit sends no Retry-After at all -- it reports a spent budget as
+    x-ratelimit-remaining: 0 and names the reset in x-ratelimit-reset, so
+    reading only Retry-After made it fall through to Refused and tell the
+    writer to re-enter a key that is fine (PRESS-0046).
+
+    A 403 carrying neither is an ordinary refusal and must not be retried.
     """
-    after = None
-    for key, value in headers.items():
-        if key.lower() == "retry-after":
-            after = value
-            break
-    if status != 429 and not (status == 403 and after is not None):
+    header = {key.lower(): value for key, value in headers.items()}
+    after = header.get("retry-after")
+    spent = str(header.get("x-ratelimit-remaining", "")).strip() == "0"
+    if status != 429 and not (status == 403 and (after is not None or spent)):
         return None
-    try:
-        return max(float(after), 0.0) if after is not None else PACE_SECONDS
-    except (TypeError, ValueError):
-        return PACE_SECONDS
+    if after is not None:
+        try:
+            return max(float(after), 0.0)
+        except (TypeError, ValueError):
+            return RATE_LIMIT_SECONDS
+    if spent:
+        # An absolute epoch second, so the wait is what is left of it; a reset
+        # already past means the budget is back and the retry can go now.
+        try:
+            return max(float(header["x-ratelimit-reset"]) - time.time(), 0.0)
+        except (KeyError, TypeError, ValueError):
+            return RATE_LIMIT_SECONDS
+    return RATE_LIMIT_SECONDS
 
 
 def _names_the_repository(url: str) -> bool:

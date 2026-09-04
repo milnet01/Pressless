@@ -21,6 +21,7 @@ import http.client
 import inspect
 import json
 import os
+import time
 import urllib.request
 from pathlib import Path
 
@@ -196,10 +197,12 @@ class _Transport:
     `responses` stays the positional fallback for anything it does not name.
 
     `rate_limited_writes` answers that many non-GET requests with a
-    429-shaped rate-limit hint before falling through to `writes` /
-    `responses`; `-1` means every write is rate-limited (INV-9's
-    exhausted-bound case). Reads are never rate-limited, matching §4.3's
-    "writes are paced".
+    rate-limit answer before falling through to `writes` / `responses`;
+    `-1` means every write is rate-limited (INV-9's exhausted-bound
+    case). Reads are never rate-limited, matching §4.3's "writes are
+    paced". `rate_limit_answer` is that answer, defaulting to the
+    429-with-Retry-After shape; PRESS-0046 hands it the other shapes
+    GitHub really sends, which differ only in status and headers.
 
     `.waits` records every `wait(seconds)` call, in order -- INV-9 reads
     it for pacing.
@@ -213,6 +216,7 @@ class _Transport:
         fail_at: str | None = None,
         fail_on_read: bool = False,
         rate_limited_writes: int = 0,
+        rate_limit_answer: tuple[int, dict[str, str], bytes] | None = None,
     ) -> None:
         self.requests: list[tuple[str, str, bytes | None, dict[str, str]]] = []
         self.waits: list[float] = []
@@ -224,6 +228,9 @@ class _Transport:
         self._fail_at = fail_at
         self._fail_on_read = fail_on_read
         self._rate_limited_writes = rate_limited_writes
+        self._rate_limit_answer = rate_limit_answer or (
+            429, {"Retry-After": "1"}, b'{"message": "rate limited"}'
+        )
         self._rate_limit_hits = 0
         self._failed = False
 
@@ -240,7 +247,7 @@ class _Transport:
             or self._rate_limit_hits < self._rate_limited_writes
         ):
             self._rate_limit_hits += 1
-            return (429, {"Retry-After": "1"}, b'{"message": "rate limited"}')
+            return self._rate_limit_answer
         if _is_write(method):
             for substring, response in self._writes:
                 if substring in url:
@@ -1294,3 +1301,160 @@ def test_a_fetch_that_cannot_be_written_is_a_typed_failure(tmp_path):
 
     with pytest.raises(PublishError):
         fetch_previous(_settings(), "a-token", into, transport=transport)
+
+
+# ------------------------------------------------------------ PRESS-0046 ----
+#
+# Three review-code findings (2026-08-31), grouped because they share the
+# failure path. Regression tests, not invariants: §4.3, §4.5 and §6 already
+# state the rule each one holds the code to.
+
+
+def test_a_server_error_on_the_reference_update_is_outcome_unknown(tmp_path):
+    """A 5xx ANSWER to the reference update raised a plain PublishError,
+    though a gateway can fail after the update was applied -- so the site's
+    state is exactly as unknown as it is after a dropped connection, and the
+    Face would have said "unchanged" when it may have moved (§6).
+
+    Every OTHER status stays what §6 already makes it. GitHub authenticates
+    and validates before it acts, so a refusal is definitive and its row
+    reads "unchanged"; a 401 is asserted here because widening the rule past
+    5xx would hide "your key was rejected" behind "your site may have moved".
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    settings = _settings()
+
+    gateway_failed = _Transport(
+        reads=_reads(listing),
+        writes=[("/git/refs", (502, {}, b'{"message": "Bad gateway"}'))] + _writes(),
+    )
+    with pytest.raises(OutcomeUnknown):
+        publish(settings, tmp_path, "a-token", "message", transport=gateway_failed)
+
+    key_rejected = _Transport(
+        reads=_reads(listing),
+        writes=[("/git/refs", (401, {}, b'{"message": "Bad credentials"}'))] + _writes(),
+    )
+    with pytest.raises(Refused):
+        publish(settings, tmp_path, "a-token", "message", transport=key_rejected)
+
+
+def test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal(tmp_path):
+    """GitHub's PRIMARY limit answers 403 with x-ratelimit-remaining: 0 and
+    NO Retry-After. Reading only Retry-After, that fell through to Refused --
+    telling the writer to re-enter a key that is perfectly good, when §4.3
+    says a breach is waited out and retried.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=_writes(),
+        rate_limited_writes=1,
+        rate_limit_answer=(
+            403,
+            {"X-RateLimit-Remaining": "0",
+             "X-RateLimit-Reset": str(int(time.time()) + 5)},
+            b'{"message": "API rate limit exceeded"}',
+        ),
+    )
+
+    outcome = publish(_settings(), tmp_path, "a-token", "message",
+                      transport=transport)
+
+    assert isinstance(outcome, Outcome) and outcome.commit, (
+        "a publish that hit GitHub's primary rate limit did not complete; "
+        "§4.3 waits the breach out and retries rather than raising"
+    )
+    assert transport.waits, (
+        "no wait() was recorded for the primary rate limit, so it was not "
+        "honoured"
+    )
+
+
+def test_a_rate_limit_naming_no_interval_waits_the_documented_minute(tmp_path):
+    """A 429 carrying no Retry-After waited PACE_SECONDS, so the whole retry
+    bound was spent in about four seconds against a limit GitHub documents as
+    at least a minute -- the retry could not clear it (§4.3).
+
+    The minute is held here rather than imported: sharing the module's own
+    constant would compare it against itself.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=_writes(),
+        rate_limited_writes=1,
+        rate_limit_answer=(429, {}, b'{"message": "rate limited"}'),
+    )
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    # The first write is not paced (nothing precedes it), so the first wait
+    # recorded is the rate-limit hint rather than the pacing interval.
+    assert transport.waits and transport.waits[0] >= 60.0, (
+        f"a hintless rate limit was waited out for {transport.waits[:1]!r}; "
+        f"GitHub documents at least a minute"
+    )
+
+
+def test_a_wait_longer_than_the_bound_is_refused_rather_than_slept(tmp_path):
+    """The honoured wait had no upper bound, so Retry-After: 3600 became a
+    one-hour blocking sleep with nothing said to the writer. §6 already has a
+    row the writer can act on.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        rate_limited_writes=-1,
+        rate_limit_answer=(429, {"Retry-After": "3600"},
+                           b'{"message": "rate limited"}'),
+    )
+
+    with pytest.raises(RateLimited):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    assert not transport.waits, (
+        f"an hour-long wait was slept rather than refused: {transport.waits!r}"
+    )
+
+
+def test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was(tmp_path):
+    """fetch_previous wrote each file as it went, so a failure part-way left a
+    mixture of the previous state and whatever was already there -- which the
+    Face cannot tell from a complete fetch. Undo is the feature that must not
+    produce one (§4.5).
+
+    The second entry carries no sha, which fails the fetch after the first has
+    already been read -- a part-way failure arranged without a full disk.
+    """
+    into = tmp_path / "into"
+    into.mkdir()
+    (into / "already-here.txt").write_text("untouched", encoding="utf-8")
+
+    listing = json.dumps({
+        "tree": [
+            {"path": "index.html", "type": "blob", "sha": "a-blob-sha"},
+            {"path": "second.html", "type": "blob"},
+        ],
+        "truncated": False,
+    }).encode("utf-8")
+
+    transport = _Transport(
+        reads=_reads(listing, blob=b"<html>the state before</html>")
+    )
+
+    with pytest.raises(PublishError):
+        fetch_previous(_settings(), "a-token", into, transport=transport)
+
+    left = sorted(path.name for path in into.iterdir())
+    assert left == ["already-here.txt"], (
+        f"a fetch that failed part-way left {left!r} in the folder; nothing "
+        f"may land there until every file has been fetched"
+    )
