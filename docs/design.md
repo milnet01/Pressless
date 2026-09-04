@@ -190,7 +190,9 @@ repository rather than reading it from this paragraph.
 
 **The rule says what the list must contain; the list is what the
 Publisher consults.** At publish it removes any path absent from the
-folder it was handed unless its first segment is on the list. It never
+folder it was handed unless its first segment is on the list, matched
+with any trailing slash on the entry ignored: Settings accepts `CNAME/`,
+and compared exactly that entry protects nothing. It never
 re-evaluates the rule there — the Builder stops producing a page the
 writer has just deleted too, so the rule would protect exactly what he
 asked to remove. **Setup derives it — the Face asks the Publisher what
