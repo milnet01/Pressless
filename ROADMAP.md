@@ -2545,7 +2545,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.
 
-- 📋 [PRESS-0061] **PRESS-0009 generalises every failure to "the site is unchanged", which its own 4.3 does not support, and misdescribes its own prefix rule.**
+- ✅ [PRESS-0061] **PRESS-0009 generalises every failure to "the site is unchanged", which its own 4.3 does not support, and misdescribes its own prefix rule.**
   DOCUMENT SIDE. Gate with review-contract
   docs/specs/PRESS-0009-publisher.md --genre spec.
 
@@ -2600,6 +2600,37 @@
 
   NEXT: review-contract docs/specs/PRESS-0009-publisher.md --genre spec. Commit
   975bdec is its baseline.
+  Resolved (2026-09-05). The gate this bullet asked for has run:
+  review-contract on docs/specs/PRESS-0009-publisher.md, genre spec, two
+  loops of three cold lanes, twelve verified and eleven fixed. Cap reached
+  and calm -- none of loop 2's findings landed on text loop 1 wrote.
+
+  Loop 1 fixed six. The Status line still surfaced design rule 5's missing
+  write as open while section 11 records it closed by PRESS-0026. Section
+  4.4 was credited by 4.5 and 10 with a trailing-slash tolerance it never
+  stated; executed, settings.load accepts "CNAME/" and stores the slash,
+  so an entry compared exactly protects nothing. INV-5's test clause fails
+  a conforming module, which sends force explicitly false. INV-9 said
+  RateLimited is raised only once the bound is exhausted, which 4.3's
+  too-long branch contradicts. Section 4.3 now says what a limit naming no
+  usable interval waits. Section 4.5's "nothing lands in into" was false --
+  staging is inside it, and staging beside it makes the last step a
+  cross-filesystem copy.
+
+  Loop 2 fixed five and filed one. All three lanes found section 6 giving
+  RepositoryMissing to any repository resolving to nothing; executed, only
+  the request naming the repository itself yields it, so the Face's setup
+  branch for a mistyped repository was dead. "Every row but one says
+  unchanged" against two unknown rows. Section 7's "every test hands in a
+  double" against an import walk and three client tests.
+
+  Filed rather than applied, a docs gate not editing code: PRESS-0095 (a
+  malformed blob answer escapes the typed contract) and PRESS-0096
+  (design.md admits one unknown-outcome case where section 6 has two).
+
+  Recorded: the gate was armed by 975bdec and not one of the twelve
+  findings landed inside that span, so this run was an audit of the whole
+  document rather than a gate on its trigger.
   **Layman:** The publishing document promises the site is untouched after any failure, and there is one case where nobody can know that.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane publisher -- document side.
