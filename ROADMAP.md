@@ -4280,6 +4280,53 @@
   Kind: implement.
   Source: review-contract 2026-09-05 loop 4 on PRESS-0006 -- code side of three findings.
 
+- 📋 [PRESS-0095] **A malformed blob answer escapes the Publisher's typed-failure contract, and two docstrings still carry a claim the spec has narrowed.**
+  PRESS-0009 4.1 says every failure this module raises is one of its
+  types. `_content_of` calls `base64.b64decode` and `.encode` with no
+  guard, so a blob answer whose content is malformed or is not a string
+  escapes untyped.
+
+  Executed 2026-09-05 against the shipped module: a short base64 string
+  raises binascii.Error, a non-string raises TypeError, and a non-string
+  under a non-base64 encoding raises AttributeError. Only an ABSENT
+  content field is typed. Every neighbouring conversion is guarded and
+  cites PRESS-0073; this is the site that was missed.
+
+  The Face branches on 4.1's types, so an untyped escape reaches the
+  last-resort catch instead of a sentence about the site. The spec is the
+  contract and is right; the module is in breach.
+
+  Also here, because they share the fix pass: two docstrings still say
+  RepositoryMissing means settings.repository resolves to nothing --
+  publisher.py's class docstring and test_publisher.py's docstring for
+  test_a_missing_blob_is_not_reported_as_a_missing_repository. Section 6
+  now scopes the type to the request that names the repository itself,
+  which is what that test already pins.
+
+  A docs gate may not edit code, so it is filed rather than applied.
+  **Layman:** One kind of bad answer from GitHub reaches the writer as "something went wrong" instead of a sentence about his site.
+  Kind: review-fix.
+  Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
+
+- 📋 [PRESS-0096] **design.md admits one unknown-outcome case and the Publisher now reaches that state by two routes.**
+  docs/design.md section Errors says the unknown-outcome sentence covers
+  the reference update being sent and no result coming back, and calls
+  that the one case S6 admits.
+
+  PRESS-0009 section 6 reaches the same state by a second route: a server
+  error answering that update, which IS a result coming back. PRESS-0046
+  established the route and design.md was not amended with it.
+
+  A Face built from design.md reports the site unchanged for a publish
+  that may have gone out -- the S6 breach both documents say the design
+  exists to prevent.
+
+  PRESS-0009 section 11 names this as another document's gate. design.md
+  is gated as an ADR, so the amendment re-arms that gate.
+  **Layman:** The design document promises the writer a clear answer in a case where the app can no longer give one.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
