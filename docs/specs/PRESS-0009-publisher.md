@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Two cold-eyes loops, both folded in, nothing left unfixed — the run reached the spec cap of 2. **A cap on the violent side:** four of the last loop's seven findings landed on text the run itself wrote, three of them the one subject — the transport seam loop 1 introduced and loop 2 pinned on its remaining axes. Implementation is the better third reviewer and this document is routed there rather than to another gate. **One finding is surfaced rather than applied:** `docs/design.md` rule 5 permits the Publisher to read and names no write, while §4.5 has `fetch_previous` write a fetched state to disk. That is another document's gate.
+**Status:** accepted (2026-08-26). Two cold-eyes loops, both folded in, nothing left unfixed — the run reached the spec cap of 2. **A cap on the violent side:** four of the last loop's seven findings landed on text the run itself wrote, three of them the one subject — the transport seam loop 1 introduced and loop 2 pinned on its remaining axes. Implementation is the better third reviewer and this document is routed there rather than to another gate.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -256,7 +256,9 @@ limit sends no `Retry-After` at all: it reports a spent budget as
 `Retry-After` made that an ordinary refusal, which sends the writer to
 replace a key that is perfectly good. A hint naming longer than a publish
 will block for raises `RateLimited` rather than being slept out, so the
-writer is told rather than left waiting (PRESS-0046).
+writer is told rather than left waiting. A limit naming no usable interval
+waits GitHub's documented minimum rather than the pacing interval, which
+would spend the whole retry bound in seconds (PRESS-0046).
 
 ### 4.4 What is never touched
 
@@ -265,12 +267,16 @@ nor removed**, whatever the handed folder contains. Both halves matter:
 a list applied only to deletion still lets a stray file in the folder
 overwrite the entry holding the custom domain.
 
-**An entry is a bare repository-root name with no trailing slash, and it
-matches a path's FIRST segment.** So an entry naming a directory protects
-everything beneath it, and one naming a file matches only that file.
-Comparing whole paths for equality instead would leave every file inside
-an untouchable directory unprotected, which is the failure this list
-exists to prevent.
+**An entry is a bare repository-root name, and it matches a path's FIRST
+segment.** So an entry naming a directory protects everything beneath it,
+and one naming a file matches only that file. Comparing whole paths for
+equality instead would leave every file inside an untouchable directory
+unprotected, which is the failure this list exists to prevent.
+
+**A trailing slash on an entry is ignored rather than trusted to be
+absent.** PRESS-0001's `load` accepts `CNAME/` and stores it as written,
+so an entry compared exactly would protect nothing while reading as
+configured.
 
 Every other path is made to match the folder, deletions included, so a
 page the writer removes actually goes.
@@ -315,10 +321,13 @@ refuses one that does.
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
 
-**Nothing lands in `into` until every file has been fetched.** Written as
-they go, a failure part-way leaves a mixture of the previous state and
-whatever was already there — which the Face cannot tell from a complete
-fetch, and undo is the feature that must not produce one (PRESS-0046).
+**No fetched file lands at its final path under `into` until every file
+has been fetched.** Written as they go, a failure part-way leaves a mixture
+of the previous state and whatever was already there — which the Face
+cannot tell from a complete fetch, and undo is the feature that must not
+produce one (PRESS-0046). Staging goes in a temporary directory **inside**
+`into`, so the last step is a rename on one filesystem; staged beside it,
+that step is a cross-filesystem copy that can fail half-done.
 
 **The consequence of §3 decision 1 lives here.** A second `fetch_previous`
 called after an undo has been published reads the parent of the undo
@@ -390,8 +399,8 @@ behaviour.
   moved since the listing was read raises `Conflict` rather than
   overwriting.
   *Test:* `tests/test_publisher.py::test_branch_that_moved_is_a_conflict`
-  — assert no request body sets force, and that a refused update surfaces
-  as `Conflict`.
+  — assert no request body sets force TRUE, the update sending it
+  explicitly false; and that a refused update surfaces as `Conflict`.
   *Breaks when:* an implementer forces the update to clear a failure seen
   during development, which converts a refusal into silent data loss.
   **Asserting the type is what makes it bite:** an unreachable network
@@ -425,11 +434,13 @@ behaviour.
   parent as soon as anything is merged.
 
 - **INV-9** — Successive write requests are separated by the pacing wait,
-  and a retry hint is waited out and retried rather than raised.
+  and a retry hint short enough to honour is waited out and retried rather
+  than raised.
   *Test:* `tests/test_publisher.py::test_writes_are_paced_and_hints_retried`
   — a recording transport capturing the wait between writes, plus one
   answering the first write with a retry hint; assert the write is retried
-  and that `RateLimited` is raised only once the bound is exhausted.
+  and that `RateLimited` is raised once the bound is exhausted. §4.3 owns
+  the hint too long to honour, which is refused without waiting at all.
   *Breaks when:* an implementer writes as fast as the loop allows, which
   passes every other test in this file and fails on a first publish
   against the real service.
@@ -585,3 +596,4 @@ code, so a green INV-1 says nothing about the rest.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-26 | 3, cold — genre pinned `spec`; packet carried design.md rules 1-10, § The parts and § Errors, ADR-0002 and `settings.py` whole, and the executed blob-hash measurement. GitHub's live API declared an unrunnable region, so Q1 was out of scope there | 0 | 2 | 5 | 1 | **Eight verified, eight fixed, none dismissed. First gate on this document.** **All three lanes independently found the same two defects**, the strongest signal in the run. The spec never named **which reference it writes** — `Settings` carries no branch field, §11 claimed PRESS-0001 was unchanged, and `publish`, `root_entries` and `fetch_previous` must all agree; one builder hard-codes `main`, another resolves the default branch, a third adds a settings key and falsifies §11. And §7 required a **transport seam that §4.1 never declared**, while §1 closed the surface at "three requests and nothing else" — six of the eight invariant tests bind to that seam, so the test set rested on a contract the document did not state. Both are now in §4.1, the branch resolved per call and never stored. **The best single finding came from one lane and reaches the writer.** §6's table generalised that every failure leaves the site *unchanged*, which §4.3 supports only for an interruption **earlier than** the reference update — so a connection lost *during* that update would have had the Face tell the writer "Your site has not changed" for a publish that went out, breaking S6, the one promise §2 says this design exists to keep. That row is now split and its state named unknown. **One finding was the orchestrator's own process defect:** PRESS-0010 is a separate roadmap item whose entire scope — `fetch_previous`, `Fetched`, `NoPreviousState`, §4.5 and INV-8 — this spec had absorbed silently, because `write-spec` Step 1 item 5's id count was never run. It is now an umbrella naming both ids, per `spec-format.md` §2. **Two more were unstated contracts other parts bind to:** what the Publisher *does* with a rate-limit hint (it now waits and retries, raising the new `RateLimited` only when the bound is exhausted), and the untouchable list's string form — an entry naming a *directory* matched by equality would have deleted every file beneath it, so entries now match a path's first segment and INV-2 gains a directory fixture. **Q1 was zero**, which is what the packet bought: the two claims a lane could not check were the ones already executed before dispatch. **Three open questions resolved clean and are not counted** — § The stack does name one runtime dependency plus the imaging library, `tests/test_credentials.py` exists, and ROADMAP PRESS-0009 does carry the undo question as open. **One true finding was left unfixed as immaterial:** §9 does not name PRESS-0021 as the owner of the list's derivation, which changes nothing anyone builds. |
 | 2 | 2026-08-26 | 3, cold — identical brief, packet rebuilt whole from disk and extended with § The stack, PRESS-0010's roadmap body and PRESS-0001's §10 hand-off row. GitHub's live API still an unrunnable region | 0 | 2 | 5 | 0 | **Seven verified, seven fixed; one dismissed as immaterial. Cap reached (2 for a spec); the tail is empty and the run ships.** **A cap on the violent side: four of the seven landed on text THIS RUN wrote**, each anchor checked against loop 1's ledger rather than recalled. What qualifies that reading is the shape — none of the four says loop 1's fix was *wrong*; each says it was incomplete, and three are one subject. **All three lanes independently found that subject:** loop 1 declared a `Transport` seam returning `(status, body)`, and then required §4.3 to read a rate-limit hint that conventionally arrives in a **response header** — so neither the module nor INV-9's own double could carry the signal the same loop had just mandated. Two further lanes found the seam's other unstated halves: how a transport signals *no answer at all* (INV-3 and INV-5 both assert on "a transport failing", which the Protocol never defined), and that nothing let a test control the pacing clock, so INV-9 either cost real wall-clock seconds or drove an implementer to patch `sleep` by name — the module-private route §4.1 had just rejected in writing. The seam now returns response headers, signals absence by raising `OSError` while returning every HTTP status, and carries `wait`. **The sharpest single finding was loop 1's own half-done repair.** Loop 1 split §6's row so a failure *during* the reference update no longer claimed the site was unchanged — and gave both stages the same `Unreachable` class, leaving the Face nothing to branch on, then told it to *re-read the branch*, which is the one thing it cannot do when GitHub is unreachable. `OutcomeUnknown` is now its own type, INV-3 owns both sides of the boundary, and the Face is told to report the outcome as unknown rather than confirm it. **Two pre-existing defects closed:** §4.1's "every failure is one of the types above" was falsified by §6's own *"the underlying failure"* row (a crash raises nothing, and is now its own row), and `prefix` was never pinned as byte or path-segment though §4.4 pins exactly that question for the untouchable list — matched as a bare string, `content` also selects `contents.html`. **One finding is surfaced, not applied:** design rule 5 permits the Publisher to *read* Settings and a folder and names no write, while rule 8 shows the form the design uses when a part writes — and §4.5 has `fetch_previous` write a fetched state to disk. §11 no longer claims that section is unchanged; amending it is another document's gate. **Dismissed as immaterial:** §10's *"the limits in §4.3's reasoning"* points loosely, the truncation cap being §4.2's — imprecise rather than false, and no conformer builds differently. **Routing:** not re-gated. A spec's cap is where implementation takes over, and implementation is the better third reviewer. |
+| 3 | 2026-09-05 | 3, cold — genre pinned `spec`, packet rebuilt whole from disk with `publisher.py` entire, `settings.py`'s untouchable check, all ten design rules, ADR-0002 and every test name in the file. GitHub's live API declared an unrunnable region | 2 | 2 | 2 | 0 | **Six verified, six fixed; one dismissed. First loop of a new run** — the 2026-08-26 run ended at a violent cap, and that bar lapsed with commit 975bdec's authoring edits. **All three lanes found the same two.** The Status line still surfaced design rule 5's missing write as open, while §11 records it closed by PRESS-0026 and rule 5 now grants the write — so an implementer reading the header defers `fetch_previous`'s disk write. And §4.4 was credited by §4.5 and §10 with a trailing-slash tolerance it never stated, having said the opposite: `load` accepts `CNAME/` and stores it as written (executed), so an entry compared exactly protects nothing while reading as configured — PRESS-0044's failure. `docs/design.md` and PRESS-0001 §4.3 both carry the tolerance; only its stated home did not. **Two lanes found INV-5's test clause fails a conforming module**: *no request body sets force* against an update that sends `force` explicitly false. **One lane found INV-9 contradicting §4.3** — *raised only once the bound is exhausted* against a hint too long to honour, refused with no wait at all; built as written it sleeps out a reset most of an hour away. **One lane found §10 naming a test for "the documented minute"** that no section documents, the test holding the number rather than importing it; now stated as a rule without one. **One lane found *Nothing lands in `into`* false** — staging is inside `into`, and staging beside it makes the last step a cross-filesystem copy that can fail half-done, which is the mixture that paragraph forbids. **Dismissed as immaterial:** §11 says the PRESS-0009 bullet *should record* the settled undo question, and it already does; no line changes, and a second lane reasoned itself to the same dismissal. **The packet's own build was this run's first defect** — three windows cut with wrong bounds, one skipping three of the rules it claimed to quote, all re-cut whole before dispatch. **Seven open questions resolved clean and are not counted.** |
