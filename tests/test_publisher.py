@@ -1149,8 +1149,8 @@ def test_a_prefix_of_one_slash_selects_the_whole_site(tmp_path):
 
 
 def test_a_missing_blob_is_not_reported_as_a_missing_repository(tmp_path):
-    """PRESS-0069 item 5: every 404 raised RepositoryMissing, whose whole
-    meaning in §6 is that settings.repository resolves to nothing.
+    """PRESS-0069 item 5: every 404 raised RepositoryMissing, which §6
+    scopes to the request that names the repository itself.
 
     Breaks when an implementer maps the status rather than the resource: a
     deleted branch or an absent sha then sends the writer to check a
@@ -1506,3 +1506,67 @@ def test_json_writes_declare_themselves_as_json(tmp_path):
             f"{method} {url} carries no body, so it must not declare a "
             f"content type for one: {headers!r}"
         )
+
+
+# ------------------------------------------------------------ PRESS-0095 ----
+
+
+def _blob_reads(blob_body: dict) -> list[tuple[str, tuple[int, dict, bytes]]]:
+    """The reads §4.5's fetch makes, with the blob answer replaced by
+    `blob_body` verbatim -- so a fixture can hand `_content_of` a shape
+    the real GitHub API never would. Ordered most-specific first, as
+    `_reads` is, since "/repos/" is a substring of them all."""
+    def body(payload: dict) -> tuple[int, dict, bytes]:
+        return (200, {}, json.dumps(payload).encode("utf-8"))
+
+    return [
+        ("/git/blobs/", body(blob_body)),
+        ("/git/trees", (200, {}, _listing([("index.html", "some-blob-sha")]))),
+        ("/commits/", body({
+            "sha": "base-commit-sha",
+            "parents": [{"sha": "parent-commit-sha"}],
+        })),
+        ("/repos/", body({"default_branch": "main"})),
+    ]
+
+
+@pytest.mark.parametrize("blob_body", [
+    # "a" alone is not "@@@" -- b64decode's default validate=False strips
+    # non-alphabet characters first, and "@@@" strips to "", which decodes
+    # cleanly to b"" instead of raising (measured 2026-09-05). A single
+    # valid base64 character has no route to a clean decode: it is always
+    # one short of a multiple of four.
+    pytest.param({"content": "a", "encoding": "base64"},
+                 id="a malformed base64 string"),
+    pytest.param({"content": 12345, "encoding": "base64"},
+                 id="a non-string content under base64"),
+    pytest.param({"content": 12345, "encoding": "none"},
+                 id="a non-string content under a non-base64 encoding"),
+])
+def test_a_malformed_blob_content_field_is_a_typed_failure(tmp_path, blob_body):
+    """PRESS-0095: §4.1 says every failure this module raises is one of
+    PublishError and its subclasses. `_content_of` guarded an ABSENT
+    "content" field and nothing else -- it then called
+    base64.b64decode(content) or content.encode("utf-8") unguarded.
+
+    Measured escapes (2026-09-05), one per case above: a malformed base64
+    string raises binascii.Error; a non-string content under base64
+    encoding raises TypeError; a non-string content under any other
+    encoding raises AttributeError. None is a PublishError, so the Face --
+    whose only failure branch is PublishError and its subclasses (§6) --
+    has nothing to catch it with, and it reaches the writer as a crash
+    instead of a sentence about his site.
+
+    `pytest.raises` is the whole assertion here: an untyped escape
+    propagates out of the block and fails the test, naming both the
+    exception and the line it came from.
+
+    Breaks when: an implementer re-adds a decode or an `.encode` call in
+    this function without the guard its three neighbours carry
+    (PRESS-0073). `binascii.Error` is a `ValueError` subclass and
+    `TypeError` and `AttributeError` are not, so a guard catching only
+    `ValueError` leaves two of these three cases live.
+    """
+    with pytest.raises(PublishError):
+        fetch_previous(_settings(), "a-token", tmp_path,
+                       transport=_Transport(reads=_blob_reads(blob_body)))

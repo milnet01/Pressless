@@ -97,7 +97,7 @@ class Refused(PublishError):
 
 
 class RepositoryMissing(PublishError):
-    """settings.repository resolves to nothing."""
+    """The repository URL itself answers 404."""
 
 
 class Conflict(PublishError):
@@ -652,9 +652,17 @@ def _content_of(blob: dict) -> bytes:
     if "content" not in blob:
         raise PublishError("GitHub's answer does not carry the file's content")
     content = blob["content"]
-    if blob.get("encoding", "base64") == "base64":
-        return base64.b64decode(content)
-    return content.encode("utf-8")
+    try:
+        if blob.get("encoding", "base64") == "base64":
+            return base64.b64decode(content)
+        return content.encode("utf-8")
+    except (ValueError, TypeError, AttributeError) as exc:
+        # Malformed base64, or a content field that is not a string. The bare
+        # binascii.Error, TypeError or AttributeError was none of §4.1's types
+        # (PRESS-0095).
+        raise PublishError(
+            f"GitHub's answer carries content that cannot be read: {exc}"
+        ) from exc
 
 
 def _retry_hint(status: int, headers: dict[str, str]) -> float | None:

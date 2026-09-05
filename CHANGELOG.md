@@ -129,6 +129,11 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **A blob GitHub sends back malformed now reports as itself rather than crashing.** (PRESS-0095)
+  One kind of bad answer from GitHub reached the writer as "something
+  went wrong" instead of a sentence about his site. It is now one of the
+  Publisher's own named failures, like every other answer it can get.
+
 - **An entry no longer gains header lines it never had when it is saved** (PRESS-0060)
   Saving an entry written without a Categories or Tags line added an
   empty one of each. Every imported entry would have gained two.

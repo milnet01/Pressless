@@ -4311,7 +4311,7 @@
   Kind: implement.
   Source: review-contract 2026-09-05 loop 4 on PRESS-0006 -- code side of three findings.
 
-- 📋 [PRESS-0095] **A malformed blob answer escapes the Publisher's typed-failure contract, and two docstrings still carry a claim the spec has narrowed.**
+- ✅ [PRESS-0095] **A malformed blob answer escapes the Publisher's typed-failure contract, and two docstrings still carry a claim the spec has narrowed.**
   PRESS-0009 4.1 says every failure this module raises is one of its
   types. `_content_of` calls `base64.b64decode` and `.encode` with no
   guard, so a blob answer whose content is malformed or is not a string
@@ -4335,6 +4335,18 @@
   which is what that test already pins.
 
   A docs gate may not edit code, so it is filed rather than applied.
+  Resolved (2026-09-05): `_content_of` now wraps both conversions and
+  raises PublishError, in the idiom its three PRESS-0073 neighbours use.
+  The two docstrings are narrowed to §6's scope -- the class docstring now
+  reads as §4.1's own inline comment does. `_failure`'s comment keeps the
+  old phrase deliberately: it describes what a wrong report WOULD say, and
+  that reasoning is unchanged.
+
+  Locked by tests/test_publisher.py::test_a_malformed_blob_content_field_
+  is_a_typed_failure, parametrized over all three measured routes. Proved
+  red before the fix; mutation_probe then killed five mutants on the
+  shipped code -- narrowing the guard to ValueError alone, dropping each
+  of the three types in turn, and re-raising untyped. Gate green.
   **Layman:** One kind of bad answer from GitHub reaches the writer as "something went wrong" instead of a sentence about his site.
   Kind: review-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
