@@ -1,6 +1,6 @@
 # PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
 
-**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated.
+**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated. That gate's first loop found three code defects, filed as PRESS-0100.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -120,10 +120,13 @@ class CredentialError(Exception): ...   # a store we will not act on
 `folder` is Pressless's own folder, supplied by the caller, exactly as
 PRESS-0001 §4.1 takes it. This module does not create it, search for it, or
 fall back to another one. `choose()` takes none: it asks the operating
-system's store a question about the machine. It does not check the folder
-first: in `docs/specs/PRESS-0001-settings.md` §6, `save()` makes the same
-judgement — it "does not probe permissions first" and reports whatever the
-write raises.
+system's store a question about the machine, so it has no folder to check.
+`write()` does probe, exactly once and only where it is about to write: it
+reads the mode off the temporary it made, before the secret goes into it
+(INV-11). That is not `docs/specs/PRESS-0001-settings.md` §6's judgement for
+`save()`, which "does not probe permissions first" and reports whatever the
+write raises — settings are not a secret, and a mode that was not granted
+costs nothing there and costs the key here.
 
 `store` is the string PRESS-0001 already validates against `"keyring"` and
 `"file"`, passed in rather than re-read, so nothing here imports Settings.
@@ -137,12 +140,17 @@ checks that before calling — `read()` is not given `None`.
 `choose()` is setup's question and is asked once. It writes `PROBE` under
 `SERVICE`, then asks the store's members in order which of them returns that
 value, and **only then deletes it**. The delete is last because the walk needs
-the value still to be there.
+the value still to be there. It is addressed to the member that answered,
+not to the chain — a chain's delete stops at its first member that does not
+refuse the call, which need not be the one holding the probe. And it is best
+effort: a store that will not give the probe up is not a reason to refuse a
+store that answered, so its failure is not one of the outcomes below.
 
 | What the write and the walk do | What `choose()` returns |
 |---|---|
 | A member returns the probe value | `Choice("keyring", <that member>)` |
 | The write raises `keyring.errors.NoKeyringError` | there is no store: `NoStore` on Windows, `Choice("file", "file")` elsewhere |
+| The store cannot be loaded at all | `CredentialError`, naming the exception type and not its message |
 | The write raises anything else, or no member returns the value | `CredentialError` |
 
 **`NoKeyringError` is the discriminator, and it is the only one.** Absence and
@@ -180,7 +188,9 @@ back as a truthy object and never as `None`, so *absent* and *not a `str`* are
 one observation rather than two. Reserving `CredentialError` for it would send
 a writer who has no key yet down the broken-store path instead of asking him
 for one. The version row follows PRESS-0001 §4.3, which refuses a file written
-by a later Pressless rather than guessing at it.
+by a later Pressless rather than guessing at it — **including its type
+strictness**: the stored version must be the integer this build writes, so
+`true` and `1.0` are refused as well. One on-disk shape, one acceptance set.
 
 `write(store, folder, account, secret)` files it.
 
@@ -191,7 +201,7 @@ by a later Pressless rather than guessing at it.
 | The store cannot be used at all | `CredentialError` |
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
-| The existing fallback file carries a `version` this build does not write | `CredentialError` — saving over it would discard a file a later Pressless wrote, which is the same file the read table refuses to guess at |
+| The existing file parses to a non-empty mapping carrying a `version` this build does not write | `CredentialError` — saving over it would discard a file a later Pressless wrote, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
 **Every one of these is typed, and that is a requirement rather than tidiness.**
@@ -224,7 +234,10 @@ has gets overwritten.
 In `folder`, named `FILE_NAME`, UTF-8, one file for both secrets.
 
 Written the way PRESS-0001 §4.4 writes settings — a temporary file made by
-`tempfile.mkstemp` beside the target, then `os.replace`. That mechanism is
+`tempfile.mkstemp` beside the target, flushed and `os.fsync`ed, then
+`os.replace`. The sync is part of that mechanism rather than a refinement of
+it, as PRESS-0001 says: without it a power loss can commit the rename ahead
+of the blocks and leave a file holding neither secret. That mechanism is
 chosen twice over here: it is atomic, and `mkstemp` creates its file
 owner-only, a mode `os.replace` carries onto the target (§4.6). So the file is
 private from the instant it exists and no `chmod` follows a write that has
@@ -388,11 +401,17 @@ once the code exists.
   every row of §4.3's table: `write()` into an unwritable folder, `write()`
   refused on Windows, and each read failure. Assert the sentinel appears in no
   message.
-  **One of those failures must come from a store whose own message carries the
-  sentinel** — `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`.
-  Every store here is patched (§7), so without that case the clause proves only
-  that this module's own literals are clean, and an implementation folding a
-  backend's message into `CredentialError` stays green against it.
+  **A backend's own message is never interpolated, on either side.** The type
+  is named and the message is not, and the cause is dropped rather than
+  chained, because a chained cause is printed by a formatted traceback and by
+  PRESS-0011's rolling log.
+  **The quoting store is forced on both sides** —
+  `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`
+  for the write, and a read failure from a store whose message carries the
+  sentinel. Every store here is patched (§7), so without those cases the clause
+  proves only that this module's own literals are clean, and an implementation
+  folding a backend's message into `CredentialError` stays green against it.
+  Forcing it on one side leaves the other unheld, which is what shipped.
   *Breaks when:* an implementer puts the value in a message to make a failure
   easier to diagnose, and the log or a screenshot then carries the key.
   **§4.3's table alone cannot catch it:** that table enumerates `read()`'s
@@ -514,19 +533,23 @@ machine that runs this suite.
 
 **The file-store tests patch the platform check, and some of them need more
 than that.** INV-2 makes `write(store="file", ...)` raise on Windows however
-it is reached, and INV-5, INV-6, INV-8 and INV-10 all write through the file
-store — so on Windows they would fail against a correct implementation. They set the
-platform to a non-Windows value, exactly as INV-2's own test sets it to
-Windows.
+it is reached, and INV-5, INV-6, INV-8, INV-10 and INV-11 all write through
+the file store — so on Windows they would fail against a correct
+implementation. They set the platform to a non-Windows value, exactly as
+INV-2's own test sets it to Windows.
 
 **INV-6 sets it both ways inside one test**, because one of the failures it
 must force is the Windows refusal itself, and the rest need the file store to
-work. **And a real Windows host holds back every clause that needs a file-store
-write to succeed** — not INV-5's mode read-back alone. Patching the platform
-check does not give a Windows filesystem POSIX permissions, so §4.6's
-capability read refuses the write there and `write()` raises `NoStore` before
-it reaches `os.replace`. That is the correct behaviour, so a suite skipping
-only the mode read-back goes red on a correct implementation.
+work. **And every clause needing a file-store write to succeed is held back by
+the FILESYSTEM, not by the platform** — not INV-5's mode read-back alone.
+§4.6's capability read refuses the write wherever the mount does not enforce
+POSIX modes, so `write()` raises `NoStore` before it reaches `os.replace`.
+That is the correct behaviour, so a suite guarding on the platform's name goes
+red against a correct implementation run from a memory stick or a mounted
+share. A real Windows host is one instance of that, not the rule. The guard is
+a probe: make a temporary in the test's own folder and skip unless the mode
+comes back owner-only — `tests/_mode_support.py`, which PRESS-0001 and
+PRESS-0005 already use.
 
 **INV-10's two refusals are held back for a different reason** — in the code
 rather than in the platform: §4.4 skips both checks where the platform offers
@@ -601,6 +624,7 @@ exit code.
 | INV-4 | `tests/test_credentials.py::test_absent_and_broken_differ` |
 | INV-5 | `tests/test_credentials.py::test_fallback_file_is_owner_only` |
 | INV-6 | `tests/test_credentials.py::test_no_failure_names_the_secret` |
+| INV-6 against a store whose own message carries the secret | `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`, on the write side and the read side both |
 | INV-7 | `tests/test_credentials.py::test_choice_names_the_answering_store` |
 | INV-8 | `tests/test_credentials.py::test_second_write_keeps_the_first` |
 | INV-9 | `tests/test_credentials.py::test_locked_store_is_not_an_absent_one` |
@@ -649,3 +673,4 @@ exit code.
 | 2 | 2026-08-25 | 3, cold — identical brief, packet rebuilt from disk and extended with the chain's read semantics read from source; Windows still an unrunnable region | 1 | 6 | 2 | 1 | **Ten verified, ten fixed. Cap reached (2 for a spec); the run files its tail and ships. A VIOLENT cap: six of the ten landed on text loop 1 wrote**, each anchor checked against loop 1's ledger rather than recalled — so the run was oscillating on the passages loop 1 rewrote, and a third loop would mostly repair the second. **The best finding is a mechanism defect one lane reached by reading the library's source.** §4.2 decided *keyring* by reading the probe back through the store, and a chain answers with its first member that answers at all — so a member answering unconditionally masks every member behind it, and the read-back can report failure while a working member holds the value. That is not hypothetical here: the masking member sits ahead of the plaintext one, so §4.6's plaintext bullet described a member a chain read can never reach, and §3 decision 2's promise to NAME the store could not have been kept. The verdict now rests on the member walk §4.2 already required for the name, which collapsed two mechanisms into one. **Two lanes independently found that `write()`'s failures were untyped** — §4.3's table was `read()`'s alone while INV-6 named *write() into an unwritable folder* as a failure to force, so `docs/design.md` § Errors would have been breached by an `OSError` reaching the Face's last-resort catch after the writer failed to save his key; §4.3 gains a `write()` table. **One lane caught a breach of this project's own rule**: INV-5's clause pointed the test at `folder / FILE_NAME`, and `CLAUDE.md` says a test that pins a name must hold its own copy and *"Do not tidy this into an import"* — as written the fallback file could be renamed to anything and stay green. **A Q4 found that loop 1's own discriminator had no checker at all**, no invariant and no `nothing` row, so an implementer could catch every exception as *no store* and ship the fallback firing against a locked keyring; INV-9 now holds it. **Three more were loop 1's collateral**: INV-6 needed both platforms while §7 pinned its tests to one, §7 named INV-1 as the only test green against the stub when INV-6 is too, and §7 claimed a platform patch keeps *runs everywhere* true when patching a check cannot give a Windows filesystem POSIX modes. **The one Q1 was the orchestrator's, found while re-reading §4.6**: its preamble said *These three* over five bullets and claimed all were executed, when the callable-prompts behaviour was read from source. The count is deleted rather than corrected and the bullet says which it is. **Three open questions resolved clean and are not counted** — all three lanes asked whether PRESS-0001 §6 says what §4.1 attributes to it, and it does; a plain grep first reported the phrase missing, which was the hard wrap rather than the document. |
 | 3 | 2026-09-02 | 3, cold — new run, armed by §3 decision 6 (rule 14). Genre pinned `spec`; packet carried `credentials.py` and its tests whole, ADR-0003, `design.md`, PRESS-0001 §4.4–4.5 and the measured `O_NOFOLLOW` and ownership behaviour. Windows an unrunnable region | 3 | 4 | 3 | 1 | **Eleven verified, eleven fixed, none dismissed.** **All three lanes:** INV-10 named no exception type where §4.3 requires every failure typed — and the two candidates are not interchangeable, `NotStored` sending setup to overwrite a key the writer still has. **Two lanes:** the new test could not fail — a symlink pointed at any ordinary file is followed, fails to parse, and raises `CredentialError` from the not-valid-JSON row, green against the defect it names. **Two lanes:** decision 6 was reachable by the other door, `write()`'s pre-read going through the same helper, so a substituted file is merged and the next read passes both checks. **One lane:** *both are taken from the open descriptor* is false of the symlink half — `fstat` never reports one, so only the open can refuse it; measured. **Two lanes:** §1 and §2 still had the Publisher and Insights reaching Credentials, which design rule 10 settled the other way and §11 already recorded. Windows' unchecked read, raised as an open question by two lanes, is now stated as intended with its reason. |
 | 4 | 2026-09-02 | 3, cold — identical brief, packet rebuilt whole from disk and corrected: two cross-references had leaked their own review logs, and PRESS-0001's excerpt had run to EOF. Windows still an unrunnable region | 2 | 3 | 0 | 2 | **Seven verified, seven fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap: four of the seven landed on text this run wrote**, each anchor checked against loop 1's ledger rather than recalled. **The sharpest was one lane's alone** — loop 1 widened INV-10 to cover `write()`'s pre-read and left the test clause asserting `read()` only, so decision 6's own attack survived a green suite: the planted file is merged forward into one the writer owns, which a later compliant read accepts. **Two lanes found §7's Windows rule false and pre-existing:** §4.6's capability read refuses every file-store write on a real Windows host, so far more than the two named clauses are unreachable there, and the 4b sweep then found INV-5 restating the same false claim. **All three lanes** found §3 decision 3 still asking for an ADR correction §11 records as made. Also fixed: a table row stated unconditionally where §4.4 skips by capability, prose contradicting its own table's two `NoStore` rows, and a count loop 1 falsified. **Promoted from two lanes' open questions:** decision 6 named the removable drive, where ownership cannot fire — now scoped to the shared one. **The gate earned its lanes:** most of both loops' findings fell inside the amended span rather than auditing the rest. |
+| 5 | 2026-09-06 | 3, cold — genre pinned `spec`; loop 1 of a new run (PRESS-0058). Packet carried `credentials.py` whole and `tests/_mode_support.py`; Windows declared unrunnable, so Q1 was out of scope there | 2 | 5 | 3 | 0 | **Ten verified, ten fixed; three of them are code defects filed rather than fixed here.** **Four findings were made by two lanes each**, and the sharpest is a defect this document could not have caught before: PRESS-0051 hardened `write()`'s keyring failure to name the exception type and drop the cause, and left `_read_keyring` folding the backend's own message in with `from exc` — so INV-6, stated absolutely, is unheld on the read side, which is the side the store's own text describes. INV-6 now states the rule for both sides and forces the quoting store on each; the code side is filed. **Two lanes found §4.1 saying this module does not probe permissions first**, quoting PRESS-0001 §6's judgement for `save()`, while INV-11 — added in this same amendment — requires exactly that probe before the secret is written. The sentence had a loose subject and the new rule made it false. **Two lanes found §7's hold-back attributed to Windows** where §4.6 makes it a property of the mount: a suite guarding on the platform's name goes red against a correct implementation run from a memory stick, and `tests/_mode_support.py` is the capability probe PRESS-0001 and PRESS-0005 already use and this one does not. **Two lanes found the probe delete's target unstated** — a chain's delete stops at its first member that does not refuse, which need not be the one holding the probe, so the probe outlives setup in the writer's own keyring while §4.2 reads as an assurance it does not. **One lane found the version comparison lax**: PRESS-0001 pins it type-strict and this module uses `!=`, which accepts `true` and `1.0` — two acceptance sets for one on-disk shape. **Singles:** §4.2 had no row for the store failing to LOAD, though the code types that failure and a test holds it; §4.4's restatement dropped the flush and fsync PRESS-0001 calls part of the mechanism, so a power loss could leave a file holding neither secret; and the write-side version row claimed to refuse the same file the read table does, which is untrue of a file parsing to an empty mapping. **Two were mine, from the amendment an hour earlier**: the second INV-6 test appeared in no enumeration, and §7's list of file-store writers omitted INV-11. **Resolved clean, not counted:** `NoKeyringError` does subclass `KeyringError` which subclasses `RuntimeError`, executed against the library. |
