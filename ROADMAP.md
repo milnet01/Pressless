@@ -2335,6 +2335,19 @@
   in one alone is a direction change in that document and leaves the other
   saying nothing, which is how the two drift. PRESS-0074 is closed on
   every other count and defers this item rather than pre-empting it.
+  Decision (2026-09-06, user): every file Pressless writes is readable by
+  its owner alone. That is what mkstemp already produces on both paths, so
+  the rule records shipped behaviour rather than changing it, including the
+  narrowing of a previously wider mode on rewrite. Specify it in PRESS-0001
+  and PRESS-0005 together, in the same words, per this item's own warning
+  against deciding it in one alone.
+
+  Items 1 and 2 were checked against the current document and are already
+  closed by later work. Item 1: 4.4 now states the write-side version
+  refusal by 4.2's own test, and save() implements it (PRESS-0053). Item 2:
+  4.3's shape row now covers untouchable and analytics_property_id, and
+  load() validates the property id as ascii digits (PRESS-0044, PRESS-0056).
+  Only item 3 and this mode question remain live.
   **Layman:** The settings design document is missing rules the code was never told to follow.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane settings -- document side.
@@ -2397,6 +2410,12 @@
   5. Open, and unverifiable from this tree: INV-5 claims byte-identity
   with a wpautop() in a sibling workspace that is not present here, so
   nothing in this repository can check it.
+  Decision (2026-09-06, user) on item 3: a photograph's caption becomes its
+  description where one was written, and a photograph with no caption stays
+  decorative. Reuses text the writer already types, so it adds no step to
+  placing a photograph. This settles the accessibility question 4.2's
+  unconditional empty alt left unexamined; 9's out-of-scope list is not the
+  place for it.
   **Layman:** The markup design document overstates what protects the published page, and specifies an accessibility choice nobody examined.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane marks -- document side.
@@ -2738,6 +2757,11 @@
   only one window is offered, and how many to cache is a design question
   this spec is the place to answer. Deciding it changes the cache file
   format, so it wants a CACHE_VERSION bump.
+  Decision (2026-09-06, user) on the obligation carried from PRESS-0056
+  item 4: the cache keeps one report per time span rather than a single
+  slot, so offering a second span does not disable the quota guard.
+  This changes the cache file's format and therefore wants a CACHE_VERSION
+  bump, which the new spec is the place to specify.
   **Layman:** The analytics part of the app has no design document, so its rules live only in its own tests -- which cannot prove themselves wrong.
   Kind: doc.
   Source: review-code 2026-08-31 lane insights.
@@ -2810,6 +2834,11 @@
   Also confirm the intended answer for a pre-1.0 project on Supported
   versions, and pick a private reporting channel that is not the public
   issue tracker -- this repository is public.
+  Decision (2026-09-06, user): reports go through GitHub's private
+  vulnerability reporting rather than an email address, so nothing is
+  posted publicly and no address of the writer's is published. The feature
+  needs switching on in the repository settings, and the policy is written
+  around it.
   **Layman:** The security policy file promises to list what the app protects and against what, and that section is still the template placeholder.
   Kind: doc-fix.
   Source: review-code 2026-08-31 synthesis -- threat model.
