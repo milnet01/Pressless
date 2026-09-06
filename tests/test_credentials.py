@@ -334,6 +334,16 @@ def test_choice_names_the_answering_store(monkeypatch):
     events = []
     silent = _Store(name="holds nothing", events=events)
     holder = _Store(name="the answering member", events=events)
+
+    # §4.6 measured that the real chain's masking member answers with a
+    # truthy object and never None, so a fixture whose first member answers
+    # None cannot reject the one build this clause exists to reject: one
+    # taking the chain's first non-None answer (PRESS-0100 item 4).
+    def silent_get(service, account):
+        events.append(("get", "holds nothing"))
+        return lambda: "this backend prompts instead of answering"
+
+    silent.get_password = silent_get
     chain = _Store(name="chainer", events=events, backends=[silent, holder])
 
     # The chain's write reaches the second member, and only that one.
