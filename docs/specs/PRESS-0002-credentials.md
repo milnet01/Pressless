@@ -1,6 +1,6 @@
 # PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
 
-**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated. That gate's first loop found three code defects, filed as PRESS-0100.
+**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated. That gate found four code defects, filed as PRESS-0100, and reached the spec cap of 2 with an empty tail.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -151,7 +151,16 @@ store that answered, so its failure is not one of the outcomes below.
 | A member returns the probe value | `Choice("keyring", <that member>)` |
 | The write raises `keyring.errors.NoKeyringError` | there is no store: `NoStore` on Windows, `Choice("file", "file")` elsewhere |
 | The store cannot be loaded at all | `CredentialError`, naming the exception type and not its message |
+| The probe write raises something that is not `NoKeyringError` | `CredentialError`, which may carry the backend's own message |
 | The write raises anything else, or no member returns the value | `CredentialError` |
+
+**Neither `choose()` failure is bound by INV-6's no-message rule, because no
+secret is ever in its hands** — the probe is a fixed value and nothing else
+reaches this call. Both keep the cause, so a formatted traceback and
+PRESS-0011's log carry the store's own text; that is what makes a setup
+failure diagnosable, and it is safe only for that reason. The load row names
+the type in the sentence the writer sees, which is a different question from
+what the cause carries.
 
 **`NoKeyringError` is the discriminator, and it is the only one.** Absence and
 malfunction both reach `choose()` as a raised exception, so without naming the
@@ -179,7 +188,8 @@ nominated store is not a chain it is its own single member.
 | The store answers with anything that is not a `str` — including nothing at all | `NotStored` |
 | The store cannot be used at all | `CredentialError` |
 | The fallback file is absent | `NotStored` |
-| The fallback file is unreadable, is not valid JSON, or carries a `version` this build does not read | `CredentialError` |
+| The fallback file is unreadable, is not valid JSON, or carries no `version`, or one that is not the integer this build reads | `CredentialError` |
+| The fallback file is one this build reads and its `secrets` is missing or is not an object | `CredentialError`, not `NotStored` — the file is a store that cannot be acted on rather than one holding nothing, and §4.3's own distinction decides what setup does next |
 | The fallback file is a symlink, or is owned by another user, where the platform offers those checks (§3 decision 6, §4.4) | `CredentialError` |
 
 **Not-a-string means nothing is stored, and that is measured rather than
@@ -201,7 +211,7 @@ strictness**: the stored version must be the integer this build writes, so
 | The store cannot be used at all | `CredentialError` |
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
-| The existing file parses to a non-empty mapping carrying a `version` this build does not write | `CredentialError` — saving over it would discard a file a later Pressless wrote, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
+| The existing file parses to a non-empty mapping carrying no `version`, or one that is not the integer this build writes | `CredentialError` — saving over it would relabel a file this build did not write, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
 **Every one of these is typed, and that is a requirement rather than tidiness.**
@@ -391,9 +401,9 @@ once the code exists.
   **Asserting the mechanism is what makes it bite:** a direct write followed
   by a `chmod` ends at the same mode, so the mode check alone would pass
   against the implementation this rule exists to reject. Both halves are
-  skipped on a real Windows host: §4.6's capability read refuses the write
-  there, so `write()` raises `NoStore` and never reaches `os.replace` — §7
-  carries the rule for every clause that needs a file-store write.
+  skipped on a real Windows host, where §3 decision 1's refusal (INV-2) stops
+  the write before the capability read is ever reached — §7 carries the rule
+  for every clause that needs a file-store write.
 
 - **INV-6** — No exception this module raises contains a secret value.
   *Test:* `tests/test_credentials.py::test_no_failure_names_the_secret` — with
@@ -401,10 +411,12 @@ once the code exists.
   every row of §4.3's table: `write()` into an unwritable folder, `write()`
   refused on Windows, and each read failure. Assert the sentinel appears in no
   message.
-  **A backend's own message is never interpolated, on either side.** The type
-  is named and the message is not, and the cause is dropped rather than
-  chained, because a chained cause is printed by a formatted traceback and by
-  PRESS-0011's rolling log.
+  **A backend's own message is never interpolated where a secret is in hand —
+  `read()` and `write()`, both sides.** The type is named and the message is
+  not, and the cause is dropped rather than chained, because a chained cause is
+  printed by a formatted traceback and by PRESS-0011's rolling log. `choose()`
+  is outside this: it is never handed a secret, only the probe, so §4.2 says
+  what its failures may carry.
   **The quoting store is forced on both sides** —
   `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`
   for the write, and a read failure from a store whose message carries the
@@ -425,6 +437,10 @@ once the code exists.
   a patched chain whose first member holds nothing and whose second holds the
   probe; assert the name is the second member's, **and** that the delete was
   recorded after the members were asked rather than before.
+  **The first member must answer with a truthy value that is not a `str`**, as
+  INV-4's fixture must and for §4.6's reason: let it answer `None` and a build
+  taking the chain's first non-`None` answer stays green here while naming the
+  masking member on a real machine — the build this clause exists to reject.
   *Breaks when:* the name is taken from the nominated store, which on the
   development machine is a chain — not a store, and one hiding a plaintext
   member; or the probe is deleted as part of the round-trip, so nothing holds
@@ -540,23 +556,25 @@ INV-2's own test sets it to Windows.
 
 **INV-6 sets it both ways inside one test**, because one of the failures it
 must force is the Windows refusal itself, and the rest need the file store to
-work. **And every clause needing a file-store write to succeed is held back by
-the FILESYSTEM, not by the platform** — not INV-5's mode read-back alone.
-§4.6's capability read refuses the write wherever the mount does not enforce
-POSIX modes, so `write()` raises `NoStore` before it reaches `os.replace`.
-That is the correct behaviour, so a suite guarding on the platform's name goes
-red against a correct implementation run from a memory stick or a mounted
-share. A real Windows host is one instance of that, not the rule. The guard is
-a probe: make a temporary in the test's own folder and skip unless the mode
-comes back owner-only — `tests/_mode_support.py`, which PRESS-0001 and
-PRESS-0005 already use.
+work. **And every clause needing a file-store write to succeed is held back
+twice over, by two different refusals** — not INV-5's mode read-back alone. On
+a real Windows host §3 decision 1 refuses first, before any mode is read.
+Everywhere else §4.6's capability read refuses wherever the mount does not
+enforce POSIX modes, which is a memory stick or a mounted share as readily as
+anything exotic. Both are correct behaviour, so a suite guarding on the
+platform's name alone goes red against a correct implementation run from such
+a mount. The second guard is a probe: make a temporary in the test's own
+folder and skip unless the mode comes back owner-only —
+`tests/_mode_support.py`, which PRESS-0001 and PRESS-0005 already use.
 
 **INV-10's two refusals are held back for a different reason** — in the code
 rather than in the platform: §4.4 skips both checks where the platform offers
 neither, so a correct implementation refuses nothing there and the assertions
 would fail against it.
 
-What runs everywhere is every clause needing no successful file-store write.
+What runs everywhere is every clause needing neither a successful file-store
+write nor a check the platform has to offer — INV-10's two refusals being the
+second case, as the paragraph above says.
 
 **The red run is made against a stub `credentials.py`, never against an absent
 one.** With the module absent the suite errors at collection and no assertion
@@ -674,3 +692,4 @@ exit code.
 | 3 | 2026-09-02 | 3, cold — new run, armed by §3 decision 6 (rule 14). Genre pinned `spec`; packet carried `credentials.py` and its tests whole, ADR-0003, `design.md`, PRESS-0001 §4.4–4.5 and the measured `O_NOFOLLOW` and ownership behaviour. Windows an unrunnable region | 3 | 4 | 3 | 1 | **Eleven verified, eleven fixed, none dismissed.** **All three lanes:** INV-10 named no exception type where §4.3 requires every failure typed — and the two candidates are not interchangeable, `NotStored` sending setup to overwrite a key the writer still has. **Two lanes:** the new test could not fail — a symlink pointed at any ordinary file is followed, fails to parse, and raises `CredentialError` from the not-valid-JSON row, green against the defect it names. **Two lanes:** decision 6 was reachable by the other door, `write()`'s pre-read going through the same helper, so a substituted file is merged and the next read passes both checks. **One lane:** *both are taken from the open descriptor* is false of the symlink half — `fstat` never reports one, so only the open can refuse it; measured. **Two lanes:** §1 and §2 still had the Publisher and Insights reaching Credentials, which design rule 10 settled the other way and §11 already recorded. Windows' unchecked read, raised as an open question by two lanes, is now stated as intended with its reason. |
 | 4 | 2026-09-02 | 3, cold — identical brief, packet rebuilt whole from disk and corrected: two cross-references had leaked their own review logs, and PRESS-0001's excerpt had run to EOF. Windows still an unrunnable region | 2 | 3 | 0 | 2 | **Seven verified, seven fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap: four of the seven landed on text this run wrote**, each anchor checked against loop 1's ledger rather than recalled. **The sharpest was one lane's alone** — loop 1 widened INV-10 to cover `write()`'s pre-read and left the test clause asserting `read()` only, so decision 6's own attack survived a green suite: the planted file is merged forward into one the writer owns, which a later compliant read accepts. **Two lanes found §7's Windows rule false and pre-existing:** §4.6's capability read refuses every file-store write on a real Windows host, so far more than the two named clauses are unreachable there, and the 4b sweep then found INV-5 restating the same false claim. **All three lanes** found §3 decision 3 still asking for an ADR correction §11 records as made. Also fixed: a table row stated unconditionally where §4.4 skips by capability, prose contradicting its own table's two `NoStore` rows, and a count loop 1 falsified. **Promoted from two lanes' open questions:** decision 6 named the removable drive, where ownership cannot fire — now scoped to the shared one. **The gate earned its lanes:** most of both loops' findings fell inside the amended span rather than auditing the rest. |
 | 5 | 2026-09-06 | 3, cold — genre pinned `spec`; loop 1 of a new run (PRESS-0058). Packet carried `credentials.py` whole and `tests/_mode_support.py`; Windows declared unrunnable, so Q1 was out of scope there | 2 | 5 | 3 | 0 | **Ten verified, ten fixed; three of them are code defects filed rather than fixed here.** **Four findings were made by two lanes each**, and the sharpest is a defect this document could not have caught before: PRESS-0051 hardened `write()`'s keyring failure to name the exception type and drop the cause, and left `_read_keyring` folding the backend's own message in with `from exc` — so INV-6, stated absolutely, is unheld on the read side, which is the side the store's own text describes. INV-6 now states the rule for both sides and forces the quoting store on each; the code side is filed. **Two lanes found §4.1 saying this module does not probe permissions first**, quoting PRESS-0001 §6's judgement for `save()`, while INV-11 — added in this same amendment — requires exactly that probe before the secret is written. The sentence had a loose subject and the new rule made it false. **Two lanes found §7's hold-back attributed to Windows** where §4.6 makes it a property of the mount: a suite guarding on the platform's name goes red against a correct implementation run from a memory stick, and `tests/_mode_support.py` is the capability probe PRESS-0001 and PRESS-0005 already use and this one does not. **Two lanes found the probe delete's target unstated** — a chain's delete stops at its first member that does not refuse, which need not be the one holding the probe, so the probe outlives setup in the writer's own keyring while §4.2 reads as an assurance it does not. **One lane found the version comparison lax**: PRESS-0001 pins it type-strict and this module uses `!=`, which accepts `true` and `1.0` — two acceptance sets for one on-disk shape. **Singles:** §4.2 had no row for the store failing to LOAD, though the code types that failure and a test holds it; §4.4's restatement dropped the flush and fsync PRESS-0001 calls part of the mechanism, so a power loss could leave a file holding neither secret; and the write-side version row claimed to refuse the same file the read table does, which is untrue of a file parsing to an empty mapping. **Two were mine, from the amendment an hour earlier**: the second INV-6 test appeared in no enumeration, and §7's list of file-store writers omitted INV-11. **Resolved clean, not counted:** `NoKeyringError` does subclass `KeyringError` which subclasses `RuntimeError`, executed against the library. |
+| 6 | 2026-09-06 | 3, cold — identical brief, packet rebuilt from disk after the loop-5 code fixes landed, so the module in it was current with the document; Windows still unrunnable | 3 | 3 | 1 | 1 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation. A CALM cap** — about three of the seven landed on text this run wrote, and across both loops most findings predated the change being gated, so this gate was again an audit that also produced three code fixes. **All three lanes found the same defect**, and it is the one the loop-5 code fix walked past: both version rows describe a file *carrying* a version this build does not read or write, and the code refuses a well-formed file carrying **no** version at all — which PRESS-0001's own table states and this one dropped. A conformer would let `read()` return a secret from a versionless file and let `write()` merge into it. **Two lanes found INV-6's new sentence false of `choose()`**, which interpolates the backend's message and chains the cause: the rule is scoped to the calls handed a secret now, and §4.2 says what `choose()`'s two failures may carry and why that is safe — no secret is ever in its hands. **Two lanes found §7's *what runs everywhere*** contradicting the INV-10 carve-out five lines above it. **One lane found INV-5 crediting the wrong mechanism on Windows**: decision 1's refusal fires before the capability read is reached, so the capability read is not what holds those clauses back there — and loop 5's own §7 fix had the same error the other way round, attributing to the filesystem what Windows settles first. Both now name both refusals. **One lane found the read table silent on a well-formed file whose `secrets` is missing or not an object** — executed: `CredentialError`, where the table's remaining rows push a builder toward `NotStored`, and PRESS-0021 branches on exactly that pair. **One Q4: INV-7's fixture leaves its first member unconstrained**, so it may answer `None` — and §4.6 measured that the real chain never does, which is the whole reason the clause exists; the shipped fixture does answer `None`, filed to PRESS-0100. **Resolved clean, not counted:** PRESS-0001 §6's quotation is verbatim and correctly attributed, checked by all three lanes. |
