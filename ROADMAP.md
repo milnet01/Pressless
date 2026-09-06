@@ -4616,6 +4616,40 @@
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
 
+- 📋 [PRESS-0100] **Credentials hardened one half of a leak and left the other, and its version check is looser than the file format it shares.**
+  Three code defects found by PRESS-0058's gate. All are in
+  credentials.py and its tests; the contract for each now says what the
+  code should do, so this is the code catching up.
+
+  1. THE LEAK'S OTHER HALF. PRESS-0051 fixed write()'s keyring failure to
+  name the exception type and drop the cause, and left _read_keyring
+  raising `f"...could not be read: {exc}"` with `from exc`. INV-6 says no
+  exception this module raises contains a secret value, absolutely. A
+  backend that quotes what it failed to read breaches it there, and the
+  chained cause puts it in a formatted traceback and in the rolling log
+  PRESS-0011 files. Found by two lanes.
+
+  2. THE VERSION CHECK IS LAX. settings.py refuses a version that is not
+  the integer this build writes -- `type(version) is not int or ...`.
+  credentials.py uses `!=` on both its read and write paths, so `true` and
+  `1.0` are accepted, because both equal 1 in Python. Two acceptance sets
+  for one on-disk shape that an installation carries forward.
+
+  3. THE TESTS GUARD ON THE PLATFORM, NOT THE CAPABILITY. INV-5, INV-6,
+  INV-8, INV-10 and INV-11 all write through the file store, and
+  test_credentials.py patches the platform check alone. write() correctly
+  refuses any mount that does not enforce POSIX modes, so the suite goes
+  RED against a correct implementation run from a memory stick or a
+  mounted share. tests/_mode_support.py is the probe, and test_settings.py
+  and test_store.py already import it.
+
+  Each needs its test: a read failure from a store whose message carries
+  the sentinel, a version of `true` refused on both paths, and the
+  capability skip on the five clauses.
+  **Layman:** A failure while reading the publishing key could copy the store's own words into a message, and those words can contain the key.
+  Kind: security.
+  Source: review-contract 2026-09-06 PRESS-0058 gate loop 1.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how

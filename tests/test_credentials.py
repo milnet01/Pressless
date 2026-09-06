@@ -22,6 +22,7 @@ from pathlib import Path
 import keyring.errors
 import pytest
 from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.credentials as credentials_module
@@ -230,6 +231,11 @@ def test_fallback_file_is_owner_only(tmp_path, monkeypatch):
     Breaks when an implementer opens the target directly and chmods
     afterwards, leaving a window in which the key is readable.
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     destinations = []
     real_replace = os.replace
@@ -360,6 +366,11 @@ def test_second_write_keeps_the_first(tmp_path, monkeypatch):
     Breaks when the file is rebuilt from the one secret in hand, so setting
     up the dashboard discards the publishing key.
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     write("file", tmp_path, "publishing-key", "the-github-one")
     write("file", tmp_path, "analytics", "the-google-one")
@@ -455,6 +466,11 @@ def test_fallback_file_reaches_the_disk_before_the_rename(tmp_path, monkeypatch)
     Breaks when write() renames an unsynced temporary, which can leave an empty
     credentials file where §4.4 promises the previous one.
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     events = _watch_durability(monkeypatch)
     try:
@@ -476,6 +492,11 @@ def test_fallback_file_names_the_line_endings(tmp_path, monkeypatch):
     Breaks when write() opens its temporary without newline="\\n", which writes
     CRLF on Windows.
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     opens = _watch_opens(monkeypatch)
     try:
@@ -518,6 +539,11 @@ def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
     file being merged forward into one the writer owns and accepted by a
     later compliant read().
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "getuid"):
         pytest.skip("this platform offers neither check, so §4.4 skips both "
@@ -610,6 +636,31 @@ def test_a_backend_that_quotes_the_secret_does_not_leak_it(tmp_path,
         f"cannot be diagnosed at all: {raised.value!s}"
     )
 
+    # PRESS-0100 item 1: the READ side is the half that was left. A store
+    # describing what it failed to read can quote it, and INV-6 is stated
+    # absolutely -- so forcing this on write() alone leaves the shipped read
+    # path free to fold the backend's message in, which is what it did.
+    _use(monkeypatch, _Store(raises=Exception(
+        f"backend failed while retrieving {SENTINEL}")))
+
+    with pytest.raises(CredentialError) as read_raised:
+        read("keyring", tmp_path, "publishing-key")
+
+    assert SENTINEL not in str(read_raised.value), (
+        f"the read failure's message quotes the secret: {read_raised.value!s}"
+    )
+    read_chain = "".join(traceback.format_exception(
+        type(read_raised.value), read_raised.value,
+        read_raised.value.__traceback__))
+    assert SENTINEL not in read_chain, (
+        "the backend's own message reaches a formatted traceback through "
+        "__cause__ on the read path, so the key would land in the rolling log"
+    )
+    assert "Exception" in str(read_raised.value), (
+        f"the read failure names neither the store nor the kind of fault: "
+        f"{read_raised.value!s}"
+    )
+
 
 # ------------------------------------------------------------ PRESS-0050 ----
 
@@ -681,11 +732,30 @@ def test_writing_over_a_newer_credentials_file_is_refused(tmp_path,
     with pytest.raises(CredentialError):
         write("file", tmp_path, "publishing-key", SENTINEL)
 
+    # PRESS-0100 item 2: PRESS-0001 pins this check on the TYPE as well as
+    # the value, and one on-disk shape may not have two acceptance sets. In
+    # Python `true == 1` and `1.0 == 1`, so a plain != accepts both as this
+    # build's own version and relabels the file.
+    for wrong in ("true", "1.0"):
+        (tmp_path / FILE_NAME).write_text(
+            f'{{"version": {wrong}, "secrets": {{"publishing-key": "kept"}}}}',
+            encoding="utf-8",
+        )
+        with pytest.raises(CredentialError):
+            write("file", tmp_path, "publishing-key", SENTINEL)
+        with pytest.raises(CredentialError):
+            read("file", tmp_path, "publishing-key")
+
 
 def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
     """PRESS-0053's counter-case: with no file there, there is nothing to
     carry and nothing to refuse.
     """
+    # Guarded on the CAPABILITY, not the platform: write() refuses any
+    # mount that does not enforce POSIX modes (INV-11), so a
+    # platform-only guard sends this red against a correct
+    # implementation run from a memory stick (PRESS-0100).
+    _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
 
     write("file", tmp_path, "publishing-key", SENTINEL)

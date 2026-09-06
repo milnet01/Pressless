@@ -207,9 +207,17 @@ def _read_keyring(account: str) -> str:
     try:
         answer = keyring.get_keyring().get_password(SERVICE, account)
     except Exception as exc:
+        # The same rule as the write above, and for the same reason: this
+        # module has no control over what a backend puts in its message, and
+        # a store describing what it failed to READ can quote it. INV-6 is
+        # stated absolutely, so hardening one side and leaving this one left
+        # it unheld on the side whose text the store itself writes
+        # (PRESS-0100). `from None` because __cause__ is formatted by a
+        # traceback and by PRESS-0011's rolling log.
         raise CredentialError(
-            f"this machine's credential store could not be read: {exc}"
-        ) from exc
+            f"this machine's credential store could not be read "
+            f"({type(exc).__name__})"
+        ) from None
     if not isinstance(answer, str):
         # Not a str means nothing is stored, and that is measured rather than
         # chosen (§4.3, §4.6): here an absent secret comes back as a truthy
@@ -229,7 +237,10 @@ def _read_file(folder: Path, account: str) -> str:
         raise NotStored(f"there is no {target}")
 
     version = raw.get("version")
-    if version != FILE_VERSION:
+    # Type-strict, as PRESS-0001 pins it: `true == 1` and `1.0 == 1` in
+    # Python, so a plain != accepts both as this build's own version
+    # (PRESS-0100). One on-disk shape, one acceptance set.
+    if type(version) is not int or version != FILE_VERSION:
         raise CredentialError(
             f"{target} has version {version!r}; this Pressless reads "
             f"version {FILE_VERSION}"
@@ -266,7 +277,7 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         # this build's while keeping that build's keys (PRESS-0053). An
         # absent file is not this case: the first save has nothing to carry.
         carried_version = carried.get("version")
-        if carried_version != FILE_VERSION:
+        if type(carried_version) is not int or carried_version != FILE_VERSION:
             raise CredentialError(
                 f"{target} has version {carried_version!r}; this Pressless "
                 f"writes version {FILE_VERSION}, and saving over it would "
