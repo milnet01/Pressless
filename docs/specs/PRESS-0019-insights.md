@@ -1,8 +1,10 @@
 # PRESS-0019 — Insights: asking Google how the site is being read
 
-**Status:** draft (2026-09-06). Written after the code shipped, which is not
-the direction a spec usually runs; §1 says why this one does, and which of it
-is a record and which is a contract for work still to come.
+**Status:** accepted (2026-09-06). Written after the code shipped, which is
+not the direction a spec usually runs; §1 says why this one does, and which of
+it is a record and which is a contract for work still to come. Gated to its
+cap on the day it was written — a violent cap, so it routes to implementation
+rather than a third cold read.
 **Kind:** doc.
 **Source:** ROADMAP PRESS-0063 (PRESS-0056 item 4; ADR-0005; `docs/design.md`
 rule 8 and § State).
@@ -24,7 +26,9 @@ this one names its own test file, and `insights.py`'s docstring cites
 invariants that live only in that file's header. A test that both asserts a
 rule and *is* the rule cannot falsify it, and a reader has nothing to hold the
 code to. §5 gives those invariants a home outside the tests, unchanged in
-number so the citations in the module still resolve.
+number — so the module's own INV-1, INV-2, INV-7 and INV-14 citations still
+resolve. **Its two INV-8 citations do not**: they name the whole-file promise,
+which is INV-24 here, and §11 records the move.
 
 **A decision for work not yet done.** PRESS-0056 item 4 left the cache
 holding one report at a time. That is latent while the dashboard offers one
@@ -145,9 +149,8 @@ behind.
 is what the cache exists for, so answering it with more requests is the
 opposite of the design.
 
-A `POST` to `https://analyticsdata.googleapis.com/v1beta`, the property's
-`:runReport` endpoint, carrying the token as an `Authorization: Bearer`
-header, asking for the last `days` days with dimension
+A `POST` to `https://analyticsdata.googleapis.com/v1beta/properties/<property
+id>:runReport`, carrying the token as an `Authorization: Bearer` header, asking for the last `days` days with dimension
 `countryId`, metric `activeUsers`, and `metricAggregations` of `TOTAL`.
 
 - **`countryId`, never `country`** — the first is the ISO alpha-2 code the flag
@@ -184,8 +187,10 @@ conservative one: it can only make a cached reply look older than it is.
 
 ### 4.5 What each failure means
 
-**With nothing cached for this window.** Where a reply is cached, §4.4's
-fallback answers instead and none of these is raised.
+**The first two rows are raised before the cache is consulted at all**, so a
+cached reply changes nothing about them — that is what INV-2 and INV-23 mean
+by *before any request*. The rest are fetch failures, and where a reply is
+cached for this window §4.4's fallback answers instead of raising them.
 
 | What happens | What is raised |
 |---|---|
@@ -246,11 +251,14 @@ which settled something the contract had left open.
   *Breaks when:* the rows are summed, which counts a visitor seen in two
   countries twice and overstates the figure the writer reads.
 
-- **INV-6** — `Report.countries` is ordered by people descending, and a row
-  whose dimension value starts with `RESERVED_` is dropped.
+- **INV-6** — `Report.countries` is ordered by people descending and ties by
+  country code, so the same data always yields the same order, and a row whose
+  dimension value starts with `RESERVED_` is dropped.
   *Test:* `tests/test_insights.py::test_countries_are_ordered_and_aggregate_rows_dropped`.
   *Breaks when:* the aggregate marker is treated as a country, which puts a
-  row with no flag at the top of the list.
+  row with no flag at the top of the list; or the tie-break is dropped, and a
+  cached reply and a fresh one for identical data list the same countries in
+  different orders, since only the fetch path sorts.
 
 - **INV-7** — No failure this module raises carries the token, in its message
   or its representation.
@@ -366,13 +374,15 @@ which settled something the contract had left open.
   site folder is published in full, so the Builder would copy the cache and the
   Publisher would upload it, putting country-level readership on a public site.
 
-- **INV-24** — The cache reaches the disk before the rename, and its line
-  endings are written explicitly rather than left to the platform.
+- **INV-24** — The cache reaches the disk before the rename, no temporary is
+  left behind on any path, and its line endings are written explicitly rather
+  than left to the platform.
   *Test:* `tests/test_insights.py::test_cache_reaches_the_disk_before_the_rename`
   and `::test_cache_names_the_line_endings`.
   *Breaks when:* the sync is dropped, so a power loss commits the rename ahead
-  of the blocks and leaves an empty file; or the platform decides the endings
-  and the same cache is different bytes on the two systems.
+  of the blocks and leaves an empty file; a failure leaves its temporary in
+  Pressless's folder to accumulate; or the platform decides the endings and the
+  same cache is different bytes on the two systems.
 
 - **INV-25** — Google's own words about what it rejected ride on the failure
   and never in its message, capped in length.
@@ -406,10 +416,14 @@ which settled something the contract had left open.
 `tests/test_insights.py` — every invariant's tests are named in §5 and
 tabulated in §10. Mostly one apiece; where an invariant has two halves that
 break separately, it names both, and INV-19 names four because dropping the
-header and keeping it are different failures on different redirects. **No test reaches the network:** every one hands in a recording double
-through `client`, which is what lets the request invariants assert on requests
-made and on requests *not* made. That double supplies the clock, so every
-cache-age test is deterministic and nothing sleeps.
+header and keeping it are different failures on different redirects. **No test reaches the network.** Every test of `read()` hands in a recording
+double through `client`, which is what lets the request invariants assert on
+requests made and on requests *not* made, and that double supplies the clock,
+so every cache-age test is deterministic and nothing sleeps. **INV-1's test is
+an import walk, and INV-19 to INV-21 exercise the module's own client
+directly** — the `client` seam replaces that client, so nothing handed through
+it could observe the redirect handler, the timeout or the `OSError`
+conversion.
 
 **INV-17 and INV-18 are the two tests this document adds.** INV-17 is to be
 seen failing first, against the shipped single-slot cache. **INV-18 is not**:
