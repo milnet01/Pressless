@@ -1,6 +1,6 @@
 # PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
 
-**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked.
+**Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -191,6 +191,7 @@ by a later Pressless rather than guessing at it.
 | The store cannot be used at all | `CredentialError` |
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
+| The existing fallback file carries a `version` this build does not write | `CredentialError` — saving over it would discard a file a later Pressless wrote, which is the same file the read table refuses to guess at |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
 **Every one of these is typed, and that is a requirement rather than tidiness.**
@@ -387,6 +388,11 @@ once the code exists.
   every row of §4.3's table: `write()` into an unwritable folder, `write()`
   refused on Windows, and each read failure. Assert the sentinel appears in no
   message.
+  **One of those failures must come from a store whose own message carries the
+  sentinel** — `tests/test_credentials.py::test_a_backend_that_quotes_the_secret_does_not_leak_it`.
+  Every store here is patched (§7), so without that case the clause proves only
+  that this module's own literals are clean, and an implementation folding a
+  backend's message into `CredentialError` stays green against it.
   *Breaks when:* an implementer puts the value in a message to make a failure
   easier to diagnose, and the log or a screenshot then carries the key.
   **§4.3's table alone cannot catch it:** that table enumerates `read()`'s
@@ -455,6 +461,22 @@ once the code exists.
   — the planted file is merged forward into one the writer owns, which a
   later compliant `read()` then accepts.
 
+- **INV-11** — `write()` refuses a folder whose filesystem did not grant the
+  temporary file owner-only, and refuses it before the secret is written into
+  that file. The mode is read off the descriptor `mkstemp` returned, so what
+  is checked is what the mount granted rather than what was asked for.
+  *Test:*
+  `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused`
+  — make the descriptor report a group or other bit, assert `NoStore`, and
+  assert the folder is left holding nothing.
+  *Breaks when:* the check keys on the platform's name instead. ADR-0003 asks
+  for a capability test, and §3 decision 1's own scenario is the writer
+  choosing where Pressless sits — a removable or shared drive ignores the
+  mode request and `chmod` cannot repair it, so a name-based guard hands the
+  key to a filesystem that cannot keep it.
+  **INV-5 cannot catch it:** that clause reads the mode back where the request
+  is honoured, which is the case this one is not about.
+
 ## 6. Failure modes
 
 - **No store, on Windows.** `choose()` raises `NoStore` and setup stops.
@@ -482,8 +504,8 @@ once the code exists.
 
 `tests/test_credentials.py`, unlabelled — it declares no custom marker and
 needs no fixture beyond a temporary directory, unlike the archive test
-PRESS-0004 carries. One test per invariant, named in §5 and tabulated in
-§10.
+PRESS-0004 carries. One test per invariant, named in §5; §10 tabulates those
+and the checks holding claims that are not invariants.
 
 **No test touches the real store.** Every test that names the operating
 system's store patches it. A test that called the library for real would write
@@ -587,7 +609,8 @@ exit code.
 | INV-10's ownership refusal against a file really owned by another user | **half** — the suite cannot create one without a second account, so that clause patches the owner the descriptor reports. The symlink refusal and the permissive-mode acceptance both run for real |
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
-| ADR-0003's capability test, where the filesystem does not enforce modes | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on ext4 where the request is honoured |
+| INV-11 | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on a filesystem where the request is honoured |
+| §4.3's refusal to save over a file a later Pressless wrote | `tests/test_credentials.py::test_writing_over_a_newer_credentials_file_is_refused` |
 | INV-5's file mode on Windows | **nothing, and nothing can** — §4.6's measurement is that the mode is unenforceable there. INV-2 removes the case rather than checking it |
 | No secret reaching the rolling log | **nothing here** — INV-6 covers this module's own messages. The log is the Face's and `docs/design.md` § Logging is the rule; PRESS-0011 owns the surface |
 | The Face fetching a secret and handing it over, rather than the Publisher or Insights reaching a store themselves (design rule 10) | **nothing here** — INV-1 stops this module reaching them, not them reaching past it. PRESS-0009's and PRESS-0019's own INV-1 forbid the other direction |
