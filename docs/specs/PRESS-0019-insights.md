@@ -85,6 +85,10 @@ def read(settings: Settings, token: str, folder: Path, *,
 def cache_path(folder: Path) -> Path
 ```
 
+`DEFAULT_DAYS` is 28 and `DEFAULT_MAX_AGE` is 3600.0 — four weeks of
+readership, and an hour between fetches. §4.4 says why the second is the
+figure it is.
+
 **The token is an argument and never fetched here.** Only the Face reaches
 Credentials (`docs/design.md` rule 10), and INV-1 is what keeps that true.
 
@@ -120,11 +124,14 @@ the cache is a copy of something Google can be asked for again, so a version
 bump costs one request per window and no migration code that must then be kept
 correct forever.
 
-**Nothing prunes, and the file cannot grow without bound, because `days` is
-not writer-supplied**: the dashboard offers a fixed set of windows
-(PRESS-0020) and `read()` is called with one of them. Should a caller ever
-pass an arbitrary window, that is what makes a cap necessary, and this
-paragraph is the thing that stops being true.
+**Nothing prunes, and the bound is a requirement on the caller rather than a
+rule this module enforces.** `days` is not writer-supplied — it comes from
+whatever inside Pressless asks — so the file holds an entry per distinct
+window asked for. **This document therefore requires that the dashboard offer
+a fixed and small set of windows.** PRESS-0020 does not say so today; it
+describes what the writer sees and names no window at all. A caller passing an
+unbounded range of day counts grows this file without limit, and a cap is the
+fix at that point. Nothing here checks it (§10).
 
 **A cache that cannot be written is not worth failing a fetch over** — the
 numbers in hand are still good. It is written the way Settings writes: a
@@ -138,16 +145,18 @@ behind.
 is what the cache exists for, so answering it with more requests is the
 opposite of the design.
 
-A `POST` to the property's `:runReport` endpoint, carrying the token as an
-`Authorization: Bearer` header, asking for the last `days` days with dimension
+A `POST` to `https://analyticsdata.googleapis.com/v1beta`, the property's
+`:runReport` endpoint, carrying the token as an `Authorization: Bearer`
+header, asking for the last `days` days with dimension
 `countryId`, metric `activeUsers`, and `metricAggregations` of `TOTAL`.
 
 - **`countryId`, never `country`** — the first is the ISO alpha-2 code the flag
   pictures are keyed by, the second a localised display name.
 - **The total is read, never summed.** Without `TOTAL` Google's answer carries
   no total, and adding the rows counts a visitor seen in two countries twice.
-- **A row whose dimension value carries the aggregate prefix is dropped**, an
-  aggregate marker not being a country.
+- **A row whose dimension value STARTS WITH `RESERVED_` is dropped**, an
+  aggregate marker not being a country. The test is on the start of the value,
+  which is where Google puts the marker.
 
 ### 4.4 Freshness, staleness, and the clock
 
@@ -157,14 +166,26 @@ pass, so after a clock correction or a restored backup the cache read fresh
 forever and showed old numbers labelled current, which is worse than showing
 them stale.
 
-Where Google cannot answer and a cached reply for this window exists, that
-reply is returned with `stale` set rather than raising — a dashboard showing
-yesterday's numbers, labelled, beats one showing an error. With nothing
-cached, the typed failure is raised.
+**Any typed failure of the fetch falls back to a cached reply for this
+window**, returned with `stale` set rather than raised — a refusal and a rate
+limit as much as an unreachable host, since a dashboard showing yesterday's
+numbers, labelled, beats one showing an error. With nothing cached for the
+window, the failure is raised. §4.5's table is therefore what a caller sees
+when nothing is cached.
 
-`Report.fetched_at` is when Google answered, not when the reply was read.
+**`max_age_seconds` is what makes the cache a quota guard, and the caller
+chooses it.** The default is an hour because Google meters this API per
+property per hour; a caller passing a much smaller value spends that budget
+and breaches nothing this document can check (§10).
+
+`Report.fetched_at` is when the request was made, not when the reply was read.
+The two differ by the time Google took to answer, and the earlier stamp is the
+conservative one: it can only make a cached reply look older than it is.
 
 ### 4.5 What each failure means
+
+**With nothing cached for this window.** Where a reply is cached, §4.4's
+fallback answers instead and none of these is raised.
 
 | What happens | What is raised |
 |---|---|
@@ -184,8 +205,10 @@ reply cannot become the message.
 ## 5. Invariants
 
 **INV-1 to INV-16 are carried from `tests/test_insights.py`'s header unchanged
-in number**, because `insights.py` cites several of them by id. **INV-17 and
-INV-18 are the only ones describing work still to do.** INV-19 onwards are
+in number**, because `insights.py` cites several of them by id. **INV-17 is
+the only one describing work still to do.** INV-18's behaviour already ships —
+`_cached` refuses a version this build does not write before reading a field —
+and what the cache change alters is the version's value; its test is new. INV-19 onwards are
 behaviours that ship and are tested and that the header's list never named —
 several of them the fixes that closed PRESS-0039 through PRESS-0056, each of
 which settled something the contract had left open.
@@ -224,7 +247,7 @@ which settled something the contract had left open.
   countries twice and overstates the figure the writer reads.
 
 - **INV-6** — `Report.countries` is ordered by people descending, and a row
-  whose dimension value starts with the aggregate prefix is dropped.
+  whose dimension value starts with `RESERVED_` is dropped.
   *Test:* `tests/test_insights.py::test_countries_are_ordered_and_aggregate_rows_dropped`.
   *Breaks when:* the aggregate marker is treated as a country, which puts a
   row with no flag at the top of the list.
@@ -235,7 +258,8 @@ which settled something the contract had left open.
   *Breaks when:* a request is interpolated into an error to make it easier to
   diagnose, and the token lands in the log the Face keeps.
 
-- **INV-8** — There is exactly one cache file, at `cache_path(folder)`.
+- **INV-8** — There is exactly one cache file, at `cache_path(folder)`, which
+  is `folder` and the name `insights.json`.
   *Test:* `tests/test_insights.py::test_cache_is_one_file_with_the_agreed_name`.
   *Breaks when:* a second file appears beside it, which is a second thing to
   delete and a second thing to leave behind.
@@ -370,8 +394,8 @@ which settled something the contract had left open.
 | When | What happens |
 |---|---|
 | The writer declined the dashboard | `NotConfigured`, no request. Writing and publishing are untouched (rule 8) |
-| Google cannot be reached, and this window is cached | The cached reply, `stale` True |
-| Google cannot be reached, and nothing is cached | `Unreachable` |
+| The fetch fails any typed way, and this window is cached | The cached reply, `stale` True |
+| The fetch fails, and nothing is cached for this window | That typed failure (§4.5) |
 | The cache file is corrupt | Ignored, refetched over |
 | The cache file is a version this build does not write | Ignored, refetched over (INV-18) |
 | The cache cannot be written | The report is still returned; the next call refetches |
@@ -387,10 +411,11 @@ through `client`, which is what lets the request invariants assert on requests
 made and on requests *not* made. That double supplies the clock, so every
 cache-age test is deterministic and nothing sleeps.
 
-**INV-17 and INV-18 are the two tests this document adds**, and they are to be
-seen failing before the cache change is built — INV-17 against the shipped
-single-slot cache, INV-18 against a build that reads a foreign version's
-fields.
+**INV-17 and INV-18 are the two tests this document adds.** INV-17 is to be
+seen failing first, against the shipped single-slot cache. **INV-18 is not**:
+its behaviour ships, so its test passes on the run that introduces it, and
+demanding a red run there would mean building something broken to produce
+one.
 
 **Not asserted, deliberately:** that `read()` builds the module's own client
 when none is handed in. Proving it would mean letting a test reach Google.
@@ -439,7 +464,7 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-15 | `tests/test_insights.py::test_fetched_at_is_when_the_reply_was_fetched` |
 | INV-16 | `tests/test_insights.py::test_http_status_maps_to_the_typed_failure` |
 | INV-17 | `tests/test_insights.py::test_one_windows_reply_does_not_evict_another` — not yet written; the cache change is what it gates |
-| INV-18 | `tests/test_insights.py::test_another_versions_cache_reads_as_absent` — not yet written |
+| INV-18 | `tests/test_insights.py::test_another_versions_cache_reads_as_absent` — not yet written; the behaviour it locks already ships |
 | INV-19 | `tests/test_insights.py::test_a_cross_origin_redirect_drops_the_token` + `::test_a_same_origin_redirect_keeps_the_token` + `::test_a_same_host_change_of_origin_drops_the_token` + `::test_the_client_installs_the_redirect_handler` |
 | INV-20 | `tests/test_insights.py::test_every_request_carries_a_timeout` |
 | INV-21 | `tests/test_insights.py::test_a_broken_reply_reaches_the_caller_as_oserror` |
@@ -451,6 +476,7 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | §3 decision 2's window ending at today | **nothing** — the same question asked twice in a day gives two numbers by design, so no assertion can tell that from a fault |
 | The zero-visitor reading of GA4 | **nothing against the live API** — the test asserts what this module does with such an answer, never that Google sends one |
 | A cache written outside Pressless's own folder by a caller passing one | `read()`'s own refusal covers the site folder; anywhere else is the caller's choice and nothing here checks it |
+| §4.2's requirement that the dashboard offer a fixed, small set of windows | **nothing** — the module cannot see how many distinct windows a caller will ask for, and a cap here would need a number nobody has a reason for. PRESS-0020 is where the set gets fixed |
 
 ## 11. Cross-doc impact
 
@@ -460,7 +486,15 @@ when none is handed in. Proving it would mean letting a test reach Google.
   and that there is no specs file. Both stop being true when this is accepted.
 - `tests/test_insights.py`'s header — same sentence, same fix: it becomes a
   pointer here rather than the contract itself.
-- `docs/design.md` — no change. This settles detail that document leaves open.
+- `docs/design.md` § State — **it says the last reply is kept, singular.**
+  That stops being true when the cache holds one per window, so it needs
+  widening when the cache change ships, with its own gate; this document does
+  not edit it.
+- **PRESS-0020 must record the set of windows it offers**, which §4.2 requires
+  and nothing here can enforce. Its bullet names no window today.
+- `insights.py`'s `_store` cites INV-8 twice for the whole-file promise —
+  once in its docstring and once at the fsync. That promise is INV-24 here, so
+  both citations move when the docstring is repointed.
 
 ## 12. Cold-eyes loop log
 
