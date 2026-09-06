@@ -324,13 +324,18 @@ def test_unknown_header_fields_survive(tmp_path):
 
 def test_body_survives_a_round_trip(tmp_path):
     """INV-5: a body survives read then write byte-for-byte, including
-    consecutive newlines, trailing newlines and a line that looks like a header
-    field.
+    consecutive newlines, trailing newlines, a line that looks like a header
+    field, and CRLF endings.
 
     Breaks when an implementer strips, collapses or normalises the body, which
     is S2 broken -- every line break the writer typed is still there. The
     'Looks: like a field' line is what catches a parser that goes on reading
-    the header past the blank line (§4.2)."""
+    the header past the blank line (§4.2).
+
+    The CRLF case is what separates this rule from INV-6, which is about the
+    bytes the Store WRITES: §4.2 reads a file a Windows editor re-saved, so a
+    CRLF body is reachable rather than hypothetical, and it must come back
+    unconverted rather than normalised to LF."""
     bodies = {
         "no trailing newline": (
             "First line.\n"
@@ -346,6 +351,13 @@ def test_body_survives_a_round_trip(tmp_path):
             "\n"
             "Last line.\n"
             "\n"
+        ),
+        "CRLF endings": (
+            "First line.\r\n"
+            "\r\n"
+            "Looks: like a field\r\n"
+            "\r\n"
+            "Last line.\r\n"
         ),
     }
 

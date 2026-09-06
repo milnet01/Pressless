@@ -6,7 +6,7 @@
 took: the emitted header carries only the recognised fields the entry has,
 so an entry never given a `Categories` line comes back without one. That
 changes direction, so the gate re-armed and ran to the spec cap of 2. The
-code has not landed; §10 names the test still to be written.
+code and its test have since landed.
 **Amended 2026-09-02, before implementation**, on two decisions the user
 took: the legal slug set excludes Windows's reserved device names on every
 system, and the file suffix is matched ignoring case. Both change direction,
@@ -178,12 +178,19 @@ in one pass, and a `write` that consulted the other could not. Where
 the Store does enforce it is the two moves, which have somewhere to
 collide (INV-10).
 
-`publish` moves a draft into the published folder by rename, and
-`unpublish` moves one back. The reverse is required rather than
+`publish` moves a draft into the published folder, and `unpublish`
+moves one back. The reverse is required rather than
 symmetric: `docs/design.md` § What may depend on what has an undo turn
 an entry the fetched state does not hold back into a draft. Either
 raises `SlugInUse` rather than overwriting what the destination
-already holds. Neither reads or writes a body, so neither can alter
+already holds — **and the refusal is made by the move itself, never by
+an `exists()` check before it.** `os.rename` raises on Windows where
+the target exists and silently replaces it on POSIX, so the move is
+`os.rename` there and `os.link` then `os.unlink` here, both raising
+`FileExistsError`. Checking first and then renaming leaves a window in
+which a second copy of Pressless, or a hand copy, creates the
+destination and the rename destroys it — which INV-10 says cannot
+happen. Neither reads or writes a body, so neither can alter
 one.
 
 ### 4.2 The entry file
@@ -373,6 +380,13 @@ target, which is atomic on both Windows and Linux — so a crash
 mid-save leaves the previous file rather than half an entry. This is
 the shape `src/pressless/settings.py::save` already uses.
 
+**The sync is part of that mechanism rather than a refinement of it.**
+The temporary is flushed and fsynced before the replace: `os.replace`
+orders the namespace and not the data, so without it a power loss can
+commit the rename ahead of the blocks and leave an empty file where
+the sentence above promises the previous one (PRESS-0039). PRESS-0001
+§4.4 states it in the same terms.
+
 **On POSIX every file written this way is left readable by its owner
 alone.** `mkstemp` creates the temporary with mode `0600`, and
 `os.replace` carries that mode onto the target — so a file that was
@@ -525,7 +539,11 @@ is true of a template is PRESS-0006's (§9).
   value, and for an `extra` field's name and its value; a comma case for
   the two list fields; and a slug outside the legal set, the empty slug
   and one reserved device name, each asserting the folder is unchanged
-  afterwards. A slug's newline needs no case of its own, being refused
+  afterwards. **The three extra-name refusals carry their own tests** —
+  `::test_a_colon_in_an_extra_name_is_refused`,
+  `::test_an_extra_named_like_a_real_field_is_refused` and
+  `::test_an_extra_name_that_is_only_spaces_is_refused` — because each
+  is a silent data-loss route rather than a malformed file. A slug's newline needs no case of its own, being refused
   by §4.2's legal set before the format check runs; plus a title
   carrying a comma, which must be written and read back intact. That
   last case is what stops the rule being widened into one Import cannot
@@ -587,7 +605,10 @@ is true of a template is PRESS-0006's (§9).
 - **The handed folder does not exist.** `read` and `list_slugs` raise
   `EntryNotFound` and `StoreError` respectively; `write` raises
   `StoreError` rather than creating a tree, because a mistyped folder
-  is not a folder to start filling.
+  is not a folder to start filling. **`exists` answers `False` rather
+  than raising**, because a caller asking whether a slug is taken on a
+  fresh install has to be able to hear no — PRESS-0007 writes the whole
+  archive in one go and asks first.
 - **`published/` or `drafts/` is missing inside a handed folder that
   does exist.** `write` creates the one it needs, and `list_slugs`
   returns nothing rather than raising. They are the Store's own layout
@@ -620,10 +641,9 @@ is true of a template is PRESS-0006's (§9).
   that is not published.** `EntryNotFound`. Nothing is moved.
 - **`publish` onto a slug the published folder already holds, or
   `unpublish` onto one the drafts folder holds.** `SlugInUse`.
-  Nothing is moved and neither file is opened. Without this a rename
-  would silently destroy the entry at the destination, which §3
-  decision 5's uniqueness rule is meant to make impossible and this is
-  what enforces.
+  Nothing is moved and neither file is opened. §3 decision 5's
+  uniqueness rule is what this protects; §4.3 owns HOW, and the answer
+  is that the move itself refuses rather than a check preceding it.
 
 ## 7. Tests
 
@@ -742,7 +762,7 @@ imports.
 | INV-6 | `tests/test_store.py::test_written_bytes_are_utf8_lf` |
 | INV-7 | `tests/test_store.py::test_a_draft_never_reaches_published` |
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
-| INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused` |
+| INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
 | INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
@@ -756,8 +776,9 @@ imports.
 | LF endings and atomic replace behaving this way on Windows | **nothing** — this suite runs on Linux, and `os.replace` is documented atomic on both. PRESS-0022 stages the built executable to a Windows box, which is the only place it would be observed |
 | The Windows path limit (§6) | **nothing** — same reason. The failure mode is named so that it is recognised rather than diagnosed |
 | §4.2's reserved device names | `tests/test_store.py::test_every_windows_device_name_is_refused_and_near_misses_are_not`, which asserts the whole set rather than one member, plus six near misses; and `::test_a_reserved_name_is_refused_before_anything_is_written` for `path_for` and `exists`. INV-9's own test carries the case §5 names |
-| §4.2's rule that the header carries only what the entry has | `tests/test_store.py::test_an_absent_recognised_field_is_not_written_back`, which asserts the emitted bytes rather than a re-read — a re-read cannot see the difference, since an omitted line and an empty one parse alike, so an assertion on the round-tripped `Entry` passes against either. **Not yet written** — this rule is the amendment
-gated before implementation, so the row states what will check it |
+| §4.2's rule that the header carries only what the entry has | `tests/test_store.py::test_an_absent_recognised_field_is_not_written_back`, which asserts the emitted bytes rather than a re-read — a re-read cannot see the difference, since an omitted line and an empty one parse alike, so an assertion on the round-tripped `Entry` passes against either |
+| §4.5's sync before the replace | `tests/test_store.py::test_write_reaches_the_disk_before_the_rename`, which records `mkstemp`, `fsync` and `os.replace` in the order the code performs them. Asserting the ORDER is the whole of it: the bytes on disk are identical whether or not the temporary was synced |
+| §4.2's rule that a header name is matched with its whitespace ignored | `tests/test_store.py::test_a_header_name_is_matched_with_its_spaces_ignored` |
 | §4.3's case-insensitive suffix | `tests/test_store.py::test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree`, which asserts `list_slugs` and `exists` TOGETHER — the defect was the pair disagreeing, so either alone passes against a half-fix |
 | That a reserved name is refused on WINDOWS rather than merely refused | **nothing** — this suite runs on Linux, so what is proved here is that the Store refuses the name, not what Windows would have done with it. PRESS-0022 is where that becomes observable |
 
@@ -770,8 +791,12 @@ gated before implementation, so the row states what will check it |
   bullet records this spec's half of the layout as a breaking surface.
   PRESS-0006 still chooses the rest, which is PRESS-0006's to record.
 - `CHANGELOG.md` — an entry when it ships.
-- No sibling spec changes. PRESS-0001 is read but not altered; ADR-0001
-  is implemented, not amended.
+- `docs/specs/PRESS-0001-settings.md` — §4.4 and INV-8 carry the same
+  write-permission rule as §4.5 and INV-11 here, and move with them.
+  Neither document may state it alone.
+- PRESS-0006's writers share this module's atomic write, so §4.5's
+  permission rule reaches their files too; PRESS-0006 is where their
+  side is recorded. ADR-0001 is implemented, not amended.
 
 ## 12. Cold-eyes loop log
 
@@ -786,6 +811,7 @@ gated before implementation, so the row states what will check it |
 | 6 | 2026-09-04 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, ADR-0001 whole, two `design.md` sections and both store test files by outline. Windows, the WordPress export and the sibling generator declared unrunnable | 1 | 2 | 2 | 1 | **Six verified, six fixed, none dismissed.** Trigger: the amendment making the emitted header carry only the fields the entry has. **All three lanes found the same Q3** — that rule is stated of the header while `_entry_text` is shared with `write_template`, so one builder strips a blank template's `Title:` line and another keeps it, and PRESS-0006 binds to whichever ships. **Two lanes found INV-4 false, and executing it settled it**: `  X-Note : 5` reads back `('X-Note', '5')`, so the name is stripped exactly as the value is, and an implementer holding INV-4 emits different bytes in a format §2 calls a breaking surface. **Two found this run's own collateral** — §7 closes its list of no-invariant rules at two and the amendment made a third. **One lane found §4.2 never states the read-side name rule the code performs**, so a verbatim matcher routes ` Title: x` to `extra` and INV-9 then refuses the write: the file opens and can never be saved. **One found INV-9's test naming "the four string-valued fields" where §4.1 declares three**, both readings containing a case that cannot bite. **The orchestrator found §4.3's "On Linux they are blind together" false of shipped code** — run here, `list_slugs` and `exists` both see a `.TXT` and `read` raises. **A packet defect of mine, caught by a lane**: I declared the sibling generator unreachable and it is reachable, so claims resting on it went unreviewed this loop. `surfaces_checked` is false throughout — three test-surface checks never ran, which is silence rather than a pass. |
 | 7 | 2026-09-04 | 3, cold — identical brief; packet rebuilt whole from disk and corrected: loop 6 wrongly declared the sibling generator unreachable, so its two definitions are windowed here | 1 | 2 | 1 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap** — none of the four landed on text this run wrote, and only one on a line it edited. **All three lanes found the same Q1, and loop 6's packet defect had hidden it**: decision 4 credited `safe_slug` with falling back to the WordPress post id, and the fallback is the CALLER's — measured, `safe_slug('')` and `safe_slug('---')` both return `''`. §7 binds the archive test to *decision 4's rule and no other*, so an implementer calling `safe_slug` alone gets the empty slug the Store refuses, for the large share of drafts WordPress gave no slug; decision 5's recorded collision, which rests on the fallback, also becomes unreachable. **One lane found §7's stub rule stated unconditionally** in a document whose own header says it was amended after implementation — an implementer would stub out the shipped module to get this amendment's red run. **One found §4.3 assigning a suffix view to three calls and none to the moves**; run here, `exists` reports the address taken, `publish` proceeds, and one folder ends with `a-slug.TXT` and `a-slug.txt`. Filed for the code side. **One found §7 listing the reserved device names as having no invariant**, which INV-9's own test clause contradicts. **Across the run, roughly three of ten verified findings fell inside the gated span** — as much audit as gate. `surfaces_checked` false throughout: three test-surface checks never ran, which is silence rather than a pass. |
 | 6 | 2026-09-03 | 3, cold — identical brief; packet rebuilt whole from disk | 0 | 3 | 0 | 1 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **All three lanes found the same [Q4], and it was loop 5's own fix**: the claim that asserting the folder unchanged stops an aware-`Date` refusal being placed inside the write path. Measured false — every route out of `_write_atomically` discards the temporary, so a late refusal passes that assertion too, and the lone-surrogate case four lines below endorses exactly such a placement. The sentence is deleted; the folder assertion stands as the ordinary refusal check. **A second landed on loop 5 too:** the amendment named the harm as a whole-hour reorder, which its own remedy reproduces byte-for-byte — dropping the offset is what the silent write already does. The harm is the silence, and the refusal buys a decision rather than the offset back. **Two pre-existing.** §4.2 promised §7's archive test would REPORT an entry resolving to a reserved device name, and §7's reported-not-asserted list named only the cross-folder collision, so a test built from §7 would fail on the `StoreError`. And §4.2 claimed ADR-0001's promise is that *nothing is dropped or altered* and that it holds, while ADR-0001 says *preserved byte-for-byte* and the same bullet strips spacing and re-spells the separator; quoted as written, with the spacing departure stated. **A cap on the violent side — half of this loop landed on text loop 5 wrote — but both were RATIONALE, not the rule**: what §4.2 decides (refuse a zone, truncate a fraction) survived both loops unchanged. Over the run, 5 of 12 findings fell inside the amendment that armed the gate, so the other 7 were audit. Routed to implementation. |
+| 8 | 2026-09-06 | 3, cold — genre pinned `spec`; packet carried `store.py` and `tests/test_store.py` WHOLE, `docs/design.md` whole, ADR-0001 whole, PRESS-0001 §4.4 and INV-8 as the paired rule, `tests/_mode_support.py`, PRESS-0006's outline and the PRESS-0007 bullet. Windows declared an unrunnable region | 3 | 4 | 1 | 0 | **Eight verified, eight fixed, none dismissed; two collateral. Armed by the owner-only permissions rule, and SEVEN OF THE EIGHT were pre-existing — this run was an audit far more than a gate.** **All three lanes found the same three.** §10 and the Status block said the header-omission code and its test were not yet written; both had landed, and a builder taking §10 as the outstanding list would have written a duplicate `def` that silently shadows the shipped one. §4.5 named no flush or fsync anywhere, while PRESS-0001 §4.4 calls the sync part of the mechanism and `store.py` performs it — so §4.5 read literally promises durability its own steps cannot give. And INV-5's *Test:* clause claimed a CRLF case the test did not carry, though §4.2 rests the INV-5/INV-6 boundary on it; the case is added, and a CRLF-normalising mutant now dies. **The sharpest came from one lane and concerns data loss:** §4.3 said the moves happen *by rename* and §6 presented `SlugInUse` as the guard, where `store.py` uses `os.link` + `os.unlink` on POSIX precisely because `os.rename` replaces silently there — so an implementer writes check-then-rename, passes INV-10's test, and destroys the destination entry in the window between the two calls. §4.3 now says the move itself refuses. **Also:** §11 denied altering PRESS-0001 while §4.5 requires the paired rule; §4.2's header-whitespace rule had a shipped test and no §10 row; INV-9 left three silent data-loss refusals to a test not carrying them, each having its own; and §6 omitted `exists`, whose `False` is what lets Import write a fresh install in one go. **One lane disputed a PACKET fact and was right** — §8 does not explain the shared module; that note was the orchestrator's error, not the document's. |
 
 ## 13. Resource cost
 
