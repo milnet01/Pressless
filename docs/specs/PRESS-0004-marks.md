@@ -11,7 +11,12 @@ gloss *"so `***…***` opens nothing"* was false of the rule it glossed, and
 that INV-2's fixtures measure neither adjacency clause; §4.5 and INV-2 now
 say what the rule does and which two inputs separate it. No re-gate for any
 of the three: the document reached its cold-eyes cap, and this is the
-implementation finding the tail that rule 14 says it should.
+implementation finding the tail that rule 14 says it should. Amended
+again 2026-09-06 (PRESS-0059, PRESS-0055): §5 claimed the escapes were
+the trust boundary's whole defence, which was never true of the
+photograph name — it reaches `photo_src` before any escaping — so §4.2
+now pins that name's grammar; and a photograph's caption is now its
+description. Both change what a conformer builds, so this one is gated.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
@@ -149,12 +154,30 @@ The rows:
 | `colour` | `{#c0453a}word{/}` | wrap | `<span style="color:#c0453a">word</span>` |
 | `rainbow` | `{rainbow}word{/}` | wrap | one `<span class="mk-rainbow" style="--mk-i:N">` per character |
 | `photo` | `{photo: seaside.jpg}` | block | `<figure><img src="…" alt=""></figure>` |
-| `photo` | `{photo: seaside.jpg \| Late light}` | block | the same, plus `<figcaption>` |
+| `photo` | `{photo: seaside.jpg \| Late light}` | block | the same, plus `<figcaption>`, and the caption is the `alt` |
 
 `arg` is `^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$` on the `colour` row, the
 name-and-optional-caption split on the `photo` rows, and `None` on the
 rest. `content` is `"marks"` everywhere except `rainbow`, which is
 `"text"`.
+
+**A photograph's caption is its description.** Where a caption is
+written it is also the `img`'s `alt`; where none is, `alt` is empty,
+which declares the picture decorative. These are content images on a
+public writing site, so an empty `alt` leaves a screen-reader user with
+nothing where the writer had already said what the picture is. Reusing
+his caption adds no step to placing a photograph. INV-10 holds it;
+agreed with the user 2026-09-06.
+
+**The name's grammar is narrower than that split.** A name is refused —
+the mark stays literal — when it holds a backslash, a colon, a control
+character or a `..` segment, when it starts with `/`, or when it is
+whitespace only. An interior `/` is allowed: a folder the writer names
+is not a traversal. Marks hands the name to `photo_src`, which is the
+caller's file world, so this grammar is what defends that boundary
+(INV-9) — escaping the address that comes back says nothing about the
+name that went in. It is pinned here because narrowing it once callers
+exist is a contract change.
 
 `{rainbow}` emits an index rather than a colour, so the site's stylesheet
 owns the palette and Marks owns no colour decision. `N` counts characters
@@ -247,6 +270,11 @@ character on. The inner text of a matched `wrap` is scanned by the same
 rule when its `content` is `"marks"`, so marks nest; a nested `{…}` opener
 increments a depth counter, and **the counter alone decides which `{/}`
 closes which span** — so `{accent}{muted}word{/}{/}` nests as written.
+An opener increments it. A brace the writer typed is not one: count the
+character instead and an ordinary `{` swallows the real `{/}`, and the
+line falls out literal with the colour silently gone. Nesting is
+bounded, and past the bound the rest of the line is literal (§6) —
+unbounded, the recursion raises, which §6 forbids.
 
 **`{rainbow}` is the exception: its `content` is `"text"`.** A mark inside
 it is literal. §8 records the alternative.
@@ -320,7 +348,9 @@ caller returning a name with a quote in it cannot break out of the tag.
   emptiness directly and names which set stopped being empty, because an
   agreement nothing enforces breaks silently on the next import.
   *Test:* `tests/test_marks_archive.py::test_matches_wpautop`, skipped
-  unless `PRESSLESS_ARCHIVE` names a WordPress export.
+  unless `PRESSLESS_ARCHIVE` names a WordPress export **and** the sibling
+  workspace holding `wpautop()` is reachable. Neither is part of this
+  repository, so nothing checked out from it can run this.
   *Breaks when:* any escaping or paragraph rule changes. A non-empty
   divergence set is **not** a fault in Marks — it is new source material
   the migration has never seen, and it is a decision, not a bug. It is
@@ -352,10 +382,25 @@ caller returning a name with a quote in it cannot break out of the tag.
   *Test:* `tests/test_marks.py::test_colour_argument_cannot_carry_css`.
   *Breaks when:* the argument is passed through for CSS to validate.
 
+- **INV-9** — A photograph's name reaches `photo_src` only after matching
+  §4.2's grammar in full.
+  *Test:* `tests/test_marks.py::test_photo_name_cannot_escape_its_folder`.
+  *Breaks when:* the argument split is taken for the whole grammar, which
+  is how `../../etc/passwd` reaches the caller's file world.
+
+- **INV-10** — A photograph's `alt` is its caption where one was written,
+  and empty where none was.
+  *Test:*
+  `tests/test_marks.py::test_a_caption_becomes_the_photograph_description`.
+  *Breaks when:* `alt` is a fixed empty string, which declares every
+  photograph decorative whatever the writer captioned it.
+
 **Trust boundary.** An entry body is writer-supplied text rendered into
-HTML that is then published. INV-4 and INV-8 are that boundary's whole
-defence, and there is no other sanitiser downstream: the Builder writes
-what Marks returns and the Publisher uploads what the Builder wrote.
+HTML that is then published, and it leaves Marks by two routes. The HTML
+is defended by INV-4 and INV-8, with no other sanitiser downstream: the
+Builder writes what Marks returns and the Publisher uploads what the
+Builder wrote. The photograph's name is defended by INV-9, because it
+leaves through `photo_src` before any escaping runs.
 
 ## 6. Failure modes
 
@@ -365,9 +410,11 @@ what Marks returns and the Publisher uploads what the Builder wrote.
 | An unknown mark name — `{sparkle}x{/}` | Literal text. It is not an error: preserving what we do not understand is ADR-0001's promise about twelve years of writing. |
 | A malformed colour — `{#xyz}` | Literal text (INV-8). |
 | A photo mark sharing its line with other text | Literal text — it is a `block` mark (§4.2), so it is only a mark when it owns the line. He sees his own characters in the preview and can move it. |
+| A photograph name outside §4.2's grammar — `{photo: ../x.jpg}` | Literal text (INV-9). He sees his own characters in the preview. |
 | `photo_src` raises | Marks does not catch it. The caller owns the file world and owns the failure; the Face turns it into a sentence (`docs/design.md` § Errors). |
 | `photo_src` returns a name for a picture that does not exist | A broken image on the page. Marks cannot tell — it has no disk. PRESS-0016 owns checking. |
 | An empty body | An empty document, and `render()` returns `""`. Two archive entries are empty. |
+| Nesting past the parser's bound | The rest of the line is literal (§4.5). Nothing raises. |
 
 ## 7. Tests
 
@@ -375,9 +422,11 @@ what Marks returns and the Publisher uploads what the Builder wrote.
 the invariant tests named in §5.
 
 `tests/test_marks_archive.py` — the INV-5 conformance run over the real
-export. It is skipped unless `PRESSLESS_ARCHIVE` points at a WXR file,
-because that file is personal data and cannot live in a public repository
-(`docs/design.md` § Where everything sits on disk). **It prints every
+export. It is skipped unless `PRESSLESS_ARCHIVE` points at a WXR file and
+the sibling workspace holding `wpautop()` is reachable: the export is
+personal data and cannot live in a public repository (`docs/design.md`
+§ Where everything sits on disk), and the oracle belongs to today's
+generator rather than to this project. **It prints every
 figure §2 describes**, so the numbers are an output of the run rather than
 a transcription in prose that ages. **It also asserts INV-5's two
 divergence sets are empty before comparing anything**, so a byte mismatch
@@ -427,10 +476,12 @@ and `write-test` performs that run.
 | INV-2 | `tests/test_marks.py::test_censored_words_and_divider_are_literal` |
 | INV-3 | `tests/test_marks.py::test_no_mark_spans_a_newline` |
 | INV-4 | `tests/test_marks.py::test_escaping_text_and_attributes` |
-| INV-5 | `tests/test_marks_archive.py::test_matches_wpautop` — **skipped in CI**, because the archive is personal data and cannot be committed. It runs on the maintainer's machine only, and a green CI run is silent about it. |
+| INV-5 | `tests/test_marks_archive.py::test_matches_wpautop` — **skipped in CI**, because the archive is personal data and cannot be committed and the oracle it compares against is in a private workspace. It runs on the maintainer's machine only, and a green CI run is silent about it. |
 | INV-6 | `tests/test_marks.py::test_every_table_row_parses` + `::test_no_mark_outside_the_table` |
 | INV-7 | `tests/test_marks.py::test_marks_is_pure` |
 | INV-8 | `tests/test_marks.py::test_colour_argument_cannot_carry_css` |
+| INV-9 | `tests/test_marks.py::test_photo_name_cannot_escape_its_folder` |
+| INV-10 | `tests/test_marks.py::test_a_caption_becomes_the_photograph_description` |
 | §3.1's claim that the site has one accent and one muted ink | **nothing** — a repaint of the site could add a third named colour and this spec would not notice. It is a one-line edit to `MARKS` when it happens. |
 | §4.2's `mk-rainbow` class existing in the site's stylesheet | **nothing** — Marks emits the class and the stylesheet is in another repository. A rainbow run renders as plain text until PRESS-0008 adds the rule; tracked by PRESS-0008. |
 
