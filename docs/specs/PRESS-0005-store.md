@@ -183,14 +183,20 @@ moves one back. The reverse is required rather than
 symmetric: `docs/design.md` § What may depend on what has an undo turn
 an entry the fetched state does not hold back into a draft. Either
 raises `SlugInUse` rather than overwriting what the destination
-already holds — **and the refusal is made by the move itself, never by
-an `exists()` check before it.** `os.rename` raises on Windows where
-the target exists and silently replaces it on POSIX, so the move is
-`os.rename` there and `os.link` then `os.unlink` here, both raising
-`FileExistsError`. Checking first and then renaming leaves a window in
-which a second copy of Pressless, or a hand copy, creates the
-destination and the rename destroys it — which INV-10 says cannot
-happen. Neither reads or writes a body, so neither can alter
+already holds — **and the refusal cannot REST on an `exists()` check
+before it: the move itself must refuse, whether or not a check
+precedes one.** `os.rename` raises on Windows where the target exists
+and silently replaces it on POSIX, so the move is `os.rename` there
+and `os.link` then `os.unlink` here, both raising `FileExistsError`.
+A check alone leaves a window in which a second copy of Pressless, or
+a hand copy, creates the destination and the move destroys it — which
+INV-10 says cannot happen.
+
+**The check is not redundant, and one case needs it.** On a filesystem
+with no hard links `os.link` fails for its own reason before it can
+raise `FileExistsError`, so the move alone would answer `StoreError`
+where §6 requires `SlugInUse`. The check gives the ordinary occupied
+case its stated type; the move gives the raced one its guarantee. Neither reads or writes a body, so neither can alter
 one.
 
 ### 4.2 The entry file
@@ -364,7 +370,13 @@ header it found untidy. A file that cannot be parsed raises
 parseable.
 
 `list_slugs` returns the slugs in one folder, sorted, read off the
-file names rather than by opening anything.
+file names rather than by opening anything. **It does not check them
+against §4.2's slug set**, so a hand-created `My_Entry.txt` is listed
+and `path_for` then refuses the very value the listing returned.
+Measured. A caller walking the listing therefore handles `StoreError`
+per slug rather than assuming every name it was handed is usable —
+loud, per §4.4's preference, rather than a file that silently never
+appears. PRESS-0098 asks whether that is the right trade.
 
 **The header's `Slug` is authoritative, and a file whose name does not
 match it is a parse failure** naming both. The two cannot then drift:
@@ -394,8 +406,16 @@ wider before a write is narrower after it. Measured on Linux.
 **Windows does not deliver this and no `chmod` makes it:** ADR-0003
 records that the call sets only the read-only flag there. PRESS-0001
 §4.4 states the same rule, with the same boundary, for the settings
-file: one answer, written in both places rather than in neither. It
-is also what the filesystem GRANTS rather than what `mkstemp` asked:
+file: one answer, written in both places rather than in neither.
+
+**A move is not a write, and does not re-narrow.** `publish` and
+`unpublish` carry the file's inode across, so a draft the writer
+widened to `0644` himself is still `0644` once published. Measured.
+INV-11 is about `write`, deliberately: re-narrowing on a move would
+silently undo a choice he made.
+
+The rule is also what the filesystem GRANTS rather than what `mkstemp`
+asked:
 a mount that does not enforce POSIX modes ignores the request, and
 the Store does not check the grant the way Credentials does
 (PRESS-0042).
@@ -639,11 +659,17 @@ is true of a template is PRESS-0006's (§9).
   sits on disk).
 - **`publish` on a slug that is not a draft, or `unpublish` on one
   that is not published.** `EntryNotFound`. Nothing is moved.
+- **The folder is on a filesystem with no hard links** — an exFAT or
+  FAT drive the writer chose. `os.link` fails, so `_move` answers
+  `StoreError` carrying the system's own message and nothing is
+  moved: `publish` and `unpublish` cannot succeed there at all, and
+  say so each time rather than failing quietly. The entry itself is
+  readable and writable; only the two moves are lost.
 - **`publish` onto a slug the published folder already holds, or
   `unpublish` onto one the drafts folder holds.** `SlugInUse`.
   Nothing is moved and neither file is opened. §3 decision 5's
   uniqueness rule is what this protects; §4.3 owns HOW, and the answer
-  is that the move itself refuses rather than a check preceding it.
+  is that the move itself refuses as well as the check preceding it.
 
 ## 7. Tests
 
@@ -747,6 +773,13 @@ imports.
 - Choosing a slug for a new entry, and what the writer is shown when a
   write fails — PRESS-0011 owns the error contract, PRESS-0012 the
   editor.
+- **Removing an entry.** This surface has no delete, and that is a gap
+  rather than a decision: `docs/design.md` § Where everything sits on
+  disk has `content/` "uploaded, updated, and pruned when he deletes an
+  entry", so something must remove one. Nothing here or in any sibling
+  spec says what. Filed as PRESS-0099; until it is settled, no part may
+  compose a path and unlink it, which `docs/design.md` rule 7 forbids
+  anyway.
 - Finding Pressless's own folder from the running program —
   PRESS-0022.
 
@@ -812,6 +845,7 @@ imports.
 | 7 | 2026-09-04 | 3, cold — identical brief; packet rebuilt whole from disk and corrected: loop 6 wrongly declared the sibling generator unreachable, so its two definitions are windowed here | 1 | 2 | 1 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap** — none of the four landed on text this run wrote, and only one on a line it edited. **All three lanes found the same Q1, and loop 6's packet defect had hidden it**: decision 4 credited `safe_slug` with falling back to the WordPress post id, and the fallback is the CALLER's — measured, `safe_slug('')` and `safe_slug('---')` both return `''`. §7 binds the archive test to *decision 4's rule and no other*, so an implementer calling `safe_slug` alone gets the empty slug the Store refuses, for the large share of drafts WordPress gave no slug; decision 5's recorded collision, which rests on the fallback, also becomes unreachable. **One lane found §7's stub rule stated unconditionally** in a document whose own header says it was amended after implementation — an implementer would stub out the shipped module to get this amendment's red run. **One found §4.3 assigning a suffix view to three calls and none to the moves**; run here, `exists` reports the address taken, `publish` proceeds, and one folder ends with `a-slug.TXT` and `a-slug.txt`. Filed for the code side. **One found §7 listing the reserved device names as having no invariant**, which INV-9's own test clause contradicts. **Across the run, roughly three of ten verified findings fell inside the gated span** — as much audit as gate. `surfaces_checked` false throughout: three test-surface checks never ran, which is silence rather than a pass. |
 | 6 | 2026-09-03 | 3, cold — identical brief; packet rebuilt whole from disk | 0 | 3 | 0 | 1 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **All three lanes found the same [Q4], and it was loop 5's own fix**: the claim that asserting the folder unchanged stops an aware-`Date` refusal being placed inside the write path. Measured false — every route out of `_write_atomically` discards the temporary, so a late refusal passes that assertion too, and the lone-surrogate case four lines below endorses exactly such a placement. The sentence is deleted; the folder assertion stands as the ordinary refusal check. **A second landed on loop 5 too:** the amendment named the harm as a whole-hour reorder, which its own remedy reproduces byte-for-byte — dropping the offset is what the silent write already does. The harm is the silence, and the refusal buys a decision rather than the offset back. **Two pre-existing.** §4.2 promised §7's archive test would REPORT an entry resolving to a reserved device name, and §7's reported-not-asserted list named only the cross-folder collision, so a test built from §7 would fail on the `StoreError`. And §4.2 claimed ADR-0001's promise is that *nothing is dropped or altered* and that it holds, while ADR-0001 says *preserved byte-for-byte* and the same bullet strips spacing and re-spells the separator; quoted as written, with the spacing departure stated. **A cap on the violent side — half of this loop landed on text loop 5 wrote — but both were RATIONALE, not the rule**: what §4.2 decides (refuse a zone, truncate a fraction) survived both loops unchanged. Over the run, 5 of 12 findings fell inside the amendment that armed the gate, so the other 7 were audit. Routed to implementation. |
 | 8 | 2026-09-06 | 3, cold — genre pinned `spec`; packet carried `store.py` and `tests/test_store.py` WHOLE, `docs/design.md` whole, ADR-0001 whole, PRESS-0001 §4.4 and INV-8 as the paired rule, `tests/_mode_support.py`, PRESS-0006's outline and the PRESS-0007 bullet. Windows declared an unrunnable region | 3 | 4 | 1 | 0 | **Eight verified, eight fixed, none dismissed; two collateral. Armed by the owner-only permissions rule, and SEVEN OF THE EIGHT were pre-existing — this run was an audit far more than a gate.** **All three lanes found the same three.** §10 and the Status block said the header-omission code and its test were not yet written; both had landed, and a builder taking §10 as the outstanding list would have written a duplicate `def` that silently shadows the shipped one. §4.5 named no flush or fsync anywhere, while PRESS-0001 §4.4 calls the sync part of the mechanism and `store.py` performs it — so §4.5 read literally promises durability its own steps cannot give. And INV-5's *Test:* clause claimed a CRLF case the test did not carry, though §4.2 rests the INV-5/INV-6 boundary on it; the case is added, and a CRLF-normalising mutant now dies. **The sharpest came from one lane and concerns data loss:** §4.3 said the moves happen *by rename* and §6 presented `SlugInUse` as the guard, where `store.py` uses `os.link` + `os.unlink` on POSIX precisely because `os.rename` replaces silently there — so an implementer writes check-then-rename, passes INV-10's test, and destroys the destination entry in the window between the two calls. §4.3 now says the move itself refuses. **Also:** §11 denied altering PRESS-0001 while §4.5 requires the paired rule; §4.2's header-whitespace rule had a shipped test and no §10 row; INV-9 left three silent data-loss refusals to a test not carrying them, each having its own; and §6 omitted `exists`, whose `False` is what lets Import write a fresh install in one go. **One lane disputed a PACKET fact and was right** — §8 does not explain the shared module; that note was the orchestrator's error, not the document's. |
+| 9 | 2026-09-06 | 3, cold — identical brief; packet rebuilt whole from disk and extended with ADR-0003, `versioning-overrides.md` and the PRESS-0007 bullet, and with two packet facts loop 8 got wrong corrected | 1 | 0 | 4 | 0 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A CALM cap — one of the five landed on text loop 8 wrote**, anchors checked against that loop's ledger. **Over the whole run, only two of thirteen findings touched the change that armed the gate: this was an audit far more than a gate, and the document is at the size where a spec begins paying twice.** **Two lanes found loop 8's own fix, and it had over-corrected:** loop 8 wrote that the move refuses "never by an `exists()` check before it", where `_move` deliberately checks first AND catches `FileExistsError` — its comment reads "The check is a check, not a guarantee". Following the sentence literally drops a check that is load-bearing: on a filesystem with no hard links `os.link` fails before it can raise `FileExistsError`, so an occupied destination would answer `StoreError` where §6 requires `SlugInUse`. Now stated as cannot REST on, with that case named. **Four Q3s, each a decision left for the implementer to invent.** Two lanes: `list_slugs` never said whether its output satisfies §4.2, and measurement settles it — a hand-dropped `My_Entry.txt` is listed and `path_for` then refuses that same value, so PRESS-0008's natural loop aborts on one stray file. Recorded, with PRESS-0098 asking whether the trade is right. One lane: the Store has NO removal call while `design.md` has `content/` "pruned when he deletes an entry" — filed as PRESS-0099, since no roadmap item owned it either. One lane: the permission rule is scoped to `write`, and a move carries the inode, so a draft widened to `0644` is still `0644` once published — measured, and now stated rather than accidental. One lane: no failure mode for a filesystem without hard links, where `publish` can never succeed. |
 
 ## 13. Resource cost
 

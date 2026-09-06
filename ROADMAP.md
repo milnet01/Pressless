@@ -4508,6 +4508,57 @@
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
 
+- 📋 [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
+  Measured 2026-09-06: with published/My_Entry.txt present,
+  list_slugs returns 'My_Entry' and path_for on that same value raises
+  StoreError. _slugs_in filters only the empty-slug case, and its own
+  comment gives the reason -- "which path_for refuses, so a listing
+  carrying one cannot be handed back to the Store" -- without applying
+  that reasoning to any other illegal name.
+
+  So the decision is half-made. PRESS-0008's natural loop, list then read
+  each, dies on one stray file; an implementer who instead filters inside
+  list_slugs makes the writer's file silently invisible. Both satisfy the
+  contract as it stood.
+
+  PRESS-0005 4.3 now records what the code does today and points here, so
+  nothing is unstated while this is open. What is NOT settled is whether
+  loud-per-slug is the right trade: 4.4 prefers loud for a hand-rename,
+  and S3 invites the writer into the folder, so this is his file rather
+  than a corruption.
+
+  Deliberately not fixed inside the gate that found it: filtering, or
+  raising, changes what PRESS-0008 and PRESS-0012 see, and neither is
+  built yet.
+  **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
+  Kind: investigate.
+  Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
+
+- 📋 [PRESS-0099] **Nothing in any contract can remove an entry, though the design says a deleted entry is pruned from the site.**
+  The Store's surface is path_for, exists, list_slugs, read, write,
+  publish and unpublish. There is no removal call, and the words delete
+  and remove appear nowhere in PRESS-0005 except inside the move.
+
+  docs/design.md Where everything sits on disk assumes the act exists:
+  content/ is "uploaded, updated, and pruned when he deletes an entry",
+  and it says why that matters -- "on the untouchable reading, a deleted
+  poem's source text would have stayed on the web forever".
+
+  No roadmap item owns it either; a query for delete returns nothing that
+  does. So PRESS-0012 and PRESS-0007 would each have to invent it: either
+  a Store call that does not exist, or an unlink on a path composed
+  outside the Store, which design.md rule 7 forbids.
+
+  Renaming an entry's slug has the same shape -- write the new, remove the
+  old -- and no remove.
+
+  PRESS-0005 9 now names this as a gap rather than a routing, and points
+  here. What it needs is a decision: does removal belong to the Store, and
+  what happens to a published entry's fetched copy.
+  **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
+  Kind: investigate.
+  Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
