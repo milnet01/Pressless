@@ -72,8 +72,8 @@ starts a paragraph, single newline becomes `<br>`, `<` and `>` are escaped,
 `&` is left alone. That function is what PRESS-0008 re-homes.
 
 **Marks is deliberately not that function, and INV-5 owns the
-difference.** It adds a mark language, and it escapes a bare `&` where
-`wpautop()` leaves one alone. Neither difference shows on the archive,
+difference.** It adds a mark language, and it escapes an `&` that begins
+no character reference, where `wpautop()` leaves one alone. Neither difference shows on the archive,
 because nothing in the archive triggers either — a fact about the data,
 not a property of the code.
 
@@ -100,7 +100,8 @@ from §2.
 ### 4.1 The public surface
 
 `src/pressless/marks.py` exports the table (`MARKS`, `Mark`), three
-functions, and the node types `parse` returns (§4.3). Nothing else.
+functions, the node types `parse` returns (§4.3), and the two callable
+aliases `PhotoSrc` and `Renderer`. Nothing else.
 
 ```python
 def parse(body: str) -> Document              # text in, structure out
@@ -109,7 +110,10 @@ def render(body: str, photo_src: PhotoSrc) -> str   # parse + to_html
 ```
 
 `PhotoSrc` is `Callable[[str], str]`: given a picture's file name it
-returns the address to put in `src`. **Marks never builds a path.** The
+returns the address to put in `src`. **The name is one plain file name**
+(§4.2) — the rule PRESS-0006's INV-11 already enforces where the original
+is kept, so the Builder and the Face resolve the same string and cannot
+disagree about what it means. **Marks never builds a path.** The
 Builder passes its web-copy naming rule (PRESS-0008 owns that rule); the
 Face passes an address serving the original for preview (PRESS-0012). This
 callable is how rule 3 is kept while the picture mark still works.
@@ -133,12 +137,13 @@ Renderer = Callable[[Span | Photo, str, PhotoSrc], str]
 ```
 
 A `Renderer` receives its node, its already-rendered children, and
-`photo_src`. Only the photo rows use `photo_src`; only `{rainbow}` ignores
-the rendered children and walks the characters itself.
+`photo_src`. Only the `photo` row uses `photo_src`; only `{rainbow}`
+ignores the rendered children and walks its own text itself.
 
-**`MARKS` is the only route to a mark.** The scanner holds no delimiter
-literal of its own and `to_html` compares against no mark name at all — it
-calls `row.render`. Carrying the HTML as a template string instead would
+**`MARKS` is the only route to a mark.** `to_html` holds no delimiter
+literal and compares against no mark name at all — it calls `row.render`.
+The scanner holds two literals of its own, both of which §4.5 requires: the
+asterisk of a run, and the `}` that ends an argument. Carrying the HTML as a template string instead would
 force `to_html` to special-case the rows a template cannot express, which
 is the hidden second table this design exists to prevent. INV-6 is what
 fails when it stops being so.
@@ -152,12 +157,11 @@ The rows:
 | `accent` | `{accent}word{/}` | wrap | `<span style="color:var(--accent)">word</span>` |
 | `muted` | `{muted}word{/}` | wrap | `<span style="color:var(--muted)">word</span>` |
 | `colour` | `{#c0453a}word{/}` | wrap | `<span style="color:#c0453a">word</span>` |
-| `rainbow` | `{rainbow}word{/}` | wrap | one `<span class="mk-rainbow" style="--mk-i:N">` per character |
-| `photo` | `{photo: seaside.jpg}` | block | `<figure><img src="…" alt=""></figure>` |
-| `photo` | `{photo: seaside.jpg \| Late light}` | block | the same, plus `<figcaption>`, and the caption is the `alt` |
+| `rainbow` | `{rainbow}word{/}` | wrap | one `<span class="mk-rainbow" style="--mk-i:N">` per unit, below |
+| `photo` | `{photo: seaside.jpg}`, or `{photo: seaside.jpg \| Late light}` | block | `<figure><img src="…" alt=""></figure>`; with a caption, `alt` carries it and a `<figcaption>` follows |
 
 `arg` is `^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$` on the `colour` row, the
-name-and-optional-caption split on the `photo` rows, and `None` on the
+name-and-caption grammar below on the `photo` row, and `None` on the
 rest. `content` is `"marks"` everywhere except `rainbow`, which is
 `"text"`.
 
@@ -169,23 +173,28 @@ nothing where the writer had already said what the picture is. Reusing
 his caption adds no step to placing a photograph. INV-10 holds it;
 agreed with the user 2026-09-06.
 
-**The name's grammar is narrower than that split.** A name is refused —
-the mark stays literal — when it holds a backslash, a colon, a control
-character or a `..` segment, when it starts with `/`, or when it is
-whitespace only. An interior `/` is allowed: a folder the writer names
-is not a traversal. Marks hands the name to `photo_src`, which is the
-caller's file world, so this grammar is what defends that boundary
-(INV-9) — escaping the address that comes back says nothing about the
-name that went in. It is pinned here because narrowing it once callers
-exist is a contract change.
+**The name's grammar is that row's `arg`, not a separate gate**, so
+`MARKS` stays the only route and a name breaking it fails the row's own
+match (§4.5). It refuses `/` and a backslash anywhere, a colon, a control
+character, `.` and `..`, and a whitespace-only name — one plain file name,
+which is what PRESS-0006's INV-11 accepts where the original is kept.
+Both separators and the colon are refused on either platform, because the
+app runs on both and a name is carried between them. Marks
+hands the name to `photo_src`, which is the caller's file world, so this
+is what defends that boundary (INV-9) — escaping the address that comes
+back says nothing about the name that went in. Pinned now because
+narrowing it once callers exist is a contract change.
 
 `{rainbow}` emits an index rather than a colour, so the site's stylesheet
-owns the palette and Marks owns no colour decision. `N` counts characters
-from 0 within one rainbow run; whitespace is emitted bare and does not
-advance it.
+owns the palette and Marks owns no colour decision. **Its unit is a whole
+character reference where the text carries one (§4.6's pattern), and a
+single character otherwise** — split per character, an entity loses its
+meaning and its own text reaches the page. `N` counts units from 0 within
+one rainbow run; whitespace is emitted bare and does not advance it.
 
 **A `block` mark owns its whole line.** It is a mark only when it is the
-entire line; with any other text beside it, it stays literal. §4.3 gives it
+entire line, leading and trailing spaces ignored; with any other text
+beside it, it stays literal. §4.3 gives it
 a place in the document and §4.4 the step that puts it there — without
 both, `<figure>` lands inside `<p>`, every parser closes the paragraph at
 it, and the preview and the built page style the same entry differently.
@@ -215,8 +224,8 @@ lost line break, so no rendering bug can collapse a poem.
 
 `Photo` appears in both unions on purpose — as a `Block` when it owns its
 line, which is the only way it is ever produced today. It carries `mark`
-alongside `name` so every node says which row made it; `name` is the file
-name.
+alongside `name` so every node says which row made it; `name` is what the
+writer typed, and §4.1 says what a caller may be handed.
 
 ### 4.4 Splitting the body
 
@@ -292,9 +301,12 @@ it found rather than this prose carrying a figure that ages.
 **This is where the text rule departs from `wpautop()`**, which escapes
 no `&` at all. INV-5 owns that departure and checks it.
 
-**Attribute values** (a photo's `src`, whatever `photo_src` returned):
-strict — `&`, `<`, `>`, `"` and `'` are all escaped unconditionally. A
-caller returning a name with a quote in it cannot break out of the tag.
+**Attribute values** — a photo's `src`, whatever `photo_src` returned, and
+a caption used as `alt`: strict, `&`, `<`, `>`, `"` and `'` all escaped
+unconditionally. Neither a returned name nor a caption carrying a quote
+can break out of the tag. So a caption is escaped once per destination
+and by a different rule each time: the text rule for `<figcaption>`, this
+one for `alt`.
 
 ## 5. Invariants
 
@@ -342,7 +354,8 @@ caller returning a name with a quote in it cannot break out of the tag.
   output byte-identical to today's `tools/build_blog.py::wpautop()` —
   **and the two functions are separable, so the test proves the reason
   rather than relying on the result.** Exactly two inputs tell them
-  apart: a bare `&`, which Marks escapes and `wpautop()` does not, and
+  apart: an `&` that begins no character reference by §4.6's pattern,
+  which Marks escapes and `wpautop()` does not, and
   text forming a complete mark, which Marks renders and `wpautop()`
   leaves alone. The archive contains neither. The test asserts that
   emptiness directly and names which set stopped being empty, because an
@@ -366,11 +379,13 @@ caller returning a name with a quote in it cannot break out of the tag.
   exactly what would leave the cheat sheet teaching something that does not
   work.
 
-- **INV-7** — `src/pressless/marks.py` imports nothing that reaches a disk
-  or a network: not `pathlib`, `os`, `io`, `open`, `socket`, `urllib`,
-  `requests`, `subprocess`, nor any other `pressless` module.
+- **INV-7** — `src/pressless/marks.py` reaches no disk and no network. It
+  imports none of `pathlib`, `os`, `io`, `socket`, `urllib`, `requests`,
+  `subprocess`, nor any other `pressless` module, **and calls no
+  filesystem builtin**: `open` needs no import, so an import rule alone
+  cannot catch the breach named below.
   *Test:* `tests/test_marks.py::test_marks_is_pure`, which walks the
-  module's AST rather than grepping its text.
+  module's AST — imports and calls — rather than grepping its text.
   *Breaks when:* someone resolves a photo's path here instead of in the
   caller — the one change rule 3 exists to stop.
 
@@ -500,3 +515,4 @@ and `write-test` performs that run.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-08-25 | 3, cold — genre pinned `spec`; packet carried ADR-0001 whole, windows on the design's dependency rules and photograph/cheat-sheet paragraphs, the live site generator's rendering path, the site's colour tokens, and every archive figure re-measured by command. No unrunnable region: the export and the current generator are both on disk, so Q1 was fully in scope. | 1 | 3 | 3 | 2 | **Nine verified, nine fixed, none dismissed.** All three lanes read the document in full and **all three independently found the same defect**, which is the strongest signal in the run: §4.4 said normalising line endings changed nothing else, while the generator it claims byte-identity with strips the body, strips each paragraph, drops empty ones and treats a whitespace-only line as blank. An implementer following §4.4 would have failed INV-5 on the first entry with a leading newline, and the failure would have read as a broken test rather than a wrong spec. **All three also found `{photo:}` undefined**: the table called it `standalone` and nothing said what that meant structurally, while §4.3 made it a node inside a line inside a paragraph — so `<figure>` lands inside `<p>`, every parser closes the paragraph at it, and the preview and the built page style the same entry differently. `standalone` is now `block`, defined as owning its whole line. **And all three found INV-6's second clause unfalsifiable** — if the scanner dispatches from the table, *no mark the parser recognises is absent from it* is true by construction, so the one breach INV-6 exists to catch would have shipped undetected; it now pins an AST check that no delimiter literal or `name` branch exists outside `MARKS`. **Two lanes found the table could not express its own rows**: `opens` was a fixed string, so `{#…}` had no representation, and no field carried the *Becomes* column, meaning `to_html` would hold a second hidden table and a new row would parse, reach the cheat sheet and render as nothing. `Mark` gained `arg`, `content` and `renders`. **The one Q1 was my own count**: §2 claimed a naive italic rule italicises five published poems, and measurement says four — one entry carries a single lone asterisk that cannot pair — and `f**cking` was listed among raw-text collisions when it is in a Gutenberg entry. **One lane filed, and a second raised as an open question, that §8's security rationale was false**: leaving `&` unescaped was said to let `&lt;` inject markup. Executed with a real HTML parser — `&lt;script&gt;` parses as text, never as an element, and both `&` rules emit `&lt;` unchanged. The row now reads as a validity difference, which is what it is; escaping `<` and `>` is what closes injection. **Two more from one lane each:** *its own delimiter character* was defined only by the asterisk example, so a builder could read `{` as the delimiter and refuse to nest brace marks, contradicting the depth counter four lines below; and ADR-0001 promises all 616 entries round-trip while INV-5 covers 554, now reconciled as a promise about the format that binds whatever Import writes. **Three collateral fixes, all mine, caught by the sweep rather than a lane**: adding a second test to INV-6 stranded §7's *seven invariant tests* and §10's INV-6 row, and the new `block` rule created a failure mode §6 did not list. **Three lane open questions resolved clean and are not counted** — the design's disk section exists and does carry the personal-data rule, `CLAUDE.md`'s Stack and Build-and-test are both placeholders, and the missing `mk-rainbow` rule is the Builder's. Every claim a fix added was executed, including the refuting cases: the colour regex rejects `#c0453a;color:red`, which is the CSS injection INV-8 exists for. |
 | 2 | 2026-08-25 | 3, cold — identical brief, scrubbed copy and packet rebuilt from disk, no prior-loop findings carried. One lane disclosed it was not fully cold: the workspace's own CLAUDE.md was in its context before dispatch. | 1 | 4 | 3 | 1 | **Nine verified, nine fixed, none dismissed. Cap reached (2 for a spec); the run ships and routes to implementation.** **A VIOLENT cap: five of the nine landed on text loop 1 wrote**, each anchor checked against loop 1's ledger rather than recall. The cause is nameable and was not a run of bad luck — loop 1 bolted `block`, `arg`, `content` and `renders` onto the table without reworking the structure and invariants around them, so its fixes were individually right and jointly incoherent. **All three lanes found the largest one**: §4.2 declared a photo mark owns its line while §4.3's `Document` could hold nothing but a `Paragraph` and §4.4 had no step to produce one — so a conformer emits the `<figure>`-inside-`<p>` that §4.2 had just been rewritten to forbid. **All three found `renders`**, a single-placeholder template that cannot express a colour argument, a photo `src` from a callback, or a per-character rainbow — so `to_html` would carry exactly the hidden second table §4.2 forbids. **All three found the closer clause**, which rejects the document's own nesting example `{accent}{muted}word{/}{/}` because the outer `{/}` is preceded by `}`; loop 1 had scoped the opener condition to the asterisk family and left the closer unscoped. Rather than patch a fourth time, §4.1–§4.5 were rewritten as one unit: `render` became a per-row callable, `Block = Paragraph \| Photo` gave the photo a home, §4.4 gained the step that puts it there, and every row got its `name`. **Two lanes found a security defect that predates the run**: INV-8 quoted its colour pattern unanchored while the table pins it anchored, and the trust-boundary paragraph names INV-8 as half the only defence. Executed: unanchored, it accepts `#c0453a;background:url(…)` straight into `style=`. **One lane found INV-3 vacuous** — `Node` excludes `Line`, so *a `Span` never contains a `Line`* was unconstructible and its test passed on any input, while the whole-body scanner it exists to catch surfaces as a `Text` holding a newline. **The one Q1 was a count of mine**, *130 entries that are not raw text*, which omits the two empty bodies and left them assigned to neither INV-5's population nor PRESS-0007's. **On the user's instruction the fixes were then read back against the spec's purpose**, and the archive counts came out of §2 entirely: none of them changes what an implementer builds, and §7 already says the archive test prints them, so the prose was a second copy that could disagree with the run. **Route: implementation, not a third loop.** The cap is where it is because a spec is exercised next by being built, and this document's remaining risk is in code nobody has written. |
+| 3 | 2026-09-06 | 3, cold — genre pinned `spec`; loop 1 of a new run (PRESS-0059, with PRESS-0055's amendment folded in). Packet carried `marks.py` whole rather than as windows. INV-5's archive run needs an oracle in a private workspace, so that region was declared unrunnable and Q1 was out of scope there | 4 | 4 | 2 | 1 | **Eleven verified, eleven fixed; one dismissed.** **All three lanes found this run's own collateral:** the new caption-as-description rule put writer text into an `alt` while §4.6 scoped strict attribute escaping to what `photo_src` returns, so a caption carrying a quote breaks out of the tag on a published page; §4.6 now names both destinations and escapes a caption once for each. **All three found §4.1's "Nothing else"** false — the module also exports `PhotoSrc` and `Renderer`, which are the types PRESS-0008 and PRESS-0012 must name. **Two found the rainbow row's "per character"** where the code's unit is a whole character reference: built per character, `&nbsp;` splits and reaches the page as its own text, which is the defect PRESS-0070 fixed in the code and nobody had written down. **The 4b sweep reversed a decision:** the grammar folded in from PRESS-0055 allowed an interior `/`, and PRESS-0006's INV-11 refuses one with a shipped test, so a photograph in a subfolder could be written into an entry and never stored. Put to the user, who barred it in Marks; the two contracts now agree. **Singles:** §4.2 claimed the scanner holds no delimiter literal of its own, and it holds the asterisk and the argument's `}`, both of which §4.5 requires; INV-7 could not fail for its own stated breach, `open` needing no import; INV-5's divergence set read "a bare `&`" where §4.6's rule is a pattern — executed, `&#12345678;` is escaped by Marks and left alone by `wpautop()`, and nobody would call it bare; the table carried two `photo` rows where `MARKS` has one, which would list the photograph twice in the cheat sheet. **Two were mine**, from 4a's re-read and the sweep: §4.3 still called the name a file name, and the grammar was pinned without saying it is the row's own `arg`. **Dismissed as true-but-inert:** §11 calls `CLAUDE.md`'s § Stack and § Build and test placeholders, and they were filled when this shipped. **Clean open questions, not counted:** an indented `{photo:}` line is a mark, since the code strips first, and INV-9/INV-10's tests are the declared code gap. |
