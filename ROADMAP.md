@@ -2822,7 +2822,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- PRESS-0006 read as a contract.
 
-- 📋 [PRESS-0063] **insights.py is the only module with no spec, and its source cites five invariant ids that resolve to nothing a reader may read.**
+- ✅ [PRESS-0063] **insights.py is the only module with no spec, and its source cites five invariant ids that resolve to nothing a reader may read.**
   Every sibling module names a docs/specs/PRESS-NNNN document. This one
   names its own test file: insights.py:3-4 says "its invariants are
   written down in tests/test_insights.py's header, there being no
@@ -2870,6 +2870,38 @@
   slot, so offering a second span does not disable the quota guard.
   This changes the cache file's format and therefore wants a CACHE_VERSION
   bump, which the new spec is the place to specify.
+  Resolved (2026-09-06). docs/specs/PRESS-0019-insights.md exists, is gated
+  and is accepted; the module and its test header now point at it rather
+  than at each other.
+
+  WHAT IT CARRIES. INV-1 to INV-16 from the test header, unchanged in
+  number because the module cites several by id. INV-19 to INV-26 for
+  behaviours the header never named and the PRESS-0039 to PRESS-0056 fixes
+  settled -- the cross-origin token drop, the request timeout, the seam's
+  OSError promise, the backwards clock, the cache-folder refusal, the
+  cache's durability and line endings, the carried detail, the
+  zero-visitor reading. Every test in the file is now claimed by an
+  invariant and every invariant names a test.
+
+  THE OBLIGATION IS DISCHARGED as a specification, not as code: the cache
+  holds one report per span (INV-17, INV-18, CACHE_VERSION 2), and
+  PRESS-0101 builds it.
+
+  OPEN, marked open rather than answered: the zero-visitor reading is
+  still unverified against the live API, and PRESS-0074's question about
+  the aggregate row is unsettled.
+
+  THE GATE WAS WORTH ITS LANES. Fifteen verified across two loops, and the
+  sharpest was mine: I wrote that the cache answers only when Google is
+  unreachable, where the code falls back on every typed failure --
+  executed, a 401, a 429 and a 500 each return a stale reply. A conformer
+  would have narrowed the handler and taken the dashboard down on an
+  expired token. Loop 2 was violent (five of six on this run's own text),
+  so the document routes to implementation rather than a third read.
+
+  ALSO WORTH RECORDING: every one of the sixteen test names in the first
+  draft was invented and wrong. Resolving them against the file rather
+  than recalling them is what caught it, before any lane was spent.
   **Layman:** The analytics part of the app has no design document, so its rules live only in its own tests -- which cannot prove themselves wrong.
   Kind: doc.
   Source: review-code 2026-08-31 lane insights.
@@ -4681,6 +4713,37 @@
   **Layman:** A failure while reading the publishing key could copy the store's own words into a message, and those words can contain the key.
   Kind: security.
   Source: review-contract 2026-09-06 PRESS-0058 gate loop 1.
+
+- 📋 [PRESS-0101] **The Insights cache keeps one report per time span, so offering a second span stops disabling the quota guard.**
+  The code side of PRESS-0019 §4.2, which is now specified and gated.
+  PRESS-0063 wrote the contract and explicitly was not a code fix; this is.
+
+  WHAT CHANGES. The cache file holds a `windows` object keyed by the day
+  count rather than one report, so storing one span's reply leaves the
+  others in place (INV-17). CACHE_VERSION goes to 2; a file of another
+  version already reads as absent, so nothing migrates (INV-18) and the
+  constant's value is the whole of that half.
+
+  WHY IT IS NOT LATENT FOREVER. `_cached` refuses any span but the stored
+  one and `_store` overwrites, so with two spans offered every click
+  alternates and refetches. Google meters per property per hour, which is
+  the only reason the cache exists. PRESS-0020 is what makes it real.
+
+  TESTS. INV-17's is to be seen failing first, against the shipped
+  single-slot cache. INV-18's is NOT: its behaviour already ships, so it
+  passes on the run that introduces it, and demanding a red run there
+  would mean building something broken to produce one. The spec says so.
+
+  CARRIED FROM THE GATE, and needing a decision rather than code: §4.2
+  requires the dashboard to offer a fixed and small set of spans, because
+  the file grows one entry per distinct span asked for and nothing here
+  can bound it. PRESS-0020's bullet names no span at all. And
+  docs/design.md § State says the last reply is kept, singular -- true
+  today, false once this ships, so that document needs widening with its
+  own gate.
+  **Layman:** Today the dashboard's cache holds one answer; offer a second time span and every click asks Google again.
+  Kind: fix.
+  Source: PRESS-0063 / PRESS-0056 item 4, user decision 2026-09-06.
 
 ## Milestones
 

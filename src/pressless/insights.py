@@ -1,7 +1,7 @@
 """Insights — asking Google Analytics how the site is being read.
 
-The contract is roadmap item PRESS-0019; its invariants are written down in
-tests/test_insights.py's header, there being no docs/specs file for it. This
+The contract is docs/specs/PRESS-0019-insights.md, which carries the
+invariants this file cites. This
 module imports no other part of Pressless than Settings (INV-1): it is handed
 the Google access token as an argument and never reaches Credentials, which is
 what keeps docs/design.md rule 10 true. Obtaining and refreshing that token is
@@ -458,7 +458,7 @@ def _store(target: Path, report: Report) -> None:
 
     The same write settings.py makes: a temporary in the same directory, then
     a rename over the target, so a reader never sees a half-written file and
-    no temporary is left behind (INV-8). A cache that cannot be written is not
+    no temporary is left behind (INV-24). A cache that cannot be written is not
     worth failing a fetch over — the numbers in hand are still good.
     """
     data = {
@@ -485,7 +485,7 @@ def _store(target: Path, report: Report) -> None:
             stream.write("\n")
             # rename(2) orders the namespace, not the data, so without
             # this a power loss can commit the rename before the blocks
-            # and leave an empty file where INV-8 promises a whole file (PRESS-0039).
+            # and leave an empty file where INV-24 promises a whole one (PRESS-0039).
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, target)

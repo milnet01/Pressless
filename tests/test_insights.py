@@ -1,7 +1,8 @@
-# INV-1..16 for PRESS-0019 (Insights). One test per invariant, named in the
-# list below. There is no docs/specs file for this item, so the roadmap item
-# PRESS-0019 is the contract and this header is where its invariants are
-# written down.
+# Tests for PRESS-0019 (Insights). The contract is
+# docs/specs/PRESS-0019-insights.md; its § 5 carries the invariants and its
+# § 10 maps each to the test below that catches a breach. The list used to
+# live in this header, which made these tests both the contract and its only
+# check -- PRESS-0063 gave it a home they cannot assert into being true.
 #
 # Why this exists: Insights is the part that asks Google Analytics how the
 # site is being read. Three things about it are easy to get wrong and
@@ -12,51 +13,13 @@
 # answer at all, because a dashboard that raises rather than showing
 # yesterday's numbers is a dashboard the writer stops opening.
 #
-# No test reaches the network. Every test hands in a recording double
-# through the `client` argument, which is what lets INV-3, INV-4 and the
-# cache invariants assert on requests made and requests NOT made. The double
-# also supplies the clock (`now()`), so every cache-age test is
-# deterministic and nothing here sleeps.
-#
-# THE CONTRACT
-#
-#   INV-1   insights.py imports no pressless module other than
-#           pressless.settings: not credentials, not the store, not marks,
-#           not the publisher. The token is an argument.
-#   INV-2   settings.analytics_property_id is None -- the writer declined
-#           the dashboard -- so read() raises NotConfigured and makes no
-#           request at all.
-#   INV-3   read() sends ONE request: a POST to the property's :runReport
-#           endpoint on Google's analytics-data host, carrying the token as
-#           an "Authorization: Bearer <token>" header.
-#   INV-4   the request body asks for the last `days` days, dimension
-#           "countryId" (never "country"), metric "activeUsers", and
-#           metricAggregations ["TOTAL"].
-#   INV-5   Report.people is read from Google's "totals", never summed from
-#           the rows; an answer carrying no "totals" raises InsightsError.
-#   INV-6   Report.countries is ordered by people descending, and a row
-#           whose dimension value starts with "RESERVED_" is an aggregate
-#           marker rather than a country and is dropped.
-#   INV-7   no failure raised by this module carries the token, in its
-#           message or its representation.
-#   INV-8   there is exactly one cache file and it is at
-#           cache_path(folder) == folder/"insights.json".
-#   INV-9   a cached reply younger than max_age_seconds answers with no
-#           request being made, and Report.stale is False.
-#   INV-10  a cached reply for a DIFFERENT `days` window does not answer;
-#           the window asked for is fetched.
-#   INV-11  a cached reply older than max_age_seconds is refetched, and the
-#           fresh reply replaces the old one on disk.
-#   INV-12  a refetch that fails while a cached reply for this window exists
-#           returns the cached reply with Report.stale True, rather than
-#           raising.
-#   INV-13  a refetch that fails with nothing cached raises the typed
-#           failure.
-#   INV-14  a corrupt cache file is ignored and refetched over, never fatal.
-#   INV-15  Report.fetched_at is when the reply was FETCHED, not when it was
-#           read.
-#   INV-16  401/403 -> Refused, 429 -> RateLimited, a transport OSError ->
-#           Unreachable, anything else -> InsightsError.
+# No test reaches the network. Every test of read() hands in a recording
+# double through the `client` argument, which is what lets INV-3, INV-4 and
+# the cache invariants assert on requests made and requests NOT made. That
+# double also supplies the clock (`now()`), so every cache-age test is
+# deterministic and nothing here sleeps. INV-1's test is an import walk, and
+# INV-19 to INV-21 exercise the module's own client directly, which the seam
+# replaces and so cannot observe.
 #
 # NOT ASSERTED, deliberately: that read() builds the module's own client
 # when client=None. Proving it would mean letting a test reach Google. Every
