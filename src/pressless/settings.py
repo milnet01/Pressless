@@ -323,7 +323,7 @@ def _optional(mapping: dict, key: str, kind: type, target: Path, prefix: str = "
 
 
 def _discard(temporary: str) -> None:
-    """Leave nothing behind in the folder but the settings file (§5 INV-7)."""
+    """Remove this call's own temporary file, and nothing else (§5 INV-7)."""
     try:
         os.unlink(temporary)
     except OSError:

@@ -385,7 +385,7 @@ def _read_mapping(target: Path) -> dict | None:
 
 
 def _discard(temporary: str) -> None:
-    """Leave nothing behind in the folder but the credentials file."""
+    """Remove this call's own temporary file, and nothing else."""
     try:
         os.unlink(temporary)
     except OSError:

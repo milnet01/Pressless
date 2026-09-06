@@ -2742,7 +2742,7 @@
   Kind: doc.
   Source: review-code 2026-08-31 lane insights.
 
-- 📋 [PRESS-0064] **Two modules that share a folder each document it as holding only their own file, and following either literally deletes the publishing key.**
+- ✅ [PRESS-0064] **Two modules that share a folder each document it as holding only their own file, and following either literally deletes the publishing key.**
   Found by two lanes independently. A TRAP FOR THE NEXT IMPLEMENTER
   rather than a live defect -- neither module actually sweeps, and I
   checked: both _discard functions unlink only their own named temp
@@ -2766,6 +2766,24 @@
 
   Fix: both docstrings to say "leaving no temporary file of its own
   behind", and PRESS-0001 INV-7's wording checked to match.
+  Resolved (2026-09-06): three docstrings, not two. credentials.py's
+  _discard carried the same sentence and this item did not name it -- the
+  module guarding the publishing key. settings.py and credentials.py now
+  say they remove this call's own temporary file and nothing else;
+  insights.py's _store says it leaves no temporary behind. store.py's
+  _discard already read correctly, from PRESS-0067 item 7, and was the
+  model rather than new wording.
+
+  PRESS-0001 INV-7 was checked and needed no change: it already reads
+  "An addition rule, never a cleanup rule" and names the other parts
+  keeping files in that folder. So no spec was amended and no
+  review-contract gate is owed by this item.
+
+  The three modules are scraped by their own tests via inspect.getsource,
+  so a docstring is not outside write-code's scope the way a comment is.
+  Those scrapes walk ast.Import and ast.ImportFrom only, so none could be
+  broken or silently satisfied by this edit. Verified before editing.
+  Gate green.
   **Layman:** Two files carry a comment that, if a future developer believes it, would make them delete the writer's publishing key.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lanes insights/settings -- cross-cutting.

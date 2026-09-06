@@ -454,11 +454,11 @@ def _cached(target: Path, days: int) -> Report | None:
 
 
 def _store(target: Path, report: Report) -> None:
-    """Replace the cache with this reply, leaving nothing else in the folder.
+    """Replace the cache with this reply, and leave no temporary behind.
 
     The same write settings.py makes: a temporary in the same directory, then
     a rename over the target, so a reader never sees a half-written file and
-    nothing is left behind (INV-8). A cache that cannot be written is not
+    no temporary is left behind (INV-8). A cache that cannot be written is not
     worth failing a fetch over — the numbers in hand are still good.
     """
     data = {
