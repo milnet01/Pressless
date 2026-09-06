@@ -2418,7 +2418,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane settings -- document side.
 
-- 📋 [PRESS-0058] **PRESS-0002's write table has no version row, and INV-6's test surface cannot detect the breach INV-6 forbids.**
+- ✅ [PRESS-0058] **PRESS-0002's write table has no version row, and INV-6's test surface cannot detect the breach INV-6 forbids.**
   DOCUMENT SIDE. Gate with review-contract
   docs/specs/PRESS-0002-credentials.md --genre spec.
 
@@ -2441,6 +2441,23 @@
   test surface -- 4.6's measurement was taken once, on ext4, by hand.
   PRESS-0042 is the code side; the contract needs an invariant that
   binds at runtime.
+  Resolved (2026-09-06). All three items were the document lagging behind
+  shipped, tested code rather than a rule anyone still had to write.
+
+  Item 1: the write table gained the version row its read side already
+  carried. Item 2: INV-6's clause gained the failing store that makes it
+  falsifiable, since every store in that suite is patched. Item 3:
+  ADR-0003's capability test became INV-11, where before it was named in
+  the coverage table and bound by no invariant.
+
+  The gate is what earned this item its cost: two loops, six cold lanes,
+  seventeen verified and seventeen fixed, tail empty, and FOUR code
+  defects filed as PRESS-0100 and since fixed. The sharpest was a leak
+  whose other half had been left: PRESS-0051 hardened write()'s keyring
+  failure and left the read path folding the backend's own message in.
+
+  Loop 6's row records the rest, including two errors of my own that each
+  credited the wrong refusal for holding the file-store tests back.
   **Layman:** The credentials design document asks for a guarantee and then checks it in a way that cannot fail.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane credentials -- document side.
@@ -4616,7 +4633,7 @@
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
 
-- 📋 [PRESS-0100] **Credentials hardened one half of a leak and left the other, and its version check is looser than the file format it shares.**
+- ✅ [PRESS-0100] **Credentials hardened one half of a leak and left the other, and its version check is looser than the file format it shares.**
   Three code defects found by PRESS-0058's gate. All are in
   credentials.py and its tests; the contract for each now says what the
   code should do, so this is the code catching up.
@@ -4646,6 +4663,21 @@
   Each needs its test: a read failure from a store whose message carries
   the sentinel, a version of `true` refused on both paths, and the
   capability skip on the five clauses.
+  Resolved (2026-09-06). All four items fixed and tested, each seen
+  failing or probed first.
+
+  1. The read path names the exception type and drops the cause, as the
+  write path already did. 2. Both version checks are type-strict, so
+  `true` and `1.0` are no longer accepted as version 1. 3. Six test
+  clauses needing a successful file write take the capability probe rather
+  than the platform patch -- proven by forcing the probe to report a
+  permissive mount, where exactly those six skip. 4. INV-7's fixture makes
+  its first member answer a truthy non-string, so the clause now kills a
+  walk taking the chain's first non-None answer; that mutant passed
+  before.
+
+  Filed by a documentation gate and fixed as its own item, so the record
+  shows where they came from.
   **Layman:** A failure while reading the publishing key could copy the store's own words into a message, and those words can contain the key.
   Kind: security.
   Source: review-contract 2026-09-06 PRESS-0058 gate loop 1.

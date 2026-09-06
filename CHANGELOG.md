@@ -141,6 +141,11 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **A credentials file whose version is missing or the wrong type is refused** (PRESS-0100)
+  The check accepted `true` and `1.0` as version 1, because Python treats
+  them as equal, and said nothing about a file carrying no version at all.
+  It now matches the settings file next door, which was always strict.
+
 - **A blob GitHub sends back malformed now reports as itself rather than crashing.** (PRESS-0095)
   One kind of bad answer from GitHub reached the writer as "something
   went wrong" instead of a sentence about his site. It is now one of the
@@ -346,6 +351,12 @@ appears once something has actually shipped.)
   anywhere; it now runs and passes.
 
 ### Security
+
+- **A failed read of the publishing key can no longer quote the store's own words** (PRESS-0100)
+  When the operating system's password store fails, its own message can
+  repeat what it was handling. Saving the key already guarded against
+  that; reading it did not, so the store's text could reach an error
+  report and the app's log. Both sides now name only the kind of fault.
 
 - **A photograph's name is checked before it reaches the file system** (PRESS-0055)
   A name carrying a folder separator, a colon, a control character or `..`
