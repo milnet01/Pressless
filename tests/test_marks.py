@@ -55,15 +55,17 @@ def _iter_nodes(obj):
 
 
 class _AttrCapture(html.parser.HTMLParser):
-    """Collects every `src` and `style` attribute value a real HTML parser
-    sees, so escaping is checked by round-tripping through a parser rather
-    than by pinning one entity spelling (§4.6 names no particular spelling,
-    only the property that the value cannot break out of its attribute)."""
+    """Collects every `src`, `style` and `alt` attribute value a real HTML
+    parser sees, so escaping is checked by round-tripping through a parser
+    rather than by pinning one entity spelling (§4.6 names no particular
+    spelling, only the property that the value cannot break out of its
+    attribute)."""
 
     def __init__(self):
         super().__init__()
         self.srcs: list[str] = []
         self.styles: list[str] = []
+        self.alts: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         attrs_by_name = dict(attrs)
@@ -71,6 +73,8 @@ class _AttrCapture(html.parser.HTMLParser):
             self.srcs.append(attrs_by_name["src"])
         if "style" in attrs_by_name:
             self.styles.append(attrs_by_name["style"])
+        if "alt" in attrs_by_name:
+            self.alts.append(attrs_by_name["alt"])
 
 
 def _parsed_attrs(html_text: str) -> _AttrCapture:
@@ -117,7 +121,7 @@ def test_censored_words_and_divider_are_literal():
     Fixtures are the archive's own censored words and its 35-asterisk
     divider line (spec §5) — not invented prettier ones, because the point
     is that real writing already contains exactly these. Breaks when the
-    opener test drops its "not followed by a space or its own delimiter"
+    opener test drops its "not followed by whitespace or its own delimiter"
     clause, or the closer is allowed to be missing.
 
     The archive's three fixtures alone measure NEITHER adjacency clause —
@@ -321,9 +325,10 @@ _FORBIDDEN_TOP_LEVEL_IMPORTS = {"os", "io", "socket", "urllib", "requests", "sub
 
 
 def test_marks_is_pure():
-    """INV-7: marks.py imports nothing that reaches a disk or a network:
-    not pathlib, os, io, open, socket, urllib, requests, subprocess, nor
-    any other pressless module.
+    """INV-7: marks.py reaches no disk and no network. It imports none of
+    pathlib, os, io, socket, urllib, requests or subprocess, nor any other
+    pressless module, and calls no filesystem builtin — `open` needs no
+    import, so the import walk alone cannot catch the breach INV-7 names.
 
     Walks the module's AST rather than grepping its text (spec §5). Reads
     the module's *source* via inspect.getsource — that read is done here,
@@ -562,4 +567,110 @@ def test_rainbow_leaves_a_character_reference_intact():
         f"a bare '&' inside {{rainbow}} (not part of a character "
         f"reference) must still be escaped per INV-4; expected '&amp;' "
         f"in the output, got: {bare_amp!r}"
+    )
+
+
+# --------------------------------------------------------------- INV-9 ----
+
+
+def test_photo_name_cannot_escape_its_folder():
+    """INV-9: a photograph's name reaches photo_src only after matching
+    §4.2's grammar in full — one plain file name, with no separator, no
+    colon, no control character, not `.` or `..`, and not empty.
+
+    Breaks when the argument split is taken for the whole grammar, which
+    is how `../../etc/passwd` reaches the caller's file world. The name is
+    handed to photo_src BEFORE any escaping, so INV-4 cannot defend this
+    boundary and the grammar is what does (spec §5, trust boundary).
+
+    The grammar is at least as strict as PRESS-0006's INV-11, which
+    governs where the original is kept: a name Marks accepts must be one
+    photograph_path_for accepts, or a mark could be written that no Store
+    call could ever resolve.
+    """
+    handed: list[str] = []
+
+    def record(name: str) -> str:
+        handed.append(name)
+        return name
+
+    refused = (
+        "../../etc/passwd",
+        "..\\..\\windows",
+        "/etc/passwd",
+        "sub/dir.jpg",
+        "back\\slash.jpg",
+        "C:photo.jpg",
+        "http://example.invalid/x.jpg",
+        "..",
+        ".",
+        "   ",
+        "null\x00byte.jpg",
+    )
+    for name in refused:
+        out = render(f"{{photo: {name}}}", record)
+        assert "<figure" not in out, (
+            f"{name!r} formed a photograph mark; §4.2's grammar refuses it, "
+            f"so the line must stay literal text: {out!r}"
+        )
+    assert handed == [], (
+        f"photo_src was called with {handed!r} — a name outside the grammar "
+        f"must never reach the caller's file world, which is the whole of "
+        f"INV-9"
+    )
+
+    # The counter-case: the grammar must still accept what the writer
+    # actually types, or it has closed the mark rather than the hole.
+    for name in ("seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png"):
+        accepted = render(f"{{photo: {name}}}", record)
+        assert "<figure" in accepted, (
+            f"{name!r} is an ordinary photograph name and must still form a "
+            f"mark: {accepted!r}"
+        )
+    assert handed == ["seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png"], (
+        f"the name handed to photo_src must be the stripped file name "
+        f"§4.2 describes, got {handed!r}"
+    )
+
+
+# -------------------------------------------------------------- INV-10 ----
+
+
+def test_a_caption_becomes_the_photograph_description():
+    """INV-10: a photograph's alt is its caption where one was written,
+    and empty where none was.
+
+    Breaks when alt is a fixed empty string, which declares every
+    photograph decorative whatever the writer captioned it — a
+    screen-reader user then gets nothing where the writer had already said
+    what the picture is.
+
+    The caption reaches two places under two different rules (§4.6): the
+    text rule inside <figcaption>, and the attribute rule inside alt. The
+    second assertion is what fails when one helper is used for both.
+    """
+    captioned = render("{photo: seaside.jpg | Late light}", lambda n: n)
+    assert _parsed_attrs(captioned).alts == ["Late light"], (
+        f"a written caption must become the img's alt: {captioned!r}"
+    )
+    assert "<figcaption>Late light</figcaption>" in captioned, (
+        f"the caption must still appear as the figure's caption: {captioned!r}"
+    )
+
+    bare = render("{photo: seaside.jpg}", lambda n: n)
+    assert _parsed_attrs(bare).alts == [""], (
+        f"with no caption written, alt must be empty — which is what "
+        f"declares the picture decorative: {bare!r}"
+    )
+
+    # The attribute rule, not the text rule. A caption carrying a quote
+    # must not break out of alt, and a caption carrying an entity must
+    # reach a screen reader as its character rather than as its source.
+    quoted = render('{photo: a.jpg | he said "hi" & waved}', lambda n: n)
+    assert "<script" not in quoted and 'alt="he said "' not in quoted, (
+        f"a caption broke out of its attribute: {quoted!r}"
+    )
+    assert _parsed_attrs(quoted).alts == ['he said "hi" & waved'], (
+        f"the alt must decode back to the caption the writer typed, which "
+        f"is what the attribute rule buys: {quoted!r}"
     )

@@ -115,6 +115,11 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **A photograph with a caption now describes itself to a screen reader** (PRESS-0059)
+  The caption the writer already types becomes the picture's description as
+  well, so a reader who cannot see the photograph is told what it is. A
+  photograph with no caption stays decorative, as before.
+
 - **CI runs the suite in random order, as the maintainer's machine already did** (PRESS-0027)
   pytest-randomly is declared in the dev extra rather than merely
   installed locally, so the shared gate script no longer runs the
@@ -341,6 +346,12 @@ appears once something has actually shipped.)
   anywhere; it now runs and passes.
 
 ### Security
+
+- **A photograph's name is checked before it reaches the file system** (PRESS-0055)
+  A name carrying a folder separator, a colon, a control character or `..`
+  no longer forms a photograph mark; the line stays as the writer typed it.
+  Marks hands that name straight to whatever looks the file up, so nothing
+  further along could have caught it.
 
 - **A shortcut left in your site folder is no longer published.** (PRESS-0069)
   Pressless publishes every file it finds in the site folder. If one of

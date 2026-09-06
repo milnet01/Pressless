@@ -156,7 +156,7 @@ def _forms_a_mark(body: str) -> bool:
             start = 0
             while (i := line.find(delim, start)) >= 0:
                 rest = line[i + len(delim):]
-                # §4.5: an opener is not followed by a space, nor by
+                # §4.5: an opener is not followed by whitespace, nor by
                 # another asterisk; its closer is not preceded by either.
                 if rest and not rest[0].isspace() and rest[0] != "*":
                     j = rest.find(delim)

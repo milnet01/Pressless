@@ -156,13 +156,15 @@ def _picked_colour(node: Span | Photo, children: str, photo_src: PhotoSrc) -> st
 
 
 def _rainbow(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
-    """One span per character carrying an index, so the site's stylesheet owns
-    the palette and Marks owns no colour decision (§4.2). Whitespace is
-    emitted bare and does not advance the count.
+    """One span per unit carrying an index, so the site's stylesheet owns the
+    palette and Marks owns no colour decision (§4.2). A unit is a whole
+    character reference where the text carries one, and a single character
+    otherwise; a unit that is one whitespace character is emitted bare and
+    does not advance the count, while a character reference always takes a
+    span, `&nbsp;` included.
 
     The only row that ignores its rendered children and walks its own text
-    itself — its `content` is "text", so nothing inside it is a mark. A
-    character reference is one character and takes one span.
+    itself — its `content` is "text", so nothing inside it is a mark.
     """
     out: list[str] = []
     index = 0
@@ -183,12 +185,18 @@ def _figure(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
     """The caller owns the file world: if `photo_src` raises, Marks does not
     catch it (§6)."""
     src = _escape_attr(photo_src(node.name))
+    # §4.2: the caption is the picture's description. Where none is written
+    # alt is empty, which declares the picture decorative. The caption
+    # reaches two places under two different rules (§4.6) -- the attribute
+    # rule here, the text rule in the figcaption -- so a caption carrying a
+    # quote cannot break out of the tag (INV-10).
+    alt = _escape_attr(node.caption) if node.caption is not None else ""
     caption = (
         f"<figcaption>{_escape_text(node.caption)}</figcaption>"
         if node.caption is not None
         else ""
     )
-    return f'<figure><img src="{src}" alt="">{caption}</figure>'
+    return f'<figure><img src="{src}" alt="{alt}">{caption}</figure>'
 
 
 # --------------------------------------------------------------- the table --
@@ -213,7 +221,23 @@ _HEX_COLOUR = r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$"
 
 # The name, and an optional caption after a bar. Named groups because the
 # scanner builds a Photo from them.
-_PHOTO_ARG = r"^\s*(?P<name>[^|]+?)\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
+#
+# The name's grammar is this pattern and nothing else (§4.2), so MARKS stays
+# the only route: a name breaking it fails the row's own match and the line
+# is literal. It refuses both separators, a colon, control characters, and
+# `.` / `..` -- everything that could carry the name outside the folder the
+# caller meant, on either platform. Marks hands this string to photo_src
+# BEFORE any escaping (INV-9), so nothing downstream defends it. At least as
+# strict as PRESS-0006's INV-11, which governs where the original is kept.
+# The name's first character may not be whitespace: leaving it optional lets
+# the leading \s* give a space back on backtracking, and the dot refusal --
+# anchored at the name's start -- then never sees the dots at all. Measured
+# 2026-09-06: '{photo: ..}' formed a mark whose name was ' ..'.
+_PHOTO_ARG = (
+    r"^\s*(?P<name>(?!\.{1,2}(?:\s|\||$))"
+    r"[^\s|/\\:\x00-\x1f\x7f][^|/\\:\x00-\x1f\x7f]*?)"
+    r"\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
+)
 
 
 MARKS: tuple[Mark, ...] = (
@@ -315,9 +339,10 @@ _BLOCK_MARKS: tuple[Mark, ...] = tuple(
 # complete mark is literal text and scanning resumes one character on.
 
 # §4.5's extra adjacency clause is the asterisk family's alone: those
-# delimiters are characters the writing itself is full of, so '***...***' must
-# open nothing and 'b**bs' must close nothing. The brace marks need no such
-# rule, and giving them one would reject the nesting '{accent}{muted}x{/}{/}'.
+# delimiters are characters the writing itself is full of, so no mark opens at
+# the first asterisk of '***x***' and '*x **' closes nothing. The brace marks
+# need no such rule, and giving them one would reject the nesting
+# '{accent}{muted}x{/}{/}'.
 _RUN_DELIMITER = "*"
 
 # An argument runs from the end of its row's `opens` to the next '}' on the
@@ -378,8 +403,8 @@ def _content_starts(row: Mark, text: str, i: int) -> int | None:
 def _closes_at(row: Mark, text: str, start: int) -> int | None:
     """Index of this row's closer, or None.
 
-    §4.5: on the same line, not immediately preceded by a space, and — for the
-    asterisk family — not by another asterisk. A mark whose opener and closer
+    §4.5: on the same line, not immediately preceded by whitespace, and — for
+    the asterisk family — not by another asterisk. A mark whose opener and closer
     differ can contain itself, so those count nesting depth, and the counter
     alone decides which closer belongs to which span.
     """
