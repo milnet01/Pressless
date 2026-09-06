@@ -17,6 +17,13 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **A real security policy: what Pressless protects, and how to report a problem privately** (PRESS-0065)
+  SECURITY.md shipped with its sections still as the template's own
+  prompts, under a header saying an empty policy is worse than none. It
+  now names the four places data crosses into Pressless and what guards
+  each, and points reporters at GitHub's private reporting rather than
+  the public issue tracker.
+
 - **A test pinning that every network open passes a timeout** (PRESS-0071)
   No static-analysis tool in the project's set reads urllib, so this
   guard could have been removed without anything noticing.

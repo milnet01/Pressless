@@ -2812,7 +2812,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 lanes insights/settings -- cross-cutting.
 
-- 📋 [PRESS-0065] **SECURITY.md ships its trust-boundary section unfilled, under a header saying an empty policy is worse than no file.**
+- ✅ [PRESS-0065] **SECURITY.md ships its trust-boundary section unfilled, under a header saying an empty policy is worse than no file.**
   SECURITY.md's Trust boundaries section reads, verbatim, "(Filled once
   design names them.)" -- while the file's own header says "Delete this
   file if this project has no trust boundary ... an empty policy is
@@ -2839,6 +2839,31 @@
   posted publicly and no address of the writer's is published. The feature
   needs switching on in the repository settings, and the policy is written
   around it.
+  Resolved (2026-09-06): all three template sections filled, and the
+  "delete this file" prompt removed because the design now answers it.
+
+  The four boundaries were checked in their own documents rather than taken
+  from this bullet: the markup boundary sentence in PRESS-0004 5, ADR-0003's
+  own words for the key at rest (it already requires owner-only permissions
+  on the fallback file, which is what PRESS-0057 has just specified for
+  every file Pressless writes), Insights and the Publisher for the two
+  network services, and the Store, Settings and the cache for files read
+  back off disk.
+
+  The markup bullet deliberately does NOT repeat PRESS-0004 5's claim that
+  the escapes are that boundary's whole defence. PRESS-0059 item 1 and
+  PRESS-0055 have that sentence open as FALSE of the photograph name, so
+  writing it into a public security policy would have published a claim
+  this project already knows is untrue. It says the gaps are tracked
+  instead.
+
+  Reporting channel: GitHub's private vulnerability reporting, per the
+  user's decision. Enabled on the repository and verified enabled:true, so
+  the policy's claim about the Security tab is true rather than aspirational.
+
+  Not gated with review-contract: nothing is built from a security policy
+  and nobody conforms to it, so CLAUDE.md rule 14 puts it out of scope.
+  Leak sweep clean on all three surfaces.
   **Layman:** The security policy file promises to list what the app protects and against what, and that section is still the template placeholder.
   Kind: doc-fix.
   Source: review-code 2026-08-31 synthesis -- threat model.
