@@ -331,6 +331,15 @@ def test_only_touches_its_own_file(tmp_path, monkeypatch):
     catch that — a read elsewhere leaves the listing identical — which is why
     every path opened is recorded, not just what the folder ends up holding."""
     _write(tmp_path, _valid_mapping())
+    # INV-7 is an ADDITION rule, never a cleanup rule (§5): other parts keep
+    # files in this same folder, and ADR-0003's fallback holds the publishing
+    # key. An empty fixture cannot tell the two readings apart -- it passes
+    # against a save() that swept the folder -- so a file Settings did not
+    # write goes in first and must survive. The name is written out here
+    # rather than imported from credentials.py: sharing the literal would
+    # compare that module against itself.
+    stranger = tmp_path / "credentials.json"
+    stranger.write_text("not Settings' file\n", encoding="utf-8")
     folder = Path(os.path.realpath(tmp_path))
     opened: list[str] = []
 
@@ -372,9 +381,13 @@ def test_only_touches_its_own_file(tmp_path, monkeypatch):
     assert opened, "no filesystem call was recorded at all — the watch did not fire"
 
     left = sorted(p.name for p in tmp_path.iterdir())
-    assert left == [FILE_NAME], (
+    assert left == sorted([FILE_NAME, stranger.name]), (
         f"after save() returned the folder holds {left!r}; §4.4's temporary "
-        f"file must be gone and nothing else may be left behind"
+        f"file must be gone, and a file Settings did not write must still "
+        f"be there -- INV-7 adds, it does not clean up"
+    )
+    assert stranger.read_text(encoding="utf-8") == "not Settings' file\n", (
+        "save() rewrote a file it did not write"
     )
 
     # The breach this invariant names arrives by a route the phase above
@@ -776,9 +789,14 @@ def test_a_saved_file_is_owner_only(tmp_path):
     """INV-8: after save() returns, the settings file is readable and writable
     by its owner and by nobody else.
 
-    The widening half is the one that bites: a fresh save inherits mkstemp's
-    0600 whatever the code intends, so asserting the first save alone passes
-    against an implementation carrying no rule at all.
+    The exact mode is asserted, not just that the group and other bits are
+    clear: `mode & 0o077 == 0` is true of 0400 and of 0000, so the owner half
+    of INV-8 would have had no falsifier and a defensive chmod could breach
+    the invariant while staying green.
+
+    The widening half bites for its own reason: a fresh save inherits
+    mkstemp's 0600 whatever the code intends, so asserting the first save
+    alone passes against an implementation carrying no rule at all.
 
     Breaks when an implementer opens the target directly, or carries the old
     file's mode onto the new one to preserve what the writer chose."""
@@ -788,9 +806,9 @@ def test_a_saved_file_is_owner_only(tmp_path):
 
     save(tmp_path, settings)
     mode = os.stat(target).st_mode & 0o777
-    assert mode & 0o077 == 0, f"a fresh save left mode {mode:#o}"
+    assert mode == 0o600, f"a fresh save left mode {mode:#o}, not 0o600"
 
     os.chmod(target, 0o644)
     save(tmp_path, dataclasses.replace(settings, repository="someone/else.github.io"))
     mode = os.stat(target).st_mode & 0o777
-    assert mode & 0o077 == 0, f"a save over a widened file left mode {mode:#o}"
+    assert mode == 0o600, f"a save over a widened file left mode {mode:#o}, not 0o600"

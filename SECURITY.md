@@ -24,8 +24,10 @@ defending one requires. This file is only what an outside reader needs.
 - **Files on disk that Pressless did not write.** The entry files, the
   settings file and the dashboard cache are all read back and parsed, and
   the writer may edit any of them by hand. Each is refused with a stated
-  reason rather than half-read. Every file Pressless writes is left
-  readable by its owner alone.
+  reason rather than half-read. On Linux every file Pressless writes is
+  left readable by its owner alone; Windows cannot deliver that, and
+  where the publishing key itself cannot be kept private Pressless stops
+  rather than writing it.
 
 ## Supported versions
 

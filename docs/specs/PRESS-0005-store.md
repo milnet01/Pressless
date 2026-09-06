@@ -373,12 +373,18 @@ target, which is atomic on both Windows and Linux — so a crash
 mid-save leaves the previous file rather than half an entry. This is
 the shape `src/pressless/settings.py::save` already uses.
 
-**Every file written this way is left readable by its owner alone.**
-`mkstemp` creates the temporary with mode `0600`, and `os.replace`
-carries that mode onto the target — so a file that was wider before a
-write is narrower after it. Measured. PRESS-0001 §4.4 states the same
-rule for the settings file: one answer, written in both places rather
-than in neither.
+**On POSIX every file written this way is left readable by its owner
+alone.** `mkstemp` creates the temporary with mode `0600`, and
+`os.replace` carries that mode onto the target — so a file that was
+wider before a write is narrower after it. Measured on Linux.
+**Windows does not deliver this and no `chmod` makes it:** ADR-0003
+records that the call sets only the read-only flag there. PRESS-0001
+§4.4 states the same rule, with the same boundary, for the settings
+file: one answer, written in both places rather than in neither. It
+is also what the filesystem GRANTS rather than what `mkstemp` asked:
+a mount that does not enforce POSIX modes ignores the request, and
+the Store does not check the grant the way Credentials does
+(PRESS-0042).
 
 The recognised fields the entry has are written first, in the order
 §4.2 lists them, then any `extra` fields in their original order, then
@@ -553,19 +559,22 @@ is true of a template is PRESS-0006's (§9).
   moving.
 
 - **INV-11** — after `write` returns, the entry file is readable and
-  writable by its owner and by nobody else.
+  writable by its owner and by nobody else, on a filesystem that
+  enforces POSIX modes.
   *Test:* `tests/test_store.py::test_a_written_entry_is_owner_only` —
-  write into a fresh folder and assert the group and other permission
-  bits are clear; then widen the file to `0644`, write again, and
-  assert it is narrow again. **The second half is the one that bites:**
-  a fresh write inherits `mkstemp`'s mode whatever the code intends, so
-  the first half passes against an implementation carrying no rule at
-  all.
+  write into a fresh folder and assert the mode is exactly `0600`; then
+  widen the file to `0644`, write again, and assert it is `0600` again.
+  **Both halves bite, for different reasons:** asserting only that the
+  group and other bits are clear would pass against `0400` and against
+  `0000`, leaving the owner half of this rule with no falsifier; and a
+  fresh write inherits `mkstemp`'s mode whatever the code intends, so it
+  is the widened write that catches an implementation carrying no
+  rule.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
-  chose. **Windows is not covered:** the POSIX bits this reads are not
-  how that system answers, so the test skips there, and PRESS-0022's
-  Windows run is where the question gets asked.
+  chose. **Windows is outside this rule, not merely untested:** §4.5
+  gives the outcome there, so the test skips and PRESS-0022's Windows
+  run is where that outcome is confirmed.
 
 ## 6. Failure modes
 

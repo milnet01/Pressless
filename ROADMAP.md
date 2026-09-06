@@ -4442,6 +4442,38 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
 
+- 📋 [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
+  PRESS-0042 settled this once, for the fallback credentials file:
+  mkstemp ASKS for 0600, a mount that does not enforce POSIX modes
+  ignores the request, chmod returns EPERM there, and os.replace carries
+  the permissive mode onto the target. credentials.py reads the granted
+  mode off the descriptor before the secret is written, and refuses.
+
+  settings.py and store.py take the same route and do NOT check. So on
+  vfat, exFAT, NTFS, CIFS or a FUSE mount, PRESS-0001 INV-8 and
+  PRESS-0005 INV-11 do not hold. Both were scoped to "a filesystem that
+  enforces POSIX modes" on 2026-09-06 rather than left overstated, and
+  both specs now say the Store and Settings do not check the grant --
+  so nothing claims more than it delivers, and this item is the open
+  question rather than a live falsehood.
+
+  PRESS-0002 3 decision 1 names the scenario as its own justification:
+  the writer chooses where Pressless sits, and that may be a shared or
+  removable drive.
+
+  NOT started, and deliberately not folded into the gate that found it.
+  Adding the check changes behaviour -- a save could begin failing on a
+  drive where it works today -- and the user's 2026-09-06 decision was
+  that owner-only is the RULE, recording what already happens. Whether
+  Settings and the Store should refuse like Credentials, warn, or carry
+  on is a design question with a user in it.
+
+  Cheap when taken: the check is one fstat on the descriptor mkstemp
+  returned, and credentials.py already has the shape to copy.
+  **Layman:** On a memory stick or a shared drive the app cannot make its files private, and only the part holding your password notices.
+  Kind: investigate.
+  Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how

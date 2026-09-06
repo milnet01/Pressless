@@ -72,7 +72,9 @@ session.** §8 carries what each beat.
 3. **A key Settings does not recognise is preserved on save, at the top level.**
    A newer Pressless must be able to write a key an older one then saves over
    without losing it, so it puts that key at the top level — §4.4 rebuilds
-   `credentials` from the dataclass.
+   `credentials` from the dataclass. **At the same file `version` only:** one
+   whose `version` is not this build's is refused rather than carried
+   forward (§4.4, §6).
 4. **An absent untouchable list is an error; an empty one is valid.** They are
    different facts — *nobody has derived the list* and *the repository root
    holds nothing the Builder does not produce* — and defaulting the first to
@@ -219,12 +221,22 @@ of it:** `os.replace` orders the namespace and not the data, so without it a
 power loss can commit the rename ahead of the blocks and leave an empty file
 where this section promises the previous one.
 
-**The file is left readable by its owner alone.** `mkstemp` creates the
-temporary with mode `0600`, and `os.replace` carries that mode onto the
+**On POSIX the file is left readable by its owner alone.** `mkstemp` creates
+the temporary with mode `0600`, and `os.replace` carries that mode onto the
 target — so a file that was wider before a save is narrower after it.
-Measured here and on PRESS-0005's write, which answers the same. This folder
-also holds ADR-0003's fallback credentials file, so owner-only is stated
-rather than left to be discovered.
+Measured on Linux, here and on PRESS-0005's write, which answers the same.
+**Windows does not deliver this and no `chmod` makes it:** ADR-0003 records
+that the call sets only the read-only flag there, leaving a file every account
+on the machine can read. That is why the same ADR stops setup rather than
+writing a key it cannot protect. This folder holds that fallback credentials
+file, so the boundary is stated here rather than discovered.
+
+**And the rule is what the filesystem GRANTS, not what was asked.** `mkstemp`
+requests the mode; a mount that does not enforce POSIX modes ignores the
+request, and `os.replace` then carries the permissive mode onto the target.
+Credentials checks that grant off the descriptor before writing a secret
+(PRESS-0042); Settings does not check, so on such a mount this rule does not
+hold and nothing here pretends otherwise.
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
@@ -349,18 +361,21 @@ which is the writer's choice of somewhere else and is stored absolute.
   that fails, which is why both are prescribed.
 
 - **INV-8** — after `save()` returns, `path_for(folder)` is readable and
-  writable by its owner and by nobody else.
+  writable by its owner and by nobody else, on a filesystem that enforces
+  POSIX modes.
   *Test:* `tests/test_settings.py::test_a_saved_file_is_owner_only` — save
-  into a fresh folder and assert the group and other permission bits are
-  clear; then widen the file to `0644`, save again, and assert it is narrow
-  again. **The second half is the one that bites:** a fresh save inherits
-  `mkstemp`'s mode whatever the code intends, so the first half passes
-  against an implementation carrying no rule at all.
+  into a fresh folder and assert the mode is exactly `0600`; then widen the
+  file to `0644`, save again, and assert it is `0600` again. **Both halves
+  bite, for different reasons:** asserting only that the group and other bits
+  are clear would pass against `0400` and against `0000`, leaving the owner
+  half of this rule with no falsifier at all; and a fresh save inherits
+  `mkstemp`'s mode whatever the code intends, so it is the widened save that
+  catches an implementation carrying no rule.
   *Breaks when:* an implementer opens the target directly, or carries the
   old file's mode onto the new one to preserve what the writer chose.
-  **Windows is not covered:** the POSIX bits this reads are not how that
-  system answers, so the test skips there, and PRESS-0022's Windows run is
-  where the question gets asked.
+  **Windows is outside this rule, not merely untested:** §4.4 gives the
+  outcome there, so the test skips and PRESS-0022's Windows run is where that
+  outcome is confirmed.
 
 ## 6. Failure modes
 
@@ -388,7 +403,7 @@ which is the writer's choice of somewhere else and is stored absolute.
   directory succeeds and replaces it, where a direct `open('w')` on the same
   file raises `PermissionError`. That measurement is Linux's; Windows is
   expected to refuse the replace on a read-only target and is observed
-  nowhere, which §10's last row already records. So
+  nowhere: PRESS-0022's Windows run is the only place it could be. So
   §4.4's mechanism decides this, the folder's permissions are what bite on
   Linux, and a settings file copied read-only from another machine is replaced
   rather than refused.
@@ -487,7 +502,10 @@ loading or saving does anything.
   variable, so § Build and test's note about the one test that does is
   unchanged.
 - `CHANGELOG.md` — an entry when it ships.
-- No sibling spec changes. PRESS-0004 does not read Settings.
+- `docs/specs/PRESS-0005-store.md` — §4.5 and INV-11 carry the same
+  write-permission rule as §4.4 and INV-8 here, and move with them. Neither
+  document may state it alone.
+- No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
 
@@ -499,3 +517,4 @@ loading or saving does anything.
 | 4 | 2026-08-26 | 3, cold — identical brief, packet rebuilt whole from disk and given § What may depend on what COMPLETE, which loop 3's packet had truncated | 1 | 4 | 1 | 0 | **Six verified, six fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **A CALM cap: two of the six landed on text this run wrote**, each anchor checked against loop 3's ledger rather than recall — the document held more defects than the cap held loops, and at its present size the split signal does not fire. **The most dangerous finding came from one lane and concerns the publishing key.** INV-7 said `load()` and `save()` *"leave nothing inside it but `path_for(folder)`"*, while §4.1 defines that folder as Pressless's own — the folder `docs/design.md` rule 8 gives Insights' cache and ADR-0003 gives the fallback credentials file. A builder taking the invariant literally writes a `save()` that clears strays and deletes the file holding the key, and the prescribed fixture runs in an empty folder so it cannot tell the two readings apart. It is now an addition rule that removes nothing it did not write. **All three lanes found INV-5**, which claimed `save()` never leaves a file `load()` rejects; run rather than reasoned, `save()` accepts a `Settings` holding `repository="ownername"`, writes it, and the next `load()` refuses it — so setup could report success over a file the app cannot open. The invariant is narrowed to the interruption claim it tests, and §4.4 now states outright that `save()` validates nothing. **Two lanes found the on-disk encoding was never pinned** though the document calls the format a shape the installation carries between machines: the module already names UTF-8 everywhere and explains why, and the contract did not. **One lane found a misquote with a real consequence:** two passages blamed `docs/design.md` § The stack for ruling out a bundled dependency, and that section rules out no such thing — its own Chosen line takes `Pillow` and the keyring, and ADR-0003 mandates the latter, so a builder of PRESS-0002 could have rejected the library the code already imports. **Two findings were this run's own collateral, both from loop 3's additions and both found by the same lane:** the `at the top level only` qualifier added to §4.4 never reached INV-4 or scope decision 3, leaving an implementer free to deep-merge; and the eighth test added in loop 3 left §7 still saying one test per invariant against §5's seven, so a test file built from §7 would leave §4.3's costliest row unchecked while §10 claimed it covered. **Open questions resolved clean and not counted:** the PRESS-0022 attribution is one item (a lane checked the roadmap), and §2's claim about every dependency rule granting Settings is the same true-but-inert item the previous run dismissed, correctly filed as a question rather than a finding. |
 | 4 | 2026-09-04 | 3, cold — genre pinned `spec`, packet carried `settings.py` and `tests/test_settings.py` whole, the design rules and both cited ADRs; no unrunnable region | 2 | 1 | 2 | 0 | **Five verified, five fixed; one dismissed. First loop of a new run**, armed by the `analytics_property_id` shape row. **All three lanes found the same two, and both are the spec trailing shipped code.** §4.4 promised a crash leaves the old file or the new one while naming only `os.replace`, which orders the namespace and not the data — so an implementer omits the fsync and ships PRESS-0039's defect a second time. And §4.4 said `save()` validates nothing, while the code refuses to save over a file another build stamped; following the spec restores PRESS-0053. Both are now stated, with a §6 row. **Two lanes: the untouchable trailing slash is settled nowhere** — the code accepts `CNAME/` and a shipped test requires it to load, while §4.3 as written sends a builder to reject any entry carrying a slash. **One lane: §7 promises a test per invariant plus the extra rows §10 names, and §10 named none** for the UTF-8 row or the save-side tests; since it marks unchecked rules explicitly, the gap read as covered rather than unwritten. **Dismissed, and it was my packet's defect rather than the document's:** two lanes read §4.2's `design.md` citation as naming a rule that section does not carry. It carries it, below where my window stopped, and both lanes raised it as an open question as well. Packet widened for loop 2. |
 | 5 | 2026-09-04 | 3, cold — identical brief, packet rebuilt whole from disk with `docs/design.md` § What may depend on what given COMPLETE, which loop 4's packet truncated | 1 | 2 | 1 | 1 | **Five verified, five fixed; one filed against a neighbour. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap — three of the five landed on text this run wrote**, each anchor checked against loop 4's ledger. **Two lanes found the sharpest, and it is loop 4's own fix:** loop 4 added `save()`'s version refusal without pinning WHICH test, and the code had settled the two ends differently — `load()` checks type and value, `save()` value alone. Executed rather than reasoned: a file saying `"version": true` is accepted by `save()`, relabelled `1`, and its stranger keys carried — PRESS-0053's harm arriving by the one route PRESS-0066 left open when it closed the read side. §4.2 now pins the test and §4.4 defers to it; **the code half is surfaced rather than applied, because a docs gate may not edit code.** **Two lanes found INV-2's own fixture cannot falsify it:** make `NotSetUp` a subclass of `SettingsError` and both raises still pass while `except SettingsError` swallows the absent case, and the shipped test already carries the inheritance assertion the spec never prescribed. **One lane found §4.3 pins no character set for `repository`** while §10's row — written this run — requires rejecting punctuation, so a builder of §4.3 as written admits `owner/name?x=y` into an API URL. **One lane's open question was loop 4's own imprecision:** the code strips every trailing slash where loop 4 wrote "a single trailing `/`". **And §6 carried a Windows claim under a `Measured:` lead** while §10 records Windows as observed nowhere; the lead is now scoped to the Linux half. **Filed against `docs/design.md`, which has its own gate:** its untouchable rule has the Publisher match "unless its first segment is on the list", which a stored `CNAME/` does not satisfy — `_is_protected` strips the slash and the design rule never says so. **This run was mostly an audit rather than a gate: about one of its ten verified findings falls inside the span that armed it.** Route from here: implementation, not a third loop. |
+| 6 | 2026-09-06 | 3, cold — genre pinned `spec`; packet carried `settings.py` and `tests/test_settings.py` whole, both cited ADRs, `design.md`'s parts and disk sections, and PRESS-0005 §4.5 / INV-11. Windows declared an unrunnable region | 1 | 4 | 0 | 2 | **Seven verified, seven fixed, none dismissed. First loop of a new run**, armed by the owner-only permissions rule. **Two lanes independently found the same two, and both landed on text this run wrote:** §4.4 stated the rule of every system, where ADR-0003 records that Windows cannot deliver it and stops setup instead; and INV-8's prescribed `mode & 0o077 == 0` is true of `0400` and of `0000`, so the owner half had no falsifier. A `chmod 0400` mutant now dies where it would have survived. **The third lane dismissed the first as immaterial and was overruled** — it tested today's Linux module, but PRESS-0022's Windows path is unbuilt and an unconditional promise is what that implementer reads. That lane found §3 decision 3 promising a carry-through §4.4 and §6 refuse, and INV-7's removal half unfalsifiable in an empty fixture; a folder-sweep mutant now dies too. **The orchestrator's 4b sweep found the run's only Q1:** `mkstemp` only ASKS for `0600`, so both new invariants were false on a mount that ignores POSIX modes — the case PRESS-0042 already answered for Credentials. Both scoped rather than overstated, and the capability check filed as PRESS-0097 rather than folded in, since it would change behaviour the user did not approve. Collateral: SECURITY.md carried the same unconditional sentence, published an hour earlier. Four lane open questions were packet gaps in `design.md`'s window, none a finding. |

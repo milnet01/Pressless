@@ -1228,17 +1228,21 @@ def test_a_written_entry_is_owner_only(tmp_path):
     """INV-11: after write returns, the entry file is readable and writable by
     its owner and by nobody else.
 
-    The widening half is the one that bites: a fresh write inherits mkstemp's
-    0600 whatever the code intends, so asserting the first write alone passes
-    against an implementation carrying no rule at all.
+    The exact mode is asserted, not just that the group and other bits are
+    clear: `mode & 0o077 == 0` is true of 0400 and of 0000, so the owner half
+    of INV-11 would have had no falsifier.
+
+    The widening half bites for its own reason: a fresh write inherits
+    mkstemp's 0600 whatever the code intends, so asserting the first write
+    alone passes against an implementation carrying no rule at all.
 
     Breaks when an implementer opens the target directly, or carries the old
     file's mode onto the new one to preserve what the writer chose."""
     target = write(tmp_path, _entry(body="The first body.\n"), draft=False)
     mode = os.stat(target).st_mode & 0o777
-    assert mode & 0o077 == 0, f"a fresh write left mode {mode:#o}"
+    assert mode == 0o600, f"a fresh write left mode {mode:#o}, not 0o600"
 
     os.chmod(target, 0o644)
     again = write(tmp_path, _entry(body="A second body.\n"), draft=False)
     mode = os.stat(again).st_mode & 0o777
-    assert mode & 0o077 == 0, f"a write over a widened file left mode {mode:#o}"
+    assert mode == 0o600, f"a write over a widened file left mode {mode:#o}, not 0o600"
