@@ -2382,6 +2382,21 @@
 
   Collateral fixed: SECURITY.md carried the same unconditional sentence,
   published hours earlier in a public repository.
+  Correction (2026-09-06, later the same day): the line above saying
+  PRESS-0005 still owes its own gate was true when written and is now
+  false. That gate RAN -- two loops, three cold lanes each, thirteen
+  verified and thirteen fixed, empty tail, cap reached. Loop-log rows 8
+  and 9 of docs/specs/PRESS-0005-store.md carry it.
+
+  Do not re-run it on the document as it stands. Only two of the thirteen
+  findings touched the change that armed the gate, so the run was an audit
+  rather than a gate, and PRESS-0005 is at the size where a spec starts
+  paying for itself twice. What re-arms it is an authoring edit that
+  changes direction, not this one.
+
+  That run filed PRESS-0098 (list_slugs hands back names path_for refuses)
+  and PRESS-0099 (nothing can remove an entry, though the design says a
+  deleted entry is pruned). Neither was folded in; both need a decision.
   **Layman:** The settings design document is missing rules the code was never told to follow.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane settings -- document side.
