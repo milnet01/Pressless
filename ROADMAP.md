@@ -2132,7 +2132,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane marks.
 
-- 📋 [PRESS-0055] **The photograph mark's name reaches the caller's file world unconstrained, though the spec says the escapes are that boundary's whole defence.**
+- ✅ [PRESS-0055] **The photograph mark's name reaches the caller's file world unconstrained, though the spec says the escapes are that boundary's whole defence.**
   marks.py:208's _PHOTO_ARG captures `name` as any run of characters
   except | and }. marks.py:177 does
   _escape_attr(photo_src(node.name)) -- so the escape happens AFTER
@@ -2227,6 +2227,23 @@
   5 with an invariant holding it, gate the spec, then the code and test.
   Section 5's claim that the escapes are the boundary's whole defence
   becomes true only when the code enforces this.
+  Resolved (2026-09-06), folded into PRESS-0059's gate on the user's
+  instruction, since both amend the same two sections and one gate then
+  covers both.
+
+  The decision recorded above was followed except on the slash, and the
+  reason is new evidence rather than a change of mind: the 4b sweep found
+  that PRESS-0006's INV-11 already refuses a photograph name carrying a
+  separator, with a shipped test, so a photograph in a subfolder could be
+  written into an entry and never stored. Put to the user, who barred the
+  slash in Marks. The two contracts now agree, and Marks is the stricter of
+  the two.
+
+  The archive run was never needed: it could only have spoken about
+  WordPress HTML, which carries no Pressless photograph marks.
+
+  Grammar, code and test all landed. Five mutations killed, one per route
+  the invariant's own breakage clause names.
   **Layman:** A photo name in an entry is passed straight out to whatever looks the file up, without being checked first.
   Kind: security.
   Source: review-code 2026-08-31 lane marks.
@@ -2428,7 +2445,7 @@
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane credentials -- document side.
 
-- 📋 [PRESS-0059] **PRESS-0004 has four passages the marks lane found wrong or unfalsifiable, including a trust-boundary sentence that is not true.**
+- ✅ [PRESS-0059] **PRESS-0004 has four passages the marks lane found wrong or unfalsifiable, including a trust-boundary sentence that is not true.**
   DOCUMENT SIDE. Gate with review-contract
   docs/specs/PRESS-0004-marks.md --genre spec.
 
@@ -2465,6 +2482,31 @@
   placing a photograph. This settles the accessibility question 4.2's
   unconditional empty alt left unexamined; 9's out-of-scope list is not the
   place for it.
+  Resolved (2026-09-06). Every item has a disposition.
+
+  Item 1 fixed: §5 now names both routes out of Marks -- the HTML, defended
+  by INV-4 and INV-8, and the photograph name, which leaves through
+  photo_src before any escaping and is defended by INV-9.
+
+  Item 2 needed no rule change: PRESS-0054 had already fixed the code side
+  and found the spec right. §4.5 now says an opener increments the counter
+  and a typed brace does not, and §6 gained the nesting-bound row
+  PRESS-0054 left as a document question.
+
+  Item 3 fixed in both places: a written caption is the description, no
+  caption stays decorative (INV-10), and the code follows.
+
+  Item 4 needed NO document edit. PRESS-0070 decided that finding the other
+  way on 2026-09-04 -- the escaping rule was right as written and _rainbow
+  was fixed instead. What the gate did find was next to it: §4.2 said one
+  span per character where the unit is a whole character reference.
+
+  Item 5 fixed: §5, §7 and §10 named the export as INV-5's only skip
+  condition; the oracle in a private workspace is a second one.
+
+  Gate: two loops, six cold lanes, twenty-one verified and twenty-one
+  fixed, tail empty. Thirteen predated the change being gated, so the run
+  was substantially an audit. Loop 4's row records the rest.
   **Layman:** The markup design document overstates what protects the published page, and specifies an accessibility choice nobody examined.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane marks -- document side.
