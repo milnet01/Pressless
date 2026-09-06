@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _mode_support import _require_posix_modes
 from _open_watch import _Open, _watch_opens  # noqa: F401 -- _Open documents the record shape
 
 import pressless.store as store_module
@@ -1219,11 +1220,6 @@ def test_a_recognised_field_the_entry_has_is_still_written(tmp_path):
     assert b"Tags: one, two\n" in written, f"tags lost: {written!r}"
 
 
-@pytest.mark.skipif(
-    os.name == "nt",
-    reason="POSIX permission bits; Windows answers differently, and PRESS-0022 "
-    "is where that question gets asked (§5 INV-11).",
-)
 def test_a_written_entry_is_owner_only(tmp_path):
     """INV-11: after write returns, the entry file is readable and writable by
     its owner and by nobody else.
@@ -1237,7 +1233,11 @@ def test_a_written_entry_is_owner_only(tmp_path):
     alone passes against an implementation carrying no rule at all.
 
     Breaks when an implementer opens the target directly, or carries the old
-    file's mode onto the new one to preserve what the writer chose."""
+    file's mode onto the new one to preserve what the writer chose.
+
+    Guarded on the CAPABILITY, not the platform: this rule holds only where the
+    mount enforces POSIX modes, and os.name cannot see a mount (§5 INV-11)."""
+    _require_posix_modes(tmp_path)
     target = write(tmp_path, _entry(body="The first body.\n"), draft=False)
     mode = os.stat(target).st_mode & 0o777
     assert mode == 0o600, f"a fresh write left mode {mode:#o}, not 0o600"

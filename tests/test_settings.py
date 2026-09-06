@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from _durability_watch import _assert_synced_before_replace, _watch_durability
+from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
@@ -780,11 +781,6 @@ def test_a_save_over_a_version_that_is_not_the_number_one_is_refused(
     )
 
 
-@pytest.mark.skipif(
-    os.name == "nt",
-    reason="POSIX permission bits; Windows answers differently, and PRESS-0022 "
-    "is where that question gets asked (§5 INV-8).",
-)
 def test_a_saved_file_is_owner_only(tmp_path):
     """INV-8: after save() returns, the settings file is readable and writable
     by its owner and by nobody else.
@@ -799,7 +795,11 @@ def test_a_saved_file_is_owner_only(tmp_path):
     alone passes against an implementation carrying no rule at all.
 
     Breaks when an implementer opens the target directly, or carries the old
-    file's mode onto the new one to preserve what the writer chose."""
+    file's mode onto the new one to preserve what the writer chose.
+
+    Guarded on the CAPABILITY, not the platform: this rule holds only where the
+    mount enforces POSIX modes, and os.name cannot see a mount (§5 INV-8)."""
+    _require_posix_modes(tmp_path)
     _write(tmp_path, _valid_mapping())
     settings = load(tmp_path)
     target = path_for(tmp_path)
@@ -812,3 +812,38 @@ def test_a_saved_file_is_owner_only(tmp_path):
     save(tmp_path, dataclasses.replace(settings, repository="someone/else.github.io"))
     mode = os.stat(target).st_mode & 0o777
     assert mode == 0o600, f"a save over a widened file left mode {mode:#o}, not 0o600"
+
+
+def test_the_file_is_read_and_written_as_utf8(tmp_path, monkeypatch):
+    """§4.2: the file is UTF-8, read and written, whatever the machine's locale.
+
+    Asserting what the open NAMED rather than the bytes it produced, exactly as
+    the line-endings twin does and for the same reason: this suite runs where
+    the locale is already UTF-8, so an open that named no encoding produces
+    identical bytes here. Only Windows, where the default is cp1252, would show
+    the difference -- and that is the harm §4.2 names.
+
+    Breaks when an implementer writes read_text() or open(..., "w") with no
+    encoding=, which writes an accented site_folder as cp1252 on Windows and
+    leaves it unreadable everywhere else.
+    """
+    _write(tmp_path, _valid_mapping())
+
+    opens = _watch_opens(monkeypatch)
+    try:
+        loaded = load(tmp_path)
+        save(tmp_path, loaded)
+    finally:
+        monkeypatch.undo()
+
+    text = [record for record in opens if not record.binary]
+    assert text, "no text open was recorded at all -- the watch did not fire"
+    unnamed = [
+        record for record in text
+        if (record.encoding or "").lower().replace("-", "") != "utf8"
+    ]
+    assert not unnamed, (
+        f"load()/save() opened a text file naming encoding "
+        f"{[record.encoding for record in unnamed]!r}; §4.2 requires UTF-8 so "
+        f"the file does not depend on the machine's locale"
+    )

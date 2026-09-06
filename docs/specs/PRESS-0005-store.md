@@ -570,11 +570,17 @@ is true of a template is PRESS-0006's (§9).
   fresh write inherits `mkstemp`'s mode whatever the code intends, so it
   is the widened write that catches an implementation carrying no
   rule.
+  **Skip on the CAPABILITY, never on the platform.** This rule's own
+  condition is the mount, so the test asks whether a fresh `mkstemp` in
+  the fixture folder is granted `0600` — the grant Credentials reads off
+  the descriptor (PRESS-0042) — and skips when it is not. A platform skip
+  cannot see a mount, so run from exFAT or CIFS it would report a breach
+  of a rule this document does not make there. Windows fails that same
+  check, so it needs no clause of its own.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
-  chose. **Windows is outside this rule, not merely untested:** §4.5
-  gives the outcome there, so the test skips and PRESS-0022's Windows
-  run is where that outcome is confirmed.
+  chose. **Windows is outside this rule:** §4.5 gives the outcome there,
+  and PRESS-0022's Windows run is the only place it could be observed.
 
 ## 6. Failure modes
 
