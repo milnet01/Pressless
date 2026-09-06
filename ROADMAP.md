@@ -2298,7 +2298,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lane insights.
 
-- 📋 [PRESS-0057] **PRESS-0001 has three gaps the code cannot be blamed for: no write-side version row, shape checks for three fields of five, and an INV-5 fixture that cannot see what it tests.**
+- ✅ [PRESS-0057] **PRESS-0001 has three gaps the code cannot be blamed for: no write-side version row, shape checks for three fields of five, and an INV-5 fixture that cannot see what it tests.**
   DOCUMENT SIDE. Gate with review-contract
   docs/specs/PRESS-0001-settings.md --genre spec. None of these is a
   code defect: the code conforms to what is written.
@@ -2348,6 +2348,40 @@
   4.3's shape row now covers untouchable and analytics_property_id, and
   load() validates the property id as ascii digits (PRESS-0044, PRESS-0056).
   Only item 3 and this mode question remain live.
+  Resolved (2026-09-06). Items 1, 2 and 3 were checked against the current
+  document and were ALREADY CLOSED by work that landed after this review was
+  written: 4.4's write-side version refusal (PRESS-0053), 4.3's shape row for
+  untouchable and analytics_property_id (PRESS-0044, PRESS-0056), and 4.4's
+  sync with its own 10 row (PRESS-0039). Adding durability to INV-5's wording
+  would have changed nothing anyone builds, so it was not written.
+
+  Only the file-mode tail was live. Settled per the user's decision: every file
+  Pressless writes is readable by its owner alone. Stated in PRESS-0001 4.4 with
+  INV-8, and in PRESS-0005 4.5 with INV-11, in the same words, because either
+  alone leaves the other silent.
+
+  Gated with review-contract, two loops, three cold lanes each. Twelve verified,
+  twelve fixed, none dismissed, empty tail. Cap reached at loop 2 and it was a
+  VIOLENT cap -- three of the final loop's five findings landed on text loop 1
+  had written. Six of the twelve landed inside the span that armed the gate.
+
+  What the gate caught that the author could not: the rule was written
+  unconditionally from a Linux measurement, while ADR-0003 records that Windows
+  cannot deliver it and stops setup instead; INV-8's assertion proved only that
+  nobody ELSE could read the file, passing against 0400 and 0000; and after the
+  rule was scoped to filesystems enforcing POSIX modes, its test still skipped on
+  os.name, which cannot see a mount. That guard is now the capability mkstemp was
+  granted, shared in tests/_mode_support.py.
+
+  Two things filed rather than folded in. PRESS-0097: Settings and the Store
+  trust the mode mkstemp asked for where Credentials checks what was granted --
+  adding that check would change behaviour on a drive where saving works today,
+  which is not what was approved. And PRESS-0005 still owes its OWN review-contract
+  gate: its 4.5 and INV-11 changed direction, and a document is not gated by
+  appearing in another document's packet.
+
+  Collateral fixed: SECURITY.md carried the same unconditional sentence,
+  published hours earlier in a public repository.
   **Layman:** The settings design document is missing rules the code was never told to follow.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane settings -- document side.
