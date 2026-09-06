@@ -373,6 +373,13 @@ target, which is atomic on both Windows and Linux — so a crash
 mid-save leaves the previous file rather than half an entry. This is
 the shape `src/pressless/settings.py::save` already uses.
 
+**Every file written this way is left readable by its owner alone.**
+`mkstemp` creates the temporary with mode `0600`, and `os.replace`
+carries that mode onto the target — so a file that was wider before a
+write is narrower after it. Measured. PRESS-0001 §4.4 states the same
+rule for the settings file: one answer, written in both places rather
+than in neither.
+
 The recognised fields the entry has are written first, in the order
 §4.2 lists them, then any `extra` fields in their original order, then
 the blank line, then the body. `Slug` and `Date` are always among
@@ -545,6 +552,21 @@ is true of a template is PRESS-0006's (§9).
   exception alone passes against an implementation that raises after
   moving.
 
+- **INV-11** — after `write` returns, the entry file is readable and
+  writable by its owner and by nobody else.
+  *Test:* `tests/test_store.py::test_a_written_entry_is_owner_only` —
+  write into a fresh folder and assert the group and other permission
+  bits are clear; then widen the file to `0644`, write again, and
+  assert it is narrow again. **The second half is the one that bites:**
+  a fresh write inherits `mkstemp`'s mode whatever the code intends, so
+  the first half passes against an implementation carrying no rule at
+  all.
+  *Breaks when:* an implementer opens the target directly, or carries
+  the old file's mode onto the new one to preserve what the writer
+  chose. **Windows is not covered:** the POSIX bits this reads are not
+  how that system answers, so the test skips there, and PRESS-0022's
+  Windows run is where the question gets asked.
+
 ## 6. Failure modes
 
 - **The handed folder does not exist.** `read` and `list_slugs` raise
@@ -707,6 +729,7 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused` |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
 | That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |

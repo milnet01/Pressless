@@ -219,6 +219,13 @@ of it:** `os.replace` orders the namespace and not the data, so without it a
 power loss can commit the rename ahead of the blocks and leave an empty file
 where this section promises the previous one.
 
+**The file is left readable by its owner alone.** `mkstemp` creates the
+temporary with mode `0600`, and `os.replace` carries that mode onto the
+target — so a file that was wider before a save is narrower after it.
+Measured here and on PRESS-0005's write, which answers the same. This folder
+also holds ADR-0003's fallback credentials file, so owner-only is stated
+rather than left to be discovered.
+
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
 nested inside it is not preserved. A later Pressless adding a key puts it at
@@ -341,6 +348,20 @@ which is the writer's choice of somewhere else and is stored absolute.
   no file, so every assertion in it stays green. The second phase is the one
   that fails, which is why both are prescribed.
 
+- **INV-8** — after `save()` returns, `path_for(folder)` is readable and
+  writable by its owner and by nobody else.
+  *Test:* `tests/test_settings.py::test_a_saved_file_is_owner_only` — save
+  into a fresh folder and assert the group and other permission bits are
+  clear; then widen the file to `0644`, save again, and assert it is narrow
+  again. **The second half is the one that bites:** a fresh save inherits
+  `mkstemp`'s mode whatever the code intends, so the first half passes
+  against an implementation carrying no rule at all.
+  *Breaks when:* an implementer opens the target directly, or carries the
+  old file's mode onto the new one to preserve what the writer chose.
+  **Windows is not covered:** the POSIX bits this reads are not how that
+  system answers, so the test skips there, and PRESS-0022's Windows run is
+  where the question gets asked.
+
 ## 6. Failure modes
 
 - **The folder does not exist.** `load()` raises `NotSetUp`; `save()` raises
@@ -443,6 +464,7 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only` |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |

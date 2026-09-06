@@ -1,4 +1,4 @@
-# INV-1..10 for PRESS-0005 (the Store). One test per invariant, named in that
+# INV-1..11 for PRESS-0005 (the Store). One test per invariant, named in that
 # spec's §5 and §10. Unlabelled: it needs nothing but a temporary directory and
 # must run everywhere (§7), unlike the archive round trip, which lives in
 # tests/test_store_archive.py because it needs the WordPress export.
@@ -1217,3 +1217,28 @@ def test_a_recognised_field_the_entry_has_is_still_written(tmp_path):
     assert b"Title: A title\n" in written, f"title lost: {written!r}"
     assert b"Categories: poetry\n" in written, f"categories lost: {written!r}"
     assert b"Tags: one, two\n" in written, f"tags lost: {written!r}"
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="POSIX permission bits; Windows answers differently, and PRESS-0022 "
+    "is where that question gets asked (§5 INV-11).",
+)
+def test_a_written_entry_is_owner_only(tmp_path):
+    """INV-11: after write returns, the entry file is readable and writable by
+    its owner and by nobody else.
+
+    The widening half is the one that bites: a fresh write inherits mkstemp's
+    0600 whatever the code intends, so asserting the first write alone passes
+    against an implementation carrying no rule at all.
+
+    Breaks when an implementer opens the target directly, or carries the old
+    file's mode onto the new one to preserve what the writer chose."""
+    target = write(tmp_path, _entry(body="The first body.\n"), draft=False)
+    mode = os.stat(target).st_mode & 0o777
+    assert mode & 0o077 == 0, f"a fresh write left mode {mode:#o}"
+
+    os.chmod(target, 0o644)
+    again = write(tmp_path, _entry(body="A second body.\n"), draft=False)
+    mode = os.stat(again).st_mode & 0o777
+    assert mode & 0o077 == 0, f"a write over a widened file left mode {mode:#o}"

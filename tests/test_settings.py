@@ -1,4 +1,4 @@
-# INV-1..7 for PRESS-0001 (Settings). One test per invariant, named in that
+# INV-1..8 for PRESS-0001 (Settings). One test per invariant, named in that
 # spec's §5 and §10. Unlabelled and needs nothing but a temporary directory
 # (spec §7), unlike the archive test PRESS-0004 carries.
 #
@@ -765,3 +765,32 @@ def test_a_save_over_a_version_that_is_not_the_number_one_is_refused(
         f"the refused file was rewritten: version is {held.get('version')!r} "
         f"and the stranger key is {'present' if 'stranger' in held else 'gone'}"
     )
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="POSIX permission bits; Windows answers differently, and PRESS-0022 "
+    "is where that question gets asked (§5 INV-8).",
+)
+def test_a_saved_file_is_owner_only(tmp_path):
+    """INV-8: after save() returns, the settings file is readable and writable
+    by its owner and by nobody else.
+
+    The widening half is the one that bites: a fresh save inherits mkstemp's
+    0600 whatever the code intends, so asserting the first save alone passes
+    against an implementation carrying no rule at all.
+
+    Breaks when an implementer opens the target directly, or carries the old
+    file's mode onto the new one to preserve what the writer chose."""
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+    target = path_for(tmp_path)
+
+    save(tmp_path, settings)
+    mode = os.stat(target).st_mode & 0o777
+    assert mode & 0o077 == 0, f"a fresh save left mode {mode:#o}"
+
+    os.chmod(target, 0o644)
+    save(tmp_path, dataclasses.replace(settings, repository="someone/else.github.io"))
+    mode = os.stat(target).st_mode & 0o777
+    assert mode & 0o077 == 0, f"a save over a widened file left mode {mode:#o}"
