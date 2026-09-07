@@ -4,8 +4,12 @@
 **Amended 2026-09-07, before implementation**, on a decision the user
 took: where the filesystem granted a wider mode than `mkstemp` asked
 for, `save()` says so once and completes rather than refusing. That
-changes direction, so the gate re-armed. PRESS-0005 §11 requires the
-two documents to move together, and INV-11 there carries the mirror.
+changes direction, so the gate re-armed and ran to the spec cap of 2 —
+eleven verified findings, all fixed, two dismissed as unverified. **A
+VIOLENT cap**: every one of loop 9's four landed on text this run wrote,
+so the review ends here and the document routes to implementation.
+PRESS-0005 §11 requires the two documents to move together, and INV-11
+there carries the mirror; several fixes landed in both.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -119,9 +123,15 @@ class SettingsNotice(UserWarning): ...       # said, not raised -- INV-8
 
 **One rule needs Settings to tell the caller something without
 failing, so it raises nothing and warns instead** — a mount that would
-not grant the file owner-only (INV-8). `warnings` is the mechanism
-because it needs no new return shape and repeats nothing: the default
-filter shows a given message once. **The category is its own rather
+not grant the file owner-only (INV-8). `warnings` is the mechanism because
+it needs no new return shape and no signature above changes.
+
+**`save()` emits one `SettingsNotice` per wide-grant save, and suppressing
+repeats is the caller's.** Do not rest on the default filter's
+once-per-location behaviour: measured, it shows a repeat once, but a caller
+that CAPTURES the notice replaces that filter and sees every one — and the
+Face must capture to render it, as `pytest.warns` does to assert it. So the
+only callers that see a notice are the ones the default does not reach. **The category is its own rather
 than shared with the Store's `StoreNotice`**, because Settings is
 blocker for the Store and may not import from it; the Face captures
 both, which is PRESS-0011's business and not this document's.
@@ -417,23 +427,31 @@ which is the writer's choice of somewhere else and is stored absolute.
   no rule.
   **Skip on the CAPABILITY, never on the platform.** This rule's own condition
   is the mount, so the test asks whether a fresh `mkstemp` in the fixture
-  folder is granted `0600` — the grant Credentials reads off the descriptor
-  (PRESS-0042) — and skips when it is not. A platform skip cannot see a mount,
+  folder is granted exactly `0600` — read off the descriptor as Credentials
+  reads it (PRESS-0042), though the PREDICATE differs, and the difference
+  matters: this guard asks for exactly `0600` because its question is
+  whether the mount enforces modes at all, where §4.4's notice asks
+  `granted & 0o077` because its question is whether the file is too open.
+  `tests/_mode_support.py` holds the guard and is shared with PRESS-0005,
+  because two copies of a probe are two probes that will disagree — and
+  skips when it is not. A platform skip cannot see a mount,
   so run from exFAT or CIFS it would report a breach of a rule this document
   does not make there. Windows fails that same check, so it needs no clause of
   its own.
-  **The notice half is tested separately and never skips on a system whose
-  own filesystem enforces modes.** The grant is read off the descriptor, so
-  a test that makes that read report a wider mode exercises the branch on
-  any such filesystem. Without one, the half of this rule that fires on a
-  non-enforcing mount would be unfalsifiable on exactly the machines that
-  enforce modes correctly — which is every machine the suite normally runs
-  on. **On Windows it asserts the opposite**, that no notice is emitted,
-  which is what this rule says happens there.
-  **A second row asserts that an ordinary save on an enforcing mount emits
-  NO notice**, and it is not optional: without it a condition that is
-  inverted, or keyed on anything but the grant, warns on every save and the
-  suite stays green.
+  **The notice half is tested separately and never skips.** The grant is
+  read off the descriptor, so a test that makes that read report a wider
+  mode exercises the branch on any filesystem. Without one, the half of
+  this rule that fires on a non-enforcing mount would be unfalsifiable on
+  exactly the machines that enforce modes correctly — which is every
+  machine the suite normally runs on.
+  **Three rows, and none of them is optional.** One patches the grant
+  wider and asserts the notice. One saves ordinarily on an enforcing mount
+  and asserts NO notice — without it a condition that is inverted, or keyed
+  on anything but the grant, warns on every save and stays green. And one
+  patches `os.name` to `"nt"` with the grant wider and asserts no notice,
+  which is §4.4's Windows suppression: the discriminator is a value a test
+  can set, so that BRANCH is observable here even though the Windows
+  behaviour it exists for is not.
   *Breaks when:* an implementer opens the target directly, or carries the
   old file's mode onto the new one to preserve what the writer chose; or
   refuses the save on a wider grant, which is the branch Credentials
@@ -467,7 +485,9 @@ which is the writer's choice of somewhere else and is stored absolute.
   it surfaces.
 - **The file or its folder cannot be written.** `save()` reports whatever the
   write raises, as a `SettingsError` naming the path, and does not probe
-  permissions first. **A read-only settings *file* is not that state on
+  the target's writability first. **§4.4's descriptor read is not that
+  probe**: it reads what the TEMPORARY was granted, after it exists, and
+  never asks whether the target can be written. **A read-only settings *file* is not that state on
   Linux.** Measured: `os.replace` onto a mode-444 target in a writable
   directory succeeds and replaces it, where a direct `open('w')` on the same
   file raises `PermissionError`. That measurement is Linux's; Windows is
@@ -554,8 +574,8 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
-| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported` and `::test_an_ordinary_save_emits_no_notice` for the notice half. Neither skips on a mode-enforcing system; the second is what stops an inverted or over-broad condition passing |
-| INV-8's Windows half | **nothing** — neither the owner-only outcome nor the notice suppression can be observed here, and PRESS-0022's Windows run is the only place they could be. No check scheduled today |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_save_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.4's `os.name` discriminator |
+| INV-8's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
@@ -602,3 +622,4 @@ loading or saving does anything.
 | 6 | 2026-09-06 | 3, cold — genre pinned `spec`; packet carried `settings.py` and `tests/test_settings.py` whole, both cited ADRs, `design.md`'s parts and disk sections, and PRESS-0005 §4.5 / INV-11. Windows declared an unrunnable region | 1 | 4 | 0 | 2 | **Seven verified, seven fixed, none dismissed. First loop of a new run**, armed by the owner-only permissions rule. **Two lanes independently found the same two, and both landed on text this run wrote:** §4.4 stated the rule of every system, where ADR-0003 records that Windows cannot deliver it and stops setup instead; and INV-8's prescribed `mode & 0o077 == 0` is true of `0400` and of `0000`, so the owner half had no falsifier. A `chmod 0400` mutant now dies where it would have survived. **The third lane dismissed the first as immaterial and was overruled** — it tested today's Linux module, but PRESS-0022's Windows path is unbuilt and an unconditional promise is what that implementer reads. That lane found §3 decision 3 promising a carry-through §4.4 and §6 refuse, and INV-7's removal half unfalsifiable in an empty fixture; a folder-sweep mutant now dies too. **The orchestrator's 4b sweep found the run's only Q1:** `mkstemp` only ASKS for `0600`, so both new invariants were false on a mount that ignores POSIX modes — the case PRESS-0042 already answered for Credentials. Both scoped rather than overstated, and the capability check filed as PRESS-0097 rather than folded in, since it would change behaviour the user did not approve. Collateral: SECURITY.md carried the same unconditional sentence, published an hour earlier. Four lane open questions were packet gaps in `design.md`'s window, none a finding. |
 | 7 | 2026-09-06 | 3, cold — identical brief, packet rebuilt whole from disk with `docs/design.md` GIVEN WHOLE (loop 6's window stopped mid-rule 4 and four lane open questions were that gap), plus the PRESS-0042 bullet and `credentials.py`'s capability check | 0 | 2 | 0 | 3 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap — three of the five landed on text loop 6 wrote**, each anchor checked against that loop's ledger rather than recall. **All three lanes found the same one:** INV-7's *Test:* clause never prescribed a file Settings did not write, so the addition-rule half had no falsifier — and loop 6 had seeded exactly such a file in the shipped test while leaving the clause and its "runs in an empty folder" note untouched, so the note was now false of the test it describes. **The sharpest was loop 6's own scoping fix eating itself:** INV-8 was narrowed to "a filesystem that enforces POSIX modes" while its test still skipped on `os.name`, which cannot see a mount — run from exFAT or CIFS the suite would report a breach of a rule the document does not make there. The guard is now the capability `mkstemp` was granted, read off the descriptor as Credentials reads it (PRESS-0042), shared in `tests/_mode_support.py` and stated in PRESS-0005 INV-11 too. Loop 6 also left INV-8 claiming PRESS-0022 *confirms* the Windows outcome where §6 and §10 both say it is only where it COULD be observed, with no check scheduled. **Two pre-existing:** INV-5 prescribed asserting the replace destination equals `path_for(folder)`, which passes when both are wrong together — the shipped test already pinned the literal and the spec never asked; and §4.2's UTF-8 half had no falsifier while its `\n` twin did, the cited test raising `SettingsError` under either encoding. A new test asserts the encoding at the call, and mutation killed both a dropped read-side and write-side `encoding=`. |
 | 8 | 2026-09-07 | 3, cold — genre pinned `spec`; packet carried `save()` and its helpers whole, `credentials.py::_write_file`, `tests/_mode_support.py` whole and PRESS-0005's §4.5, INV-11 and §11. Windows declared an unrunnable region | 2 | 2 | 2 | 1 | **Seven verified, seven fixed; two dismissed as unverified. Armed by the wider-grant amendment, whose own mirror defects were swept before dispatch.** **Two lanes found the sharpest, and it reaches both documents**: the qualifier "on a system whose own filesystem enforces modes" named no observable, and the grant is IDENTICAL in the case that must notice and the case that must not — so the implementer had to invent a discriminator, and PRESS-0005's `write` had to invent the same one under a §11 saying neither may state the rule alone. One lane added that probing for a second signal would breach INV-7. `os.name` is now named in both. **The same lane found "wider" undefined**, with the two precedents disagreeing: measured, `credentials.py` tests `granted & 0o077` and `_mode_support.py` tests `granted != 0o600`, which differ on `0o700` and `0o400`; both specs now pin Credentials'. **And a pre-existing cross-platform defect it could not run and I could**: `site_folder` is absolute by the RUNNING platform's rule — `PureWindowsPath("/home/w/site").is_absolute()` is `False` — while §4.2 calls the file a shape carried between machines, so a settings file carried across is refused rather than loaded. §4.2 now says the portability is the bytes and never the values. **Three more:** INV-8 claimed §10 recorded its Windows half and §10 had no such row; "never skips" contradicted the Windows exclusion against §7's run-everywhere rule; and nothing falsified the NEGATIVE — an inverted condition would warn on every save and stay green, so a second test row is named. **Two dismissed as unverified, both my packet's fault:** a lane predicted the Publisher deleting an untouchable entry with a trailing slash, and PRESS-0009 §4.4 carries that tolerance with a named test; another predicted `settings.json` had no breaking-surface record, and `versioning-overrides.md` already carries one. Both lanes flagged the gap themselves, and a third lane looked PRESS-0009 up and reported it correct. **1b yield: two defects, both mine** — a `credentials.py` window opening mid-function and a `settings.py` window opening mid-expression, both re-cut before dispatch. |
+| 9 | 2026-09-07 | 3, cold — identical brief; packet rebuilt whole from disk and extended with `load()` whole and windows on the two neighbours loop 8's dismissals had needed | 1 | 2 | 1 | 0 | **Four verified, four fixed, none dismissed; one collateral in PRESS-0002. Cap reached (2 for a spec); the tail is empty. A VIOLENT cap — all four landed on text this run wrote**, so the review ends and the document routes to implementation. **All three lanes found the same defect**, and it was a self-contradiction one loop old: INV-8 said the notice test "asserts the opposite" on Windows while §10's new row said nothing checks it and the paragraph twelve lines down puts Windows outside the notice half. Two lanes proposed opposite repairs; the branch is settled as OBSERVABLE, because §4.4 makes `os.name` the discriminator and a test can patch it, so the alternative would leave an omitted platform guard unfalsifiable. §10 now names three notice rows and separates the branch from its unobservable premise. **One lane found the `warnings` justification false for the callers that matter** — measured, the default filter shows a repeat once but a CAPTURING caller sees every one, and the Face must capture to render while `pytest.warns` captures to assert. So "repeats nothing" was true of nobody who sees a notice; both specs now say one notice per occasion and leave suppression to the caller. **Two lanes found §6 still saying `save()` "does not probe permissions first"** after §4.4 gave it a descriptor read, which taken literally drops the notice branch entirely; scoped to the target's writability. **And resolving a lane's open question found INV-8 crediting Credentials with the skip guard's predicate**, where the guard is `!= 0o600` and Credentials is `& 0o077` — harmless until loop 8 made that distinction load-bearing. **Collateral: PRESS-0002 quoted the changed §6 sentence verbatim** and drew a probe-versus-no-probe contrast that is now false in substance — `save()` reads the same grant and differs in refusing versus reporting. Corrected there. **1b yield: one defect, mine** — a window opening mid-expression, re-cut; and captions naming loop 8's conclusions, removed before dispatch as Phase 5 forbids. |

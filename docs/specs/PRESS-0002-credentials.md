@@ -123,10 +123,11 @@ fall back to another one. `choose()` takes none: it asks the operating
 system's store a question about the machine, so it has no folder to check.
 `write()` does probe, exactly once and only where it is about to write: it
 reads the mode off the temporary it made, before the secret goes into it
-(INV-11). That is not `docs/specs/PRESS-0001-settings.md` §6's judgement for
-`save()`, which "does not probe permissions first" and reports whatever the
-write raises — settings are not a secret, and a mode that was not granted
-costs nothing there and costs the key here.
+(INV-11). **`docs/specs/PRESS-0001-settings.md` `save()` reads the same
+grant** and differs in what it does with it: there it emits a
+`SettingsNotice` and completes, where this module raises and writes nothing.
+Settings are not a secret, so a grant that was not given costs the writer a
+privacy there and costs him the key here.
 
 `store` is the string PRESS-0001 already validates against `"keyring"` and
 `"file"`, passed in rather than re-read, so nothing here imports Settings.

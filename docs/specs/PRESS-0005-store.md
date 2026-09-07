@@ -227,11 +227,18 @@ emitted where a listing skipped a file (§4.4), where a move left a
 second file naming one slug (§4.3), and where a write could not make
 its file owner-only (§4.5). Each is the writer's own doing, none costs
 him his writing, and refusing would take away something that works.
-`warnings` is the mechanism because it needs no new return shape and
-repeats nothing — the default filter shows a given message once — and
-because a caller that captures nothing is unaffected, which is why no
-signature above changes. The Face captures the category at its
-boundary; that is PRESS-0011's, not this document's.
+`warnings` is the mechanism because it needs no new return shape and a
+caller that captures nothing is unaffected, which is why no signature
+above changes.
+
+**Each call emits one `StoreNotice` per occasion, and suppressing
+repeats is the caller's.** Do not rest on the default filter's
+once-per-location behaviour: measured, it shows a repeat once, but a
+caller that CAPTURES the notice replaces that filter and sees every one
+— and the Face must capture to render it, as `pytest.warns` does to
+assert it. So the only callers that see a notice are the ones the
+default does not reach. What the Face does with that is PRESS-0011's,
+not this document's.
 
 ### 4.2 The entry file
 
@@ -687,23 +694,31 @@ is true of a template is PRESS-0006's (§9).
   rule.
   **Skip on the CAPABILITY, never on the platform.** This rule's own
   condition is the mount, so the test asks whether a fresh `mkstemp` in
-  the fixture folder is granted `0600` — the grant Credentials reads off
-  the descriptor (PRESS-0042) — and skips when it is not. A platform skip
+  the fixture folder is granted exactly `0600` — read off the descriptor
+  as Credentials reads it (PRESS-0042), though the PREDICATE differs and
+  the difference matters: this guard asks for exactly `0600` because its
+  question is whether the mount enforces modes at all, where §4.5's
+  notice asks `granted & 0o077` because its question is whether the file
+  is too open. `tests/_mode_support.py` holds the guard and is shared
+  with PRESS-0001, because two copies of a probe are two probes that
+  will disagree — and skips when it is not. A platform skip
   cannot see a mount, so run from exFAT or CIFS it would report a breach
   of a rule this document does not make there. Windows fails that same
   check, so it needs no clause of its own.
-  **The notice half is tested separately and never skips on a system
-  whose own filesystem enforces modes.** The grant is read off the
-  descriptor, so a test that makes that read report a wider mode
-  exercises the branch on any such filesystem. Without one, the half of
+  **The notice half is tested separately and never skips.** The grant is
+  read off the descriptor, so a test that makes that read report a wider
+  mode exercises the branch on any filesystem. Without one, the half of
   this rule that fires on a non-enforcing mount would be unfalsifiable
   on exactly the machines that enforce modes correctly — which is every
-  machine the suite normally runs on. **On Windows it asserts the
-  opposite**, that no notice is emitted.
-  **A second row asserts that an ordinary write on an enforcing mount
-  emits NO notice**, and it is not optional: without it a condition that
-  is inverted, or keyed on anything but the grant, warns on every write
-  and the suite stays green.
+  machine the suite normally runs on.
+  **Three rows, and none of them is optional.** One patches the grant
+  wider and asserts the notice. One writes ordinarily on an enforcing
+  mount and asserts NO notice — without it a condition that is inverted,
+  or keyed on anything but the grant, warns on every write and stays
+  green. And one patches `os.name` to `"nt"` with the grant wider and
+  asserts no notice, which is §4.5's Windows suppression: the
+  discriminator is a value a test can set, so that BRANCH is observable
+  here even though the Windows behaviour it exists for is not.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
   chose; or refuses the write on a wider grant, which is the branch
@@ -981,8 +996,8 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported` and `::test_an_ordinary_write_emits_no_notice` for the notice half. Neither skips on a mode-enforcing system; the second is what stops an inverted or over-broad condition passing |
-| INV-11's Windows half | **nothing** — neither the owner-only outcome nor the notice suppression can be observed here, and PRESS-0022's Windows run is the only place they could be. No check scheduled today |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's `os.name` discriminator |
+| INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
