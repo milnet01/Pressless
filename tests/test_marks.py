@@ -249,6 +249,35 @@ def test_escaping_text_and_attributes():
         f"and reparsed, got {parsed.srcs!r} from: {photo_html!r}"
     )
 
+    # Three of the five are all the fixture above carries, and the other
+    # two need their own observers because a parser cannot see either.
+    # A bare '&' followed by a space is not a character reference, so
+    # escaped and unescaped output decode to the same string; and both
+    # attribute writers emit double quotes, so a raw "'" inside one is
+    # well formed and decodes back to itself.
+
+    # '&': the fixture has to carry something a parser would decode.
+    # Escaped, 'a&copy;b' reaches alt as the writer typed it; unescaped,
+    # the parser decodes it to 'a\u00a9b' and his text is gone.
+    entity_caption = render("{photo: a.jpg | a&copy;b}", lambda n: n)
+    assert _parsed_attrs(entity_caption).alts == ["a&copy;b"], (
+        f"a caption carrying a character reference must reach alt as it "
+        f"was typed; unescaped, the '&' lets the parser decode it: "
+        f"{entity_caption!r}"
+    )
+
+    # "'": unobservable through a parser for good, so this asserts on the
+    # bytes. photo_src alone feeds src, and this photo has no caption, so
+    # there is no figcaption where the text rule — which does not escape
+    # an apostrophe — could account for a raw one.
+    apostrophe = render("{photo: whatever.jpg}", lambda name: "it's.jpg")
+    assert "&#39;" in apostrophe, (
+        f"an apostrophe in an attribute value must be escaped: {apostrophe!r}"
+    )
+    assert "it's" not in apostrophe, (
+        f"a raw apostrophe reached an attribute value unescaped: {apostrophe!r}"
+    )
+
 
 # --------------------------------------------------------------- INV-6 ----
 
