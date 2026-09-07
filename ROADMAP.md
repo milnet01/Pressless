@@ -5081,7 +5081,7 @@
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
 
-- 📋 [PRESS-0106] **INV-4 names five characters to escape and two of them have no falsifier.**
+- ✅ [PRESS-0106] **INV-4 names five characters to escape and two of them have no falsifier.**
   MEASURED 2026-09-07, with a control so the probe itself is trusted:
 
     remove .replace("&", "&amp;")  from _escape_attr -> suite GREEN
@@ -5105,6 +5105,12 @@
   Fix shape: a caption fixture whose round trip separates them
   (`a&copy;b` decodes to `a©b` under the mutant), and assert the `'`
   clause on the BYTES rather than through the parser.
+  Resolved (2026-09-07): test_escaping_text_and_attributes now carries an
+  observer for each. The '&' clause uses a caption whose round trip
+  separates correct output from mutant output; the apostrophe clause is
+  asserted on the bytes, since both attribute writers emit double quotes
+  and no parser can see it. mutation_probe against the shipped module,
+  green baseline: both mutants killed, and the '"' control still dies.
   **Layman:** The rule that stops a photo caption breaking out of the page checks five characters; our tests only ever try three.
   Kind: test.
   Source: review-tests 2026-09-07 lane 4, confirmed by mutation probe with a control.
