@@ -282,7 +282,15 @@ def save(folder: Path, settings: Settings) -> None:
     except OSError as exc:
         raise SettingsError(f"{target} could not be written: {exc}") from exc
     try:
-        _report_a_wide_grant(handle, target)
+        try:
+            _report_a_wide_grant(handle, target)
+        except BaseException:
+            # The PRESS-0066 leak by a second route. This runs on the RAW
+            # descriptor, before fdopen takes ownership, and a caller whose
+            # filter turns SettingsNotice into an error makes it raise --
+            # _discard then unlinks the path and cannot close a descriptor.
+            os.close(handle)
+            raise
         # newline is named rather than left to the platform: §4.2's file is
         # a shape the installation carries between machines, so its bytes may
         # not depend on which system wrote it (PRESS-0039).

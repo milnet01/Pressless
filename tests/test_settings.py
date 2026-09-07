@@ -960,3 +960,42 @@ def test_no_notice_where_the_platform_is_windows(tmp_path, monkeypatch):
     notices = [each for each in caught if issubclass(each.category, SettingsNotice)]
     assert not notices, f"a wide grant on Windows said {[str(n.message) for n in notices]}"
     assert path_for(tmp_path).is_file(), "the save did not complete"
+
+
+def test_a_save_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeypatch):
+    """The same leak as PRESS-0066, by the route the wide-grant report opened.
+
+    _report_a_wide_grant runs on the RAW descriptor, before os.fdopen takes
+    ownership of it. A caller whose warning filter turns SettingsNotice into an
+    error -- `-W error`, or pytest's own `filterwarnings = error` -- makes that
+    call raise, and _discard unlinks the path without closing the descriptor.
+
+    Found by a test review on 2026-09-07, one line above the fix that closed
+    the first route.
+    """
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+
+    handed = []
+    real_mkstemp = settings_module.tempfile.mkstemp
+
+    def recording_mkstemp(*args, **kwargs):
+        handle, path = real_mkstemp(*args, **kwargs)
+        handed.append(handle)
+        return handle, path
+
+    monkeypatch.setattr(settings_module.tempfile, "mkstemp", recording_mkstemp)
+    _wide_grant(monkeypatch)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SettingsNotice)
+        with pytest.raises((SettingsNotice, SettingsError)):
+            save(tmp_path, settings)
+
+    # _wide_grant patched os.fstat, and the assertion below calls it -- without
+    # this the fake answers and no closed descriptor can ever be observed.
+    monkeypatch.undo()
+    assert handed, "mkstemp was never reached, so this test proved nothing"
+    with pytest.raises(OSError):
+        # An open descriptor answers fstat; a closed one raises EBADF.
+        os.fstat(handed[0])

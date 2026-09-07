@@ -147,6 +147,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Saving no longer leaks a file handle when the privacy notice is treated as an error** (PRESS-0075)
+  A caller configured to treat warnings as errors could make the
+  could-not-make-this-private notice fail the save part-way, leaving one
+  operating-system file handle open each time. Both the settings file and
+  your entries were affected.
+
 - **Comments with a missing or repeated identifier are refused rather than written** (PRESS-0094)
   A comment with no identifier could be replied to, and the reply would
   silently be treated as a top-level comment instead of an answer. Two

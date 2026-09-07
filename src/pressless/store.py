@@ -1148,7 +1148,15 @@ def _write_atomically(
     except OSError as exc:
         raise StoreError(f"{target} could not be written: {exc}") from exc
     try:
-        _report_a_wide_grant(handle, target)
+        try:
+            _report_a_wide_grant(handle, target)
+        except BaseException:
+            # The PRESS-0066 leak by a second route. This runs on the RAW
+            # descriptor, before fdopen takes ownership, and a caller whose
+            # filter turns StoreNotice into an error makes it raise --
+            # _discard then unlinks the path and cannot close a descriptor.
+            os.close(handle)
+            raise
         with os.fdopen(handle, "w", encoding="utf-8", newline=newline) as stream:
             stream.write(text)
             # rename(2) orders the namespace, not the data, so without

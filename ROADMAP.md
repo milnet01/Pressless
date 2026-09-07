@@ -3805,7 +3805,7 @@
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes store/marks/insights -- residue.
 
-- 📋 [PRESS-0075] **The test tree is larger than the code it tests and has never been reviewed, and three invariants are already known to be unfalsifiable.**
+- ✅ [PRESS-0075] **The test tree is larger than the code it tests and has never been reviewed, and three invariants are already known to be unfalsifiable.**
   tests/ is 4,298 lines against 2,256 lines of src/. No sweep has ever
   looked at it: check-code decides tool findings, review-code's scope
   is production code, and review-tests has not been run on this
@@ -3847,6 +3847,42 @@
   are now closed. The lesson for this item's eventual sweep: run the
   probe rather than reading the assertions, because a test that passes
   and a test that watches look identical from the outside.
+  Resolved (2026-09-07): the sweep has run, which is what this item asked
+  for. `review-tests`, five cold lanes over 14 files. Full returns in
+  `docs/reviews/PRESS-0075-test-review-2026-09-07.md`.
+
+  Baseline 208 passed, 0 failed, 0 skipped, 1.57s with PRESSLESS_ARCHIVE
+  set, so every finding sits under a green suite. The line figures in this
+  bullet's body were badly stale: 9,282 lines of tests against 3,833 of
+  source, not 4,298 against 2,256.
+
+  Filed: PRESS-0106 (INV-4's escaping, two of five characters with no
+  falsifier -- security), PRESS-0107 (five invariant clauses whose named
+  test cannot observe them), PRESS-0108 (the archive oracle and its
+  three-causes-one-reason skip), PRESS-0109 (three tests that go vacuous
+  or fail for the environment by platform), PRESS-0110 (four purity and
+  watch tests matching a shape rather than a rule).
+
+  Fixed rather than filed, because this session introduced it hours
+  earlier: `_report_a_wide_grant` ran on the raw descriptor before
+  `os.fdopen` took ownership, in BOTH settings.py and store.py, so a
+  caller whose filter turns the notice into an error leaked one per save
+  -- PRESS-0066's defect by a second route, one line above its fix. A test
+  per module, each seen red first, each killing the mutation that removes
+  the close.
+
+  The item's own lesson held: I probed rather than read. Nine mutations
+  against lane claims -- five confirmed a clause the suite does not
+  measure, one control behaved, and TWO REFUTED a lane. The publisher's
+  rate-limit finding is killed by a different test than the lane cited, so
+  its assertion is weak and its behaviour is covered; the Store's
+  de-duplication is killed on Linux and vacuous only where the filesystem
+  folds case. Both recorded downgraded rather than dropped.
+
+  The three invariants a prior review recorded as unfalsifiable were
+  WITHHELD from the lanes on purpose. None was re-found under that
+  description, which is a weaker signal than a re-find and is recorded as
+  such rather than read as a pass.
   **Layman:** The tests have never been checked, and we already know three of them cannot fail even if the thing they check is broken.
   Kind: test.
   Source: review-code 2026-08-31 synthesis part 5 -- coverage gap.
@@ -5044,6 +5080,143 @@
   **Layman:** The robot that checks our work and the laptop we work on can end up running different versions of the same tools.
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
+
+- 📋 [PRESS-0106] **INV-4 names five characters to escape and two of them have no falsifier.**
+  MEASURED 2026-09-07, with a control so the probe itself is trusted:
+
+    remove .replace("&", "&amp;")  from _escape_attr -> suite GREEN
+    remove .replace("'", "&#39;") from _escape_attr -> suite GREEN
+    remove .replace('"', "&quot;") from _escape_attr -> 2 tests FAIL
+
+  INV-4's only named test uses the fixture at tests/test_marks.py:241,
+  which carries `"`, `<` and `>` and neither `&` nor `'`.
+
+  The other candidate observer cannot see them either. It compares the
+  attribute AFTER an HTMLParser round trip, and a bare `&` followed by a
+  space is not a character reference -- so correct output and mutant
+  output decode identically. The `'` half is unfalsifiable by that method
+  for good: `_figure` and `_named_colour` emit only double-quoted
+  attributes.
+
+  Live harm: a photo name or caption carrying `&copy;` or `&amp;` renders
+  the decoded character in `src`/`alt`, so the link breaks. PRESS-0004
+  section 5's trust-boundary note says there is no sanitiser downstream.
+
+  Fix shape: a caption fixture whose round trip separates them
+  (`a&copy;b` decodes to `a©b` under the mutant), and assert the `'`
+  clause on the BYTES rather than through the parser.
+  **Layman:** The rule that stops a photo caption breaking out of the page checks five characters; our tests only ever try three.
+  Kind: test.
+  Source: review-tests 2026-09-07 lane 4, confirmed by mutation probe with a control.
+
+- 📋 [PRESS-0107] **Five invariant clauses have a named test that cannot observe them.**
+  One shape, found independently by four of the five lanes: an invariant
+  whose section 5 text has two or three clauses, mapped in section 10 to a
+  test that observes only some of them.
+
+  CONFIRMED BY PROBE (mutation survived, suite green):
+  - PRESS-0019 INV-6's tie-break on country code. No fixture in
+    test_insights.py ever presents a tie, so `sorted` can lose its
+    secondary key -- and cached and fresh orderings then disagree, which
+    is the breach INV-6's own Breaks-when names.
+  - PRESS-0019 INV-24's "no temporary left behind". Observed only after a
+    SUCCESSFUL read; both `_discard` calls can be deleted. The credentials
+    side has this assertion and insights has no twin.
+  - PRESS-0019 INV-25's length cap on Google's words. `text[:DETAIL_LIMIT]`
+    can become `text` with nothing failing.
+
+  NOT PROBED, read-verified:
+  - PRESS-0019 INV-7 is stated absolutely and its test watches `str()` and
+    `repr()` only. credentials.py raises `from None` and asserts on
+    `traceback.format_exception`; insights.py:328 raises `from exc`.
+  - PRESS-0002 INV-10's Test line requires asserting `write()` refuses the
+    patched owner; only `read()` is exercised against it.
+
+  Fix shape is per clause: give each unobserved half a case that separates
+  the two candidate implementations.
+  **Layman:** Several rules are only half-checked: the test named against each one watches part of what the rule promises.
+  Kind: test.
+  Source: review-tests 2026-09-07 lanes 1-5; three confirmed by mutation probe.
+
+- 📋 [PRESS-0108] **The archive tests' oracle is unpinned, and their skip reports one cause of three.**
+  Two defects in the same three files, which this project's CLAUDE.md
+  calls the most important tests it has.
+
+  THE SKIP REPORTS ONE CAUSE OF THREE. `_exec_module` swallows every
+  `Exception`, so a SyntaxError in the sibling generator, a missing import,
+  a failure in its module-level code, or a renamed export all land in a
+  skip whose message asserts the file is simply absent. A rename silently
+  stops all three tests in test_store_archive.py including the S2 round
+  trip, and CI already skips them so nothing else notices. Asymmetry worth
+  keeping: SystemExit is not an Exception, so a module-level exit ERRORS
+  the run instead -- the two cannot-load cases behave oppositely.
+
+  THE ORACLE IS WHATEVER SORTS FIRST. The generator is found by globbing
+  the repository's grandparent directory and taking the first candidate
+  that exports the three names. A stale checkout or a backup wins by sort
+  order, and nothing in the output names which file was used. Each
+  candidate is executed, up to four times per suite run.
+
+  Fix shape: skip only on "no candidate found", and fail with the real
+  reason where one exists but will not load; pin the oracle with an
+  environment variable as PRESSLESS_ARCHIVE already does, and print the
+  resolved path.
+  **Layman:** The tests that prove twelve years of writing survive can quietly stop running, and say the wrong reason when they do.
+  Kind: test.
+  Source: review-tests 2026-09-07 lane 5.
+
+- 📋 [PRESS-0109] **Three tests go vacuous or fail for the environment on a platform this project must ship to.**
+  The suite treats mount capability as first-class in two places
+  (`_mode_support` probes the mount rather than the platform; INV-13's
+  test probes case-folding) and assumes it in three others.
+
+  - tests/test_store.py:1027 -- on a case-folding filesystem the fixture
+    cannot exist, so `again.count("ordinary") == 1` holds whatever the
+    code does and the returns-once rule is verified nowhere. Green, no
+    skip. MEASURED: the probe removing the de-duplication is KILLED on
+    Linux, so the assertion is live here and vacuous on Windows and macOS.
+    The identical condition IS guarded eleven lines later.
+  - tests/test_store.py:486 and three more move tests assume the tmp_path
+    mount supports hard links. Without them `os.link` raises EPERM and
+    they fail indistinguishably from a real regression.
+  - tests/test_publisher.py:1218 -- `Path.symlink_to` raises at SETUP
+    where symlinks are unprivileged-forbidden, so the test errors rather
+    than skipping. Its neighbour at :1271 is guarded.
+
+  Fix shape: a capability probe beside `_require_posix_modes` for each,
+  with a reason naming what the mount would not do.
+  **Layman:** Some tests quietly stop checking anything, or fail for the wrong reason, depending on the machine they run on.
+  Kind: test.
+  Source: review-tests 2026-09-07 lanes 1 and 2.
+
+- 📋 [PRESS-0110] **Four purity and watch tests match a shape rather than the rule they name.**
+  - tests/test_marks.py:324 -- INV-7's forbidden-import list is a
+    seven-name DENYLIST. `http`, `ssl`, `ftplib`, `smtplib`, `httpx`,
+    `xmlrpc`, `webbrowser`, `shutil`, `tempfile`, `glob` and `zipfile` all
+    pass it. Sharpest as a contrast: test_settings.py:82 bans nine of
+    those outright, so `import http.client` FAILS in the module allowed
+    `os` and PASSES in the module INV-7 exists to keep off the network.
+    An allowlist is the fix, and INV-7's own enumeration moves with it.
+  - tests/test_marks.py:365 -- the `open` walk matches a bare `ast.Name`
+    only, so `builtins.open(...)` and `__import__("pathlib")` pass.
+  - tests/test_network_timeouts.py:63 -- `assert found` fires only at ZERO
+    matches, so losing one of the two opener sites goes green while the
+    file's headline claim becomes false. :54 uses `glob` rather than
+    `rglob`, so a module in a subpackage is never walked at all.
+  - tests/_durability_watch.py:69 -- each `os.replace` is paired with the
+    last preceding `mkstemp` BY POSITION, and `watched_mkstemp` discards
+    the path so the correct pairing cannot be made. A writer opening two
+    temporaries before renaming either passes with one synced, which is
+    PRESS-0039's exact failure. Shared by four writers' tests.
+
+  Also recorded here because it is cheap and unrelated to any of the
+  above: tests/_mode_support.py calls `tempfile.mkstemp`, which
+  `_durability_watch` patches. If the probe runs after the watch is
+  installed in one test, its throwaway becomes `opened[-1]` for the next
+  `os.replace` and the assertion fails on correct code.
+  **Layman:** A few tests check for one spelling of a problem, so the same problem written another way goes unnoticed.
+  Kind: test.
+  Source: review-tests 2026-09-07 lanes 2, 4 and 5.
 
 ## Milestones
 

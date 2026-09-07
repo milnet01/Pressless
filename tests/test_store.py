@@ -1451,3 +1451,34 @@ def test_no_notice_where_the_platform_is_windows(tmp_path, monkeypatch):
     notices = [each for each in caught if issubclass(each.category, StoreNotice)]
     assert not notices, f"a wide grant on Windows said {[str(n.message) for n in notices]}"
     assert target.is_file(), "the write did not complete"
+
+
+def test_a_write_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeypatch):
+    """The same leak as PRESS-0066, by the route the wide-grant report opened.
+
+    _report_a_wide_grant runs on the RAW descriptor, before os.fdopen takes
+    ownership. A caller whose warning filter turns StoreNotice into an error
+    makes that call raise, and _discard unlinks the path without closing the
+    descriptor. Found by a test review on 2026-09-07."""
+    handed = []
+    real_mkstemp = store_module.tempfile.mkstemp
+
+    def recording_mkstemp(*args, **kwargs):
+        handle, path = real_mkstemp(*args, **kwargs)
+        handed.append(handle)
+        return handle, path
+
+    monkeypatch.setattr(store_module.tempfile, "mkstemp", recording_mkstemp)
+    _wide_grant(monkeypatch)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", StoreNotice)
+        with pytest.raises((StoreNotice, StoreError)):
+            write(tmp_path, _entry(), draft=False)
+
+    # _wide_grant patched os.fstat, and the assertion below calls it -- without
+    # this the fake answers and no closed descriptor can ever be observed.
+    monkeypatch.undo()
+    assert handed, "mkstemp was never reached, so this test proved nothing"
+    with pytest.raises(OSError):
+        os.fstat(handed[0])
