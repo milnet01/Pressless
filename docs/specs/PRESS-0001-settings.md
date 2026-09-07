@@ -156,6 +156,13 @@ part of the contract rather than an implementation detail: UTF-8, and `\n`
 line endings on every system. Left to the platform, the same settings differ
 by which machine last wrote them.
 
+**That portability is the file's BYTES and never its VALUES.** `site_folder`
+is absolute by the RUNNING platform's rule and the two disagree — measured,
+`PureWindowsPath("/home/w/site").is_absolute()` is `False` — so a settings
+file carried across is refused by §4.3's shape row rather than loaded with a
+missing folder. That is correct and is what this document's title says:
+settings are what is true of THIS machine, so the other machine runs setup.
+
 **`version` is the file's, not the dataclass's.** `save()` always writes
 `version: 1`; `load()` requires it, accepts the JSON number `1` and nothing
 else — not `true` and not `1.0`, each of which compares equal to `1` in
@@ -209,7 +216,7 @@ live repository root.
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the file |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
-| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry, which the Publisher ignores when matching), `analytics_property_id` present and not the numeric id §4.2 fixes it as | `SettingsError`, naming the key |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as | `SettingsError`, naming the key |
 | Valid | `Settings` |
 
 **The shape row is why this is a list rather than four cases.** `repository`
@@ -250,11 +257,19 @@ file, so the boundary is stated here rather than discovered.
 requests the mode; a mount that does not enforce POSIX modes ignores the
 request, and `os.replace` then carries the permissive mode onto the target.
 `save()` reads that grant off the descriptor, as Credentials does before
-writing a secret (PRESS-0042), and where it is wider **on a system whose own
-filesystem enforces modes** emits a `SettingsNotice` and completes. Only the
-refusal is Credentials', and this is not it — Settings holds no secret, and
-refusing would stop the writer saving from a memory stick to protect nothing.
-**Windows is outside the notice entirely**, and INV-8 says why.
+writing a secret (PRESS-0042), and where it is **wider than owner-only — any
+group or other bit set, which is Credentials' own `granted & 0o077` test** —
+emits a `SettingsNotice` and completes. Only the refusal is Credentials', and
+this is not it: Settings holds no secret, and refusing would stop the writer
+saving from a memory stick to protect nothing.
+
+**Windows is suppressed by a PLATFORM test in the code, not by the grant.**
+There `mkstemp` never grants `0600`, so the grant is identical in the case
+that must notice and the case that must not, and no other signal is available
+— INV-7 forbids opening anything outside `folder`. So the discriminator is
+`os.name`, named here because PRESS-0005 §4.5 must use the same one and §11
+requires the two to agree. **The capability rule governs the owner-only test,
+never this suppression.**
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
@@ -386,8 +401,9 @@ which is the writer's choice of somewhere else and is stored absolute.
 
 - **INV-8** — after `save()` returns, `path_for(folder)` is readable and
   writable by its owner and by nobody else, on a filesystem that enforces
-  POSIX modes. **Where the mount granted a wider mode, `save()` emits a
-  `SettingsNotice` naming the file and completes.** Settings holds no
+  POSIX modes. **Where the mount granted a mode wider than owner-only — any
+  group or other bit set — `save()` emits a `SettingsNotice` naming the file
+  and completes.** Settings holds no
   secret — §4.5 keeps them out — so refusing would stop the writer using
   Pressless from a memory stick to protect nothing; Credentials does
   refuse (PRESS-0042), because what it holds is one.
@@ -406,23 +422,29 @@ which is the writer's choice of somewhere else and is stored absolute.
   so run from exFAT or CIFS it would report a breach of a rule this document
   does not make there. Windows fails that same check, so it needs no clause of
   its own.
-  **The notice half is tested separately and never skips.** The grant is
-  read off the descriptor, so a test that makes that read report a wider
-  mode exercises the branch on any filesystem. Without one, the half of
-  this rule that fires on a non-enforcing mount would be unfalsifiable on
-  exactly the machines that enforce modes correctly — which is every
-  machine the suite normally runs on.
+  **The notice half is tested separately and never skips on a system whose
+  own filesystem enforces modes.** The grant is read off the descriptor, so
+  a test that makes that read report a wider mode exercises the branch on
+  any such filesystem. Without one, the half of this rule that fires on a
+  non-enforcing mount would be unfalsifiable on exactly the machines that
+  enforce modes correctly — which is every machine the suite normally runs
+  on. **On Windows it asserts the opposite**, that no notice is emitted,
+  which is what this rule says happens there.
+  **A second row asserts that an ordinary save on an enforcing mount emits
+  NO notice**, and it is not optional: without it a condition that is
+  inverted, or keyed on anything but the grant, warns on every save and the
+  suite stays green.
   *Breaks when:* an implementer opens the target directly, or carries the
   old file's mode onto the new one to preserve what the writer chose; or
   refuses the save on a wider grant, which is the branch Credentials
   takes and this one does not.
   **Windows is outside the owner-only half:** §4.4 gives the outcome
-  there, and §10 records that PRESS-0022's Windows run is the only place
-  it could be observed, with no check scheduled today. **It is outside
-  the notice half too**, and this is the reason: `mkstemp` never grants
-  `0600` there, so a notice keyed on the grant would fire on every save
-  and carry no information. The notice is for a mount that cannot do
-  what the system around it can.
+  there, and PRESS-0022's Windows run is the only place it could be
+  observed, with no check scheduled today. **It is outside the notice
+  half too**, and this is the reason: `mkstemp` never grants `0600`
+  there, so a notice keyed on the grant would fire on every save and
+  carry no information. §4.4 names `os.name` as the discriminator, since
+  the grant cannot tell the two cases apart.
 
 ## 6. Failure modes
 
@@ -532,7 +554,8 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
-| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported` for the notice half, which never skips |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported` and `::test_an_ordinary_save_emits_no_notice` for the notice half. Neither skips on a mode-enforcing system; the second is what stops an inverted or over-broad condition passing |
+| INV-8's Windows half | **nothing** — neither the owner-only outcome nor the notice suppression can be observed here, and PRESS-0022's Windows run is the only place they could be. No check scheduled today |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
@@ -578,3 +601,4 @@ loading or saving does anything.
 | 5 | 2026-09-04 | 3, cold — identical brief, packet rebuilt whole from disk with `docs/design.md` § What may depend on what given COMPLETE, which loop 4's packet truncated | 1 | 2 | 1 | 1 | **Five verified, five fixed; one filed against a neighbour. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap — three of the five landed on text this run wrote**, each anchor checked against loop 4's ledger. **Two lanes found the sharpest, and it is loop 4's own fix:** loop 4 added `save()`'s version refusal without pinning WHICH test, and the code had settled the two ends differently — `load()` checks type and value, `save()` value alone. Executed rather than reasoned: a file saying `"version": true` is accepted by `save()`, relabelled `1`, and its stranger keys carried — PRESS-0053's harm arriving by the one route PRESS-0066 left open when it closed the read side. §4.2 now pins the test and §4.4 defers to it; **the code half is surfaced rather than applied, because a docs gate may not edit code.** **Two lanes found INV-2's own fixture cannot falsify it:** make `NotSetUp` a subclass of `SettingsError` and both raises still pass while `except SettingsError` swallows the absent case, and the shipped test already carries the inheritance assertion the spec never prescribed. **One lane found §4.3 pins no character set for `repository`** while §10's row — written this run — requires rejecting punctuation, so a builder of §4.3 as written admits `owner/name?x=y` into an API URL. **One lane's open question was loop 4's own imprecision:** the code strips every trailing slash where loop 4 wrote "a single trailing `/`". **And §6 carried a Windows claim under a `Measured:` lead** while §10 records Windows as observed nowhere; the lead is now scoped to the Linux half. **Filed against `docs/design.md`, which has its own gate:** its untouchable rule has the Publisher match "unless its first segment is on the list", which a stored `CNAME/` does not satisfy — `_is_protected` strips the slash and the design rule never says so. **This run was mostly an audit rather than a gate: about one of its ten verified findings falls inside the span that armed it.** Route from here: implementation, not a third loop. |
 | 6 | 2026-09-06 | 3, cold — genre pinned `spec`; packet carried `settings.py` and `tests/test_settings.py` whole, both cited ADRs, `design.md`'s parts and disk sections, and PRESS-0005 §4.5 / INV-11. Windows declared an unrunnable region | 1 | 4 | 0 | 2 | **Seven verified, seven fixed, none dismissed. First loop of a new run**, armed by the owner-only permissions rule. **Two lanes independently found the same two, and both landed on text this run wrote:** §4.4 stated the rule of every system, where ADR-0003 records that Windows cannot deliver it and stops setup instead; and INV-8's prescribed `mode & 0o077 == 0` is true of `0400` and of `0000`, so the owner half had no falsifier. A `chmod 0400` mutant now dies where it would have survived. **The third lane dismissed the first as immaterial and was overruled** — it tested today's Linux module, but PRESS-0022's Windows path is unbuilt and an unconditional promise is what that implementer reads. That lane found §3 decision 3 promising a carry-through §4.4 and §6 refuse, and INV-7's removal half unfalsifiable in an empty fixture; a folder-sweep mutant now dies too. **The orchestrator's 4b sweep found the run's only Q1:** `mkstemp` only ASKS for `0600`, so both new invariants were false on a mount that ignores POSIX modes — the case PRESS-0042 already answered for Credentials. Both scoped rather than overstated, and the capability check filed as PRESS-0097 rather than folded in, since it would change behaviour the user did not approve. Collateral: SECURITY.md carried the same unconditional sentence, published an hour earlier. Four lane open questions were packet gaps in `design.md`'s window, none a finding. |
 | 7 | 2026-09-06 | 3, cold — identical brief, packet rebuilt whole from disk with `docs/design.md` GIVEN WHOLE (loop 6's window stopped mid-rule 4 and four lane open questions were that gap), plus the PRESS-0042 bullet and `credentials.py`'s capability check | 0 | 2 | 0 | 3 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap — three of the five landed on text loop 6 wrote**, each anchor checked against that loop's ledger rather than recall. **All three lanes found the same one:** INV-7's *Test:* clause never prescribed a file Settings did not write, so the addition-rule half had no falsifier — and loop 6 had seeded exactly such a file in the shipped test while leaving the clause and its "runs in an empty folder" note untouched, so the note was now false of the test it describes. **The sharpest was loop 6's own scoping fix eating itself:** INV-8 was narrowed to "a filesystem that enforces POSIX modes" while its test still skipped on `os.name`, which cannot see a mount — run from exFAT or CIFS the suite would report a breach of a rule the document does not make there. The guard is now the capability `mkstemp` was granted, read off the descriptor as Credentials reads it (PRESS-0042), shared in `tests/_mode_support.py` and stated in PRESS-0005 INV-11 too. Loop 6 also left INV-8 claiming PRESS-0022 *confirms* the Windows outcome where §6 and §10 both say it is only where it COULD be observed, with no check scheduled. **Two pre-existing:** INV-5 prescribed asserting the replace destination equals `path_for(folder)`, which passes when both are wrong together — the shipped test already pinned the literal and the spec never asked; and §4.2's UTF-8 half had no falsifier while its `\n` twin did, the cited test raising `SettingsError` under either encoding. A new test asserts the encoding at the call, and mutation killed both a dropped read-side and write-side `encoding=`. |
+| 8 | 2026-09-07 | 3, cold — genre pinned `spec`; packet carried `save()` and its helpers whole, `credentials.py::_write_file`, `tests/_mode_support.py` whole and PRESS-0005's §4.5, INV-11 and §11. Windows declared an unrunnable region | 2 | 2 | 2 | 1 | **Seven verified, seven fixed; two dismissed as unverified. Armed by the wider-grant amendment, whose own mirror defects were swept before dispatch.** **Two lanes found the sharpest, and it reaches both documents**: the qualifier "on a system whose own filesystem enforces modes" named no observable, and the grant is IDENTICAL in the case that must notice and the case that must not — so the implementer had to invent a discriminator, and PRESS-0005's `write` had to invent the same one under a §11 saying neither may state the rule alone. One lane added that probing for a second signal would breach INV-7. `os.name` is now named in both. **The same lane found "wider" undefined**, with the two precedents disagreeing: measured, `credentials.py` tests `granted & 0o077` and `_mode_support.py` tests `granted != 0o600`, which differ on `0o700` and `0o400`; both specs now pin Credentials'. **And a pre-existing cross-platform defect it could not run and I could**: `site_folder` is absolute by the RUNNING platform's rule — `PureWindowsPath("/home/w/site").is_absolute()` is `False` — while §4.2 calls the file a shape carried between machines, so a settings file carried across is refused rather than loaded. §4.2 now says the portability is the bytes and never the values. **Three more:** INV-8 claimed §10 recorded its Windows half and §10 had no such row; "never skips" contradicted the Windows exclusion against §7's run-everywhere rule; and nothing falsified the NEGATIVE — an inverted condition would warn on every save and stay green, so a second test row is named. **Two dismissed as unverified, both my packet's fault:** a lane predicted the Publisher deleting an untouchable entry with a trailing slash, and PRESS-0009 §4.4 carries that tolerance with a named test; another predicted `settings.json` had no breaking-surface record, and `versioning-overrides.md` already carries one. Both lanes flagged the gap themselves, and a third lane looked PRESS-0009 up and reported it correct. **1b yield: two defects, both mine** — a `credentials.py` window opening mid-function and a `settings.py` window opening mid-expression, both re-cut before dispatch. |

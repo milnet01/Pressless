@@ -35,6 +35,12 @@ all fixed, none dismissed, and one filed against PRESS-0006
 text loop 10 wrote, so the review ends here and the document routes to
 implementation, which is the better third reviewer. §12's last two rows
 say what each loop found.
+**§4.5 and INV-11 took two further fixes on 2026-09-07**, from
+PRESS-0001's own gate rather than from a third loop here: that run's
+lanes read this document's paired rule as a cross-reference and found
+the wider-grant qualifier naming no observable, and "wider" itself
+undefined. §11 requires the two documents to agree, so the fix landed in
+both. PRESS-0001 §12 row 8 records it.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -473,10 +479,16 @@ silently undo a choice he made.
 The rule is also what the filesystem GRANTS rather than what `mkstemp`
 asked: a mount that does not enforce POSIX modes ignores the request.
 `write` reads the granted mode off the descriptor, as Credentials does
-(PRESS-0042), and where it is wider **on a system whose own filesystem
-enforces modes** emits a `StoreNotice` and completes. Only the refusal
-is Credentials', and this is not it. **Windows is outside the notice
-entirely**, and INV-11 says why.
+(PRESS-0042), and where it is **wider than owner-only — any group or
+other bit set, which is Credentials' own `granted & 0o077` test** —
+emits a `StoreNotice` and completes. Only the refusal is Credentials',
+and this is not it: his own words are not a secret.
+
+**Windows is suppressed by a PLATFORM test in the code, not by the
+grant.** There `mkstemp` never grants `0600`, so the grant is identical
+in the case that must notice and the case that must not, and no other
+signal is available. The discriminator is `os.name`; PRESS-0001 §4.4
+names the same one, and §11 requires the two to agree.
 
 The recognised fields the entry has are written first, in the order
 §4.2 lists them, then any `extra` fields in their original order, then
@@ -658,8 +670,9 @@ is true of a template is PRESS-0006's (§9).
 
 - **INV-11** — after `write` returns, the entry file is readable and
   writable by its owner and by nobody else, on a filesystem that
-  enforces POSIX modes. **Where the mount granted a wider mode, `write`
-  emits a `StoreNotice` naming the file and completes.** His own words
+  enforces POSIX modes. **Where the mount granted a mode wider than
+  owner-only — any group or other bit set — `write` emits a
+  `StoreNotice` naming the file and completes.** His own words
   are not a secret, and refusing would stop him saving on a memory
   stick, which is the worse outcome; Credentials still refuses
   (PRESS-0042), because what it holds is one.
@@ -679,12 +692,18 @@ is true of a template is PRESS-0006's (§9).
   cannot see a mount, so run from exFAT or CIFS it would report a breach
   of a rule this document does not make there. Windows fails that same
   check, so it needs no clause of its own.
-  **The notice half is tested separately and never skips.** The grant is
-  read off the descriptor, so a test that makes that read report a wider
-  mode exercises the branch on any filesystem. Without one, the half of
+  **The notice half is tested separately and never skips on a system
+  whose own filesystem enforces modes.** The grant is read off the
+  descriptor, so a test that makes that read report a wider mode
+  exercises the branch on any such filesystem. Without one, the half of
   this rule that fires on a non-enforcing mount would be unfalsifiable
   on exactly the machines that enforce modes correctly — which is every
-  machine the suite normally runs on.
+  machine the suite normally runs on. **On Windows it asserts the
+  opposite**, that no notice is emitted.
+  **A second row asserts that an ordinary write on an enforcing mount
+  emits NO notice**, and it is not optional: without it a condition that
+  is inverted, or keyed on anything but the grant, warns on every write
+  and the suite stays green.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
   chose; or refuses the write on a wider grant, which is the branch
@@ -692,9 +711,9 @@ is true of a template is PRESS-0006's (§9).
   owner-only half:** §4.5 gives the outcome there, and PRESS-0022's
   Windows run is the only place it could be observed. **It is outside
   the notice half too**, and this is the reason: `mkstemp` never grants
-  `0600` there, so a notice keyed on the grant would fire on every save
-  and carry no information. The notice is for a mount that cannot do
-  what the system around it can.
+  `0600` there, so a notice keyed on the grant would fire on every write
+  and carry no information. §4.5 names `os.name` as the discriminator,
+  since the grant cannot tell the two cases apart.
 
 - **INV-12** — `list_slugs`, `list_html` and `list_templates` return
   only names their own `path_for` accepts, and emit one `StoreNotice`
@@ -962,7 +981,8 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported` for the notice half, which never skips |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported` and `::test_an_ordinary_write_emits_no_notice` for the notice half. Neither skips on a mode-enforcing system; the second is what stops an inverted or over-broad condition passing |
+| INV-11's Windows half | **nothing** — neither the owner-only outcome nor the notice suppression can be observed here, and PRESS-0022's Windows run is the only place they could be. No check scheduled today |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
