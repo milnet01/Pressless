@@ -64,8 +64,11 @@ typed is still there, which is S2. Nothing it writes into the
 published folder is unfinished, which is where S7 starts.
 
 This spec covers entries only. The rest of what the Store holds — the
-fixed pages, the templates, the page furniture, the historical
-comments and photographs — is PRESS-0006. **Two rules here reach that
+fixed pages, the templates, the page furniture, the historical comments,
+and where a photograph's original sits — is PRESS-0006. **A
+photograph's NAME and everything else about it is PRESS-0016's**, which
+`docs/standards/versioning-overrides.md` § The breaking surfaces already
+says; PRESS-0006 settles only the place. **Two rules here reach that
 surface anyway**, being properties of shared code rather than of what
 is held: §4.5's permission rule, and INV-12's listing filter. §11
 routes both, and PRESS-0006 gains its side in the same batch

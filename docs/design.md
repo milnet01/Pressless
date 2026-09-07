@@ -253,18 +253,19 @@ direction: carry it, and let the Builder decide what to publish.
   on excluding them. Filtering at Import instead would delete 29 pieces
   of his writing permanently; filtering at build leaves his decision
   reversible by changing one setting.
-- **The 70 published comments**, in a file beside the entry rather than
+- **The historical comments**, in a file beside the entry rather than
   inside it — an entry file stays his prose, which is S3. They are
-  read-only and the Builder renders them as it does today, which shows
-  63: the other seven sit on Daily Prompt entries the Builder filters
-  out. Import carries all 70 for the same reason it carries those
-  entries — carrying only what the site shows today would lose seven
-  readers' words permanently. Without this
-  they are not in the Store, so the Builder emits pages without them and
-  the Publisher removes 63 real people's words from the live site on the
-  first publish. Commenter names are published, as they are now; their
-  email addresses and IP addresses are not, and Import must not carry
-  them into the Store at all.
+  read-only and the Builder renders fewer than the archive holds: the
+  rest sit on Daily Prompt entries it filters out. Import carries them
+  all for the same reason it carries those entries — carrying only what
+  the site shows today would lose readers' words permanently.
+  **Import's population is every post, not the published ones**
+  (PRESS-0005 §7), so it carries the comments on drafts and private
+  posts too. Without this they are not in the Store, so the Builder
+  emits pages without them and the Publisher removes real people's words
+  from the live site on the first publish. Commenter names are
+  published, as they are now; their email addresses and IP addresses are
+  not, and Import must not carry them into the Store at all.
 - **The photographs, and every entry's image references rewritten to the
   picture mark.** The originals go where the Store keeps them, in
   Pressless's own folder. Rule 9 makes this the only chance: skipped,

@@ -1323,7 +1323,7 @@
   Kind: fix.
   Source: in-session-2026-08-28, found while building PRESS-0005.
 
-- 📋 [PRESS-0036] **Two accepted documents disagree with PRESS-0006's spec, and neither is corrected.**
+- ✅ [PRESS-0036] **Two accepted documents disagree with PRESS-0006's spec, and neither is corrected.**
   PRESS-0006's spec records both in its § 11 and corrects neither,
   because each belongs to a document with its own accepted status.
 
@@ -1343,6 +1343,22 @@
   Both will mislead the next reader.
 
   Blocked-by: nothing.
+  Resolved (2026-09-07). Both documents.
+
+  `design.md`'s Import bullet no longer quotes comment counts. The figures
+  were the published-only ones and Import's population is every post
+  (PRESS-0005 §7), so they understated what it carries -- and the standing
+  rule here is to avoid counts rather than to correct them, since a stale
+  number is worse than none. The bullet now states the rule and says
+  outright that comments on drafts and private posts come across too.
+
+  PRESS-0005 §1 said photographs are PRESS-0006's. PRESS-0006 settles only
+  where an original SITS; the name and everything else is PRESS-0016's,
+  which `versioning-overrides.md` § The breaking surfaces already says.
+
+  No rule 14 gate on either: this bullet's own body records that neither
+  changes what anyone builds today, which is the No branch. Swept for the
+  counts elsewhere in the tree -- nothing else carried them.
   **Layman:** Two documents we already signed off say things the new plan proved wrong; nobody has gone back to fix them.
   Kind: doc-fix.
   Source: in-session-2026-08-31, found while gating PRESS-0006.
@@ -4554,7 +4570,7 @@
   Kind: fix.
   Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
 
-- 📋 [PRESS-0094] **The Store checks the comment identifiers it is handed, and two invariants get the test case that would falsify them.**
+- ✅ [PRESS-0094] **The Store checks the comment identifiers it is handed, and two invariants get the test case that would falsify them.**
   CODE SIDE. PRESS-0006's gate settled all three on the document; the
   code and the suite have not caught up. Nothing here is a defect the
   suite can currently see, which is the point.
@@ -4586,6 +4602,24 @@
   written with the newline named and one written without are byte
   identical, so only a call assertion bites. The spec now puts the test
   here; add the template case to it.
+  Resolved (2026-09-07). All three items.
+
+  INV-13 is implemented and probed: the empty-identifier and
+  repeated-identifier guards each die to their own mutation, and a guard
+  that refuses every set dies to the positive case. INV-3's fixture gained
+  the reserved device name it never carried; the code was already right,
+  and dropping its `_RESERVED_NAMES` branch now kills the test. INV-10's
+  test reaches `write_template`, which PRESS-0005 INV-6's test cannot.
+
+  One mutation survived and was worth more than the seven that died: I
+  had written that the new guard must run BEFORE the dangling check, and
+  swapping them changed nothing. Both orders refuse -- `parent=""` is
+  falsy, so the dangling check skips it whichever runs first. The comment
+  was corrected rather than defended with a test for a distinction that
+  does not exist.
+
+  PRESS-0006 §10's rows updated to name the tests. No gate: that records
+  what was built.
   **Layman:** Three small gaps between what the comments design now promises and what the code and tests actually do.
   Kind: implement.
   Source: review-contract 2026-09-05 loop 4 on PRESS-0006 -- code side of three findings.
