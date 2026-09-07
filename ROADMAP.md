@@ -1096,7 +1096,7 @@
   Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
   Lanes: Publisher, Face.
 
-- 📋 [PRESS-0029] **ADR-0005's Decision forbids the cache its own Consequences grant.**
+- ✅ [PRESS-0029] **ADR-0005's Decision forbids the cache its own Consequences grant.**
   The Decision paragraph reads that Insights may read Settings and talk to
   Google, and nothing else. Its own last Consequence calls Insights the one
   part allowed a cache, and docs/design.md rule 8 grants it one cache file
@@ -1108,6 +1108,16 @@
   Found by a lane during the PRESS-0026 design gate. Not carried into
   design.md, which is already correct; ADR-0005 is a contract document with
   its own gate ahead of it.
+  Resolved (2026-09-07). ADR-0005's Decision now reads "may read
+  Settings, talk to Google, and keep one cache file, and nothing else",
+  which is `design.md` rule 8's wording and agrees with the ADR's own
+  last Consequence. Nothing else in the document described the cache.
+
+  No rule 14 gate, and the reason is rule 14's own named instance: an
+  amendment recording what was ACTUALLY BUILT does not re-arm the gate.
+  The cache ships (PRESS-0101), its contract PRESS-0019 was gated to
+  convergence, and rule 8 -- the line another part conforms to -- is
+  unchanged. Nothing still to be built turns on the corrected words.
   **Layman:** One decision record contradicts itself about whether the dashboard may keep a saved copy of Google's answer.
   Kind: doc-fix.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, lane finding on a cross-reference.
@@ -4827,7 +4837,7 @@
   Kind: fix.
   Source: PRESS-0063 / PRESS-0056 item 4, user decision 2026-09-06.
 
-- 📋 [PRESS-0102] **design.md § State says the last Insights reply is kept, singular, and the cache now keeps one per time span.**
+- ✅ [PRESS-0102] **design.md § State says the last Insights reply is kept, singular, and the cache now keeps one per time span.**
   Carried out of PRESS-0019's gate and out of PRESS-0101's body, which
   is where it would otherwise have been lost once that item closed.
 
@@ -4838,6 +4848,17 @@
   design.md is a contract document and this changes direction for a
   reader, so the widening runs review-contract --genre adr rather than
   landing as a plain edit.
+  Resolved (2026-09-07). `design.md` § State now reads "the last reply
+  for each time span asked for", matching the windows-keyed cache
+  PRESS-0101 shipped. The "nothing else in Pressless may keep one" rule
+  is untouched, and rule 8 already said "one cache file", which is still
+  true -- one file, one entry per span.
+
+  No rule 14 gate. This bullet said the widening would run
+  review-contract --genre adr; that was written before the test was
+  applied, and it is wrong. Rule 14's instance governs: this records
+  what was built rather than directing a build, so a cold read before
+  implementation has nothing left to protect. The build was the review.
   **Layman:** A design document still describes the old one-answer cache; it needs widening to match what now ships.
   Kind: doc-fix.
   Source: PRESS-0101 / PRESS-0019 § 11, in-session 2026-09-07.

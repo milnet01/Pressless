@@ -433,9 +433,10 @@ in a crash that was not already saved.
 
 **Insights is the one part that keeps a cache, and it is a cache rather
 than an exception.** Google limits how often it will answer, so the last
-reply is kept on disk with the time it was fetched, and the dashboard
-says when it was last updated. Deleting that file costs nothing but a
-fresh fetch. Nothing else in Pressless may keep one: a cache of his
+reply for each time span asked for is kept on disk with the time it was
+fetched, and the dashboard says when it was last updated. Deleting that
+file costs nothing but a fresh fetch. Nothing else in Pressless may keep
+one: a cache of his
 writing would be a second copy that can disagree with the first, and
 which one is true is exactly the question S3 exists to make unaskable.
 
