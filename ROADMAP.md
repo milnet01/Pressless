@@ -3851,7 +3851,7 @@
   Kind: test.
   Source: review-code 2026-08-31 synthesis part 5 -- coverage gap.
 
-- 📋 [PRESS-0076] **Nothing has ever checked whether this project's dependencies, runtime, runner image or action pins are current.**
+- ✅ [PRESS-0076] **Nothing has ever checked whether this project's dependencies, runtime, runner image or action pins are current.**
   Explicitly out of scope for the 2026-08-31 sweep and recorded here so
   the gap is not mistaken for a clean result. check-code holds pinact
   but no signal selects it, so an ordinary run does not answer the pin
@@ -3876,6 +3876,32 @@
 
   Route: check-dependencies. Worth running before PRESS-0022, since
   packaging is where a runtime version stops being a detail.
+  Resolved (2026-09-07): the check has now been run, which is what this
+  item asked for. Python is the only ecosystem; no npm, Cargo, Go or
+  container manifest exists, and absence is not a finding.
+
+  BEHIND. `actions/checkout` is SHA-pinned at v5.1.0 against v7.0.1
+  current, and `actions/setup-python` at v6.3.0 against v7.0.0 -- both
+  explained pins (the comment records the version), both two and one
+  majors back. `ruff` 0.16.4 here against 0.16.6.
+
+  EOL. `requires-python = ">=3.10"` and 3.10 ends 2026-10-31, measured
+  against endoflife.date rather than recalled. Filed as PRESS-0104 with
+  the CI-coverage half, since nothing below 3.13 is ever run.
+
+  UNEXPLAINED. `python-version: '3.13'` carries no reason and is the only
+  version tested; `runs-on: ubuntu-latest` is a moving label rather than
+  a pin.
+
+  HOLDS. None -- the project keeps no ledger, and every constraint is a
+  FLOOR. Correctly so, and no floor was filed as a hold.
+
+  Also filed: PRESS-0105, the dev floors letting CI and this machine
+  install different versions of the same tool.
+
+  Nothing was bumped. `dependencies.md` §6 requires the bump and the
+  caller-side idiom refresh to ship together, which this check cannot
+  verify.
   **Layman:** Nobody has checked whether the outside pieces the app relies on are up to date.
   Kind: chore.
   Source: review-code 2026-08-31 synthesis -- coverage gap.
@@ -4974,6 +5000,50 @@
   **Layman:** The page and template listings promise to behave like the entry listing, which now skips and reports unusable files — but their own document was never told.
   Kind: doc-fix.
   Source: review-contract 2026-09-07 PRESS-0005 loop 10, all three lanes; filed as the neighbouring document's half.
+
+- 📋 [PRESS-0104] **requires-python claims 3.10 and CI runs only 3.13, and 3.10 goes end-of-life next month.**
+  `pyproject.toml` sets `requires-python = ">=3.10"`. `ci.yml` runs one
+  job at `python-version: '3.13'`, so no version below that has ever been
+  exercised -- the floor is a claim with nothing behind it.
+
+  Measured 2026-09-07 against endoflife.date: 3.10 ends 2026-10-31, 3.13
+  runs to 2029-10-31, 3.14 to 2030-10-31.
+
+  Two decisions, and they are separate. WHAT the floor should be -- 3.10
+  is about to stop getting security fixes, so keeping it means shipping
+  on an unsupported runtime. And WHETHER CI proves it: a matrix over the
+  floor and the newest is the usual answer, and it multiplies the minutes
+  this project spends per push.
+
+  Not decided here. `check-dependencies` reports the delta and does not
+  judge whether a gap is safe to cross.
+  **Layman:** We promise the app runs on older Pythons than we have ever tested it on, and the oldest one stops getting security fixes in October.
+  Kind: chore.
+  Source: check-dependencies 2026-09-07, PRESS-0076.
+
+- 📋 [PRESS-0105] **The dev floors let CI and the maintainer's machine install different versions.**
+  Measured 2026-09-07: `pytest-randomly` is floored `>=4`, this machine
+  holds 4.1.0, and a fresh `pip install -e '.[dev]'` takes 5.0.0 -- a
+  major apart. `ruff` is floored `>=0.16` with 0.16.4 here and 0.16.6
+  current.
+
+  The floors are deliberate and `pyproject.toml` says why: a release that
+  breaks the project should surface on the next CI run rather than months
+  later. That reasoning holds. What it does not cover is the two
+  ENVIRONMENTS drifting apart, which is PRESS-0027's shape returning --
+  that item was filed because pytest-randomly was auto-loading here and
+  absent in CI, so the two ran the suite differently.
+
+  `scripts/local-ci.sh` being shared stops the two running different
+  CHECKS. It does nothing about them running different VERSIONS.
+
+  What this needs is a decision rather than a bump: whether the gate
+  should report the versions it ran with, whether the dev floors should
+  become ranges, or whether the drift is acceptable because a break shows
+  up in CI by design.
+  **Layman:** The robot that checks our work and the laptop we work on can end up running different versions of the same tools.
+  Kind: chore.
+  Source: check-dependencies 2026-09-07, PRESS-0076.
 
 ## Milestones
 
