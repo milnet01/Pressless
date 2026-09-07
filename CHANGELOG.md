@@ -147,6 +147,12 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Comments with a missing or repeated identifier are refused rather than written** (PRESS-0094)
+  A comment with no identifier could be replied to, and the reply would
+  silently be treated as a top-level comment instead of an answer. Two
+  comments sharing an identifier left a reply pointing at both. Either now
+  refuses the whole set and writes nothing.
+
 - **A stray file in a folder no longer stops the site building** (PRESS-0098)
   Drop a file with an unusable name into your entries, pages or templates
   folder and Pressless now builds from the files it can read and tells you

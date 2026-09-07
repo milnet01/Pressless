@@ -615,10 +615,10 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-7 a template is never an entry | `test_a_template_is_never_an_entry` |
 | INV-8 comments are not entries | `test_comments_are_not_entries` |
 | INV-9 atomic writes | `test_writes_are_atomic` |
-| INV-10 encodings | `test_encodings_are_as_specified` |
+| INV-10 encodings | `test_encodings_are_as_specified`, which watches `write_html`, `write_comments` and `write_template`. The template case reaches a call PRESS-0005 INV-6's test cannot: that one exercises `write`, which predates `write_template` |
 | INV-11 photographs stay put | `test_photographs_stay_where_they_are` |
 | INV-12 a zoned comment date refused | `test_a_comment_date_carrying_a_zone_is_refused` |
-| INV-13 unsound comment identifiers refused | `test_unsound_identifiers_are_refused` — **not written yet**, and neither is the guard it names; PRESS-0094 carries both |
+| INV-13 unsound comment identifiers refused | `test_unsound_identifiers_are_refused` |
 | That a photograph's file name is well formed | **nothing here** — decision 10 withdrew that rule to PRESS-0016; only reaching outside the folder is refused |
 | That the plain box leaves the tags alone | **nothing here** — the Store holds the bytes and INV-1 proves it gives them back; whether the Face's box edits only the words is PRESS-0014's |
 | That the Builder never renders a template as a page | **nothing here** — INV-7 proves the Store offers no route to publish one; what the Builder does with `templates/` is PRESS-0008's |

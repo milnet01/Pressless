@@ -260,6 +260,12 @@ _ILLEGAL_NAMES = {
     "an absolute path": "/an-example",
     "the empty name": "",
     "an upper-case letter": "An-Example",
+    # A Windows reserved device name. Absent until PRESS-0094: every other
+    # case here fails a character check, so a hand-rolled one passed all five
+    # and let pages/nul.html through -- which on Windows is the null device
+    # rather than a file (§4.3).
+    "a reserved device name": "nul",
+    "a numbered reserved device name": "com1",
 }
 
 
@@ -780,6 +786,27 @@ def test_encodings_are_as_specified(tmp_path, monkeypatch):
             f"the LF rule, unlike a page"
         )
 
+    # write_template takes the LF rule too, and nothing reached it until
+    # PRESS-0094: this test watched write_html and write_comments only, and
+    # the template half used to be delegated to PRESS-0005 INV-6, whose test
+    # exercises `write` -- a call that predates write_template. On Linux a
+    # file written with the newline named and one written without are byte
+    # identical, so only this call assertion bites.
+    opens.clear()
+    write_template(tmp_path, _entry(slug="a-template"))
+    template_writes = [one for one in opens if one.writes() and not one.binary]
+    assert template_writes, "write_template performed no text write to watch"
+    for one in template_writes:
+        assert one.encoding == "utf-8", (
+            f"write_template named encoding {one.encoding!r}; §4.2 requires "
+            f"'utf-8'"
+        )
+        assert one.newline == "\n", (
+            f"write_template named newline {one.newline!r}; §4.2 requires "
+            f"'\\n' whatever the platform's defaults -- a template is an entry "
+            f"file and takes the LF rule, not a page's translation-off rule"
+        )
+
 
 # --------------------------------------------------------------- INV-11 ----
 
@@ -939,3 +966,53 @@ def test_a_comment_date_carrying_a_zone_is_refused(tmp_path):
         "a value naive, and this guard keys on the offset rather than on "
         "tzinfo merely being present"
     )
+
+
+# --------------------------------------------------------------- INV-13 ----
+
+
+def test_unsound_identifiers_are_refused(tmp_path):
+    """INV-13: write_comments refuses a set carrying an empty identifier, or
+    two that are equal, and writes nothing.
+
+    The empty case is the sharp one. "" is also parent's top-level sentinel
+    (§4.2), so a reply naming that comment is read as top-level rather than as
+    dangling -- INV-5's check passes on a reply whose parent is genuinely lost,
+    and the Builder renders it at the root of the tree with nothing raised.
+
+    A repeated identifier leaves the tree ambiguous instead: two comments
+    answer to one name and a reply to it resolves to whichever the Builder
+    happens to reach.
+
+    The last case is what stops the guard passing by refusing everything: a
+    set whose identifiers are distinct and non-empty must still be written.
+
+    Breaks when an implementer checks the replies and not the identifiers they
+    resolve against."""
+    write_comments(tmp_path, "an-example", (_comment("1"), _comment("2")))
+    before = _snapshot(tmp_path)
+
+    for description, unsound in (
+        ("an empty identifier", (_comment("1"), _comment(""))),
+        ("two equal identifiers", (_comment("1"), _comment("1"))),
+        (
+            "an empty identifier a reply names",
+            (_comment(""), _comment("2", parent="")),
+        ),
+    ):
+        with pytest.raises(StoreError) as raised:
+            write_comments(tmp_path, "an-example", unsound)
+        assert _snapshot(tmp_path) == before, (
+            f"{description}: the folder changed, and INV-13 says nothing is "
+            f"written"
+        )
+        assert "an-example" in str(raised.value), (
+            f"{description}: the refusal did not name the file it was for"
+        )
+
+    # The positive case: the guard must not pass by refusing every set.
+    written = write_comments(
+        tmp_path, "an-example", (_comment("a"), _comment("b", parent="a"))
+    )
+    assert Path(written).is_file(), "a sound set was refused"
+    assert len(read_comments(Path(written))) == 2, "a sound set was not written whole"

@@ -759,6 +759,10 @@ def write_comments(folder: Path, slug: str, comments: tuple[Comment, ...]) -> Pa
     format's reason for existing does not reach them.
     """
     target = comments_path_for(folder, slug)
+    # First because identifiers are the more basic property, not because the
+    # order decides anything: either way the set is refused, and a mutation
+    # probe swapping these two survived (INV-13).
+    _refuse_unsound_identifiers(comments, target)
     _refuse_a_dangling_reply(comments, target)
     _refuse_a_zoned_date(comments, target)
     records = [
@@ -875,6 +879,40 @@ def _refuse_the_wrong_comment_fields(record: dict, position: int, target: Path) 
         raise StoreError(
             f"{target}: comment {position} is missing {missing!r}"
         )
+
+
+def _refuse_unsound_identifiers(comments: tuple[Comment, ...], target: Path) -> None:
+    """INV-13: refuse a set carrying an empty identifier, or two that are
+    equal, before anything is written.
+
+    A third guard beside the dangling-reply and zoned-date ones, and on the
+    same ground: both faults are visible in the set handed in.
+
+    The empty one is the sharp case, and it is why INV-5's guard cannot stand
+    in for this one. "" is also `parent`'s top-level sentinel (§4.2), so a
+    reply to such a comment carries a FALSY parent -- which the dangling check
+    skips by construction, whichever order the two run in. It reads as
+    top-level, and the Builder renders it at the root with nothing raised.
+
+    A repeated identifier leaves the tree ambiguous instead: a reply resolves
+    to whichever of the two the Builder reaches first.
+    """
+    seen: set[str] = set()
+    for comment in comments:
+        if not comment.identifier:
+            raise StoreError(
+                f"{target}: a comment has an empty identifier; nothing was "
+                f"written. An empty identifier is also what a top-level "
+                f"comment's parent holds, so a reply to this one would be "
+                f"read as top-level rather than refused"
+            )
+        if comment.identifier in seen:
+            raise StoreError(
+                f"{target}: two comments share the identifier "
+                f"{comment.identifier!r}; nothing was written. A reply naming "
+                f"it could not say which of the two it answers"
+            )
+        seen.add(comment.identifier)
 
 
 def _refuse_a_dangling_reply(comments: tuple[Comment, ...], target: Path) -> None:
