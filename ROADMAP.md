@@ -1089,6 +1089,8 @@
   Amending a sign of success is a policy choice rather than a wording fix,
   and discovery.md owes its own gate, so this was filed rather than
   applied.
+  Milestone: v0.5.0. Blocks S6 — discovery states the sign absolutely and
+  the system admits a case it does not cover.
   **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
   Kind: doc.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
@@ -1129,6 +1131,8 @@
   Filed rather than fixed: choosing between them is a design decision, and
   whether a preview build writes into the site folder changes what publish
   sends.
+  Milestone: v0.5.0. Blocks S10 — seeing it before publishing is what the
+  preview is for, and no part owns building it.
   **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
@@ -1152,6 +1156,8 @@
 
   Filed rather than fixed: the document cannot state a behaviour nobody
   has chosen.
+  Milestone: v0.5.0. Blocks S9 — getting the site back in one step has no
+  stated answer for an edit made since the last publish.
   **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
@@ -3340,6 +3346,11 @@
   stored record; or (b) drop the account name and shorten the path now,
   which means amending PRESS-0002 §4.3 and paying for rule 14's gate.
   Nothing else in this item is outstanding.
+  Item 4 decided by the user (2026-09-07), jointly with PRESS-0087 and
+  recorded there: one rule for every failure surface — no key, no account
+  name, no full path in anything printed or recorded. Neither option as
+  filed was taken; the rule is written now and applied when PRESS-0003
+  and PRESS-0011 build the surfaces it governs.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
@@ -3682,6 +3693,9 @@
   PRESS-0011 and PRESS-0003 own the answer, and it decides whether
   PRESS-0051 was live or latent. PRESS-0051 raises from None now, so the
   answer no longer changes what is safe -- only what was true before it.
+  Milestone: v0.5.0. Blocks S6 — items 1 to 3 are bare KeyError and
+  OSError escapes from the Publisher, and a bare exception is not a
+  sentence he understands.
   **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
@@ -3928,6 +3942,9 @@
   Related and already filed: PRESS-0067 records the same
   case-sensitivity shape in store.py, where a .TXT suffix makes
   exists() true and list_slugs blind.
+  Milestone: v0.5.0. Blocks S1 — a capitalisation difference reaches the
+  deletion PRESS-0009 § 2 calls unrecoverable, which can take the domain
+  off the live site.
   **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
@@ -4145,7 +4162,7 @@
   Kind: security.
   Source: in-session-2026-09-02, split from PRESS-0042.
 
-- 📋 [PRESS-0086] **Most open items belong to no milestone, so "what gets us to v1.0.0" has no complete answer.**
+- ✅ [PRESS-0086] **Most open items belong to no milestone, so "what gets us to v1.0.0" has no complete answer.**
   ROADMAP section Milestones says every one of the 22 items above belongs
   to exactly one milestone and none to two. That was true when written.
   Measured 2026-09-02: 61 items are open, 14 of them are in a milestone,
@@ -4194,6 +4211,27 @@
   unmapped is then an answer rather than a gap. Section Milestones keeps
   the prose about what each version means, which is the half that does
   not go stale.
+  Resolved (2026-09-07). Every open item was put to the rule the user
+  gave: a milestone only where a sign of success fails while the item is
+  open. Nine carry a `Milestone:` line in their own body, which is the
+  route that survives a render.
+
+  v0.1.0: PRESS-0098, by way of the Builder.
+  v0.5.0: PRESS-0028, 0030, 0031, 0073, 0078, 0092, 0096, 0099.
+
+  Everything else is unmapped ON PURPOSE, and that is the answer rather
+  than a gap. Nothing filed by a review blocks S8 or S11, so v1.0.0's
+  own signs rest on the build items the Milestones section already maps.
+
+  Two items were re-judged while walking them and deliberately left
+  unmapped. PRESS-0068's Windows risk was measured closed by PRESS-0022
+  INV-6, so its live remainder is item 4, a diagnostics rule. PRESS-0087
+  turns on a crash report, and S5 is stated of normal use.
+
+  What is NOT fixed, because no verb can: the Milestones section intro
+  still claims every item belongs to exactly one milestone, and names a
+  count. It is a store-held section intro, so a hand edit to ROADMAP.md
+  is discarded by the next render. Logged as Ants MCP feedback.
   **Layman:** The plan says which work belongs to which version, but only for the original items — most of what has been filed since is unsorted.
   Kind: doc-fix.
   Source: in-session-2026-09-02, measured while answering the user's versioning question.
@@ -4215,6 +4253,11 @@
   in a long-lived local. Whichever is chosen, INV-7's clause should say
   which surfaces it covers, because as written it reads as absolute and
   is checked on two.
+  Decided by the user (2026-09-07), as one rule with PRESS-0068 item 4:
+  nothing Pressless prints or records on failure may carry the key, the
+  account name, or the full path. Written down now and applied when
+  PRESS-0003's log and PRESS-0011's handler are built, so one rule covers
+  every secret rather than this key alone.
   **Layman:** A crash report that lists variables could show the publishing key, even though every error message is careful never to.
   Kind: security.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 2 on 2026-09-02.
@@ -4440,6 +4483,8 @@
   authenticated as the main account with repo scope; it still lacks
   delete_repo, so the scratch repository from PRESS-0072 is still there
   and a new one will persist too. Not started.
+  Milestone: v0.5.0. Blocks S1 — as designed the first publish cannot
+  finish, so the entry never reaches the live site.
   **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
@@ -4483,6 +4528,10 @@
 
   Related: PRESS-0067 closed the list_slugs/exists half of exactly this
   shape. This is the half that pair fix did not reach.
+  Decided by the user (2026-09-07): the exact view stands and publish
+  reports the stranded file rather than refusing. The smaller of the two
+  options, and it keeps 4.3's preference for never writing over his own
+  file — refusing would let one hand-renamed file block a publish.
   **Layman:** Publishing an entry can quietly leave two copies of it, and the writer's own copy is the one that gets stranded.
   Kind: fix.
   Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
@@ -4578,6 +4627,9 @@
 
   PRESS-0009 section 11 names this as another document's gate. design.md
   is gated as an ADR, so the amendment re-arms that gate.
+  Milestone: v0.5.0. Blocks S6 — the sign says he is never left unsure
+  whether it went out, and the Publisher reaches an unknown-outcome state
+  by two routes.
   **Layman:** The design document promises the writer a clear answer in a case where the app can no longer give one.
   Kind: doc-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
@@ -4610,6 +4662,10 @@
 
   Cheap when taken: the check is one fstat on the descriptor mkstemp
   returned, and credentials.py already has the shape to copy.
+  Decided by the user (2026-09-07): Settings and the Store carry on and
+  warn once. Refusing would stop him saving his own writing on a memory
+  stick, which is worse than the exposure; Credentials still refuses,
+  because it holds a secret and his words are not one.
   **Layman:** On a memory stick or a shared drive the app cannot make its files private, and only the part holding your password notices.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
@@ -4636,6 +4692,14 @@
   Deliberately not fixed inside the gate that found it: filtering, or
   raising, changes what PRESS-0008 and PRESS-0012 see, and neither is
   built yet.
+  Decided by the user (2026-09-07): list_slugs returns the usable slugs
+  and names what it skipped. Neither of the two options as filed — a
+  silent filter loses his file from view, and raising lets one stray file
+  abort a build. Naming the skipped file is loud per 4.4 without being
+  fatal.
+  Milestone: v0.1.0. Blocks S2 and S3 by way of the Builder, which is
+  that release's: one hand-dropped file aborts the build, so the archive
+  does not render at all.
   **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
@@ -4661,6 +4725,8 @@
   PRESS-0005 9 now names this as a gap rather than a routing, and points
   here. What it needs is a decision: does removal belong to the Store, and
   what happens to a published entry's fetched copy.
+  Milestone: v0.5.0. Blocks S9 — no contract can remove an entry, and
+  design.md has a deleted entry pruned from the site.
   **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
