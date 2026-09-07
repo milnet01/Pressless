@@ -4863,6 +4863,37 @@
   Kind: doc-fix.
   Source: PRESS-0101 / PRESS-0019 § 11, in-session 2026-09-07.
 
+- 📋 [PRESS-0103] **PRESS-0006's listings defer to list_slugs, whose contract just changed under them.**
+  PRESS-0005 INV-12 (new, 2026-09-07) has `list_slugs`, `list_html` and
+  `list_templates` return only names their own `path_for` accepts, and
+  emit a `StoreNotice` per file passed over.
+
+  `list_html` and `list_templates` are PRESS-0006's surface. That
+  document says only "`list_html` and `list_templates` read file names
+  and open nothing, as `list_slugs` does" -- a deferral about OPENING,
+  not about filtering. So its implementer builds them unfiltered and
+  silent, and INV-12's test fails on two of its three folders.
+
+  PRESS-0005 section 11 now routes the rule and says neither document may
+  state it alone. This is the other half.
+
+  Two things the amendment must settle, both measured 2026-09-07:
+
+  - `html_path_for` refuses a legal slug outside `FURNITURE_NAMES` for
+    the furniture folder, and accepts the same name for pages. So the
+    filter is what THAT listing's `path_for` accepts, not the shared slug
+    rule alone.
+  - Each listing sees only its own suffix, so the test fixture must be
+    `My_Entry.html` for pages and `My_Entry.txt` for templates. A file
+    whose suffix does not match was never a candidate and is passed over
+    in silence.
+
+  Not fixed inside the gate that found it: PRESS-0006 is accepted and has
+  its own rule 14 gate ahead of it.
+  **Layman:** The page and template listings promise to behave like the entry listing, which now skips and reports unusable files — but their own document was never told.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-07 PRESS-0005 loop 10, all three lanes; filed as the neighbouring document's half.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
