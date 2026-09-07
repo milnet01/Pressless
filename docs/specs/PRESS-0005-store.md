@@ -24,6 +24,12 @@ loop 6 landed on loop 5's own text, but in the rationale rather than in
 the rule — what §4.2 decides survived both loops unchanged. Five of the
 twelve fell inside the amendment; the other seven were audit. Routed to
 implementation, which is the better third reviewer.
+**Amended 2026-09-07, before implementation**, on three decisions the
+user took: a listing returns only names the Store will accept back and
+says what it skipped; a move that strands a second file reports it
+rather than refusing; and a write onto a filesystem that granted a
+wider mode says so and completes. All three change direction, so the
+gate re-armed.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -163,6 +169,7 @@ def unpublish(folder: Path, slug: str) -> Path: ...
 class StoreError(Exception): ...
 class EntryNotFound(StoreError): ...
 class SlugInUse(StoreError): ...
+class StoreNotice(UserWarning): ...
 ```
 
 `write` is create-or-replace within its own folder: the slug
@@ -198,6 +205,18 @@ raise `FileExistsError`, so the move alone would answer `StoreError`
 where §6 requires `SlugInUse`. The check gives the ordinary occupied
 case its stated type; the move gives the raced one its guarantee. Neither reads or writes a body, so neither can alter
 one.
+
+**Three rules need the Store to tell the caller something without
+failing, so it raises nothing and warns instead.** A `StoreNotice` is
+emitted where a listing skipped a file (§4.4), where a move left a
+second file naming one slug (§4.3), and where a write could not make
+its file owner-only (§4.5). Each is the writer's own doing, none costs
+him his writing, and refusing would take away something that works.
+`warnings` is the mechanism because it needs no new return shape and
+repeats nothing — the default filter shows a given message once — and
+because a caller that captures nothing is unaffected, which is why no
+signature above changes. The Face captures the category at its
+boundary; that is PRESS-0011's, not this document's.
 
 ### 4.2 The entry file
 
@@ -345,17 +364,21 @@ slug, and `list_slugs` returns it once.
 
 **`publish` and `unpublish` compose both paths with `path_for`, so a
 destination differing only in the suffix's case is not a collision they
-can see.** That is the same trade, applied to the moves: `exists`
-reports the address taken and the move still goes ahead, leaving two
-files naming one slug. §6's `SlugInUse` and INV-10 are about a
-destination `path_for` can see.
+can see.** The move goes ahead, and **emits a `StoreNotice` naming
+both files** (INV-13). §6's `SlugInUse` and INV-10 are about a
+destination `path_for` can see; this is the case they cannot.
+
+Refusing was the alternative and was rejected: it would let a file the
+writer renamed himself block a publish, with nothing to do about it but
+rename the file back. Reporting keeps §4.4's preference for loud
+without taking the publish away.
 
 On Linux that leaves an address reported as taken whose file `read`
-cannot open, since `path_for` composes `<slug>.txt`. That is the
-trade rather than an oversight: nothing writes over his file, and
-`read` raises `EntryNotFound` naming the path it looked for. The
-repair is the writer's, as §4.4 already says of a name that disagrees
-with its `Slug` header.
+cannot open, since `path_for` composes `<slug>.txt`. Nothing writes
+over his file, and `read` raises `EntryNotFound` naming the path it
+looked for; what the notice buys is that he hears about the stranded
+file when it strands rather than never. The repair is the writer's, as
+§4.4 already says of a name that disagrees with its `Slug` header.
 
 Neither folder is the site folder. The Builder copies published
 entries into `content/` when it runs; that is PRESS-0008's, and
@@ -370,13 +393,24 @@ header it found untidy. A file that cannot be parsed raises
 parseable.
 
 `list_slugs` returns the slugs in one folder, sorted, read off the
-file names rather than by opening anything. **It does not check them
-against §4.2's slug set**, so a hand-created `My_Entry.txt` is listed
-and `path_for` then refuses the very value the listing returned.
-Measured. A caller walking the listing therefore handles `StoreError`
-per slug rather than assuming every name it was handed is usable —
-loud, per §4.4's preference, rather than a file that silently never
-appears. PRESS-0098 asks whether that is the right trade.
+file names rather than by opening anything. **Every name it returns is
+one the Store will accept back**, and for each file it passed over it
+emits a `StoreNotice` naming that file and why (INV-12). A
+hand-created `My_Entry.txt` is therefore not listed, and the writer is
+told it was not.
+
+**The same rule holds for `list_html` and `list_templates`**, whose
+own `path_for` calls share the name rule, and **not for
+`list_photographs`**, whose rule is that a name is a single path
+component — which a directory listing cannot breach.
+
+Neither obvious answer was taken. Filtering in silence loses the
+writer's file from the app's view while it sits in his folder, and S3
+invites him into that folder. Raising lets one hand-dropped file abort
+a whole build, which is what PRESS-0008's list-then-read loop is.
+**A caller may hand any listed name straight back to the Store**, which
+is what makes that loop safe to write; whether the file is still there
+is a different question, and `read` answers it with `EntryNotFound`.
 
 **The header's `Slug` is authoritative, and a file whose name does not
 match it is a parse failure** naming both. The two cannot then drift:
@@ -598,7 +632,11 @@ is true of a template is PRESS-0006's (§9).
 
 - **INV-11** — after `write` returns, the entry file is readable and
   writable by its owner and by nobody else, on a filesystem that
-  enforces POSIX modes.
+  enforces POSIX modes. **Where the mount granted a wider mode, `write`
+  emits a `StoreNotice` naming the file and completes.** His own words
+  are not a secret, and refusing would stop him saving on a memory
+  stick, which is the worse outcome; Credentials still refuses
+  (PRESS-0042), because what it holds is one.
   *Test:* `tests/test_store.py::test_a_written_entry_is_owner_only` —
   write into a fresh folder and assert the mode is exactly `0600`; then
   widen the file to `0644`, write again, and assert it is `0600` again.
@@ -615,10 +653,57 @@ is true of a template is PRESS-0006's (§9).
   cannot see a mount, so run from exFAT or CIFS it would report a breach
   of a rule this document does not make there. Windows fails that same
   check, so it needs no clause of its own.
+  **The notice half is tested separately and never skips.** The grant is
+  read off the descriptor, so a test that makes that read report a wider
+  mode exercises the branch on any filesystem. Without one, the half of
+  this rule that fires on a non-enforcing mount would be unfalsifiable
+  on exactly the machines that enforce modes correctly — which is every
+  machine the suite normally runs on.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
-  chose. **Windows is outside this rule:** §4.5 gives the outcome there,
-  and PRESS-0022's Windows run is the only place it could be observed.
+  chose; or refuses the write on a wider grant, which is the branch
+  Credentials takes and this one does not. **Windows is outside the
+  owner-only half:** §4.5 gives the outcome there, and PRESS-0022's
+  Windows run is the only place it could be observed.
+
+- **INV-12** — `list_slugs`, `list_html` and `list_templates` return
+  only names their own `path_for` accepts, and emit one `StoreNotice`
+  per file passed over, naming it.
+  *Test:* `tests/test_store.py::test_a_listing_returns_only_usable_names`
+  — put a hand-created `My_Entry.txt` beside a legal file in each of the
+  three folders, assert the listing carries the legal name and not the
+  other, and assert a notice naming the skipped file was emitted.
+  **Both halves bite:** asserting the filter alone passes against an
+  implementation that drops the file in silence, which is the answer
+  this rule rejects; asserting the notice alone passes against one that
+  warns and hands back the unusable name anyway.
+  *Breaks when:* the filter is written into `_slugs_in`, which `exists`
+  shares — `exists` would then warn on a question that is not about
+  listing, and PRESS-0067's rule that the two cannot disagree is why
+  they are on one helper. The filter belongs in the listing calls.
+  **`list_photographs` is outside this rule**, and asserting it would be
+  wrong: its name rule is that a name is a single path component, which
+  a directory listing cannot return a breach of.
+
+- **INV-13** — a move that leaves the destination folder holding a
+  second file naming one slug emits a `StoreNotice` naming both, and
+  moves anyway.
+  *Test:* `tests/test_store.py::test_a_stranded_file_is_reported` —
+  write a draft, create `published/<slug>.TXT` by hand, call `publish`,
+  then assert it returned, that both files are present, and that a
+  notice naming the stranded one was emitted.
+  **Asserting the notice alone is not enough:** it passes against an
+  implementation that warns and then raises `SlugInUse`, which is the
+  branch §4.3 rejects. The return is what pins that the publish went
+  through.
+  *Breaks when:* the check is written against `path_for`'s exact
+  composition, which is what cannot see the case difference to begin
+  with. The folded view is what finds it, and `_slugs_in` already
+  computes one.
+  **Reachable on Linux only** and never produced by the Store: it needs
+  a file the writer renamed himself. On Windows the two names are one
+  file and INV-10 governs, so the test skips where one folder cannot
+  hold both.
 
 ## 6. Failure modes
 
@@ -670,6 +755,21 @@ is true of a template is PRESS-0006's (§9).
   Nothing is moved and neither file is opened. §3 decision 5's
   uniqueness rule is what this protects; §4.3 owns HOW, and the answer
   is that the move itself refuses as well as the check preceding it.
+- **A file in a listed folder whose name the Store will not accept**,
+  which a hand-created or hand-renamed file produces. The listing passes
+  it over and emits a `StoreNotice` naming it (INV-12). Nothing is
+  raised and nothing is rewritten; the repair is the writer's, and it is
+  a rename.
+- **A move that would leave two files naming one slug**, reachable on
+  Linux where a hand-renamed `.TXT` sits at the destination. The move
+  goes ahead and emits a `StoreNotice` naming both (INV-13).
+  `SlugInUse` is for a destination `path_for` can see; this is the one
+  it cannot.
+- **A filesystem that granted a wider mode than `mkstemp` asked for** —
+  an exFAT, NTFS, CIFS or FUSE mount the writer chose. `write`
+  completes and emits a `StoreNotice` naming the file (INV-11). Distinct
+  from the no-hard-links case above, which costs him the two moves;
+  this costs him nothing but a privacy the mount cannot give.
 
 ## 7. Tests
 
@@ -797,7 +897,9 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only` |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported` for the notice half, which never skips |
+| INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
+| INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent AND wherever decision 4's sibling generator is unreachable (§7), so neither a green CI run nor a green push says anything about it** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
 | That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |
@@ -826,7 +928,13 @@ imports.
 - `CHANGELOG.md` — an entry when it ships.
 - `docs/specs/PRESS-0001-settings.md` — §4.4 and INV-8 carry the same
   write-permission rule as §4.5 and INV-11 here, and move with them.
-  Neither document may state it alone.
+  Neither document may state it alone. **INV-11's wider-grant notice is
+  part of that rule**, so PRESS-0001 gains its own and is amended in the
+  same batch (PRESS-0097).
+- **PRESS-0011 owns what a `StoreNotice` looks like to the writer.**
+  §4.1 fixes the category and the moment one is emitted; nothing here
+  decides how the Face renders one, and no notice's wording is a
+  contract.
 - PRESS-0006's writers share this module's atomic write, so §4.5's
   permission rule reaches their files too; PRESS-0006 is where their
   side is recorded. ADR-0001 is implemented, not amended.

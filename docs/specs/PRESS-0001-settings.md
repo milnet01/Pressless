@@ -1,6 +1,11 @@
 # PRESS-0001 — Settings: what is true of this machine, and nothing else
 
 **Status:** accepted (2026-09-04). A third run of two cold-eyes loops, both folded in; the tail is empty. A violent cap — a majority of the last loop’s findings landed on text the run itself wrote, so the review ends here and the document routes to implementation rather than to a further gate. What the run mostly did was audit: about one finding in ten falls inside the change that armed it.
+**Amended 2026-09-07, before implementation**, on a decision the user
+took: where the filesystem granted a wider mode than `mkstemp` asked
+for, `save()` says so once and completes rather than refusing. That
+changes direction, so the gate re-armed. PRESS-0005 §11 requires the
+two documents to move together, and INV-11 there carries the mirror.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -109,7 +114,17 @@ def path_for(folder: Path) -> Path: ...      # folder / "settings.json"
 
 class NotSetUp(Exception): ...               # no file yet -- run setup
 class SettingsError(Exception): ...          # a file we will not act on
+class SettingsNotice(UserWarning): ...       # said, not raised -- INV-8
 ```
+
+**One rule needs Settings to tell the caller something without
+failing, so it raises nothing and warns instead** — a mount that would
+not grant the file owner-only (INV-8). `warnings` is the mechanism
+because it needs no new return shape and repeats nothing: the default
+filter shows a given message once. **The category is its own rather
+than shared with the Store's `StoreNotice`**, because Settings is
+blocker for the Store and may not import from it; the Face captures
+both, which is PRESS-0011's business and not this document's.
 
 `folder` is Pressless's own folder, supplied by the caller. Settings does
 not create it, search for it, or fall back to another one.
@@ -368,7 +383,11 @@ which is the writer's choice of somewhere else and is stored absolute.
 
 - **INV-8** — after `save()` returns, `path_for(folder)` is readable and
   writable by its owner and by nobody else, on a filesystem that enforces
-  POSIX modes.
+  POSIX modes. **Where the mount granted a wider mode, `save()` emits a
+  `SettingsNotice` naming the file and completes.** Settings holds no
+  secret — §4.5 keeps them out — so refusing would stop the writer using
+  Pressless from a memory stick to protect nothing; Credentials does
+  refuse (PRESS-0042), because what it holds is one.
   *Test:* `tests/test_settings.py::test_a_saved_file_is_owner_only` — save
   and assert the mode is exactly `0600`; then widen the file to `0644`, save
   again, and assert it is `0600` again. **Both halves bite, for different
@@ -384,11 +403,19 @@ which is the writer's choice of somewhere else and is stored absolute.
   so run from exFAT or CIFS it would report a breach of a rule this document
   does not make there. Windows fails that same check, so it needs no clause of
   its own.
+  **The notice half is tested separately and never skips.** The grant is
+  read off the descriptor, so a test that makes that read report a wider
+  mode exercises the branch on any filesystem. Without one, the half of
+  this rule that fires on a non-enforcing mount would be unfalsifiable on
+  exactly the machines that enforce modes correctly — which is every
+  machine the suite normally runs on.
   *Breaks when:* an implementer opens the target directly, or carries the
-  old file's mode onto the new one to preserve what the writer chose.
-  **Windows is outside this rule:** §4.4 gives the outcome there, and §10
-  records that PRESS-0022's Windows run is the only place it could be
-  observed, with no check scheduled today.
+  old file's mode onto the new one to preserve what the writer chose; or
+  refuses the save on a wider grant, which is the branch Credentials
+  takes and this one does not.
+  **Windows is outside the owner-only half:** §4.4 gives the outcome
+  there, and §10 records that PRESS-0022's Windows run is the only place
+  it could be observed, with no check scheduled today.
 
 ## 6. Failure modes
 
@@ -492,7 +519,7 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
-| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only` |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported` for the notice half, which never skips |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
@@ -518,7 +545,12 @@ loading or saving does anything.
 - `CHANGELOG.md` — an entry when it ships.
 - `docs/specs/PRESS-0005-store.md` — §4.5 and INV-11 carry the same
   write-permission rule as §4.4 and INV-8 here, and move with them. Neither
-  document may state it alone.
+  document may state it alone. **INV-8's wider-grant notice is part of
+  that rule** and INV-11 carries the mirror; both were amended together
+  (PRESS-0097).
+- **PRESS-0011 owns what a `SettingsNotice` looks like to the writer.**
+  §4.1 fixes the category and the moment one is emitted; no notice's
+  wording is a contract.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
