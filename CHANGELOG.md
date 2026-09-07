@@ -141,6 +141,14 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **The dashboard's cache keeps one answer per time span** (PRESS-0101)
+  Google is asked how the site is being read, and the answer is kept for
+  an hour so the site's hourly allowance is not spent on every click.
+  That store held one answer, so offering a second time span would have
+  made each one evict the other and every click ask again. It now holds
+  one answer per span. Existing cache files are ignored and refetched
+  once; nothing needs deleting by hand.
+
 - **A credentials file whose version is missing or the wrong type is refused** (PRESS-0100)
   The check accepted `true` and `1.0` as version 1, because Python treats
   them as equal, and said nothing about a file carrying no version at all.

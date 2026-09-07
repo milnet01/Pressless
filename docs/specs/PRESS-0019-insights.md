@@ -1,6 +1,8 @@
 # PRESS-0019 — Insights: asking Google how the site is being read
 
-**Status:** accepted (2026-09-06). Written after the code shipped, which is
+**Status:** accepted (2026-09-06); §3 decision 1 built 2026-09-07
+(PRESS-0101), so §2's single-slot cache is a record of what was.
+Written after the code shipped, which is
 not the direction a spec usually runs; §1 says why this one does, and which of
 it is a record and which is a contract for work still to come. Gated to its
 cap on the day it was written — a violent cap, so it routes to implementation
@@ -64,7 +66,8 @@ does not reopen them.
 
 1. **The cache holds one report per window.** Decided 2026-09-06. The
    alternative — one slot, refetching whenever the window changes — is what
-   ships, and it disables the quota guard as soon as a second window exists.
+   shipped until PRESS-0101, and it disables the quota guard as soon as a
+   second window exists.
    This changes the cache file's shape, so it takes a `CACHE_VERSION` bump.
 2. **The window ends at today.** Decided 2026-09-04 (PRESS-0070 item 6): the
    window carries one more calendar day than `days` and its last day is
@@ -327,7 +330,7 @@ which settled something the contract had left open.
   — fetch two windows, then assert the first still answers from the cache with
   no request made.
   *Breaks when:* the file holds one report rather than one per window, which
-  is what ships today: the guard then protects nothing from the moment a
+  is what shipped until PRESS-0101: the guard then protects nothing from the moment a
   second window is offered, and the failure is invisible because each answer
   is correct.
 
@@ -477,8 +480,8 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-14 | `tests/test_insights.py::test_corrupt_cache_is_refetched_over` |
 | INV-15 | `tests/test_insights.py::test_fetched_at_is_when_the_reply_was_fetched` |
 | INV-16 | `tests/test_insights.py::test_http_status_maps_to_the_typed_failure` |
-| INV-17 | `tests/test_insights.py::test_one_windows_reply_does_not_evict_another` — not yet written; the cache change is what it gates |
-| INV-18 | `tests/test_insights.py::test_another_versions_cache_reads_as_absent` — not yet written; the behaviour it locks already ships |
+| INV-17 | `tests/test_insights.py::test_one_windows_reply_does_not_evict_another` |
+| INV-18 | `tests/test_insights.py::test_another_versions_cache_reads_as_absent` |
 | INV-19 | `tests/test_insights.py::test_a_cross_origin_redirect_drops_the_token` + `::test_a_same_origin_redirect_keeps_the_token` + `::test_a_same_host_change_of_origin_drops_the_token` + `::test_the_client_installs_the_redirect_handler` |
 | INV-20 | `tests/test_insights.py::test_every_request_carries_a_timeout` |
 | INV-21 | `tests/test_insights.py::test_a_broken_reply_reaches_the_caller_as_oserror` |

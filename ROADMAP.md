@@ -4714,7 +4714,7 @@
   Kind: security.
   Source: review-contract 2026-09-06 PRESS-0058 gate loop 1.
 
-- 📋 [PRESS-0101] **The Insights cache keeps one report per time span, so offering a second span stops disabling the quota guard.**
+- ✅ [PRESS-0101] **The Insights cache keeps one report per time span, so offering a second span stops disabling the quota guard.**
   The code side of PRESS-0019 §4.2, which is now specified and gated.
   PRESS-0063 wrote the contract and explicitly was not a code fix; this is.
 
@@ -4741,9 +4741,40 @@
   docs/design.md § State says the last reply is kept, singular -- true
   today, false once this ships, so that document needs widening with its
   own gate.
+  Resolved (2026-09-07). The cache file holds a `windows` object keyed by
+  the day count; CACHE_VERSION is 2. `_windows()` is the one place a file
+  is read, so a foreign version is refused before any field is read and
+  `_store` merges into what is already there rather than replacing it.
+
+  INV-17's test was seen failing first against the shipped single-slot
+  cache, on the eviction assertion itself. INV-18's passed on the run
+  that introduced it, as PRESS-0019 § 7 says it must. Three mutations
+  probed, one per route the two invariants' own *Breaks when* clauses
+  name, plus INV-10's, and all three were killed. 197 pass with the
+  archive key; ./scripts/local-ci.sh green.
+
+  CARRIED ON, not done here: PRESS-0102 files the docs/design.md § State
+  widening, which needs its own gate. PRESS-0020 must still name the
+  fixed set of spans it offers -- nothing in this module can bound the
+  file's growth (§ 4.2, § 10's "nothing checks this" row).
   **Layman:** Today the dashboard's cache holds one answer; offer a second time span and every click asks Google again.
   Kind: fix.
   Source: PRESS-0063 / PRESS-0056 item 4, user decision 2026-09-06.
+
+- 📋 [PRESS-0102] **design.md § State says the last Insights reply is kept, singular, and the cache now keeps one per time span.**
+  Carried out of PRESS-0019's gate and out of PRESS-0101's body, which
+  is where it would otherwise have been lost once that item closed.
+
+  PRESS-0019 § 11 names it: § State is written in the singular, which was
+  true while the cache held one report. PRESS-0101 shipped the
+  windows-keyed cache on 2026-09-07, so it is false now.
+
+  design.md is a contract document and this changes direction for a
+  reader, so the widening runs review-contract --genre adr rather than
+  landing as a plain edit.
+  **Layman:** A design document still describes the old one-answer cache; it needs widening to match what now ships.
+  Kind: doc-fix.
+  Source: PRESS-0101 / PRESS-0019 § 11, in-session 2026-09-07.
 
 ## Milestones
 

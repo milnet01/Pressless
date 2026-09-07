@@ -67,6 +67,12 @@ from pressless.settings import Credentials, Settings
 # tidy this into an import.
 CACHE_FILE_NAME = "insights.json"
 
+# A version no build writes, so it stays foreign across every bump. Held here
+# rather than derived from the module's own CACHE_VERSION, for the reason
+# above: sharing that value would have INV-18 compare the module against
+# itself.
+FOREIGN_CACHE_VERSION = -1
+
 # A value no real access token would be. INV-7 asserts it reaches no
 # failure's str() or repr().
 SENTINEL = "sentinel-token-must-not-appear-in-any-message"
@@ -930,6 +936,99 @@ def test_http_status_maps_to_the_typed_failure(tmp_path):
     assert not isinstance(caught.value, (Refused, RateLimited, Unreachable, NotConfigured)), (
         f"500 raised {type(caught.value).__name__}, which names a cause "
         f"Google did not give; an unrecognised status is a plain InsightsError"
+    )
+
+
+# -------------------------------------------------------------- INV-17 ----
+
+
+def test_one_windows_reply_does_not_evict_another(tmp_path):
+    """INV-17: storing a report for one window leaves every other window's
+    entry in the cache intact.
+
+    Two windows are fetched, then the first is asked for again: it must
+    answer from the cache with no request made.
+
+    Breaks when the file holds one report rather than one per window. The
+    quota guard then protects nothing from the moment a second window is
+    offered, and the failure is invisible because every answer is correct --
+    only the request count moves, and Google meters this API per property
+    per hour.
+    """
+    _seed(tmp_path, _Transport(clock=NOW), days=28, max_age_seconds=3600.0)
+    _seed(
+        tmp_path,
+        _Transport(
+            default=_ok(_google(rows=(("ZA", 30),), total=44)), clock=NOW + 10.0
+        ),
+        days=7,
+        max_age_seconds=3600.0,
+    )
+
+    again = _Transport(
+        default=_ok(_google(rows=(("US", 1),), total=1)), clock=NOW + 20.0
+    )
+    report = read(
+        _settings(),
+        "a-token",
+        tmp_path,
+        days=28,
+        max_age_seconds=3600.0,
+        client=again,
+    )
+
+    assert not again.requests, (
+        "the 7-day reply evicted the 28-day one: the 28-day window was "
+        "refetched though its cached reply was still fresh"
+    )
+    assert report.people == TOTAL, (
+        f"expected the cached 28-day people {TOTAL}; got {report.people}"
+    )
+    assert report.days == 28, (
+        f"expected the report to name its window as 28 days; got "
+        f"{report.days!r}"
+    )
+
+
+# -------------------------------------------------------------- INV-18 ----
+
+
+def test_another_versions_cache_reads_as_absent(tmp_path):
+    """INV-18: a cache file carrying a version this build does not write
+    reads as absent, and nothing is migrated.
+
+    The file is seeded through the module, so its shape is whatever the
+    module writes and only the version differs. A hand-written file would
+    encode a guess about the rest of that shape, and could then pass because
+    the parse failed rather than because the version was refused.
+
+    Breaks when a foreign file is read field by field, and a shape this
+    build does not know is interpreted as though it did.
+    """
+    _seed(tmp_path, _Transport(clock=NOW), max_age_seconds=3600.0)
+
+    target = tmp_path / CACHE_FILE_NAME
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["version"] = FOREIGN_CACHE_VERSION
+    target.write_text(json.dumps(held), encoding="utf-8")
+
+    transport = _Transport(
+        default=_ok(_google(rows=(("ZA", 30),), total=44)), clock=NOW + 10.0
+    )
+    report = read(
+        _settings(),
+        "a-token",
+        tmp_path,
+        max_age_seconds=3600.0,
+        client=transport,
+    )
+
+    assert transport.requests, (
+        "a cache written for another version answered; no request was made"
+    )
+    assert report.people == 44, (
+        f"expected the freshly fetched people 44; got {report.people} "
+        f"({TOTAL} is the figure the foreign-version file held)"
     )
 
 

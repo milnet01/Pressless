@@ -10,8 +10,9 @@ setup's work, not this module's.
 It answers one question — how many people read the site over the last so many
 days, and from which countries — and it is the one part of Pressless allowed a
 cache (ADR-0005, docs/design.md § State), because Google limits how often it
-will answer. The cache is one file, it holds the last reply with the time it
-was fetched, and deleting it costs nothing but a fresh fetch.
+will answer. The cache is one file, holding the last reply for each window
+asked for with the time it was fetched, and deleting it costs nothing but a
+fresh fetch.
 
 Nothing about writing or publishing may depend on any of this (docs/design.md
 rule 8). A writer who declines the Google step loses the dashboard and nothing
@@ -43,7 +44,11 @@ API = "https://analyticsdata.googleapis.com/v1beta"
 # The cache is one file, in Pressless's own folder — never the site folder,
 # which is published in full (docs/design.md § Where everything sits on disk).
 CACHE_NAME = "insights.json"
-CACHE_VERSION = 1
+# A file of another version reads as absent and nothing migrates: the cache is a
+# copy of something Google can be asked for again, so a bump costs one request
+# per window and no migration code that must then be kept correct forever
+# (PRESS-0019 § 4.2).
+CACHE_VERSION = 2
 
 # How much of Google's own error body to carry on a failure. Enough for the
 # field name its 400 names; short enough that a long reply cannot become the
@@ -421,55 +426,75 @@ def _parse(data: bytes) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _cached(target: Path, days: int) -> Report | None:
-    """The last reply for this window, or None.
+def _windows(target: Path) -> dict:
+    """Every window the cache holds, or an empty mapping.
 
-    Anything unreadable, unparsable or written for another window reads as
-    None: the cache is a copy of something Google can be asked for again, so a
-    half-written one costs a request and nothing else (INV-14).
+    Anything unreadable, unparsable or written for another version reads as
+    empty: the cache is a copy of something Google can be asked for again, so a
+    half-written one costs a request and nothing else (INV-14, INV-18).
     """
     try:
         data = target.read_bytes()
     except OSError:
-        return None
+        return {}
     try:
         held = json.loads(data)
     except ValueError:
-        return None
+        return {}
     if not isinstance(held, dict) or held.get("version") != CACHE_VERSION:
-        return None
-    if held.get("days") != days:
-        # A 28-day cache must not answer a 7-day question, or the writer reads
-        # one window's numbers under the other's heading.
+        # Refused before any field is read, so a shape this build does not know
+        # is never interpreted as though it did (INV-18).
+        return {}
+    windows = held.get("windows")
+    return windows if isinstance(windows, dict) else {}
+
+
+def _cached(target: Path, days: int) -> Report | None:
+    """The last reply for this window, or None.
+
+    The window is the key, so a 28-day reply neither answers a 7-day question
+    -- which would put one window's numbers under the other's heading -- nor
+    evicts it (INV-10, INV-17). JSON has no kind of key but a string.
+    """
+    entry = _windows(target).get(str(days))
+    if not isinstance(entry, dict):
         return None
     try:
         countries = tuple(
-            Country(str(entry["code"]), int(entry["people"]))
-            for entry in held["countries"]
+            Country(str(country["code"]), int(country["people"]))
+            for country in entry["countries"]
         )
-        return Report(int(held["people"]), countries, int(held["days"]),
-                      float(held["fetched_at"]), False)
+        return Report(int(entry["people"]), countries, days,
+                      float(entry["fetched_at"]), False)
     except (KeyError, TypeError, ValueError):
         return None
 
 
 def _store(target: Path, report: Report) -> None:
-    """Replace the cache with this reply, and leave no temporary behind.
+    """Add this reply to the cache, and leave no temporary behind.
+
+    Only this report's own window is replaced; every other window's entry
+    stays (INV-17). One slot would disable the quota guard the moment a second
+    window is offered, and invisibly: every answer stays correct and only the
+    request count moves.
 
     The same write settings.py makes: a temporary in the same directory, then
     a rename over the target, so a reader never sees a half-written file and
     no temporary is left behind (INV-24). A cache that cannot be written is not
     worth failing a fetch over — the numbers in hand are still good.
     """
-    data = {
-        "version": CACHE_VERSION,
-        "days": report.days,
+    windows = _windows(target)
+    windows[str(report.days)] = {
         "fetched_at": report.fetched_at,
         "people": report.people,
         "countries": [
             {"code": country.code, "people": country.people}
             for country in report.countries
         ],
+    }
+    data = {
+        "version": CACHE_VERSION,
+        "windows": windows,
     }
     try:
         handle, temporary = tempfile.mkstemp(
