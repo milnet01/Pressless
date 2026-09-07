@@ -4499,7 +4499,7 @@
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
 
-- 🚧 [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
+- ✅ [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
   MEASURED 2026-09-04, on Linux:
 
     drafts/a-slug.txt written by the Store
@@ -4544,6 +4544,12 @@
   file — refusing would let one hand-renamed file block a publish.
   Contract settled 2026-09-07: PRESS-0005 INV-13, gated to the spec cap
   (§12 rows 10 and 11). Code next.
+  Resolved (2026-09-07). PRESS-0005 INV-13: a move that would leave two
+  files naming one slug names both and moves anyway. The comparison is
+  case-folded over the destination folder's file names — `_slugs_in`
+  cannot do it, since it returns slugs and the notice has to name the
+  file. Test seen red first; two mutations killed (exact comparison, and
+  warn-then-refuse).
   **Layman:** Publishing an entry can quietly leave two copies of it, and the writer's own copy is the one that gets stranded.
   Kind: fix.
   Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
@@ -4646,7 +4652,7 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
 
-- 🚧 [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
+- ✅ [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
   PRESS-0042 settled this once, for the fallback credentials file:
   mkstemp ASKS for 0600, a mount that does not enforce POSIX modes
   ignores the request, chmod returns EPERM there, and os.replace carries
@@ -4684,11 +4690,23 @@
   the skip guard's exact `0600`; and the Windows suppression keys on
   `os.name`, because the grant is identical there and INV-7 forbids
   looking anywhere else. Code next.
+  Resolved (2026-09-07) in both modules. PRESS-0005 INV-11 and PRESS-0001
+  INV-8: the granted mode is read off the descriptor as Credentials reads
+  it, and where any group or other bit is set the write completes and
+  says so.
+
+  Two things the decision did not settle and the work did. The predicate
+  is `granted & 0o077`, not the skip guard's exact `0600` — they differ on
+  `0700`, and a `0644` fixture cannot tell them apart, which a mutation
+  probe proved by surviving. And Windows is suppressed through an
+  `_is_windows()` helper reading `sys.platform` at call time: `os.name` is
+  unpatchable in a test because `pathlib` branches on it. Eight mutations
+  killed across the two modules.
   **Layman:** On a memory stick or a shared drive the app cannot make its files private, and only the part holding your password notices.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
 
-- 🚧 [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
+- ✅ [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
   Measured 2026-09-06: with published/My_Entry.txt present,
   list_slugs returns 'My_Entry' and path_for on that same value raises
   StoreError. _slugs_in filters only the empty-slug case, and its own
@@ -4723,6 +4741,22 @@
   `list_templates` — verified they share the defect, and that
   `list_photographs` does not. PRESS-0103 carries PRESS-0006's half.
   Code next.
+  Resolved (2026-09-07). PRESS-0005 INV-12, over three listings rather
+  than the one this bullet named: `list_html` and `list_templates` shared
+  the defect and `list_photographs` does not, all three verified rather
+  than assumed.
+
+  The filter judges the folder's RAW names and returns one name per slug.
+  It sits in each listing call — never in `_slugs_in`, which `exists`
+  shares, and never in `_list_names`, whose third caller is the excluded
+  `list_photographs`. Each notice carries the file NAME, which the first
+  implementation lost: a file called exactly `.txt` strips to the empty
+  string and named the folder.
+
+  Five mutations killed. One survived first: the assertion searched for
+  `.txt`, which occurs inside `My_Entry.txt`'s path, so it passed whether
+  or not the empty-slug file was named at all. PRESS-0103 carries
+  PRESS-0006's half.
   **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
