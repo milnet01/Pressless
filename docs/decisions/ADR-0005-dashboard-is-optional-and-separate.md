@@ -15,10 +15,10 @@ a service collects, Pressless displays.
 
 ## Decision
 
-Insights is its own part. It may read Settings and talk to Google, and
-nothing else. Nothing in writing or publishing may call it or depend on
-it, and its setup is optional: he can decline the Google step and lose
-the dashboard and nothing besides.
+Insights is its own part. It may read Settings, talk to Google, and keep
+one cache file, and nothing else. Nothing in writing or publishing may
+call it or depend on it, and its setup is optional: he can decline the
+Google step and lose the dashboard and nothing besides.
 
 ## Consequences
 
