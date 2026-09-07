@@ -249,9 +249,12 @@ file, so the boundary is stated here rather than discovered.
 **And the rule is what the filesystem GRANTS, not what was asked.** `mkstemp`
 requests the mode; a mount that does not enforce POSIX modes ignores the
 request, and `os.replace` then carries the permissive mode onto the target.
-Credentials checks that grant off the descriptor before writing a secret
-(PRESS-0042); Settings does not check, so on such a mount this rule does not
-hold and nothing here pretends otherwise.
+`save()` reads that grant off the descriptor, as Credentials does before
+writing a secret (PRESS-0042), and where it is wider **on a system whose own
+filesystem enforces modes** emits a `SettingsNotice` and completes. Only the
+refusal is Credentials', and this is not it — Settings holds no secret, and
+refusing would stop the writer saving from a memory stick to protect nothing.
+**Windows is outside the notice entirely**, and INV-8 says why.
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
@@ -415,7 +418,11 @@ which is the writer's choice of somewhere else and is stored absolute.
   takes and this one does not.
   **Windows is outside the owner-only half:** §4.4 gives the outcome
   there, and §10 records that PRESS-0022's Windows run is the only place
-  it could be observed, with no check scheduled today.
+  it could be observed, with no check scheduled today. **It is outside
+  the notice half too**, and this is the reason: `mkstemp` never grants
+  `0600` there, so a notice keyed on the grant would fire on every save
+  and carry no information. The notice is for a mount that cannot do
+  what the system around it can.
 
 ## 6. Failure modes
 
@@ -447,6 +454,12 @@ which is the writer's choice of somewhere else and is stored absolute.
   §4.4's mechanism decides this, the folder's permissions are what bite on
   Linux, and a settings file copied read-only from another machine is replaced
   rather than refused.
+- **The filesystem granted a wider mode than `mkstemp` asked for** — an
+  exFAT, NTFS, CIFS or FUSE mount the writer chose, on a system whose own
+  filesystem does enforce modes. **Not Windows, where none does and INV-8
+  says why.** `save()` completes and emits a `SettingsNotice` naming the
+  file. Distinct from the row above, which is about a write that fails:
+  this one succeeds and costs him only a privacy the mount cannot give.
 - **Two Pressless windows save at once.** The last write wins, whole.
   §4.4's replace is what makes "whole" true; nothing here makes it "both".
 
