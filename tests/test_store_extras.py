@@ -790,7 +790,7 @@ _PRESS_0005_SURFACE = {
     "Entry", "RECOGNISED_FIELDS", "LIST_SEPARATOR", "FILE_SUFFIX",
     "PUBLISHED_FOLDER", "DRAFTS_FOLDER",
     "path_for", "exists", "list_slugs", "read", "write", "publish", "unpublish",
-    "StoreError", "EntryNotFound", "SlugInUse",
+    "StoreError", "EntryNotFound", "SlugInUse", "StoreNotice",
 }
 _PRESS_0006_SURFACE = {
     "Comment", "PAGES_FOLDER", "FURNITURE_FOLDER", "TEMPLATES_FOLDER",

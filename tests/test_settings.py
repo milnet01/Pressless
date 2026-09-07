@@ -12,6 +12,7 @@ import inspect
 import io
 import json
 import os
+import warnings
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,7 @@ from pressless.settings import (
     NotSetUp,
     Settings,
     SettingsError,
+    SettingsNotice,
     load,
     path_for,
     save,
@@ -847,3 +849,114 @@ def test_the_file_is_read_and_written_as_utf8(tmp_path, monkeypatch):
         f"{[record.encoding for record in unnamed]!r}; §4.2 requires UTF-8 so "
         f"the file does not depend on the machine's locale"
     )
+
+
+# --- INV-8's notice half (PRESS-0097) --------------------------------------
+
+
+def _wide_grant(monkeypatch, mode=0o644):
+    """Make the descriptor read report a mount that granted more than 0600.
+
+    INV-8's notice half fires on what the filesystem GRANTED, and every
+    filesystem the suite runs on grants 0600 -- which is why the owner-only
+    test skips on the capability. Patching the read is what makes this branch
+    observable here (§5 INV-8).
+
+    os.fdopen and os.replace reach fstat through C rather than through this
+    attribute, so patching it touches the mode read and nothing else.
+    """
+    class _Reported:
+        st_mode = 0o100000 | mode
+
+    monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+
+
+def test_a_wider_grant_is_reported(tmp_path, monkeypatch):
+    """INV-8: where the mount granted a mode wider than owner-only, save()
+    says so and completes.
+
+    Never skips. The owner-only half skips on the capability, and that
+    capability is exactly the case this half fires in -- so without a patched
+    read the clause would be unfalsifiable on every machine the suite runs on.
+
+    It completes: Settings holds no secret (§4.5), so refusing would stop the
+    writer saving from a memory stick to protect nothing. Credentials refuses
+    on the same reading, because what it holds is one."""
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+    _wide_grant(monkeypatch)
+
+    with pytest.warns(SettingsNotice) as caught:
+        save(tmp_path, settings)
+
+    target = path_for(tmp_path)
+    assert target.is_file(), "the save did not complete"
+    assert load(tmp_path) == settings, "the settings did not survive the save"
+    assert str(target) in " ".join(str(each.message) for each in caught), (
+        "the notice did not name the file"
+    )
+
+
+def test_an_ordinary_save_emits_no_notice(tmp_path):
+    """INV-8: an ordinary save on a mode-enforcing mount says nothing.
+
+    Not optional. Without it a condition that is inverted, or keyed on
+    anything but the grant, warns on every save and the suite stays green."""
+    _require_posix_modes(tmp_path)
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        save(tmp_path, settings)
+
+    notices = [each for each in caught if issubclass(each.category, SettingsNotice)]
+    assert not notices, f"an ordinary save said {[str(n.message) for n in notices]}"
+
+
+def test_a_grant_wider_only_for_the_owner_is_not_reported(tmp_path, monkeypatch):
+    """INV-8: the predicate is any GROUP or OTHER bit, not a difference from
+    0600.
+
+    The refuting case for the predicate, and the only one that separates the
+    two candidates: on 0700 `granted & 0o077` is nothing and `granted != 0o600`
+    is true, so a test using 0644 alone passes against either. §4.4 pins
+    Credentials' `& 0o077`; `tests/_mode_support.py`'s exact 0600 asks the
+    different question of whether the mount enforces modes at all."""
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+    _wide_grant(monkeypatch, mode=0o700)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        save(tmp_path, settings)
+
+    notices = [each for each in caught if issubclass(each.category, SettingsNotice)]
+    assert not notices, (
+        f"a grant of 0700 is owner-only and said {[str(n.message) for n in notices]}"
+    )
+
+
+def test_no_notice_where_the_platform_is_windows(tmp_path, monkeypatch):
+    """INV-8: the notice is suppressed where the platform is Windows.
+
+    §4.4 makes the platform the discriminator, because mkstemp never grants
+    0600 there and the grant is therefore identical in the case that must
+    notice and the case that must not. The branch is observable here even
+    though the Windows behaviour it exists for is not.
+
+    The platform helper is patched rather than os.name: pathlib branches on
+    os.name to choose a path class, so setting it strands every Path the save
+    is about to make."""
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+    _wide_grant(monkeypatch)
+    monkeypatch.setattr(settings_module, "_is_windows", lambda: True)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        save(tmp_path, settings)
+
+    notices = [each for each in caught if issubclass(each.category, SettingsNotice)]
+    assert not notices, f"a wide grant on Windows said {[str(n.message) for n in notices]}"
+    assert path_for(tmp_path).is_file(), "the save did not complete"

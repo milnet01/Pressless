@@ -276,9 +276,12 @@ saving from a memory stick to protect nothing.
 **Windows is suppressed by a PLATFORM test in the code, not by the grant.**
 There `mkstemp` never grants `0600`, so the grant is identical in the case
 that must notice and the case that must not, and no other signal is available
-— INV-7 forbids opening anything outside `folder`. So the discriminator is
-`os.name`, named here because PRESS-0005 §4.5 must use the same one and §11
-requires the two to agree. **The capability rule governs the owner-only test,
+— INV-7 forbids opening anything outside `folder`. **The discriminator is the
+platform, read at call time through a `_is_windows()` helper**, as
+`credentials.py` already does and for the reason its docstring gives — so a
+test can patch it. Measured while implementing: `os.name` cannot be patched in
+a test without breaking `pathlib`, which branches on it to choose a path
+class. PRESS-0005 §4.5 names the same seam and §11 requires the two to agree. **The capability rule governs the owner-only test,
 never this suppression.**
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
@@ -444,14 +447,17 @@ which is the writer's choice of somewhere else and is stored absolute.
   this rule that fires on a non-enforcing mount would be unfalsifiable on
   exactly the machines that enforce modes correctly — which is every
   machine the suite normally runs on.
-  **Three rows, and none of them is optional.** One patches the grant
+  **Four rows, and none of them is optional.** One patches the grant
   wider and asserts the notice. One saves ordinarily on an enforcing mount
   and asserts NO notice — without it a condition that is inverted, or keyed
-  on anything but the grant, warns on every save and stays green. And one
-  patches `os.name` to `"nt"` with the grant wider and asserts no notice,
-  which is §4.4's Windows suppression: the discriminator is a value a test
-  can set, so that BRANCH is observable here even though the Windows
-  behaviour it exists for is not.
+  on anything but the grant, warns on every save and stays green. One
+  patches the platform helper to report Windows with the grant wider and
+  asserts no notice, which is §4.4's suppression: the discriminator is read
+  at call time, so that BRANCH is observable here even though the Windows
+  behaviour it exists for is not. **And one patches the grant to `0700` and
+  asserts no notice** — the only case that separates the two candidate
+  predicates, since a `0644` fixture passes against either. A mutation probe
+  is what found that: with a `0644` case alone, `granted != 0o600` survived.
   *Breaks when:* an implementer opens the target directly, or carries the
   old file's mode onto the new one to preserve what the writer chose; or
   refuses the save on a wider grant, which is the branch Credentials
@@ -574,7 +580,7 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
-| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_save_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.4's `os.name` discriminator |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_save_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.4's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit |
 | INV-8's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |

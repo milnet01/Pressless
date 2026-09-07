@@ -494,8 +494,13 @@ and this is not it: his own words are not a secret.
 **Windows is suppressed by a PLATFORM test in the code, not by the
 grant.** There `mkstemp` never grants `0600`, so the grant is identical
 in the case that must notice and the case that must not, and no other
-signal is available. The discriminator is `os.name`; PRESS-0001 §4.4
-names the same one, and §11 requires the two to agree.
+signal is available. **The discriminator is the platform, read at call
+time through a `_is_windows()` helper**, as `credentials.py` already
+does and for the reason its docstring gives — so a test can patch it.
+Measured while implementing: `os.name` cannot be patched in a test
+without breaking `pathlib`, which branches on it to choose a path
+class. PRESS-0001 §4.4 names the same seam, and §11 requires the two to
+agree.
 
 The recognised fields the entry has are written first, in the order
 §4.2 lists them, then any `extra` fields in their original order, then
@@ -711,14 +716,18 @@ is true of a template is PRESS-0006's (§9).
   this rule that fires on a non-enforcing mount would be unfalsifiable
   on exactly the machines that enforce modes correctly — which is every
   machine the suite normally runs on.
-  **Three rows, and none of them is optional.** One patches the grant
+  **Four rows, and none of them is optional.** One patches the grant
   wider and asserts the notice. One writes ordinarily on an enforcing
   mount and asserts NO notice — without it a condition that is inverted,
   or keyed on anything but the grant, warns on every write and stays
-  green. And one patches `os.name` to `"nt"` with the grant wider and
-  asserts no notice, which is §4.5's Windows suppression: the
-  discriminator is a value a test can set, so that BRANCH is observable
-  here even though the Windows behaviour it exists for is not.
+  green. One patches the platform helper to report Windows with the
+  grant wider and asserts no notice, which is §4.5's suppression: the
+  discriminator is read at call time, so that BRANCH is observable here
+  even though the Windows behaviour it exists for is not. **And one
+  patches the grant to `0700` and asserts no notice** — the only case
+  that separates the two candidate predicates, since a `0644` fixture
+  passes against either. A mutation probe is what found that: with a
+  `0644` case alone, `granted != 0o600` survived.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
   chose; or refuses the write on a wider grant, which is the branch
@@ -996,7 +1005,7 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's `os.name` discriminator |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit |
 | INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |

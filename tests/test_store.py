@@ -10,6 +10,7 @@ import ast
 import dataclasses
 import inspect
 import os
+import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,8 +25,11 @@ from pressless.store import (
     Entry,
     SlugInUse,
     StoreError,
+    StoreNotice,
     exists,
+    list_html,
     list_slugs,
+    list_templates,
     path_for,
     publish,
     read,
@@ -1258,3 +1262,192 @@ def test_a_written_entry_is_owner_only(tmp_path):
     again = write(tmp_path, _entry(body="A second body.\n"), draft=False)
     mode = os.stat(again).st_mode & 0o777
     assert mode == 0o600, f"a write over a widened file left mode {mode:#o}, not 0o600"
+
+
+# --- INV-12, INV-13 and INV-11's notice half (PRESS-0098, 0093, 0097) -------
+#
+# The folder and suffix names below are written out for the reason the header
+# gives: sharing a literal with the module would compare it against itself.
+_TEMPLATES = "templates"
+_PAGES = "pages"
+_FURNITURE = "furniture"
+_HTML = ".html"
+
+
+def _wide_grant(monkeypatch, mode=0o644):
+    """Make the descriptor read report a mount that granted more than 0600.
+
+    INV-11's notice half fires on what the filesystem GRANTED, and every
+    filesystem the suite runs on grants 0600 -- which is why the owner-only
+    test skips on the capability. Patching the read is what makes the branch
+    observable here (§5 INV-11).
+
+    os.fdopen and os.replace reach fstat through C rather than through this
+    attribute, so patching it touches the mode read and nothing else.
+    """
+    class _Reported:
+        st_mode = 0o100000 | mode
+
+    monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+
+
+def test_a_listing_returns_only_usable_names(tmp_path):
+    """INV-12: a listing returns only names its own path_for accepts, and
+    names each file it passed over.
+
+    Four folders, because three of them would leave a half of this rule with
+    no falsifier. Furniture is the one that bites hardest: `banner` is a legal
+    slug that html_path_for accepts under `pages` and refuses under
+    `furniture`, so a pages fixture alone passes against an implementation
+    filtering on the shared name rule and ignoring the furniture set.
+
+    The file named exactly `.txt` is the other: _slugs_in drops it before any
+    filter added to a listing can see it, so without this case an
+    implementation built on that folded set satisfies every other assertion
+    here while shipping the silent drop this rule exists to stop.
+
+    Breaks when the notice is emitted from _slugs_in, which exists shares, or
+    when the filter is put in _list_names, whose third caller is
+    list_photographs -- outside this rule."""
+    (tmp_path / _PUBLISHED).mkdir()
+    (tmp_path / _TEMPLATES).mkdir()
+    (tmp_path / _PAGES).mkdir()
+    (tmp_path / _FURNITURE).mkdir()
+
+    (tmp_path / _PUBLISHED / f"legal-one{_SUFFIX}").write_text("x")
+    (tmp_path / _PUBLISHED / f"My_Entry{_SUFFIX}").write_text("x")
+    (tmp_path / _PUBLISHED / _SUFFIX).write_text("x")
+    (tmp_path / _TEMPLATES / f"legal-one{_SUFFIX}").write_text("x")
+    (tmp_path / _TEMPLATES / f"My_Entry{_SUFFIX}").write_text("x")
+    (tmp_path / _PAGES / f"legal-one{_HTML}").write_text("x")
+    (tmp_path / _PAGES / f"My_Entry{_HTML}").write_text("x")
+    (tmp_path / _FURNITURE / f"header{_HTML}").write_text("x")
+    (tmp_path / _FURNITURE / f"banner{_HTML}").write_text("x")
+
+    for label, call, keep, drop in (
+        ("entries", lambda: list_slugs(tmp_path, draft=False), "legal-one", "My_Entry"),
+        ("templates", lambda: list_templates(tmp_path), "legal-one", "My_Entry"),
+        ("pages", lambda: list_html(tmp_path, _PAGES), "legal-one", "My_Entry"),
+        ("furniture", lambda: list_html(tmp_path, _FURNITURE), "header", "banner"),
+    ):
+        with pytest.warns(StoreNotice) as caught:
+            listed = call()
+        assert keep in listed, f"{label}: the usable name {keep!r} was not listed"
+        assert drop not in listed, (
+            f"{label}: {drop!r} was listed, and its own path_for refuses it"
+        )
+        said = " ".join(str(each.message) for each in caught)
+        assert drop in said, f"{label}: nothing named the file it passed over"
+
+    # The empty-slug file is dropped by the folded set before any filter sees
+    # it, so it is the one case that proves the listing reads raw names.
+    #
+    # The needle is the WHOLE path, not the suffix: `.txt` also occurs inside
+    # `My_Entry.txt`'s path, so searching for it alone passed whether or not
+    # this file was named at all -- which a mutation probe caught after the
+    # test had gone green.
+    stranded = str(tmp_path / _PUBLISHED / _SUFFIX)
+    with pytest.warns(StoreNotice) as caught:
+        list_slugs(tmp_path, draft=False)
+    assert any(stranded in str(each.message) for each in caught), (
+        f"nothing named {stranded!r}, the file called exactly {_SUFFIX!r}"
+    )
+
+
+def test_a_stranded_file_is_reported(tmp_path):
+    """INV-13: a move that leaves the destination folder holding a second file
+    naming one slug names both, and moves anyway.
+
+    Asserting the notice alone would pass against an implementation that warns
+    and then raises SlugInUse, which §4.3 rejects: the return is what pins that
+    the publish went through.
+
+    Reachable on Linux only and never produced by the Store -- it needs a file
+    the writer renamed himself. Where the filesystem folds case the two names
+    are one file and INV-10 governs, so the fixture is what decides."""
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    stranded = tmp_path / _PUBLISHED
+    stranded.mkdir(exist_ok=True)
+    (stranded / f"moved{_SUFFIX.upper()}").write_text("the writer's own copy")
+    if not (stranded / f"moved{_SUFFIX.upper()}").exists() or (
+        stranded / f"moved{_SUFFIX}"
+    ).exists():
+        pytest.skip("this filesystem folds case, so one folder cannot hold both")
+
+    with pytest.warns(StoreNotice) as caught:
+        target = publish(tmp_path, "moved")
+
+    assert target == tmp_path / _PUBLISHED / f"moved{_SUFFIX}"
+    assert target.is_file(), "the publish did not go through"
+    assert (stranded / f"moved{_SUFFIX.upper()}").is_file(), "the writer's file is gone"
+    said = " ".join(str(each.message) for each in caught)
+    assert f"moved{_SUFFIX.upper()}" in said, "the notice did not name the stranded file"
+
+
+def test_a_wider_grant_is_reported(tmp_path, monkeypatch):
+    """INV-11's notice half: where the mount granted a mode wider than
+    owner-only, write says so and completes.
+
+    Never skips. The owner-only half skips on the capability, and the
+    capability it skips on is exactly the case this half fires in -- so
+    without a patched read this clause would be unfalsifiable on every machine
+    the suite runs on."""
+    _wide_grant(monkeypatch)
+    with pytest.warns(StoreNotice) as caught:
+        target = write(tmp_path, _entry(), draft=False)
+    assert target.is_file(), "the write did not complete"
+    assert read(target).slug == "an-example", "the entry did not survive"
+    assert str(target) in " ".join(str(each.message) for each in caught), (
+        "the notice did not name the file"
+    )
+
+
+def test_an_ordinary_write_emits_no_notice(tmp_path):
+    """INV-11: an ordinary write on a mode-enforcing mount says nothing.
+
+    Not optional. Without it a condition that is inverted, or keyed on
+    anything but the grant, warns on every write and the suite stays green."""
+    _require_posix_modes(tmp_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        write(tmp_path, _entry(), draft=False)
+    notices = [each for each in caught if issubclass(each.category, StoreNotice)]
+    assert not notices, f"an ordinary write said {[str(n.message) for n in notices]}"
+
+
+def test_a_grant_wider_only_for_the_owner_is_not_reported(tmp_path, monkeypatch):
+    """INV-11: the predicate is any GROUP or OTHER bit, not a difference from
+    0600.
+
+    The refuting case for the predicate, and the only one that separates the
+    two candidates: on 0700 `granted & 0o077` is nothing and `granted != 0o600`
+    is true, so a test using 0644 alone passes against either. §4.5 pins
+    Credentials' `& 0o077`; `tests/_mode_support.py`'s exact 0600 asks the
+    different question of whether the mount enforces modes at all."""
+    _wide_grant(monkeypatch, mode=0o700)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        write(tmp_path, _entry(), draft=False)
+    notices = [each for each in caught if issubclass(each.category, StoreNotice)]
+    assert not notices, (
+        f"a grant of 0700 is owner-only and said {[str(n.message) for n in notices]}"
+    )
+
+
+def test_no_notice_where_the_platform_is_windows(tmp_path, monkeypatch):
+    """INV-11: the notice is suppressed where os.name is "nt".
+
+    §4.5 makes that the discriminator, because mkstemp never grants 0600 on
+    Windows and the grant is therefore identical in the case that must notice
+    and the case that must not. The branch is observable here even though the
+    Windows behaviour it exists for is not."""
+    _wide_grant(monkeypatch)
+    # The platform helper, not os.name: pathlib branches on os.name to choose
+    # a path class, so patching it strands every Path the write makes.
+    monkeypatch.setattr(store_module, "_is_windows", lambda: True)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        target = write(tmp_path, _entry(), draft=False)
+    notices = [each for each in caught if issubclass(each.category, StoreNotice)]
+    assert not notices, f"a wide grant on Windows said {[str(n.message) for n in notices]}"
+    assert target.is_file(), "the write did not complete"

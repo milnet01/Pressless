@@ -17,7 +17,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
+import sys
 import tempfile
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -72,6 +75,20 @@ class EntryNotFound(StoreError):
     """No entry at that path, or no folder to look in."""
 
 
+class StoreNotice(UserWarning):
+    """Something the caller should know that is not a failure (§4.1).
+
+    Emitted where a listing passed a file over (INV-12), where a move left a
+    second file naming one slug (INV-13), and where a write could not make its
+    file owner-only (INV-11). Each is the writer's own doing and none costs him
+    his writing, so refusing would take away something that works.
+
+    One notice per occasion. Suppressing repeats is the caller's: the default
+    warnings filter shows a repeat once, but a caller that CAPTURES sees every
+    one -- and capturing is what the Face must do to render it.
+    """
+
+
 class SlugInUse(StoreError):
     """The destination already holds that slug; nothing was moved."""
 
@@ -117,7 +134,12 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
     handed = Path(folder)
     if not handed.is_dir():
         raise StoreError(f"{handed} is not a folder")
-    return tuple(sorted(_slugs_in(handed, draft=draft)))
+    subfolder = handed / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
+    return _only_usable(
+        _raw_names(subfolder, FILE_SUFFIX),
+        subfolder,
+        lambda slug: path_for(handed, slug, draft=draft),
+    )
 
 
 def _slugs_in(handed: Path, *, draft: bool) -> set[str]:
@@ -313,6 +335,7 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     )
     if target.exists():
         raise SlugInUse(occupied)
+    _report_a_stranded_twin(target, slug)
     try:
         target.parent.mkdir(exist_ok=True)
         _move_without_overwriting(source, target)
@@ -323,6 +346,37 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     except OSError as exc:
         raise StoreError(f"{source} could not be moved to {target}: {exc}") from exc
     return target
+
+
+def _report_a_stranded_twin(target: Path, slug: str) -> None:
+    """Name a file the move is about to strand, and let it go ahead (INV-13).
+
+    `path_for` composes the suffix exactly, so a destination differing only in
+    the suffix's case is not a collision the move can see. It goes ahead, and
+    the writer's own file is then invisible to `read` from that moment with
+    nothing said -- which is what this reports.
+
+    Refusing was the alternative and was rejected: it would let a file he
+    renamed himself block a publish, with nothing to do about it but rename
+    the file back.
+
+    The comparison is case-FOLDED over the destination folder's file names.
+    `_slugs_in` is not the mechanism: it returns slugs rather than names, so it
+    can say a twin exists and cannot say what it is called -- and the notice
+    has to name it.
+    """
+    folder = target.parent
+    if not folder.is_dir():
+        return
+    for path in folder.iterdir():
+        if path.name != target.name and path.name.lower() == target.name.lower():
+            warnings.warn(
+                f"{path} names the same entry as {target.name} and is not the "
+                f"file Pressless reads; after this move the folder holds both, "
+                f"and {path.name} can only be reached by renaming it",
+                StoreNotice,
+                stacklevel=3,
+            )
 
 
 def _move_without_overwriting(source: Path, target: Path) -> None:
@@ -529,8 +583,20 @@ def list_html(folder: Path, kind: str) -> tuple[str, ...]:
     Opens nothing, as list_slugs does. The fixed-page set is open (§3 decision
     8): Import creates the pages the site has, and a fifth page later costs a
     file rather than a code change.
+
+    The filter is THIS listing's own path_for and not the shared name rule:
+    for the furniture folder that is the furniture set as well, so a legal
+    slug which is not one of the three is passed over and named (INV-12).
     """
-    return _list_names(folder, _html_subfolder(kind), HTML_SUFFIX)
+    handed = Path(folder)
+    if not handed.is_dir():
+        raise StoreError(f"{handed} is not a folder")
+    subfolder = handed / _html_subfolder(kind)
+    return _only_usable(
+        _raw_names(subfolder, HTML_SUFFIX),
+        subfolder,
+        lambda name: html_path_for(handed, kind, name),
+    )
 
 
 def read_html(path: Path) -> str:
@@ -581,9 +647,17 @@ def list_templates(folder: Path) -> tuple[str, ...]:
     """The template names, sorted, read off the file names (§4.4).
 
     What PRESS-0017's picker binds to, and what write_template names its file
-    from.
+    from. Only names template_path_for accepts, each refusal named (INV-12).
     """
-    return _list_names(folder, TEMPLATES_FOLDER, FILE_SUFFIX)
+    handed = Path(folder)
+    if not handed.is_dir():
+        raise StoreError(f"{handed} is not a folder")
+    subfolder = handed / TEMPLATES_FOLDER
+    return _only_usable(
+        _raw_names(subfolder, FILE_SUFFIX),
+        subfolder,
+        lambda name: template_path_for(handed, name),
+    )
 
 
 def write_template(folder: Path, entry: Entry) -> Path:
@@ -853,6 +927,65 @@ def _refuse_a_zoned_date(comments: tuple[Comment, ...], target: Path) -> None:
             )
 
 
+def _raw_names(subfolder: Path, suffix: str) -> tuple[tuple[str, str], ...]:
+    """Every (name, file name) the folder holds, nothing judged (§4.4).
+
+    The file name is carried beside the stripped one because a notice has to
+    NAME the file it passed over, and stripping loses it: a file called exactly
+    `.txt` strips to the empty string, and a folder path with that joined on is
+    the folder.
+
+    The RAW names, deliberately, and not `_slugs_in`'s folded set: that set
+    already drops a file called exactly `.txt`, so a listing built on it passes
+    that file over in silence -- the one unusable name reaching production
+    today, and the answer §4.4 rejects (INV-12).
+
+    An empty `suffix` returns whole file names, which is what photographs need.
+    A missing subfolder holds nothing (§6).
+    """
+    if not subfolder.is_dir():
+        return ()
+    folded = suffix.lower()
+    return tuple(sorted(
+        (path.name[: -len(suffix)] if suffix else path.name, path.name)
+        for path in subfolder.iterdir()
+        if path.is_file() and (not suffix or path.name.lower().endswith(folded))
+    ))
+
+
+def _only_usable(
+    names: tuple[tuple[str, str], ...], subfolder: Path, compose
+) -> tuple[str, ...]:
+    """The names `compose` accepts, naming each one it refuses (INV-12).
+
+    `compose` is the listing's OWN path_for, not the shared name rule: for the
+    furniture folder that is the furniture set as well, and a legal slug which
+    is not one of the three is passed over like any other.
+
+    Neither of the obvious answers. Filtering in silence loses the writer's
+    file from the app's view while it sits in his folder, and S3 invites him
+    into that folder; raising lets one hand-dropped file abort a whole build.
+
+    What is RETURNED is one name per slug, per §4.3: two names differing only
+    in the suffix's case are one address, and the raw names are what is judged
+    rather than what is handed back.
+    """
+    usable: list[str] = []
+    for name, file_name in names:
+        try:
+            compose(name)
+        except StoreError as exc:
+            warnings.warn(
+                f"{subfolder / file_name} was passed over: {exc}",
+                StoreNotice,
+                stacklevel=3,
+            )
+            continue
+        if name not in usable:
+            usable.append(name)
+    return tuple(usable)
+
+
 def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
     """File names in one subfolder, sorted, opening nothing (§4.4).
 
@@ -906,6 +1039,46 @@ def _entry_text(entry: Entry) -> str:
     return "\n".join(lines) + "\n\n" + entry.body
 
 
+def _is_windows() -> bool:
+    """Read at call time, so the platform is what a test patches (§4.5).
+
+    The same shape `credentials.py` uses, and for the same reason. `os.name`
+    would be the obvious signal and cannot be patched in a test: `pathlib`
+    branches on it to choose a path class, so setting it strands every Path
+    the write is about to make.
+    """
+    return sys.platform.startswith("win")
+
+
+def _report_a_wide_grant(handle: int, target: Path) -> None:
+    """Say so where the mount granted more than owner-only (§4.5, INV-11).
+
+    Read off the DESCRIPTOR, as `credentials.py` does (PRESS-0042): that is the
+    one call reporting what the mount actually granted, where `mkstemp` only
+    asked. The predicate is Credentials' `& 0o077` -- any group or other bit --
+    and not `tests/_mode_support.py`'s exact `0600`, which asks the different
+    question of whether the mount enforces modes at all.
+
+    Credentials REFUSES here and this reports, because his own writing is not a
+    secret and refusing would stop him saving to a memory stick.
+
+    Windows is outside it: `mkstemp` never grants `0600` there, so the grant is
+    identical in the case that must report and the case that must not, and
+    nothing else in the folder can tell them apart.
+    """
+    if _is_windows():
+        return
+    granted = stat.S_IMODE(os.fstat(handle).st_mode)
+    if granted & 0o077:
+        warnings.warn(
+            f"{target} could not be made private: this filesystem granted "
+            f"mode {granted:03o} rather than owner-only, so others with an "
+            f"account on this machine can read it",
+            StoreNotice,
+            stacklevel=2,
+        )
+
+
 def _write_atomically(
     folder: Path, target: Path, text: str, *, prefix: str, newline: str
 ) -> None:
@@ -937,6 +1110,7 @@ def _write_atomically(
     except OSError as exc:
         raise StoreError(f"{target} could not be written: {exc}") from exc
     try:
+        _report_a_wide_grant(handle, target)
         with os.fdopen(handle, "w", encoding="utf-8", newline=newline) as stream:
             stream.write(text)
             # rename(2) orders the namespace, not the data, so without

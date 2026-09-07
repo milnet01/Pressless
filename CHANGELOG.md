@@ -17,6 +17,12 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **On a drive that cannot make files private, Pressless says so and carries on** (PRESS-0097)
+  Some drives — a memory stick, a shared network folder — will not let the
+  app lock its files to you alone. Your settings and your writing still
+  save, and you are told once. The part that holds your publishing key
+  still refuses outright, because that one is a secret.
+
 - **A real security policy: what Pressless protects, and how to report a problem privately** (PRESS-0065)
   SECURITY.md shipped with its sections still as the template's own
   prompts, under a header saying an empty policy is worse than none. It
@@ -140,6 +146,18 @@ appears once something has actually shipped.)
   is discarded by the next write.
 
 ### Fixed
+
+- **A stray file in a folder no longer stops the site building** (PRESS-0098)
+  Drop a file with an unusable name into your entries, pages or templates
+  folder and Pressless now builds from the files it can read and tells you
+  which one it passed over. Before, the listing handed that name back and
+  the next step refused it.
+
+- **Publishing over a file you renamed yourself now says what it found** (PRESS-0093)
+  If you rename an entry file by hand and then publish that entry, the
+  folder can end up holding both. The publish still goes through — nothing
+  is written over — and Pressless now names the second file, which it could
+  not otherwise reach.
 
 - **The dashboard's cache keeps one answer per time span** (PRESS-0101)
   Google is asked how the site is being read, and the answer is kept for

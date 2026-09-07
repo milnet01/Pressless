@@ -4499,7 +4499,7 @@
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
 
-- 📋 [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
+- 🚧 [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
   MEASURED 2026-09-04, on Linux:
 
     drafts/a-slug.txt written by the Store
@@ -4542,6 +4542,8 @@
   reports the stranded file rather than refusing. The smaller of the two
   options, and it keeps 4.3's preference for never writing over his own
   file — refusing would let one hand-renamed file block a publish.
+  Contract settled 2026-09-07: PRESS-0005 INV-13, gated to the spec cap
+  (§12 rows 10 and 11). Code next.
   **Layman:** Publishing an entry can quietly leave two copies of it, and the writer's own copy is the one that gets stranded.
   Kind: fix.
   Source: review-contract 2026-09-04 loop 7 on PRESS-0005, filed as the code half.
@@ -4644,7 +4646,7 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
 
-- 📋 [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
+- 🚧 [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
   PRESS-0042 settled this once, for the fallback credentials file:
   mkstemp ASKS for 0600, a mount that does not enforce POSIX modes
   ignores the request, chmod returns EPERM there, and os.replace carries
@@ -4676,11 +4678,17 @@
   warn once. Refusing would stop him saving his own writing on a memory
   stick, which is worse than the exposure; Credentials still refuses,
   because it holds a secret and his words are not one.
+  Contract settled 2026-09-07 in BOTH documents: PRESS-0005 INV-11 and
+  PRESS-0001 INV-8, each gated to the spec cap. The gate settled two
+  things the decision did not: the predicate is `granted & 0o077`, not
+  the skip guard's exact `0600`; and the Windows suppression keys on
+  `os.name`, because the grant is identical there and INV-7 forbids
+  looking anywhere else. Code next.
   **Layman:** On a memory stick or a shared drive the app cannot make its files private, and only the part holding your password notices.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
 
-- 📋 [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
+- 🚧 [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
   Measured 2026-09-06: with published/My_Entry.txt present,
   list_slugs returns 'My_Entry' and path_for on that same value raises
   StoreError. _slugs_in filters only the empty-slug case, and its own
@@ -4710,6 +4718,11 @@
   Milestone: v0.1.0. Blocks S2 and S3 by way of the Builder, which is
   that release's: one hand-dropped file aborts the build, so the archive
   does not render at all.
+  Contract settled 2026-09-07: PRESS-0005 INV-12, gated to the spec cap.
+  Widened past this bullet's own scope to `list_html` and
+  `list_templates` — verified they share the defect, and that
+  `list_photographs` does not. PRESS-0103 carries PRESS-0006's half.
+  Code next.
   **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.

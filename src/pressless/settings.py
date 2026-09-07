@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import json
 import os
+import stat
+import sys
 import tempfile
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,6 +58,19 @@ class Settings:
 
 class NotSetUp(Exception):
     """No settings file yet — run setup."""
+
+
+class SettingsNotice(UserWarning):
+    """Something the caller should know that is not a failure (§4.1).
+
+    Emitted where the filesystem would not grant the file owner-only (INV-8).
+    Its own category rather than the Store's `StoreNotice`, because Settings is
+    blocker for the Store and may not import from it.
+
+    One notice per save. Suppressing repeats is the caller's: the default
+    warnings filter shows a repeat once, but a caller that CAPTURES sees every
+    one -- and capturing is what the Face must do to render it.
+    """
 
 
 class SettingsError(Exception):
@@ -266,6 +282,7 @@ def save(folder: Path, settings: Settings) -> None:
     except OSError as exc:
         raise SettingsError(f"{target} could not be written: {exc}") from exc
     try:
+        _report_a_wide_grant(handle, target)
         # newline is named rather than left to the platform: §4.2's file is
         # a shape the installation carries between machines, so its bytes may
         # not depend on which system wrote it (PRESS-0039).
@@ -293,6 +310,47 @@ def save(folder: Path, settings: Settings) -> None:
     except BaseException:
         _discard(temporary)
         raise
+
+
+def _is_windows() -> bool:
+    """Read at call time, so the platform is what a test patches (§4.4).
+
+    The same shape `credentials.py` uses, and for the same reason. `os.name`
+    would be the obvious signal and cannot be patched in a test: `pathlib`
+    branches on it to choose a path class, so setting it strands every Path
+    the save is about to make.
+    """
+    return sys.platform.startswith("win")
+
+
+def _report_a_wide_grant(handle: int, target: Path) -> None:
+    """Say so where the mount granted more than owner-only (§4.4, INV-8).
+
+    Read off the DESCRIPTOR, as `credentials.py` does (PRESS-0042): that is the
+    one call reporting what the mount actually granted, where `mkstemp` only
+    asked. The predicate is Credentials' `& 0o077` -- any group or other bit --
+    and not `tests/_mode_support.py`'s exact `0600`, which asks the different
+    question of whether the mount enforces modes at all.
+
+    Credentials REFUSES here and this reports: §4.5 keeps every secret out of
+    this file, so refusing would stop the writer using Pressless from a memory
+    stick in order to protect nothing.
+
+    Windows is outside it: `mkstemp` never grants `0600` there, so the grant is
+    identical in the case that must report and the case that must not, and
+    INV-7 forbids opening anything outside `folder` to find another signal.
+    """
+    if _is_windows():
+        return
+    granted = stat.S_IMODE(os.fstat(handle).st_mode)
+    if granted & 0o077:
+        warnings.warn(
+            f"{target} could not be made private: this filesystem granted "
+            f"mode {granted:03o} rather than owner-only, so others with an "
+            f"account on this machine can read it",
+            SettingsNotice,
+            stacklevel=2,
+        )
 
 
 def _required(mapping: dict, key: str, kind: type, target: Path, prefix: str = ""):
