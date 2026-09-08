@@ -5053,6 +5053,19 @@
 
   Not decided here. `check-dependencies` reports the delta and does not
   judge whether a gap is safe to cross.
+  Decided (2026-09-08, user): raise the floor to what CI actually
+  exercises. `requires-python` becomes ">=3.13" and the single 3.13 job
+  stands.
+
+  The matrix was rejected on its own terms rather than on cost alone: it
+  would spend per-push minutes proving support for a runtime that stops
+  receiving security fixes on 2026-10-31, so the thing it buys expires
+  before the work lands. Keeping 3.10 unexercised was rejected because
+  an untested floor is a claim with nothing behind it, which is what
+  filed this item.
+
+  S4 packages an interpreter with the app, so the floor binds
+  contributors and the gate, never the writer.
   **Layman:** We promise the app runs on older Pythons than we have ever tested it on, and the oldest one stops getting security fixes in October.
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
@@ -5077,6 +5090,18 @@
   should report the versions it ran with, whether the dev floors should
   become ranges, or whether the drift is acceptable because a break shows
   up in CI by design.
+  Decided (2026-09-08, user): keep the floors open and make the gate
+  report what it resolved.
+
+  `scripts/local-ci.sh` prints the versions of pytest, pytest-randomly
+  and ruff it is about to run, so the same line appears in a local run
+  and in the CI log and a mismatch is readable from either.
+
+  Pinning both sides was rejected: it removes the early warning the
+  floors exist for, which `pyproject.toml`'s own comment states. Silent
+  acceptance was rejected because PRESS-0027 is what that looks like the
+  second time -- there the two environments ran the suite differently and
+  nothing said so.
   **Layman:** The robot that checks our work and the laptop we work on can end up running different versions of the same tools.
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
@@ -5140,6 +5165,49 @@
 
   Fix shape is per clause: give each unobserved half a case that separates
   the two candidate implementations.
+  Fix shape, worked out 2026-09-07 and decided 2026-09-08. One
+  falsifier per clause, then mutation_probe against the shipped module
+  rather than a stand-in.
+
+  INV-6 tie-break -- two countries with equal readers, handed in reverse
+  code order, in a fresh folder because read() caches. Test only.
+
+  INV-24 no-temporary -- force both arms of _store: patch os.replace to
+  raise OSError for the first _discard, and json.dump to raise
+  KeyboardInterrupt for the BaseException arm. Assert no temporary
+  remains. Test only.
+
+  INV-25 length cap -- send a body far longer than any plausible cap and
+  assert the detail is shorter than the body. Do not import the constant:
+  sharing the literal compares the module against itself, the trap
+  CLAUDE.md records for test_settings.py. Test only.
+
+  INV-7 chain -- CODE FIX, and it closes a real leak. insights.py::_fetch
+  raises from the transport's exception. The transport is handed the
+  publishing key in an Authorization header and nothing constrains what
+  its OSError says, so the cause carries the key into any formatted
+  traceback and into PRESS-0011's rolling log. Raise from None instead,
+  and put the exception's type name in the existing detail field so
+  diagnosability survives without touching the writer-facing sentence.
+  Falsifier: a transport whose OSError quotes the key, asserting on
+  traceback.format_exception. Precedent to copy verbatim --
+  tests/test_credentials.py, the PRESS-0051 test that a backend quoting
+  the secret does not leak it.
+
+  PRESS-0002 INV-10 write half -- the symlink half is already covered.
+  The gap is the patched owner: fstat is patched, read() is exercised,
+  then reverted, and write() never is. Extend the existing fallback-read
+  test so the fake stat carries an st_mode of 0o100600 alongside st_uid,
+  then assert write() raises and the file still holds the original
+  secret. Without st_mode a mutant dies on AttributeError in the
+  capability check rather than on the assertion, which proves nothing.
+  Test only.
+
+  User decided (2026-09-08) the INV-7 code fix lands inside this item
+  rather than as a separate security item -- the falsifier that proves it
+  is one of the five already in scope. File the new tests under a
+  PRESS-0107 heading, as PRESS-0051 did, so PRESS-0019 section 5 needs no
+  amendment and the contract gate is not re-armed.
   **Layman:** Several rules are only half-checked: the test named against each one watches part of what the rule promises.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1-5; three confirmed by mutation probe.
@@ -5223,6 +5291,108 @@
   **Layman:** A few tests check for one spelling of a problem, so the same problem written another way goes unnoticed.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 2, 4 and 5.
+
+- 🚧 [PRESS-0111] **Re-section the roadmap into version blocks, which the format standard has required since 2026-09-06.**
+  roadmap-format.md 3.2 made release blocks the default at every version.
+  This project still carries the superseded single-block shape, one
+  section holding every item.
+
+  DONE: nine version sections plus a Backlog created with
+  op:"create_section". They are empty; every item still sits in the
+  original block.
+
+  PENDING, and it needs the user to run it: the store has no op that
+  moves an item between sections, so the move is direct SQL. The plan
+  was verified read-only against the live store -- every item maps to
+  exactly one destination and the totals add back to the full set.
+
+    sqlite3 ~/.local/share/ants-terminal/roadmap.sqlite \
+      ".read ~/.local/share/pressless-resection/resection.sql"
+
+  One transaction; nothing changes if any part fails. Then op:"render",
+  confirm the item count is unchanged and no text moved, and commit.
+
+  Backups, both integrity-checked, in ~/.local/share/pressless-resection/
+  -- roadmap.sqlite.bak (before any change) and
+  roadmap.sqlite.sections.bak (after the sections were created, the
+  restore point for the SQL). Restore with
+  sqlite3 <live> ".restore '<backup>'".
+
+  Do NOT use roadmap_migrate to do this. Measured 2026-09-07: re-reading
+  ROADMAP.md strips the trailing full stop from every plain-English
+  summary line. Filed as Ants MCP feedback, with the missing move op.
+
+  Not every item gets a version. PRESS-0086 decided an item earns one
+  only when a sign of success fails while it is open, so the Backlog
+  holding most of them is that decision rather than an oversight.
+  **Layman:** The roadmap is one long list; the current house style wants it grouped by which version each thing lands in.
+  Kind: chore.
+  Source: roadmap-format.md 3.2, changed 2026-09-06; in-session 2026-09-07.
+
+## 0.1.0 — twelve years survived
+
+He installs the packaged file, points it at the WordPress export, and looks at
+his whole archive rendered on his own machine. There is no Publisher yet, so
+nothing can reach the live site: the one irreversible step, Import, is exercised
+while the stakes are zero. Holds S2, S3, S4.
+
+## 0.2.0 — it reaches the live site
+
+Adds the keyring, the Publisher and setup, so the archive he imported reaches
+the live site. He is asked for his publishing key once. When a publish fails he
+is told so in a sentence he understands, the site is unchanged, and clicking
+Publish again after fixing it works. Holds S1, S5, S6.
+
+## 0.3.0 — he writes in Pressless
+
+The editor box, styled as the finished page, with the preview beside it, and one
+button that writes, builds and publishes. A word he styles while typing looks
+the same on the live site as it did in the box, and an entry he has not finished
+is not on the live site. Holds S7, S10.
+
+## 0.4.0 — he can undo
+
+The Publisher can fetch back a previous state of the repository, and undo runs
+it in one step, ending with the site and his own files agreeing. After a change
+that made the site wrong he gets it back the way it was, and can see for himself
+that it is back. Holds S9.
+
+## 0.5.0 — the rest of the site is his too
+
+The fixed pages are edited in the same box as an entry, with the code behind a
+show-me-the-code view. He changes the wording on his About page himself, without
+writing an entry to do it. Holds S8.
+
+## 0.6.0 — pictures and helpers
+
+Photographs from the picture mark through to the web-sized copy, a list of
+templates to start something new from, and a cheat sheet generated from the same
+table the app parses with. This version adds no sign of success. It is the one
+that makes daily use pleasant rather than merely possible.
+
+## 0.7.0 — he can see who is reading
+
+Insights asks Google Analytics how the site is being read, and the dashboard
+shows it with a bundled flag picture beside each country. He does not log in to
+anything and does not leave the app. Holds S11, and with it every sign of
+success.
+
+## 1.0.0 — all eleven, and the format is frozen
+
+No new capability. What makes this 1.0 rather than 0.9 is the promise attached
+to it: an entry file written by 1.0 stays readable by every later version.
+Before 1.0 the on-disk format may still change; after it, S3 stops being a
+design intention and becomes a compatibility guarantee. The exit condition and
+the breaking surfaces are owned by docs/standards/versioning-overrides.md.
+
+## Backlog — no version yet
+
+Work that blocks no sign of success: review and audit fixes, test work,
+documentation, and research not yet attached to a release. An item earns a
+version only when a sign of success fails while it is open — decided with the
+user, on the grounds that forcing every review fix into a bucket would be
+inventing structure. Unmapped here is an answer rather than a gap. A defect in
+already-built code ships in whichever release comes next.
 
 ## Milestones
 
