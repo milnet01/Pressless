@@ -121,6 +121,16 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **A stray file in the folder Pressless publishes from now stops the publish instead of going up with the site** (PRESS-0089)
+  The folder Pressless builds into is Pressless's alone. Anything else that
+  turns up in it -- a hidden file your computer left there, a shortcut, a
+  leftover from another program -- used to be published to the live site or
+  quietly ignored. Now the publish stops and names the file, so you find out
+  rather than not.
+
+  Anything on the untouchable list is left alone as before, so the file
+  holding your domain name is never what stops a publish.
+
 - **A photograph with a caption now describes itself to a screen reader** (PRESS-0059)
   The caption the writer already types becomes the picture's description as
   well, so a reader who cannot see the photograph is told what it is. A
@@ -146,6 +156,29 @@ appears once something has actually shipped.)
   is discarded by the next write.
 
 ### Fixed
+
+- **If GitHub asks Pressless to wait twice, it now waits longer the second time** (PRESS-0113)
+  GitHub asks callers to back off by an increasing amount, and warns that
+  keeping up the same pace risks being blocked. Pressless waited the same
+  interval every time. The first wait is unchanged; each one after it is
+  longer.
+
+- **The tests that prove twelve years of writing survives can no longer stop running in silence** (PRESS-0108)
+  Those tests compare against a generator that lives outside this
+  repository. Every way of failing to load it -- a typo in the path, a
+  renamed function, a broken file -- was reported as "it is not on this
+  machine", which is the one cause that is normal and skips. So the most
+  important test in the project could have stopped running without anyone
+  noticing. Only genuine absence skips now; everything else fails and says
+  why.
+
+- **Several tests checked for one spelling of a problem and would have missed the same problem written another way** (PRESS-0110)
+  One guard listed seven things the text-formatting code must not use, so
+  anything not on the list passed -- including the very thing it exists to
+  keep out. It now lists what IS allowed. Another checked that files are
+  saved safely by pairing each save with the wrong temporary file, so a
+  faulty save could pass. Each fix was proved by breaking the code on
+  purpose and watching the test catch it.
 
 - **Saving no longer leaks a file handle when the privacy notice is treated as an error** (PRESS-0075)
   A caller configured to treat warnings as errors could make the

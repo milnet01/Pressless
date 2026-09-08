@@ -4781,7 +4781,7 @@ already-built code ships in whichever release comes next.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
 
-- 📋 [PRESS-0089] **Nothing decides what the publisher may find in the site folder besides the site.**
+- ✅ [PRESS-0089] **Nothing decides what the publisher may find in the site folder besides the site.**
   _local_files publishes every ordinary file under the folder. The
   symlink half is closed -- a link's target is no longer read -- but
   anything else the Builder leaves behind still goes up: an editor's
@@ -4813,6 +4813,29 @@ already-built code ships in whichever release comes next.
   stray file visible, which is the whole point of choosing this branch.
   The untouchable list is unaffected -- .nojekyll is Builder output or a
   listed entry, not an unexpected file.
+  Resolved (2026-09-08). Mechanism decided by the user: refuse anything
+  neither an ordinary file nor a directory, and any path carrying a
+  dot-name segment -- in either case only where the untouchable list
+  does not name the path's first segment. Done in the order this bullet
+  prescribed: 4.4 amended, spec gated, then the code. The gate paid for
+  itself twice. All three lanes of loop 2 found the carve-out reaching
+  only the dot-name limb, which would have refused a symlinked CNAME for
+  good with no remedy inside the app; and two lanes of loop 1 found the
+  rule unbuildable as written -- "anything that is not an ordinary file"
+  admits a DIRECTORY, and over rglob that refuses every real site, while
+  passing both fixtures INV-10 named. Two more came from lanes' open
+  questions: the dot-name test keyed on the first segment, so
+  content/.DS_Store -- the one a real site actually acquires -- would
+  have published; and a dot-name the Builder starts emitting would fall
+  off the untouchable list and refuse every publish permanently, now
+  recorded as a constraint PRESS-0008 inherits. Eleven verified over two
+  loops, eleven fixed, six inside the gated span. Four mutations killed
+  on the implementation. PRESS-0069's symlink test asserted the opposite
+  and was rewritten, not deleted: what it protected is now asserted in
+  its strong form, that the target's bytes appear in no request at all.
+  What still checks nothing is recorded in 10 -- an ordinary non-dot
+  file the writer drops in the folder still publishes, and closing that
+  needs the Builder to declare its output.
   **Layman:** If a stray file ends up in the folder Pressless publishes from, it gets published too.
   Kind: investigate.
   Source: in-session-2026-09-02, the half of PRESS-0069 item 7 that was not guessed at.
