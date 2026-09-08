@@ -550,7 +550,10 @@ code, so a green INV-1 says nothing about the rest.
 - **Inline file content in the tree request.** Rejected in §4.3: the
   documented field does not state its encoding, so photographs would rest
   on an assumption. Explicit base64 blobs cost one request per changed
-  file and remove the question.
+  file and remove the question. Measured 2026-09-08 (PRESS-0092): the
+  field stores what it is given as UTF-8 text and does not base64-decode
+  it, and arbitrary bytes cannot be expressed in a JSON string at all, so
+  it could not carry photographs even if the encoding were stated.
 - **A third-party HTTP library.** Rejected by §3 decision 3 — a runtime
   dependency bought for syntax, which PRESS-0022 would then have to
   package.

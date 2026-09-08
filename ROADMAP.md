@@ -1000,7 +1000,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
 
-- 📋 [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
+- ✅ [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
   Not a credentials problem, and no token raises this. The Publisher
   already authenticates (publisher.py sends Authorization: Bearer on every
   request), so the PRIMARY limit is 5,000 requests an hour and is not what
@@ -1073,6 +1073,42 @@ Publish again after fixing it works. Holds S1, S5, S6.
 
   Nothing has been done on it. This note records the choice so a fresh
   session does not re-derive it.
+  Resolved (2026-09-08) by execution against a throwaway private
+  repository. The premise is false, and this item is void by its own
+  test.
+
+  550 POST git/blobs inside one hour, serial, stopping on the first
+  non-2xx: every one 201. That is past both documented thresholds -- 80
+  content-generating requests a minute and 500 an hour -- at a sustained
+  136 a minute, and no secondary limit fired at any point. So blob
+  creation is NOT counted as content-generating. The first publish is
+  bounded by the PRIMARY limit of 5,000 instead, which its writes sit
+  well inside; the primary counter was watched climbing one per request
+  throughout.
+
+  NOT EXECUTED, stated rather than glossed: the run reached 550, not the
+  first publish's full write count. Past 500 the documented limit is
+  refuted; that the whole first publish completes follows from that
+  rather than from a measurement. A further run was refused by this
+  machine's own tool policy.
+
+  THE PROPOSED FIX WOULD NOT HAVE WORKED, which is the more useful half.
+  The tree endpoint's inline content field was measured the same day:
+  handed the base64 text of a PNG it stores that TEXT verbatim rather
+  than decoding it, and arbitrary bytes cannot be expressed in a JSON
+  string at all. So it carries UTF-8 text only and photographs cannot go
+  through it. PRESS-0009 4.3 and 8 rejected it for an unstated encoding;
+  the encoding is now measured, and the rejection is firmer than the
+  reason originally given.
+
+  ONE OBSERVATION, not acted on: pacing writes a second apart is now
+  known to be self-imposed for blobs rather than required, so the first
+  publish spends most of its wall clock waiting. Whether to relax it is
+  a design call and nobody has made it.
+
+  SEPARATE, rehomed rather than closed with this: the retry still waits
+  the same interval each time where GitHub prescribes an exponentially
+  increasing one. Filed as PRESS-0113.
   **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
@@ -5697,6 +5733,25 @@ already-built code ships in whichever release comes next.
   **Layman:** The design document and the publisher's contract now disagree about how a protected filename is compared.
   Kind: doc-fix.
   Source: review-contract 2026-09-08 loop 1 lane 3, on the PRESS-0078 amendment.
+
+- 📋 [PRESS-0113] **The retry waits the same interval every time, where GitHub prescribes an exponentially increasing one.**
+  The session in publisher.py honours GitHub's retry hint and then waits
+  that same interval again on every following attempt, bounded by the
+  retry count. GitHub's rate-limit documentation asks for "an
+  exponentially increasing wait" between retries, and warns that
+  "continuing to make requests while you are rate limited may result in
+  the banning of your integration".
+
+  Not a correctness defect and not urgent: the wait IS honoured, a hint
+  too long to honour raises rather than sleeping, and the bound raises
+  rather than looping. PRESS-0046 fixed the interval a hintless breach
+  waits. What is missing is only the growth between successive attempts.
+
+  Split out of PRESS-0092, which flagged it as separate and has since
+  been closed as void.
+  **Layman:** If GitHub asks the app to wait and then asks again, the app waits the same amount each time instead of waiting longer, which is not what GitHub asks for.
+  Kind: fix.
+  Source: PRESS-0092 investigation 2026-09-08.
 
 ## Milestones
 
