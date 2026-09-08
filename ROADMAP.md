@@ -5531,7 +5531,7 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1-5; three confirmed by mutation probe.
 
-- 📋 [PRESS-0108] **The archive tests' oracle is unpinned, and their skip reports one cause of three.**
+- ✅ [PRESS-0108] **The archive tests' oracle is unpinned, and their skip reports one cause of three.**
   Two defects in the same three files, which this project's CLAUDE.md
   calls the most important tests it has.
 
@@ -5554,6 +5554,14 @@ already-built code ships in whichever release comes next.
   reason where one exists but will not load; pin the oracle with an
   environment variable as PRESSLESS_ARCHIVE already does, and print the
   resolved path.
+  Resolved (2026-09-08): tests/_archive_oracle.py is now the one loader
+  for both archive suites. Absence is the only skip; a generator that is
+  present and will not load, or has been renamed, is a failure carrying
+  the real reason. Pinned with PRESSLESS_GENERATOR rather than taken by
+  sort order, more than one unpinned candidate is a failure, and the
+  resolved path is printed. All four branches verified by execution -- a
+  pin naming no file, an unloadable generator, a renamed export, and the
+  no-archive skip. The first three were silent skips before.
   **Layman:** The tests that prove twelve years of writing survive can quietly stop running, and say the wrong reason when they do.
   Kind: test.
   Source: review-tests 2026-09-07 lane 5.
@@ -5734,7 +5742,7 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: review-contract 2026-09-08 loop 1 lane 3, on the PRESS-0078 amendment.
 
-- 📋 [PRESS-0113] **The retry waits the same interval every time, where GitHub prescribes an exponentially increasing one.**
+- ✅ [PRESS-0113] **The retry waits the same interval every time, where GitHub prescribes an exponentially increasing one.**
   The session in publisher.py honours GitHub's retry hint and then waits
   that same interval again on every following attempt, bounded by the
   retry count. GitHub's rate-limit documentation asks for "an
@@ -5749,6 +5757,13 @@ already-built code ships in whichever release comes next.
 
   Split out of PRESS-0092, which flagged it as separate and has since
   been closed as void.
+  Resolved (2026-09-08): the first retry waits exactly what GitHub
+  asked; each after it waits twice the one before, clamped at
+  MAX_WAIT_SECONDS rather than raising -- the existing refusal is for an
+  interval GitHub itself named too long, and the growth is ours. Three
+  mutations killed: the factor back to 1.0, the clamp removed, and
+  growth starting on the first retry. PRESS-0009 4.3 gains the rule in
+  the same commit as the code.
   **Layman:** If GitHub asks the app to wait and then asks again, the app waits the same amount each time instead of waiting longer, which is not what GitHub asks for.
   Kind: fix.
   Source: PRESS-0092 investigation 2026-09-08.
