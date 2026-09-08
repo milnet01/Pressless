@@ -4020,7 +4020,7 @@
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
 
-- 🚧 [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
+- ✅ [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
   Raised as an open question by the publisher lane and not filed by
   the first pass.
 
@@ -4153,6 +4153,31 @@
   test_an_untouchable_entry_protects_whatever_its_casing, which does not
   exist yet. Both directions need a fixture; the existing INV-2 test
   cannot carry them, because its own breach assertion is exact membership.
+  Resolved 2026-09-08. Spec amended, gated over two loops, then built.
+
+  _is_protected folds case with str.casefold(). The falsifier PRESS-0009
+  10 cites now exists and was proven red first, Route 1, failing on both
+  directions at once.
+
+  THE PROBE FOUND A GAP THE TEST WAS WRITTEN TO CLOSE. Directions A and B
+  are both ASCII, where lower() and casefold() agree, so str.lower()
+  SURVIVED the first probe -- the operation 4.4 pins by name was
+  unenforceable by the test named against it, and the test's own docstring
+  already called lower() a breach while observing nothing about it. That
+  is the same unfalsifiable-clause shape PRESS-0106 and PRESS-0107 closed
+  elsewhere this session, arrived at from a third direction. Direction C
+  (straße against STRASSE) closes it; the second probe killed all four.
+
+  Also fixed here, surfaced by the gate rather than by it:
+  publisher.py::_within_prefix's docstring carried the same stale sentence
+  loop 2 removed from 4.5.
+
+  Not carried into this item, and still open: PRESS-0112 (design.md states
+  the tolerance exhaustively and names one) and PRESS-0021 (the list's
+  derivation must fold the same way, annotated there today). Both are
+  other documents' gates.
+
+  Gate green at 216.
   **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
