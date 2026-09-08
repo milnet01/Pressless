@@ -5140,7 +5140,7 @@
   Kind: test.
   Source: review-tests 2026-09-07 lane 4, confirmed by mutation probe with a control.
 
-- 📋 [PRESS-0107] **Five invariant clauses have a named test that cannot observe them.**
+- ✅ [PRESS-0107] **Five invariant clauses have a named test that cannot observe them.**
   One shape, found independently by four of the five lanes: an invariant
   whose section 5 text has two or three clauses, mapped in section 10 to a
   test that observes only some of them.
@@ -5232,6 +5232,31 @@
 
   Two commits: the four test-only falsifiers, then the INV-7 falsifier
   paired with its code fix, per testing.md 1 step 6.
+  Resolved 2026-09-08. Five falsifiers, one code fix, two commits.
+
+  Eleven mutations run against the shipped modules, all killed. The four
+  test-only clauses: the tie-break dropped from the sort key; _discard
+  dropped from each of _store's two arms; the BaseException arm dropped
+  entirely; the length cap dropped; the cap LOOSENED rather than dropped;
+  write()'s pre-read bypassed; the ownership check removed from
+  _read_ours. INV-7: the chain reverted to `from exc`; the raw message
+  folded into detail; detail dropped.
+
+  Two of those eleven exist because of decisions taken today. Loosening
+  the cap passes a shorter-than-the-body assertion, which is what the
+  plan called for. And folding the raw message into detail passes every
+  assertion the INV-7 falsifier was authored with -- format_exception
+  prints the exception's str(), never detail, so the chain assertion
+  cannot see that field. The test gained an assertion before the fix
+  landed and the red run was taken again against it.
+
+  INV-7 was Route 1 and was proven red first, failing on the chain
+  assertion with the key visible in the traceback. The other four were
+  Route 4: the source was already correct, so there was no broken state
+  to reach and the probe is the only evidence. Said plainly rather than
+  called regression-locked.
+
+  Gate green at 214 including the archive-gated tests.
   **Layman:** Several rules are only half-checked: the test named against each one watches part of what the rule promises.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1-5; three confirmed by mutation probe.
