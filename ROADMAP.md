@@ -393,6 +393,16 @@ while the stakes are zero. Holds S2, S3, S4.
   may. And a part's typed failure must not carry the credential, either
   secret's account name, or a full path, so the Face has nothing to strip
   except in the unforeseen case.
+  Both blockers are now clear (2026-09-08): PRESS-0001 and PRESS-0003 are
+  shipped. This item is ready to pick up.
+
+  Three things it inherits, all settled and none of them guesses. The Face
+  writes the rolling log -- src/pressless/log.py, whose open_log takes the
+  folder and whose note never raises. It shows Show details' location as a
+  LABEL with copy and open buttons, never a path. And for a failure nothing
+  in Pressless raised, it records the TYPE alone, because a stock file error
+  quotes the path it failed on; docs/design.md § Logging is the contract and
+  PRESS-0003 § 2 says why the raise-site rule does not cover that class.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
