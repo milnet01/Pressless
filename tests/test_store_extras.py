@@ -12,10 +12,12 @@ import ast
 import dataclasses
 import inspect
 import os
+import warnings
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 
 import pytest
+from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.store as store_module
@@ -25,6 +27,7 @@ from pressless.store import (
     DanglingReply,
     Entry,
     StoreError,
+    StoreNotice,
     comments_path_for,
     html_path_for,
     list_slugs,
@@ -1016,3 +1019,75 @@ def test_unsound_identifiers_are_refused(tmp_path):
     )
     assert Path(written).is_file(), "a sound set was refused"
     assert len(read_comments(Path(written))) == 2, "a sound set was not written whole"
+
+
+# ------------------------------------------------------------ PRESS-0115 ----
+
+
+def _wide_grant(monkeypatch, mode=0o644):
+    """Make the descriptor read report a mount that granted more than 0600.
+
+    Every filesystem the suite runs on grants 0600, so the branch is not
+    otherwise reachable. Patching `os.fstat` touches the mode read and nothing
+    else: `os.fdopen` and `os.replace` reach it through C. Copied in shape from
+    `tests/test_store.py`'s helper rather than shared, because these two files
+    exercise different writers and a shared double would hide which one ran.
+    """
+    class _Reported:
+        st_mode = 0o100000 | mode
+
+    monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+
+
+def test_every_writer_here_reports_a_wider_grant(tmp_path, monkeypatch):
+    """PRESS-0005 INV-11's notice reaches THIS document's three writers.
+
+    PRESS-0005 § 11 routes the permission rule here, and PRESS-0006 § 6 carries
+    the row: every writer in this spec shares the atomic write, so a mount
+    granting more than owner-only is reported for a page, a template and a
+    comments file as well as for an entry.
+
+    Nothing could falsify that. PRESS-0005's own test exercises `write`, an
+    entry call, and reaches none of these three -- so an implementer writing
+    them with a plain `open` plus `os.replace` loses the notice while every
+    invariant in PRESS-0006 § 5 still passes. INV-9 does not catch it: it
+    records `os.replace`'s destination, not the descriptor's mode.
+
+    Breaks when any of the three stops going through the shared atomic write.
+    """
+    writers = {
+        "a page": lambda: write_html(tmp_path, _PAGES, "about", "<p>x</p>"),
+        "a template": lambda: write_template(tmp_path, _entry(slug="a-start")),
+        "a comments file": lambda: write_comments(
+            tmp_path, "an-example", (_comment(),)
+        ),
+    }
+
+    for what, call in writers.items():
+        _wide_grant(monkeypatch)
+        with pytest.warns(StoreNotice) as caught:
+            target = call()
+        assert target.is_file(), f"writing {what} did not complete"
+        assert str(target) in " ".join(str(each.message) for each in caught), (
+            f"the notice for {what} did not name the file it was about"
+        )
+
+
+def test_an_ordinary_write_here_says_nothing(tmp_path):
+    """The other half, and not optional: without it a predicate that is
+    inverted, or keyed on anything but the grant, warns on every save of every
+    page and the suite stays green.
+
+    Guarded on the CAPABILITY rather than the platform -- the rule holds only
+    where the mount enforces POSIX modes, and os.name cannot see a mount.
+    """
+    _require_posix_modes(tmp_path)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        write_html(tmp_path, _PAGES, "about", "<p>x</p>")
+        write_template(tmp_path, _entry(slug="a-start"))
+        write_comments(tmp_path, "an-example", (_comment(),))
+    notices = [each for each in caught if issubclass(each.category, StoreNotice)]
+    assert not notices, (
+        f"an ordinary write said {[str(each.message) for each in notices]}"
+    )
