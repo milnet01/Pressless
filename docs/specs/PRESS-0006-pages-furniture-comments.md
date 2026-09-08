@@ -299,7 +299,20 @@ normalisation, no re-save of a file whose markup it finds untidy. A file
 that cannot be parsed raises `StoreError` naming the path.
 
 `list_html` and `list_templates` read file names and open nothing, as
-`list_slugs` does. `list_photographs` opens nothing either, but returns
+`list_slugs` does — **and they filter as it does too.** PRESS-0005's INV-12
+owns the rule for all three listings and this document does not restate it:
+each returns only names its own `path_for` accepts, and emits one
+`StoreNotice` per file it passed over. Until PRESS-0103 this paragraph
+deferred about OPENING alone, so an implementer built these two unfiltered
+and silent and INV-12's test failed on two of its three folders.
+
+**One thing is this document's own, because it is these two listings that
+make it visible: the filter is what THAT folder's `path_for` accepts, not
+the shared slug rule.** `html_path_for` accepts `banner` under `pages` and
+refuses it under `furniture`, which is `FURNITURE_NAMES` doing the work
+(§4.2). So an implementation filtering on the name rule alone passes the
+pages folder and fails furniture — which is why INV-12's fixture carries
+both, and why *its own* is load-bearing rather than decorative. `list_photographs` opens nothing either, but returns
 WHOLE file names where the other three drop the suffix: decision 10
 leaves what a photograph's file is called to PRESS-0016, so there is no
 suffix the Store may assume it can strip.
@@ -619,12 +632,17 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-11 photographs stay put | `test_photographs_stay_where_they_are` |
 | INV-12 a zoned comment date refused | `test_a_comment_date_carrying_a_zone_is_refused` |
 | INV-13 unsound comment identifiers refused | `test_unsound_identifiers_are_refused` |
+| That `list_html` and `list_templates` filter and report | `tests/test_store.py::test_a_listing_returns_only_usable_names` — PRESS-0005's test, because PRESS-0005 INV-12 owns the rule for all three listings. Two of its three folder fixtures are this document's, and the furniture one is the case that falsifies a filter built on the shared slug rule alone |
 | That a photograph's file name is well formed | **nothing here** — decision 10 withdrew that rule to PRESS-0016; only reaching outside the folder is refused |
 | That the plain box leaves the tags alone | **nothing here** — the Store holds the bytes and INV-1 proves it gives them back; whether the Face's box edits only the words is PRESS-0014's |
 | That the Builder never renders a template as a page | **nothing here** — INV-7 proves the Store offers no route to publish one; what the Builder does with `templates/` is PRESS-0008's |
 
 ## 11. Cross-doc impact
 
+- **PRESS-0005 §11** routes INV-12's listing filter and says neither
+  document may state it alone. §4.4 here carries the half that is this
+  document's — that the filter is each folder's own `path_for` rather than
+  the shared slug rule — and defers the rule itself (PRESS-0103).
 - **PRESS-0005 §1** lists the photographs among what this item covers,
   without the narrowing § 9 draws. That spec is accepted, so the wording
   is its own to correct.
