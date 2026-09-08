@@ -5300,6 +5300,23 @@ already-built code ships in whichever release comes next.
 
   Not fixed inside the gate that found it: PRESS-0006 is accepted and has
   its own rule 14 gate ahead of it.
+  Correction (2026-09-08). This bullet says an implementer "builds them
+  unfiltered and silent", present tense, and that INV-12's test "fails
+  on two of its three folders". Both are wrong about today's code, and I
+  repeated the first in the packet for this item's own gate, where two
+  lanes disputed it. Measured: `_only_usable` ships, and `list_slugs`,
+  `list_html` and `list_templates` all route through it, calling each
+  listing's own `path_for` and warning `StoreNotice` per file passed
+  over. So the filter and the notice are IMPLEMENTED for all three
+  listings, and PRESS-0006's amendment describes shipped behaviour
+  rather than future work. The count was wrong in both directions too:
+  an unfiltered implementation fails ALL THREE of the folders those two
+  listings read, not two -- `html_path_for` refuses `My_Entry` under
+  `pages` and `banner` under `furniture`, and `template_path_for`
+  refuses `My_Entry`, all executed. What this bullet got RIGHT is the
+  part that mattered: PRESS-0006 stated only the opening half of the
+  deferral, so its document did not say what its code does, and a reader
+  of that spec alone would have built the listings silent.
   **Layman:** The page and template listings promise to behave like the entry listing, which now skips and reports unusable files — but their own document was never told.
   Kind: doc-fix.
   Source: review-contract 2026-09-07 PRESS-0005 loop 10, all three lanes; filed as the neighbouring document's half.
