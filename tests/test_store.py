@@ -16,7 +16,11 @@ from pathlib import Path
 
 import pytest
 from _durability_watch import _assert_synced_before_replace, _watch_durability
-from _mode_support import _require_posix_modes
+from _mode_support import (
+    _require_distinct_case,
+    _require_hard_links,
+    _require_posix_modes,
+)
 from _open_watch import _Open, _watch_opens  # noqa: F401 -- _Open documents the record shape
 
 import pressless.store as store_module
@@ -461,6 +465,7 @@ def test_a_draft_never_reaches_published(tmp_path):
     when publish copies rather than moves and leaves the draft behind. This is
     where S7 starts: the worst failure this project has is an unfinished poem
     on the live site with nobody noticing."""
+    _require_hard_links(tmp_path)
     slug = "unfinished"
     written = Path(write(tmp_path, _entry(slug=slug), draft=True))
 
@@ -873,6 +878,7 @@ def test_a_move_refuses_even_when_the_check_cannot_see_the_destination(
 
     Breaks when the refusal is the exists() check rather than the move.
     """
+    _require_hard_links(tmp_path)
     slug = "held-in-both"
     as_draft = Path(write(tmp_path, _entry(slug=slug, body="The draft body.\n"), draft=True))
     as_published = Path(
@@ -1022,11 +1028,32 @@ def test_the_suffix_is_matched_ignoring_case_and_the_two_views_agree(tmp_path):
     )
     assert exists(tmp_path, "ordinary") and "ordinary" in listed
 
-    # Two files claiming one address -- reachable on Linux only, never
-    # produced by the Store. §4.3: they name one slug, returned once.
+
+def test_two_files_claiming_one_slug_return_it_once(tmp_path):
+    """§4.3, third claim: two files differing only in the suffix's case
+    name one slug, and it is returned once.
+
+    Reachable on Linux only and never produced by the Store -- it needs a
+    file the writer renamed himself.
+
+    Split out of the test above by PRESS-0109 rather than skipped inside
+    it. A case-folding mount -- every Windows and macOS default -- makes
+    the second write land on the first file, so only one exists and the
+    count holds whatever the code does. Skipping mid-test would have taken
+    the two suffix assertions above down with it, on exactly the platform
+    whose editors rename a file to .TXT.
+
+    Breaks when a case-folded listing collects into a list rather than a
+    set. MEASURED live here: removing the de-duplication is caught.
+    """
+    _require_distinct_case(tmp_path)
+    published = tmp_path / _PUBLISHED
+    published.mkdir()
+    write(tmp_path, _entry(slug="ordinary"), draft=False)
     (published / ("ordinary" + _SUFFIX.upper())).write_text(
         _WITH_AN_UNKNOWN_FIELD.replace("an-example", "ordinary"), encoding="utf-8"
     )
+
     again = list_slugs(tmp_path, draft=False)
     assert again.count("ordinary") == 1, (
         f"two files differing only in the suffix's case returned the slug "
@@ -1365,6 +1392,7 @@ def test_a_stranded_file_is_reported(tmp_path):
     Reachable on Linux only and never produced by the Store -- it needs a file
     the writer renamed himself. Where the filesystem folds case the two names
     are one file and INV-10 governs, so the fixture is what decides."""
+    _require_hard_links(tmp_path)
     write(tmp_path, _entry(slug="moved"), draft=True)
     stranded = tmp_path / _PUBLISHED
     stranded.mkdir(exist_ok=True)

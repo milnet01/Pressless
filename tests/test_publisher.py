@@ -26,6 +26,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+from _mode_support import _require_symlinks
 
 import pressless.publisher as publisher_module
 from pressless.publisher import (
@@ -1212,6 +1213,7 @@ def test_a_symlink_in_the_site_folder_is_not_published(tmp_path):
     """
     site = tmp_path / "site"
     site.mkdir()
+    _require_symlinks(site)
     secret = tmp_path / "not-for-publication.txt"
     secret.write_text("a file from elsewhere on the machine", encoding="utf-8")
     (site / "index.html").write_text("<html>new</html>", encoding="utf-8")
