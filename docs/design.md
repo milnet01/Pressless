@@ -417,8 +417,12 @@ did not expect."*, then what it can honestly say about the site — *"Your
 site has not changed."* where nothing was in flight, and the unknown
 sentence above where a publish had reached its last step — then *"Try
 again, and send the details below to whoever helps you."* A **Show
-details** toggle holds the technical text and the log file's location,
-for whoever helps him rather than for him.
+details** toggle holds the technical text and where the log file is.
+**The location is shown as a label, never as a full path** — *"the
+Pressless folder, beside the program"* — beside a button that copies
+the real path or opens the folder. § Logging owns the reason. The
+helper still reaches the file in one click, and nothing on screen names
+the writer.
 
 **This is checkable, and it is checked.** Every failure type carries a
 written sentence, and a test walks the list and fails if any one of them
@@ -463,6 +467,15 @@ which one is true is exactly the question S3 exists to make unaskable.
 One rolling plain-English log beside the settings. **No credential is
 ever written to it, not even shortened** — neither the publishing key
 nor the Google authorisation — `security.md` and S5.
+
+**Three things never appear in anything Pressless prints or records:
+the credential, the account name, and a full filesystem path.** Decided
+with the user 2026-09-07. The last two identify the writer. A log
+travels — whoever helps him is sent it — so what is safe on his own
+screen is not safe once it leaves the machine. This binds every
+surface, not the log alone: § Errors' Show details, a failure message,
+a crash report. Where a location must be shown, it is a label, and
+§ Errors says how.
 
 ## The stack, and what it rules out
 
