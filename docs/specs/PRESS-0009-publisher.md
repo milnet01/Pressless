@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, except §4.4's stray-file rule and INV-10 — amended 2026-09-08 and not yet built, so §10's INV-10 row names two tests that do not exist yet. §4.4's case tolerance and INV-2's case clause ARE built and tested (PRESS-0078). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, INV-10 included (PRESS-0089, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -571,7 +571,9 @@ behaviour.
   decoration**: it is the one a first-segment rule passes, and without it an
   implementation built on the first segment satisfies every other assertion
   here. A plain `content/` subdirectory must NOT refuse, or the rule refuses
-  every real site. Plus `::test_an_untouchable_dot_name_does_not_refuse`, a
+  every real site — `::test_a_plain_subdirectory_does_not_refuse` is that
+  half, and it is what separates the two readings. Plus
+  `::test_an_untouchable_dot_name_does_not_refuse`, a
   folder carrying `.nojekyll` with that name on the untouchable list, and
   `::test_an_untouchable_symlink_does_not_refuse`, a folder whose `CNAME` is
   a symlink with `CNAME` on the list. **Both halves of the carve-out need a
@@ -706,7 +708,7 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` |
-| INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
+| INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no unlisted root dot-name | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |

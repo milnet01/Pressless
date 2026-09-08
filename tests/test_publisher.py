@@ -1321,13 +1321,21 @@ def test_a_branch_name_reaches_the_url_encoded(tmp_path):
     )
 
 
-def test_a_symlink_in_the_site_folder_is_not_published(tmp_path):
+def test_a_symlinks_target_never_leaves_the_machine(tmp_path):
     """PRESS-0069 item 7: `is_file()` follows a symlink, so a link left in
     the site folder was read and its TARGET published to a public site.
 
-    Breaks when an implementer walks the folder without asking. Dotfiles
-    are deliberately still published -- .nojekyll is one, and the
-    untouchable list names it -- so only the link half is refused here.
+    PRESS-0089 changed the ANSWER and not the danger. That item skipped the
+    link, on the ground that refusing "would fail a publish over something
+    harmless"; §4.4 now refuses, because a skipped link is a page silently
+    absent from the site and the writer is never told. What must never
+    happen is unchanged, and this test asserts the strong form of it: the
+    target's BYTES appear in no request at all, not merely its path in no
+    tree.
+
+    The dotfile half of this test moved: an unlisted dot-name is a stray
+    now, and `.nojekyll` is safe by being on the untouchable list. See
+    test_an_untouchable_dot_name_does_not_refuse.
     """
     site = tmp_path / "site"
     site.mkdir()
@@ -1336,22 +1344,25 @@ def test_a_symlink_in_the_site_folder_is_not_published(tmp_path):
     secret.write_text("a file from elsewhere on the machine", encoding="utf-8")
     (site / "index.html").write_text("<html>new</html>", encoding="utf-8")
     (site / "leaked.txt").symlink_to(secret)
-    (site / ".nojekyll").write_text("", encoding="utf-8")
 
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
     transport = _Transport(reads=_reads(listing), writes=_writes())
 
-    publish(_settings(untouchable=()), site, "a-token", "a commit message",
-            transport=transport)
+    with pytest.raises(PublishError) as caught:
+        publish(_settings(untouchable=()), site, "a-token", "a commit message",
+                transport=transport)
 
-    paths = _tree_creation_paths(transport)
-    assert paths is not None and "leaked.txt" not in paths, (
-        f"a symlink's target was published: {paths!r}"
+    assert "leaked.txt" in str(caught.value), (
+        f"the publish was refused without naming the link: {caught.value!r}"
     )
-    assert ".nojekyll" in paths, (
-        f"the dotfile was dropped too; only the symlink should be, since a "
-        f"site legitimately carries .nojekyll: {paths!r}"
-    )
+    leaked = secret.read_bytes()
+    for _method, _url, body, _headers in transport.requests:
+        assert body is None or leaked not in body, (
+            "a symlink's target reached a request body"
+        )
+        assert body is None or base64.b64encode(leaked) not in body, (
+            "a symlink's target reached a request body, base64-encoded"
+        )
 
 
 # ------------------------------------------------------------ PRESS-0073 ----
@@ -1519,6 +1530,148 @@ def test_a_rate_limit_naming_no_interval_waits_the_documented_minute(tmp_path):
     assert transport.waits and transport.waits[0] >= 60.0, (
         f"a hintless rate limit was waited out for {transport.waits[:1]!r}; "
         f"GitHub documents at least a minute"
+    )
+
+
+# -------------------------------------------------------------- INV-10 ----
+
+
+def _no_writes(transport) -> bool:
+    """Nothing was sent that could change the site."""
+    return not any(_is_write(method) for method, _url, _body, _h in transport.requests)
+
+
+def test_a_stray_file_refuses_the_publish(tmp_path):
+    """INV-10: a stray in the site folder refuses the publish, naming it.
+
+    The site folder is Pressless's alone (§4.4). Anything the Builder did not
+    produce is an error, and refusing is not skipping: a skip publishes a
+    correct site and says nothing, so the stray stays and nobody learns of it.
+
+    Three fixtures, and §5 says why the third is load-bearing. A symlink and
+    a root dot-name are the obvious two. `content/.DS_Store` is NOT
+    decoration: it is the case a FIRST-segment rule passes, and macOS writes
+    that file into every directory it opens -- so without it an
+    implementation built on the first segment satisfies every other
+    assertion here.
+
+    Breaks when a stray is SKIPPED rather than refused, which is the shape
+    the symlink case shipped as until PRESS-0089.
+    """
+    def plant_symlink(folder):
+        (folder / "linked").symlink_to(folder / "index.html")
+
+    def plant_root_dot_name(folder):
+        (folder / ".git").mkdir()
+        (folder / ".git" / "config").write_text("x", encoding="utf-8")
+
+    def plant_nested_dot_name(folder):
+        (folder / "content" / ".DS_Store").write_bytes(b"\x00")
+
+    strays = {
+        "linked": plant_symlink,
+        ".git": plant_root_dot_name,
+        ".DS_Store": plant_nested_dot_name,
+    }
+
+    for expected_name, plant in strays.items():
+        folder = tmp_path / expected_name.strip(".")
+        folder.mkdir()
+        (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
+        (folder / "content").mkdir()
+        (folder / "content" / "a.html").write_text("<p>a</p>", encoding="utf-8")
+        plant(folder)
+
+        listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+        transport = _Transport(reads=_reads(listing), writes=_writes())
+
+        with pytest.raises(PublishError) as caught:
+            publish(_settings(), folder, "a-token", "message",
+                    transport=transport)
+
+        assert _no_writes(transport), (
+            f"the stray {expected_name} refused the publish, but something "
+            f"was written first -- INV-10 says the site is unchanged"
+        )
+        assert expected_name in str(caught.value), (
+            f"the stray {expected_name} was refused without naming it: "
+            f"{str(caught.value)!r}"
+        )
+
+
+def test_a_plain_subdirectory_does_not_refuse(tmp_path):
+    """The other half of INV-10's first clause: a directory is descended
+    into, not refused.
+
+    `content/` is ordinary Builder output and every real site folder holds
+    one, so a rule written as "anything that is not an ordinary file" over
+    `rglob` refuses every publish there is -- while passing every stray
+    fixture above. This is the test that separates the two.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (tmp_path / "content").mkdir()
+    (tmp_path / "content" / "poem.html").write_text("<p>x</p>", encoding="utf-8")
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    paths = _tree_creation_paths(transport)
+    assert paths is not None and "content/poem.html" in paths, (
+        f"a file inside a plain subdirectory was not published: {paths!r}"
+    )
+
+
+def test_an_untouchable_dot_name_does_not_refuse(tmp_path):
+    """§4.4's carve-out, dot-name half: neither stray test fires on a path
+    whose FIRST segment the untouchable list names.
+
+    `.nojekyll` is on the list, so it is neither written nor removed and
+    never travels through the upload at all. Refusing over it would fail a
+    publish on a file the Publisher had already decided to leave alone.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (tmp_path / ".nojekyll").write_text("", encoding="utf-8")
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(untouchable=("CNAME", ".nojekyll", "vendor")),
+            tmp_path, "a-token", "message", transport=transport)
+
+    paths = _tree_creation_paths(transport)
+    assert paths is not None and ".nojekyll" not in paths, (
+        f"an untouchable entry was published: {paths!r}"
+    )
+
+
+def test_an_untouchable_symlink_does_not_refuse(tmp_path):
+    """§4.4's carve-out, other half -- and the one a narrowed reading misses.
+
+    The carve-out covers BOTH stray tests, not the dot-name one alone. An
+    implementation that carved out only the dot-name limb passes every other
+    assertion in this file, and then refuses every publish for good the
+    moment an untouchable entry is a symlink -- remediable only outside the
+    app, on the one entry §2 says loses the custom domain.
+
+    Breaks when the carve-out is attached to the dot-name clause only.
+    """
+    folder = tmp_path / "site"
+    folder.mkdir()
+    (tmp_path / "domain.txt").write_text("writer.example.test\n", encoding="utf-8")
+    (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    (folder / "CNAME").symlink_to(tmp_path / "domain.txt")
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(untouchable=("CNAME", ".nojekyll", "vendor")),
+            folder, "a-token", "message", transport=transport)
+
+    paths = _tree_creation_paths(transport)
+    assert paths is not None and "CNAME" not in paths, (
+        f"an untouchable symlink was published: {paths!r}"
     )
 
 

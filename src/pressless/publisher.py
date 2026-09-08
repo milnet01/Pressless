@@ -251,8 +251,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     listing = _tree(session, settings.repository, base_commit)
     remote = _blobs_in(listing)
 
-    local = _local_files(folder)
     untouchable = settings.untouchable
+    local = _local_files(folder, untouchable)
 
     uploaded: dict[str, bytes] = {}
     for path, data in sorted(local.items()):
@@ -593,28 +593,71 @@ def _blobs_in(listing: dict) -> dict[str, str]:
     }
 
 
-def _local_files(folder: Path) -> dict[str, bytes]:
-    """Every file under `folder`, keyed by repository-relative path."""
+def _refuse_if_stray(relative: str, path: Path) -> None:
+    """§4.4: the site folder is Pressless's alone, so a stray refuses.
+
+    Refusing is not skipping. A skip publishes a correct site and says
+    nothing, so the stray stays and nobody learns of it; making it visible is
+    why this branch was chosen over a filter (PRESS-0089).
+
+    The caller has already established this path is not under an untouchable
+    first segment -- those are not Pressless's to refuse over either.
+    """
+    if path.is_symlink():
+        # Classified BEFORE it is followed. is_dir() and is_file() both
+        # follow the link, so a symlinked directory would otherwise be
+        # descended into and its target published to a public site (§4.4).
+        raise PublishError(
+            f"{relative} in the site folder is a symlink, which the Builder "
+            f"does not produce -- the folder is Pressless's alone, so the "
+            f"publish is refused rather than sending it"
+        )
+    if not (path.is_file() or path.is_dir()):
+        raise PublishError(
+            f"{relative} in the site folder is neither an ordinary file nor "
+            f"a directory, so the Builder did not produce it and the publish "
+            f"is refused rather than sending it"
+        )
+    dotted = next(
+        (part for part in relative.split("/") if part.startswith(".")), None
+    )
+    if dotted is not None:
+        raise PublishError(
+            f"{relative} in the site folder carries {dotted}, which is "
+            f"machine state rather than site output -- the publish is "
+            f"refused rather than sending it"
+        )
+
+
+def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, bytes]:
+    """Every file under `folder`, keyed by repository-relative path.
+
+    A stray refuses the publish rather than being skipped or sent (§4.4,
+    INV-10). Nothing on the untouchable list is judged: an entry there is
+    neither written nor removed whatever the folder holds, so refusing over
+    one would fail a publish on a file already decided to be left alone.
+    """
     files = {}
     for path in sorted(folder.rglob("*")):
-        if path.is_symlink():
-            # is_file() follows the link, so without this a symlink pointing
-            # anywhere on the machine is read and published to a public site
-            # (PRESS-0069). A site needs no symlinks; skipping is safe and
-            # refusing would fail a publish over something harmless.
+        relative = path.relative_to(folder).as_posix()
+        if not _is_protected(relative, untouchable):
+            _refuse_if_stray(relative, path)
+        if path.is_symlink() or not path.is_file():
+            # A protected symlink is left where it is rather than read:
+            # reading follows the link (PRESS-0069). A directory carries no
+            # bytes of its own.
             continue
-        if path.is_file():
-            try:
-                content = path.read_bytes()
-            except OSError as exc:
-                # A file the writer cannot read is still a file in the site
-                # folder; the bare OSError was neither of §4.1's types
-                # (PRESS-0073).
-                raise PublishError(
-                    f"{path} is in the site folder but could not be read: "
-                    f"{exc}"
-                ) from exc
-            files[path.relative_to(folder).as_posix()] = content
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            # A file the writer cannot read is still a file in the site
+            # folder; the bare OSError was neither of §4.1's types
+            # (PRESS-0073).
+            raise PublishError(
+                f"{path} is in the site folder but could not be read: "
+                f"{exc}"
+            ) from exc
+        files[relative] = content
     return files
 
 
