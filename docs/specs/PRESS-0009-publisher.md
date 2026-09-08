@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, §4.3's pacing split and INV-9's `::test_each_write_is_preceded_by_its_own_pace` included (PRESS-0114, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented except §4.1's five own-type failures — `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten` and `RemoteStateMissing` — which are specified and not yet built (PRESS-0116, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -121,13 +121,18 @@ class RateLimited(PublishError): ...       # GitHub asked us to slow down, and r
 class NoPreviousState(PublishError): ...   # nothing before the current commit
 
 # Each is its own type because `docs/design.md` § Errors requires every
-# message to end with what to do next, and for these five that differs: fix
-# the setting, remove the file, rebuild the site, free space, retry
-# (PRESS-0116). The first four refuse BEFORE any write. RemoteStateMissing
-# does not: `_failure` maps a status on any request, so a 404 inside a
-# repository that answers can arrive after blobs have been sent. §4.3's
-# property is what keeps its row "unchanged" -- nothing a reader sees moves
-# until the reference update.
+# message to end with what to do next, and for these five that differs
+# (PRESS-0116). SiteFolderMissing: fix the setting. StrayFile: remove the
+# file. SiteWouldBeEmptied: rebuild the site. FetchNotWritten: free space.
+# RemoteStateMissing: retry. This pairing is the one place they are paired;
+# §6 orders its rows differently, so nothing anywhere reads them off a list.
+# The first four refuse before anything reaches GitHub -- FetchNotWritten
+# can still have written to the folder it was handed, which is §4.5's
+# residual window. RemoteStateMissing refuses at no fixed point: `_failure`
+# maps a status on any request, so a 404 inside a repository that answers
+# can arrive after blobs have been sent. §4.3's property is what keeps its
+# row "unchanged" -- nothing a reader sees moves until the reference
+# update.
 class SiteFolderMissing(PublishError): ...  # the handed folder is not a directory
 class StrayFile(PublishError): ...          # the folder holds what the Builder did not produce (§4.4)
 class SiteWouldBeEmptied(PublishError): ... # every unprotected path removed and none written
@@ -226,7 +231,8 @@ site with no files and every unprotected path would be deleted. And a
 publish that would remove every unprotected path while writing none is
 refused once the listing has been read and before the first write — a
 finished build is never empty, and §3 decision 1 makes that commit
-unrecoverable from inside Pressless. Both raise `PublishError`.
+unrecoverable from inside Pressless. The first raises
+`SiteFolderMissing`, the second `SiteWouldBeEmptied` (§6).
 
 ### 4.3 Writing the commit
 
@@ -624,10 +630,8 @@ behaviour.
   *Test:* `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`
   — a folder carrying a symlink to a FILE, one a symlink to a DIRECTORY, one
   `.git/config`, and one `content/.DS_Store`. Assert **`StrayFile`** naming
-  the offending path, and that the transport recorded no write. **The type
-  by name, not `PublishError`**: every §4.1 type subclasses it, so asserting
-  the base would pass against a module raising the bare type at every site
-  and leave §6's mapping unfalsifiable.
+  the offending path, and that the transport recorded no write — the type
+  by name, on §10's rule for all five.
   **The symlinked DIRECTORY and `content/.DS_Store` are what carry the
   rule.** The first is the case an *ordinary file or directory* test passes:
   it answers `is_dir()`, so such a rule descends the link and publishes what
@@ -668,11 +672,13 @@ behaviour.
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
 
 **These five rows each carry their own type**, added 2026-09-08 by
-PRESS-0116. Four refuse before any write; `RemoteStateMissing` can arrive
-later, and stays *unchanged* on §4.3's property rather than on its timing. They shared the bare `PublishError`, and §6
-requires the Face to end each message with what to do next — which for these
-five is fix the setting, remove the file, rebuild the site, free space, and
-retry. A shared type left the Face inventing a discriminator or giving one
+PRESS-0116. Four refuse before anything reaches GitHub;
+`RemoteStateMissing` can arrive later, and stays *unchanged* on §4.3's
+property rather than on its timing. They shared the bare `PublishError`,
+and `docs/design.md` § Errors requires the Face to end each message with
+what to do next — which for these five differs. §4.1 pairs each type with
+its answer, and the rows below are in a different order, so neither list
+can be read off the other. A shared type left the Face inventing a discriminator or giving one
 generic answer to five different situations, which is the failure § Errors
 names. It is the same ground `OutcomeUnknown` is its own type on.
 
@@ -779,7 +785,7 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` and `::test_each_write_is_preceded_by_its_own_pace`, which asserts the wait sequence rather than a count |
-| What the Face branches on to tell §6's five `PublishError` rows apart | **nothing, and it is an open decision** — those five share the bare type, while §6 requires the Face to give each row its own three-part sentence and §4.1 says no failure carries one. Filed as PRESS-0116; PRESS-0011 is the caller that needs the answer |
+| What the Face branches on to tell §6's five own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten` and `RemoteStateMissing`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no unlisted root dot-name | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
@@ -791,6 +797,17 @@ code, so a green INV-1 says nothing about the rest.
 | §4.5's all-or-nothing fetch | `tests/test_publisher.py::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` |
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
 | That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |
+
+**§6's five own-type rows are asserted BY TYPE NAME, never by
+`PublishError`.** Every §4.1 type subclasses it, so the base name passes
+against a module raising the bare type at every site, and the mapping the
+Face branches on is then checked by nothing. The five tests that own it are
+`::test_a_site_folder_that_is_not_a_directory_is_refused`,
+`::test_a_publish_that_would_empty_the_site_is_refused`,
+`::test_a_stray_file_refuses_the_publish`,
+`::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` and
+`::test_a_missing_blob_is_not_reported_as_a_missing_repository`. Each names
+its own type; the rows above credit them on that condition.
 
 ## 11. Cross-doc impact
 
@@ -853,3 +870,4 @@ code, so a green INV-1 says nothing about the rest.
 | 9 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk with `publisher.py` whole, the pacing and retry tests windowed, ADR-0002 and the design rules. GitHub's live API unrunnable; §4.3's pacing split declared unbuilt | 1 | 1 | 1 | 0 | **Three verified: two fixed, one surfaced. First loop of a new run**, armed by §4.3's blob/other pacing split (PRESS-0114). **All three lanes found the same defect**, one tagging it Q4: §4.3 defines two paces and INV-9 knew one, with no §10 row — so a flat second, an inverted split, or the pace applied AFTER each write all pass every named test, and the wait this split exists to remove stays. INV-9 now carries both values and a sequence assertion, because a count passes a flat pace and a set passes the wrong ordering. **Surfaced, not fixed (4a stop condition, a design decision):** §6 gives five rows the bare `PublishError` while requiring the Face to give each its own sentence; filed as PRESS-0116 and recorded in §10. **From lanes' open questions:** two read "550 in one hour … at 136 a minute" as self-contradictory — it is one rate-limit hour and a four-minute run, now said so, with the gap between 550 and a first publish's count stated rather than glossed. **Code-side, surfaced:** `_is_protected`'s docstring says `load` fixes a trailing slash; executed, `load` stores `CNAME/` verbatim and the spec is the accurate one. |
 | 10 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk, the surfaced PRESS-0116 decision named so it was not re-found | 2 | 1 | 0 | 0 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); tail empty. A VIOLENT cap — every one of the five landed on text this run or PRESS-0113 wrote**, so the review ends here and routes to implementation. **One lane: INV-10 said *neither an ordinary file nor a directory*, and a symlink to a directory answers `is_dir()`** — so the invariant the test is written from does not reach it, while §4.4 does. Executed: the shipped code refuses it, and every existing fixture symlinks to a FILE, so the gap was green. INV-10 and §6 now name the symlink first and the fixture list gains the directory case. **One lane: §4.3 said each retry waits *twice the one before*, and the code multiplies the FRESH hint** — they agree only while GitHub repeats itself, and the primary limit's hint is a shrinking countdown. **One lane: the Status line said *Implemented* while the pacing split is not built** — the same defect this document's loop 7 fixed, reintroduced by loop 9's own amendment. **Two came from lanes' open questions:** *the three slow writes* under-paced by the wrong ordering is only the TREE; and *GitHub asks for at least a second* beside *the second is not what GitHub requires* read as a contradiction, now split into advice and enforcement. **Also deleted: a case-fold clause of mine that decided nothing**, a leading dot having no case. |
 | 11 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk, § 4.1's five new types declared unbuilt | 1 | 2 | 0 | 1 | **Five verified, five fixed. First loop of a new run**, armed by PRESS-0116's amendment; the loop-10 cap lapsed with it. **Every finding landed on text that amendment wrote.** **All three lanes: § 10 still called PRESS-0116 an open decision** where § 4.1 and § 6 had just settled it, so the Face's builder and the Publisher's would read opposite answers. **All three: § 4.2 said *Both raise `PublishError`*** for the two conditions it owns, which § 6 had just given their own types — the section an implementer actually builds those two from. **Two: the Status line said *Implemented*** with the five types unbuilt; third time today, and each time the amendment moved and the line did not. **One, and the one that mattered: nothing could falsify the mapping** — INV-10 asserted `PublishError`, which every new type subclasses, so a module raising the bare type everywhere passed. Each condition's existing test now asserts its type by name. **From a lane's open question: `RemoteStateMissing` was grouped as refuse-before-any-write**, and `_failure` maps a status on any request, so it can arrive after blobs are sent; its row is *unchanged* on § 4.3's property, not on timing. |
+| 12 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the five condition tests windowed. GitHub's live API and Windows unrunnable; the five types still unbuilt, and the brief said so | 1 | 3 | 1 | 1 | **Six verified, six fixed; one dismissed. Cap reached (2 for a spec); tail empty, and the document routes to implementation.** **A CORRECTION TO ROW 11, which cannot be edited: it records five fixed and the commit carries two.** Three edits it claims never landed — §10's open-decision row, §4.2's *Both raise `PublishError`*, and the Status line — each confirmed by `git blame` against an older commit, not by recall. All three were re-found cold here, two of them by all three lanes, so the loop caught what the row asserted. **All three lanes: §4.2 gave its two folder conditions the base type** where §6 had just given them their own — the section an implementer builds those two from, and the one passage that agreed with the code. **All three: §10 still called PRESS-0116 open.** **One lane, and the one that reaches the writer: §10 credited four rows to tests asserting `PublishError`**, which every new type subclasses — so §6's mapping was checked by nothing while §10 read green. The rule INV-10 held for itself now sits once under §10's table and names all five tests; INV-10's copy became a pointer. **One lane: the five *what to do next* phrases were mapped by POSITION** and §4.1's order differs from §6's, so a Face built off §6's rows gets three of five wrong; each type now carries its answer beside it and both loose lists are gone. **From a lane's open question: *the first four refuse BEFORE any write* is false of the disk** — `FetchNotWritten` is raised after files have landed at their final paths, which is §4.5's own residual window; scoped to GitHub. **Dismissed as immaterial:** §6 credited itself with the end-with-what-to-do-next requirement `docs/design.md` § Errors owns; a second lane reasoned to the same dismissal, and the rewrite above corrected it in passing rather than restating it. **Self-caught at the re-read:** my own §6 fix claimed a row ordering nothing backs. **A CALM cap — one of the six landed on text this run wrote**, anchors checked by `git blame`; four predate the amendment entirely. **Seven of the run's eleven verified findings fall inside the gated span**, so this was mostly gate. Two open questions resolved clean. |
