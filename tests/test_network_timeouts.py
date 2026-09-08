@@ -40,30 +40,82 @@ def _opens_the_network(call: ast.Call) -> bool:
     return False
 
 
+# A module that imports one of these is asking to open a socket, so the walk
+# below owes it at least one match. Named as a set rather than counted: a
+# count of expected call sites is stale the day a third opener is written,
+# and this has to hold for the module that does not exist yet.
+_NETWORK_MODULES = {
+    "urllib.request", "socket", "http.client", "requests", "httpx",
+    "ftplib", "smtplib", "poplib", "imaplib",
+}
+
+
+def _imports_network_machinery(tree: ast.AST) -> bool:
+    """Whether this module imports something that can open a socket.
+
+    `urllib.parse` does not count and `urllib.request` does, so the whole
+    dotted name is tested rather than its first part -- publisher.py and
+    insights.py both import the two side by side.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            names = [node.module]
+        else:
+            continue
+        for name in names:
+            if any(
+                name == module or name.startswith(f"{module}.")
+                for module in _NETWORK_MODULES
+            ):
+                return True
+    return False
+
+
 def test_every_network_open_passes_a_timeout():
     """Breaks when an opener call loses its timeout keyword, or when a new
     module opens a socket without one.
 
-    The found count is asserted too: a walk that matches nothing passes for
-    the same reason a correct one does, and this project has already shipped
-    tests that could not fail (PRESS-0075).
+    The walk is held against the source rather than against a count. Every
+    module that imports network machinery owes at least one matched call, so
+    losing one of the opener sites -- or the matcher ceasing to recognise the
+    call shape -- fails here instead of quietly reducing the tally. `assert
+    found` alone fired only at ZERO, so one site could go while the file's
+    headline claim became false and the run stayed green (PRESS-0110).
+
+    And at least one module must import that machinery at all, or the
+    per-module rule is true of nothing and this test asserts nothing again by
+    a different route.
     """
     untimed: list[str] = []
-    found = 0
+    unmatched: list[str] = []
+    opening_modules: list[str] = []
 
-    for source in sorted(_SRC.glob("*.py")):
+    for source in sorted(_SRC.rglob("*.py")):
         tree = ast.parse(source.read_text(encoding="utf-8"))
+        found_here = 0
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not _opens_the_network(node):
                 continue
-            found += 1
+            found_here += 1
             if not any(word.arg == "timeout" for word in node.keywords):
                 untimed.append(f"{source.name}:{node.lineno}")
+        if not _imports_network_machinery(tree):
+            continue
+        opening_modules.append(source.name)
+        if not found_here:
+            unmatched.append(source.name)
 
-    assert found, (
-        f"no network open was found under {_SRC}, so this test asserted "
-        f"nothing. Either the matcher stopped recognising the call shape or "
-        f"the modules moved"
+    assert opening_modules, (
+        f"no module under {_SRC} imports anything that can open a socket, so "
+        f"the per-module rule below is true of nothing and this test asserted "
+        f"nothing. Either the openers moved or _NETWORK_MODULES is stale"
+    )
+    assert not unmatched, (
+        f"these modules import network machinery and no call in them matched "
+        f"the opener shape, so their opens are unchecked: {unmatched}. Either "
+        f"an opener site was lost or _opens_the_network stopped recognising it"
     )
     assert not untimed, (
         f"these network opens pass no timeout, so a silent peer hangs "
