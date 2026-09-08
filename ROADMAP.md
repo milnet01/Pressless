@@ -3999,7 +3999,7 @@
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
 
-- 📋 [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
+- 🚧 [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
   Raised as an open question by the publisher lane and not filed by
   the first pass.
 
@@ -4071,6 +4071,30 @@
 
   Not taken unilaterally: it changes behaviour PRESS-0009 4.4 states, so
   it needs a spec amendment and re-arms that contract gate.
+  Decided 2026-09-08 (user): the untouchable list matches IGNORING CASE,
+  on every platform.
+
+  Decided on the asymmetry, not on which behaviour is tidier. A missed
+  protection deletes the domain file and takes the site off its address,
+  which PRESS-0009 2 calls unrecoverable. An over-match leaves a file
+  undeleted, which the writer removes himself. When one side of the
+  mistake cannot be undone, the rule leans that way.
+
+  Platform-conditional matching was rejected as answering the wrong
+  question: the remote is case-sensitive whether or not the client is.
+  Normalising in Setup was rejected because _is_protected's own docstring
+  already records that a hand-written settings file reaches it without
+  passing through the writer of the list -- which is the same reason that
+  docstring gives for tolerating a trailing slash.
+
+  The item assumed this needed PRESS-0021. It does not. "What does Setup
+  write" and "how is the list matched" are separable, and only the second
+  is being decided.
+
+  Order of work: PRESS-0009 4.4 and its invariant are amended first, the
+  contract gate runs on the amendment, and the code follows. A conformer
+  reading 4.4 today writes an exact comparison, so this is a change of
+  direction under CLAUDE.md rule 14 and the gate is owed.
   **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.

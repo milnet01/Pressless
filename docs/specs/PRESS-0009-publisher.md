@@ -278,6 +278,18 @@ absent.** PRESS-0001's `load` accepts `CNAME/` and stores it as written,
 so an entry compared exactly would protect nothing while reading as
 configured.
 
+**The comparison ignores case.** GitHub's paths are case-sensitive and the
+Windows and macOS local filesystems are not, so a folder holding `cname`
+beside a repository holding `CNAME` is two paths. No single casing of the
+entry is right for both: one casing deletes the entry holding the custom
+domain, the other uploads a second file claiming it, and neither is
+reported. Ignoring case closes both, because the entry then protects the
+local file from being uploaded and the remote file from being removed. It
+over-protects a repository that deliberately holds two root entries
+differing only in case, which leaves a file undeleted for the writer to
+remove himself. §2 makes the deletion unrecoverable, and that asymmetry is
+what decides it.
+
 Every other path is made to match the folder, deletions included, so a
 page the writer removes actually goes.
 
@@ -358,16 +370,20 @@ behaviour.
   about imports and never about where the key came from.
 
 - **INV-2** — An entry on `settings.untouchable` is neither written nor
-  removed, matched against a path's first segment. This holds when the
-  handed folder contains a file of that name and when it does not, and it
-  holds for every path beneath an entry naming a directory.
+  removed, matched against a path's first segment and ignoring case. This
+  holds when the handed folder contains a file of that name and when it
+  does not, and it holds for every path beneath an entry naming a
+  directory.
   *Test:* `tests/test_publisher.py::test_untouchable_is_neither_written_nor_removed`
   — three fixtures: the folder holds a *differing* file at an untouchable
   path; it holds nothing there; and the repository holds files beneath an
   untouchable *directory*. Assert the recorded requests carry no tree
   entry for any of them.
   *Breaks when:* an implementer applies the list to deletions only,
-  which reads as protection and leaves the entry overwritable.
+  which reads as protection and leaves the entry overwritable. And when
+  the comparison is exact: a client whose filesystem folds case then hands
+  in a first segment the entry cannot match, which is §4.4's unrecoverable
+  case.
   **Only this rule can reject the write fixture:** every other rule in
   §4.4 makes a differing file an ordinary upload.
 
@@ -550,6 +566,7 @@ code, so a green INV-1 says nothing about the rest.
 | INV-1 | `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling` |
 | §4.2's two folder preconditions | `tests/test_publisher.py::test_a_site_folder_that_is_not_a_directory_is_refused` and `::test_a_publish_that_would_empty_the_site_is_refused` |
 | §4.4's trailing-slash tolerance | `tests/test_publisher.py::test_an_untouchable_entry_with_a_trailing_slash_still_protects` |
+| §4.4's case tolerance | `tests/test_publisher.py::test_an_untouchable_entry_protects_whatever_its_casing` |
 | INV-2 | `tests/test_publisher.py::test_untouchable_is_neither_written_nor_removed` |
 | INV-3 | `tests/test_publisher.py::test_reference_update_is_last` |
 | INV-4 | `tests/test_publisher.py::test_unchanged_files_are_not_uploaded` |
