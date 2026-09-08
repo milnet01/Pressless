@@ -1050,7 +1050,9 @@ imports.
 - PRESS-0006's writers share this module's atomic write, so §4.5's
   permission rule reaches their files too; PRESS-0006 is where their
   side is recorded. **INV-12 reaches it the same way** — `list_html` and
-  `list_templates` are PRESS-0006's surface and share `_list_names`, so
+  `list_templates` are PRESS-0006's surface and share `_raw_names` with
+  `list_slugs` — not `_list_names`, whose only caller is
+  `list_photographs`, as §9 says — so
   that document gains the listing filter and the notice for them, and is
   amended in the same batch (PRESS-0103). Neither document may state
   either rule alone. ADR-0001 is

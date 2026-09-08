@@ -5273,7 +5273,7 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: PRESS-0101 / PRESS-0019 § 11, in-session 2026-09-07.
 
-- 📋 [PRESS-0103] **PRESS-0006's listings defer to list_slugs, whose contract just changed under them.**
+- ✅ [PRESS-0103] **PRESS-0006's listings defer to list_slugs, whose contract just changed under them.**
   PRESS-0005 INV-12 (new, 2026-09-07) has `list_slugs`, `list_html` and
   `list_templates` return only names their own `path_for` accepts, and
   emit a `StoreNotice` per file passed over.
@@ -5317,6 +5317,23 @@ already-built code ships in whichever release comes next.
   part that mattered: PRESS-0006 stated only the opening half of the
   deferral, so its document did not say what its code does, and a reader
   of that spec alone would have built the listings silent.
+  Resolved (2026-09-08). PRESS-0006 4.4 now states its half of
+  PRESS-0005 INV-12 -- the filter is each folder's own path_for, not the
+  shared slug rule, executed both ways -- and defers the rule itself. 10
+  names the test and which fixtures are this document's; 11 records the
+  routing. Gated: two loops, eight verified, eight fixed, cap reached,
+  tail empty. The gate found more than the amendment: PRESS-0005 11
+  routes TWO rules here and only the listing one had been recorded, so 6
+  gains the wider-grant row and 11 the bullet; INV-6 promised every
+  field unchanged where a date's fraction is dropped, measured; INV-10's
+  Breaks when named a breach that cannot happen, since on write "" and
+  "\n" are byte-identical; and 7's comment-level population was
+  undefined, which any per-comment filter turns into a refused archive.
+  PRESS-0115 is filed for the falsifier the wider-grant rule still
+  lacks. Two defects in my own packet, all three lanes catching both: a
+  false verified-fact about the filter having no code, and a window
+  running into PRESS-0005's loop log. Both recorded in the loop-5 row;
+  the premise correction is the note above.
   **Layman:** The page and template listings promise to behave like the entry listing, which now skips and reports unusable files — but their own document was never told.
   Kind: doc-fix.
   Source: review-contract 2026-09-07 PRESS-0005 loop 10, all three lanes; filed as the neighbouring document's half.
@@ -5855,6 +5872,32 @@ already-built code ships in whichever release comes next.
   **Layman:** The first publish spends most of its time deliberately waiting between uploads. We now know GitHub does not ask for that wait, so we could drop it and make the first publish much faster.
   Kind: perf.
   Source: PRESS-0092 investigation 2026-09-08, offered to the user and not yet decided.
+
+- 📋 [PRESS-0115] **The page, template and comments writers promise a permission notice nothing can falsify.**
+  PRESS-0005 section 11 routes its permission rule to PRESS-0006, and
+  PRESS-0006 section 6 now carries the row: every writer there shares the
+  atomic write, which calls `_report_a_wide_grant`, so `write_html`,
+  `write_template` and `write_comments` all emit `StoreNotice` where the
+  mount granted more than owner-only.
+
+  Nothing can falsify it. PRESS-0006 has no invariant for it, no test, and
+  section 10 now says so. PRESS-0005's own falsifier --
+  `tests/test_store.py::test_a_written_entry_is_owner_only` -- exercises
+  `write`, an entry call, and reaches none of the three.
+
+  So an implementer writing those three with a plain `open` plus
+  `os.replace` loses the notice while every invariant in PRESS-0006 section
+  5 still passes, INV-9 included: it records `os.replace`'s destination and
+  not the descriptor's mode. That is INV-9's own `Breaks when`, one step
+  further on.
+
+  The test needs `tests/_mode_support.py`'s `_require_posix_modes` guard,
+  because the rule holds only on a filesystem that enforces modes.
+
+  Blocked-by: nothing.
+  **Layman:** Three of the app's save routines promise to warn you when a drive cannot keep a file private, and no test checks that they do.
+  Kind: test.
+  Source: review-contract 2026-09-08 PRESS-0006 loop 2.
 
 ## Milestones
 
