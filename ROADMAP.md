@@ -5753,6 +5753,32 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: PRESS-0092 investigation 2026-09-08.
 
+- 💭 [PRESS-0114] **Whether to keep pacing blob uploads a second apart, now that GitHub is measured not to require it.**
+  A decision nobody has made, filed so it is not lost inside a closed
+  item.
+
+  The session waits PACE_SECONDS before every write after the first. On
+  the first publish that is one second per changed file, so most of the
+  run's wall clock is deliberate waiting rather than transfer.
+
+  PRESS-0092 measured 550 blob POSTs accepted at a sustained 136 a
+  minute with no secondary limit, so the pace is not what GitHub
+  requires of blob creation. But GitHub's own documentation still gives
+  "wait at least one second between each request" as general advice for
+  writes, so the current behaviour is conservative rather than wrong.
+
+  Not filed as a defect and not scheduled. The trade is a much faster
+  first publish against departing from documented advice on the one run
+  that matters most, and it is the user's call.
+
+  Note the blast radius if it changes: the pace also spaces the tree,
+  commit and reference writes, and those three ARE plausibly
+  content-generating. Any relaxation should be scoped to blobs rather
+  than applied to every write.
+  **Layman:** The first publish spends most of its time deliberately waiting between uploads. We now know GitHub does not ask for that wait, so we could drop it and make the first publish much faster.
+  Kind: perf.
+  Source: PRESS-0092 investigation 2026-09-08, offered to the user and not yet decided.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
