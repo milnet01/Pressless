@@ -29,7 +29,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Builder** | Turning the Store plus Settings into a finished site folder. This is `build_blog.py` re-homed and separated from the writer. | GitHub, the browser, where the writing came from |
 | **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a previous state of it, when asked. | Entries, pages, poems, what a draft is |
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, and which countries. | Entries, pages, marks, HTML, GitHub |
-| **Face** | The local web server and the pages he sees in his browser — the editor, the preview, the buttons, the cheat sheet, the dashboard. | *Nothing calls it* |
+| **Face** | The local web server and the pages he sees in his browser — the editor, the preview, the buttons, the cheat sheet, the dashboard. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
 
 **Marks is a part rather than a detail inside the editor**, and that is
 the least obvious decision in this document. Two different things
@@ -420,9 +420,10 @@ site has not changed."* where nothing was in flight, and the unknown
 sentence above where a publish had reached its last step — then *"Try
 again, and send the details below to whoever helps you."* A **Show
 details** toggle holds the technical text and where the log file is.
-The technical text is the failure's own words, never a raw traceback —
-a traceback names the file behind every frame, and those are absolute
-paths, which § Logging forbids.
+The technical text is a typed failure's own words, and for an unforeseen
+one its type alone — never a raw traceback, and never a stock message
+naming the file it failed on. Both name absolute paths, which § Logging
+forbids.
 **The location is shown as a label, never as a full path** — *"the
 Pressless folder, beside the program"* — beside a button that copies
 the real path or opens the folder. § Logging owns the reason. The
@@ -473,28 +474,41 @@ One rolling plain-English log beside the settings. **No credential is
 ever written to it, not even shortened** — neither the publishing key
 nor the Google authorisation — `security.md` and S5.
 
-**A typed failure carries none of three things: the credential, the
-writer's GitHub account, and a full filesystem path.** Decided with the
-user 2026-09-07. The last two identify him. **The part that raises leaves
-them out** — `security.md` § 6 is strip before the call, not after, and a
-part cannot know whether it is talking to the screen or to the log. The
-Face has nothing to scrub.
+**The Face writes it.** Rule 3 denies Marks a disk, and rules 5 and 8
+spend the Publisher's and Insights' one disk write elsewhere — so the
+only part left is the one that sees every step and every failure
+already (rule 1).
+
+**Nothing Pressless shows or writes down carries three things: a
+credential, an account name either secret is filed under, or a full
+filesystem path.** Decided with the user 2026-09-07. The last two
+identify him, and the log is what he sends to whoever helps him. **It
+binds every line**, not the failures alone: an ordinary progress record
+names no path either.
+
+**The part that raises leaves them out**, so nothing downstream has to
+strip them — `security.md` § 6 is strip before the call, not after, and
+a part cannot know whether it is talking to the screen or to the log.
+**One class escapes that, and it is the class § Errors catches last**: a
+failure no part of Pressless raised carries its own words, and a stock
+file error quotes the path it failed on. There the Face shows the
+failure's type and nothing else, for the same reason § Errors drops the
+traceback.
 
 **What stands in.** A location is a label, and § Errors says how. A
 repository is its short name, never `account/name`. A secret is named by
-what it is — *your publishing key* — never by the account it is filed
-under. `github_account` may hold his GitHub account or an arbitrary
-label; nothing shows or logs it either way, so the rule holds without
-settling which.
+what it is — *your publishing key*, *your Google sign-in* — never by the
+account it is filed under.
 
-**Scope: failures and the log** — what Pressless says when something has
-gone wrong, and what it writes down. Setup and Settings are outside it:
-he chooses the site folder and types the repository, so a screen showing
-him what he chose tells him nothing he did not write. The settings file
-holding them is outside it too, and never leaves the machine. **§ Errors'
-copy button is the one deliberate exception inside the rule**: it puts
-the real path on the clipboard because the helper needs it, which he does
-on purpose.
+**Outside the rule: a value he entered himself**, shown back on the
+screen he entered it on — the site folder he picked, the repository he
+typed. The settings file holding them is outside it too, and never leaves
+the machine. **A failure about a location he did NOT choose is inside
+it**: Pressless's own folder is derived from where the program file sits,
+so the setup message when it cannot be created takes the label form.
+**§ Errors' copy button is the one deliberate exception inside the
+rule** — it puts the real path on the clipboard because the helper needs
+it, which he does on purpose.
 
 ## The stack, and what it rules out
 
@@ -559,3 +573,4 @@ install by rewriting the one component we have evidence about.
 | 8 | 2026-08-27 | 3, cold — identical brief, packet rebuilt whole from disk and extended with the `_is_protected` window and the spec's § 9 failure table | 0 | 3 | 5 | n/a | **Eight verified, seven fixed, one filed. Not one Q1** — every defect was two passages disagreeing or a decision nobody had taken. **All three lanes independently re-opened rule 5, the deletion rule and the setup derivation against the code and found them consistent**, which is loop 7's four fixes verified by a cold read rather than by assertion. **About a third of the loop landed on text this run wrote**, each anchor checked against loop 7's ledger — a moderate figure, and the rest were pre-existing. **Two lanes found the sharpest defect, and it was loop 7's own fix**: rule 5 now granted a disk write and never said where it lands, while § Where everything sits on disk claims to settle exactly that class of question and lists two folders and a keyring. The site folder is itself "a folder it is handed", so the rule permitted fetching a previous state into the folder that gets published — one implementer re-uploads the old site's root files, another picks a scratch directory. The fetch area is now named in the disk table and in rule 5. **A lane's open question became the second**: "may talk to GitHub" is the form rule 8 uses for a read-only relationship, so "writes only into a folder it is handed" could still be read as covering every write. Rule 5 now says *may read and write GitHub*, and *writes to disk only*. **Two lanes found the last-resort message asserting "Your site has not changed" for anything unforeseen** — which, after loop 7 forbade guessing at an unknown outcome, is the one place nothing typed the guess out; and it carried no next-step clause, though the three-part rule has no exception for point 3 as it now does for point 2. **One lane found the Errors test checking point 2 alone** while the rule requires three parts, under the sentence "This is checkable, and it is checked". **One lane found the undo disposition naming entries, fixed pages, templates and furniture but not comments** — readers' words, so "an undo deletes nothing of **his**" does not reach them, and an implementer would delete them. **One lane found Insights specified to return country names while the flag lookup is keyed by country code** — two parts that must interoperate, settled one sentence each, differently. **One lane found "Every edit is recoverable in one step (S9)"** false for an edit not yet published: undo is sourced from the repository alone and Persistence keeps no prior version. Narrowed to *every published edit*, which is S9's own scope. **Filed, not fixed, both needing a decision this gate may not take:** PRESS-0030, which part builds the preview page; PRESS-0031, what undo does to a Store file changed since the last publish. **Dismissed:** ADR-0003's provenance (raised by two lanes, both judging it inert themselves), "all 862 pages" against ADR-0002's "roughly 862 files" (the lane could name no line anyone builds differently), and ADR-0005's internal split, already filed as PRESS-0029 by loop 7. |
 | 9 | 2026-08-27 | 3, cold — identical brief, packet rebuilt whole from disk and extended with the `settings.py` surface; the two decisions filed by loop 8 declared already-surfaced so they would not be re-found | 0 | 4 | 2 | n/a | **Six verified, six fixed; one dismissed. Cap reached (3 for an ADR); the tail is empty of unfixed findings and the run exits.** **A VIOLENT cap: four of the six landed on text THIS RUN wrote**, each anchor checked against loops 7 and 8's ledger rather than recalled. **Correction to loop 7's row, which is not edited: that loop verified FIVE and fixed four.** A lane found *"never in either folder"* contradicting the ADR-0003 fallback the disk table and the Credentials row both grant; it was verified, then dropped between verification and the fix pass, and the row's count was written from the fix pass rather than from the ledger. A lane in this loop re-found it, which is the loop working, and it is now fixed — the Google authorisation falls back to the same owner-only file the publishing key does. **Two lanes found loop 8's recoverability fix still too strong**: narrowing *every edit* to *every published edit* was not enough, because `fetch_previous` reads the current commit's first parent and the spec records the consequence as decided — a second undo returns the state the first replaced. Undo is a toggle, not a history; the promise is now *the most recent publish*, and § What undo actually does says so. **Two lanes found loop 8's own last-resort fix leaning on a signal that does not exist** — it branches on whether a publish was in flight, and § 4.6 says the Publisher never keeps state between calls. Named: the Face knows because it drives the sequence (rule 1). **One lane found rule 5's fetch-back sentence had drifted to the wrong subject** — "so it never reaches the Store" reads as *the previous state* never reaching the Store, which is what undo exists to do; the Publisher is now the subject. **One lane found the undo disposition's kept files are rebuilt and republished**, so an undo removes an added fixed page from neither the Store nor the site — stated, since "an undo deletes nothing of his" already decided it. **One lane found nothing says how the Face learns what the Builder produces**, which loop 7's own fix introduced; the Builder names its own root output, for the reason rule 2 gives. **Dismissed:** the data-folder migration on upgrade, already filed in PRESS-0022 by loop 6 — a packet gap, since this run carried loop 8's filed items into the brief and not loop 6's. **Settled as a non-finding:** `root_entries` and `fetch_previous` read `commits/HEAD` where `publish` resolves the default branch by name; both resolve the same ref, so the routes differ and the behaviour does not — a code-side observation, out of a docs gate's scope. **Routing.** Size is not the problem: this document's body is about 30 KB against 31-37 KB for every spec sibling, so it is not oversized and a split is not indicated. The oscillation is concentrated — loops 8 and 9 both landed mostly on rule 5's fetch-back sentence and § Errors, the two places this run was actively editing. Per the violent-cap rule the review of this document AS IT STANDS ends here; it is not re-gated, and the bar lapses with the next authoring edit that changes direction. |
 | 10 | 2026-09-08 | 3, cold — genre pinned `adr`, packet carried `security.md` § 6, ADR-0003, discovery's S5–S7, the `settings.py` and `credentials.py` message sites and PRESS-0003/0011/0087/0068's decisions; Windows / PyInstaller / GitHub / Analytics declared unrunnable | 0 | 3 | 5 | n/a | **Eight verified, eight fixed, none dismissed. First loop of a new run**, gating PRESS-0003's two user decisions: the log's location shown as a label, and the 2026-09-07 rule against printing or recording the key, the account or a full path. **Seven of the eight landed on the paragraph this loop added**, which is 4a-min's pattern — it was written as one absolute sentence and was wrong three ways at once. **The sharpest came from one lane and the cited standard settled it:** the rule bound only surfaces that print or record, while rule 1 puts every one of those in the Face — so a part could raise `f"{target} could not be read"` and the Face, handed an opaque string, could not find a home directory inside it. `security.md` § 6 is *strip before the call, not after*, quoted two lines above the rule that contradicted it. The raise site is now what carries the obligation, so Show details is safe by construction. **Two lanes found the scope word reached the settings file**, which must hold the real path and `owner/name` — so a literal implementer could not persist the site folder at all. Scoped to failures and the log, with Setup and Settings named as outside it: he chooses those values himself. **One lane found the path was given a substitute and the account name none**, though a repository *is* `account/name`. **Two of the eight were the loop's own collateral, both caught by step 4 and 4b rather than by a lane:** the corrected scope still bound the Settings screen where he picks the folder, and an account clause asserted `github_account` is a keyring label rather than his account — `settings.py` documents it as either, so the claim went past its evidence and now holds without settling which. **The traceback claim was executed and the refuting case fired**: a `<stdin>` traceback names no absolute path, so the wording is scoped to what was measured — a traceback names the file behind every frame. **One pre-existing Q2, found by one lane:** an undo's *"removes his additions from neither the Store nor the site"* did not follow from its own premise, since an entry demoted to a draft leaves the site by rule 4. **Found while verifying, and it belongs to PRESS-0068 item 4 rather than here:** `settings.py` raises a message carrying the full path *and* `owner/name` together, so that item's surface is wider than the credentials module it was filed against. |
+| 11 | 2026-09-08 | 3, cold — identical brief, packet rebuilt whole from disk and re-measured; the superseded diff of loop 1's trigger replaced with prose, since its `+` side no longer matched the document | 0 | 1 | 4 | n/a | **Five verified, five fixed, one dismissed. Every one landed on text loop 1 wrote**, which is the oscillating shape — loop 1 replaced an absolute rule with a narrower one and the narrowing is what this loop found. **All three lanes found the scope had moved too far.** Loop 1 put the obligation on the raise site, correctly, and in doing so made *a typed failure* the whole rule — so an ordinary progress line ("wrote 587 files to …") breached nothing, and the last-resort catch, which by definition fires on failures no part raised, was told there was *nothing to scrub*. A stock file error quotes the path it failed on. The rule is now stated of everything shown or written down, with the raise-site obligation as its mechanism and the unforeseen failure named as the one class the Face must still reduce — to its type alone. **All three also found the Setup carve-out was stated by STAGE and justified by CHOICE**: Pressless's own folder is derived from where the program file sits, so *"where the folder cannot be created, Pressless stops and says so"* is a failure about a location he never picked, sitting inside the exemption by wording and outside it by reason. Scoped to a value he entered himself. **One lane found only the GitHub account named** while ADR-0003 puts the Google authorisation on the same footing under its own account name, leaving Insights' failure path unruled. **The sharpest came from a lane's open question rather than a finding, and it blocks the item this gate serves:** no part is permitted to write the log at all — rule 3 denies Marks a disk, and rules 5 and 8 spend the Publisher's and Insights' one disk write elsewhere, each ending *"and nothing else"*. The same shape loop 7 found in rule 5. The Face writes it, which is derived rather than chosen: every other part is excluded by a rule already in the document. **Collateral, both caught by the fix-time checks and not by a lane:** the parts table still described a Face that neither wrote the log nor turned failures into sentences, and an added claim that *a stock `OSError` names the file it failed on* was refuted on execution — a refused connection names nothing — so it is scoped to file errors. **Dismissed:** whether Show details reaches ordinary typed failures as well as the last-resort catch. True gap, but Face detail this genre leaves to PRESS-0011. |
