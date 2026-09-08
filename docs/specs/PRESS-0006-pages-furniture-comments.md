@@ -239,13 +239,14 @@ entry's comments once.
 `read_html` decodes UTF-8 and returns the text; `write_html` encodes it
 back. No parse, no reformat, no reindent, no entity rewriting.
 
-**Line endings are preserved here and normalised everywhere else, and
-that is deliberate.** PRESS-0005 §4.2 writes entries LF whatever the
-platform. A fixed page is different: the code view hands him the file
-entire, so its bytes are his, and rewriting his line endings on save is
-the reformatting decision 1 exists to forbid. Entries, templates and
-comments keep the LF rule; pages and furniture keep what they were
-given.
+**No Store call translates line endings, and that is deliberate.** Every
+write names its `newline` explicitly so the platform's default cannot
+translate the module's own emitted newlines; a page and its furniture pass
+`newline=""` so even those are left alone. What none of them does is
+rewrite the WRITER'S line endings: a body carrying CRLF is written back
+CRLF from every one of these calls, measured. Rewriting them on save is
+the reformatting decision 1 exists to forbid, and the code view hands him
+the file entire, so its bytes are his.
 
 **A template file is an entry file** — the same header, the same blank
 line, the same body, read and written by the same code. Its `Date` is
@@ -304,7 +305,10 @@ owns the rule for all three listings and this document does not restate it:
 each returns only names its own `path_for` accepts, and emits one
 `StoreNotice` per file it passed over. Until PRESS-0103 this paragraph
 deferred about OPENING alone, so an implementer built these two unfiltered
-and silent and INV-12's test failed on two of its three folders.
+and silent, and INV-12's test fails on ALL THREE of the folders those two
+listings read — `html_path_for` refuses `My_Entry` under `pages` and
+`banner` under `furniture`, and `template_path_for` refuses `My_Entry` (all
+executed).
 
 **One thing is this document's own, because it is these two listings that
 make it visible: the filter is what THAT folder's `path_for` accepts, not
@@ -511,6 +515,7 @@ refusing at the write is where the caller still knows what it dropped.
 | What happens | What the Store does |
 |---|---|
 | One of the Store's own sub-folders is missing | Reading lists nothing; a write into it creates it, as PRESS-0005 has it for the entry folders. `photographs/` is the exception — no call here writes into it, so whoever puts an original there creates it: Import for the archive, PRESS-0016 afterwards |
+| The mount granted more than owner-only on a file being written | `StoreNotice` naming the file, and the write goes ahead. Every writer here shares PRESS-0005's atomic write, which reports it, so a page, a furniture file, a template and a comments file all carry PRESS-0005 INV-11's rule (§11) |
 | The folder handed in is not a folder | `StoreError` naming it. That path is the caller's rather than the Store's, so a mistyped one is an error and never an empty listing |
 | No page or furniture file at that path | `StoreError` naming it. Unlike an absent comments file, absence here is not the ordinary case: a page the Builder asks for and cannot find is a fault rather than an empty set |
 | A page file is not valid UTF-8 | `StoreError` naming the path. It is not read with a replacement character, which would silently change his page on the next save |
@@ -533,7 +538,14 @@ refusing at the write is where the caller still knows what it dropped.
 using a temporary folder as `tests/test_store.py` does.
 
 `tests/test_store_extras_archive.py` — the conformance run, against the
-real WordPress export. Every comment Import would carry is written
+real WordPress export. **The population is every comment attached to the
+entries §11 pins, with no per-comment filter** — not "whatever Import
+decides", which is PRESS-0007 and does not exist. Narrowing it by approval
+state or any other per-comment predicate can drop a comment another one
+replies to, and `write_comments` then refuses the whole archive with
+`DanglingReply` (INV-5); so two builders would get a passing run and a
+failing one from the same sentence. Narrowing is PRESS-0007's to justify,
+not this run's to assume. Every such comment is written
 through the Store and read back, and the run asserts that no field
 changed, that every reply's parent resolves, and that no
 `comment_author_email` or `comment_author_IP` value from the export
@@ -632,14 +644,22 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-11 photographs stay put | `test_photographs_stay_where_they_are` |
 | INV-12 a zoned comment date refused | `test_a_comment_date_carrying_a_zone_is_refused` |
 | INV-13 unsound comment identifiers refused | `test_unsound_identifiers_are_refused` |
-| That `list_html` and `list_templates` filter and report | `tests/test_store.py::test_a_listing_returns_only_usable_names` — PRESS-0005's test, because PRESS-0005 INV-12 owns the rule for all three listings. Two of its three folder fixtures are this document's, and the furniture one is the case that falsifies a filter built on the shared slug rule alone |
+| That `list_html` and `list_templates` filter and report | `tests/test_store.py::test_a_listing_returns_only_usable_names` — PRESS-0005's test, because PRESS-0005 INV-12 owns the rule for all three listings. Its pages, furniture and templates fixtures are this document's; the entries one is PRESS-0005's, as is the empty-stem `.txt`. Furniture is the case that falsifies a filter built on the shared slug rule alone, and the empty-stem `.html` is this document's |
 | That a photograph's file name is well formed | **nothing here** — decision 10 withdrew that rule to PRESS-0016; only reaching outside the folder is refused |
 | That the plain box leaves the tags alone | **nothing here** — the Store holds the bytes and INV-1 proves it gives them back; whether the Face's box edits only the words is PRESS-0014's |
 | That the Builder never renders a template as a page | **nothing here** — INV-7 proves the Store offers no route to publish one; what the Builder does with `templates/` is PRESS-0008's |
 
 ## 11. Cross-doc impact
 
-- **PRESS-0005 §11** routes INV-12's listing filter and says neither
+- **PRESS-0005 §11** routes TWO rules here, not one, and says neither
+  document may state either alone. The second is §4.5's permission rule:
+  every writer this document defines shares PRESS-0005's atomic write, which
+  reports a mount granting more than owner-only, so `write_html`,
+  `write_template` and `write_comments` all carry INV-11's notice. §6 has
+  the row. Recorded because INV-9's own *Breaks when* is an implementer
+  writing these calls with a plain `open`, which loses the notice while
+  every invariant here still passes.
+- **PRESS-0005 §11** also routes INV-12's listing filter and says neither
   document may state it alone. §4.4 here carries the half that is this
   document's — that the filter is each folder's own `path_for` rather than
   the shared slug rule — and defers the rule itself (PRESS-0103).
@@ -665,6 +685,7 @@ other way — the box edits the words in place and leaves the tags alone.
 | 2 | 2026-08-31 | 3, cold — identical brief, packet rebuilt whole from disk and extended with PRESS-0005 § 4.2's bullets, the `_parse_date` waiver, `store.write`'s `mkdir`, and the measured absence of email- or IP-shaped text in the export's comment bodies | 1 | 6 | 3 | 1 | **Eleven verified, eleven fixed. Cap reached (2 for a spec), and it is a VIOLENT cap** — seven of the eleven landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. **The cause is identifiable rather than diffuse, and it is removed rather than repaired:** loop 1 took on the photograph material, and five of this loop's findings were its consequences. `versioning-overrides.md` gives "how an entry names a photograph" to PRESS-0016, and the archive settles it — most of the export's attachment names carry an underscore, so loop 1's slug-plus-extension rule could not be met by the files it was written for. Decision 10 now withdraws the name to PRESS-0016 and keeps only what a folder needs: a single path component. **Two lanes found the Builder contradiction, which is the run's most consequential.** The spec put templates "in a folder the Builder does not read", while `docs/design.md` § Where everything sits on disk copies templates into `content/` and hangs undo's wholeness on their being there — so a Builder built from this spec would have left the writer's templates unrecoverable. Never rendered as a page is the rule; never read is not. **All three lanes found INV-11's test could not pass:** it asserted the module's public names are exactly § 4.1's, on a § 4.1 that is an addition to a module already exporting the entry surface. **Two lanes found no rule for the commonest call there is** — `read_comments` on an entry with no comments; it now returns `()`. **One lane found the trap that would have failed the whole archive:** the export spells a top-level comment's parent `0`, the Store treats any non-empty parent as naming another comment, so a `0` carried through is a dangling reply and every comment is refused. **Routing: implementation.** A third loop is not filed — a majority of this one repaired the last, and the text that caused it is deleted rather than rewritten, so what a further cold read would find is not what this one found. |
 | 3 | 2026-09-04 | 3, cold — genre pinned `spec`; packet rebuilt whole from disk and extended with the shipped `store.py` and `test_store_extras.py`, which loops 1 and 2 predate | 0 | 1 | 5 | 1 | **Seven verified, seven fixed, none dismissed. Not one Q1** — every defect was a rule the code keeps and the document never stated. **All three lanes found the zoned comment date**, which PRESS-0090 left unwritten here on purpose because naming it re-arms this gate; INV-12 now carries it. **Two of the seven are the spec lagging its own tests**, both found by mutation probe when this item was built and never written back: INV-10's byte half cannot fail on Linux, where a named newline and an unnamed one produce identical bytes — re-measured here for a page and a comments file — and INV-11's clause listed no backslash case, which is what let dropping that guard survive. **The Q2 is a leak risk**: INV-11 said to use "a name the archive actually carries" where § 7 forbids the archive reaching a fixture, in a public repository. **Three more, two lanes each**: `list_photographs` returns whole names where every sibling listing is stemmed; a missing page or furniture file had no failure row though `read_html` raises; `Comment.identifier`'s uniqueness was owned by nobody and is now the caller's, on PRESS-0005 § 4.1's footing. **One open question resolved clean and is not in the tally** — § 11 says Import carries more comments than `design.md` quotes, and the conformance run prints 78 against 70 on published entries alone. |
 | 4 | 2026-09-05 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the guards the loop-3 lanes named unwindowed (`_refuse_a_dangling_reply`, `_refuse_a_zoned_date`, the zoned-date test, `settings.py`, the archive run's Comment builder) | 3 | 0 | 2 | 2 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the run exits. A CALM cap** — three of the seven landed on text this run wrote, checked against loop 3's ledger rather than recall. **The sharpest is one of those three, and it falsified a rationale loop 3 had just written**: that the Store cannot tell two comments sharing an identifier from a correction. It can — each call is handed the whole set, which is the ground `_refuse_a_dangling_reply` already stands on. The user decided the Store should check, so INV-13 refuses an empty or repeated identifier; the empty one matters most, being `parent`'s top-level sentinel, so a reply naming it is read as top-level and lost while INV-5 passes. **A second consequence of loop 3's decision 11**: comments are keyed on the entry slug in one flat folder, so the colliding pair PRESS-0005 decision 5 records — which survive in different entry folders — share one comments file, and `write_comments` replaces whole. Stopping on it is PRESS-0007's, as that decision already hands it. **Two lanes found INV-10's template half delegated to a test that cannot reach it** — PRESS-0005 INV-6 exercises `write`, which predates `write_template` — so nothing asserts a template's encoding anywhere. **Two pre-existing Q1s**: § 6 promised a write creates any missing sub-folder, and `photographs/` is the one folder no call here writes into; and § 4.2 said a template's `Date` is read by nothing, where `read` raises without it. **One Q4**: INV-3's enumerated cases omit a reserved device name, so the half of the rule that refuses `nul` could not fail. Code and test halves filed as PRESS-0094 rather than done here. **Across the run about three of fourteen verified findings fell inside the gated span** — as much audit as gate. |
+| 5 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `store.py` whole, `test_store_extras.py` by outline, PRESS-0005's INV-12 and § 11, and `design.md` § What may depend on what. **The packet was defective in two ways and all three lanes caught it** — see the Outcome | 3 | 1 | 1 | 0 | **Five verified, five fixed, none dismissed.** Trigger: § 4.4 gaining its half of PRESS-0005 INV-12's listing filter (PRESS-0103). **Two packet defects, both mine, both disclosed by the lanes rather than found by me.** A *verified source fact* asserted the listing filter had no code; `_only_usable` ships and both listings route through it, so the before-implementation framing given to every lane was false — two lanes disputed it explicitly. And the PRESS-0005 window ran past § 11 into that document's own loop log, eight rows, several naming this spec: review history, which the withhold rule exists to keep out. All three lanes met it, said so, and discarded candidate findings rather than use it — so this loop's yield is UNDER-counted, not inflated. **One lane found PRESS-0005 § 11 routes TWO rules here and only one was recorded:** every writer this document defines shares the atomic write that reports a mount granting more than owner-only, and the words *permission*, *owner-only* and *granted* appeared nowhere — so an implementer taking INV-9's own *Breaks when* literally loses the notice with every invariant still passing. **One lane found § 4.2 claiming line endings are *normalised everywhere else*:** nothing in the Store normalises them, measured — a CRLF template body is written back CRLF — and an implementer reading it as an instruction adds a `replace` that destroys the writer's line endings, which INV-10's own byte half cannot catch. **Two lanes found a miscount in the row this trigger added, and one found its mirror in § 4.4** — both replaced by naming the folders rather than counting them, which is what this project's own rule asks for. **One lane found § 7's comment-level population undefined:** it deferred to *whatever Import would carry*, and Import does not exist, so any per-comment filter a builder invents can drop a comment another replies to and `write_comments` refuses the whole archive. **Three open questions could not be settled from the packet** — § 11's design.md and PRESS-0005 § 1 attributions, and § 7's CLAUDE.md attribution — and are not counted. |
 
 ## 13. Resource cost
 
