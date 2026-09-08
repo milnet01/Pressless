@@ -260,6 +260,14 @@ writer is told rather than left waiting. A limit naming no usable interval
 waits GitHub's documented minimum rather than the pacing interval, which
 would spend the whole retry bound in seconds (PRESS-0046).
 
+**Successive retries wait longer.** GitHub asks for an exponentially
+increasing wait between retries, and warns that continuing to request while
+limited risks the integration being banned. The first retry waits exactly
+what GitHub asked; each retry after it waits twice the one before. The
+growth is ours rather than GitHub's ask, so a grown wait that would pass the
+bound is **clamped to it rather than raising** — the refusal above is
+reserved for an interval GitHub itself named (PRESS-0113).
+
 ### 4.4 What is never touched
 
 Settings holds the untouchable list. An entry on it is **neither written
@@ -600,6 +608,7 @@ code, so a green INV-1 says nothing about the rest.
 | §6's server-error route to `OutcomeUnknown` | `tests/test_publisher.py::test_a_server_error_on_the_reference_update_is_outcome_unknown`, which also holds a refusal to its own row |
 | §6's two 404 rows — the repository itself against something inside it | `tests/test_publisher.py::test_a_missing_blob_is_not_reported_as_a_missing_repository`, which holds both sides |
 | §4.3's two hint shapes, and the bound on one | `tests/test_publisher.py::test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal`, `::test_a_rate_limit_naming_no_interval_waits_the_documented_minute` and `::test_a_wait_longer_than_the_bound_is_refused_rather_than_slept` |
+| §4.3's growth between successive retries, and its clamp | `tests/test_publisher.py::test_successive_retry_waits_grow_rather_than_repeating` and `::test_grown_retry_waits_stop_at_the_bound_rather_than_raising` |
 | §4.5's all-or-nothing fetch | `tests/test_publisher.py::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` |
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
 | That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |

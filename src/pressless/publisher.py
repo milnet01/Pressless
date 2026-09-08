@@ -53,6 +53,13 @@ RATE_LIMIT_SECONDS = 60.0
 # instead, which §6 already gives the Face a row for (PRESS-0046).
 MAX_WAIT_SECONDS = 120.0
 
+# Successive retries wait longer. GitHub's rate-limit documentation asks for an
+# exponentially increasing wait between retries and warns that continuing to
+# request while limited risks the integration being banned; the wait was flat,
+# bounded only by the retry count (PRESS-0113). The factor multiplies the hint
+# GitHub gave, so the FIRST retry still waits exactly as asked.
+RETRY_BACKOFF = 2.0
+
 # Every blob is written with the ordinary file mode. §4.3 takes one rule for
 # prose and photographs alike rather than two split by a property of the file.
 BLOB_MODE = "100644"
@@ -488,7 +495,14 @@ class _Session:
                         f"GitHub asked us to wait on {method} {url} and was "
                         f"still asking after {MAX_RETRIES} retries"
                     )
-                self._client.wait(hint)
+                # Clamped rather than raised. The check above raises on what
+                # GitHub ASKS for; the growth is ours, so exceeding the bound
+                # by our own multiplication is not the writer's problem to be
+                # told about -- it just stops growing (§4.3).
+                self._client.wait(
+                    min(hint * RETRY_BACKOFF ** (attempts - 1),
+                        MAX_WAIT_SECONDS)
+                )
                 continue
 
             if status in (200, 201):

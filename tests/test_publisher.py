@@ -1522,6 +1522,77 @@ def test_a_rate_limit_naming_no_interval_waits_the_documented_minute(tmp_path):
     )
 
 
+def test_successive_retry_waits_grow_rather_than_repeating(tmp_path):
+    """§4.3: each retry after the first waits longer than the one before.
+
+    The wait was flat -- GitHub's hint, then that same hint again on every
+    following attempt, bounded only by the retry count. GitHub's own
+    documentation asks for an exponentially increasing wait and warns that
+    continuing to request while limited risks the integration being banned
+    (PRESS-0113).
+
+    Breaks when the growth is dropped, or when the hint is waited unchanged.
+    The factor is held here rather than imported: sharing the module's own
+    constant would compare it against itself.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=_writes(),
+        rate_limited_writes=3,
+        rate_limit_answer=(429, {"Retry-After": "2"},
+                           b'{"message": "rate limited"}'),
+    )
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    grew = transport.waits[:3]
+    assert len(grew) == 3, (
+        f"three rate-limited attempts recorded {len(grew)} wait(s): "
+        f"{transport.waits!r}"
+    )
+    assert grew[0] == 2.0, (
+        f"the FIRST retry must wait exactly what GitHub asked, not "
+        f"{grew[0]!r} -- growth applies from the second"
+    )
+    assert grew[1] > grew[0] and grew[2] > grew[1], (
+        f"successive retry waits did not grow: {grew!r}. A flat wait is what "
+        f"GitHub's documentation asks us not to do"
+    )
+
+
+def test_grown_retry_waits_stop_at_the_bound_rather_than_raising(tmp_path):
+    """Growth is ours, so exceeding the bound by our own multiplication is
+    clamped -- not turned into the refusal reserved for a hint GitHub itself
+    named as too long (§4.3).
+
+    Breaks when the clamp goes and a publish blocks for longer than the bound,
+    or when a grown wait starts raising RateLimited.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=_writes(),
+        rate_limited_writes=4,
+        rate_limit_answer=(429, {"Retry-After": "100"},
+                           b'{"message": "rate limited"}'),
+    )
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    assert transport.waits[0] == 100.0, (
+        f"the first retry did not wait what GitHub asked: {transport.waits!r}"
+    )
+    assert max(transport.waits) <= 120.0, (
+        f"a grown wait passed the bound a single ask is held to: "
+        f"{transport.waits!r}"
+    )
+
+
 def test_a_wait_longer_than_the_bound_is_refused_rather_than_slept(tmp_path):
     """The honoured wait had no upper bound, so Retry-After: 3600 became a
     one-hour blocking sleep with nothing said to the writer. §6 already has a
