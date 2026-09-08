@@ -65,7 +65,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
 
-- 📋 [PRESS-0003] **One rolling plain-English log, and no credential anywhere in it.**
+- ✅ [PRESS-0003] **One rolling plain-English log, and no credential anywhere in it.**
   Beside the settings file in Pressless's own folder, never in the site
   folder. A test proves neither credential reaches it, not even shortened.
   The Face's Show details toggle names its location, for whoever helps him
@@ -88,6 +88,30 @@ while the stakes are zero. Holds S2, S3, S4.
   WHERE IT IS is shown as a LABEL, never as a full path. design.md's Errors section has the Face's Show details name the log file's location, and PRESS-0087's rule (decided 2026-09-07, with PRESS-0068 item 4) forbids a full path in anything printed or recorded -- because a full path can name the writer. The two collide, and the settlement is: Show details says something like "the Pressless folder, beside the program", with a button that copies the real path or opens the folder. The helper reaches it in one click, nothing identifying is on screen or in the log, and a screenshot he sends a stranger leaks nothing.
 
   Owed with the build: design.md's Errors section says Show details holds "the technical text and the log file's location", which is now the label rather than the path. That is a direction change for PRESS-0011's builder, so design.md needs its own gate for it.
+  Resolved (2026-09-08). src/pressless/log.py and tests/test_log.py,
+  thirteen tests over seven invariants; the gate is green at 242.
+
+  Both user decisions are built: it rolls by size keeping exactly one old
+  copy (RotatingFileHandler with backupCount=1, which is the standard
+  library's own version of the decided policy), and docs/design.md § Errors
+  now has Show details name the location as a LABEL with copy and open
+  buttons rather than a path.
+
+  Three gates ran. docs/design.md took three cold loops and closed at a
+  violent cap -- it found that NO part of Pressless was permitted to write
+  the log at all, rule 3 denying Marks a disk and rules 5 and 8 spending the
+  Publisher's and Insights' one disk write elsewhere. The Face owns it now,
+  derived rather than chosen. The spec took two and closed calm.
+
+  The mutation probe against the shipped module found three clauses no test
+  could see, two of them pinned in the spec with reasoning and held by
+  nothing: note's guard sits behind logging's own try/except, and the
+  encoding and errors handler had no test at all. INV-7 covers the last two.
+
+  What this item did NOT do, deliberately: clean up the shipped failure
+  messages that carry a path or an account. That is PRESS-0068 item 4 and
+  PRESS-0087, both still open, and folding them in here would have left
+  both ids pointing at nothing.
   **Layman:** A plain diary of what the app did, kept beside the settings, with nothing secret in it.
   Kind: implement.
   Source: design-2026-08-24 § Logging.

@@ -17,6 +17,22 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **A rolling plain-English log, beside the settings and bounded forever** (PRESS-0003)
+  Pressless now keeps a plain diary of what it did, in its own folder
+  next to the settings file. It rolls by size and keeps exactly one old
+  copy, so it cannot fill the drive however long the app runs, and the
+  two files together always cover the recent past.
+
+  Nothing secret or identifying goes in it. It adds nothing to the
+  message it is handed, and the design now places the obligation on the
+  part that raises a failure rather than on whatever writes it down —
+  so there is nothing downstream to strip. Where something fails that
+  Pressless did not raise itself, only the failure's type is recorded,
+  because a stock file error quotes the path it failed on.
+
+  A log that cannot be written is simply not written. Nothing the writer
+  does fails because the diary did.
+
 - **On a drive that cannot make files private, Pressless says so and carries on** (PRESS-0097)
   Some drives — a memory stick, a shared network folder — will not let the
   app lock its files to you alone. Your settings and your writing still
