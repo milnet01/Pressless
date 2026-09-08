@@ -4033,6 +4033,44 @@
   Milestone: v0.5.0. Blocks S1 — a capitalisation difference reaches the
   deletion PRESS-0009 § 2 calls unrecoverable, which can take the domain
   off the live site.
+  Investigated 2026-09-08. Still open: the decision is the user's and is
+  put to them below. The claim itself is no longer a reading -- it was
+  EXECUTED against the shipped functions.
+
+  _is_protected("CNAME", ("cname",)) is False, and so is the mirror.
+  settings.load validates an entry's SHAPE and does not normalise its
+  case, so nothing upstream closes this.
+
+  Run through publish()'s own two lines, with the repository holding
+  CNAME and the writer's folder holding cname:
+
+    unprotected = ["CNAME", "index.html"]
+    removed     = ["CNAME"]
+
+  The domain file is deleted from the live site. That is the deletion
+  PRESS-0009 2 calls unrecoverable.
+
+  A SECOND failure this item did not name, found by running the mirror
+  case. With the list written in the repository's casing, CNAME survives
+  -- and the local cname is uploaded as a NEW file. Two files then claim
+  the domain, neither tool reports it, and which one GitHub honours is
+  not something this project decides.
+
+  So both castings fail, differently. There is no casing of the
+  untouchable list that is correct on a case-folding client.
+
+  The decision this needs is narrower than the item assumed. It is not
+  "what does Setup write" (PRESS-0021, which does not exist) but "how is
+  the list MATCHED", and that is separable. The asymmetry decides it: a
+  missed protection is an unrecoverable deletion that takes the domain
+  off the site, and an over-match only leaves a file undeleted, which the
+  writer can remove himself. Recommending case-insensitive matching in
+  _is_protected on every platform -- the remote is case-sensitive whether
+  or not the client is, so a platform-conditional rule answers the wrong
+  question.
+
+  Not taken unilaterally: it changes behaviour PRESS-0009 4.4 states, so
+  it needs a spec amendment and re-arms that contract gate.
   **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
@@ -5314,7 +5352,7 @@
   Kind: test.
   Source: review-tests 2026-09-07 lane 5.
 
-- 📋 [PRESS-0109] **Three tests go vacuous or fail for the environment on a platform this project must ship to.**
+- ✅ [PRESS-0109] **Three tests go vacuous or fail for the environment on a platform this project must ship to.**
   The suite treats mount capability as first-class in two places
   (`_mode_support` probes the mount rather than the platform; INV-13's
   test probes case-folding) and assumes it in three others.
@@ -5334,6 +5372,39 @@
 
   Fix shape: a capability probe beside `_require_posix_modes` for each,
   with a reason naming what the mount would not do.
+  Resolved 2026-09-08. Three probes beside _require_posix_modes, applied
+  at four sites.
+
+  Two corrections to this item, both measured rather than read. It said
+  ":486 and three more move tests" -- it is THREE, confirmed by making
+  os.link raise and reading which tests broke with the archive suite
+  running. And the two-files-one-slug phase was split into its own
+  guarded test rather than skipped inside the one it lived in: skipping
+  mid-test would have taken the two case-insensitive-suffix assertions
+  down with it, on exactly the platform whose editors rename a file to
+  .TXT.
+
+  Evidence. With hard links and symlinks removed for one run, HEAD gives
+  4 failed and this tree gives 4 skipped, each naming what the mount
+  would not do. Each probe's SKIP branch was executed against a simulated
+  absence, not only its pass branch -- this machine cannot offer a
+  folding or link-less mount without root. The split test is live here:
+  removing list_slugs' de-duplication kills it.
+
+  Two probe results that were wrong before they were right, recorded
+  because either would have read as evidence. Turning the set
+  comprehension into a list left the closing brace, so pytest exited 4 on
+  a syntax error and the probe reported "killed" -- a kill for the wrong
+  reason. And the de-duplication list_slugs actually uses is in
+  _only_usable, not _slugs_in; the latter feeds a membership test only,
+  so set-versus-list there is semantically inert and its survival is not
+  a coverage gap.
+
+  Surfaced, not fixed: test_a_stranded_file_is_reported still carries a
+  hand-rolled case-folding check rather than the shared probe, which is
+  the two-copies-of-a-probe shape _mode_support.py itself warns against.
+
+  Gate green at 215.
   **Layman:** Some tests quietly stop checking anything, or fail for the wrong reason, depending on the machine they run on.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1 and 2.
