@@ -905,6 +905,124 @@ def test_an_untouchable_entry_with_a_trailing_slash_still_protects(tmp_path):
     )
 
 
+# ------------------------------------------------------------ PRESS-0078 ----
+
+
+def test_an_untouchable_entry_protects_whatever_its_casing(tmp_path):
+    """§4.4 / INV-2: the untouchable match ignores case, folded with
+    str.casefold() -- a stored entry and a live path can differ only in
+    case, since the Windows and macOS local filesystems are
+    case-insensitive and GitHub's paths are not.
+
+    Two directions, both named in INV-2's own *Breaks when* clause and both
+    genuinely different failures (found by the PRESS-0078 gate: a fixture
+    built from only one direction passes green against the exact
+    comparison this test exists to catch).
+
+    Direction A -- the stored entry is lower-case ("cname") and the live
+    repository holds the file upper-case ("CNAME"), which the Builder never
+    produces itself. An exact comparison cannot match them, so CNAME reads
+    as unprotected and, absent from the folder, is DELETED -- §2 calls that
+    unrecoverable.
+
+    Direction B -- the stored entry is upper-case ("CNAME") and the
+    writer's folder holds the file lower-case ("cname"). An exact
+    comparison cannot match these either, so the local file reads as
+    unprotected and is UPLOADED as a second path claiming the same
+    address, with nothing reporting it.
+
+    Direction C -- the fold OPERATION rather than its presence. §4.4 pins
+    str.casefold() by name because it and str.lower() diverge on non-ASCII
+    names, and PRESS-0021's derivation of the list has to agree with this
+    one. Without this fixture that pin is unenforceable: A and B are both
+    ASCII, where the two operations agree, so a lower() implementation
+    breaches the stated rule and passes. Measured by the PRESS-0078
+    mutation probe, which is where the gap showed.
+
+    Breaks when an implementer compares with == or with str.lower() instead
+    of str.casefold().
+    """
+    # Direction A.
+    domain_folder = tmp_path / "direction-a"
+    domain_folder.mkdir()
+    (domain_folder / "index.html").write_bytes(b"<html>site</html>")
+
+    domain_listing = _listing([
+        ("CNAME", _blob_hash(b"writer.example.test\n")),
+        ("index.html", _blob_hash(b"<html>site</html>")),
+    ])
+    domain_transport = _Transport(reads=_reads(domain_listing), writes=_writes())
+    domain_settings = _settings(untouchable=("cname",))
+
+    domain_outcome = publish(
+        domain_settings, domain_folder, "a-token", "a commit message",
+        transport=domain_transport,
+    )
+
+    # Direction B.
+    stray_folder = tmp_path / "direction-b"
+    stray_folder.mkdir()
+    (stray_folder / "index.html").write_bytes(b"<html>site</html>")
+    (stray_folder / "cname").write_bytes(b"a stray file, not the entry\n")
+
+    stray_listing = _listing([
+        ("index.html", _blob_hash(b"<html>site</html>")),
+    ])
+    stray_transport = _Transport(reads=_reads(stray_listing), writes=_writes())
+    stray_settings = _settings(untouchable=("CNAME",))
+
+    stray_outcome = publish(
+        stray_settings, stray_folder, "a-token", "a commit message",
+        transport=stray_transport,
+    )
+    stray_paths = _tree_creation_paths(stray_transport)
+
+    # Direction C. "straße".lower() is "straße" and its casefold is
+    # "strasse", so only casefold folds it together with "STRASSE".
+    fold_folder = tmp_path / "direction-c"
+    fold_folder.mkdir()
+    (fold_folder / "index.html").write_bytes(b"<html>site</html>")
+
+    fold_listing = _listing([
+        ("STRASSE", _blob_hash(b"a root file the Builder does not produce\n")),
+        ("index.html", _blob_hash(b"<html>site</html>")),
+    ])
+    fold_transport = _Transport(reads=_reads(fold_listing), writes=_writes())
+    fold_settings = _settings(untouchable=("stra\u00dfe",))
+
+    fold_outcome = publish(
+        fold_settings, fold_folder, "a-token", "a commit message",
+        transport=fold_transport,
+    )
+
+    failures = []
+    if "CNAME" in domain_outcome.removed:
+        failures.append(
+            f"direction A: entry 'cname' did not protect the live 'CNAME' "
+            f"-- it was DELETED from the site (unrecoverable, §2/§4.4): "
+            f"removed={domain_outcome.removed!r}"
+        )
+    if "cname" in stray_outcome.uploaded:
+        failures.append(
+            f"direction B: entry 'CNAME' did not protect the local "
+            f"'cname' -- it was UPLOADED as a second path claiming the "
+            f"same address: uploaded={stray_outcome.uploaded!r}"
+        )
+    if stray_paths is not None and "cname" in stray_paths:
+        failures.append(
+            f"direction B: the tree-creation request names 'cname': "
+            f"{stray_paths!r}"
+        )
+    if "STRASSE" in fold_outcome.removed:
+        failures.append(
+            f"direction C: entry 'stra\u00dfe' did not protect the live "
+            f"'STRASSE' -- str.lower() leaves the two apart where "
+            f"str.casefold() folds them together, and \u00a74.4 pins casefold "
+            f"by name: removed={fold_outcome.removed!r}"
+        )
+    assert not failures, "\n".join(failures)
+
+
 # ------------------------------------ PRESS-0052, PRESS-0041, PRESS-0040 ----
 #
 # The three defects of the module's own client. Every other test in this

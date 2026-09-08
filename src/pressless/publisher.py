@@ -616,9 +616,21 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     absent. `load` fixes the form, but a settings file written by hand
     reaches here without passing it, and an entry that silently protects
     nothing is the one failure this list cannot afford (PRESS-0044).
+
+    The comparison folds case, and with `str.casefold` rather than
+    `str.lower` because §4.4 pins the operation by name: the two differ on
+    non-ASCII names, and PRESS-0021's derivation of the list has to agree
+    with this one. GitHub's paths are case-sensitive and the Windows and
+    macOS local filesystems are not, so a stored entry and a live path can
+    differ only in case and still be one address. Compared exactly it
+    breaks in both directions and only one of them deletes: an entry the
+    REMOTE path's first segment cannot match leaves that path unprotected,
+    so it is removed -- which for CNAME takes the domain off the site. An
+    entry the LOCAL path's cannot match uploads a second file claiming the
+    same address and removes nothing (PRESS-0078).
     """
-    first = path.split("/", 1)[0]
-    return any(first == entry.rstrip("/") for entry in untouchable)
+    first = path.split("/", 1)[0].casefold()
+    return any(first == entry.rstrip("/").casefold() for entry in untouchable)
 
 
 def _within_prefix(path: str, prefix: str) -> bool:
@@ -628,9 +640,9 @@ def _within_prefix(path: str, prefix: str) -> bool:
     ignored. Matched as a bare string instead, "content" would also select
     "contents.html".
 
-    §4.4's untouchable rule shares the trailing-slash tolerance and stops
-    there: a prefix may name a path several segments deep, an untouchable
-    entry may not, and `load` refuses one that does.
+    §4.4's untouchable rule tolerates a trailing slash too. Where the two
+    differ is depth: a prefix may name a path several segments deep, an
+    untouchable entry may not, and `load` refuses one that does.
     """
     prefix = prefix.rstrip("/")
     if not prefix:
