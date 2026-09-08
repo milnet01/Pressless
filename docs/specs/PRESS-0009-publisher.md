@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented apart from §4.3's blob/other pacing split and INV-9's `::test_each_write_is_preceded_by_its_own_pace`, amended 2026-09-08 and not yet built (PRESS-0114). INV-10 IS built (PRESS-0089). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.3's pacing split and INV-9's `::test_each_write_is_preceded_by_its_own_pace` included (PRESS-0114, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).

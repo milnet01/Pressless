@@ -5871,7 +5871,7 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: PRESS-0092 investigation 2026-09-08.
 
-- 💭 [PRESS-0114] **Whether to keep pacing blob uploads a second apart, now that GitHub is measured not to require it.**
+- ✅ [PRESS-0114] **Whether to keep pacing blob uploads a second apart, now that GitHub is measured not to require it.**
   A decision nobody has made, filed so it is not lost inside a closed
   item.
 
@@ -5893,6 +5893,30 @@ already-built code ships in whichever release comes next.
   commit and reference writes, and those three ARE plausibly
   content-generating. Any relaxation should be scoped to blobs rather
   than applied to every write.
+  Resolved (2026-09-08). Decided by the user: relax for blob uploads
+  only. BLOB_PACE_SECONDS is 0.5 (120 a minute, under the 136 PRESS-0092
+  measured accepted); the tree, commit and reference update keep
+  PACE_SECONDS. _Session.write takes the pace its own request requires,
+  so the wait is taken before a write and keyed on the write that
+  follows -- applied after each write the tree would inherit the blob's
+  half second. A first publish goes from about 14 minutes of waiting to
+  about 7. Four mutations killed: one flat pace, the blob call not
+  asking for the blob pace, the two values inverted, and the pace
+  applied after the write. Correction worth recording: the option put to
+  the user said 0.4s stays under 136 a minute, and 0.4s is 150 a minute;
+  0.5s was used and the arithmetic checked before writing. Gated first,
+  two loops, seven verified and seven fixed, and the second loop was a
+  VIOLENT cap -- every finding landed on text this run or PRESS-0113
+  wrote. The gate earned itself: all three lanes of loop 1 found that
+  INV-9 knew one pace where 4.3 defines two, with no section 10 row, so
+  a flat second would have passed every named test and the change would
+  not have been built at all. Loop 2 found a hole in PRESS-0089's own
+  work: INV-10 said "neither an ordinary file nor a directory" and a
+  symlink to a directory answers is_dir(), so the invariant did not
+  reach it while 4.4 did; the shipped code refuses it, but every fixture
+  symlinked to a file, so the gap was green. A symlinked-directory
+  fixture is added. PRESS-0116 is filed for the one finding surfaced
+  rather than fixed.
   **Layman:** The first publish spends most of its time deliberately waiting between uploads. We now know GitHub does not ask for that wait, so we could drop it and make the first publish much faster.
   Kind: perf.
   Source: PRESS-0092 investigation 2026-09-08, offered to the user and not yet decided.

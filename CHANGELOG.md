@@ -121,6 +121,20 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **The first publish spends half as long waiting** (PRESS-0114)
+  Pressless paused a second between every file it uploaded. Measured against
+  GitHub, that pause is not asked for on file uploads -- 550 went up in one
+  rate-limit hour at a sustained 136 a minute, every one accepted. Uploads now
+  pause half a second, which is still slower than the rate GitHub was measured
+  accepting.
+
+  The three requests that finish a publish keep the full second. Those are the
+  ones GitHub's limits are plausibly about, nothing has measured them, and
+  there are only three of them.
+
+  On a first publish of the whole site that is roughly seven minutes of
+  waiting instead of fourteen.
+
 - **A stray file in the folder Pressless publishes from now stops the publish instead of going up with the site** (PRESS-0089)
   The folder Pressless builds into is Pressless's alone. Anything else that
   turns up in it -- a hidden file your computer left there, a shortcut, a
@@ -156,6 +170,14 @@ appears once something has actually shipped.)
   is discarded by the next write.
 
 ### Fixed
+
+- **The entry-format promise now says which parser it is about** (PRESS-0060)
+  ADR-0001 promised that anything the parser does not recognise is kept
+  exactly as written, without saying which parser. It means the one that reads
+  your formatting marks. The design document had extended the same promise to
+  the entry file's header, and that half was measurably untrue -- an
+  unrecognised header field keeps its name and its value, but not the exact
+  spacing around it. Both documents now say what actually happens.
 
 - **If GitHub asks Pressless to wait twice, it now waits longer the second time** (PRESS-0113)
   GitHub asks callers to back off by an increasing amount, and warns that
