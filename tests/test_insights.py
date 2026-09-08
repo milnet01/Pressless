@@ -38,6 +38,7 @@ import ast
 import http.client
 import inspect
 import json
+import os
 import urllib.request
 from pathlib import Path
 
@@ -1375,4 +1376,157 @@ def test_googles_own_reason_is_carried_on_the_failure(tmp_path):
     assert "dateRanges" not in str(caught.value), (
         "Google's raw reason reached the writer-facing sentence, which "
         "design.md § Errors owns"
+    )
+
+
+# ------------------------------------------------------------ PRESS-0107 ----
+#
+# Three clauses whose currently-named test cannot observe them: INV-6's
+# tie-break, INV-24's no-temporary promise on its two failure arms, and
+# INV-25's length cap. None needed a source change -- each gap was in the
+# test, not in insights.py.
+
+
+def test_countries_tie_break_by_code(tmp_path):
+    """INV-6: two countries tied on people sort by code ascending, not by
+    the order Google's rows arrived in.
+
+    test_countries_are_ordered_and_aggregate_rows_dropped never ties two
+    counts, so a stable sort on -people alone -- which for a tie leaves the
+    input order untouched -- passes it exactly as well as the documented
+    (-people, code) key does. Handing the tied rows in reverse code order is
+    what tells the two apart: only the code half of the key turns a
+    descending input into ascending output.
+
+    A fresh folder, used by no other test: read() caches by window, and a
+    folder that had already answered this window would return the cached
+    Report without _countries running again.
+
+    Breaks when insights.py::_countries (line 395) drops ", country.code"
+    from its sort key, relying on Python's sort being stable to still look
+    ordered on data nobody ties.
+    """
+    rows = (
+        ("ZA", 500),
+        ("GB", 500),
+    )
+    transport = _Transport(default=_ok(_google(rows=rows)))
+
+    report = read(_settings(), "a-token", tmp_path, client=transport)
+
+    assert _codes(report) == ["GB", "ZA"], (
+        f"expected ['GB', 'ZA'] -- a tie on people breaks by code ascending, "
+        f"so the reverse-code input ('ZA' before 'GB') must not survive; "
+        f"got {_codes(report)!r}"
+    )
+
+
+class _StoreAbort(BaseException):
+    """Stands in for a real KeyboardInterrupt in the test below.
+
+    _store's second except arm is `except BaseException`, so any
+    BaseException drives it -- but pytest aborts the whole run on a
+    KeyboardInterrupt that escapes a test, rather than failing it red. A
+    private subclass exercises the same arm without that risk.
+    """
+
+
+def test_store_leaves_no_temporary_on_either_failure_arm(tmp_path, monkeypatch):
+    """INV-24: no temporary is left behind on either of _store's two
+    failure arms.
+
+    test_cache_reaches_the_disk_before_the_rename and
+    test_cache_names_the_line_endings both exercise the happy path only --
+    neither forces a failure, so neither can see whether a temporary
+    survives one. This forces both arms in turn, each in its own fresh
+    folder: read() caches, so a folder already answered once would return
+    the cached Report before _store ran again.
+
+    os.replace is patched to raise OSError for the first -- the arm the
+    module's own docstring calls "not worth failing a fetch over," so the
+    fetch itself must still succeed even though the cache write did not.
+    json.dump is patched to raise a BaseException for the second, standing
+    in for a real KeyboardInterrupt landing mid-write; that arm re-raises,
+    so read() must fail with the same exception.
+
+    Breaks when insights.py::_store drops `_discard(temporary)` from the
+    `except OSError` arm (line 518) or the `except BaseException` arm (line
+    520), or drops the `except BaseException` arm entirely (lines 519-521)
+    -- which would let anything that is not an OSError, a real
+    KeyboardInterrupt included, escape mid-write with the temporary still on
+    disk.
+    """
+    # The OSError arm.
+    osfolder = tmp_path / "oserror"
+    osfolder.mkdir()
+    real_replace = os.replace
+
+    def _raise_oserror(*_args, **_kwargs):
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(os, "replace", _raise_oserror)
+    try:
+        report = _seed(osfolder, _Transport())
+    finally:
+        monkeypatch.setattr(os, "replace", real_replace)
+
+    assert report.people == TOTAL, (
+        "the fetch itself must still succeed even though the cache write "
+        "failed -- a cache that cannot be written is not worth failing a "
+        "fetch over"
+    )
+    leftover = list(osfolder.glob(".insights-*.tmp"))
+    assert not leftover, (
+        f"a temporary survived the OSError arm of _store: {leftover!r}"
+    )
+
+    # The BaseException arm.
+    bfolder = tmp_path / "baseexception"
+    bfolder.mkdir()
+    real_dump = json.dump
+
+    def _raise_abort(*_args, **_kwargs):
+        raise _StoreAbort("simulated interrupt during the cache write")
+
+    monkeypatch.setattr(json, "dump", _raise_abort)
+    try:
+        with pytest.raises(_StoreAbort):
+            _seed(bfolder, _Transport())
+    finally:
+        monkeypatch.setattr(json, "dump", real_dump)
+
+    leftover = list(bfolder.glob(".insights-*.tmp"))
+    assert not leftover, (
+        f"a temporary survived the BaseException arm of _store: {leftover!r}"
+    )
+
+
+def test_detail_is_capped_at_a_held_length(tmp_path):
+    """INV-25: Google's own words about a rejection are capped in length,
+    and the kept text is exactly that long against a body far longer than
+    any plausible field-name reply -- not merely shorter than the body,
+    which a cap loosened from 500 to some larger number would also satisfy.
+
+    500 is written out by hand, not imported as DETAIL_LIMIT: sharing the
+    literal would have this test compare the module against itself, so the
+    constant could be raised and the test would raise with it and stay
+    green -- the trap CLAUDE.md records for FILE_NAME in test_settings.py.
+
+    Breaks when insights.py::_detail (line 360) drops "[:DETAIL_LIMIT]" and
+    returns the decoded body whole, or when DETAIL_LIMIT itself (line 56) is
+    raised.
+    """
+    detail_limit = 500  # a hand-held copy of insights.DETAIL_LIMIT
+    body = json.dumps({
+        "error": {"message": "x" * (detail_limit * 10)}
+    }).encode("utf-8")
+    transport = _Transport(default=(400, {}, body))
+
+    with pytest.raises(InsightsError) as caught:
+        read(_settings(), "a-token", tmp_path, client=transport)
+
+    detail = getattr(caught.value, "detail", None) or ""
+    assert len(detail) == detail_limit, (
+        f"expected the kept detail to be exactly {detail_limit} characters "
+        f"long against a body of {len(body)} bytes; got {len(detail)}"
     )

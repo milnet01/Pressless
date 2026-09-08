@@ -547,7 +547,10 @@ def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
     And breaks when an implementer guards read()'s own path and leaves
     write()'s pre-read alone: decision 6's attack then survives, the planted
     file being merged forward into one the writer owns and accepted by a
-    later compliant read().
+    later compliant read(). The symlink block above exercises that gap for
+    the symlink half; PRESS-0107 extends the owner-mismatch block below to
+    exercise it for the owner half, which until then was tried against
+    read() only, reverted, and never tried against write() at all.
     """
     # Guarded on the CAPABILITY, not the platform: write() refuses any
     # mount that does not enforce POSIX modes (INV-11), so a
@@ -582,15 +585,40 @@ def test_fallback_read_refuses_what_is_not_ours(tmp_path, monkeypatch):
     mine.mkdir()
     write("file", mine, "publishing-key", SENTINEL)
     real_fstat = os.fstat
+    before = (mine / FILE_NAME).read_bytes()
 
     class _SomebodyElses:
         st_uid = os.getuid() + 1
+        # PRESS-0107: write()'s pre-read stops at the ownership check
+        # below and never reaches _write_file's own capability check --
+        # but only while that guard is intact. A mutant that drops the
+        # guard falls through to mkstemp's fstat, which is this SAME
+        # patched object, and st_mode is what lets that real check run
+        # to completion instead of raising AttributeError. Without it, a
+        # regression would be caught by an unrelated crash rather than by
+        # the assertion below that actually names the defect.
+        st_mode = 0o100600
 
     monkeypatch.setattr(credentials_module.os, "fstat",
                         lambda handle: _SomebodyElses())
     with pytest.raises(CredentialError):
         read("file", mine, "publishing-key")
+
+    # PRESS-0107: the gap in the read-only version of this test -- fstat
+    # was patched, read() was exercised, then reverted, and write() was
+    # never tried while the patch was live. write()'s own pre-read (the
+    # first line of _write_file, which calls _read_mapping -> _read_ours)
+    # must refuse the same file, or the planted owner mismatch is honoured
+    # for read() and silently ignored for write().
+    with pytest.raises(CredentialError):
+        write("file", mine, "publishing-key", "not-the-original-secret")
+
     monkeypatch.setattr(credentials_module.os, "fstat", real_fstat)
+
+    assert (mine / FILE_NAME).read_bytes() == before, (
+        "write() went ahead despite the patched owner, and the original "
+        "secret on disk was overwritten"
+    )
 
     # The mode is NOT a refusal: this is the file a recovering machine
     # carried, and it must still be readable.
