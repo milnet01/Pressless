@@ -4116,6 +4116,43 @@
   contract gate runs on the amendment, and the code follows. A conformer
   reading 4.4 today writes an exact comparison, so this is a change of
   direction under CLAUDE.md rule 14 and the gate is owed.
+  Contract gate run 2026-09-08, two loops, cap reached. Seven verified,
+  seven fixed, none dismissed. Loop-log rows 5 and 6 on the spec.
+
+  Loop 1, five findings, three of them in the amendment written an hour
+  earlier. INV-2's Breaks-when described the UPLOAD route and called it
+  the deletion -- a fixture built from it passes green against the exact
+  comparison it exists to catch, which is the unfalsifiable-clause shape
+  PRESS-0107 had just finished removing. INV-2's three fixtures are all
+  case-matching, so its named test cannot observe the clause. 4.4 stated
+  the over-protection on the removal side only; folding case suppresses an
+  UPLOAD too, so a stale entry differing only in case leaves a Builder
+  output never published and never removed. The Status line still read
+  Implemented. design.md states the tolerance exhaustively and names one
+  -- filed as PRESS-0112.
+
+  Loop 2, two findings, both found by two lanes. 4.5 characterised 4.4's
+  tolerances as trailing-slash-and-nothing-else, which produces the exact
+  comparison INV-2 calls a breach. LOOP 1 HAD THAT SENTENCE IN HAND AND
+  DISMISSED IT as immaterial, reasoning about who implements
+  _within_prefix rather than who reads 4.5 to implement _is_protected --
+  and filed the identical shape against design.md in the same pass. The
+  cold re-read caught both. And loop 1's own 11 bullet stated a
+  requirement with no route; PRESS-0001 9 already assigns it to
+  PRESS-0021, now named and annotated there.
+
+  The fold is pinned as str.casefold() rather than left as "ignores case":
+  straße and STRASSE casefold together and lower apart, so two conformers
+  could diverge and both believe they conform.
+
+  STILL OPEN, and it is code: publisher.py::_within_prefix's docstring
+  carries the same stale sentence loop 2 removed from 4.5. A docs gate
+  does not edit code. It goes with this item's implementation.
+
+  Next: _is_protected folds case, plus the falsifier 10 now cites --
+  test_an_untouchable_entry_protects_whatever_its_casing, which does not
+  exist yet. Both directions need a fixture; the existing INV-2 test
+  cannot carry them, because its own breach assertion is exact membership.
   **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
