@@ -5037,7 +5037,7 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-07 PRESS-0005 loop 10, all three lanes; filed as the neighbouring document's half.
 
-- 📋 [PRESS-0104] **requires-python claims 3.10 and CI runs only 3.13, and 3.10 goes end-of-life next month.**
+- ✅ [PRESS-0104] **requires-python claims 3.10 and CI runs only 3.13, and 3.10 goes end-of-life next month.**
   `pyproject.toml` sets `requires-python = ">=3.10"`. `ci.yml` runs one
   job at `python-version: '3.13'`, so no version below that has ever been
   exercised -- the floor is a claim with nothing behind it.
@@ -5066,11 +5066,23 @@
 
   S4 packages an interpreter with the app, so the floor binds
   contributors and the gate, never the writer.
+  Resolved 2026-09-08. requires-python is ">=3.13" and the single 3.13
+  job stands.
+
+  Verified rather than assumed: python3 --version is 3.13.14 here and the
+  gate passes under the new floor. Blast radius was two lines and both
+  were checked -- ci.yml already pins 3.13, and no document in the tree
+  states a Python version at all, so nothing was made false.
+
+  Noticed while in the file and NOT fixed, because it is not this item:
+  pyproject.toml's [tool.pytest.ini_options] sets minversion = "7.0"
+  while the dev floor is pytest>=9. Harmless today, since 9 clears 7, but
+  the two disagree about the same thing.
   **Layman:** We promise the app runs on older Pythons than we have ever tested it on, and the oldest one stops getting security fixes in October.
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
 
-- 📋 [PRESS-0105] **The dev floors let CI and the maintainer's machine install different versions.**
+- ✅ [PRESS-0105] **The dev floors let CI and the maintainer's machine install different versions.**
   Measured 2026-09-07: `pytest-randomly` is floored `>=4`, this machine
   holds 4.1.0, and a fresh `pip install -e '.[dev]'` takes 5.0.0 -- a
   major apart. `ruff` is floored `>=0.16` with 0.16.4 here and 0.16.6
@@ -5102,6 +5114,20 @@
   acceptance was rejected because PRESS-0027 is what that looks like the
   second time -- there the two environments ran the suite differently and
   nothing said so.
+  Resolved 2026-09-08. The gate prints ruff, pytest and pytest-randomly
+  before running them, so the same line lands in a local run and in the
+  CI log.
+
+  Both branches were executed rather than only the happy one: an absent
+  pytest-randomly prints a sentence saying the suite is running in file
+  order, which is PRESS-0027's failure named in words instead of left as
+  a missing line. The --docs path still exits before the step, since a
+  documentation push runs none of these tools.
+
+  The drift it reports is real today, measured on the first run: this
+  machine holds pytest-randomly 4.1.0 and a fresh install takes 5.
+
+  shellcheck clean, bash -n clean, gate green.
   **Layman:** The robot that checks our work and the laptop we work on can end up running different versions of the same tools.
   Kind: chore.
   Source: check-dependencies 2026-09-07, PRESS-0076.
