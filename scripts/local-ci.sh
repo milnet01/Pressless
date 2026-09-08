@@ -57,6 +57,33 @@ if ((DOCS_ONLY)); then
     exit 0
 fi
 
+# ── What is about to run ────────────────────────────────────────────────────
+# REPORTED, never enforced. The dev floors in pyproject.toml are open on
+# purpose and that file says why: a release that breaks the project should
+# surface on the next CI run rather than months later. What the floors do not
+# cover is the two ENVIRONMENTS resolving different versions -- this machine
+# and the runner install independently, so sharing one gate script stops them
+# running different CHECKS and does nothing about different VERSIONS.
+#
+# That is PRESS-0027's shape returning: there the two ran the suite
+# differently, because pytest-randomly was auto-loading here and absent in
+# CI, and nothing said so. Printing what resolved does not stop the drift. It
+# puts the same line in a local run and in the CI log, so a mismatch is
+# readable from either (PRESS-0105).
+step "tool versions"
+ruff --version
+python3 -m pytest --version
+# A plugin has no --version of its own, and an ABSENT one is the case worth
+# reporting: without it the suite runs in file order, which is the PRESS-0027
+# failure exactly. Said in words rather than left to a missing line.
+python3 - <<'PY'
+from importlib.metadata import PackageNotFoundError, version
+try:
+    print(f"pytest-randomly {version('pytest-randomly')}")
+except PackageNotFoundError:
+    print("pytest-randomly NOT INSTALLED -- the suite is running in file order")
+PY
+
 step "ruff"
 ruff check src/ tests/ || fail "lint"
 
