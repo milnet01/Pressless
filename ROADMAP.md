@@ -5501,6 +5501,33 @@
   Kind: chore.
   Source: roadmap-format.md 3.2, changed 2026-09-06; in-session 2026-09-07.
 
+- 📋 [PRESS-0112] **design.md states the untouchable match's tolerance exhaustively, and PRESS-0009 now needs a second one.**
+  design.md's untouchable paragraph reads "matched with any trailing
+  slash on the entry ignored", which was an exhaustive statement of the
+  tolerance when it was written.
+
+  PRESS-0078 added a second tolerance on 2026-09-08: PRESS-0009 4.4 now
+  folds case as well. PRESS-0009 4.4 names design.md as the rule's owner,
+  so a maintainer conforming the code to that paragraph writes the exact
+  comparison INV-2 now calls a breach.
+
+  Filed rather than fixed inside the PRESS-0009 gate: design.md is a
+  separate document with its own contract gate, and carrying the
+  correction into the spec would have left the owner wrong.
+
+  PRESS-0009 11 records the debt from its side.
+
+  Second half, from the same loop: 4.4's closure protects BOTH directions,
+  so the derivation that Setup and the Face perform must fold case the
+  same way. An exact-cased filter against a case-folding Publisher leaves
+  a stale entry such as Index.html on the list, after which index.html is
+  never uploaded and never removed and the home page silently stops
+  updating. That derivation is out of PRESS-0009's scope, so whichever
+  document ends up owning Setup carries it.
+  **Layman:** The design document and the publisher's contract now disagree about how a protected filename is compared.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-08 loop 1 lane 3, on the PRESS-0078 amendment.
+
 ## 0.1.0 — twelve years survived
 
 He installs the packaged file, points it at the WordPress export, and looks at
