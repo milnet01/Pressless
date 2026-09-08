@@ -31,7 +31,7 @@ def _watch_durability(monkeypatch) -> list[tuple]:
 
     def watched_mkstemp(*args, **kwargs):
         handle, path = real_mkstemp(*args, **kwargs)
-        events.append(("mkstemp", handle))
+        events.append(("mkstemp", handle, os.fspath(path)))
         return handle, path
 
     def watched_fsync(descriptor):
@@ -43,7 +43,7 @@ def _watch_durability(monkeypatch) -> list[tuple]:
         return real_fsync(descriptor)
 
     def watched_replace(source, destination, *args, **kwargs):
-        events.append(("replace", os.fspath(destination)))
+        events.append(("replace", os.fspath(source), os.fspath(destination)))
         return real_replace(source, destination, *args, **kwargs)
 
     monkeypatch.setattr(tempfile, "mkstemp", watched_mkstemp)
@@ -55,6 +55,18 @@ def _watch_durability(monkeypatch) -> list[tuple]:
 def _assert_synced_before_replace(events, what: str) -> None:
     """Every rename was preceded by an fsync of the descriptor it renames.
 
+    A rename is paired with its own temporary BY PATH -- the path mkstemp
+    returned and the path os.replace was handed as its source are the same
+    string, and nothing else identifies the pair. Pairing by position instead
+    was PRESS-0110's defect: a writer that opens two temporaries before
+    renaming either was checked against whichever mkstemp happened to come
+    last, so one fsync satisfied both renames and the unsynced one passed.
+    That is PRESS-0039's exact failure, in the test written to catch it.
+
+    Pairing by path also makes an unrelated mkstemp harmless. Any probe that
+    opens a temporary and never renames it -- `_mode_support`'s, for one --
+    now matches no rename instead of displacing the real pairing.
+
     Only the fsyncs recorded after that rename's own mkstemp count. Descriptor
     numbers are reused, so a writer that synced an earlier temporary and not
     this one would otherwise pass on the recycled number.
@@ -65,11 +77,15 @@ def _assert_synced_before_replace(events, what: str) -> None:
         f"durability this could assert"
     )
     for index in renames:
-        target = events[index][1]
-        opened = [i for i in range(index) if events[i][0] == "mkstemp"]
+        source, target = events[index][1], events[index][2]
+        opened = [
+            i for i in range(index)
+            if events[i][0] == "mkstemp" and events[i][2] == source
+        ]
         assert opened, (
-            f"{what} renamed onto {target} with no mkstemp temporary before "
-            f"it, so the watch cannot name the descriptor that owes an fsync"
+            f"{what} renamed {source} onto {target}, and no mkstemp in the "
+            f"watch returned that path -- so the watch cannot name the "
+            f"descriptor that owes an fsync"
         )
         start = opened[-1]
         handle = events[start][1]
