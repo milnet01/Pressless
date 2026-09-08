@@ -203,7 +203,9 @@ listing as the repository's contents would make every missing path look
 locally-new and every deletion invisible, so a flagged response raises
 `TooLarge` rather than being used.
 
-**Two conditions on the handed folder are refused rather than published.**
+**Some conditions on the handed folder are refused rather than published,
+and §6 is the list; this section owns two of them.** §4.4's stray rule is a
+third and is stated there.
 A folder that is not a directory is refused before the first request:
 `rglob` yields nothing for one and raises nothing, so it would read as a
 site with no files and every unprotected path would be deleted. And a
@@ -252,7 +254,12 @@ ADR-0002 says so — and every publish after it writes a handful of files.
 **The hint arrives two ways, and one too long to honour is refused.** A
 secondary limit answers 429, or 403 carrying a `Retry-After`. The primary
 limit sends no `Retry-After` at all: it reports a spent budget as
-`x-ratelimit-remaining: 0` and names when it resets. Reading only
+`x-ratelimit-remaining: 0` and names when it resets. **Both hints are read
+only on a 429, or on a 403 carrying one of them** — never on a status that
+succeeded. A response that succeeded can carry a spent budget too, and
+honouring the header there would make Pressless sleep after a request that
+worked; a 403 carrying neither is an ordinary refusal and must not be
+retried. Reading only
 `Retry-After` made that an ordinary refusal, which sends the writer to
 replace a key that is perfectly good. A hint naming longer than a publish
 will block for raises `RateLimited` rather than being slept out, so the
@@ -337,7 +344,12 @@ dot-name bullet's own carve-out below is this rule, not a second one.
   a device, a socket, a named pipe. **A directory is descended into, not
   refused**: the Builder puts published files in `content/`, so every real
   site folder holds them, and a rule written as *not an ordinary file* over a
-  recursive walk refuses every publish there is. **This reverses
+  recursive walk refuses every publish there is. **An entry is classified
+  before it is followed, and a symlink is a stray whatever it points at** — a
+  symlinked directory refuses rather than being descended into. Measured:
+  such an entry answers `is_symlink()` and `is_dir()` both true, so testing
+  for a directory first descends through the link and publishes files from
+  outside the folder, which the next sentence forbids. **This reverses
   PRESS-0069's sub-decision**, which skipped a
   symlink on the ground that refusing "would fail a publish over something
   harmless". Under this rule it is not harmless: a skipped symlink is a page
@@ -549,9 +561,9 @@ behaviour.
 
 - **INV-10** — A publish REFUSES, naming the path, where the handed folder
   holds anything that is neither an ordinary file nor a directory, or a path
-  carrying a dot-name segment whose FIRST segment the untouchable list does
-  not name. Nothing is written and nothing is removed; the site is unchanged
-  (§4.4).
+  carrying a dot-name segment — **in either case only where the untouchable
+  list does not name the path's FIRST segment**. Nothing is written and
+  nothing is removed; the site is unchanged (§4.4).
   *Test:* `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`
   — a folder carrying a symlink, one carrying `.git/config`, and one
   carrying `content/.DS_Store`; assert `PublishError` naming the offending
@@ -560,8 +572,12 @@ behaviour.
   implementation built on the first segment satisfies every other assertion
   here. A plain `content/` subdirectory must NOT refuse, or the rule refuses
   every real site. Plus `::test_an_untouchable_dot_name_does_not_refuse`, a
-  folder carrying `.nojekyll` with that name on the untouchable list, which
-  publishes.
+  folder carrying `.nojekyll` with that name on the untouchable list, and
+  `::test_an_untouchable_symlink_does_not_refuse`, a folder whose `CNAME` is
+  a symlink with `CNAME` on the list. **Both halves of the carve-out need a
+  fixture**: the dot-name one alone leaves an implementation that carved out
+  only that limb passing every assertion here, and the limb it missed
+  refuses every publish for good.
   *Breaks when:* the stray is SKIPPED rather than refused. That publishes a
   correct site and says nothing, so the writer never learns the file is
   there — the silence §4.4 chose this branch to end, and the shape the
@@ -573,7 +589,7 @@ behaviour.
 |---|---|---|
 | The handed folder is not a directory | `PublishError` | unchanged |
 | `fetch_previous` cannot write into the folder it was handed — full disk, unwritable folder | `PublishError` | unchanged |
-| The handed folder holds a stray — anything neither an ordinary file nor a directory, or a dot-name segment under an unlisted first segment (§4.4) | `PublishError` | unchanged |
+| The handed folder holds a stray — anything neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `PublishError` | unchanged |
 | The publish would remove every unprotected path and write none | `PublishError` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
@@ -690,7 +706,7 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` |
-| INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish` and `::test_an_untouchable_dot_name_does_not_refuse` |
+| INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no unlisted root dot-name | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
@@ -759,3 +775,4 @@ code, so a green INV-1 says nothing about the rest.
 | 5 | 2026-09-08 | 3, cold — genre pinned `spec`; gating the PRESS-0078 amendment (§4.4's case tolerance, INV-2, §10's row). Packet carried `publish`'s protection and removal logic, `root_entries`, `settings.py`'s untouchable check, both untouchable tests and design.md's rule, plus the executed two-casing outcomes. GitHub's API and Windows declared an unrunnable region | 1 | 1 | 1 | 2 | **Five verified, five fixed, none dismissed. Three landed on text this amendment wrote an hour earlier.** **Two lanes found INV-2's *Breaks when* describing the upload route while calling it the deletion** — a fixture built from it passes green against the exact comparison it exists to catch, which is the unfalsifiable-clause shape PRESS-0107 had just finished removing elsewhere. One lane found INV-2's three fixtures all case-matching, so its named test cannot observe the clause just added; the case test is named separately rather than as a fourth fixture, because that test asserts a breach by exact membership and a fixture added there could not bite. One found §4.4's over-protection stated on the removal side only — folding case suppresses an UPLOAD too, so a stale entry differing only in case stops the home page updating with nothing raised, and the list's derivation must fold the same way. **Two lanes found the Status line still reading *Implemented*** while §10 cites a test that does not exist. **The 4b sweep found what no lane could**, PRESS-0001 not being in the packet: its "case-sensitively" is the Daily Prompt glob, opened and dismissed. design.md states the match's tolerance exhaustively and names one; filed as PRESS-0112 rather than edited from here, that document having its own gate. **One packet defect, found by a lane:** it said §7 carries the What-checks-this table, which is §10. §4.5's "shares the trailing-slash tolerance and stops there" was considered and dismissed as immaterial — `_within_prefix` matches a caller's prefix against GitHub's own paths, so no folding client reaches it. |
 | 6 | 2026-09-08 | 3, cold — identical brief, packet rebuilt whole from disk and extended with `fetch_previous`, the failure classes, `design.md` § Errors and PRESS-0001's untouchable passages; loop 5's §7/§10 mis-citation corrected. GitHub's API and Windows still an unrunnable region | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **Two lanes independently found §4.5 characterising §4.4's tolerances as trailing-slash-and-nothing-else** — a reading that produces the exact comparison INV-2 calls a breach, and the same defect shape loop 5 filed against `design.md` as PRESS-0112 while walking past the copy in this document. **Loop 5 had it in hand and dismissed it as immaterial**, reasoning about who implements `_within_prefix` rather than who reads §4.5 in order to implement `_is_protected`; that dismissal was wrong, and the cold re-read is what caught it. Neither lane's suggested wording was taken — both would have had the prefix share the case fold, which is undecided and which nothing implements — so the characterisation is dropped and only the depth difference stated. **Two lanes found the §11 derivation bullet stating a requirement and naming no route** where every neighbour names one; PRESS-0001 §9 already assigns it to PRESS-0021, now named there and annotated on that item. The fold is pinned as `str.casefold()` — the third lane raised the operation and judged it immaterial, but `straße` and `STRASSE` casefold together and lower apart, so two conformers could diverge and both believe they conform. That lane returned no findings, having swept every invariant for an unfalsifiable clause and the amended sections for a leftover exact-comparison statement. **Surfaced, not applied:** `publisher.py::_within_prefix`'s docstring carries the same stale sentence; that is a code edit and PRESS-0078's implementation is next. **A calm cap: one of the two landed on text this run wrote.** Of the run's seven verified findings across both loops, two anchor inside the gated span — so this was substantially an audit of the document rather than a gate on its trigger. **Routing:** not re-gated; a spec's cap is where implementation takes over. |
 | 7 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `publisher.py` whole, `test_publisher.py` by outline with the transport double and the folder / untouchable tests windowed, `settings.py`'s untouchable check and all ten design rules. GitHub's live API declared an unrunnable region. The gate ran BEFORE §4.4's stray rule was implemented, and the brief said so | 2 | 1 | 4 | 0 | **Seven verified, seven fixed; one dismissed. First loop of a new run**, armed by §4.4's stray-file rule (PRESS-0089). **Five of the seven landed on text this run wrote**, which is expected of a rule authored an hour earlier. **All three lanes found the Status line backwards:** it excepted §4.4's case tolerance and INV-2's case clause as unbuilt, and both ship (`casefold` in `_is_protected`, and the named test exists) — while the one thing with no code, INV-10, was covered by the word *Implemented*. Built from that line, an implementer re-folds case and never writes the stray rule at all. **Two lanes found the new rule unbuildable as written:** *anything that is not an ordinary file* admits a DIRECTORY, and the walk is `rglob`, so a literal implementation refuses every site with a `content/` folder — executed, `rglob` yields it with `is_file()` false. Both of INV-10's named fixtures pass such an implementation, so §7 caught it nowhere. **One lane found the new rule had two settlements against the untouchable list**: the dot-name bullet carved it out and the ordinary-file bullet did not, so a symlinked `CNAME` both refuses and does not. **One lane found §4.5 overclaiming**: it says staging inside `into` makes the last step *a rename*, and the move phase is one rename per file — a failure part-way leaves the files already moved at their final paths, which is the mixture that paragraph says undo must not produce. Stated as a residual window rather than closed; closing it is a design change, and §10 records that nothing checks it. **One lane found §6 has no row for a `fetch_previous` that cannot write** though the code raises at three sites. **Two came from lanes' open questions rather than findings, and both are real:** the dot-name test keyed on the FIRST segment, so `content/.DS_Store` — the one a real site acquires — published; widened to any segment, with the untouchable carve-out left on the first segment where the list's own semantics put it. And a dot-name the Builder starts emitting would fall off the untouchable list and refuse every publish permanently; recorded as a constraint PRESS-0008 inherits, with a §10 row. **Dismissed as immaterial:** §4.3 still calls the inline-content field's encoding undocumented where §8 records it measured; both reach the same decision and no conformer builds differently. |
+| 8 | 2026-09-08 | 3, cold — identical brief, scrubbed copy and packet rebuilt whole from disk and extended with `fetch_previous`'s own test and `design.md` § Where everything sits on disk. GitHub's live API still an unrunnable region; the stray rule still unbuilt, and the brief said so | 0 | 2 | 2 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text loop 1 wrote** — borderline rather than calm or violent, and both are one defect's two halves. **All three lanes found the same thing, the strongest signal available:** loop 1 gave §4.4 a carve-out saying neither stray test fires on an untouchable first segment, and updated INV-10's dot-name limb only — so INV-10 and §6 refused a symlinked `CNAME` outright while §4.4 required that publish to succeed, and INV-10's own fixtures reached only the limb that was right. A publish refused for good, remediable only outside the app. Both limbs now carry the carve-out and a symlinked-untouchable fixture joins the dot-name one. **One lane found a symlink to a DIRECTORY answering both of loop 1's sentences** with no precedence fixed; executed, such an entry is `is_symlink()` and `is_dir()` both, so testing for a directory first descends through the link and publishes files from outside the folder — which the same bullet forbids. Classification now precedes following. **Two came from lanes' open questions rather than findings.** §4.2 still said *two conditions on the handed folder are refused* where the stray rule makes three and §6 lists three; replaced with a pointer rather than a bumped number. And §4.3 named no status for the primary limit's header, while `_retry_hint` reads it only on 429 or 403 — an implementer reading it on a response that succeeded makes Pressless sleep after a request that worked. **Over the whole run, six of eleven verified findings fall inside the gated span**, so this was mostly gate rather than audit. **Three open questions resolved clean and are not counted** — `design.md`'s untouchable paragraph does say what §11 quotes, `.nojekyll` is on the measured list PRESS-0001 and `design.md` both carry, and §4.2's precondition list was the count above. **Routing: implementation.** |
