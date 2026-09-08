@@ -148,6 +148,18 @@ could ever match it, forced or not. The red run passed against that and
 could not have seen it. Probe after the code lands, and probe one
 mutation per route the invariant's own *Breaks when* names.
 
+**A `killed` verdict can be a false kill — read the run's exit code, not
+the verdict word.** A mutation that leaves the file unparseable exits 2,
+having run no test, and the envelope still reports `killed`. So the
+mutation proved nothing and reads exactly like the ones that proved
+something. Met 2026-09-08 on PRESS-0003: an `if True:` substitution
+orphaned an `except`, and the batch's eight kills included one that had
+only broken the syntax. Exit 1 with a failure count is a real kill; exit
+2 is a mutation to rewrite. **And a batch of kills does not mean the
+suite is sound** — the same run's honest survivors were three clauses no
+test could see, two of them invariants the spec argued for at length and
+covered with nothing.
+
 **A test double written before the implementation encodes a guess about
 the request shape, and the guess can make a faithful implementation
 impossible to pass.** `tests/test_publisher.py`'s first draft answered
