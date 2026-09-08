@@ -238,9 +238,16 @@ no filtering, no configuration — a plain-English record has one kind of line.
   *Test:* four, one per entry point per reachable failure —
   `tests/test_log.py::test_open_log_survives_an_unwritable_folder`,
   `tests/test_log.py::test_open_log_survives_a_missing_folder`,
-  `tests/test_log.py::test_note_survives_a_failing_write` and
-  `tests/test_log.py::test_close_survives_a_failing_flush`. Each asserts no
+  `tests/test_log.py::test_note_survives_a_failing_write`,
+  `tests/test_log.py::test_close_survives_a_failing_flush` and
+  `tests/test_log.py::test_note_survives_an_emit_that_raises`. Each asserts no
   exception escapes and that execution continues past the call.
+  **The last of those exists because implementation proved the others could
+  not see `note`'s guard at all**: `logging.Handler.emit` carries its own
+  try/except routing to `handleError`, so it swallows a stream failure before
+  `note`'s guard is reached. Probed 2026-09-08 — removing that guard entirely
+  left every other test green. Making `emit` itself raise is what falsifies
+  it.
   *Breaks when:* an entry point gains a code path outside its `except`, or a
   future author decides a missing folder is worth reporting to the caller.
   **Which failure each test uses is what makes this falsifiable, and the
@@ -279,6 +286,22 @@ no filtering, no configuration — a plain-English record has one kind of line.
   tests assert no exception *escapes*, and the default `handleError` escapes
   nothing — it prints. So every INV-3 test stays green while a traceback
   quoting absolute paths goes to stderr, which is the leak § 4.4 describes.
+
+- **INV-7** — The file is UTF-8 whatever the platform's default, and a
+  character UTF-8 cannot hold does not cost the line.
+  *Test:* `tests/test_log.py::test_the_file_is_utf8_whatever_the_platform_default`
+  asserts the value the handler was built with, because on a UTF-8 machine the
+  pinned value and the locale's produce identical bytes — so a bytes-only test
+  passes here and ships the defect to Windows. PRESS-0006 INV-10 asserts its
+  own call for the same reason. Then
+  `tests/test_log.py::test_a_line_survives_a_character_utf8_cannot_hold` writes
+  a lone surrogate between two ordinary lines and requires all three back.
+  *Breaks when:* `encoding` is left unset, taking the locale's; or `errors` is,
+  so a surrogate raises inside `emit` and `handleError` swallows the line while
+  its neighbours remain.
+  **This invariant exists because the probe found nothing covering either.**
+  Both were pinned in § 4.3 with reasoning and neither had a test, which is the
+  shape INV-6 was added for one loop earlier.
 
 ## 6. Failure modes
 
@@ -405,10 +428,11 @@ PRESS-0011 ships, not a settled one.
 |---|---|
 | INV-1 | `test_note_adds_nothing`; `test_log_imports_nothing_identifying` partially |
 | INV-2 | `test_rolls_by_size_keeping_one_old_copy` |
-| INV-3 | `test_open_log_survives_an_unwritable_folder`, `test_open_log_survives_a_missing_folder`, `test_note_survives_a_failing_write`, `test_close_survives_a_failing_flush` |
+| INV-3 | `test_open_log_survives_an_unwritable_folder`, `test_open_log_survives_a_missing_folder`, `test_note_survives_a_failing_write`, `test_close_survives_a_failing_flush`, `test_note_survives_an_emit_that_raises` |
 | INV-4 | `test_log_sits_beside_the_settings_file` |
 | INV-5 | `test_log_is_offline` |
 | INV-6 | `test_no_diagnostic_reaches_stderr` |
+| INV-7 | `test_the_file_is_utf8_whatever_the_platform_default`, `test_a_line_survives_a_character_utf8_cannot_hold` |
 | One mebibyte is the right size | **nothing** — a preference call (§ 4.3), and no test can hold it |
 | The log is readable as plain English by the writer's helper | **nothing** — it depends on what callers write, which is PRESS-0011's |
 | No credential, account name or full path reaches the file | **nothing here.** INV-1 stops this module adding one; a caller passing one is not something this module can see. The obligation is the raise site's, and for a failure Pressless did not raise it is the Face's, which records the type only (`docs/design.md` § Logging, § 2 above). PRESS-0011 is where both are met |
