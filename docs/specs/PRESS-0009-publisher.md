@@ -278,21 +278,24 @@ absent.** PRESS-0001's `load` accepts `CNAME/` and stores it as written,
 so an entry compared exactly would protect nothing while reading as
 configured.
 
-**The comparison ignores case.** GitHub's paths are case-sensitive and the
-Windows and macOS local filesystems are not, so a folder holding `cname`
-beside a repository holding `CNAME` is two paths. No single casing of the
-entry is right for both: one casing deletes the entry holding the custom
-domain, the other uploads a second file claiming it, and neither is
-reported. Ignoring case closes both, because the entry then protects the
-local file from being uploaded and the remote file from being removed. It
-over-protects a repository that deliberately holds two root entries
-differing only in case, and that costs in both directions. A file is left
-undeleted, which the writer removes himself. And — the one to watch — a
-Builder output whose first segment differs only in case from a stored
-entry is then never published, which he cannot remedy from the app. So a
-stale entry is worse under this rule than under an exact one, and the
-list's derivation must fold case the same way (§11). §2 makes the
-deletion unrecoverable, and that asymmetry is what decides it.
+**The comparison ignores case, folded with `str.casefold()`.** The operation
+is named rather than left to the implementer because §11 requires a second
+artefact to agree with it, and `str.lower()` differs on non-ASCII names:
+`straße` and `STRASSE` casefold together and lower apart. GitHub's paths are
+case-sensitive and the Windows and macOS local filesystems are not, so a
+folder holding `cname` beside a repository holding `CNAME` is two paths. No
+single casing of the entry is right for both: one casing deletes the entry
+holding the custom domain, the other uploads a second file claiming it, and
+neither is reported. Ignoring case closes both, because the entry then
+protects the local file from being uploaded and the remote file from being
+removed. It over-protects a repository that deliberately holds two root
+entries differing only in case, and that costs in both directions. A file is
+left undeleted, which the writer removes himself. And — the one to watch — a
+Builder output whose first segment differs only in case from a stored entry
+is then never published, which he cannot remedy from the app. So a stale
+entry is worse under this rule than under an exact one, and the list's
+derivation must fold case the same way (§11). §2 makes the deletion
+unrecoverable, and that asymmetry is what decides it.
 
 Every other path is made to match the folder, deletions included, so a
 page the writer removes actually goes.
@@ -329,9 +332,9 @@ reads them without reconstructing anything.
 **`prefix` matches on path-segment boundaries, and a trailing slash is
 optional and ignored.** Matched as a bare string instead, `content` would
 also select `contents.html`, and undo would write into the Store a file the
-fetched directory never held. §4.4's untouchable rule shares the
-trailing-slash tolerance and stops there: a prefix may name a path several
-segments deep, an untouchable entry may not, and PRESS-0001's `load`
+fetched directory never held. §4.4's untouchable rule tolerates a
+trailing slash too. Where the two differ is depth: a prefix may name a path
+several segments deep, an untouchable entry may not, and PRESS-0001's `load`
 refuses one that does.
 
 Where the current commit has no parent there is nothing before it, and
@@ -622,7 +625,9 @@ code, so a green INV-1 says nothing about the rest.
   Publisher leaves a stale entry such as `Index.html` on the list, after
   which `index.html` is never uploaded and never removed and the home
   page silently stops updating. Two settlements of one question,
-  disagreeing through the stored list.
+  disagreeing through the stored list. PRESS-0001 §9 names PRESS-0021 as the
+  derivation's owner, so that item carries the requirement; §4.4 pins the
+  fold by name so both artefacts bind to one operation.
 - `ROADMAP.md` PRESS-0009 — its body records §3 decision 1 as settled.
   Nothing further is owed there.
 - `ROADMAP.md` PRESS-0010 — **absorbed into this spec as an umbrella**,
@@ -651,3 +656,4 @@ code, so a green INV-1 says nothing about the rest.
 | 3 | 2026-09-05 | 3, cold — genre pinned `spec`, packet rebuilt whole from disk with `publisher.py` entire, `settings.py`'s untouchable check, all ten design rules, ADR-0002 and every test name in the file. GitHub's live API declared an unrunnable region | 2 | 2 | 2 | 0 | **Six verified, six fixed; one dismissed. First loop of a new run** — the 2026-08-26 run ended at a violent cap, and that bar lapsed with commit 975bdec's authoring edits. **All three lanes found the same two.** The Status line still surfaced design rule 5's missing write as open, while §11 records it closed by PRESS-0026 and rule 5 now grants the write — so an implementer reading the header defers `fetch_previous`'s disk write. And §4.4 was credited by §4.5 and §10 with a trailing-slash tolerance it never stated, having said the opposite: `load` accepts `CNAME/` and stores it as written (executed), so an entry compared exactly protects nothing while reading as configured — PRESS-0044's failure. `docs/design.md` and PRESS-0001 §4.3 both carry the tolerance; only its stated home did not. **Two lanes found INV-5's test clause fails a conforming module**: *no request body sets force* against an update that sends `force` explicitly false. **One lane found INV-9 contradicting §4.3** — *raised only once the bound is exhausted* against a hint too long to honour, refused with no wait at all; built as written it sleeps out a reset most of an hour away. **One lane found §10 naming a test for "the documented minute"** that no section documents, the test holding the number rather than importing it; now stated as a rule without one. **One lane found *Nothing lands in `into`* false** — staging is inside `into`, and staging beside it makes the last step a cross-filesystem copy that can fail half-done, which is the mixture that paragraph forbids. **Dismissed as immaterial:** §11 says the PRESS-0009 bullet *should record* the settled undo question, and it already does; no line changes, and a second lane reasoned itself to the same dismissal. **The packet's own build was this run's first defect** — three windows cut with wrong bounds, one skipping three of the rules it claimed to quote, all re-cut whole before dispatch. **Seven open questions resolved clean and are not counted.** |
 | 4 | 2026-09-05 | 3, cold — identical brief, packet rebuilt whole from disk and extended with `design.md`'s untouchable section and PRESS-0001 §4.3's row for the same rule. GitHub's live API again an unrunnable region | 4 | 2 | 0 | 0 | **Six verified, five fixed, one filed. Cap reached (2 for a spec); the run ships.** **A CALM cap — none of the six landed on text loop 3 wrote**, each anchor checked against that loop's ledger rather than recalled. **All three lanes found the same defect, and it reaches the writer at setup:** §6 gave `RepositoryMissing` to any repository resolving to nothing, and — executed — only the request naming the repository itself yields it. `root_entries` and `fetch_previous` start at `commits/HEAD` and get a bare `PublishError` whose message says the repository is there. The Face's setup step calls `root_entries`, so its branch for a mistyped repository was dead at the moment that mistake is likeliest, and the writer would have got the last-resort sentence. §6 now scopes the row, gives what is absent INSIDE the repository its own, and §10 names the test that already pinned both sides. **One lane found PRESS-0046's leftover:** *every row but one says unchanged* against a table carrying two unknown rows, the second added by that item — a Face built from the summary rather than the table tells the writer his site has not moved when it may have. **Two lanes found §4.1's guarantee false, and it is executed rather than read:** `_content_of` guards an absent content field and nothing else, so a short base64 string, a non-string, and a non-string under another encoding each escape untyped. The spec is the contract and is right, so the module is in breach and it is FILED as PRESS-0095 rather than written down as intended — this gate does not edit code. **One lane found §7's *every test hands in a double* false**: INV-1's import walk hands in nothing and three shipped tests drive the module's own client against a fake opener, so a literal build leaves the client's redirect, timeout and OSError paths with no coverage. **One lane found `design.md` § Errors admitting one unknown-outcome case** where §6 now reaches that state by two routes; §11 names it and PRESS-0096 carries it. **§11's stale roadmap line, dismissed in loop 3 as immaterial, is fixed here** — the section was open for that entry and the bullet beside it already showed the discharged form. **The gate was armed by commit 975bdec and not one verified finding of either loop landed inside that span**: this run was an audit of the whole document rather than a gate on its trigger, and it is recorded so the audit can later be triggered on purpose. **Of ten open questions, three became the findings above and the rest resolved clean bar one, which needs GitHub's live behaviour.** **Route:** implementation and PRESS-0095, not a third loop. |
 | 5 | 2026-09-08 | 3, cold — genre pinned `spec`; gating the PRESS-0078 amendment (§4.4's case tolerance, INV-2, §10's row). Packet carried `publish`'s protection and removal logic, `root_entries`, `settings.py`'s untouchable check, both untouchable tests and design.md's rule, plus the executed two-casing outcomes. GitHub's API and Windows declared an unrunnable region | 1 | 1 | 1 | 2 | **Five verified, five fixed, none dismissed. Three landed on text this amendment wrote an hour earlier.** **Two lanes found INV-2's *Breaks when* describing the upload route while calling it the deletion** — a fixture built from it passes green against the exact comparison it exists to catch, which is the unfalsifiable-clause shape PRESS-0107 had just finished removing elsewhere. One lane found INV-2's three fixtures all case-matching, so its named test cannot observe the clause just added; the case test is named separately rather than as a fourth fixture, because that test asserts a breach by exact membership and a fixture added there could not bite. One found §4.4's over-protection stated on the removal side only — folding case suppresses an UPLOAD too, so a stale entry differing only in case stops the home page updating with nothing raised, and the list's derivation must fold the same way. **Two lanes found the Status line still reading *Implemented*** while §10 cites a test that does not exist. **The 4b sweep found what no lane could**, PRESS-0001 not being in the packet: its "case-sensitively" is the Daily Prompt glob, opened and dismissed. design.md states the match's tolerance exhaustively and names one; filed as PRESS-0112 rather than edited from here, that document having its own gate. **One packet defect, found by a lane:** it said §7 carries the What-checks-this table, which is §10. §4.5's "shares the trailing-slash tolerance and stops there" was considered and dismissed as immaterial — `_within_prefix` matches a caller's prefix against GitHub's own paths, so no folding client reaches it. |
+| 6 | 2026-09-08 | 3, cold — identical brief, packet rebuilt whole from disk and extended with `fetch_previous`, the failure classes, `design.md` § Errors and PRESS-0001's untouchable passages; loop 5's §7/§10 mis-citation corrected. GitHub's API and Windows still an unrunnable region | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships.** **Two lanes independently found §4.5 characterising §4.4's tolerances as trailing-slash-and-nothing-else** — a reading that produces the exact comparison INV-2 calls a breach, and the same defect shape loop 5 filed against `design.md` as PRESS-0112 while walking past the copy in this document. **Loop 5 had it in hand and dismissed it as immaterial**, reasoning about who implements `_within_prefix` rather than who reads §4.5 in order to implement `_is_protected`; that dismissal was wrong, and the cold re-read is what caught it. Neither lane's suggested wording was taken — both would have had the prefix share the case fold, which is undecided and which nothing implements — so the characterisation is dropped and only the depth difference stated. **Two lanes found the §11 derivation bullet stating a requirement and naming no route** where every neighbour names one; PRESS-0001 §9 already assigns it to PRESS-0021, now named there and annotated on that item. The fold is pinned as `str.casefold()` — the third lane raised the operation and judged it immaterial, but `straße` and `STRASSE` casefold together and lower apart, so two conformers could diverge and both believe they conform. That lane returned no findings, having swept every invariant for an unfalsifiable clause and the amended sections for a leftover exact-comparison statement. **Surfaced, not applied:** `publisher.py::_within_prefix`'s docstring carries the same stale sentence; that is a code edit and PRESS-0078's implementation is next. **A calm cap: one of the two landed on text this run wrote.** Of the run's seven verified findings across both loops, two anchor inside the gated span — so this was substantially an audit of the document rather than a gate on its trigger. **Routing:** not re-gated; a spec's cap is where implementation takes over. |

@@ -718,6 +718,27 @@
   Setup is also where the untouchable list is derived from the live
   repository, and where Import runs, once.
   Blocked-by: PRESS-0002, PRESS-0007, PRESS-0011, PRESS-0019.
+  Added 2026-09-08 by the PRESS-0078 contract gate, loop 2, two lanes.
+
+  This item owns the untouchable list's derivation -- PRESS-0001 9 names
+  it as the owner -- and that derivation now has a requirement it did not
+  have before.
+
+  PRESS-0009 4.4 matches the list IGNORING CASE from 2026-09-08, folded
+  with str.casefold(), and 4.4's closure protects both directions. So
+  Setup's filter, which removes everything the Builder produces, must
+  fold the same way. An exact-cased filter against a case-folding
+  Publisher leaves a stale entry such as Index.html on the list, after
+  which index.html is never uploaded and never removed -- the home page
+  silently stops updating, with nothing raised and no remedy from the app.
+  Executed, not reasoned: uploaded [] and removed [] for that fixture.
+
+  The fold is pinned by NAME in 4.4 rather than left as "ignores case"
+  because str.lower() and str.casefold() differ on non-ASCII names --
+  straße and STRASSE casefold together and lower apart -- so two
+  conformers could pick differently and both believe they conform.
+
+  PRESS-0009 11 records the requirement and points here.
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
