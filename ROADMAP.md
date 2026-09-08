@@ -1000,7 +1000,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
 
-- ✅ [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
+- ✅ [PRESS-0092] **The first publish looked as though it needed more content-creating requests than GitHub allows in an hour; measured, it does not.**
   Not a credentials problem, and no token raises this. The Publisher
   already authenticates (publisher.py sends Authorization: Bearer on every
   request), so the PRIMARY limit is 5,000 requests an hour and is not what
