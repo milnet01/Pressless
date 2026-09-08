@@ -112,9 +112,11 @@ def render(body: str, photo_src: PhotoSrc) -> str   # parse + to_html
 
 `PhotoSrc` is `Callable[[str], str]`: given a picture's file name it
 returns the address to put in `src`. **The name is one plain file name**
-(§4.2) — the rule PRESS-0006's INV-11 already enforces where the original
-is kept, so the Builder and the Face resolve the same string and cannot
-disagree about what it means. **Marks never builds a path.** The
+(§4.2) — at least as strict as PRESS-0006's INV-11, which governs where the
+original is kept. So a name Marks accepts is always one the Store accepts,
+never the reverse: `photograph_path_for` takes `C:photo.jpg` and Marks
+refuses it (executed), so a name the Store stores can be one Marks will not
+display, and PRESS-0016 owns that gap rather than this document. **Marks never builds a path.** The
 Builder passes its web-copy naming rule (PRESS-0008 owns that rule); the
 Face passes an address serving the original for preview (PRESS-0012). This
 callable is how rule 3 is kept while the picture mark still works.
@@ -371,10 +373,15 @@ one for `alt`.
   leaves alone. The archive contains neither. The test asserts that
   emptiness directly and names which set stopped being empty, because an
   agreement nothing enforces breaks silently on the next import.
-  *Test:* `tests/test_marks_archive.py::test_matches_wpautop`, skipped
-  unless `PRESSLESS_ARCHIVE` names a WordPress export **and** the sibling
-  workspace holding `wpautop()` is reachable. Neither is part of this
-  repository, so nothing checked out from it can run this.
+  *Test:* `tests/test_marks_archive.py::test_matches_wpautop`. Neither the
+  export nor the oracle is part of this repository, so nothing checked out
+  from it can run this — but **only absence skips**. `PRESSLESS_ARCHIVE`
+  unset, or no generator found at all, is the expected state everywhere but
+  the maintainer's machine and skips cleanly. Either one present and
+  unusable — a path that names no file, an oracle that will not load, a
+  renamed export, an ambiguous discovery — **fails**, naming the cause. A
+  silent skip there would take the proof of S2 off the one machine that can
+  run it, which is what a skip reporting every cause as absence did.
   *Breaks when:* any escaping or paragraph rule changes. A non-empty
   divergence set is **not** a fault in Marks — it is new source material
   the migration has never seen, and it is a decision, not a bug. It is
@@ -401,14 +408,20 @@ one for `alt`.
   one admitted `http.client`, which is the module INV-7 exists to keep out.
   *Test:* `tests/test_marks.py::test_marks_is_pure`, which walks the
   module's AST — imports and calls — rather than grepping its text.
-  *Breaks when:* someone resolves a photo's path here instead of in the
-  caller — the one change rule 3 exists to stop.
+  *Breaks when:* marks.py imports a module outside the test's allowlist, or
+  calls `open`, `__import__`, `import_module`, `eval`, `exec` or `compile`
+  by any spelling. What the walk does **not** see is a path built by string
+  concatenation, which needs neither an import nor a call — so rule 3's
+  architectural claim is wider than this invariant, and §10 records the gap.
 
 - **INV-8** — A colour argument reaches the `style` attribute only after
   matching `^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$` **in full**; a named
-  colour reaches it only as one of the two fixed `var(--…)` strings. The
-  anchors are the invariant: unanchored, the same pattern accepts
-  `#c0453a;background:url(…)` and the payload reaches `style=`.
+  colour reaches it only as one of the two fixed `var(--…)` strings. **The
+  full match is the invariant, not the anchors** — the pattern is compared
+  with `re.fullmatch`, so stripping `^` and `$` still refuses
+  `#c0453a;background:url(…)` (executed). What admits that payload is
+  comparing with `re.search` and a pattern that is not anchored; §4.2's
+  `arg` column states the rule the implementer must keep.
   *Test:* `tests/test_marks.py::test_colour_argument_cannot_carry_css`.
   *Breaks when:* the argument is passed through for CSS to validate.
 
@@ -452,11 +465,12 @@ leaves through `photo_src` before any escaping runs.
 the invariant tests named in §5.
 
 `tests/test_marks_archive.py` — the INV-5 conformance run over the real
-export. It is skipped unless `PRESSLESS_ARCHIVE` points at a WXR file and
-the sibling workspace holding `wpautop()` is reachable: the export is
-personal data and cannot live in a public repository (`docs/design.md`
-§ Where everything sits on disk), and the oracle belongs to today's
-generator rather than to this project. **It prints every
+export. The export is personal data and cannot live in a public repository
+(`docs/design.md` § Where everything sits on disk), and the oracle belongs
+to today's generator rather than to this project — so it skips where
+neither is present, and **fails rather than skipping** where either is
+present and unusable (INV-5 states the two outcomes). `PRESSLESS_GENERATOR`
+pins which generator is read when more than one could be found. **It prints every
 figure §2 describes**, so the numbers are an output of the run rather than
 a transcription in prose that ages. **It also asserts INV-5's two
 divergence sets are empty before comparing anything**, so a byte mismatch
@@ -485,8 +499,10 @@ and `write-test` performs that run.
   fields — the Store's, PRESS-0005.
 - The web-copy naming rule for photographs — the Builder's, PRESS-0008.
 - Generating the cheat sheet from `MARKS` — PRESS-0018.
-- **Every entry that is not raw text** — the Gutenberg ones, the classic
-  HTML ones and the empty ones. ADR-0001 promises *"every one of the 616
+- **Every entry that is not raw text** — the Gutenberg ones and the classic
+  HTML ones. An empty entry is raw text and stays in INV-5's population;
+  §6 gives it a row, and the conformance run's classifier excludes only the
+  two shapes named here. ADR-0001 promises *"every one of the 616
   existing entries must survive a round trip"*; that promise is about the
   format and binds whatever Import writes, since a Store file is text with
   marks whatever it came from. It does not oblige Marks to parse HTML.
@@ -512,6 +528,7 @@ and `write-test` performs that run.
 | INV-8 | `tests/test_marks.py::test_colour_argument_cannot_carry_css` |
 | INV-9 | `tests/test_marks.py::test_photo_name_cannot_escape_its_folder` |
 | INV-10 | `tests/test_marks.py::test_a_caption_becomes_the_photograph_description` |
+| INV-7's wider claim that no path is resolved in `marks.py` | **nothing** — `test_marks_is_pure` walks imports and call spellings, and a path built by string concatenation needs neither. Rule 3 is kept by review here, not by a test. |
 | §3.1's claim that the site has one accent and one muted ink | **nothing** — a repaint of the site could add a third named colour and this spec would not notice. It is a one-line edit to `MARKS` when it happens. |
 | §4.2's `mk-rainbow` class existing in the site's stylesheet | **nothing** — Marks emits the class and the stylesheet is in another repository. A rainbow run renders as plain text until PRESS-0008 adds the rule; tracked by PRESS-0008. |
 
@@ -532,3 +549,4 @@ and `write-test` performs that run.
 | 2 | 2026-08-25 | 3, cold — identical brief, scrubbed copy and packet rebuilt from disk, no prior-loop findings carried. One lane disclosed it was not fully cold: the workspace's own CLAUDE.md was in its context before dispatch. | 1 | 4 | 3 | 1 | **Nine verified, nine fixed, none dismissed. Cap reached (2 for a spec); the run ships and routes to implementation.** **A VIOLENT cap: five of the nine landed on text loop 1 wrote**, each anchor checked against loop 1's ledger rather than recall. The cause is nameable and was not a run of bad luck — loop 1 bolted `block`, `arg`, `content` and `renders` onto the table without reworking the structure and invariants around them, so its fixes were individually right and jointly incoherent. **All three lanes found the largest one**: §4.2 declared a photo mark owns its line while §4.3's `Document` could hold nothing but a `Paragraph` and §4.4 had no step to produce one — so a conformer emits the `<figure>`-inside-`<p>` that §4.2 had just been rewritten to forbid. **All three found `renders`**, a single-placeholder template that cannot express a colour argument, a photo `src` from a callback, or a per-character rainbow — so `to_html` would carry exactly the hidden second table §4.2 forbids. **All three found the closer clause**, which rejects the document's own nesting example `{accent}{muted}word{/}{/}` because the outer `{/}` is preceded by `}`; loop 1 had scoped the opener condition to the asterisk family and left the closer unscoped. Rather than patch a fourth time, §4.1–§4.5 were rewritten as one unit: `render` became a per-row callable, `Block = Paragraph \| Photo` gave the photo a home, §4.4 gained the step that puts it there, and every row got its `name`. **Two lanes found a security defect that predates the run**: INV-8 quoted its colour pattern unanchored while the table pins it anchored, and the trust-boundary paragraph names INV-8 as half the only defence. Executed: unanchored, it accepts `#c0453a;background:url(…)` straight into `style=`. **One lane found INV-3 vacuous** — `Node` excludes `Line`, so *a `Span` never contains a `Line`* was unconstructible and its test passed on any input, while the whole-body scanner it exists to catch surfaces as a `Text` holding a newline. **The one Q1 was a count of mine**, *130 entries that are not raw text*, which omits the two empty bodies and left them assigned to neither INV-5's population nor PRESS-0007's. **On the user's instruction the fixes were then read back against the spec's purpose**, and the archive counts came out of §2 entirely: none of them changes what an implementer builds, and §7 already says the archive test prints them, so the prose was a second copy that could disagree with the run. **Route: implementation, not a third loop.** The cap is where it is because a spec is exercised next by being built, and this document's remaining risk is in code nobody has written. |
 | 3 | 2026-09-06 | 3, cold — genre pinned `spec`; loop 1 of a new run (PRESS-0059, with PRESS-0055's amendment folded in). Packet carried `marks.py` whole rather than as windows. INV-5's archive run needs an oracle in a private workspace, so that region was declared unrunnable and Q1 was out of scope there | 4 | 4 | 2 | 1 | **Eleven verified, eleven fixed; one dismissed.** **All three lanes found this run's own collateral:** the new caption-as-description rule put writer text into an `alt` while §4.6 scoped strict attribute escaping to what `photo_src` returns, so a caption carrying a quote breaks out of the tag on a published page; §4.6 now names both destinations and escapes a caption once for each. **All three found §4.1's "Nothing else"** false — the module also exports `PhotoSrc` and `Renderer`, which are the types PRESS-0008 and PRESS-0012 must name. **Two found the rainbow row's "per character"** where the code's unit is a whole character reference: built per character, `&nbsp;` splits and reaches the page as its own text, which is the defect PRESS-0070 fixed in the code and nobody had written down. **The 4b sweep reversed a decision:** the grammar folded in from PRESS-0055 allowed an interior `/`, and PRESS-0006's INV-11 refuses one with a shipped test, so a photograph in a subfolder could be written into an entry and never stored. Put to the user, who barred it in Marks; the two contracts now agree. **Singles:** §4.2 claimed the scanner holds no delimiter literal of its own, and it holds the asterisk and the argument's `}`, both of which §4.5 requires; INV-7 could not fail for its own stated breach, `open` needing no import; INV-5's divergence set read "a bare `&`" where §4.6's rule is a pattern — executed, `&#12345678;` is escaped by Marks and left alone by `wpautop()`, and nobody would call it bare; the table carried two `photo` rows where `MARKS` has one, which would list the photograph twice in the cheat sheet. **Two were mine**, from 4a's re-read and the sweep: §4.3 still called the name a file name, and the grammar was pinned without saying it is the row's own `arg`. **Dismissed as true-but-inert:** §11 calls `CLAUDE.md`'s § Stack and § Build and test placeholders, and they were filled when this shipped. **Clean open questions, not counted:** an indented `{photo:}` line is a mark, since the code strips first, and INV-9/INV-10's tests are the declared code gap. |
 | 4 | 2026-09-06 | 3, cold — identical brief, packet rebuilt whole from disk and extended with PRESS-0006's INV-11 window; the code's not-yet-caught-up half declared, so it could not be re-found each loop | 4 | 2 | 3 | 1 | **Ten verified, ten fixed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text this run wrote**, each anchor checked against loop 3's ledger — a borderline cap rather than a calm or a violent one: the rainbow unit and the photograph name each took a second pass, while §4.5's glosses and §11 had stood since August. Across both loops, thirteen of twenty-one findings predated the change being gated, so this run was substantially an audit. **Two lanes found §4.5's `b**bs` gloss false of the rule it glosses** — executed: `*a b**bs` is `<em>a b</em>*bs`, so the closer's asterisk clause is not what keeps `b**bs` literal, and an implementer taking the gloss for a fixture writes a test that stays green with the clause deleted, which is what INV-2 was amended to prevent. It now names INV-2's own separating input. **One lane found the neighbouring gloss false the same way**: `**said out loud**` opens at its run's first asterisk, so *an asterisk run cannot open a mark at its first asterisk* is true only of `***x***`, and coding it as written rejects both asterisk rows' own examples. **Two lanes found the rainbow whitespace clause fighting loop 3's new unit clause** — `&nbsp;` is both a unit and whitespace, and the two prescribed opposite output and different indices for every character after it. **One lane found "the opener" undefined for a row with an argument**: the code tests the character after the argument's `}`, so `{#c0453a} word{/}` is literal, and reading it as `opens` alone makes the clause vacuous for that row. §4.5 now defines the opening construct once. **Singles:** §4.6's attribute list omitted the `style` value the colour rows carry, resting that boundary on INV-8's pattern alone; the grammar said nothing about the whitespace the written form `{photo: seaside.jpg}` puts around the name, which the code strips; loop 3's claim that the name grammar *is* what INV-11 accepts was wrong, since this one also refuses a colon and control characters; and §4.5 said *a space* where the code tests whitespace, so `{accent}\tx{/}` divided two implementations. **Two lanes re-found §11's claim that `CLAUDE.md`'s § Stack and § Build and test are placeholders**, dismissed as inert in loop 3 and fixed here: §11 is a checklist somebody works down, so a builder would write into two live sections. **One was mine**, from 4a's re-read: defining the opening construct made §4.5's own reason for scoping the adjacency clauses to a `wrap` stale. **Code-side collateral filed, not fixed here:** `marks.py` and both test files still say *a space*, and three docstrings describe the pre-amendment contract. |
+| 5 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `marks.py` and `test_marks.py` whole, `test_marks_archive.py` with its new shared loader, design.md rules 1-9 and PRESS-0006's INV-11. The export and the generator are on this machine, so no region was declared unrunnable | 3 | 1 | 0 | 1 | **Five verified, five fixed, none dismissed.** Trigger: PRESS-0110 rewriting INV-7 as an allowlist. **Two of the five are this session's own collateral, and both lanes that found the larger one found it independently:** PRESS-0108 made the archive run FAIL where a generator is present and unusable, and §5 and §7 both still said it skipped — built as written, a `skipif` would take the proof of S2 off the only machine that can run it. **One lane found §4.1 claiming Marks enforces the same name rule as PRESS-0006's INV-11 where §4.2 says *at least as strict*;** executed, `photograph_path_for` accepts `C:photo.jpg` and Marks refuses it, so a photograph the Store holds could never be displayed and nobody owned the gap. **One lane found INV-8 attributing the CSS defence to the anchors**; the comparison is `re.fullmatch`, so stripping `^` and `$` still refuses the payload (probed, survived) — the full match is the invariant and `re.search` is what would admit it. **One found §9 putting empty entries outside raw text** where §6 gives them a row and the classifier keeps them, so the population §7 promises to print differed from the one §9 defines. **Q4, found by two lanes:** INV-7's *Breaks when* named path resolution, which its walk cannot see — probed, a concatenated path passes — now narrowed, with §10 disclosing the gap as it already does for two others. **Collateral outside the subject:** the project `CLAUDE.md` told every session these tests skip when the generator is unreachable; corrected. Two ROADMAP progress notes carry the old claim and were left as records. **Five open questions resolved clean and are not counted** — `HAS_TAGS` does not match a selectionBoundary span (run, so §9's claim holds), §4.3's unions are covered by §4.1, INV-2's four routes against five mutations, §4.5's wrap rationale, and INV-5's two-input claim. |

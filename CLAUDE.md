@@ -105,11 +105,16 @@ git config ants.pressless.archive /path/to/wordpress-export.xml
 
 **The first two need a second thing the third does not**, and it decides
 what a green push proves. They resolve a slug through the sibling
-generator in a private workspace, so they skip wherever it is
-unreachable — which includes the isolated checkout the pre-push hook
-builds. `test_store_extras_archive.py` keys comments by the export's own
-post id and needs nothing but the export, so it DOES run at pre-push.
-Read the skip reasons, not the exit code.
+generator in a private workspace, so they skip where no generator is
+found at all — which includes the isolated checkout the pre-push hook
+builds. **Absence is the only skip** (PRESS-0108): a generator that is
+present and will not load, has been renamed, or is one of several
+candidates is a FAILURE naming its cause, because a skip reporting every
+cause as absence could stop the S2 round trip silently. Set
+`PRESSLESS_GENERATOR` to pin which generator is read.
+`test_store_extras_archive.py` keys comments by the export's own post id
+and needs nothing but the export, so it DOES run at pre-push. Read the
+skip reasons, not the exit code.
 
 Or set it for one run:
 
