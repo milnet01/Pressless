@@ -5307,12 +5307,14 @@
   exactly one destination and the totals add back to the full set.
 
     sqlite3 ~/.local/share/ants-terminal/roadmap.sqlite \
-      ".read ~/.local/share/pressless-resection/resection.sql"
+      ".read /mnt/Games/Scripts/Linux/Pressless_Backups/resection.sql"
 
   One transaction; nothing changes if any part fails. Then op:"render",
   confirm the item count is unchanged and no text moved, and commit.
 
-  Backups, both integrity-checked, in ~/.local/share/pressless-resection/
+  Backups, both integrity-checked, in
+  /mnt/Games/Scripts/Linux/Pressless_Backups/ -- kept off the system
+  drive at the user's instruction, and outside the public repository
   -- roadmap.sqlite.bak (before any change) and
   roadmap.sqlite.sections.bak (after the sections were created, the
   restore point for the SQL). Restore with
