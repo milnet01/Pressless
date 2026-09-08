@@ -120,6 +120,16 @@ class TooLarge(PublishError): ...          # a documented GitHub limit was hit
 class RateLimited(PublishError): ...       # GitHub asked us to slow down, and retrying did not clear it
 class NoPreviousState(PublishError): ...   # nothing before the current commit
 
+# The refuse-before-any-write conditions. Each is its own type because
+# `docs/design.md` § Errors requires every message to end with what to do
+# next, and for these five that differs: fix the setting, remove the file,
+# rebuild the site, free space, retry (PRESS-0116).
+class SiteFolderMissing(PublishError): ...  # the handed folder is not a directory
+class StrayFile(PublishError): ...          # the folder holds what the Builder did not produce (§4.4)
+class SiteWouldBeEmptied(PublishError): ... # every unprotected path removed and none written
+class FetchNotWritten(PublishError): ...    # fetch_previous could not write into the folder
+class RemoteStateMissing(PublishError): ... # something INSIDE a repository that answers is absent
+
 class Transport(Protocol):
     """The one seam. Tests are its only other caller."""
     def request(self, method: str, url: str, body: bytes | None,
@@ -635,21 +645,29 @@ behaviour.
 
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
-| The handed folder is not a directory | `PublishError` | unchanged |
-| `fetch_previous` cannot write into the folder it was handed — full disk, unwritable folder | `PublishError` | unchanged |
-| The handed folder holds a stray — a symlink, anything else neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `PublishError` | unchanged |
-| The publish would remove every unprotected path and write none | `PublishError` | unchanged |
+| The handed folder is not a directory | `SiteFolderMissing` | unchanged |
+| `fetch_previous` cannot write into the folder it was handed — full disk, unwritable folder | `FetchNotWritten` | unchanged |
+| The handed folder holds a stray — a symlink, anything else neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `StrayFile` | unchanged |
+| The publish would remove every unprotected path and write none | `SiteWouldBeEmptied` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers a server error **to** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
-| Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `PublishError` | unchanged |
+| Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `RemoteStateMissing` | unchanged |
 | Branch moved since the listing was read | `Conflict` | unchanged |
 | A documented GitHub limit was hit | `TooLarge` | unchanged |
 | Retry hints exhausted | `RateLimited` | unchanged |
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
+
+**The five refuse-before-any-write rows each carry their own type**, added
+2026-09-08 by PRESS-0116. They shared the bare `PublishError`, and §6
+requires the Face to end each message with what to do next — which for these
+five is fix the setting, remove the file, rebuild the site, free space, and
+retry. A shared type left the Face inventing a discriminator or giving one
+generic answer to five different situations, which is the failure § Errors
+names. It is the same ground `OutcomeUnknown` is its own type on.
 
 **Every row but two says *unchanged*, and those two are the ones that
 matter.** §4.3's property is that nothing a reader sees changes until the
