@@ -5623,7 +5623,7 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1 and 2.
 
-- 📋 [PRESS-0110] **Four purity and watch tests match a shape rather than the rule they name.**
+- ✅ [PRESS-0110] **Four purity and watch tests match a shape rather than the rule they name.**
   - tests/test_marks.py:324 -- INV-7's forbidden-import list is a
     seven-name DENYLIST. `http`, `ssl`, `ftplib`, `smtplib`, `httpx`,
     `xmlrpc`, `webbrowser`, `shutil`, `tempfile`, `glob` and `zipfile` all
@@ -5648,6 +5648,28 @@ already-built code ships in whichever release comes next.
   `_durability_watch` patches. If the probe runs after the watch is
   installed in one test, its throwaway becomes `opened[-1]` for the next
   `os.replace` and the assertion fails on correct code.
+  Resolved (2026-09-08). All four items fixed and each proved by
+  mutation probe rather than by reading. INV-7 is an allowlist, and the
+  call walk matches open/__import__/import_module by any spelling,
+  eval/exec/compile by bare name (re.compile is an attribute), and
+  forbids naming builtins at all -- five mutations killed, and all four
+  I could replay PASSED the pre-fix test. The open walk's builtins.open
+  and __import__ holes are closed with it. test_network_timeouts now
+  derives its rule from the source: every module importing network
+  machinery owes a matched call, so renaming self._opener fails where it
+  used to go green; glob became rglob. The durability watch pairs each
+  rename with its own temporary BY PATH, which was PRESS-0039's failure
+  living inside the test written to catch it, and that fix also removes
+  the _mode_support probe collision recorded in this item --
+  tests/test_durability_watch.py now locks the watch itself, four
+  mutations killed, one of which (the synced-while-empty clause) was
+  found by probing the fix. INV-7's enumeration moved with it, so the
+  spec was gated: review-contract on PRESS-0004, two loops, nine
+  verified and nine fixed, cap reached with an empty tail. Two of those
+  nine were in the gated span; the rest was audit yield. Collateral
+  corrected in the project CLAUDE.md and in PRESS-0005's
+  What-checks-this row, both carrying a stale skip claim from
+  PRESS-0108.
   **Layman:** A few tests check for one spelling of a problem, so the same problem written another way goes unnoticed.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 2, 4 and 5.
