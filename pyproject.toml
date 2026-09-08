@@ -7,7 +7,16 @@ name = "pressless"
 version = "0.0.0"
 description = "The desktop app that lets a writer manage and publish their own static site, without needing anyone else to do it for them."
 readme = "README.md"
-requires-python = ">=3.10"
+# The floor is what CI actually exercises, and deliberately not wider: below
+# it nothing has ever run, so a lower floor is a claim with nothing behind it
+# (PRESS-0104). The previous floor was 3.10, which stops receiving security
+# fixes on 2026-10-31. A matrix over floor-and-newest was rejected rather
+# than merely deferred -- it would spend per-push minutes proving support for
+# a runtime that goes end-of-life before the work lands.
+#
+# S4 packages an interpreter with the app, so this binds contributors and the
+# gate, never the writer.
+requires-python = ">=3.13"
 license = { file = "LICENSE" }
 # The operating system's credential store, reached only by
 # src/pressless/credentials.py (PRESS-0002, ADR-0003). A FLOOR, not a hold
