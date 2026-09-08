@@ -40,7 +40,11 @@ dev = ["pytest>=9", "pytest-randomly>=4", "ruff>=0.16"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-minversion = "7.0"
+# Held at the dev floor above, not below it. Two settings naming a minimum
+# pytest disagreed: this said 7.0 while `dev` requires 9. Harmless, since 9
+# clears 7 -- but a reader has to pick one, and the looser number is the
+# wrong one to pick. Bump both together or neither.
+minversion = "9"
 testpaths = ["tests"]
 pythonpath = ["src"]
 # --strict-markers is the whole mechanism (python.md § Tests): declaring
