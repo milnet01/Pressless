@@ -750,7 +750,8 @@ def test_first_commit_has_no_previous_state(tmp_path):
 
 
 def test_writes_are_paced_and_hints_retried(tmp_path):
-    """INV-9: successive write requests are separated by the pacing wait,
+    """INV-9: successive write requests are separated by the pacing wait
+    the FOLLOWING write requires (§4.3 splits blobs from the other three),
     and a retry hint is waited out and retried rather than raised --
     RateLimited is raised only once the retry bound is exhausted.
 
@@ -1548,10 +1549,13 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
     produce is an error, and refusing is not skipping: a skip publishes a
     correct site and says nothing, so the stray stays and nobody learns of it.
 
-    Three fixtures, and §5 says why the third is load-bearing. A symlink and
-    a root dot-name are the obvious two. `content/.DS_Store` is NOT
-    decoration: it is the case a FIRST-segment rule passes, and macOS writes
-    that file into every directory it opens -- so without it an
+    Four fixtures, and §5 says why two of them are load-bearing. A symlink to
+    a file and a root dot-name are the obvious pair. A symlink to a DIRECTORY
+    is the case an "ordinary file or directory" rule passes -- it answers
+    is_dir(), so such a rule descends the link and publishes what it points
+    at. `content/.DS_Store` is NOT decoration either: it is the case a
+    FIRST-segment rule passes, and macOS writes that file into every
+    directory it opens -- so without it an
     implementation built on the first segment satisfies every other
     assertion here.
 
@@ -1560,6 +1564,15 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
     """
     def plant_symlink(folder):
         (folder / "linked").symlink_to(folder / "index.html")
+
+    def plant_symlinked_directory(folder):
+        # The case an "ordinary file or directory" rule PASSES: this answers
+        # is_dir() true, so a rule written that way descends the link and
+        # publishes whatever it points at (PRESS-0114 gate, loop 2).
+        outside = folder.parent / "outside-the-site"
+        outside.mkdir(exist_ok=True)
+        (outside / "not-for-publication.txt").write_text("x", encoding="utf-8")
+        (folder / "linkdir").symlink_to(outside, target_is_directory=True)
 
     def plant_root_dot_name(folder):
         (folder / ".git").mkdir()
@@ -1570,6 +1583,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
 
     strays = {
         "linked": plant_symlink,
+        "linkdir": plant_symlinked_directory,
         ".git": plant_root_dot_name,
         ".DS_Store": plant_nested_dot_name,
     }
@@ -1672,6 +1686,42 @@ def test_an_untouchable_symlink_does_not_refuse(tmp_path):
     paths = _tree_creation_paths(transport)
     assert paths is not None and "CNAME" not in paths, (
         f"an untouchable symlink was published: {paths!r}"
+    )
+
+
+def test_each_write_is_preceded_by_its_own_pace(tmp_path):
+    """INV-9: the pace before a write is the pace THAT write requires.
+
+    A two-file publish is five writes -- two blobs, the tree, the commit, the
+    reference update -- and the first is not paced, so four gaps: half a
+    second before the second blob and before the tree... no. Before the second
+    blob is a BLOB's pace; before the tree, the commit and the reference
+    update is the full second. `[0.5, 1.0, 1.0, 1.0]`.
+
+    **The SEQUENCE, not a count and not a set.** A count passes a single flat
+    pace, which is what shipped before PRESS-0114. A set passes the split
+    applied AFTER each write instead of before the next -- which under-paces
+    the tree, the first of the three slow writes, and leaves the same two
+    values in the recording.
+
+    The values are held here rather than imported: sharing the module's own
+    constants would compare them against themselves.
+    """
+    (tmp_path / "one.html").write_text("<html>one</html>", encoding="utf-8")
+    (tmp_path / "two.html").write_text("<html>two</html>", encoding="utf-8")
+
+    listing = _listing([
+        ("one.html", _blob_hash(b"<html>old one</html>")),
+        ("two.html", _blob_hash(b"<html>old two</html>")),
+    ])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    assert transport.waits == [0.5, 1.0, 1.0, 1.0], (
+        f"the recorded pace sequence was {transport.waits!r}, not "
+        f"[0.5, 1.0, 1.0, 1.0]. Two blobs then the tree, commit and reference "
+        f"update: only the second blob takes the blob pace"
     )
 
 

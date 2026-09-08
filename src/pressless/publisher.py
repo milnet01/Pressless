@@ -39,6 +39,17 @@ API = "https://api.github.com"
 # A breach is answered with a retry hint rather than a plain refusal, so the
 # wait is honoured and the write retried; only an exhausted bound raises.
 PACE_SECONDS = 1.0
+
+# Blob creation is paced faster, and the split is measured rather than advised
+# (§4.3). PRESS-0092 sent 550 blob creations inside one rate-limit hour, serial,
+# every one accepted, at a sustained 136 a minute -- past both documented
+# content-generating thresholds. Half a second is 120 a minute, under what was
+# measured accepted, so this reduces the pace rather than removing it. The tree,
+# the commit and the reference update keep PACE_SECONDS: those three are
+# plausibly what the documented limits are about, nothing has measured them,
+# and there are three per publish so pacing them costs nothing (PRESS-0114).
+BLOB_PACE_SECONDS = 0.5
+
 MAX_RETRIES = 4
 
 # What to wait when GitHub says slow down and names no interval. Its own
@@ -285,7 +296,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         sha = _required(
             session.write("POST", _repo_url(settings.repository, "git/blobs"),
                           {"content": base64.b64encode(data).decode("ascii"),
-                           "encoding": "base64"}),
+                           "encoding": "base64"},
+                          pace=BLOB_PACE_SECONDS),
             "sha", "a blob",
         )
         entries.append({"path": path, "mode": BLOB_MODE, "type": "blob",
@@ -448,9 +460,14 @@ class _Session:
         return self._call("GET", url, None)
 
     def write(self, method: str, url: str, payload: dict, *,
-              outcome_unknown: bool = False) -> dict:
+              outcome_unknown: bool = False,
+              pace: float = PACE_SECONDS) -> dict:
+        # The pace before a write is the pace THAT write requires, not the one
+        # before it -- so a tree write following a blob still waits the full
+        # second. Applied after each write instead, the rule would depend on
+        # ordering and the tree would inherit the blob's half second (§4.3).
         if self._written:
-            self._client.wait(PACE_SECONDS)
+            self._client.wait(pace)
         self._written = True
         return self._call(method, url, payload,
                           outcome_unknown=outcome_unknown)
@@ -670,9 +687,11 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     unprotected, which is the failure the list exists to prevent.
 
     A trailing slash on an entry is ignored rather than trusted to be
-    absent. `load` fixes the form, but a settings file written by hand
-    reaches here without passing it, and an entry that silently protects
-    nothing is the one failure this list cannot afford (PRESS-0044).
+    absent, for two reasons that each suffice. `load` does not normalise it:
+    executed, it stores `CNAME/` verbatim, and PRESS-0009 §4.4 says so.
+    And a settings file written by hand reaches here without passing `load`
+    at all. An entry that silently protects nothing is the one failure this
+    list cannot afford (PRESS-0044).
 
     The comparison folds case, and with `str.casefold` rather than
     `str.lower` because §4.4 pins the operation by name: the two differ on
