@@ -32,13 +32,18 @@ import pressless.publisher as publisher_module
 from pressless.publisher import (
     Conflict,
     Fetched,
+    FetchNotWritten,
     NoPreviousState,
     Outcome,
     OutcomeUnknown,
     PublishError,
     RateLimited,
     Refused,
+    RemoteStateMissing,
     RepositoryMissing,
+    SiteFolderMissing,
+    SiteWouldBeEmptied,
+    StrayFile,
     TooLarge,
     Unreachable,
     fetch_previous,
@@ -826,7 +831,7 @@ def test_a_site_folder_that_is_not_a_directory_is_refused(tmp_path):
     listing = _listing([("index.html", _blob_hash(b"<html>site</html>"))])
     transport = _Transport(reads=_reads(listing), writes=_writes())
 
-    with pytest.raises(PublishError):
+    with pytest.raises(SiteFolderMissing):
         publish(_settings(), tmp_path / "not-a-directory", "a-token",
                 "a commit message", transport=transport)
 
@@ -859,7 +864,7 @@ def test_a_publish_that_would_empty_the_site_is_refused(tmp_path):
     )
     transport = _Transport(reads=_reads(listing), writes=_writes())
 
-    with pytest.raises(PublishError):
+    with pytest.raises(SiteWouldBeEmptied):
         publish(_settings(), tmp_path, "a-token", "a commit message",
                 transport=transport)
 
@@ -1281,7 +1286,7 @@ def test_a_missing_blob_is_not_reported_as_a_missing_repository(tmp_path):
         _listing([("index.html", "some-blob-sha")])
     )
 
-    with pytest.raises(PublishError) as raised:
+    with pytest.raises(RemoteStateMissing) as raised:
         fetch_previous(_settings(), "a-token", tmp_path,
                        transport=_Transport(reads=reads))
 
@@ -1431,7 +1436,7 @@ def test_a_fetch_that_cannot_be_written_is_a_typed_failure(tmp_path):
                      blob=b"<html>the state before</html>")
     )
 
-    with pytest.raises(PublishError):
+    with pytest.raises(FetchNotWritten):
         fetch_previous(_settings(), "a-token", into, transport=transport)
 
 
@@ -1599,7 +1604,7 @@ def test_a_stray_file_refuses_the_publish(tmp_path):
         listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
         transport = _Transport(reads=_reads(listing), writes=_writes())
 
-        with pytest.raises(PublishError) as caught:
+        with pytest.raises(StrayFile) as caught:
             publish(_settings(), folder, "a-token", "message",
                     transport=transport)
 

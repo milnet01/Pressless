@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented except §4.1's five own-type failures — `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten` and `RemoteStateMissing` — which are specified and not yet built (PRESS-0116, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -805,7 +805,7 @@ Face branches on is then checked by nothing. The five tests that own it are
 `::test_a_site_folder_that_is_not_a_directory_is_refused`,
 `::test_a_publish_that_would_empty_the_site_is_refused`,
 `::test_a_stray_file_refuses_the_publish`,
-`::test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was` and
+`::test_a_fetch_that_cannot_be_written_is_a_typed_failure` and
 `::test_a_missing_blob_is_not_reported_as_a_missing_repository`. Each names
 its own type; the rows above credit them on that condition.
 

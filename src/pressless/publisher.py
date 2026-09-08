@@ -134,6 +134,33 @@ class NoPreviousState(PublishError):
     """Nothing before the current commit."""
 
 
+# Each of the five below is its own type because `docs/design.md` § Errors
+# requires every message to end with what to do next, and for these five
+# that differs (§4.1, PRESS-0116). SiteFolderMissing: fix the setting.
+# StrayFile: remove the file. SiteWouldBeEmptied: rebuild the site.
+# FetchNotWritten: free space. RemoteStateMissing: retry.
+
+
+class SiteFolderMissing(PublishError):
+    """The handed folder is not a directory."""
+
+
+class StrayFile(PublishError):
+    """The folder holds what the Builder did not produce (§4.4)."""
+
+
+class SiteWouldBeEmptied(PublishError):
+    """Every unprotected path removed and none written."""
+
+
+class FetchNotWritten(PublishError):
+    """fetch_previous could not write into the folder it was handed."""
+
+
+class RemoteStateMissing(PublishError):
+    """Something INSIDE a repository that answers is absent."""
+
+
 class Transport(Protocol):
     """The one seam. Tests are its only other caller (§4.1).
 
@@ -249,7 +276,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         # without this `local` is empty, §4.4 reads every unprotected remote
         # path as a deletion the writer asked for, and the wipe is reported
         # as a successful publish (PRESS-0043).
-        raise PublishError(
+        raise SiteFolderMissing(
             f"{folder} is not a directory, so there is nothing to publish"
         )
 
@@ -286,7 +313,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         # Every unprotected path deleted and nothing written. A finished
         # build is never empty, and §3 decision 1 makes the commit
         # unrecoverable from inside Pressless (PRESS-0043).
-        raise PublishError(
+        raise SiteWouldBeEmptied(
             f"publishing {folder} would delete every file on the site and "
             f"add none, so it is refused"
         )
@@ -393,7 +420,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     except OSError as exc:
         # A full disk, or a folder that cannot be written. §4.1 says every
         # failure is one of the types above (PRESS-0073).
-        raise PublishError(
+        raise FetchNotWritten(
             f"the previous state could not be written to {into}: {exc}"
         ) from exc
 
@@ -422,7 +449,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(_content_of(blob))
             except OSError as exc:
-                raise PublishError(
+                raise FetchNotWritten(
                     f"the previous state could not be written to {into}: "
                     f"{exc}"
                 ) from exc
@@ -436,7 +463,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
             for path in written:
                 os.replace(staging / path, into / path)
         except OSError as exc:
-            raise PublishError(
+            raise FetchNotWritten(
                 f"the previous state could not be written to {into}: {exc}"
             ) from exc
     finally:
@@ -624,13 +651,13 @@ def _refuse_if_stray(relative: str, path: Path) -> None:
         # Classified BEFORE it is followed. is_dir() and is_file() both
         # follow the link, so a symlinked directory would otherwise be
         # descended into and its target published to a public site (§4.4).
-        raise PublishError(
+        raise StrayFile(
             f"{relative} in the site folder is a symlink, which the Builder "
             f"does not produce -- the folder is Pressless's alone, so the "
             f"publish is refused rather than sending it"
         )
     if not (path.is_file() or path.is_dir()):
-        raise PublishError(
+        raise StrayFile(
             f"{relative} in the site folder is neither an ordinary file nor "
             f"a directory, so the Builder did not produce it and the publish "
             f"is refused rather than sending it"
@@ -639,7 +666,7 @@ def _refuse_if_stray(relative: str, path: Path) -> None:
         (part for part in relative.split("/") if part.startswith(".")), None
     )
     if dotted is not None:
-        raise PublishError(
+        raise StrayFile(
             f"{relative} in the site folder carries {dotted}, which is "
             f"machine state rather than site output -- the publish is "
             f"refused rather than sending it"
@@ -808,7 +835,7 @@ def _failure(status: int, method: str, url: str) -> PublishError:
         # `settings.repository resolves to nothing`, which is what this type
         # means in §6, sends the writer to check a setting that is correct
         # (PRESS-0069).
-        return PublishError(
+        return RemoteStateMissing(
             f"GitHub has no {where} -- the repository is there, but what was "
             f"asked for inside it is not"
         )
