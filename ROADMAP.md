@@ -354,6 +354,21 @@ while the stakes are zero. Holds S2, S3, S4.
   sentence that omits what it means for his site. Claims S6.
   Blocked-by: PRESS-0001, PRESS-0003.
   Amended by the PRESS-0026 design gate (2026-08-27). This body describes the last-resort message as an apology saying his site has not changed. docs/design.md no longer allows that unconditionally: an unforeseen failure raised after the reference update has landed would be telling him the site is unchanged when it is not. The message now says what it can honestly say -- unchanged where nothing was in flight, outcome unknown where a publish had reached its last step -- and it carries a next-step clause, because the three-part rule has no exception for point 3. The design's Errors section is the contract; build from it rather than from this line. The same gate also corrected the check: the test walks every failure type for all three parts, not for point 2 alone.
+  Amended by the PRESS-0003 design gate (2026-09-08). This body says
+  Show details holds "the technical text and the log's location". Both
+  halves have moved. The location is now a LABEL with copy and open
+  buttons, never a full path. And the technical text is a typed failure's
+  own words, or for an unforeseen failure its TYPE alone -- never a raw
+  traceback and never a stock file error's message, both of which quote
+  absolute paths. docs/design.md sections Errors and Logging are the
+  contract; build from them rather than from this line.
+
+  The same gate settled two things this item needs. The Face writes the
+  rolling log -- rule 3 denies Marks a disk and rules 5 and 8 spend the
+  Publisher's and Insights' one disk write elsewhere, so no other part
+  may. And a part's typed failure must not carry the credential, either
+  secret's account name, or a full path, so the Face has nothing to strip
+  except in the unforeseen case.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
@@ -3917,6 +3932,20 @@ already-built code ships in whichever release comes next.
   name, no full path in anything printed or recorded. Neither option as
   filed was taken; the rule is written now and applied when PRESS-0003
   and PRESS-0011 build the surfaces it governs.
+  Item 4's surface is wider than this body records (found 2026-09-08 while
+  gating docs/design.md for PRESS-0003). The item names credentials.py
+  from line 180 onward. settings.py raises one too, carrying BOTH
+  forbidden things in a single message: the target path and the repository
+  in owner/name form, which is the account. So the fix is not confined to
+  one module -- it is every message that interpolates a target or an
+  account.
+
+  The rule those messages must now meet is in docs/design.md section
+  Logging: nothing shown or written down carries a credential, an account
+  name either secret is filed under, or a full filesystem path, and the
+  part that RAISES leaves them out rather than the Face stripping them.
+  The substitutes are there too -- a location is a label, a repository is
+  its short name.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
@@ -4791,6 +4820,15 @@ already-built code ships in whichever release comes next.
   account name, or the full path. Written down now and applied when
   PRESS-0003's log and PRESS-0011's handler are built, so one rule covers
   every secret rather than this key alone.
+  The rule this item defers to is now written down, in docs/design.md
+  section Logging (gate of 2026-09-08, loops 10 to 12). Two points bear on
+  this item's own fix. The obligation sits on the part that RAISES, not on
+  the handler downstream -- security.md section 6 is strip before the
+  call, not after -- so a key living in a frame local is exactly the shape
+  the rule is meant to exclude. And the one class that escapes it is a
+  failure no part of Pressless raised, where the Face shows and records
+  the type alone; that is the branch a locals-dumping handler would sit
+  in, so it is covered by construction rather than by a promise.
   **Layman:** A crash report that lists variables could show the publishing key, even though every error message is careful never to.
   Kind: security.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 2 on 2026-09-02.
