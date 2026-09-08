@@ -314,6 +314,38 @@ the Publisher consults. Deriving it afresh at publish would protect
 exactly the pages the writer has just deleted, because the Builder has
 stopped producing them.
 
+**The site folder is Pressless's alone, and a stray file is refused rather
+than sent.** Decided by the user (2026-09-04, mechanism 2026-09-08). The
+Builder produces that folder; anything else in it is an error, and the
+publish stops naming the file instead of publishing it. **Refusing is not
+skipping**: a skip publishes a correct site and says nothing, so the stray
+stays and nobody learns of it. Making it visible is the whole reason this
+branch was chosen over a filter.
+
+**Two shapes are refused, because between them they are what the Publisher
+can recognise without a manifest of the Builder's output — which does not
+exist, and which PRESS-0008 would have to supply.**
+
+- **Anything that is not an ordinary file** — a symlink, a device, a socket,
+  a named pipe. **This reverses PRESS-0069's sub-decision**, which skipped a
+  symlink on the ground that refusing "would fail a publish over something
+  harmless". Under this rule it is not harmless: a skipped symlink is a page
+  silently absent from the site, which is the same silence the rule exists to
+  end. The link's target is still never read.
+- **Any path whose first segment is a dot-name the untouchable list does not
+  name.** That is `.git`, `.DS_Store`, an editor's swap file — machine state
+  rather than site output. `.nojekyll` and its kind are on the list, so they
+  are refused by nothing and reach the site the way §4.4 already says: an
+  untouchable entry is neither written nor removed, so it never travels
+  through the upload at all. **First segment, matched the same way an
+  untouchable entry is** — case-folded, trailing slash ignored — so one rule
+  governs both and a directory is caught by its own name.
+
+**What this does NOT claim** is that everything surviving both tests is
+Builder output. It cannot: an ordinary non-dot file the writer drops in the
+folder still publishes. Closing that needs the Builder to declare what it
+wrote, and PRESS-0008 owns it.
+
 `root_entries` is how the list is derived. It reports **every** entry at
 the repository root, files and directories alike, as bare names with no
 trailing slash. It decides nothing and filters nothing — rule 5 leaves it
@@ -484,11 +516,27 @@ behaviour.
   passes every other test in this file and fails on a first publish
   against the real service.
 
+- **INV-10** — A publish REFUSES, naming the path, where the handed folder
+  holds anything that is not an ordinary file, or a path whose first segment
+  is a dot-name the untouchable list does not name. Nothing is written and
+  nothing is removed; the site is unchanged (§4.4).
+  *Test:* `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`
+  — a folder carrying a symlink, and one carrying `.git/config`; assert
+  `PublishError` naming the offending path, and that the transport recorded
+  no write. Plus `::test_an_untouchable_dot_name_does_not_refuse`, a folder
+  carrying `.nojekyll` with that name on the untouchable list, which
+  publishes.
+  *Breaks when:* the stray is SKIPPED rather than refused. That publishes a
+  correct site and says nothing, so the writer never learns the file is
+  there — the silence §4.4 chose this branch to end, and the shape the
+  symlink case shipped as until PRESS-0089.
+
 ## 6. Failure modes
 
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
 | The handed folder is not a directory | `PublishError` | unchanged |
+| The handed folder holds a stray — anything not an ordinary file, or an unlisted dot-name (§4.4) | `PublishError` | unchanged |
 | The publish would remove every unprotected path and write none | `PublishError` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
@@ -605,6 +653,8 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` |
+| INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish` and `::test_an_untouchable_dot_name_does_not_refuse` |
+| Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
 | §6's server-error route to `OutcomeUnknown` | `tests/test_publisher.py::test_a_server_error_on_the_reference_update_is_outcome_unknown`, which also holds a refusal to its own row |
 | §6's two 404 rows — the repository itself against something inside it | `tests/test_publisher.py::test_a_missing_blob_is_not_reported_as_a_missing_repository`, which holds both sides |
 | §4.3's two hint shapes, and the bound on one | `tests/test_publisher.py::test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal`, `::test_a_rate_limit_naming_no_interval_waits_the_documented_minute` and `::test_a_wait_longer_than_the_bound_is_refused_rather_than_slept` |
