@@ -29,9 +29,11 @@ second deciding place decision 4 exists to prevent.
 
 That module will not exist on any other machine or in CI, so this test is
 skipped, cleanly, in two independent cases: PRESSLESS_ARCHIVE unset (no
-export to write), and the sibling module unreachable (no slug rule).
-Neither is an error — both are the expected state everywhere except the
-maintainer's own machine.
+export to write), and no generator found at all (no slug rule). Neither is
+an error — both are the expected state everywhere except the maintainer's
+own machine. A generator that IS present and will not load, or has been
+renamed, is a failure rather than a skip: `tests/_archive_oracle.py` owns
+that distinction (PRESS-0108).
 
 Measurements, not prose
 -----------------------
@@ -48,16 +50,15 @@ the personal-data section of this project's CLAUDE.md requires.
 """
 from __future__ import annotations
 
-import importlib.util
 import os
 import re
-import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
 import pytest
+from _archive_oracle import load_generator
 
 from pressless import store
 
@@ -82,43 +83,6 @@ LEGAL_SLUG = re.compile(r"[a-z0-9-]+\Z")
 WINDOWS_PATH_LIMIT = 260
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-
-def _exec_module(spec, module) -> bool:
-    """Run a module loaded by path. Any failure means "no slug rule on this
-    machine", which is a skip rather than a test failure."""
-    try:
-        spec.loader.exec_module(module)
-    except Exception:  # noqa: BLE001 -- any failure here means "no rule", not a test failure
-        return False
-    return True
-
-
-def _load_slug_rule():
-    """Load §3 decision 4's slug rule from the sibling generator, by path.
-
-    Returns (safe_slug, namespaces), or None where the generator is not on
-    this machine, so the caller can skip rather than error. The workspace is
-    found relatively and never named: its directory name does not belong in a
-    public repository.
-    """
-    siblings = Path(__file__).resolve().parents[2]
-    candidates = sorted(siblings.glob("tools/build_blog.py"))
-    candidates += sorted(siblings.glob("*/tools/build_blog.py"))
-    for module_path in candidates:
-        spec = importlib.util.spec_from_file_location("press_test_slug_rule", module_path)
-        if spec is None or spec.loader is None:
-            continue
-        module = importlib.util.module_from_spec(spec)
-        loaded = _exec_module(spec, module)
-        sys.modules.pop("press_test_slug_rule", None)
-        if not loaded:
-            continue
-        safe_slug = getattr(module, "safe_slug", None)
-        namespaces = getattr(module, "NS", None)
-        if callable(safe_slug) and isinstance(namespaces, dict):
-            return safe_slug, namespaces
-    return None
 
 
 def _open_archive(namespaces):
@@ -184,14 +148,16 @@ def _import_population(channel, namespaces, safe_slug):
 
 def _archive_population():
     """The population, or a clean skip where either half is missing."""
-    rule = _load_slug_rule()
-    if rule is None:
-        pytest.skip(
-            "PRESS-0005: ../tools/build_blog.py is not reachable on this "
-            "machine — it lives in a private sibling workspace, not in this "
-            "repository, and §3 decision 4's slug rule lives in it"
-        )
-    safe_slug, namespaces = rule
+    generator = load_generator("safe_slug", "NS")
+    safe_slug, namespaces = generator.safe_slug, generator.NS
+    assert callable(safe_slug), (
+        f"the generator's safe_slug is {type(safe_slug).__name__}, not a "
+        f"callable — §3 decision 4's slug rule cannot be applied"
+    )
+    assert isinstance(namespaces, dict), (
+        f"the generator's NS is {type(namespaces).__name__}, not a dict — the "
+        f"export cannot be read without its namespace map"
+    )
     population = _import_population(_open_archive(namespaces), namespaces, safe_slug)
     assert population, f"found no published, draft or private posts in {PRESSLESS_ARCHIVE}"
     return population

@@ -33,60 +33,19 @@ CLAUDE.md requires.
 """
 from __future__ import annotations
 
-import importlib.util
 import os
 import re
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+from _archive_oracle import load_generator
 
 from pressless.marks import render
 
 PRESSLESS_ARCHIVE = os.environ.get("PRESSLESS_ARCHIVE")
 
 pytestmark = pytest.mark.archive
-
-
-def _exec_module(spec, module) -> bool:
-    """Run a module loaded by path. Any failure means "no oracle on this
-    machine", which is a skip rather than a test failure."""
-    try:
-        spec.loader.exec_module(module)
-    except Exception:  # noqa: BLE001 -- any failure here means "no oracle", not a test failure
-        return False
-    return True
-
-
-def _load_build_blog():
-    """Load the sibling generator by path. Returns None where it is not
-    on this machine, so the caller can skip rather than error.
-
-    The workspace holding it is found relatively and never named: its
-    directory name does not belong in a public repository. Both shapes are
-    tried, because the generator may sit beside this repository or inside a
-    sibling workspace one level down.
-    """
-    siblings = Path(__file__).resolve().parents[2]
-    candidates = sorted(siblings.glob("tools/build_blog.py"))
-    candidates += sorted(siblings.glob("*/tools/build_blog.py"))
-    for module_path in candidates:
-        spec = importlib.util.spec_from_file_location("press_test_build_blog_oracle", module_path)
-        if spec is None or spec.loader is None:
-            continue
-        module = importlib.util.module_from_spec(spec)
-        loaded = _exec_module(spec, module)
-        sys.modules.pop("press_test_build_blog_oracle", None)
-        if not loaded:
-            continue
-        if (
-            callable(getattr(module, "wpautop", None))
-            and isinstance(getattr(module, "NS", None), dict)
-            and getattr(module, "HAS_TAGS", None) is not None
-        ):
-            return module
-    return None
 
 
 def _import_population(channel: ET.Element, ns: dict) -> list[str]:
@@ -184,13 +143,15 @@ def test_matches_wpautop():
 
     Breaks when any escaping or paragraph rule changes; this is the proof
     of the migration's S2 rather than a claim about it (spec §5)."""
-    build_blog = _load_build_blog()
-    if build_blog is None:
-        pytest.skip(
-            "PRESS-0004: ../tools/build_blog.py is not reachable on this "
-            "machine — it lives in a private sibling workspace, not in "
-            "this repository, and this test has nothing to compare against"
-        )
+    build_blog = load_generator("wpautop", "NS", "HAS_TAGS")
+    assert callable(build_blog.wpautop), (
+        f"the generator's wpautop is {type(build_blog.wpautop).__name__}, "
+        f"not a callable — there is nothing to compare against"
+    )
+    assert isinstance(build_blog.NS, dict), (
+        f"the generator's NS is {type(build_blog.NS).__name__}, not a dict "
+        f"— the export cannot be read without its namespace map"
+    )
 
     xml_path = Path(PRESSLESS_ARCHIVE)
     assert xml_path.is_file(), f"PRESSLESS_ARCHIVE does not name a file: {xml_path}"
