@@ -13,18 +13,12 @@
 
 - ✅ Done · 🚧 In progress · 📋 Planned · 💭 Considered
 
-## P01 — (first block)
+## 0.1.0 — twelve years survived
 
-> Pre-1.0 projects use phase blocks (`## P01 — …`); these promote into
-> `## 1.0.0 — initial release` at 1.0. Such a roadmap does not rotate
-> into archives — see § 3.9.
->
-> **Nothing goes here until design is agreed.** Items are broken out of
-> the design, and the gate on doing so is that every sign of success in
-> `docs/discovery.md` — each carrying an `S<n>` id — is claimed by at
-> least one item, and every item
-> names what must close before it can start, in `Blocked-by:`
-> (`~/.claude/workflow.md` § 5, `roadmap-format.md` § 3.5).
+He installs the packaged file, points it at the WordPress export, and looks at
+his whole archive rendered on his own machine. There is no Publisher yet, so
+nothing can reach the live site: the one irreversible step, Import, is exercised
+while the stakes are zero. Holds S2, S3, S4.
 
 - ✅ [PRESS-0001] **Settings holds what is true of this machine, and nothing else.**
   Where the site folder is, which repository to publish to, the Daily
@@ -69,67 +63,6 @@
   Progress (2026-08-26): the Analytics field is renamed to analytics_property_id and the spec took a second cold-eyes run, two loops, thirteen verified and thirteen fixed, a calm cap. Three things changed behaviour or contract rather than prose. load() now rejects a relative site_folder -- it was accepted silently, and the Builder would have resolved it against whatever directory the process started in; test_relative_site_folder_is_rejected locks it. INV-7 was an over-broad cleanup claim over the folder that also holds ADR-0003's fallback credentials file and Insights' cache, so a literal implementer would have deleted the publishing key; it is now an addition rule. And INV-5 claimed save() never leaves a file load() rejects, which is false by execution -- save() validates nothing, and §4.4 now says so.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
-  Lanes: Settings.
-
-- ✅ [PRESS-0002] **Both credentials live in the operating system's keyring.**
-  The GitHub publishing key and the Google authorisation, through one
-  library covering Windows Credential Manager and Linux Secret Service.
-  Where no keyring exists, an owner-readable file in Pressless's own
-  folder, and Pressless says plainly that it fell back -- ADR-0003, whose
-  scope design widened on 2026-08-24 to cover both.
-  Neither is ever written to the log, echoed to the screen, or placed in
-  the site folder. The fallback path is the weaker one and is tested
-  deliberately, because on this Linux machine the keyring will normally be
-  there.
-  Claims S5 together with PRESS-0021, which is where he is asked.
-  Blocked-by: PRESS-0001.
-  Layman: The publishing key and the Google permission are kept where the operating system keeps other passwords, not in a file we wrote.
-  Progress (2026-08-25): the contract is written and accepted --
-  docs/specs/PRESS-0002-credentials.md, two cold-eyes loops, eighteen
-  verified findings all fixed, reached the spec cap of 2. Status stays
-  planned: no code exists yet.
-
-  Two scope choices were put to the user and answered. Windows never falls
-  back to a file, because os.chmod there sets only the read-only flag and
-  cannot make a file private to one user, so a fallback would leave a key
-  that can rewrite the live site readable by anyone using that machine.
-  And the store that answered is always named, because the keyring can
-  turn out to be a plaintext file and nothing else would distinguish it.
-
-  BLOCKED ON A DECISION THAT IS NOT THIS ITEM'S. design.md rule 5 lets the
-  Publisher read Settings and a folder of finished files and nothing else,
-  and rule 8 says the same for Insights. This module is neither, and
-  The parts does not list it, so as those rules stand neither part may
-  call the thing both depend on -- and PRESS-0001 refuses to hold the
-  secret, so routing through Settings is not open either. Either name this
-  module in both rules, or make the Face fetch the secret and hand it
-  over. PRESS-0009 and PRESS-0019 wait on that choice; the spec's
-  cross-doc section records both routes and picks neither.
-  Resolved 2026-08-25. src/pressless/credentials.py and
-  tests/test_credentials.py, one test per INV-1..9. Red run made against a
-  stub, and it came out as spec §7 predicted -- nine collected, seven failing
-  on assertions, INV-1 and INV-6 green against a stub by design. Suite after:
-  24 passed, 1 skipped (the archive test, correct without PRESSLESS_ARCHIVE);
-  ruff clean.
-
-  The tests were then checked by mutation rather than trusted: eight
-  deliberate breaks -- deleting the probe before the member walk, naming the
-  nominated chain instead of the answering member, catching every exception as
-  "no store", returning the store's answer unexamined, writing the file
-  directly and chmodding after, reporting a Windows refusal as the wrong type,
-  rebuilding the file from the one secret in hand, and naming the secret in a
-  failure message -- were each caught by the invariant that names them. INV-1
-  was not probed; §5 says outright it is weak by design.
-
-  pyproject.toml gains keyring>=25, the project's first runtime dependency,
-  pinned at the major version §4.6 was measured on. CLAUDE.md § Build and test
-  no longer says the project has none.
-
-  Still owed from spec §11, and NOT done here: docs/design.md's amendment (a
-  row for this part, plus the hand-off sentence) and ADR-0003's three
-  corrections. Both are contract edits that re-arm rule 14's cold-eyes gate.
-  Kind: security.
-  Source: design-2026-08-24 § Where everything sits on disk, ADR-0003.
   Lanes: Settings.
 
 - 📋 [PRESS-0003] **One rolling plain-English log, and no credential anywhere in it.**
@@ -398,115 +331,6 @@
   Source: design-2026-08-24 § The parts, § What may depend on what.
   Lanes: Builder.
 
-- ✅ [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
-  Through GitHub's own web interface rather than git, so there is nothing
-  for him to install (ADR-0002). It reads the current state, works out
-  which files differ, and writes one commit of those -- deletions
-  included, so a page he removes actually goes.
-  It never writes or removes a path on Settings' untouchable list.
-  Deleting CNAME detaches his domain; deleting the Search Console file
-  silently un-verifies the site months later.
-  It cannot tell an entry from a stylesheet, and does not need to.
-  Blocked-by: PRESS-0001, PRESS-0002.
-  Layman: Sends the finished site to GitHub without git being installed, and never touches the few files that are not ours.
-  Blocked (2026-08-25) on a design.md decision, not on PRESS-0002's
-  contract, which is written and accepted. design.md rule 5 lets this part
-  read Settings and a folder of finished files and nothing else. The
-  publishing key lives in a separate module (see
-  docs/specs/PRESS-0002-credentials.md), which is not Settings and is not
-  listed in The parts -- and PRESS-0001 refuses to hold the secret, so
-  reaching it through Settings is not open either. So as rule 5 stands
-  this part cannot legally fetch the key it needs. Either name that module
-  in rule 5, or make the Face fetch the secret and hand it over. Section 11
-  of the PRESS-0002 spec records both routes and deliberately picks
-  neither. Do not work around it by importing anyway.
-  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
-  the secret from the credentials module and hands it to the Publisher as an
-  argument. Design rules 5 and 8 are NOT widened -- rule 1 already gives the
-  Face the sequence, being handed a value is not reading a module, and a
-  Publisher that takes a token argument is testable without touching a real
-  keyring. Still blocked until docs/design.md carries the amendment (a row
-  for the credentials part in The parts, plus the hand-off sentence) and that
-  amendment passes its cold-eyes gate.
-  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
-  is made -- rule 10 has the Face fetch a secret and hand it to the Publisher
-  as an argument, so rules 5 and 8 stand unchanged. Two things the same gate
-  added to this item's scope: the Publisher now also lists what sits at the
-  repository root when asked (that is how the untouchable list gets derived,
-  and nothing could derive it before), and at publish it removes a root entry
-  absent from the handed folder unless that entry is on the list -- it never
-  re-evaluates the rule there, or it would protect every page just deleted.
-  Deferred from the same gate (loop 6, filed not fixed): undo publishes a new
-  commit, so after one undo "the previous state" is the state undo just
-  replaced. A second undo then restores the broken site. Settle which state the
-  fetch names -- the commit before the current one, or the last state before
-  the change being undone -- before building the fetch-back way in; the Face's
-  undo sequence binds to whichever it is.
-  Spec accepted (2026-08-26): docs/specs/PRESS-0009-publisher.md, after two
-  cold-eyes loops that reached the spec cap. The deferred undo question above
-  is SETTLED by the user: undo steps back one publish, so pressing it twice
-  returns the site to the version the first undo replaced. The spec records
-  that as decided behaviour, not a defect, and says nothing checks it.
-  The spec is an umbrella also covering PRESS-0010 -- the gate found that this
-  item had absorbed that one's scope silently.
-  Surfaced rather than fixed: design rule 5 permits the Publisher to READ
-  Settings and a folder and names no write, while fetch-back writes a fetched
-  state to disk. Rule 8 shows the form the design uses when a part writes.
-  That amendment is the design document's own gate and is not yet made.
-  Progress (2026-08-27): the nine invariant tests are written and
-  committed red, with a stub declaring the section 4.1 surface --
-  tests/test_publisher.py and src/pressless/publisher.py. INV-1 passes
-  against the stub, as the spec's section 7 says it will; the other nine
-  fail where they call into it. The implementation is what remains.
-  What that red run does NOT prove: every failure lands at the call into
-  the stub, so no assertion has executed yet. It is evidence the tests
-  reach the right entry points, not that any assertion catches a breach.
-  A mutation probe settles that and needs a green baseline, so it is owed
-  once the code lands.
-  Resolved (2026-08-27): src/pressless/publisher.py implements section 4.1's
-  surface -- publish, root_entries and fetch_previous. All nine invariants
-  green; the suite is 35 passed, 1 skipped; the gate passes.
-  Proved rather than asserted: a mutation probe ran 19 mutations, one per
-  route each invariant's Breaks-when names. 18 were killed. The one that
-  survived is why the probe was run -- forcing the reference update changed
-  nothing the suite measured, because INV-5's clause stripped spaces from the
-  request body and then searched it for a needle carrying a space, so it could
-  never match. The red run could not have seen that. Fixed and re-probed.
-  Carried out of this item as PRESS-0026: design rule 5 permits this part to
-  read and names no write, while fetch-back writes to disk.
-  Kind: implement.
-  Source: design-2026-08-24 § The parts, ADR-0002.
-  Lanes: Publisher.
-
-- ✅ [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
-  Read a previous commit's files back out of GitHub. On its own this is
-  not S9: the Store still holds the text that caused the trouble, so his
-  next publish would put it straight back. It is deliberately a capability
-  rather than a feature, and PRESS-0015 is the sequence that uses it.
-  Blocked-by: PRESS-0009.
-  Covered by docs/specs/PRESS-0009-publisher.md (2026-08-26), which is an
-  umbrella naming both ids per spec-format section 2. This bullet stays its
-  own unit of work and closes with the code that spec governs; nothing about
-  its scope moves. Section 4.5 and INV-8 are its half of the contract, and
-  the user settled its undo semantics on the same day.
-  Progress (2026-08-27): its half of the umbrella contract is under test.
-  INV-8's two tests -- test_fetch_previous_names_its_source and
-  test_first_commit_has_no_previous_state -- are committed red in
-  tests/test_publisher.py, against a stub. fetch_previous is unimplemented.
-  Resolved (2026-08-27): fetch_previous ships with PRESS-0009, its umbrella.
-  It reads the current commit's FIRST parent -- not the branch's second-newest
-  commit, which differs as soon as anything is merged -- writes that state
-  under the folder it is handed, and names the sha it fetched. A path prefix
-  selects and never strips, matched on segment boundaries, so "content" cannot
-  also select "contents.html". INV-8's two tests cover it and both mutations
-  aimed at them were killed.
-  Still only a capability, as the bullet says: PRESS-0015 is the sequence that
-  uses it.
-  **Layman:** Reads an earlier version of the site back out of GitHub -- half of what undo needs.
-  Kind: implement.
-  Source: design-2026-08-24 § What undo actually does.
-  Lanes: Publisher.
-
 - 📋 [PRESS-0011] **The Face: the local server, and the error contract every message keeps.**
   The standard library's own web server, opening in his normal browser and
   reachable only from his machine.
@@ -527,222 +351,6 @@
   Kind: implement.
   Source: design-2026-08-24 § Errors.
   Lanes: Face.
-
-- 📋 [PRESS-0012] **The editor box, styled as the finished page, with the preview beside it.**
-  What he sees is what he gets, because the box renders through the same
-  Marks part the Builder uses. Two rendering paths would diverge, and the
-  first person to find out would be the writer, after publishing. Claims S10.
-  The disk is the truth and nothing is held between requests: he can close
-  the app mid-sentence, come back tomorrow, and the draft file is the
-  whole of what survives. That is S7 from the writing side.
-  Blocked-by: PRESS-0004, PRESS-0005, PRESS-0011.
-  **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
-  Kind: implement.
-  Source: design-2026-08-24 § The parts, § State.
-  Lanes: Face.
-
-- 📋 [PRESS-0013] **One button: write, build, publish.**
-  The Face owns the order; no lower part calls the next one along. He
-  clicks once and within a few minutes it is on the live site, with nobody
-  else touching anything. Claims S1.
-  When it fails -- no internet, wrong key, GitHub down -- the site is
-  unchanged, he is told so in a sentence he understands, and clicking
-  Publish again after fixing it works. Claims S6 with PRESS-0011.
-  The first publish writes the whole site and is slow; every one after it
-  writes a handful of files. Worth saying out loud before he meets it.
-  Blocked-by: PRESS-0007, PRESS-0008, PRESS-0009, PRESS-0012.
-  **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
-  Kind: implement.
-  Source: design-2026-08-24 § What may depend on what rule 1.
-  Lanes: Face.
-
-- 📋 [PRESS-0014] **Editing a fixed page: the words in the same box, the code behind a show-me-the-code view.**
-  The plain box shows only the page's visible words and writes them back
-  in place, leaving every tag around them byte-for-byte as it was. The
-  code view edits the file entire. Neither regenerates the page, so Marks
-  is not involved in a fixed page at all and nothing he hand-writes can be
-  silently reformatted.
-  The box offers no styling on a page -- that is done in the code view,
-  where the tags already are. It keeps one honest sentence for him: the
-  box changes words, the code view changes anything.
-  The same code view edits the header, footer and navigation, which is the
-  highest-blast-radius edit in the app. So the preview must show a real
-  page built with the change before it is published, and Pressless must
-  say plainly that editing a header inside a page is wasted work, because
-  the next build overwrites it from the single copy.
-  Claims S8.
-  Blocked-by: PRESS-0006, PRESS-0012, PRESS-0013.
-  **Layman:** He can change the wording on his About page himself, and open the page's own code when he wants to.
-  Kind: implement.
-  Source: design-2026-08-24 § Where the fixed pages live.
-  Lanes: Face, Store.
-
-- 📋 [PRESS-0015] **Undo in one step, ending with the site and his own files agreeing.**
-  A revert alone is not enough: the Store would still hold the text that
-  caused the trouble, so the site would be right for an hour and wrong
-  again without him doing anything wrong. Undo is therefore a sequence the
-  Face owns -- fetch the previous state, write its content/ back into the
-  Store, rebuild, publish.
-  He can see for himself that it is back. Drafts are untouched, since they
-  were never in the repository to fetch back, so an unfinished poem can
-  never be lost to an undo.
-  Offered in the same breath as the edit rather than found later in a
-  menu. Claims S9.
-  Blocked-by: PRESS-0010, PRESS-0013.
-  **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
-  Kind: implement.
-  Source: design-2026-08-24 § What undo actually does.
-  Lanes: Face.
-
-- 📋 [PRESS-0016] **Photographs, from the picture mark to the web-sized copy.**
-  A picture mark naming the file, with an optional caption, so the cheat
-  sheet generates it like every other mark.
-  The Store keeps the original in Pressless's own folder, never in the
-  site folder: originals are never modified and never published, and the
-  existing ones would not fit under GitHub Pages' size limit anyway. The
-  Builder writes the web-sized copy and owns its naming rule; Marks
-  renders the address from that rule without touching a disk.
-  The preview shows the original scaled in the browser, so a photograph in
-  an unbuilt draft is visible at once rather than a broken image. That is
-  what S10 asks for.
-  Pillow is already proven by resize.py in the sibling workspace.
-  Blocked-by: PRESS-0004, PRESS-0008, PRESS-0012.
-  **Layman:** He can put a photograph in an entry, and it is shrunk for the web without his originals ever being touched.
-  Kind: feature.
-  Source: design-2026-08-24 § Where photographs live.
-  Lanes: Marks, Store, Builder, Face.
-
-- 📋 [PRESS-0017] **Starting something new picks from a list of templates.**
-  A poem, a lyric with verses, an entry built around one photograph, a
-  plain journal entry. Picking one copies its text into a new draft.
-  Templates are Store files in the same marks as everything else, so he
-  edits one in the same box and adds his own. Nothing in the parts changes
-  to support them, which is the test that this is the right shape rather
-  than a feature.
-  They retire COPY-ME-new-page.html as a way of working. The file itself
-  stays on the site: it is untouchable, so the Publisher never removes it.
-  Blocked-by: PRESS-0006, PRESS-0012.
-  **Layman:** New entries start from a shape he chooses -- a poem, a lyric, an entry around a photograph -- rather than an empty box.
-  Kind: feature.
-  Source: design-2026-08-24 § A template is an entry he never publishes.
-  Lanes: Store, Face.
-
-- 📋 [PRESS-0018] **The cheat sheet is generated from the same table the app parses with.**
-  The in-app panel and the printable page, both generated from Marks' one
-  table. Neither is written by hand: a hand-written card drifts the first
-  time a mark changes, and then it teaches him something that does not
-  work.
-  Blocked-by: PRESS-0004, PRESS-0011.
-  **Layman:** The card telling him how to write bold or a colour is made from the app's own rules, so it can never be out of date.
-  Kind: implement.
-  Source: design-2026-08-24 § Where the cheat sheet comes from.
-  Lanes: Marks, Face.
-
-- ✅ [PRESS-0019] **Insights asks Google Analytics how the site is being read.**
-  The live property already on the site, through Google's reporting
-  interface, handing back plain numbers: how many people, and which
-  countries. Province was dropped -- what was asked for is visits by
-  country.
-  It may read Settings and talk to Google, and nothing else. Nothing about
-  writing or publishing may depend on it, so if Google is unreachable, or
-  he never sets it up at all, everything else still works (ADR-0005).
-  It keeps the one cache in Pressless, because Google limits how often it
-  will answer: the last reply with the time it was fetched. Deleting that
-  file costs nothing but a fresh fetch.
-  Blocked-by: PRESS-0001, PRESS-0002.
-  Blocked (2026-08-25) on the same design.md decision as PRESS-0009, by
-  rule 8 rather than rule 5: this part may read Settings and talk to
-  Google and nothing else, and the Google authorisation lives in the
-  separate credentials module described by
-  docs/specs/PRESS-0002-credentials.md. That contract is written and
-  accepted; what is missing is permission for this part to call it.
-  Section 11 of that spec records the two routes and picks neither.
-  Note the authorisation is optional per ADR-0005, so whichever route is
-  taken must still let a writer decline the dashboard and lose nothing
-  else.
-  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
-  the secret from the credentials module and hands it to Insights as an
-  argument. Design rules 5 and 8 are NOT widened -- see PRESS-0009 for the
-  reasoning. Still blocked until docs/design.md carries the amendment and
-  that amendment passes its cold-eyes gate.
-  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
-  is made -- rule 10 has the Face fetch the Google authorisation and hand it
-  to Insights as an argument, so rule 8 stands unchanged and Insights stays
-  testable without a real keyring. Two things to settle before building: rule
-  8 now names the one cache file explicitly, and WHICH Analytics identifier
-  Settings holds is open -- the reporting interface is queried by a numeric
-  property id, the footer tag carries a G- measurement id, and the shipped
-  field is named analytics_measurement_id. Passing the wrong one fails every
-  fetch.
-  Settled (2026-08-26) by the user: Settings holds the NUMERIC property id, and no measurement id. The field is renamed analytics_property_id across the module, its tests and PRESS-0001; docs/design.md's two-identifier bullet records the decision. Pressless never writes the site's footer tag, so it has no use for the G- form. This item's remaining blocker is gone -- it is startable.
-  Started (2026-08-27). No spec: spec-format.md § 1's test comes back no -- one subsystem, and design rule 8 forbids anything depending on Insights, so a wrong shape is cheap to undo. Google's reporting surface verified against its own reference rather than recalled: countryId is ISO 3166-1 alpha-2, which is what the flag lookup binds to; activeUsers is the metric; the total is asked for rather than summed, because a visitor seen in two countries is counted in both rows.
-  Resolved (2026-08-27). src/pressless/insights.py, one entry point, no new
-  dependency. Sixteen invariants locked in tests/test_insights.py, proven red
-  against a stub before the code existed and then probed: nine mutations, one
-  per route the invariants name, all nine killed against a verified green
-  baseline. Decisions taken here rather than left implicit -- the token is an
-  argument and setup owns refreshing it, so design rule 10 stays literally
-  true; the window is a parameter defaulting to four weeks; a failed refetch
-  answers from the cache with the reply marked stale rather than raising,
-  which is what the dashboard's own "as of" line makes safe.
-  **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
-  Kind: implement.
-  Source: design-2026-08-24 § The dashboard, ADR-0005.
-  Lanes: Insights.
-
-- 📋 [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
-  He opens Pressless and sees how many people read his site and which
-  countries they came from, each country shown with its flag, without
-  logging in to anything and without leaving the app. Claims S11. The
-  dashboard says when the numbers were last updated.
-  Windows has no glyphs for flag emoji and draws the two letters instead.
-  It looks right on the Linux machine this is built on and wrong on the
-  only machine he uses, so a small set of flag images ships with the
-  app, keyed by country code.
-  Measured 2026-08-25 on a Windows 10 22H2 box over SSH, in Chromium 151:
-  the flag sequence renders identically to its two letters forced apart,
-  while a control emoji rendered normally. So it is flags specifically
-  that are missing, and the images are needed rather than merely prudent.
-  Blocked-by: PRESS-0011, PRESS-0019.
-  **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
-  Kind: feature.
-  Source: design-2026-08-24 § The dashboard.
-  Lanes: Face.
-
-- 📋 [PRESS-0021] **Setup asks for the publishing key once; the dashboard's second step can be declined.**
-  He is asked for his publishing key exactly once, during setup, and never
-  sees it again in normal use. Claims S5.
-  Reading Analytics is a separate Google authorisation, so setup grows a
-  second step -- and the dashboard is the one feature whose setup he can
-  decline and lose nothing else by declining.
-  Setup is also where the untouchable list is derived from the live
-  repository, and where Import runs, once.
-  Blocked-by: PRESS-0002, PRESS-0007, PRESS-0011, PRESS-0019.
-  Added 2026-09-08 by the PRESS-0078 contract gate, loop 2, two lanes.
-
-  This item owns the untouchable list's derivation -- PRESS-0001 9 names
-  it as the owner -- and that derivation now has a requirement it did not
-  have before.
-
-  PRESS-0009 4.4 matches the list IGNORING CASE from 2026-09-08, folded
-  with str.casefold(), and 4.4's closure protects both directions. So
-  Setup's filter, which removes everything the Builder produces, must
-  fold the same way. An exact-cased filter against a case-folding
-  Publisher leaves a stale entry such as Index.html on the list, after
-  which index.html is never uploaded and never removed -- the home page
-  silently stops updating, with nothing raised and no remedy from the app.
-  Executed, not reasoned: uploaded [] and removed [] for that fixture.
-
-  The fold is pinned by NAME in 4.4 rather than left as "ignores case"
-  because str.lower() and str.casefold() differ on non-ASCII names --
-  straße and STRASSE casefold together and lower apart -- so two
-  conformers could pick differently and both believe they conform.
-
-  PRESS-0009 11 records the requirement and points here.
-  **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
-  Kind: implement.
-  Source: design-2026-08-24 § The dashboard, ADR-0003.
-  Lanes: Face, Settings.
 
 - 🚧 [PRESS-0022] **One double-clickable file per system, built by CI from the first release.**
   PyInstaller packages Pressless into one file per system. It does not
@@ -911,6 +519,912 @@
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
+
+- ✅ [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
+  Measured 2026-09-06: with published/My_Entry.txt present,
+  list_slugs returns 'My_Entry' and path_for on that same value raises
+  StoreError. _slugs_in filters only the empty-slug case, and its own
+  comment gives the reason -- "which path_for refuses, so a listing
+  carrying one cannot be handed back to the Store" -- without applying
+  that reasoning to any other illegal name.
+
+  So the decision is half-made. PRESS-0008's natural loop, list then read
+  each, dies on one stray file; an implementer who instead filters inside
+  list_slugs makes the writer's file silently invisible. Both satisfy the
+  contract as it stood.
+
+  PRESS-0005 4.3 now records what the code does today and points here, so
+  nothing is unstated while this is open. What is NOT settled is whether
+  loud-per-slug is the right trade: 4.4 prefers loud for a hand-rename,
+  and S3 invites the writer into the folder, so this is his file rather
+  than a corruption.
+
+  Deliberately not fixed inside the gate that found it: filtering, or
+  raising, changes what PRESS-0008 and PRESS-0012 see, and neither is
+  built yet.
+  Decided by the user (2026-09-07): list_slugs returns the usable slugs
+  and names what it skipped. Neither of the two options as filed — a
+  silent filter loses his file from view, and raising lets one stray file
+  abort a build. Naming the skipped file is loud per 4.4 without being
+  fatal.
+  Milestone: v0.1.0. Blocks S2 and S3 by way of the Builder, which is
+  that release's: one hand-dropped file aborts the build, so the archive
+  does not render at all.
+  Contract settled 2026-09-07: PRESS-0005 INV-12, gated to the spec cap.
+  Widened past this bullet's own scope to `list_html` and
+  `list_templates` — verified they share the defect, and that
+  `list_photographs` does not. PRESS-0103 carries PRESS-0006's half.
+  Code next.
+  Resolved (2026-09-07). PRESS-0005 INV-12, over three listings rather
+  than the one this bullet named: `list_html` and `list_templates` shared
+  the defect and `list_photographs` does not, all three verified rather
+  than assumed.
+
+  The filter judges the folder's RAW names and returns one name per slug.
+  It sits in each listing call — never in `_slugs_in`, which `exists`
+  shares, and never in `_list_names`, whose third caller is the excluded
+  `list_photographs`. Each notice carries the file NAME, which the first
+  implementation lost: a file called exactly `.txt` strips to the empty
+  string and named the folder.
+
+  Five mutations killed. One survived first: the assertion searched for
+  `.txt`, which occurs inside `My_Entry.txt`'s path, so it passed whether
+  or not the empty-slug file was named at all. PRESS-0103 carries
+  PRESS-0006's half.
+  **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
+  Kind: investigate.
+  Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
+
+## 0.2.0 — it reaches the live site
+
+Adds the keyring, the Publisher and setup, so the archive he imported reaches
+the live site. He is asked for his publishing key once. When a publish fails he
+is told so in a sentence he understands, the site is unchanged, and clicking
+Publish again after fixing it works. Holds S1, S5, S6.
+
+- ✅ [PRESS-0002] **Both credentials live in the operating system's keyring.**
+  The GitHub publishing key and the Google authorisation, through one
+  library covering Windows Credential Manager and Linux Secret Service.
+  Where no keyring exists, an owner-readable file in Pressless's own
+  folder, and Pressless says plainly that it fell back -- ADR-0003, whose
+  scope design widened on 2026-08-24 to cover both.
+  Neither is ever written to the log, echoed to the screen, or placed in
+  the site folder. The fallback path is the weaker one and is tested
+  deliberately, because on this Linux machine the keyring will normally be
+  there.
+  Claims S5 together with PRESS-0021, which is where he is asked.
+  Blocked-by: PRESS-0001.
+  Layman: The publishing key and the Google permission are kept where the operating system keeps other passwords, not in a file we wrote.
+  Progress (2026-08-25): the contract is written and accepted --
+  docs/specs/PRESS-0002-credentials.md, two cold-eyes loops, eighteen
+  verified findings all fixed, reached the spec cap of 2. Status stays
+  planned: no code exists yet.
+
+  Two scope choices were put to the user and answered. Windows never falls
+  back to a file, because os.chmod there sets only the read-only flag and
+  cannot make a file private to one user, so a fallback would leave a key
+  that can rewrite the live site readable by anyone using that machine.
+  And the store that answered is always named, because the keyring can
+  turn out to be a plaintext file and nothing else would distinguish it.
+
+  BLOCKED ON A DECISION THAT IS NOT THIS ITEM'S. design.md rule 5 lets the
+  Publisher read Settings and a folder of finished files and nothing else,
+  and rule 8 says the same for Insights. This module is neither, and
+  The parts does not list it, so as those rules stand neither part may
+  call the thing both depend on -- and PRESS-0001 refuses to hold the
+  secret, so routing through Settings is not open either. Either name this
+  module in both rules, or make the Face fetch the secret and hand it
+  over. PRESS-0009 and PRESS-0019 wait on that choice; the spec's
+  cross-doc section records both routes and picks neither.
+  Resolved 2026-08-25. src/pressless/credentials.py and
+  tests/test_credentials.py, one test per INV-1..9. Red run made against a
+  stub, and it came out as spec §7 predicted -- nine collected, seven failing
+  on assertions, INV-1 and INV-6 green against a stub by design. Suite after:
+  24 passed, 1 skipped (the archive test, correct without PRESSLESS_ARCHIVE);
+  ruff clean.
+
+  The tests were then checked by mutation rather than trusted: eight
+  deliberate breaks -- deleting the probe before the member walk, naming the
+  nominated chain instead of the answering member, catching every exception as
+  "no store", returning the store's answer unexamined, writing the file
+  directly and chmodding after, reporting a Windows refusal as the wrong type,
+  rebuilding the file from the one secret in hand, and naming the secret in a
+  failure message -- were each caught by the invariant that names them. INV-1
+  was not probed; §5 says outright it is weak by design.
+
+  pyproject.toml gains keyring>=25, the project's first runtime dependency,
+  pinned at the major version §4.6 was measured on. CLAUDE.md § Build and test
+  no longer says the project has none.
+
+  Still owed from spec §11, and NOT done here: docs/design.md's amendment (a
+  row for this part, plus the hand-off sentence) and ADR-0003's three
+  corrections. Both are contract edits that re-arm rule 14's cold-eyes gate.
+  Kind: security.
+  Source: design-2026-08-24 § Where everything sits on disk, ADR-0003.
+  Lanes: Settings.
+
+- ✅ [PRESS-0009] **The Publisher makes GitHub match the folder it was handed.**
+  Through GitHub's own web interface rather than git, so there is nothing
+  for him to install (ADR-0002). It reads the current state, works out
+  which files differ, and writes one commit of those -- deletions
+  included, so a page he removes actually goes.
+  It never writes or removes a path on Settings' untouchable list.
+  Deleting CNAME detaches his domain; deleting the Search Console file
+  silently un-verifies the site months later.
+  It cannot tell an entry from a stylesheet, and does not need to.
+  Blocked-by: PRESS-0001, PRESS-0002.
+  Layman: Sends the finished site to GitHub without git being installed, and never touches the few files that are not ours.
+  Blocked (2026-08-25) on a design.md decision, not on PRESS-0002's
+  contract, which is written and accepted. design.md rule 5 lets this part
+  read Settings and a folder of finished files and nothing else. The
+  publishing key lives in a separate module (see
+  docs/specs/PRESS-0002-credentials.md), which is not Settings and is not
+  listed in The parts -- and PRESS-0001 refuses to hold the secret, so
+  reaching it through Settings is not open either. So as rule 5 stands
+  this part cannot legally fetch the key it needs. Either name that module
+  in rule 5, or make the Face fetch the secret and hand it over. Section 11
+  of the PRESS-0002 spec records both routes and deliberately picks
+  neither. Do not work around it by importing anyway.
+  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
+  the secret from the credentials module and hands it to the Publisher as an
+  argument. Design rules 5 and 8 are NOT widened -- rule 1 already gives the
+  Face the sequence, being handed a value is not reading a module, and a
+  Publisher that takes a token argument is testable without touching a real
+  keyring. Still blocked until docs/design.md carries the amendment (a row
+  for the credentials part in The parts, plus the hand-off sentence) and that
+  amendment passes its cold-eyes gate.
+  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
+  is made -- rule 10 has the Face fetch a secret and hand it to the Publisher
+  as an argument, so rules 5 and 8 stand unchanged. Two things the same gate
+  added to this item's scope: the Publisher now also lists what sits at the
+  repository root when asked (that is how the untouchable list gets derived,
+  and nothing could derive it before), and at publish it removes a root entry
+  absent from the handed folder unless that entry is on the list -- it never
+  re-evaluates the rule there, or it would protect every page just deleted.
+  Deferred from the same gate (loop 6, filed not fixed): undo publishes a new
+  commit, so after one undo "the previous state" is the state undo just
+  replaced. A second undo then restores the broken site. Settle which state the
+  fetch names -- the commit before the current one, or the last state before
+  the change being undone -- before building the fetch-back way in; the Face's
+  undo sequence binds to whichever it is.
+  Spec accepted (2026-08-26): docs/specs/PRESS-0009-publisher.md, after two
+  cold-eyes loops that reached the spec cap. The deferred undo question above
+  is SETTLED by the user: undo steps back one publish, so pressing it twice
+  returns the site to the version the first undo replaced. The spec records
+  that as decided behaviour, not a defect, and says nothing checks it.
+  The spec is an umbrella also covering PRESS-0010 -- the gate found that this
+  item had absorbed that one's scope silently.
+  Surfaced rather than fixed: design rule 5 permits the Publisher to READ
+  Settings and a folder and names no write, while fetch-back writes a fetched
+  state to disk. Rule 8 shows the form the design uses when a part writes.
+  That amendment is the design document's own gate and is not yet made.
+  Progress (2026-08-27): the nine invariant tests are written and
+  committed red, with a stub declaring the section 4.1 surface --
+  tests/test_publisher.py and src/pressless/publisher.py. INV-1 passes
+  against the stub, as the spec's section 7 says it will; the other nine
+  fail where they call into it. The implementation is what remains.
+  What that red run does NOT prove: every failure lands at the call into
+  the stub, so no assertion has executed yet. It is evidence the tests
+  reach the right entry points, not that any assertion catches a breach.
+  A mutation probe settles that and needs a green baseline, so it is owed
+  once the code lands.
+  Resolved (2026-08-27): src/pressless/publisher.py implements section 4.1's
+  surface -- publish, root_entries and fetch_previous. All nine invariants
+  green; the suite is 35 passed, 1 skipped; the gate passes.
+  Proved rather than asserted: a mutation probe ran 19 mutations, one per
+  route each invariant's Breaks-when names. 18 were killed. The one that
+  survived is why the probe was run -- forcing the reference update changed
+  nothing the suite measured, because INV-5's clause stripped spaces from the
+  request body and then searched it for a needle carrying a space, so it could
+  never match. The red run could not have seen that. Fixed and re-probed.
+  Carried out of this item as PRESS-0026: design rule 5 permits this part to
+  read and names no write, while fetch-back writes to disk.
+  Kind: implement.
+  Source: design-2026-08-24 § The parts, ADR-0002.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0021] **Setup asks for the publishing key once; the dashboard's second step can be declined.**
+  He is asked for his publishing key exactly once, during setup, and never
+  sees it again in normal use. Claims S5.
+  Reading Analytics is a separate Google authorisation, so setup grows a
+  second step -- and the dashboard is the one feature whose setup he can
+  decline and lose nothing else by declining.
+  Setup is also where the untouchable list is derived from the live
+  repository, and where Import runs, once.
+  Blocked-by: PRESS-0002, PRESS-0007, PRESS-0011, PRESS-0019.
+  Added 2026-09-08 by the PRESS-0078 contract gate, loop 2, two lanes.
+
+  This item owns the untouchable list's derivation -- PRESS-0001 9 names
+  it as the owner -- and that derivation now has a requirement it did not
+  have before.
+
+  PRESS-0009 4.4 matches the list IGNORING CASE from 2026-09-08, folded
+  with str.casefold(), and 4.4's closure protects both directions. So
+  Setup's filter, which removes everything the Builder produces, must
+  fold the same way. An exact-cased filter against a case-folding
+  Publisher leaves a stale entry such as Index.html on the list, after
+  which index.html is never uploaded and never removed -- the home page
+  silently stops updating, with nothing raised and no remedy from the app.
+  Executed, not reasoned: uploaded [] and removed [] for that fixture.
+
+  The fold is pinned by NAME in 4.4 rather than left as "ignores case"
+  because str.lower() and str.casefold() differ on non-ASCII names --
+  straße and STRASSE casefold together and lower apart -- so two
+  conformers could pick differently and both believe they conform.
+
+  PRESS-0009 11 records the requirement and points here.
+  **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
+  Kind: implement.
+  Source: design-2026-08-24 § The dashboard, ADR-0003.
+  Lanes: Face, Settings.
+
+- 📋 [PRESS-0028] **S6 is stated absolutely in discovery, and the system admits one case.**
+  docs/discovery.md S6 reads that he is never left unsure whether it went
+  out. The PRESS-0009 spec settles the exception: a failure during the
+  reference update is the one case where the site's state is genuinely
+  unknown, and confirming it would mean reaching GitHub, which is by
+  definition what has just failed. docs/design.md now says the same after
+  this gate.
+
+  So the sign of success is the only document left stating it absolutely.
+  That matters because a sign of success is what delivery is checked
+  against: as written, S6 either cannot be met or is met by a sentence
+  that contradicts it.
+
+  Amending a sign of success is a policy choice rather than a wording fix,
+  and discovery.md owes its own gate, so this was filed rather than
+  applied.
+  Milestone: v0.5.0. Blocks S6 — discovery states the sign absolutely and
+  the system admits a case it does not cover.
+  **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
+  Kind: doc.
+  Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
+  Lanes: Publisher, Face.
+
+- 🚧 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
+  Residue from two lanes' dim-7 findings that PRESS-0040 (the
+  http.client family) does not cover.
+
+  PUBLISHER
+  1. :280 -- f"git/blobs/{entry['sha']}" raises a bare KeyError on a
+  tree entry lacking sha. _blobs_in:386 correctly uses .get; this site
+  does not. Use _required.
+  2. :284 -- target.write_bytes in fetch_previous raises a bare OSError
+  on a full disk.
+  3. :397 -- path.read_bytes in _local_files raises a bare OSError on an
+  unreadable local file.
+  All three escape PRESS-0009 4.1's "every failure ... is one of the
+  types above".
+
+  CREDENTIALS
+  4. keyring's core._load_keyring_path prepends a keyring-path value
+  from ~/.config/python_keyring/keyringrc.cfg to sys.path before
+  importing the named class. So keyring.get_keyring() can execute code
+  from a user config file. Inherited from the library and nothing this
+  module can prevent beyond PRESS-0050's guard, which converts the
+  failure into a typed one but does not stop the import. Recorded so it
+  is a known property rather than a surprise.
+
+  5. OPEN, and it decides whether PRESS-0051 is live or latent: does
+  the Face format __cause__ when it logs a CredentialError? PRESS-0011
+  and PRESS-0003 own the answer. If it does, a backend message quoting
+  the secret reaches the rolling log.
+  Progress (2026-09-02): items 1, 2 and 3 are fixed and tested -- the
+  bare KeyError on a tree entry with no sha, the bare OSError writing a
+  fetched file, and the bare OSError reading a local one. Three
+  mutations killed. The disk-full case is arranged as a folder that is
+  really a file, which is the same OSError by a route that works on both
+  systems.
+
+  In progress rather than shipped, because two items are not code this
+  item can write.
+
+  Item 4 is a property of the keyring library, not a defect here: its
+  config file can prepend a path to sys.path before importing the
+  backend it names. PRESS-0050's guard now converts the resulting
+  failure into a typed one, which is all this module can do; it does not
+  stop the import. Recorded, which was this item's own stated purpose
+  for it.
+
+  Item 5 is the open question, and it is the reason this stays open:
+  does the Face format __cause__ when it logs a CredentialError?
+  PRESS-0011 and PRESS-0003 own the answer, and it decides whether
+  PRESS-0051 was live or latent. PRESS-0051 raises from None now, so the
+  answer no longer changes what is safe -- only what was true before it.
+  Milestone: v0.5.0. Blocks S6 — items 1 to 3 are bare KeyError and
+  OSError escapes from the Publisher, and a bare exception is not a
+  sentence he understands.
+  **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
+  Kind: review-fix.
+  Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
+
+- ✅ [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
+  Raised as an open question by the publisher lane and not filed by
+  the first pass.
+
+  Verified in source:
+    untouchable=("CNAME",) protects remote "CNAME" -> True
+    untouchable=("CNAME",) protects local  "cname" -> False
+
+  _is_protected compares exactly. GitHub's paths are case-sensitive;
+  the Windows local filesystem is not. So a writer whose site folder
+  holds "cname" while the repository holds "CNAME" produces two
+  distinct paths: the local one is uploaded as a new file, and the
+  remote one appears in no local listing, which puts it in `removed`
+  unless the untouchable entry happens to match its exact casing.
+
+  That is the deletion PRESS-0009 2 calls unrecoverable, reached by a
+  difference in capitalisation.
+
+  Distinct from PRESS-0044, which is about the two diverged matchers
+  and fires on entry SHAPE. This one fires on entry CASE and would
+  survive that fix.
+
+  Not decided here because answering it needs the Setup spec
+  (PRESS-0021), which does not exist yet: whether Setup normalises what
+  it writes, and whether matching should be case-insensitive on Windows
+  only or everywhere, is a decision that belongs with the code that
+  derives the list.
+
+  Related and already filed: PRESS-0067 records the same
+  case-sensitivity shape in store.py, where a .TXT suffix makes
+  exists() true and list_slugs blind.
+  Milestone: v0.5.0. Blocks S1 — a capitalisation difference reaches the
+  deletion PRESS-0009 § 2 calls unrecoverable, which can take the domain
+  off the live site.
+  Investigated 2026-09-08. Still open: the decision is the user's and is
+  put to them below. The claim itself is no longer a reading -- it was
+  EXECUTED against the shipped functions.
+
+  _is_protected("CNAME", ("cname",)) is False, and so is the mirror.
+  settings.load validates an entry's SHAPE and does not normalise its
+  case, so nothing upstream closes this.
+
+  Run through publish()'s own two lines, with the repository holding
+  CNAME and the writer's folder holding cname:
+
+    unprotected = ["CNAME", "index.html"]
+    removed     = ["CNAME"]
+
+  The domain file is deleted from the live site. That is the deletion
+  PRESS-0009 2 calls unrecoverable.
+
+  A SECOND failure this item did not name, found by running the mirror
+  case. With the list written in the repository's casing, CNAME survives
+  -- and the local cname is uploaded as a NEW file. Two files then claim
+  the domain, neither tool reports it, and which one GitHub honours is
+  not something this project decides.
+
+  So both castings fail, differently. There is no casing of the
+  untouchable list that is correct on a case-folding client.
+
+  The decision this needs is narrower than the item assumed. It is not
+  "what does Setup write" (PRESS-0021, which does not exist) but "how is
+  the list MATCHED", and that is separable. The asymmetry decides it: a
+  missed protection is an unrecoverable deletion that takes the domain
+  off the site, and an over-match only leaves a file undeleted, which the
+  writer can remove himself. Recommending case-insensitive matching in
+  _is_protected on every platform -- the remote is case-sensitive whether
+  or not the client is, so a platform-conditional rule answers the wrong
+  question.
+
+  Not taken unilaterally: it changes behaviour PRESS-0009 4.4 states, so
+  it needs a spec amendment and re-arms that contract gate.
+  Decided 2026-09-08 (user): the untouchable list matches IGNORING CASE,
+  on every platform.
+
+  Decided on the asymmetry, not on which behaviour is tidier. A missed
+  protection deletes the domain file and takes the site off its address,
+  which PRESS-0009 2 calls unrecoverable. An over-match leaves a file
+  undeleted, which the writer removes himself. When one side of the
+  mistake cannot be undone, the rule leans that way.
+
+  Platform-conditional matching was rejected as answering the wrong
+  question: the remote is case-sensitive whether or not the client is.
+  Normalising in Setup was rejected because _is_protected's own docstring
+  already records that a hand-written settings file reaches it without
+  passing through the writer of the list -- which is the same reason that
+  docstring gives for tolerating a trailing slash.
+
+  The item assumed this needed PRESS-0021. It does not. "What does Setup
+  write" and "how is the list matched" are separable, and only the second
+  is being decided.
+
+  Order of work: PRESS-0009 4.4 and its invariant are amended first, the
+  contract gate runs on the amendment, and the code follows. A conformer
+  reading 4.4 today writes an exact comparison, so this is a change of
+  direction under CLAUDE.md rule 14 and the gate is owed.
+  Contract gate run 2026-09-08, two loops, cap reached. Seven verified,
+  seven fixed, none dismissed. Loop-log rows 5 and 6 on the spec.
+
+  Loop 1, five findings, three of them in the amendment written an hour
+  earlier. INV-2's Breaks-when described the UPLOAD route and called it
+  the deletion -- a fixture built from it passes green against the exact
+  comparison it exists to catch, which is the unfalsifiable-clause shape
+  PRESS-0107 had just finished removing. INV-2's three fixtures are all
+  case-matching, so its named test cannot observe the clause. 4.4 stated
+  the over-protection on the removal side only; folding case suppresses an
+  UPLOAD too, so a stale entry differing only in case leaves a Builder
+  output never published and never removed. The Status line still read
+  Implemented. design.md states the tolerance exhaustively and names one
+  -- filed as PRESS-0112.
+
+  Loop 2, two findings, both found by two lanes. 4.5 characterised 4.4's
+  tolerances as trailing-slash-and-nothing-else, which produces the exact
+  comparison INV-2 calls a breach. LOOP 1 HAD THAT SENTENCE IN HAND AND
+  DISMISSED IT as immaterial, reasoning about who implements
+  _within_prefix rather than who reads 4.5 to implement _is_protected --
+  and filed the identical shape against design.md in the same pass. The
+  cold re-read caught both. And loop 1's own 11 bullet stated a
+  requirement with no route; PRESS-0001 9 already assigns it to
+  PRESS-0021, now named and annotated there.
+
+  The fold is pinned as str.casefold() rather than left as "ignores case":
+  straße and STRASSE casefold together and lower apart, so two conformers
+  could diverge and both believe they conform.
+
+  STILL OPEN, and it is code: publisher.py::_within_prefix's docstring
+  carries the same stale sentence loop 2 removed from 4.5. A docs gate
+  does not edit code. It goes with this item's implementation.
+
+  Next: _is_protected folds case, plus the falsifier 10 now cites --
+  test_an_untouchable_entry_protects_whatever_its_casing, which does not
+  exist yet. Both directions need a fixture; the existing INV-2 test
+  cannot carry them, because its own breach assertion is exact membership.
+  Resolved 2026-09-08. Spec amended, gated over two loops, then built.
+
+  _is_protected folds case with str.casefold(). The falsifier PRESS-0009
+  10 cites now exists and was proven red first, Route 1, failing on both
+  directions at once.
+
+  THE PROBE FOUND A GAP THE TEST WAS WRITTEN TO CLOSE. Directions A and B
+  are both ASCII, where lower() and casefold() agree, so str.lower()
+  SURVIVED the first probe -- the operation 4.4 pins by name was
+  unenforceable by the test named against it, and the test's own docstring
+  already called lower() a breach while observing nothing about it. That
+  is the same unfalsifiable-clause shape PRESS-0106 and PRESS-0107 closed
+  elsewhere this session, arrived at from a third direction. Direction C
+  (straße against STRASSE) closes it; the second probe killed all four.
+
+  Also fixed here, surfaced by the gate rather than by it:
+  publisher.py::_within_prefix's docstring carried the same stale sentence
+  loop 2 removed from 4.5.
+
+  Not carried into this item, and still open: PRESS-0112 (design.md states
+  the tolerance exhaustively and names one) and PRESS-0021 (the list's
+  derivation must fold the same way, annotated there today). Both are
+  other documents' gates.
+
+  Gate green at 216.
+  **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
+  Kind: investigate.
+  Source: review-code 2026-08-31 lane publisher -- open question.
+
+- 📋 [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
+  Not a credentials problem, and no token raises this. The Publisher
+  already authenticates (publisher.py sends Authorization: Bearer on every
+  request), so the PRIMARY limit is 5,000 requests an hour and is not what
+  bites. The SECONDARY limit is, and it is per-account behaviour rather
+  than quota.
+
+  MEASURED AGAINST THE DOCUMENTATION (2026-09-04,
+  docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api):
+  "no more than 80 content-generating requests per minute and no more than
+  500 content-generating requests per hour are allowed."
+
+  Against publish()'s own shape: one POST /git/blobs per changed file, then
+  one tree, one commit, one reference update. ADR-0002 fixes the first
+  publish at roughly 862 files, so about 865 content-creating requests.
+
+  The per-minute cap is already satisfied -- PACE_SECONDS spaces writes a
+  second apart, which is 60 a minute against a cap of 80, and matches the
+  documentation's own "wait at least one second between each request".
+
+  The hourly cap is not. The budget runs out after roughly eight minutes of
+  writing, short by around 365 requests.
+
+  WHY A RETRY DOES NOT RESCUE IT. INV-3 makes the reference update the last
+  write, so nothing has been committed when the limit hits: the site is
+  correctly unchanged, which is the invariant working. But the blobs
+  written are referenced by no commit, and the next attempt computes what
+  differs against the repository's tree -- which is still empty of them. So
+  the retry re-uploads from the beginning, spends its new budget, and stops
+  in the same place. The first publish never completes.
+
+  WHAT WOULD ACTUALLY FIX IT is fewer requests, not more quota. The tree
+  endpoint accepts inline content, which would collapse every blob POST
+  into the single tree call -- about three content-creating requests for
+  the whole first publish. PRESS-0009 4.3 rejected that, and its stated
+  reason was re-checked today and still holds: the documentation for
+  tree[].content says only "The content you want this file to have. GitHub
+  will write this blob out and use that SHA for this entry", and states
+  nothing about encoding, size limits or binary support -- which matters
+  because photographs are binary. That is now a trade against a first
+  publish that cannot finish, which is not the trade that was made.
+
+  ONE RESIDUAL UNCERTAINTY, stated rather than assumed: GitHub does not
+  enumerate which endpoints count as content-generating. Blob, tree and
+  commit creation are the obvious reading and the conservative one. If
+  blob creation is not counted, this item is void -- so establishing that
+  is the first step, and it is cheap against a scratch repository.
+
+  SMALLER, SEPARATE: the documentation prescribes exponentially increasing
+  waits between retries and an error after a bounded number. PRESS-0046
+  gave the retry a fixed wait and a bound; the backoff is not implemented.
+  The same page warns that "Continuing to make requests while you are rate
+  limited may result in the banning of your integration."
+  Approved (2026-09-04): the user agreed to a throwaway GitHub repository
+  for step one, on the PRESS-0072 precedent. Step one is unchanged and is
+  the cheap decisive one -- establish whether blob creation counts as
+  content-generating. If it does not, this item is void. gh is
+  authenticated as the main account with repo scope; it still lacks
+  delete_repo, so the scratch repository from PRESS-0072 is still there
+  and a new one will persist too. Not started.
+  Milestone: v0.5.0. Blocks S1 — as designed the first publish cannot
+  finish, so the entry never reaches the live site.
+  **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
+  Kind: investigate.
+  Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
+
+- 📋 [PRESS-0096] **design.md admits one unknown-outcome case and the Publisher now reaches that state by two routes.**
+  docs/design.md section Errors says the unknown-outcome sentence covers
+  the reference update being sent and no result coming back, and calls
+  that the one case S6 admits.
+
+  PRESS-0009 section 6 reaches the same state by a second route: a server
+  error answering that update, which IS a result coming back. PRESS-0046
+  established the route and design.md was not amended with it.
+
+  A Face built from design.md reports the site unchanged for a publish
+  that may have gone out -- the S6 breach both documents say the design
+  exists to prevent.
+
+  PRESS-0009 section 11 names this as another document's gate. design.md
+  is gated as an ADR, so the amendment re-arms that gate.
+  Milestone: v0.5.0. Blocks S6 — the sign says he is never left unsure
+  whether it went out, and the Publisher reaches an unknown-outcome state
+  by two routes.
+  **Layman:** The design document promises the writer a clear answer in a case where the app can no longer give one.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
+
+- 📋 [PRESS-0099] **Nothing in any contract can remove an entry, though the design says a deleted entry is pruned from the site.**
+  The Store's surface is path_for, exists, list_slugs, read, write,
+  publish and unpublish. There is no removal call, and the words delete
+  and remove appear nowhere in PRESS-0005 except inside the move.
+
+  docs/design.md Where everything sits on disk assumes the act exists:
+  content/ is "uploaded, updated, and pruned when he deletes an entry",
+  and it says why that matters -- "on the untouchable reading, a deleted
+  poem's source text would have stayed on the web forever".
+
+  No roadmap item owns it either; a query for delete returns nothing that
+  does. So PRESS-0012 and PRESS-0007 would each have to invent it: either
+  a Store call that does not exist, or an unlink on a path composed
+  outside the Store, which design.md rule 7 forbids.
+
+  Renaming an entry's slug has the same shape -- write the new, remove the
+  old -- and no remove.
+
+  PRESS-0005 9 now names this as a gap rather than a routing, and points
+  here. What it needs is a decision: does removal belong to the Store, and
+  what happens to a published entry's fetched copy.
+  Milestone: v0.5.0. Blocks S9 — no contract can remove an entry, and
+  design.md has a deleted entry pruned from the site.
+  **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
+  Kind: investigate.
+  Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
+
+## 0.3.0 — he writes in Pressless
+
+The editor box, styled as the finished page, with the preview beside it, and one
+button that writes, builds and publishes. A word he styles while typing looks
+the same on the live site as it did in the box, and an entry he has not finished
+is not on the live site. Holds S7, S10.
+
+- 📋 [PRESS-0012] **The editor box, styled as the finished page, with the preview beside it.**
+  What he sees is what he gets, because the box renders through the same
+  Marks part the Builder uses. Two rendering paths would diverge, and the
+  first person to find out would be the writer, after publishing. Claims S10.
+  The disk is the truth and nothing is held between requests: he can close
+  the app mid-sentence, come back tomorrow, and the draft file is the
+  whole of what survives. That is S7 from the writing side.
+  Blocked-by: PRESS-0004, PRESS-0005, PRESS-0011.
+  **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
+  Kind: implement.
+  Source: design-2026-08-24 § The parts, § State.
+  Lanes: Face.
+
+- 📋 [PRESS-0013] **One button: write, build, publish.**
+  The Face owns the order; no lower part calls the next one along. He
+  clicks once and within a few minutes it is on the live site, with nobody
+  else touching anything. Claims S1.
+  When it fails -- no internet, wrong key, GitHub down -- the site is
+  unchanged, he is told so in a sentence he understands, and clicking
+  Publish again after fixing it works. Claims S6 with PRESS-0011.
+  The first publish writes the whole site and is slow; every one after it
+  writes a handful of files. Worth saying out loud before he meets it.
+  Blocked-by: PRESS-0007, PRESS-0008, PRESS-0009, PRESS-0012.
+  **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
+  Kind: implement.
+  Source: design-2026-08-24 § What may depend on what rule 1.
+  Lanes: Face.
+
+- 📋 [PRESS-0030] **Nothing says which part builds the preview page.**
+  docs/design.md requires the preview show a real page built with the
+  change before it is published -- the promise that makes a footer edit
+  safe, and it calls that the highest-blast-radius edit in the app. The
+  same document has the preview show a photograph's original scaled in the
+  browser, which is a Face-rendered view rather than a built page.
+
+  Rule 1 lets the Face call the Builder and rule 2 requires only shared
+  Marks, not shared page assembly, so the dependency rules settle neither.
+
+  An implementer who invokes the Builder gets real page furniture and a
+  write into the site folder that the next publish then carries. One who
+  assembles inside the Face gets originals inline and writes nothing. Only
+  the first keeps the real-page promise.
+
+  Filed rather than fixed: choosing between them is a design decision, and
+  whether a preview build writes into the site folder changes what publish
+  sends.
+  Milestone: v0.5.0. Blocks S10 — seeing it before publishing is what the
+  preview is for, and no part owns building it.
+  **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
+  Kind: investigate.
+  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
+  Lanes: Face, Builder.
+
+## 0.4.0 — he can undo
+
+The Publisher can fetch back a previous state of the repository, and undo runs
+it in one step, ending with the site and his own files agreeing. After a change
+that made the site wrong he gets it back the way it was, and can see for himself
+that it is back. Holds S9.
+
+- ✅ [PRESS-0010] **The Publisher can fetch back a previous state of the repository.**
+  Read a previous commit's files back out of GitHub. On its own this is
+  not S9: the Store still holds the text that caused the trouble, so his
+  next publish would put it straight back. It is deliberately a capability
+  rather than a feature, and PRESS-0015 is the sequence that uses it.
+  Blocked-by: PRESS-0009.
+  Covered by docs/specs/PRESS-0009-publisher.md (2026-08-26), which is an
+  umbrella naming both ids per spec-format section 2. This bullet stays its
+  own unit of work and closes with the code that spec governs; nothing about
+  its scope moves. Section 4.5 and INV-8 are its half of the contract, and
+  the user settled its undo semantics on the same day.
+  Progress (2026-08-27): its half of the umbrella contract is under test.
+  INV-8's two tests -- test_fetch_previous_names_its_source and
+  test_first_commit_has_no_previous_state -- are committed red in
+  tests/test_publisher.py, against a stub. fetch_previous is unimplemented.
+  Resolved (2026-08-27): fetch_previous ships with PRESS-0009, its umbrella.
+  It reads the current commit's FIRST parent -- not the branch's second-newest
+  commit, which differs as soon as anything is merged -- writes that state
+  under the folder it is handed, and names the sha it fetched. A path prefix
+  selects and never strips, matched on segment boundaries, so "content" cannot
+  also select "contents.html". INV-8's two tests cover it and both mutations
+  aimed at them were killed.
+  Still only a capability, as the bullet says: PRESS-0015 is the sequence that
+  uses it.
+  **Layman:** Reads an earlier version of the site back out of GitHub -- half of what undo needs.
+  Kind: implement.
+  Source: design-2026-08-24 § What undo actually does.
+  Lanes: Publisher.
+
+- 📋 [PRESS-0015] **Undo in one step, ending with the site and his own files agreeing.**
+  A revert alone is not enough: the Store would still hold the text that
+  caused the trouble, so the site would be right for an hour and wrong
+  again without him doing anything wrong. Undo is therefore a sequence the
+  Face owns -- fetch the previous state, write its content/ back into the
+  Store, rebuild, publish.
+  He can see for himself that it is back. Drafts are untouched, since they
+  were never in the repository to fetch back, so an unfinished poem can
+  never be lost to an undo.
+  Offered in the same breath as the edit rather than found later in a
+  menu. Claims S9.
+  Blocked-by: PRESS-0010, PRESS-0013.
+  **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
+  Kind: implement.
+  Source: design-2026-08-24 § What undo actually does.
+  Lanes: Face.
+
+- 📋 [PRESS-0031] **Undo has no stated answer for an edit made since the last publish.**
+  Undo is sourced entirely from the repository: fetch the previous state,
+  write its content/ back into the Store, rebuild, publish. Persistence
+  keeps one file per entry, renamed over the old one, so no local prior
+  version exists.
+
+  fetch_previous reads the current commit's first parent. So for an entry
+  edited but not yet published, undo overwrites the unpublished text with
+  the state before the last publish -- and the design says an undo deletes
+  nothing of his, which is then false for exactly that entry.
+
+  The gate narrowed the recoverability claim to published edits, which is
+  what S9 itself is scoped to. What it did not do is decide the behaviour:
+  undo could refuse while unpublished edits exist, keep them beside the
+  fetched text the way it keeps a fixed page, or warn and proceed.
+
+  Filed rather than fixed: the document cannot state a behaviour nobody
+  has chosen.
+  Milestone: v0.5.0. Blocks S9 — getting the site back in one step has no
+  stated answer for an edit made since the last publish.
+  **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
+  Kind: investigate.
+  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
+  Lanes: Face, Store.
+
+## 0.5.0 — the rest of the site is his too
+
+The fixed pages are edited in the same box as an entry, with the code behind a
+show-me-the-code view. He changes the wording on his About page himself, without
+writing an entry to do it. Holds S8.
+
+- 📋 [PRESS-0014] **Editing a fixed page: the words in the same box, the code behind a show-me-the-code view.**
+  The plain box shows only the page's visible words and writes them back
+  in place, leaving every tag around them byte-for-byte as it was. The
+  code view edits the file entire. Neither regenerates the page, so Marks
+  is not involved in a fixed page at all and nothing he hand-writes can be
+  silently reformatted.
+  The box offers no styling on a page -- that is done in the code view,
+  where the tags already are. It keeps one honest sentence for him: the
+  box changes words, the code view changes anything.
+  The same code view edits the header, footer and navigation, which is the
+  highest-blast-radius edit in the app. So the preview must show a real
+  page built with the change before it is published, and Pressless must
+  say plainly that editing a header inside a page is wasted work, because
+  the next build overwrites it from the single copy.
+  Claims S8.
+  Blocked-by: PRESS-0006, PRESS-0012, PRESS-0013.
+  **Layman:** He can change the wording on his About page himself, and open the page's own code when he wants to.
+  Kind: implement.
+  Source: design-2026-08-24 § Where the fixed pages live.
+  Lanes: Face, Store.
+
+## 0.6.0 — pictures and helpers
+
+Photographs from the picture mark through to the web-sized copy, a list of
+templates to start something new from, and a cheat sheet generated from the same
+table the app parses with. This version adds no sign of success. It is the one
+that makes daily use pleasant rather than merely possible.
+
+- 📋 [PRESS-0016] **Photographs, from the picture mark to the web-sized copy.**
+  A picture mark naming the file, with an optional caption, so the cheat
+  sheet generates it like every other mark.
+  The Store keeps the original in Pressless's own folder, never in the
+  site folder: originals are never modified and never published, and the
+  existing ones would not fit under GitHub Pages' size limit anyway. The
+  Builder writes the web-sized copy and owns its naming rule; Marks
+  renders the address from that rule without touching a disk.
+  The preview shows the original scaled in the browser, so a photograph in
+  an unbuilt draft is visible at once rather than a broken image. That is
+  what S10 asks for.
+  Pillow is already proven by resize.py in the sibling workspace.
+  Blocked-by: PRESS-0004, PRESS-0008, PRESS-0012.
+  **Layman:** He can put a photograph in an entry, and it is shrunk for the web without his originals ever being touched.
+  Kind: feature.
+  Source: design-2026-08-24 § Where photographs live.
+  Lanes: Marks, Store, Builder, Face.
+
+- 📋 [PRESS-0017] **Starting something new picks from a list of templates.**
+  A poem, a lyric with verses, an entry built around one photograph, a
+  plain journal entry. Picking one copies its text into a new draft.
+  Templates are Store files in the same marks as everything else, so he
+  edits one in the same box and adds his own. Nothing in the parts changes
+  to support them, which is the test that this is the right shape rather
+  than a feature.
+  They retire COPY-ME-new-page.html as a way of working. The file itself
+  stays on the site: it is untouchable, so the Publisher never removes it.
+  Blocked-by: PRESS-0006, PRESS-0012.
+  **Layman:** New entries start from a shape he chooses -- a poem, a lyric, an entry around a photograph -- rather than an empty box.
+  Kind: feature.
+  Source: design-2026-08-24 § A template is an entry he never publishes.
+  Lanes: Store, Face.
+
+- 📋 [PRESS-0018] **The cheat sheet is generated from the same table the app parses with.**
+  The in-app panel and the printable page, both generated from Marks' one
+  table. Neither is written by hand: a hand-written card drifts the first
+  time a mark changes, and then it teaches him something that does not
+  work.
+  Blocked-by: PRESS-0004, PRESS-0011.
+  **Layman:** The card telling him how to write bold or a colour is made from the app's own rules, so it can never be out of date.
+  Kind: implement.
+  Source: design-2026-08-24 § Where the cheat sheet comes from.
+  Lanes: Marks, Face.
+
+## 0.7.0 — he can see who is reading
+
+Insights asks Google Analytics how the site is being read, and the dashboard
+shows it with a bundled flag picture beside each country. He does not log in to
+anything and does not leave the app. Holds S11, and with it every sign of
+success.
+
+- ✅ [PRESS-0019] **Insights asks Google Analytics how the site is being read.**
+  The live property already on the site, through Google's reporting
+  interface, handing back plain numbers: how many people, and which
+  countries. Province was dropped -- what was asked for is visits by
+  country.
+  It may read Settings and talk to Google, and nothing else. Nothing about
+  writing or publishing may depend on it, so if Google is unreachable, or
+  he never sets it up at all, everything else still works (ADR-0005).
+  It keeps the one cache in Pressless, because Google limits how often it
+  will answer: the last reply with the time it was fetched. Deleting that
+  file costs nothing but a fresh fetch.
+  Blocked-by: PRESS-0001, PRESS-0002.
+  Blocked (2026-08-25) on the same design.md decision as PRESS-0009, by
+  rule 8 rather than rule 5: this part may read Settings and talk to
+  Google and nothing else, and the Google authorisation lives in the
+  separate credentials module described by
+  docs/specs/PRESS-0002-credentials.md. That contract is written and
+  accepted; what is missing is permission for this part to call it.
+  Section 11 of that spec records the two routes and picks neither.
+  Note the authorisation is optional per ADR-0005, so whichever route is
+  taken must still let a writer decline the dashboard and lose nothing
+  else.
+  Routing decided 2026-08-25 (user deferred the choice): the Face fetches
+  the secret from the credentials module and hands it to Insights as an
+  argument. Design rules 5 and 8 are NOT widened -- see PRESS-0009 for the
+  reasoning. Still blocked until docs/design.md carries the amendment and
+  that amendment passes its cold-eyes gate.
+  Progress (2026-08-25): UNBLOCKED. The docs/design.md decision this waited on
+  is made -- rule 10 has the Face fetch the Google authorisation and hand it
+  to Insights as an argument, so rule 8 stands unchanged and Insights stays
+  testable without a real keyring. Two things to settle before building: rule
+  8 now names the one cache file explicitly, and WHICH Analytics identifier
+  Settings holds is open -- the reporting interface is queried by a numeric
+  property id, the footer tag carries a G- measurement id, and the shipped
+  field is named analytics_measurement_id. Passing the wrong one fails every
+  fetch.
+  Settled (2026-08-26) by the user: Settings holds the NUMERIC property id, and no measurement id. The field is renamed analytics_property_id across the module, its tests and PRESS-0001; docs/design.md's two-identifier bullet records the decision. Pressless never writes the site's footer tag, so it has no use for the G- form. This item's remaining blocker is gone -- it is startable.
+  Started (2026-08-27). No spec: spec-format.md § 1's test comes back no -- one subsystem, and design rule 8 forbids anything depending on Insights, so a wrong shape is cheap to undo. Google's reporting surface verified against its own reference rather than recalled: countryId is ISO 3166-1 alpha-2, which is what the flag lookup binds to; activeUsers is the metric; the total is asked for rather than summed, because a visitor seen in two countries is counted in both rows.
+  Resolved (2026-08-27). src/pressless/insights.py, one entry point, no new
+  dependency. Sixteen invariants locked in tests/test_insights.py, proven red
+  against a stub before the code existed and then probed: nine mutations, one
+  per route the invariants name, all nine killed against a verified green
+  baseline. Decisions taken here rather than left implicit -- the token is an
+  argument and setup owns refreshing it, so design rule 10 stays literally
+  true; the window is a parameter defaulting to four weeks; a failed refetch
+  answers from the cache with the reply marked stale rather than raising,
+  which is what the dashboard's own "as of" line makes safe.
+  **Layman:** Fetches the visitor numbers Google already collects for his site, and hands back how many people and which countries.
+  Kind: implement.
+  Source: design-2026-08-24 § The dashboard, ADR-0005.
+  Lanes: Insights.
+
+- 📋 [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
+  He opens Pressless and sees how many people read his site and which
+  countries they came from, each country shown with its flag, without
+  logging in to anything and without leaving the app. Claims S11. The
+  dashboard says when the numbers were last updated.
+  Windows has no glyphs for flag emoji and draws the two letters instead.
+  It looks right on the Linux machine this is built on and wrong on the
+  only machine he uses, so a small set of flag images ships with the
+  app, keyed by country code.
+  Measured 2026-08-25 on a Windows 10 22H2 box over SSH, in Chromium 151:
+  the flag sequence renders identically to its two letters forced apart,
+  while a control emoji rendered normally. So it is flags specifically
+  that are missing, and the images are needed rather than merely prudent.
+  Blocked-by: PRESS-0011, PRESS-0019.
+  **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
+  Kind: feature.
+  Source: design-2026-08-24 § The dashboard.
+  Lanes: Face.
+
+## 1.0.0 — all eleven, and the format is frozen
+
+No new capability. What makes this 1.0 rather than 0.9 is the promise attached
+to it: an entry file written by 1.0 stays readable by every later version.
+Before 1.0 the on-disk format may still change; after it, S3 stops being a
+design intention and becomes a compatibility guarantee. The exit condition and
+the breaking surfaces are owned by docs/standards/versioning-overrides.md.
+
+## Backlog — no version yet
+
+Work that blocks no sign of success: review and audit fixes, test work,
+documentation, and research not yet attached to a release. An item earns a
+version only when a sign of success fails while it is open — decided with the
+user, on the grounds that forcing every review fix into a bucket would be
+inventing structure. Unmapped here is an answer rather than a gap. A defect in
+already-built code ships in whichever release comes next.
 
 - 📋 [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
   Asked for by the user 2026-08-25. Modelled on the sibling project
@@ -1094,29 +1608,6 @@
   Kind: test.
   Source: observed while implementing PRESS-0009, 2026-08-27.
 
-- 📋 [PRESS-0028] **S6 is stated absolutely in discovery, and the system admits one case.**
-  docs/discovery.md S6 reads that he is never left unsure whether it went
-  out. The PRESS-0009 spec settles the exception: a failure during the
-  reference update is the one case where the site's state is genuinely
-  unknown, and confirming it would mean reaching GitHub, which is by
-  definition what has just failed. docs/design.md now says the same after
-  this gate.
-
-  So the sign of success is the only document left stating it absolutely.
-  That matters because a sign of success is what delivery is checked
-  against: as written, S6 either cannot be met or is met by a sentence
-  that contradicts it.
-
-  Amending a sign of success is a policy choice rather than a wording fix,
-  and discovery.md owes its own gate, so this was filed rather than
-  applied.
-  Milestone: v0.5.0. Blocks S6 — discovery states the sign absolutely and
-  the system admits a case it does not cover.
-  **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
-  Kind: doc.
-  Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
-  Lanes: Publisher, Face.
-
 - ✅ [PRESS-0029] **ADR-0005's Decision forbids the cache its own Consequences grant.**
   The Decision paragraph reads that Insights may read Settings and talk to
   Google, and nothing else. Its own last Consequence calls Insights the one
@@ -1143,56 +1634,6 @@
   Kind: doc-fix.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, lane finding on a cross-reference.
   Lanes: Insights.
-
-- 📋 [PRESS-0030] **Nothing says which part builds the preview page.**
-  docs/design.md requires the preview show a real page built with the
-  change before it is published -- the promise that makes a footer edit
-  safe, and it calls that the highest-blast-radius edit in the app. The
-  same document has the preview show a photograph's original scaled in the
-  browser, which is a Face-rendered view rather than a built page.
-
-  Rule 1 lets the Face call the Builder and rule 2 requires only shared
-  Marks, not shared page assembly, so the dependency rules settle neither.
-
-  An implementer who invokes the Builder gets real page furniture and a
-  write into the site folder that the next publish then carries. One who
-  assembles inside the Face gets originals inline and writes nothing. Only
-  the first keeps the real-page promise.
-
-  Filed rather than fixed: choosing between them is a design decision, and
-  whether a preview build writes into the site folder changes what publish
-  sends.
-  Milestone: v0.5.0. Blocks S10 — seeing it before publishing is what the
-  preview is for, and no part owns building it.
-  **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
-  Kind: investigate.
-  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
-  Lanes: Face, Builder.
-
-- 📋 [PRESS-0031] **Undo has no stated answer for an edit made since the last publish.**
-  Undo is sourced entirely from the repository: fetch the previous state,
-  write its content/ back into the Store, rebuild, publish. Persistence
-  keeps one file per entry, renamed over the old one, so no local prior
-  version exists.
-
-  fetch_previous reads the current commit's first parent. So for an entry
-  edited but not yet published, undo overwrites the unpublished text with
-  the state before the last publish -- and the design says an undo deletes
-  nothing of his, which is then false for exactly that entry.
-
-  The gate narrowed the recoverability claim to published edits, which is
-  what S9 itself is scoped to. What it did not do is decide the behaviour:
-  undo could refuse while unpublished edits exist, keep them beside the
-  fetched text the way it keeps a fixed page, or warn and proceed.
-
-  Filed rather than fixed: the document cannot state a behaviour nobody
-  has chosen.
-  Milestone: v0.5.0. Blocks S9 — getting the site back in one step has no
-  stated answer for an edit made since the last publish.
-  **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
-  Kind: investigate.
-  Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
-  Lanes: Face, Store.
 
 - ✅ [PRESS-0032] **The leak sweep's history pass covers fewer identifiers than its other two.**
   scripts/local-ci.sh runs three leak surfaces. The tree and commit-message
@@ -3690,63 +4131,6 @@
   Kind: investigate.
   Source: review-code 2026-08-31 lane publisher -- open question.
 
-- 🚧 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
-  Residue from two lanes' dim-7 findings that PRESS-0040 (the
-  http.client family) does not cover.
-
-  PUBLISHER
-  1. :280 -- f"git/blobs/{entry['sha']}" raises a bare KeyError on a
-  tree entry lacking sha. _blobs_in:386 correctly uses .get; this site
-  does not. Use _required.
-  2. :284 -- target.write_bytes in fetch_previous raises a bare OSError
-  on a full disk.
-  3. :397 -- path.read_bytes in _local_files raises a bare OSError on an
-  unreadable local file.
-  All three escape PRESS-0009 4.1's "every failure ... is one of the
-  types above".
-
-  CREDENTIALS
-  4. keyring's core._load_keyring_path prepends a keyring-path value
-  from ~/.config/python_keyring/keyringrc.cfg to sys.path before
-  importing the named class. So keyring.get_keyring() can execute code
-  from a user config file. Inherited from the library and nothing this
-  module can prevent beyond PRESS-0050's guard, which converts the
-  failure into a typed one but does not stop the import. Recorded so it
-  is a known property rather than a surprise.
-
-  5. OPEN, and it decides whether PRESS-0051 is live or latent: does
-  the Face format __cause__ when it logs a CredentialError? PRESS-0011
-  and PRESS-0003 own the answer. If it does, a backend message quoting
-  the secret reaches the rolling log.
-  Progress (2026-09-02): items 1, 2 and 3 are fixed and tested -- the
-  bare KeyError on a tree entry with no sha, the bare OSError writing a
-  fetched file, and the bare OSError reading a local one. Three
-  mutations killed. The disk-full case is arranged as a folder that is
-  really a file, which is the same OSError by a route that works on both
-  systems.
-
-  In progress rather than shipped, because two items are not code this
-  item can write.
-
-  Item 4 is a property of the keyring library, not a defect here: its
-  config file can prepend a path to sys.path before importing the
-  backend it names. PRESS-0050's guard now converts the resulting
-  failure into a typed one, which is all this module can do; it does not
-  stop the import. Recorded, which was this item's own stated purpose
-  for it.
-
-  Item 5 is the open question, and it is the reason this stays open:
-  does the Face format __cause__ when it logs a CredentialError?
-  PRESS-0011 and PRESS-0003 own the answer, and it decides whether
-  PRESS-0051 was live or latent. PRESS-0051 raises from None now, so the
-  answer no longer changes what is safe -- only what was true before it.
-  Milestone: v0.5.0. Blocks S6 — items 1 to 3 are bare KeyError and
-  OSError escapes from the Publisher, and a bare exception is not a
-  sentence he understands.
-  **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
-  Kind: review-fix.
-  Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
-
 - ✅ [PRESS-0074] **Eight smaller lane findings and open questions that no other item picked up.**
   STORE
   1. _parse_list drops whitespace-only values and strips each, so
@@ -4019,168 +4403,6 @@
   **Layman:** One of the automatic checkers is switched off by accident, and another is complaining about things nobody decided were wrong.
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
-
-- ✅ [PRESS-0078] **The untouchable list matches case-sensitively, and on Windows the local filesystem does not.**
-  Raised as an open question by the publisher lane and not filed by
-  the first pass.
-
-  Verified in source:
-    untouchable=("CNAME",) protects remote "CNAME" -> True
-    untouchable=("CNAME",) protects local  "cname" -> False
-
-  _is_protected compares exactly. GitHub's paths are case-sensitive;
-  the Windows local filesystem is not. So a writer whose site folder
-  holds "cname" while the repository holds "CNAME" produces two
-  distinct paths: the local one is uploaded as a new file, and the
-  remote one appears in no local listing, which puts it in `removed`
-  unless the untouchable entry happens to match its exact casing.
-
-  That is the deletion PRESS-0009 2 calls unrecoverable, reached by a
-  difference in capitalisation.
-
-  Distinct from PRESS-0044, which is about the two diverged matchers
-  and fires on entry SHAPE. This one fires on entry CASE and would
-  survive that fix.
-
-  Not decided here because answering it needs the Setup spec
-  (PRESS-0021), which does not exist yet: whether Setup normalises what
-  it writes, and whether matching should be case-insensitive on Windows
-  only or everywhere, is a decision that belongs with the code that
-  derives the list.
-
-  Related and already filed: PRESS-0067 records the same
-  case-sensitivity shape in store.py, where a .TXT suffix makes
-  exists() true and list_slugs blind.
-  Milestone: v0.5.0. Blocks S1 — a capitalisation difference reaches the
-  deletion PRESS-0009 § 2 calls unrecoverable, which can take the domain
-  off the live site.
-  Investigated 2026-09-08. Still open: the decision is the user's and is
-  put to them below. The claim itself is no longer a reading -- it was
-  EXECUTED against the shipped functions.
-
-  _is_protected("CNAME", ("cname",)) is False, and so is the mirror.
-  settings.load validates an entry's SHAPE and does not normalise its
-  case, so nothing upstream closes this.
-
-  Run through publish()'s own two lines, with the repository holding
-  CNAME and the writer's folder holding cname:
-
-    unprotected = ["CNAME", "index.html"]
-    removed     = ["CNAME"]
-
-  The domain file is deleted from the live site. That is the deletion
-  PRESS-0009 2 calls unrecoverable.
-
-  A SECOND failure this item did not name, found by running the mirror
-  case. With the list written in the repository's casing, CNAME survives
-  -- and the local cname is uploaded as a NEW file. Two files then claim
-  the domain, neither tool reports it, and which one GitHub honours is
-  not something this project decides.
-
-  So both castings fail, differently. There is no casing of the
-  untouchable list that is correct on a case-folding client.
-
-  The decision this needs is narrower than the item assumed. It is not
-  "what does Setup write" (PRESS-0021, which does not exist) but "how is
-  the list MATCHED", and that is separable. The asymmetry decides it: a
-  missed protection is an unrecoverable deletion that takes the domain
-  off the site, and an over-match only leaves a file undeleted, which the
-  writer can remove himself. Recommending case-insensitive matching in
-  _is_protected on every platform -- the remote is case-sensitive whether
-  or not the client is, so a platform-conditional rule answers the wrong
-  question.
-
-  Not taken unilaterally: it changes behaviour PRESS-0009 4.4 states, so
-  it needs a spec amendment and re-arms that contract gate.
-  Decided 2026-09-08 (user): the untouchable list matches IGNORING CASE,
-  on every platform.
-
-  Decided on the asymmetry, not on which behaviour is tidier. A missed
-  protection deletes the domain file and takes the site off its address,
-  which PRESS-0009 2 calls unrecoverable. An over-match leaves a file
-  undeleted, which the writer removes himself. When one side of the
-  mistake cannot be undone, the rule leans that way.
-
-  Platform-conditional matching was rejected as answering the wrong
-  question: the remote is case-sensitive whether or not the client is.
-  Normalising in Setup was rejected because _is_protected's own docstring
-  already records that a hand-written settings file reaches it without
-  passing through the writer of the list -- which is the same reason that
-  docstring gives for tolerating a trailing slash.
-
-  The item assumed this needed PRESS-0021. It does not. "What does Setup
-  write" and "how is the list matched" are separable, and only the second
-  is being decided.
-
-  Order of work: PRESS-0009 4.4 and its invariant are amended first, the
-  contract gate runs on the amendment, and the code follows. A conformer
-  reading 4.4 today writes an exact comparison, so this is a change of
-  direction under CLAUDE.md rule 14 and the gate is owed.
-  Contract gate run 2026-09-08, two loops, cap reached. Seven verified,
-  seven fixed, none dismissed. Loop-log rows 5 and 6 on the spec.
-
-  Loop 1, five findings, three of them in the amendment written an hour
-  earlier. INV-2's Breaks-when described the UPLOAD route and called it
-  the deletion -- a fixture built from it passes green against the exact
-  comparison it exists to catch, which is the unfalsifiable-clause shape
-  PRESS-0107 had just finished removing. INV-2's three fixtures are all
-  case-matching, so its named test cannot observe the clause. 4.4 stated
-  the over-protection on the removal side only; folding case suppresses an
-  UPLOAD too, so a stale entry differing only in case leaves a Builder
-  output never published and never removed. The Status line still read
-  Implemented. design.md states the tolerance exhaustively and names one
-  -- filed as PRESS-0112.
-
-  Loop 2, two findings, both found by two lanes. 4.5 characterised 4.4's
-  tolerances as trailing-slash-and-nothing-else, which produces the exact
-  comparison INV-2 calls a breach. LOOP 1 HAD THAT SENTENCE IN HAND AND
-  DISMISSED IT as immaterial, reasoning about who implements
-  _within_prefix rather than who reads 4.5 to implement _is_protected --
-  and filed the identical shape against design.md in the same pass. The
-  cold re-read caught both. And loop 1's own 11 bullet stated a
-  requirement with no route; PRESS-0001 9 already assigns it to
-  PRESS-0021, now named and annotated there.
-
-  The fold is pinned as str.casefold() rather than left as "ignores case":
-  straße and STRASSE casefold together and lower apart, so two conformers
-  could diverge and both believe they conform.
-
-  STILL OPEN, and it is code: publisher.py::_within_prefix's docstring
-  carries the same stale sentence loop 2 removed from 4.5. A docs gate
-  does not edit code. It goes with this item's implementation.
-
-  Next: _is_protected folds case, plus the falsifier 10 now cites --
-  test_an_untouchable_entry_protects_whatever_its_casing, which does not
-  exist yet. Both directions need a fixture; the existing INV-2 test
-  cannot carry them, because its own breach assertion is exact membership.
-  Resolved 2026-09-08. Spec amended, gated over two loops, then built.
-
-  _is_protected folds case with str.casefold(). The falsifier PRESS-0009
-  10 cites now exists and was proven red first, Route 1, failing on both
-  directions at once.
-
-  THE PROBE FOUND A GAP THE TEST WAS WRITTEN TO CLOSE. Directions A and B
-  are both ASCII, where lower() and casefold() agree, so str.lower()
-  SURVIVED the first probe -- the operation 4.4 pins by name was
-  unenforceable by the test named against it, and the test's own docstring
-  already called lower() a breach while observing nothing about it. That
-  is the same unfalsifiable-clause shape PRESS-0106 and PRESS-0107 closed
-  elsewhere this session, arrived at from a third direction. Direction C
-  (straße against STRASSE) closes it; the second probe killed all four.
-
-  Also fixed here, surfaced by the gate rather than by it:
-  publisher.py::_within_prefix's docstring carried the same stale sentence
-  loop 2 removed from 4.5.
-
-  Not carried into this item, and still open: PRESS-0112 (design.md states
-  the tolerance exhaustively and names one) and PRESS-0021 (the list's
-  derivation must fold the same way, annotated there today). Both are
-  other documents' gates.
-
-  Gate green at 216.
-  **Layman:** A protected file could be missed on Windows because the app and GitHub disagree about whether capital letters matter.
-  Kind: investigate.
-  Source: review-code 2026-08-31 lane publisher -- open question.
 
 - 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
   docs/design.md § What may depend on what, rule 8: "Insights may read
@@ -4656,72 +4878,6 @@
   Kind: doc-fix.
   Source: review-contract 2026-09-04 loop 5 on PRESS-0001, filed out of scope.
 
-- 📋 [PRESS-0092] **The first publish needs more content-creating requests than GitHub allows in an hour, so as designed it cannot finish.**
-  Not a credentials problem, and no token raises this. The Publisher
-  already authenticates (publisher.py sends Authorization: Bearer on every
-  request), so the PRIMARY limit is 5,000 requests an hour and is not what
-  bites. The SECONDARY limit is, and it is per-account behaviour rather
-  than quota.
-
-  MEASURED AGAINST THE DOCUMENTATION (2026-09-04,
-  docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api):
-  "no more than 80 content-generating requests per minute and no more than
-  500 content-generating requests per hour are allowed."
-
-  Against publish()'s own shape: one POST /git/blobs per changed file, then
-  one tree, one commit, one reference update. ADR-0002 fixes the first
-  publish at roughly 862 files, so about 865 content-creating requests.
-
-  The per-minute cap is already satisfied -- PACE_SECONDS spaces writes a
-  second apart, which is 60 a minute against a cap of 80, and matches the
-  documentation's own "wait at least one second between each request".
-
-  The hourly cap is not. The budget runs out after roughly eight minutes of
-  writing, short by around 365 requests.
-
-  WHY A RETRY DOES NOT RESCUE IT. INV-3 makes the reference update the last
-  write, so nothing has been committed when the limit hits: the site is
-  correctly unchanged, which is the invariant working. But the blobs
-  written are referenced by no commit, and the next attempt computes what
-  differs against the repository's tree -- which is still empty of them. So
-  the retry re-uploads from the beginning, spends its new budget, and stops
-  in the same place. The first publish never completes.
-
-  WHAT WOULD ACTUALLY FIX IT is fewer requests, not more quota. The tree
-  endpoint accepts inline content, which would collapse every blob POST
-  into the single tree call -- about three content-creating requests for
-  the whole first publish. PRESS-0009 4.3 rejected that, and its stated
-  reason was re-checked today and still holds: the documentation for
-  tree[].content says only "The content you want this file to have. GitHub
-  will write this blob out and use that SHA for this entry", and states
-  nothing about encoding, size limits or binary support -- which matters
-  because photographs are binary. That is now a trade against a first
-  publish that cannot finish, which is not the trade that was made.
-
-  ONE RESIDUAL UNCERTAINTY, stated rather than assumed: GitHub does not
-  enumerate which endpoints count as content-generating. Blob, tree and
-  commit creation are the obvious reading and the conservative one. If
-  blob creation is not counted, this item is void -- so establishing that
-  is the first step, and it is cheap against a scratch repository.
-
-  SMALLER, SEPARATE: the documentation prescribes exponentially increasing
-  waits between retries and an error after a bounded number. PRESS-0046
-  gave the retry a fixed wait and a bound; the backoff is not implemented.
-  The same page warns that "Continuing to make requests while you are rate
-  limited may result in the banning of your integration."
-  Approved (2026-09-04): the user agreed to a throwaway GitHub repository
-  for step one, on the PRESS-0072 precedent. Step one is unchanged and is
-  the cheap decisive one -- establish whether blob creation counts as
-  content-generating. If it does not, this item is void. gh is
-  authenticated as the main account with repo scope; it still lacks
-  delete_repo, so the scratch repository from PRESS-0072 is still there
-  and a new one will persist too. Not started.
-  Milestone: v0.5.0. Blocks S1 — as designed the first publish cannot
-  finish, so the entry never reaches the live site.
-  **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
-  Kind: investigate.
-  Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
-
 - ✅ [PRESS-0093] **A move can leave one folder holding two files that name one slug.**
   MEASURED 2026-09-04, on Linux:
 
@@ -4871,28 +5027,6 @@
   Kind: review-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
 
-- 📋 [PRESS-0096] **design.md admits one unknown-outcome case and the Publisher now reaches that state by two routes.**
-  docs/design.md section Errors says the unknown-outcome sentence covers
-  the reference update being sent and no result coming back, and calls
-  that the one case S6 admits.
-
-  PRESS-0009 section 6 reaches the same state by a second route: a server
-  error answering that update, which IS a result coming back. PRESS-0046
-  established the route and design.md was not amended with it.
-
-  A Face built from design.md reports the site unchanged for a publish
-  that may have gone out -- the S6 breach both documents say the design
-  exists to prevent.
-
-  PRESS-0009 section 11 names this as another document's gate. design.md
-  is gated as an ADR, so the amendment re-arms that gate.
-  Milestone: v0.5.0. Blocks S6 — the sign says he is never left unsure
-  whether it went out, and the Publisher reaches an unknown-outcome state
-  by two routes.
-  **Layman:** The design document promises the writer a clear answer in a case where the app can no longer give one.
-  Kind: doc-fix.
-  Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
-
 - ✅ [PRESS-0097] **Settings and the Store trust the mode mkstemp asked for; Credentials checks what the filesystem granted.**
   PRESS-0042 settled this once, for the fallback credentials file:
   mkstemp ASKS for 0600, a mount that does not enforce POSIX modes
@@ -4946,88 +5080,6 @@
   **Layman:** On a memory stick or a shared drive the app cannot make its files private, and only the part holding your password notices.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0001 loop 1, orchestrator 4b sweep.
-
-- ✅ [PRESS-0098] **list_slugs hands back names path_for then refuses, so one hand-dropped file can abort a whole build.**
-  Measured 2026-09-06: with published/My_Entry.txt present,
-  list_slugs returns 'My_Entry' and path_for on that same value raises
-  StoreError. _slugs_in filters only the empty-slug case, and its own
-  comment gives the reason -- "which path_for refuses, so a listing
-  carrying one cannot be handed back to the Store" -- without applying
-  that reasoning to any other illegal name.
-
-  So the decision is half-made. PRESS-0008's natural loop, list then read
-  each, dies on one stray file; an implementer who instead filters inside
-  list_slugs makes the writer's file silently invisible. Both satisfy the
-  contract as it stood.
-
-  PRESS-0005 4.3 now records what the code does today and points here, so
-  nothing is unstated while this is open. What is NOT settled is whether
-  loud-per-slug is the right trade: 4.4 prefers loud for a hand-rename,
-  and S3 invites the writer into the folder, so this is his file rather
-  than a corruption.
-
-  Deliberately not fixed inside the gate that found it: filtering, or
-  raising, changes what PRESS-0008 and PRESS-0012 see, and neither is
-  built yet.
-  Decided by the user (2026-09-07): list_slugs returns the usable slugs
-  and names what it skipped. Neither of the two options as filed — a
-  silent filter loses his file from view, and raising lets one stray file
-  abort a build. Naming the skipped file is loud per 4.4 without being
-  fatal.
-  Milestone: v0.1.0. Blocks S2 and S3 by way of the Builder, which is
-  that release's: one hand-dropped file aborts the build, so the archive
-  does not render at all.
-  Contract settled 2026-09-07: PRESS-0005 INV-12, gated to the spec cap.
-  Widened past this bullet's own scope to `list_html` and
-  `list_templates` — verified they share the defect, and that
-  `list_photographs` does not. PRESS-0103 carries PRESS-0006's half.
-  Code next.
-  Resolved (2026-09-07). PRESS-0005 INV-12, over three listings rather
-  than the one this bullet named: `list_html` and `list_templates` shared
-  the defect and `list_photographs` does not, all three verified rather
-  than assumed.
-
-  The filter judges the folder's RAW names and returns one name per slug.
-  It sits in each listing call — never in `_slugs_in`, which `exists`
-  shares, and never in `_list_names`, whose third caller is the excluded
-  `list_photographs`. Each notice carries the file NAME, which the first
-  implementation lost: a file called exactly `.txt` strips to the empty
-  string and named the folder.
-
-  Five mutations killed. One survived first: the assertion searched for
-  `.txt`, which occurs inside `My_Entry.txt`'s path, so it passed whether
-  or not the empty-slug file was named at all. PRESS-0103 carries
-  PRESS-0006's half.
-  **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
-  Kind: investigate.
-  Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
-
-- 📋 [PRESS-0099] **Nothing in any contract can remove an entry, though the design says a deleted entry is pruned from the site.**
-  The Store's surface is path_for, exists, list_slugs, read, write,
-  publish and unpublish. There is no removal call, and the words delete
-  and remove appear nowhere in PRESS-0005 except inside the move.
-
-  docs/design.md Where everything sits on disk assumes the act exists:
-  content/ is "uploaded, updated, and pruned when he deletes an entry",
-  and it says why that matters -- "on the untouchable reading, a deleted
-  poem's source text would have stayed on the web forever".
-
-  No roadmap item owns it either; a query for delete returns nothing that
-  does. So PRESS-0012 and PRESS-0007 would each have to invent it: either
-  a Store call that does not exist, or an unlink on a path composed
-  outside the Store, which design.md rule 7 forbids.
-
-  Renaming an entry's slug has the same shape -- write the new, remove the
-  old -- and no remove.
-
-  PRESS-0005 9 now names this as a gap rather than a routing, and points
-  here. What it needs is a decision: does removal belong to the Store, and
-  what happens to a published entry's fetched copy.
-  Milestone: v0.5.0. Blocks S9 — no contract can remove an entry, and
-  design.md has a deleted entry pruned from the site.
-  **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
-  Kind: investigate.
-  Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
 
 - ✅ [PRESS-0100] **Credentials hardened one half of a leak and left the other, and its version check is looser than the file format it shares.**
   Three code defects found by PRESS-0058's gate. All are in
@@ -5610,71 +5662,6 @@
   **Layman:** The design document and the publisher's contract now disagree about how a protected filename is compared.
   Kind: doc-fix.
   Source: review-contract 2026-09-08 loop 1 lane 3, on the PRESS-0078 amendment.
-
-## 0.1.0 — twelve years survived
-
-He installs the packaged file, points it at the WordPress export, and looks at
-his whole archive rendered on his own machine. There is no Publisher yet, so
-nothing can reach the live site: the one irreversible step, Import, is exercised
-while the stakes are zero. Holds S2, S3, S4.
-
-## 0.2.0 — it reaches the live site
-
-Adds the keyring, the Publisher and setup, so the archive he imported reaches
-the live site. He is asked for his publishing key once. When a publish fails he
-is told so in a sentence he understands, the site is unchanged, and clicking
-Publish again after fixing it works. Holds S1, S5, S6.
-
-## 0.3.0 — he writes in Pressless
-
-The editor box, styled as the finished page, with the preview beside it, and one
-button that writes, builds and publishes. A word he styles while typing looks
-the same on the live site as it did in the box, and an entry he has not finished
-is not on the live site. Holds S7, S10.
-
-## 0.4.0 — he can undo
-
-The Publisher can fetch back a previous state of the repository, and undo runs
-it in one step, ending with the site and his own files agreeing. After a change
-that made the site wrong he gets it back the way it was, and can see for himself
-that it is back. Holds S9.
-
-## 0.5.0 — the rest of the site is his too
-
-The fixed pages are edited in the same box as an entry, with the code behind a
-show-me-the-code view. He changes the wording on his About page himself, without
-writing an entry to do it. Holds S8.
-
-## 0.6.0 — pictures and helpers
-
-Photographs from the picture mark through to the web-sized copy, a list of
-templates to start something new from, and a cheat sheet generated from the same
-table the app parses with. This version adds no sign of success. It is the one
-that makes daily use pleasant rather than merely possible.
-
-## 0.7.0 — he can see who is reading
-
-Insights asks Google Analytics how the site is being read, and the dashboard
-shows it with a bundled flag picture beside each country. He does not log in to
-anything and does not leave the app. Holds S11, and with it every sign of
-success.
-
-## 1.0.0 — all eleven, and the format is frozen
-
-No new capability. What makes this 1.0 rather than 0.9 is the promise attached
-to it: an entry file written by 1.0 stays readable by every later version.
-Before 1.0 the on-disk format may still change; after it, S3 stops being a
-design intention and becomes a compatibility guarantee. The exit condition and
-the breaking surfaces are owned by docs/standards/versioning-overrides.md.
-
-## Backlog — no version yet
-
-Work that blocks no sign of success: review and audit fixes, test work,
-documentation, and research not yet attached to a release. An item earns a
-version only when a sign of success fails while it is open — decided with the
-user, on the grounds that forcing every review fix into a bucket would be
-inventing structure. Unmapped here is an answer rather than a gap. A defect in
-already-built code ships in whichever release comes next.
 
 ## Milestones
 
