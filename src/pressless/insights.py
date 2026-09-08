@@ -325,7 +325,21 @@ def _fetch(transport: Transport, property_id: str, token: str,
     try:
         status, _, data = transport.request("POST", url, body, headers)
     except OSError as exc:
-        raise Unreachable("no answer from Google") from exc
+        # The TYPE is named and the message is not, and `from None` rather
+        # than `from exc`. Transport is a published seam and this call handed
+        # it the token in an Authorization header, so nothing constrains what
+        # a substituted client's OSError says. __cause__ is formatted by a
+        # traceback and by PRESS-0011's rolling log, which would carry it
+        # there while str() and repr() stayed clean -- and INV-7 is stated
+        # absolutely, not "absolutely, for the shipped client". The module's
+        # own _Urllib never leaks: its OSError arm writes a fixed message
+        # naming only the host, and an HTTPError is returned as a status
+        # rather than raised. This is the seam, not a live leak. The same
+        # rule credentials.py applies at its own backend seam (PRESS-0051,
+        # PRESS-0100).
+        raise Unreachable(
+            "no answer from Google", type(exc).__name__
+        ) from None
 
     if status != 200:
         raise _failure(status, data)

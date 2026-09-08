@@ -39,6 +39,7 @@ import http.client
 import inspect
 import json
 import os
+import traceback
 import urllib.request
 from pathlib import Path
 
@@ -1381,10 +1382,14 @@ def test_googles_own_reason_is_carried_on_the_failure(tmp_path):
 
 # ------------------------------------------------------------ PRESS-0107 ----
 #
-# Three clauses whose currently-named test cannot observe them: INV-6's
-# tie-break, INV-24's no-temporary promise on its two failure arms, and
-# INV-25's length cap. None needed a source change -- each gap was in the
-# test, not in insights.py.
+# Four clauses whose currently-named test cannot observe them: INV-6's
+# tie-break, INV-24's no-temporary promise on its two failure arms, INV-25's
+# length cap, and INV-7 against a transport's own OSError rather than only
+# this module's literals. The first three needed no source change -- each
+# gap was in the test, not in insights.py. The fourth does: _fetch's OSError
+# arm chains the transport's exception with `from exc`, which keeps it
+# reachable as __cause__ and prints it in any formatted traceback, so the
+# last test below is expected to FAIL until that line is fixed.
 
 
 def test_countries_tie_break_by_code(tmp_path):
@@ -1529,4 +1534,111 @@ def test_detail_is_capped_at_a_held_length(tmp_path):
     assert len(detail) == detail_limit, (
         f"expected the kept detail to be exactly {detail_limit} characters "
         f"long against a body of {len(body)} bytes; got {len(detail)}"
+    )
+
+
+class _LeakyTransport:
+    """A transport whose OSError quotes the request it was called with.
+
+    `Transport` (line 129) is a published Protocol and the module's own
+    docstring says tests are its only other caller -- so a substituted
+    implementation is a route this module must hold INV-7 against, not a
+    hypothetical. Nothing in the Protocol constrains what a conforming
+    OSError says, and the request handed in carries the Authorization
+    header, so echoing it back is a real backend's plausible failure
+    message, not a contrived one.
+
+    This is the same reasoning tests/test_credentials.py already applies at
+    its own backend seam (PRESS-0051, PRESS-0100) -- see
+    test_a_backend_that_quotes_the_secret_does_not_leak_it there, which this
+    test's shape follows.
+    """
+
+    def __init__(self) -> None:
+        self.requests: list[tuple[str, str, bytes | None, dict[str, str]]] = []
+
+    def request(self, method: str, url: str, body: bytes | None,
+                headers: dict[str, str]
+                ) -> tuple[int, dict[str, str], bytes]:
+        self.requests.append((method, url, body, headers))
+        raise OSError(
+            f"connection reset while sending {headers.get('Authorization')}"
+        )
+
+    def now(self) -> float:
+        return NOW
+
+
+def test_a_transports_oserror_that_quotes_the_key_does_not_leak_it(tmp_path):
+    """INV-7 against a transport's own OSError, not only this module's
+    literals.
+
+    test_no_failure_names_the_token forces every typed failure with
+    SENTINEL as the token, and every OSError along the way is this
+    module's own fixed string ("no answer from Google") -- so it proves
+    INV-7 holds against insights.py's literals and says nothing about what
+    a substituted Transport's OSError itself says. `read()` hands the
+    token to `client.request()` in the Authorization header (INV-3), and
+    the Protocol constrains none of what a conforming implementation does
+    with it on failure.
+
+    CORRECTION to how PRESS-0107 first described this gap: it is not a live
+    leak on any shipped path today. The module's own client, `_Urllib`,
+    never puts the token in an OSError's text -- its OSError arm (line
+    214-216) writes a fixed message naming only the target host, and an
+    `HTTPError` is returned as a status rather than raised at all (line
+    204-208). What this closes is the seam: a substituted Transport is free
+    to raise an OSError that quotes anything, and INV-7 is stated
+    absolutely rather than "absolutely, for the shipped client".
+
+    The chain assertion is the one that bites, exactly as it does in
+    test_credentials.py's precedent: `from exc` keeps the transport's
+    OSError reachable as __cause__, so str() and repr() of what read()
+    raises can be clean while a formatted traceback -- or PRESS-0011's
+    rolling log -- still prints it.
+
+    Breaks when insights.py::_fetch (line 328) chains the transport's
+    OSError with `from exc` instead of `from None`. The fix is expected to
+    also carry the exception's type name in Unreachable's `detail` (line
+    110), which the last assertion checks for without pinning the exact
+    fixed wording -- asserting the type name is present is enough to show
+    diagnosability was not simply thrown away along with the chain.
+    """
+    transport = _LeakyTransport()
+
+    with pytest.raises(Unreachable) as raised:
+        read(_settings(), SENTINEL, tmp_path, client=transport)
+
+    assert transport.requests, "the transport double was never called"
+
+    assert SENTINEL not in str(raised.value), (
+        f"the failure's message quotes the token: {raised.value!s}"
+    )
+    assert SENTINEL not in repr(raised.value), (
+        f"the failure's representation quotes the token: {raised.value!r}"
+    )
+
+    chain = "".join(traceback.format_exception(
+        type(raised.value), raised.value, raised.value.__traceback__))
+    assert SENTINEL not in chain, (
+        f"the transport's own OSError reaches a formatted traceback through "
+        f"__cause__, which is what PRESS-0011's rolling log would print:\n"
+        f"{chain}"
+    )
+
+    # detail is the SECOND surface, and the chain assertion above cannot
+    # see it: format_exception prints the exception's str(), never this.
+    # A fix that carried `f"{type(exc).__name__}: {exc}"` here would close
+    # the chain and reopen the leak on the toggle the writer actually
+    # clicks, passing every other assertion in this test.
+    assert SENTINEL not in (raised.value.detail or ""), (
+        f"the token reached the detail field, which design.md § Errors "
+        f"puts behind the writer's \"Show details\" toggle; detail was "
+        f"{raised.value.detail!r}"
+    )
+
+    assert "OSError" in (raised.value.detail or ""), (
+        f"expected the exception's type name to survive in detail, so "
+        f"diagnosability is not lost along with the chain; detail was "
+        f"{raised.value.detail!r}"
     )
