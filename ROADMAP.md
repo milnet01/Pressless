@@ -5208,6 +5208,30 @@
   is one of the five already in scope. File the new tests under a
   PRESS-0107 heading, as PRESS-0051 did, so PRESS-0019 section 5 needs no
   amendment and the contract gate is not re-armed.
+  User decided 2026-09-08, four answers, all as recommended.
+
+  INV-7 is SEAM-HARDENING and not a live leak; the body above overstates
+  it. Read against the shipped code: _Urllib.request writes its own
+  message ("no answer from <netloc>") for the HTTPException and ValueError
+  arms, and an HTTPError is RETURNED as a status rather than raised -- so
+  no shipped path puts the key in __cause__. Transport is a published
+  Protocol, so a substituted transport is the route, which is the same
+  reasoning credentials.py already applies at its own backend seam
+  (PRESS-0051, PRESS-0100). Do the fix: one line, and the inconsistency
+  between the two modules is what made this hard to see.
+
+  INV-25 pins the CAP rather than asserting the detail merely got
+  shorter. The literal is written into the test by hand -- a loosened cap
+  passes a shorter-than-the-body assertion, and importing DETAIL_LIMIT
+  compares the module against itself.
+
+  INV-24 interrupts the write with a private BaseException subclass, not
+  KeyboardInterrupt. Same arm of _store, but pytest aborts the whole run
+  on a real KeyboardInterrupt that escapes, so a later edit fails loudly
+  instead of red.
+
+  Two commits: the four test-only falsifiers, then the INV-7 falsifier
+  paired with its code fix, per testing.md 1 step 6.
   **Layman:** Several rules are only half-checked: the test named against each one watches part of what the rule promises.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 1-5; three confirmed by mutation probe.
