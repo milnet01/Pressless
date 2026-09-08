@@ -5973,7 +5973,7 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review-contract 2026-09-08 PRESS-0006 loop 2.
 
-- 📋 [PRESS-0116] **Five failure rows share one type, and the Face is told to give each its own sentence.**
+- ✅ [PRESS-0116] **Five failure rows share one type, and the Face is told to give each its own sentence.**
   PRESS-0009 section 6 gives five rows the bare `PublishError`: the handed
   folder is not a directory; `fetch_previous` cannot write into the folder;
   the folder holds a stray; the publish would remove every unprotected path
@@ -6016,6 +6016,12 @@ already-built code ships in whichever release comes next.
   taken: keep one type and correct 6's wording, since design.md writes
   sentences per TYPE and a test walks that list -- smaller, but it buys
   the smallness by dropping the promise for four of the five.
+  Resolved (2026-09-08): §4.1's five types are built and raised at the
+  nine sites §6 gives them, and each is asserted by type name rather
+  than by PublishError. Proved by mutation — downgrading each raise site
+  to the base type reddens its test. The gate ran two loops on the
+  amendment; the second corrected row 11, which recorded five fixes
+  where the commit carried two.
   **Layman:** Five different things that can stop a publish all look identical to the part that has to explain them to the writer.
   Kind: investigate.
   Source: review-contract 2026-09-08 PRESS-0009 loop 1, lane A.

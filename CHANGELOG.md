@@ -121,6 +121,14 @@ appears once something has actually shipped.)
 
 ### Changed
 
+- **Each way publishing can be refused now says which one it was** (PRESS-0116)
+  Five different things can stop a publish — a missing site folder, a
+  stray file, a build that would empty the site, a folder that cannot be
+  written, and something absent inside the repository. They used to look
+  identical to the part that explains them, so it could only offer one
+  generic sentence. Each is now its own kind, so each can say what to do
+  next.
+
 - **The first publish spends half as long waiting** (PRESS-0114)
   Pressless paused a second between every file it uploaded. Measured against
   GitHub, that pause is not asked for on file uploads -- 550 went up in one
