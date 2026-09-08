@@ -1,4 +1,5 @@
-# INV-1..4, 6..8 for PRESS-0004 (Marks). Pure, no fixtures on disk, runs in
+# INV-1 to INV-4 and INV-6 to INV-10 for PRESS-0004 (Marks) -- every
+# invariant but INV-5. Pure, no fixtures on disk, runs in
 # CI. INV-5 is the archive conformance run and lives in test_marks_archive.py
 # instead, because it needs a WordPress export that cannot ship in a public
 # repository (docs/specs/PRESS-0004-marks.md §7).
@@ -491,9 +492,12 @@ def test_colour_argument_cannot_carry_css():
     matching ^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$ in full; a named colour
     reaches it only as one of the two fixed var(--…) strings.
 
-    The anchors are the invariant: unanchored, the same pattern accepts
-    '#c0453a;background:url(…)' and the payload reaches style= — this is
-    the refuting case, executed during the spec's own gate (spec §5)."""
+    The FULL MATCH is the invariant, not the anchors. The comparison is
+    re.fullmatch, so stripping ^ and $ from the pattern still refuses
+    '#c0453a;background:url(…)' -- measured by mutation probe, which
+    survived. What would admit the payload is comparing with re.search
+    against a pattern that is not anchored, and the refuting case below
+    executes that difference (spec §5, INV-8)."""
     valid3 = _parsed_attrs(render("{#c0a}word{/}", _no_photos))
     assert valid3.styles == ["color:#c0a"], (
         f"a valid 3-digit hex colour did not render as expected: {valid3.styles!r}"
@@ -505,8 +509,8 @@ def test_colour_argument_cannot_carry_css():
     )
 
     # The refuting case: a colour-shaped prefix followed by CSS that has no
-    # business being there. If the argument match is not anchored in full,
-    # this reaches style= carrying the payload.
+    # business being there. If the argument were compared with anything less
+    # than a full-string match, this reaches style= carrying the payload.
     payload = "{#c0453a;background:url(javascript:alert(1))}word{/}"
     attacked = _parsed_attrs(render(payload, _no_photos))
     assert not attacked.styles, (
