@@ -29,8 +29,18 @@ run-wide effects. **That is the styling set, not the whole mark table** —
 the picture mark is one this decision predates, and Marks owns the
 complete table, which is where a mark is added.
 
-**Anything the parser does not recognise is preserved byte-for-byte and
-never dropped.**
+**Anything the MARKS parser does not recognise is preserved byte-for-byte
+and never dropped.** Decided 2026-09-08, settling which parser this
+sentence meant. It sits under the styling set above and
+`docs/standards/versioning-overrides.md` already glosses it that way, so
+this confirms the reading rather than changing it.
+
+**It is NOT a promise about the entry file's header.** An unrecognised
+header field is never dropped and its name and value survive, but the
+spacing around the value is normalised and the field order is the emitted
+one — measured: `X-Odd:   spaced   value   ` reads back and writes out as
+`X-Odd: spaced   value`. `PRESS-0005` §4.2 owns that rule and states the
+departure; this decision does not reach it.
 
 ## Consequences
 

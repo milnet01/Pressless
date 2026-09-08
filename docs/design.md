@@ -449,11 +449,14 @@ which one is true is exactly the question S3 exists to make unaskable.
 - **One file per entry, and never rewritten in place.** Write a
   temporary file, then rename it over the old one. Rename is atomic on
   both Windows and Linux, so a crash mid-save cannot leave half an entry.
-- **Anything Pressless does not understand is left exactly as written.**
-  A mark it does not know, a header field it has no use for — kept
-  byte-for-byte, never silently dropped. This is a promise about twelve
-  years of writing, and it is the reason the Store never rewrites a file
-  it was only asked to read.
+- **Anything Pressless does not understand is left as written, and never
+  silently dropped.** A mark it does not know is kept byte-for-byte —
+  ADR-0001's promise, and it is about marks. A header field it has no use
+  for is never dropped and keeps its name and value, but NOT byte-for-byte:
+  the spacing around the value is normalised and the order is the emitted
+  one (measured; `PRESS-0005` §4.2 owns the rule and states the departure).
+  This is a promise about twelve years of writing, and it is the reason the
+  Store never rewrites a file it was only asked to read.
 
 ### Logging
 

@@ -3069,7 +3069,7 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane marks -- document side.
 
-- 📋 [PRESS-0060] **PRESS-0005 claims extra fields are kept byte-for-byte, and they are not; its read side is also silent on line endings.**
+- ✅ [PRESS-0060] **PRESS-0005 claims extra fields are kept byte-for-byte, and they are not; its read side is also silent on line endings.**
   DOCUMENT SIDE. Gate with review-contract
   docs/specs/PRESS-0005-store.md --genre spec.
 
@@ -3209,6 +3209,30 @@ already-built code ships in whichever release comes next.
 
   Item 2 was already closed before this session: 4.2 states the read side's
   line endings in its blank-line bullet.
+  Resolved (2026-09-08). Both open halves decided by the user and
+  applied. Item 1's WIDER half: ADR-0001's "anything the parser does not
+  recognise" means the MARKS parser. It sits under the styling set and
+  versioning-overrides.md already glossed it that way, so the ruling
+  confirms the reading rather than changing it, and the Store's header
+  normalisation never breached ADR-0001 at all. ADR-0001 now says which
+  parser, and says outright that it is not a promise about the entry
+  header. design.md was the document making the wider claim -- "a header
+  field it has no use for -- kept byte-for-byte" -- and that half is
+  false: measured, `X-Odd: spaced value ` writes out as `X-Odd: spaced
+  value`, and the field order is the emitted one rather than the file's.
+  Corrected to match PRESS-0005 4.2, which already stated the departure.
+  Item 3: the entry file keeps NO version marker, confirmed before
+  Import writes twelve years. The reasoning recorded for a later reader
+  -- an entry file is meant to be plain text the writer can open and
+  edit, and a file carrying no marker can always be read as the first
+  format, so the choice is not the one-way door it looks like. Rule 14:
+  both edits record what the code already does and settle a question the
+  documents left open, so neither changes a line a conformer writes and
+  no gate ran. A measurement trap worth recording: my first round-trip
+  test reported byte-for-byte because store.write puts a published entry
+  in published/ rather than back over the file read from entries/, so it
+  compared the untouched original against itself. Checking the returned
+  path is what exposed it.
   **Layman:** The entry-format document promises the file comes back exactly as it went in, which is measurably untrue.
   Kind: doc-fix.
   Source: review-code 2026-08-31 lane store -- document side.
