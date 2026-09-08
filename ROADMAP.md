@@ -5897,7 +5897,7 @@ already-built code ships in whichever release comes next.
   Kind: perf.
   Source: PRESS-0092 investigation 2026-09-08, offered to the user and not yet decided.
 
-- 📋 [PRESS-0115] **The page, template and comments writers promise a permission notice nothing can falsify.**
+- ✅ [PRESS-0115] **The page, template and comments writers promise a permission notice nothing can falsify.**
   PRESS-0005 section 11 routes its permission rule to PRESS-0006, and
   PRESS-0006 section 6 now carries the row: every writer there shares the
   atomic write, which calls `_report_a_wide_grant`, so `write_html`,
@@ -5919,6 +5919,16 @@ already-built code ships in whichever release comes next.
   because the rule holds only on a filesystem that enforces modes.
 
   Blocked-by: nothing.
+  Resolved (2026-09-08), the same day it was filed.
+  tests/test_store_extras.py::test_every_writer_here_reports_a_wider_grant
+  covers write_html, write_template and write_comments;
+  ::test_an_ordinary_write_here_says_nothing is the negative half,
+  without which an inverted predicate warns on every save and the suite
+  stays green. Guarded on the capability rather than the platform, using
+  _mode_support's _require_posix_modes. Three mutations killed: the
+  notice never emitted, the predicate inverted, and the notice no longer
+  naming the file. PRESS-0006 10's row named no test and now names
+  these.
   **Layman:** Three of the app's save routines promise to warn you when a drive cannot keep a file private, and no test checks that they do.
   Kind: test.
   Source: review-contract 2026-09-08 PRESS-0006 loop 2.
