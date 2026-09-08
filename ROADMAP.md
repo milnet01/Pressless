@@ -5933,6 +5933,40 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review-contract 2026-09-08 PRESS-0006 loop 2.
 
+- 📋 [PRESS-0116] **Five failure rows share one type, and the Face is told to give each its own sentence.**
+  PRESS-0009 section 6 gives five rows the bare `PublishError`: the handed
+  folder is not a directory; `fetch_previous` cannot write into the folder;
+  the folder holds a stray; the publish would remove every unprotected path
+  and write none; and something inside a repository that answers is absent.
+
+  The same section then says the Face turns EACH ROW into the three-part
+  sentence design.md Errors requires, and section 4.1 says none of the
+  failure types carries a sentence for the writer. So the Face has no
+  discriminator for five rows it is told to distinguish.
+
+  It matters because the third part of that sentence -- what to do next --
+  genuinely differs. A stray file means remove it. A full disk means free
+  space. A folder that is not a directory means the setting is wrong. The
+  second part is identical for all five: the site has not changed.
+
+  The document already states the principle against sharing a type:
+  `OutcomeUnknown` is its own type "so the Face has something to branch on
+  -- a shared type would leave it unable to tell the two apart".
+
+  The decision, and it is a decision rather than a fix: either give the
+  refuse-before-any-write conditions their own types alongside the existing
+  nine, or state in 4.1 and 6 that these five deliberately present as one
+  class to the writer and name what the Face branches on instead.
+
+  Surfaced by the gate rather than settled in it, because a docs gate may
+  not take a design decision and may not edit code. PRESS-0011 is where it
+  becomes real.
+
+  Blocked-by: nothing, but PRESS-0011 is the caller that needs the answer.
+  **Layman:** Five different things that can stop a publish all look identical to the part that has to explain them to the writer.
+  Kind: investigate.
+  Source: review-contract 2026-09-08 PRESS-0009 loop 1, lane A.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
