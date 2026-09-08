@@ -1062,6 +1062,17 @@ Publish again after fixing it works. Holds S1, S5, S6.
   and a new one will persist too. Not started.
   Milestone: v0.5.0. Blocks S1 — as designed the first publish cannot
   finish, so the entry never reaches the live site.
+  Queued next, chosen by the user 2026-09-08 over the remaining
+  test-quality items (PRESS-0087, PRESS-0108, PRESS-0110) and over
+  PRESS-0011.
+
+  The reason it was ranked first: as designed the very first publish
+  cannot finish, so it blocks the app's headline promise, and it is a
+  DESIGN question rather than a bug. Settling it before the Builder and
+  the Face are written against it is cheaper than settling it after.
+
+  Nothing has been done on it. This note records the choice so a fresh
+  session does not re-derive it.
   **Layman:** The very first publish asks GitHub to accept more new files in an hour than it will accept, so it would stop part way and never get through.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
