@@ -120,10 +120,14 @@ class TooLarge(PublishError): ...          # a documented GitHub limit was hit
 class RateLimited(PublishError): ...       # GitHub asked us to slow down, and retrying did not clear it
 class NoPreviousState(PublishError): ...   # nothing before the current commit
 
-# The refuse-before-any-write conditions. Each is its own type because
-# `docs/design.md` § Errors requires every message to end with what to do
-# next, and for these five that differs: fix the setting, remove the file,
-# rebuild the site, free space, retry (PRESS-0116).
+# Each is its own type because `docs/design.md` § Errors requires every
+# message to end with what to do next, and for these five that differs: fix
+# the setting, remove the file, rebuild the site, free space, retry
+# (PRESS-0116). The first four refuse BEFORE any write. RemoteStateMissing
+# does not: `_failure` maps a status on any request, so a 404 inside a
+# repository that answers can arrive after blobs have been sent. §4.3's
+# property is what keeps its row "unchanged" -- nothing a reader sees moves
+# until the reference update.
 class SiteFolderMissing(PublishError): ...  # the handed folder is not a directory
 class StrayFile(PublishError): ...          # the folder holds what the Builder did not produce (§4.4)
 class SiteWouldBeEmptied(PublishError): ... # every unprotected path removed and none written
@@ -615,20 +619,22 @@ behaviour.
   where the untouchable list does not name the path's FIRST segment**. The
   symlink is named FIRST and separately because a symlink to a directory
   answers `is_dir()`: written as *neither a file nor a directory* alone, the
-  rule does not reach it, and the link is descended into (§4.4). Nothing is written and
-  nothing is removed; the site is unchanged (§4.4).
+  rule does not reach it, and the link is descended into. Nothing is
+  written and nothing is removed; the site is unchanged (§4.4).
   *Test:* `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`
-  — a folder carrying a symlink to a FILE, one carrying a symlink to a
-  DIRECTORY, one carrying `.git/config`, and one carrying
-  `content/.DS_Store`; **the symlinked directory is not decoration**, it is
-  the case an *ordinary file or directory* rule passes, and it is the one
-  that publishes files from outside the site folder when it passes; assert `PublishError` naming the offending
-  path, and that the transport recorded no write. **The nested case is not
-  decoration**: it is the one a first-segment rule passes, and without it an
-  implementation built on the first segment satisfies every other assertion
-  here. A plain `content/` subdirectory must NOT refuse, or the rule refuses
-  every real site — `::test_a_plain_subdirectory_does_not_refuse` is that
-  half, and it is what separates the two readings. Plus
+  — a folder carrying a symlink to a FILE, one a symlink to a DIRECTORY, one
+  `.git/config`, and one `content/.DS_Store`. Assert **`StrayFile`** naming
+  the offending path, and that the transport recorded no write. **The type
+  by name, not `PublishError`**: every §4.1 type subclasses it, so asserting
+  the base would pass against a module raising the bare type at every site
+  and leave §6's mapping unfalsifiable.
+  **The symlinked DIRECTORY and `content/.DS_Store` are what carry the
+  rule.** The first is the case an *ordinary file or directory* test passes:
+  it answers `is_dir()`, so such a rule descends the link and publishes what
+  it points at. The second is the case a FIRST-segment test passes, and it
+  is the one a real site acquires. A plain `content/` subdirectory must NOT
+  refuse, or the rule refuses every real site;
+  `::test_a_plain_subdirectory_does_not_refuse` is that half. Plus
   `::test_an_untouchable_dot_name_does_not_refuse`, a
   folder carrying `.nojekyll` with that name on the untouchable list, and
   `::test_an_untouchable_symlink_does_not_refuse`, a folder whose `CNAME` is
@@ -661,8 +667,9 @@ behaviour.
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
 
-**The five refuse-before-any-write rows each carry their own type**, added
-2026-09-08 by PRESS-0116. They shared the bare `PublishError`, and §6
+**These five rows each carry their own type**, added 2026-09-08 by
+PRESS-0116. Four refuse before any write; `RemoteStateMissing` can arrive
+later, and stays *unchanged* on §4.3's property rather than on its timing. They shared the bare `PublishError`, and §6
 requires the Face to end each message with what to do next — which for these
 five is fix the setting, remove the file, rebuild the site, free space, and
 retry. A shared type left the Face inventing a discriminator or giving one
@@ -845,3 +852,4 @@ code, so a green INV-1 says nothing about the rest.
 | 8 | 2026-09-08 | 3, cold — identical brief, scrubbed copy and packet rebuilt whole from disk and extended with `fetch_previous`'s own test and `design.md` § Where everything sits on disk. GitHub's live API still an unrunnable region; the stray rule still unbuilt, and the brief said so | 0 | 2 | 2 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text loop 1 wrote** — borderline rather than calm or violent, and both are one defect's two halves. **All three lanes found the same thing, the strongest signal available:** loop 1 gave §4.4 a carve-out saying neither stray test fires on an untouchable first segment, and updated INV-10's dot-name limb only — so INV-10 and §6 refused a symlinked `CNAME` outright while §4.4 required that publish to succeed, and INV-10's own fixtures reached only the limb that was right. A publish refused for good, remediable only outside the app. Both limbs now carry the carve-out and a symlinked-untouchable fixture joins the dot-name one. **One lane found a symlink to a DIRECTORY answering both of loop 1's sentences** with no precedence fixed; executed, such an entry is `is_symlink()` and `is_dir()` both, so testing for a directory first descends through the link and publishes files from outside the folder — which the same bullet forbids. Classification now precedes following. **Two came from lanes' open questions rather than findings.** §4.2 still said *two conditions on the handed folder are refused* where the stray rule makes three and §6 lists three; replaced with a pointer rather than a bumped number. And §4.3 named no status for the primary limit's header, while `_retry_hint` reads it only on 429 or 403 — an implementer reading it on a response that succeeded makes Pressless sleep after a request that worked. **Over the whole run, six of eleven verified findings fall inside the gated span**, so this was mostly gate rather than audit. **Three open questions resolved clean and are not counted** — `design.md`'s untouchable paragraph does say what §11 quotes, `.nojekyll` is on the measured list PRESS-0001 and `design.md` both carry, and §4.2's precondition list was the count above. **Routing: implementation.** |
 | 9 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk with `publisher.py` whole, the pacing and retry tests windowed, ADR-0002 and the design rules. GitHub's live API unrunnable; §4.3's pacing split declared unbuilt | 1 | 1 | 1 | 0 | **Three verified: two fixed, one surfaced. First loop of a new run**, armed by §4.3's blob/other pacing split (PRESS-0114). **All three lanes found the same defect**, one tagging it Q4: §4.3 defines two paces and INV-9 knew one, with no §10 row — so a flat second, an inverted split, or the pace applied AFTER each write all pass every named test, and the wait this split exists to remove stays. INV-9 now carries both values and a sequence assertion, because a count passes a flat pace and a set passes the wrong ordering. **Surfaced, not fixed (4a stop condition, a design decision):** §6 gives five rows the bare `PublishError` while requiring the Face to give each its own sentence; filed as PRESS-0116 and recorded in §10. **From lanes' open questions:** two read "550 in one hour … at 136 a minute" as self-contradictory — it is one rate-limit hour and a four-minute run, now said so, with the gap between 550 and a first publish's count stated rather than glossed. **Code-side, surfaced:** `_is_protected`'s docstring says `load` fixes a trailing slash; executed, `load` stores `CNAME/` verbatim and the spec is the accurate one. |
 | 10 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk, the surfaced PRESS-0116 decision named so it was not re-found | 2 | 1 | 0 | 0 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); tail empty. A VIOLENT cap — every one of the five landed on text this run or PRESS-0113 wrote**, so the review ends here and routes to implementation. **One lane: INV-10 said *neither an ordinary file nor a directory*, and a symlink to a directory answers `is_dir()`** — so the invariant the test is written from does not reach it, while §4.4 does. Executed: the shipped code refuses it, and every existing fixture symlinks to a FILE, so the gap was green. INV-10 and §6 now name the symlink first and the fixture list gains the directory case. **One lane: §4.3 said each retry waits *twice the one before*, and the code multiplies the FRESH hint** — they agree only while GitHub repeats itself, and the primary limit's hint is a shrinking countdown. **One lane: the Status line said *Implemented* while the pacing split is not built** — the same defect this document's loop 7 fixed, reintroduced by loop 9's own amendment. **Two came from lanes' open questions:** *the three slow writes* under-paced by the wrong ordering is only the TREE; and *GitHub asks for at least a second* beside *the second is not what GitHub requires* read as a contradiction, now split into advice and enforcement. **Also deleted: a case-fold clause of mine that decided nothing**, a leading dot having no case. |
+| 11 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk, § 4.1's five new types declared unbuilt | 1 | 2 | 0 | 1 | **Five verified, five fixed. First loop of a new run**, armed by PRESS-0116's amendment; the loop-10 cap lapsed with it. **Every finding landed on text that amendment wrote.** **All three lanes: § 10 still called PRESS-0116 an open decision** where § 4.1 and § 6 had just settled it, so the Face's builder and the Publisher's would read opposite answers. **All three: § 4.2 said *Both raise `PublishError`*** for the two conditions it owns, which § 6 had just given their own types — the section an implementer actually builds those two from. **Two: the Status line said *Implemented*** with the five types unbuilt; third time today, and each time the amendment moved and the line did not. **One, and the one that mattered: nothing could falsify the mapping** — INV-10 asserted `PublishError`, which every new type subclasses, so a module raising the bare type everywhere passed. Each condition's existing test now asserts its type by name. **From a lane's open question: `RemoteStateMissing` was grouped as refuse-before-any-write**, and `_failure` maps a status on any request, so it can arrive after blobs are sent; its row is *unchanged* on § 4.3's property, not on timing. |
