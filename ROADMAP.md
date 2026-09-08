@@ -5597,7 +5597,7 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review-tests 2026-09-07 lanes 2, 4 and 5.
 
-- 🚧 [PRESS-0111] **Re-section the roadmap into version blocks, which the format standard has required since 2026-09-06.**
+- ✅ [PRESS-0111] **Re-section the roadmap into version blocks, which the format standard has required since 2026-09-06.**
   roadmap-format.md 3.2 made release blocks the default at every version.
   This project still carries the superseded single-block shape, one
   section holding every item.
@@ -5632,6 +5632,30 @@ already-built code ships in whichever release comes next.
   Not every item gets a version. PRESS-0086 decided an item earns one
   only when a sign of success fails while it is open, so the Backlog
   holding most of them is that decision rather than an oversight.
+  Resolved 2026-09-08. The user ran the SQL; the store moved all 112 items
+  into their version sections in one transaction, and the render followed.
+
+  Verified after the fact rather than assumed: 112 items rendered against
+  112 elements in the store, no id lost, exactly the two filed today
+  gained, every pre-existing headline byte-identical, all 112 Layman lines
+  still ending in a full stop, and nothing left pointing at the deleted
+  P01 section.
+
+  That last check is why this went through SQL rather than
+  roadmap_migrate: migrate strips the trailing full stop from every Layman
+  line, measured 2026-09-07.
+
+  Deliberately lost, and recorded because a render discards silently
+  otherwise: P01's own section intro, describing the phase-block structure
+  this replaces. It restated roadmap-format.md 3.5 and workflow.md 5 and
+  named a shape the roadmap no longer has.
+
+  The backups stay at /mnt/Games/Scripts/Linux/Pressless_Backups/ until
+  the new layout has been read once in anger.
+
+  Ants MCP feedback stands: no roadmap verb moves an item between
+  sections, which is what forced the direct write, and the direct write is
+  refused from a Claude Code session.
   **Layman:** The roadmap is one long list; the current house style wants it grouped by which version each thing lands in.
   Kind: chore.
   Source: roadmap-format.md 3.2, changed 2026-09-06; in-session 2026-09-07.
