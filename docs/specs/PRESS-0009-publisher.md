@@ -244,7 +244,25 @@ other write.
 
 **Writes are paced, and a breach is honoured rather than raised.**
 GitHub asks for at least a second between successive write requests, and
-answers a breach with a retry hint rather than a plain refusal. The
+answers a breach with a retry hint rather than a plain refusal.
+
+**A blob write is paced faster than the other three, and the split is
+measured rather than advised.** PRESS-0092 sent 550 blob creations in one
+hour, serial, every one accepted, at a sustained 136 a minute — past both
+documented content-generating thresholds. So the second is not what GitHub
+requires of blob creation, and a first publish is almost all blobs: at a
+second each, ADR-0002's figure puts over fourteen minutes of a first publish
+in deliberate waiting. **Blobs are paced at half a second**, which holds the
+rate under the 136 a minute that was measured accepted rather than removing
+the pace. **The tree, the commit and the reference update keep the full
+second**: those three are plausibly the content-generating requests the
+documented limits are about, nothing has measured them, and there are three
+of them per publish, so pacing them costs nothing worth having.
+
+**The pace before a write is the pace THAT write requires**, not the one
+before it — a tree write following a blob waits the full second. Otherwise
+the rule depends on ordering, and the three slow writes are exactly where
+being wrong is least recoverable. The
 Publisher waits as asked and retries, a bounded number of times; only when
 that is exhausted does it raise `RateLimited`. Raising on the first hint
 would fail a first publish for a condition GitHub expects the caller to
