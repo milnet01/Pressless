@@ -391,10 +391,14 @@ one for `alt`.
   work.
 
 - **INV-7** — `src/pressless/marks.py` reaches no disk and no network. It
-  imports none of `pathlib`, `os`, `io`, `socket`, `urllib`, `requests`,
-  `subprocess`, nor any other `pressless` module, **and calls no
-  filesystem builtin**: `open` needs no import, so an import rule alone
-  cannot catch the breach named below.
+  imports **only** modules that can reach neither, and no other `pressless`
+  module, **and calls nothing that opens a file or loads code**: `open`
+  needs no import, so an import rule alone cannot catch the breach named
+  below, and neither `builtins.open` nor `__import__` is spelled `open`.
+  The permitted modules are enumerated in the test rather than here. This
+  clause listed forbidden ones until PRESS-0110, and a list of what may not
+  be imported is only ever as long as the last person's imagination: that
+  one admitted `http.client`, which is the module INV-7 exists to keep out.
   *Test:* `tests/test_marks.py::test_marks_is_pure`, which walks the
   module's AST — imports and calls — rather than grepping its text.
   *Breaks when:* someone resolves a photo's path here instead of in the

@@ -350,21 +350,83 @@ def test_no_mark_outside_the_table():
 # --------------------------------------------------------------- INV-7 ----
 
 
-_FORBIDDEN_TOP_LEVEL_IMPORTS = {"os", "io", "socket", "urllib", "requests", "subprocess", "pathlib"}
+# INV-7 is an ALLOWLIST, and that is the whole of it. A denylist of seven
+# names let `http`, `ssl`, `ftplib`, `smtplib`, `httpx`, `xmlrpc`,
+# `webbrowser`, `shutil`, `tempfile`, `glob` and `zipfile` all through -- so
+# `import http.client` FAILED in settings.py, which is allowed `os`, and
+# PASSED in the module INV-7 exists to keep off the network (PRESS-0110). A
+# list of what may not be imported can only ever be as long as the last
+# person's imagination; a list of what may is closed by construction.
+#
+# Add a name here only for a module that cannot reach a disk or a network,
+# and say which computation needs it. Everything here is pure: text, types
+# and data structures.
+_ALLOWED_TOP_LEVEL_IMPORTS = {
+    "__future__",   # the annotations import every module in this project has
+    "re",           # the scanner
+    "collections",  # collections.abc.Callable, for the row's render
+    "dataclasses",  # the MARKS row type
+    "typing",       # annotations the row type needs at runtime
+    "enum",         # a closed set of mark kinds, if one is ever wanted
+    "functools",    # caching a compiled pattern
+    "itertools",    # pure iteration
+    "string",       # character classes
+    "textwrap",     # pure text shaping
+    "unicodedata",  # character properties, for the rainbow row
+    "html",         # html.escape -- §4.6's escaping rule
+    "math",         # pure arithmetic
+}
+
+# `open` needs no import, so the import rule alone cannot catch INV-7's own
+# stated breach. Nor can a walk that matches a bare name: `builtins.open(...)`
+# is an Attribute and `__import__("pathlib")` is a different name entirely,
+# and both passed the old walk (PRESS-0110). Spelling is what is matched, so
+# an attribute reaches this by its final component.
+# By ANY spelling: these do the same thing however they are reached, and
+# `builtins.open(...)` is the case the old bare-name walk let through.
+_FORBIDDEN_BY_ANY_SPELLING = {"open", "__import__", "import_module"}
+
+# By bare name ONLY. These are builtins, and the same word is a perfectly
+# innocent method elsewhere -- `re.compile` is the reason this split exists,
+# and matching it by spelling failed marks.py on its own scanner.
+_FORBIDDEN_BUILTIN_NAMES = {"eval", "exec", "compile"}
+
+# The back door round the split above: reached through `builtins`, a bare
+# name becomes an attribute and stops matching. Neither name is importable
+# under the allowlist, so a mention of either is already a breach.
+_FORBIDDEN_IDENTIFIERS = {"builtins", "__builtins__"}
+
+
+def _called_spelling(node: ast.Call) -> str:
+    """How this call names the thing it calls, as one word.
+
+    `open(...)` and `builtins.open(...)` both answer "open"; the module a
+    call is reached through does not change what it does.
+    """
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return ""
 
 
 def test_marks_is_pure():
-    """INV-7: marks.py reaches no disk and no network. It imports none of
-    pathlib, os, io, socket, urllib, requests or subprocess, nor any other
-    pressless module, and calls no filesystem builtin — `open` needs no
-    import, so the import walk alone cannot catch the breach INV-7 names.
+    """INV-7: marks.py reaches no disk and no network. It imports only
+    modules that can do neither, no other pressless module, and calls no
+    builtin that opens a file or loads code -- `open` needs no import, so
+    the import walk alone cannot catch the breach INV-7 names.
 
     Walks the module's AST rather than grepping its text (spec §5). Reads
     the module's *source* via inspect.getsource — that read is done here,
     by the test, not by marks.py itself, which is exactly what rule 3
     (docs/design.md § What may depend on what) requires: it takes text and
     returns a structure, and nothing about proving that may itself touch a
-    disk from inside marks.py."""
+    disk from inside marks.py.
+
+    Breaks when marks.py imports anything outside the allowlist above, or
+    calls open, __import__ or import_module by any spelling, the builtins
+    eval, exec or compile by name, or reaches builtins as an attribute."""
     source = inspect.getsource(marks_module)
     tree = ast.parse(source)
 
@@ -380,10 +442,12 @@ def test_marks_is_pure():
             elif node.module:
                 imported_top_level.add(node.module.split(".")[0])
 
-    forbidden = imported_top_level & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"})
+    forbidden = imported_top_level - _ALLOWED_TOP_LEVEL_IMPORTS
     assert not forbidden, (
-        f"marks.py imports {forbidden!r}, which can reach a disk or a "
-        f"network, or is another pressless module — rule 3 forbids both"
+        f"marks.py imports {sorted(forbidden)!r}, which is not on INV-7's "
+        f"allowlist. Rule 3 lets it reach neither a disk, a network nor "
+        f"another pressless module — add the name to "
+        f"_ALLOWED_TOP_LEVEL_IMPORTS only if it can do none of those"
     )
     assert not relative_imports, (
         f"marks.py has {len(relative_imports)} relative import(s), which "
@@ -391,15 +455,31 @@ def test_marks_is_pure():
         f"on one"
     )
 
-    open_calls = [
-        n for n in ast.walk(tree)
-        if isinstance(n, ast.Call)
-        and isinstance(n.func, ast.Name)
-        and n.func.id == "open"
-    ]
-    assert not open_calls, (
-        f"marks.py calls the builtin open() {len(open_calls)} time(s) — "
-        f"it must never touch a disk"
+    forbidden_calls = sorted({
+        f"{_called_spelling(node)} (line {node.lineno})"
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and (
+            _called_spelling(node) in _FORBIDDEN_BY_ANY_SPELLING
+            or (
+                isinstance(node.func, ast.Name)
+                and node.func.id in _FORBIDDEN_BUILTIN_NAMES
+            )
+        )
+    })
+    assert not forbidden_calls, (
+        f"marks.py calls {forbidden_calls!r} — it must never open a file or "
+        f"load code, and neither needs an import to reach"
+    )
+
+    reached_builtins = sorted({
+        f"{node.id} (line {node.lineno})"
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and node.id in _FORBIDDEN_IDENTIFIERS
+    })
+    assert not reached_builtins, (
+        f"marks.py names {reached_builtins!r}, which reaches every builtin "
+        f"as an attribute and so walks round the rule above"
     )
 
 
