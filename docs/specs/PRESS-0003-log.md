@@ -1,6 +1,6 @@
 # PRESS-0003 — The rolling log: what Pressless writes down, and what it never does
 
-**Status:** draft (2026-09-08).
+**Status:** accepted (2026-09-08). Gated at the spec cap of 2, a calm cap with an empty tail: two of the last loop's four findings landed on text the run wrote. Both Q1s were claims reading could not settle — UTF-8 does not hold a lone surrogate, and a failed roll freezes the log rather than growing it — and both were corrected against execution.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0003 (`docs/design.md` § Logging, § Errors).
 
@@ -85,6 +85,7 @@ MAX_BYTES = 1_048_576          # one mebibyte; § 4.3 owns the choice
 OLD_COPIES = 1                 # exactly one, per § 3 decision 1
 
 ENCODING = "utf-8"             # § 4.3; never the platform default
+ERRORS = "backslashreplace"    # § 4.3; a str can hold what UTF-8 cannot
 
 def path_for(folder: Path) -> Path: ...       # folder / FILE_NAME
 def open_log(folder: Path) -> Log: ...        # never raises
@@ -116,7 +117,7 @@ settled before the call reaches here.
 ### 4.3 Rolling
 
 `logging.handlers.RotatingFileHandler` with `maxBytes=MAX_BYTES`,
-`backupCount=OLD_COPIES` and `encoding=ENCODING`. It is the standard library's
+`backupCount=OLD_COPIES`, `encoding=ENCODING` and `errors=ERRORS`. It is the standard library's
 own implementation of exactly the decided policy, it adds no dependency, and it
 names the old copy `pressless.log.1`.
 
@@ -126,8 +127,18 @@ convention**, and the spec conforms rather than deciding. `settings.py`,
 `encoding="utf-8"`, and PRESS-0006 INV-10 states it as a contract for the
 files the Store writes.
 
-**It is pinned explicitly because the default is the platform's, and the
-failure that default produces is silent.** `FileHandler`'s signature is
+**`errors` is pinned for the same reason, and the gap is narrower but real.**
+UTF-8 does not hold every character a `str` can: a lone surrogate raises
+`UnicodeEncodeError`, measured 2026-09-08 — and that is not an exotic input
+here. An undecodable filename comes back through `surrogateescape` carrying
+surrogates, and § 2 says a stock file error quoting the path it failed on is
+exactly the message class that reaches the log unstripped. So the one class the
+spec expects raw is the one most likely to carry one. With
+`errors="backslashreplace"` the line is written with the offending character
+escaped; without it the line is lost in silence.
+
+**The encoding is pinned explicitly because the default is the platform's, and
+the failure that default produces is silent.** `FileHandler`'s signature is
 `(filename, mode="a", encoding=None, delay=False, errors=None)`, and `None`
 means the locale's encoding — UTF-8 on the machine this is written on, a
 codepage on Windows. Measured 2026-09-08 with a deliberately narrow encoding:
@@ -224,17 +235,22 @@ no filtering, no configuration — a plain-English record has one kind of line.
   it, which is the unbounded case wearing the bounded case's clothes.
 
 - **INV-3** — No call raises, whatever the filesystem does.
-  *Test:* `tests/test_log.py::test_note_survives_an_unwritable_folder`,
-  `tests/test_log.py::test_open_log_survives_a_missing_folder` and
-  `tests/test_log.py::test_close_survives_a_failing_flush` — call each entry
-  point against the stated condition and assert no exception escapes and that
-  execution continues past the call.
+  *Test:* four, one per entry point per reachable failure —
+  `tests/test_log.py::test_open_log_survives_an_unwritable_folder`,
+  `tests/test_log.py::test_open_log_survives_a_missing_folder`,
+  `tests/test_log.py::test_note_survives_a_failing_write` and
+  `tests/test_log.py::test_close_survives_a_failing_flush`. Each asserts no
+  exception escapes and that execution continues past the call.
   *Breaks when:* an entry point gains a code path outside its `except`, or a
   future author decides a missing folder is worth reporting to the caller.
-  **`close` needs its own test or a third of this invariant is unfalsifiable**:
-  it is the entry point that flushes, so it is where a full disk raises, and a
-  suite exercising only `open_log` and `note` stays green against a `close`
-  written outside its `try`.
+  **Which failure each test uses is what makes this falsifiable, and the
+  obvious pairing does not work.** A `note` called on a Log that failed to open
+  cannot raise however `note` is written — § 4.4 hands back one that writes
+  nothing — so an unwritable folder tests `open_log` and says nothing about
+  `note`. `note` and `close` are reached only on a Log that opened, so they
+  take a stream that fails on write and on flush respectively. `close` is where
+  a full disk raises, and a suite exercising only `open_log` stays green
+  against either written outside its `try`.
 
 - **INV-4** — The log sits in the same folder as the settings file.
   *Test:* `tests/test_log.py::test_log_sits_beside_the_settings_file` —
@@ -254,6 +270,16 @@ no filtering, no configuration — a plain-English record has one kind of line.
   **Weak in the same way INV-1's import walk is**, and recorded as such rather
   than relied on.
 
+- **INV-6** — No `logging` diagnostic reaches stderr, on any failure.
+  *Test:* `tests/test_log.py::test_no_diagnostic_reaches_stderr` — capture
+  stderr across a forced write failure and assert nothing was written to it.
+  *Breaks when:* the handler is built without the `handleError` override, which
+  is the default and is therefore what an implementer gets by doing nothing.
+  **This needs its own invariant because INV-3 does not reach it**: INV-3's
+  tests assert no exception *escapes*, and the default `handleError` escapes
+  nothing — it prints. So every INV-3 test stays green while a traceback
+  quoting absolute paths goes to stderr, which is the leak § 4.4 describes.
+
 ## 6. Failure modes
 
 | What happens | What the module does | What the writer sees |
@@ -262,9 +288,9 @@ no filtering, no configuration — a plain-English record has one kind of line.
 | The folder is not writable | The same | Nothing |
 | The disk fills mid-session | `note` swallows it; earlier lines remain | Nothing. His publish is unaffected |
 | The file is deleted while open | `note` swallows it | Nothing |
-| A message carries a character the encoding cannot hold | Cannot arise: `ENCODING` is UTF-8, which holds every character Python can put in a `str` | Nothing |
+| A message carries a character UTF-8 cannot hold (a lone surrogate) | `ERRORS` escapes it; the line is written with the offending character shown as `\udXXX` | The line, with one character escaped |
 | A write fails for any reason | `handleError` does nothing; no traceback reaches stderr | Nothing |
-| The rolled copy cannot be replaced | `note` swallows it; the current file keeps growing past `MAX_BYTES` | Nothing. Bounded-ness is lost until the next successful roll, which INV-2 does not cover and § 9 records |
+| The rolled copy cannot be replaced | The roll raises before the line is written, so that line and every later one in this session are dropped. The file does **not** grow: it freezes at its current size | Nothing. The record stops; the bound holds. § 9 records it |
 
 ## 7. Tests
 
@@ -278,8 +304,8 @@ it is the second that keeps them out of CI. Nothing here needs such a file.
 
 The tests are named in § 5 and tabulated in § 10, along with the checks holding
 claims that are not invariants. **Two invariants carry more than one test** —
-INV-1 pairs a behavioural test with an import walk, and INV-3 has one per entry
-point — so the count is not one per invariant.
+INV-1 pairs a behavioural test with an import walk, and INV-3 has one per
+reachable failure — so the count is not one per invariant.
 
 **The filesystem tests write to a real temporary directory rather than a
 double.** The module's whole job is what reaches the filesystem — rolling, the
@@ -287,23 +313,33 @@ file set it leaves behind, and surviving a directory it cannot write. A double
 would assert the calls this module makes to the standard library, which is the
 implementation restated, and would pass against a module that rolls wrongly.
 
-**`test_close_survives_a_failing_flush` is the exception, and it has to be.** A
-disk that fails on flush and not on open is not a state a test can produce by
-writing real files, so that one substitutes a stream whose `flush` raises. It
-asserts an exception does not escape, which is the invariant, rather than
-asserting which calls were made.
+**Three tests are the exception, and they have to be.** A disk that fails on
+write or on flush but not on open is not a state a test can produce with real
+files, so `test_note_survives_a_failing_write`,
+`test_close_survives_a_failing_flush` and `test_no_diagnostic_reaches_stderr`
+substitute a stream that raises. Each asserts an outcome — no exception
+escapes, nothing reaches stderr — rather than which calls were made.
 
 **One test needs a directory the process cannot write** —
-`test_note_survives_an_unwritable_folder`, and it is the one awkward fixture
-here. `chmod` is the route on Linux; on Windows it sets only the read-only
-flag, which `PRESS-0002` § 4.6 already measured and which is why that spec has
-no fallback file there. Where that state cannot be produced **that test alone**
-skips, **naming that reason** — never silently, per this project's rule that a
-skip reporting every cause as one cause can hide a failure.
+`test_open_log_survives_an_unwritable_folder`, and it is the one awkward
+fixture here. `chmod` is the route on Linux; on Windows it sets only the
+read-only flag, which `PRESS-0002` § 4.6 already measured and which is why that
+spec has no fallback file there.
 
-**The other two INV-3 tests skip nowhere.** A missing folder is just a path
-that does not exist, and a failing flush is produced with a double; both run on
-every platform, and Windows is where INV-3 most needs to run.
+**Its skip condition is the OBSERVED state, never the platform**, and that
+distinction is what keeps it falsifiable. `chmod` does not make a folder
+unwritable for a process running as root, which a container CI job or the
+pre-push hook's isolated checkout can be — and there a platform-keyed test
+passes vacuously, green against an `open_log` with no `except` at all. So the
+test first writes into the folder itself: if that write succeeds, the fixture
+did not take, and the test skips **naming that** — never silently, per this
+project's rule that a skip reporting every cause as one cause can hide a
+failure.
+
+**The other three INV-3 tests skip nowhere.** A missing folder is a path that
+does not exist, and the failing write and flush are produced with a stream
+whose `write` or `flush` raises; all three run on every platform, and Windows
+is where INV-3 most needs to run.
 
 **The literals under test are written out, not imported.** A test importing
 `FILE_NAME` compares the module against itself, so `path_for` could name any
@@ -347,9 +383,19 @@ PRESS-0011 ships, not a settled one.
   PRESS-0087.
 - **The Face's Show details toggle** and the label naming this file's location.
   PRESS-0011.
-- **Recovering boundedness after a failed roll.** § 6's last row: if the roll
-  itself cannot be performed, the current file grows until one succeeds. No
-  invariant covers it and no test proves it, recorded here rather than implied.
+- **Recovering from a failed roll.** Measured 2026-09-08 against the standard
+  library: `emit` calls `doRollover` *before* writing, and a roll that raises
+  therefore drops the line rather than appending it — and having closed the
+  stream, it fails the same way on every later call. Twelve lines through a
+  handler whose roll always raises left three written and the file frozen under
+  its limit. **So the residual risk is not unbounded growth — it is the record
+  stopping, silently, for the rest of the session.** That is accepted rather
+  than handled: it needs the rolled copy to be unreplaceable, the next launch
+  retries the roll, and § 1's tolerance ("a log that cannot be written is
+  silently not written") already covers a log that stops. A fallback that wrote
+  without rolling would be the alternative, and it is a code path with its own
+  failure modes to buy back a rare one. **Revisit if it is ever observed**; it
+  has not been.
 - **Anything a level system would buy** — filtering, verbosity, separate error
   files.
 
@@ -359,9 +405,10 @@ PRESS-0011 ships, not a settled one.
 |---|---|
 | INV-1 | `test_note_adds_nothing`; `test_log_imports_nothing_identifying` partially |
 | INV-2 | `test_rolls_by_size_keeping_one_old_copy` |
-| INV-3 | `test_note_survives_an_unwritable_folder`, `test_open_log_survives_a_missing_folder`, `test_close_survives_a_failing_flush` |
+| INV-3 | `test_open_log_survives_an_unwritable_folder`, `test_open_log_survives_a_missing_folder`, `test_note_survives_a_failing_write`, `test_close_survives_a_failing_flush` |
 | INV-4 | `test_log_sits_beside_the_settings_file` |
 | INV-5 | `test_log_is_offline` |
+| INV-6 | `test_no_diagnostic_reaches_stderr` |
 | One mebibyte is the right size | **nothing** — a preference call (§ 4.3), and no test can hold it |
 | The log is readable as plain English by the writer's helper | **nothing** — it depends on what callers write, which is PRESS-0011's |
 | No credential, account name or full path reaches the file | **nothing here.** INV-1 stops this module adding one; a caller passing one is not something this module can see. The obligation is the raise site's, and for a failure Pressless did not raise it is the Face's, which records the type only (`docs/design.md` § Logging, § 2 above). PRESS-0011 is where both are met |
