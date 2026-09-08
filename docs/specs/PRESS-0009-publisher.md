@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, INV-10 included (PRESS-0089, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented apart from §4.3's blob/other pacing split and INV-9's `::test_each_write_is_preceded_by_its_own_pace`, amended 2026-09-08 and not yet built (PRESS-0114). INV-10 IS built (PRESS-0089). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -243,8 +243,11 @@ That refusal becomes `Conflict`. Forcing it would silently discard the
 other write.
 
 **Writes are paced, and a breach is honoured rather than raised.**
-GitHub asks for at least a second between successive write requests, and
-answers a breach with a retry hint rather than a plain refusal.
+GitHub's documentation ADVISES at least a second between successive write
+requests, and a breach is answered with a retry hint rather than a plain
+refusal. Advice and enforcement are different things here, and the split
+below turns on the difference: what is advised of writes generally is not
+what is enforced on blob creation.
 
 **A blob write is paced faster than the other three, and the split is
 measured rather than advised.** PRESS-0092 sent 550 blob creations
@@ -291,8 +294,13 @@ would spend the whole retry bound in seconds (PRESS-0046).
 
 **Successive retries wait longer.** GitHub asks for an exponentially
 increasing wait between retries, and warns that continuing to request while
-limited risks the integration being banned. The first retry waits exactly
-what GitHub asked; each retry after it waits twice the one before. The
+limited risks the integration being banned. **Each retry waits the hint
+GitHub has JUST given, doubled once for every retry already taken** — so the
+first waits exactly what was asked and the growth compounds from there. Not
+twice the previous WAIT: the hint is re-read from every response, and the
+primary limit's is a countdown to a reset, which shrinks as the reset
+approaches. Doubling the previous wait would ignore that and keep growing
+past a budget the hint says is coming back. The
 growth is ours rather than GitHub's ask, so a grown wait that would pass the
 bound is **clamped to it rather than raising** — the refusal above is
 reserved for an interval GitHub itself named (PRESS-0113).
@@ -388,7 +396,7 @@ dot-name bullet's own carve-out below is this rule, not a second one.
   had. `.nojekyll` and its kind are on the list, so they are refused by
   nothing and reach the site the way §4.4 already says: an untouchable entry
   is neither written nor removed, so it never travels through the upload at
-  all. A segment is matched case-folded, as an untouchable entry is.
+  all.
 
 **A dot-name the Builder produces must sit under an untouchable first
 segment, and that is a constraint PRESS-0008 inherits.** Setup removes Builder output
@@ -583,21 +591,28 @@ behaviour.
   asserting the recorded wait SEQUENCE is `[0.5, 1.0, 1.0, 1.0]`. **The
   sequence, not a count and not a set**: a count passes a single flat pace,
   and a set passes the split applied AFTER each write instead of before the
-  next, which gives the three slow writes the blob's half second and is the
-  ordering §4.3 warns of.
+  next — which under-paces the TREE write, the first of the three slow ones,
+  and is the ordering §4.3 warns of. Only the tree: the commit and the
+  reference update still follow a slow write and still get their second.
   *Breaks when:* an implementer writes as fast as the loop allows; or keeps
   one flat pace for all four, which is what shipped before PRESS-0114 and
   passes any assertion about how MANY waits there were; or inverts the two
   values.
 
 - **INV-10** — A publish REFUSES, naming the path, where the handed folder
-  holds anything that is neither an ordinary file nor a directory, or a path
-  carrying a dot-name segment — **in either case only where the untouchable
-  list does not name the path's FIRST segment**. Nothing is written and
+  holds **a symlink**, anything else that is neither an ordinary file nor a
+  directory, or a path carrying a dot-name segment — **in either case only
+  where the untouchable list does not name the path's FIRST segment**. The
+  symlink is named FIRST and separately because a symlink to a directory
+  answers `is_dir()`: written as *neither a file nor a directory* alone, the
+  rule does not reach it, and the link is descended into (§4.4). Nothing is written and
   nothing is removed; the site is unchanged (§4.4).
   *Test:* `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`
-  — a folder carrying a symlink, one carrying `.git/config`, and one
-  carrying `content/.DS_Store`; assert `PublishError` naming the offending
+  — a folder carrying a symlink to a FILE, one carrying a symlink to a
+  DIRECTORY, one carrying `.git/config`, and one carrying
+  `content/.DS_Store`; **the symlinked directory is not decoration**, it is
+  the case an *ordinary file or directory* rule passes, and it is the one
+  that publishes files from outside the site folder when it passes; assert `PublishError` naming the offending
   path, and that the transport recorded no write. **The nested case is not
   decoration**: it is the one a first-segment rule passes, and without it an
   implementation built on the first segment satisfies every other assertion
@@ -622,7 +637,7 @@ behaviour.
 |---|---|---|
 | The handed folder is not a directory | `PublishError` | unchanged |
 | `fetch_previous` cannot write into the folder it was handed — full disk, unwritable folder | `PublishError` | unchanged |
-| The handed folder holds a stray — anything neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `PublishError` | unchanged |
+| The handed folder holds a stray — a symlink, anything else neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `PublishError` | unchanged |
 | The publish would remove every unprotected path and write none | `PublishError` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
@@ -811,3 +826,4 @@ code, so a green INV-1 says nothing about the rest.
 | 7 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `publisher.py` whole, `test_publisher.py` by outline with the transport double and the folder / untouchable tests windowed, `settings.py`'s untouchable check and all ten design rules. GitHub's live API declared an unrunnable region. The gate ran BEFORE §4.4's stray rule was implemented, and the brief said so | 2 | 1 | 4 | 0 | **Seven verified, seven fixed; one dismissed. First loop of a new run**, armed by §4.4's stray-file rule (PRESS-0089). **Five of the seven landed on text this run wrote**, which is expected of a rule authored an hour earlier. **All three lanes found the Status line backwards:** it excepted §4.4's case tolerance and INV-2's case clause as unbuilt, and both ship (`casefold` in `_is_protected`, and the named test exists) — while the one thing with no code, INV-10, was covered by the word *Implemented*. Built from that line, an implementer re-folds case and never writes the stray rule at all. **Two lanes found the new rule unbuildable as written:** *anything that is not an ordinary file* admits a DIRECTORY, and the walk is `rglob`, so a literal implementation refuses every site with a `content/` folder — executed, `rglob` yields it with `is_file()` false. Both of INV-10's named fixtures pass such an implementation, so §7 caught it nowhere. **One lane found the new rule had two settlements against the untouchable list**: the dot-name bullet carved it out and the ordinary-file bullet did not, so a symlinked `CNAME` both refuses and does not. **One lane found §4.5 overclaiming**: it says staging inside `into` makes the last step *a rename*, and the move phase is one rename per file — a failure part-way leaves the files already moved at their final paths, which is the mixture that paragraph says undo must not produce. Stated as a residual window rather than closed; closing it is a design change, and §10 records that nothing checks it. **One lane found §6 has no row for a `fetch_previous` that cannot write** though the code raises at three sites. **Two came from lanes' open questions rather than findings, and both are real:** the dot-name test keyed on the FIRST segment, so `content/.DS_Store` — the one a real site acquires — published; widened to any segment, with the untouchable carve-out left on the first segment where the list's own semantics put it. And a dot-name the Builder starts emitting would fall off the untouchable list and refuse every publish permanently; recorded as a constraint PRESS-0008 inherits, with a §10 row. **Dismissed as immaterial:** §4.3 still calls the inline-content field's encoding undocumented where §8 records it measured; both reach the same decision and no conformer builds differently. |
 | 8 | 2026-09-08 | 3, cold — identical brief, scrubbed copy and packet rebuilt whole from disk and extended with `fetch_previous`'s own test and `design.md` § Where everything sits on disk. GitHub's live API still an unrunnable region; the stray rule still unbuilt, and the brief said so | 0 | 2 | 2 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text loop 1 wrote** — borderline rather than calm or violent, and both are one defect's two halves. **All three lanes found the same thing, the strongest signal available:** loop 1 gave §4.4 a carve-out saying neither stray test fires on an untouchable first segment, and updated INV-10's dot-name limb only — so INV-10 and §6 refused a symlinked `CNAME` outright while §4.4 required that publish to succeed, and INV-10's own fixtures reached only the limb that was right. A publish refused for good, remediable only outside the app. Both limbs now carry the carve-out and a symlinked-untouchable fixture joins the dot-name one. **One lane found a symlink to a DIRECTORY answering both of loop 1's sentences** with no precedence fixed; executed, such an entry is `is_symlink()` and `is_dir()` both, so testing for a directory first descends through the link and publishes files from outside the folder — which the same bullet forbids. Classification now precedes following. **Two came from lanes' open questions rather than findings.** §4.2 still said *two conditions on the handed folder are refused* where the stray rule makes three and §6 lists three; replaced with a pointer rather than a bumped number. And §4.3 named no status for the primary limit's header, while `_retry_hint` reads it only on 429 or 403 — an implementer reading it on a response that succeeded makes Pressless sleep after a request that worked. **Over the whole run, six of eleven verified findings fall inside the gated span**, so this was mostly gate rather than audit. **Three open questions resolved clean and are not counted** — `design.md`'s untouchable paragraph does say what §11 quotes, `.nojekyll` is on the measured list PRESS-0001 and `design.md` both carry, and §4.2's precondition list was the count above. **Routing: implementation.** |
 | 9 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk with `publisher.py` whole, the pacing and retry tests windowed, ADR-0002 and the design rules. GitHub's live API unrunnable; §4.3's pacing split declared unbuilt | 1 | 1 | 1 | 0 | **Three verified: two fixed, one surfaced. First loop of a new run**, armed by §4.3's blob/other pacing split (PRESS-0114). **All three lanes found the same defect**, one tagging it Q4: §4.3 defines two paces and INV-9 knew one, with no §10 row — so a flat second, an inverted split, or the pace applied AFTER each write all pass every named test, and the wait this split exists to remove stays. INV-9 now carries both values and a sequence assertion, because a count passes a flat pace and a set passes the wrong ordering. **Surfaced, not fixed (4a stop condition, a design decision):** §6 gives five rows the bare `PublishError` while requiring the Face to give each its own sentence; filed as PRESS-0116 and recorded in §10. **From lanes' open questions:** two read "550 in one hour … at 136 a minute" as self-contradictory — it is one rate-limit hour and a four-minute run, now said so, with the gap between 550 and a first publish's count stated rather than glossed. **Code-side, surfaced:** `_is_protected`'s docstring says `load` fixes a trailing slash; executed, `load` stores `CNAME/` verbatim and the spec is the accurate one. |
+| 10 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk, the surfaced PRESS-0116 decision named so it was not re-found | 2 | 1 | 0 | 0 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); tail empty. A VIOLENT cap — every one of the five landed on text this run or PRESS-0113 wrote**, so the review ends here and routes to implementation. **One lane: INV-10 said *neither an ordinary file nor a directory*, and a symlink to a directory answers `is_dir()`** — so the invariant the test is written from does not reach it, while §4.4 does. Executed: the shipped code refuses it, and every existing fixture symlinks to a FILE, so the gap was green. INV-10 and §6 now name the symlink first and the fixture list gains the directory case. **One lane: §4.3 said each retry waits *twice the one before*, and the code multiplies the FRESH hint** — they agree only while GitHub repeats itself, and the primary limit's hint is a shrinking countdown. **One lane: the Status line said *Implemented* while the pacing split is not built** — the same defect this document's loop 7 fixed, reintroduced by loop 9's own amendment. **Two came from lanes' open questions:** *the three slow writes* under-paced by the wrong ordering is only the TREE; and *GitHub asks for at least a second* beside *the second is not what GitHub requires* read as a contradiction, now split into advice and enforcement. **Also deleted: a case-fold clause of mine that decided nothing**, a leading dot having no case. |
