@@ -81,6 +81,13 @@ while the stakes are zero. Holds S2, S3, S4.
   image references to the picture mark. PRESS-0016 does not cover this -- it
   owns the picture mark through to the web-sized copy, not the one-time
   migration. Scope here widens accordingly.
+  Two decisions from the user (2026-09-08), both needed before this is built.
+
+  ROLLING is by SIZE, keeping exactly one old copy. Past a set size the log is renamed to a .1 file and a fresh one started. Bounded on disk forever, needs no clock, and the two files together always cover the recent past. Not by day: a single busy day is unbounded and it drags in date handling this does not otherwise need.
+
+  WHERE IT IS is shown as a LABEL, never as a full path. design.md's Errors section has the Face's Show details name the log file's location, and PRESS-0087's rule (decided 2026-09-07, with PRESS-0068 item 4) forbids a full path in anything printed or recorded -- because a full path can name the writer. The two collide, and the settlement is: Show details says something like "the Pressless folder, beside the program", with a button that copies the real path or opens the folder. The helper reaches it in one click, nothing identifying is on screen or in the log, and a screenshot he sends a stranger leaks nothing.
+
+  Owed with the build: design.md's Errors section says Show details holds "the technical text and the log file's location", which is now the label rather than the path. That is a direction change for PRESS-0011's builder, so design.md needs its own gate for it.
   **Layman:** A plain diary of what the app did, kept beside the settings, with nothing secret in it.
   Kind: implement.
   Source: design-2026-08-24 § Logging.
@@ -4801,6 +4808,15 @@ already-built code ships in whichever release comes next.
   rather than a defect: the comparison wants a hash per file rather than
   its bytes, and the upload wants streaming. Both alter the shape of the
   publish loop, and INV-4 pins how files are compared.
+  Decided by the user (2026-09-08): DEFER until packaging can measure
+  it. PRESS-0022 puts a built artefact on the Windows test box; measure
+  the real resident set there, with real photographs, and decide from
+  the number. The reasoning recorded because it is this project's own
+  habit: measurement has been right every time here and reasoning has
+  been wrong more than once, and this change alters INV-4, a settled
+  contract, which should not be spent on a guess. Effectively blocked-by
+  PRESS-0022 and PRESS-0016 -- not by anything either of them must
+  build, but by the measurement only they make possible.
   **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
@@ -5987,6 +6003,19 @@ already-built code ships in whichever release comes next.
   becomes real.
 
   Blocked-by: nothing, but PRESS-0011 is the caller that needs the answer.
+  Decided by the user (2026-09-08): give them their OWN TYPES. Four or
+  five small named failures beside the nine PRESS-0009 4.1 already
+  declares, so the Face can give each its own third part. The ground is
+  design.md's own Errors rule -- every message ends with what to do
+  next, and "an error that does not say this leaves him stuck holding a
+  fact" -- and for these five the next step genuinely differs: remove
+  the stray file, free disk space or fix permissions, fix the folder
+  setting, rebuild the site, retry or report. Under one shared type he
+  would get one generic next step for five different situations, which
+  is the failure that rule names. The alternative considered and not
+  taken: keep one type and correct 6's wording, since design.md writes
+  sentences per TYPE and a test walks that list -- smaller, but it buys
+  the smallness by dropping the promise for four of the five.
   **Layman:** Five different things that can stop a publish all look identical to the part that has to explain them to the writer.
   Kind: investigate.
   Source: review-contract 2026-09-08 PRESS-0009 loop 1, lane A.
