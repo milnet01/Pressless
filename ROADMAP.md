@@ -1271,6 +1271,29 @@ Publish again after fixing it works. Holds S1, S5, S6.
 
   The gate ran one loop, not two, by user instruction. Eleven verified
   findings, all fixed, none dismissed. No cold read has seen the fixes.
+  KNOWN COLLATERAL, unfixed (2026-09-09). Loop 1 fixed PRESS-0001 INV-8's
+  claim that "§4.4 names `os.name` as the discriminator". PRESS-0005 states
+  the identical sentence about its own §4.5, and PRESS-0001 § 11 says the
+  two carry one rule and "Neither document may state it alone" -- so the
+  documents now disagree, and the disagreement was introduced by fixing one
+  side. store.py ships `_is_windows()`, whose docstring says `os.name`
+  cannot be patched because pathlib branches on it, so PRESS-0005 is the
+  wrong half. (store.py's `os.name == "nt"` in the rename path is a
+  different question and is not this.)
+
+  Not fixed here because correcting it changes what a conformer builds and
+  re-arms rule 14's gate on PRESS-0005, which this session had no budget
+  for. A lane raised it as collateral it could not verify; the check was
+  run afterwards and it holds.
+
+  Also unfixed and smaller: PRESS-0001 § 11 says "§ Build and test's note
+  about the one test that does" -- the project CLAUDE.md names three
+  archive tests needing PRESSLESS_ARCHIVE, not one. Nothing builds
+  differently, so it is a check-doc-facts item rather than a gate one.
+
+  Both belong with this item's remainder -- Store, pages and packaging --
+  since fixing PRESS-0005's message rule and this sentence is one gate
+  rather than two.
   **Layman:** Error messages currently include the folder path on his computer, which names him. They will name the thing that failed instead.
   Kind: review-fix.
   Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
