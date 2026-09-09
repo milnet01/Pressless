@@ -297,7 +297,10 @@ here writes into the site folder.
 
 Reading opens one file and returns it. It writes nothing — no repair, no
 normalisation, no re-save of a file whose markup it finds untidy. A file
-that cannot be parsed raises `StoreError` naming the path.
+that cannot be parsed raises `StoreError` naming the page or furniture
+file by its own name, never by its path. `docs/design.md` § Logging puts that
+on the part that RAISES, and an `OSError` is reported by its reason rather
+than by its own words, which quote the path it failed on.
 
 `list_html` and `list_templates` read file names and open nothing, as
 `list_slugs` does — **and they filter as it does too.** PRESS-0005's INV-12
@@ -524,14 +527,14 @@ refusing at the write is where the caller still knows what it dropped.
 | What happens | What the Store does |
 |---|---|
 | One of the Store's own sub-folders is missing | Reading lists nothing; a write into it creates it, as PRESS-0005 has it for the entry folders. `photographs/` is the exception — no call here writes into it, so whoever puts an original there creates it: Import for the archive, PRESS-0016 afterwards |
-| The mount granted more than owner-only on a file being written | `StoreNotice` naming the file, and the write goes ahead. Every writer here shares PRESS-0005's atomic write, which reports it, so a page, a furniture file, a template and a comments file all carry PRESS-0005 INV-11's rule (§11) |
+| The mount granted more than owner-only on a file being written | `StoreNotice` naming the file by its own name, and the write goes ahead. Every writer here shares PRESS-0005's atomic write, which reports it, so a page, a furniture file, a template and a comments file all carry PRESS-0005 INV-11's rule (§11) |
 | The folder handed in is not a folder | `StoreError` naming it. That path is the caller's rather than the Store's, so a mistyped one is an error and never an empty listing |
 | No page or furniture file at that path | `StoreError` naming it. Unlike an absent comments file, absence here is not the ordinary case: a page the Builder asks for and cannot find is a fault rather than an empty set |
-| A page file is not valid UTF-8 | `StoreError` naming the path. It is not read with a replacement character, which would silently change his page on the next save |
+| A page file is not valid UTF-8 | `StoreError` naming the page by its own name. It is not read with a replacement character, which would silently change his page on the next save |
 | No comments file for a slug | `read_comments` returns `()`. Most entries have none, so this is the ordinary case rather than an error, and the Builder needs no separate existence call |
-| A comments file is not valid JSON | `StoreError` naming the path. It is never rewritten into something parseable |
-| A comments file holds a field the record does not have | `StoreError` naming the path and the field. Unlike an entry's unknown header field, which ADR-0001 keeps, an unexpected field here is most likely one this spec forbids |
-| A comments file is missing one of the record's fields | `StoreError` naming the path and the field. The pair with the row above: a record is the whole set and nothing else, so neither an extra nor an absence is read past |
+| A comments file is not valid JSON | `StoreError` naming the entry the comments belong to. It is never rewritten into something parseable |
+| A comments file holds a field the record does not have | `StoreError` naming the entry the comments belong to, and the field. Unlike an entry's unknown header field, which ADR-0001 keeps, an unexpected field here is most likely one this spec forbids |
+| A comments file is missing one of the record's fields | `StoreError` naming the entry the comments belong to, and the field. The pair with the row above: a record is the whole set and nothing else, so neither an extra nor an absence is read past |
 | A reply points at a parent that is absent | `DanglingReply`, and nothing is written (INV-5) |
 | A comment's date carries a time zone | `StoreError` naming the comment, and nothing is written (INV-12) |
 | A comment's identifier is empty, or two are equal | `StoreError` naming it, and nothing is written (INV-13) |

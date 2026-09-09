@@ -223,7 +223,7 @@ live repository root.
 | State | Result |
 |---|---|
 | No file at `path_for(folder)` | `NotSetUp` |
-| File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the file |
+| File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the settings file by what it is |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
 | Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as | `SettingsError`, naming the key |
@@ -238,6 +238,15 @@ the Builder meets it later, with less to say about it. A relative
 whatever directory the process happens to be in, which differs between the
 Face's server and a command-line run, so the finished site lands in two
 places.
+
+**No message any of these carries names the path or the repository in
+`owner/name` form.** `docs/design.md` § Logging puts that on the part that
+RAISES, so it is this module's rule. The settings file is named by what it is;
+a repository is named by its short half. **An `OSError` is reported by its
+reason and never by its own words** — a stock file error quotes the path it
+failed on. **The values `load()` hands back are not messages and are
+untouched**: § Logging's own carve-out is the field he typed it into, and the
+Face shows him the folder he picked and the repository he typed.
 
 **Nothing in the failing rows writes.** A file we could not read is a file
 we do not overwrite: the writer's settings are recoverable by hand only as
@@ -415,8 +424,8 @@ which is the writer's choice of somewhere else and is stored absolute.
 - **INV-8** — after `save()` returns, `path_for(folder)` is readable and
   writable by its owner and by nobody else, on a filesystem that enforces
   POSIX modes. **Where the mount granted a mode wider than owner-only — any
-  group or other bit set — `save()` emits a `SettingsNotice` naming the file
-  and completes.** Settings holds no
+  group or other bit set — `save()` emits a `SettingsNotice` naming the
+  settings file by what it is, and completes.** Settings holds no
   secret — §4.5 keeps them out — so refusing would stop the writer using
   Pressless from a memory stick to protect nothing; Credentials does
   refuse (PRESS-0042), because what it holds is one.
@@ -489,8 +498,9 @@ which is the writer's choice of somewhere else and is stored absolute.
   wrong *shape*; existence is not checked at all, because checking it needs
   the network. The Publisher is where a well-formed name with nothing behind
   it surfaces.
-- **The file or its folder cannot be written.** `save()` reports whatever the
-  write raises, as a `SettingsError` naming the path, and does not probe
+- **The file or its folder cannot be written.** `save()` reports the reason
+  the write raises, as a `SettingsError` naming the settings file by what it
+  is, never its path or the error's own words, and does not probe
   the target's writability first. **§4.4's descriptor read is not that
   probe**: it reads what the TEMPORARY was granted, after it exists, and
   never asks whether the target can be written. **A read-only settings *file* is not that state on

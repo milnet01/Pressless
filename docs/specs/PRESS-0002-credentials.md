@@ -210,10 +210,18 @@ strictness**: the stored version must be the integer this build writes, so
 | Windows, with `store == "file"` | `NoStore` |
 | The folder cannot hold a file private to one user | `NoStore` |
 | The store cannot be used at all | `CredentialError` |
-| The fallback file's folder is missing or cannot be written | `CredentialError`, naming the path |
+| The fallback file's folder is missing or cannot be written | `CredentialError`, naming the credentials file by what it is |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
 | The existing file parses to a non-empty mapping carrying no `version`, or one that is not the integer this build writes | `CredentialError` — saving over it would relabel a file this build did not write, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
+
+**No message any of these carries names the path, the account, or the
+secret.** `docs/design.md` § Logging puts that on the part that RAISES rather
+than on the Face, so it is this module's rule and not a downstream one. The
+credentials file is named by what it is, never by where it sits; a secret is
+named by what it is for. **An `OSError` is reported by its reason and never by
+its own words** — a stock file error quotes the path it failed on, which is the
+thing being kept out.
 
 **Every one of these is typed, and that is a requirement rather than tidiness.**
 `docs/design.md` § Errors has parts raise typed failures and a test walk the

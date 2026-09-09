@@ -1218,6 +1218,37 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
 
+- 📋 [PRESS-0117] **Every part's failure messages meet the no-paths rule, not just Credentials and Settings.**
+  docs/design.md § Logging forbids a credential, an account name or a
+  full filesystem path in anything Pressless shows or writes down, and
+  puts the obligation on the part that RAISES rather than on the Face.
+  That rule was gated and settled 2026-09-08.
+
+  PRESS-0068 item 4 records the rule as applying to credentials.py and
+  settings.py. Measured 2026-09-09: store.py, publisher.py and
+  insights.py interpolate a path into failure messages too, so the
+  surface is every part that raises. A rule stated absolutely and applied
+  to two of five modules cannot be read by anyone.
+
+  Four specs pin the path INTO the contract and must be amended before
+  the code changes: PRESS-0001 § 4 and its INV-8, PRESS-0002 § 4.3,
+  PRESS-0005 and PRESS-0009 INV-10 each say a failure names the path or
+  the file. PRESS-0019 pins nothing, so Insights is a code change alone.
+
+  Substitution decided by the user 2026-09-09: name the thing, not where
+  it is. An entry is named by its slug, the settings file and the
+  credentials file by what they are, a repository by its short name. The
+  typed failure carries no hidden path field either -- a path stashed on
+  an exception object is PRESS-0087's shape, and the Face's copy and open
+  buttons are about the Pressless folder, which the Face knows without
+  being told.
+
+  Closes PRESS-0068 item 4, which is that item's last open half.
+  **Layman:** Error messages currently include the folder path on his computer, which names him. They will name the thing that failed instead.
+  Kind: review-fix.
+  Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
+  Lanes: Credentials, Settings, Store, Publisher, Insights.
+
 ## 0.3.0 — he writes in Pressless
 
 The editor box, styled as the finished page, with the preview beside it, and one

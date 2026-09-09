@@ -401,7 +401,7 @@ without taking the publish away.
 **Before any move**, a hand-renamed `.TXT` alone on Linux leaves an
 address `exists` reports as taken whose file `read` cannot open, since
 `path_for` composes `<slug>.txt`, and `read` raises `EntryNotFound`
-naming the path it looked for. **After a move it is the other way
+naming the slug it looked for. **After a move it is the other way
 about**: the destination holds the moved `.txt`, which reads, and the
 `.TXT` beside it is what the notice names. Either way nothing writes
 over his file, and the repair is the writer's, as §4.4 already says of
@@ -411,7 +411,7 @@ a name that disagrees with its `Slug` header.
 Its slug is legal, `path_for` accepts it, and §4.3 returns it once, so
 the listing rule has nothing to report — that rule is about a NAME the
 Store will not accept, never about a file it cannot find. What the
-writer meets is `read`'s `EntryNotFound` naming the path it looked
+writer meets is `read`'s `EntryNotFound` naming the slug it looked
 for, which is §4.4's own carve-out, and INV-13's notice where a move
 strands one.
 
@@ -424,8 +424,15 @@ nothing here writes into the site folder.
 `read` opens one file and returns an `Entry`. It writes nothing —
 not a repair, not a normalisation, not a re-save of a file whose
 header it found untidy. A file that cannot be parsed raises
-`StoreError` naming the path; it is never rewritten into something
-parseable.
+`StoreError` naming the entry by its slug; it is never rewritten into
+something parseable.
+
+**No message raised here names a full path.** `docs/design.md` § Logging
+puts that on the part that RAISES rather than on the Face, so it is this
+module's rule. An entry is named by its slug, which is what the writer calls
+it and what he typed. **An `OSError` is reported by its reason and never by
+its own words** — a stock file error quotes the path it failed on, which is
+the thing being kept out.
 
 `list_slugs` returns the slugs in one folder, sorted, read off the
 file names rather than by opening anything. **Every name it returns is
@@ -687,7 +694,7 @@ is true of a template is PRESS-0006's (§9).
   writable by its owner and by nobody else, on a filesystem that
   enforces POSIX modes. **Where the mount granted a mode wider than
   owner-only — any group or other bit set — `write` emits a
-  `StoreNotice` naming the file and completes.** His own words
+  `StoreNotice` naming the entry by its slug, and completes.** His own words
   are not a secret, and refusing would stop him saving on a memory
   stick, which is the worse outcome; Credentials still refuses
   (PRESS-0042), because what it holds is one.
@@ -826,15 +833,15 @@ is true of a template is PRESS-0006's (§9).
   rather than the caller's, so a fresh install needs no setup step for
   them — which is what lets Import write the whole archive in one go.
 - **A file that cannot be parsed** — no blank line, a header line with
-  no colon, a missing `Slug` or `Date`. `StoreError` naming the path.
-  Never repaired in place (INV-2).
+  no colon, a missing `Slug` or `Date`. `StoreError` naming the entry by
+  its slug. Never repaired in place (INV-2).
 - **A file whose name does not match its `Slug` header**, which a
   hand-rename produces. `StoreError` naming both, per §4.4. Nothing is
   moved and nothing is rewritten; the repair is the writer's, and it
   is either name.
 - **A file whose `Slug` header is not a legal slug**, which a
-  hand-created file produces. `StoreError` naming the path and the
-  slug. §4.2's rule is stated of a slug rather than only of one being
+  hand-created file produces. `StoreError` naming the file's own name and
+  the slug it carries. §4.2's rule is stated of a slug rather than only of one being
   written, so it is refused when the file is opened; without that the
   entry read and only its save was refused.
 - **A slug whose file name is too long for the platform.** Distinct
@@ -875,7 +882,8 @@ is true of a template is PRESS-0006's (§9).
   an exFAT, NTFS, CIFS or FUSE mount the writer chose, on a system whose
   own filesystem does enforce modes. **Not Windows, where none does and
   INV-11 says why.** `write`
-  completes and emits a `StoreNotice` naming the file (INV-11). Distinct
+  completes and emits a `StoreNotice` naming the entry by its slug
+  (INV-11). Distinct
   from the no-hard-links case above, which costs him the two moves;
   this costs him nothing but a privacy the mount cannot give.
 
