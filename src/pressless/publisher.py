@@ -277,7 +277,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         # path as a deletion the writer asked for, and the wipe is reported
         # as a successful publish (PRESS-0043).
         raise SiteFolderMissing(
-            f"{folder} is not a directory, so there is nothing to publish"
+            "the site folder is not a directory, so there is nothing to publish"
         )
 
     session = _Session(transport or _Urllib(), token)
@@ -314,8 +314,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         # build is never empty, and §3 decision 1 makes the commit
         # unrecoverable from inside Pressless (PRESS-0043).
         raise SiteWouldBeEmptied(
-            f"publishing {folder} would delete every file on the site and "
-            f"add none, so it is refused"
+            "publishing the site folder would delete every file on the site "
+            "and add none, so it is refused"
         )
 
     entries = []
@@ -421,7 +421,8 @@ def fetch_previous(settings: Settings, token: str, into: Path,
         # A full disk, or a folder that cannot be written. §4.1 says every
         # failure is one of the types above (PRESS-0073).
         raise FetchNotWritten(
-            f"the previous state could not be written to {into}: {exc}"
+            f"the previous state could not be written to the fetch area: "
+            f"{_why(exc)}"
         ) from exc
 
     try:
@@ -450,8 +451,8 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                 target.write_bytes(_content_of(blob))
             except OSError as exc:
                 raise FetchNotWritten(
-                    f"the previous state could not be written to {into}: "
-                    f"{exc}"
+                    f"the previous state could not be written to the fetch "
+                    f"area: {_why(exc)}"
                 ) from exc
             written.append(path)
 
@@ -464,7 +465,8 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                 os.replace(staging / path, into / path)
         except OSError as exc:
             raise FetchNotWritten(
-                f"the previous state could not be written to {into}: {exc}"
+                f"the previous state could not be written to the fetch area: "
+                f"{_why(exc)}"
             ) from exc
     finally:
         shutil.rmtree(staging, ignore_errors=True)
@@ -605,6 +607,17 @@ def _repo_url(repository: str, suffix: str) -> str:
     return f"{base}/{suffix}" if suffix else base
 
 
+def _why(exc: OSError) -> str:
+    """The reason an OSError carries, never its own words.
+
+    `str(exc)` on a stock file error quotes the path it failed on, and
+    `docs/design.md` § Logging forbids a full filesystem path in anything
+    Pressless shows or writes down. `strerror` is the reason alone. It is
+    absent on an OSError raised without one, so the type stands in.
+    """
+    return exc.strerror or type(exc).__name__
+
+
 def _segment(value: str) -> str:
     """A value safe to put in a URL path (PRESS-0069).
 
@@ -698,8 +711,8 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, bytes]
             # folder; the bare OSError was neither of §4.1's types
             # (PRESS-0073).
             raise PublishError(
-                f"{path} is in the site folder but could not be read: "
-                f"{exc}"
+                f"{relative} is in the site folder but could not be read: "
+                f"{_why(exc)}"
             ) from exc
         files[relative] = content
     return files

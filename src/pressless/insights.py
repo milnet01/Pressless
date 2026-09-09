@@ -263,8 +263,8 @@ def read(settings: Settings, token: str, folder: Path, *,
         # published in full, so a cache kept inside it would put country-level
         # readership on a public site (PRESS-0056).
         raise InsightsError(
-            f"{folder} is inside the site folder, which is published in full, "
-            f"so the cache may not be kept there"
+            "the cache folder is inside the site folder, which is published "
+            "in full, so the cache may not be kept there"
         )
 
     transport = client if client is not None else _Urllib()
