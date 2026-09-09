@@ -53,6 +53,21 @@ class CredentialError(Exception):
     """A store we will not act on."""
 
 
+def _why(exc: OSError) -> str:
+    """The reason an OSError carries, never its own words.
+
+    `str(exc)` on a stock file error quotes the path it failed on, and
+    `docs/design.md` § Logging forbids a full filesystem path in anything
+    Pressless shows or writes down. `strerror` is the reason alone. It is
+    absent on an OSError raised without one, so the type stands in.
+
+    Deliberately duplicated in the parts that need it rather than shared:
+    §5 INV-1 has this module import no other part of Pressless, and a
+    shared helper would be a new part the design does not have.
+    """
+    return exc.strerror or type(exc).__name__
+
+
 def choose() -> Choice:
     """Ask this machine which store it has. Setup's question, asked once.
 
@@ -71,7 +86,7 @@ def choose() -> Choice:
         # cannot arise from this call, so §4.2's discriminator is
         # untouched (PRESS-0050).
         raise CredentialError(
-            f"this machine's credential store could not be loaded "
+            "this machine's credential store could not be loaded "
             f"({type(exc).__name__})"
         ) from exc
 
@@ -90,8 +105,9 @@ def choose() -> Choice:
         return Choice(_FILE, _FILE)
     except Exception as exc:
         raise CredentialError(
-            f"this machine's credential store could not be used: {exc}"
-        ) from exc
+            "this machine's credential store could not be used: "
+            f"{type(exc).__name__}"
+        ) from None
 
     answering = None
     try:
@@ -142,7 +158,7 @@ def write(store: str, folder: Path, account: str, secret: str) -> None:
             # a traceback and by PRESS-0011's rolling log, which would carry
             # the value there instead (PRESS-0051).
             raise CredentialError(
-                f"this machine's credential store could not be written "
+                "this machine's credential store could not be written "
                 f"({type(exc).__name__})"
             ) from None
         return
@@ -215,7 +231,7 @@ def _read_keyring(account: str) -> str:
         # (PRESS-0100). `from None` because __cause__ is formatted by a
         # traceback and by PRESS-0011's rolling log.
         raise CredentialError(
-            f"this machine's credential store could not be read "
+            "this machine's credential store could not be read "
             f"({type(exc).__name__})"
         ) from None
     if not isinstance(answer, str):
@@ -225,7 +241,7 @@ def _read_keyring(account: str) -> str:
         # this message, and above all not CALLED — calling it opens a hidden
         # password prompt that hangs the app.
         raise NotStored(
-            f"this machine's credential store holds nothing for {account!r}"
+            "this machine's credential store holds nothing for that secret"
         )
     return answer
 
@@ -234,7 +250,7 @@ def _read_file(folder: Path, account: str) -> str:
     target = folder / FILE_NAME
     raw = _read_mapping(target)
     if raw is None:
-        raise NotStored(f"there is no {target}")
+        raise NotStored("there is no credentials file")
 
     version = raw.get("version")
     # Type-strict, as PRESS-0001 pins it: `true == 1` and `1.0 == 1` in
@@ -242,17 +258,19 @@ def _read_file(folder: Path, account: str) -> str:
     # (PRESS-0100). One on-disk shape, one acceptance set.
     if type(version) is not int or version != FILE_VERSION:
         raise CredentialError(
-            f"{target} has version {version!r}; this Pressless reads "
-            f"version {FILE_VERSION}"
+            f"the credentials file has version {version!r}; this "
+            f"Pressless reads version {FILE_VERSION}"
         )
 
     secrets = raw.get("secrets")
     if not isinstance(secrets, dict):
-        raise CredentialError(f"{target} is missing secrets, or it is not an object")
+        raise CredentialError(
+            "the credentials file is missing secrets, or it is not an object"
+        )
 
     value = secrets.get(account)
     if not isinstance(value, str):
-        raise NotStored(f"{target} holds nothing for {account!r}")
+        raise NotStored("the credentials file holds nothing for that secret")
     return value
 
 
@@ -279,9 +297,9 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         carried_version = carried.get("version")
         if type(carried_version) is not int or carried_version != FILE_VERSION:
             raise CredentialError(
-                f"{target} has version {carried_version!r}; this Pressless "
-                f"writes version {FILE_VERSION}, and saving over it would "
-                f"relabel a file written by another"
+                f"the credentials file has version {carried_version!r}; "
+                f"this Pressless writes version {FILE_VERSION}, and saving "
+                "over it would relabel a file written by another"
             )
     existing = carried.get("secrets")
     data = dict(carried)
@@ -300,7 +318,9 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
             dir=str(folder), prefix=".credentials-", suffix=".tmp"
         )
     except OSError as exc:
-        raise CredentialError(f"{target} could not be written: {exc}") from exc
+        raise CredentialError(
+            f"the credentials file could not be written: {_why(exc)}"
+        ) from exc
 
     # ADR-0003 states a CAPABILITY test, so the mode is read off the
     # descriptor rather than inferred from the platform. mkstemp ASKS for
@@ -313,14 +333,16 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
     except OSError as exc:
         os.close(handle)
         _discard(temporary)
-        raise CredentialError(f"{target} could not be written: {exc}") from exc
+        raise CredentialError(
+            f"the credentials file could not be written: {_why(exc)}"
+        ) from exc
     if granted & 0o077:
         os.close(handle)
         _discard(temporary)
         raise NoStore(
-            f"{folder} cannot hold a file private to one user: a new file "
-            f"there is mode {granted:03o}, so the key would be readable by "
-            f"others on this machine"
+            "Pressless's own folder cannot hold a file private to one "
+            f"user: a new file there is mode {granted:03o}, so the key would "
+            "be readable by others on this machine"
         )
 
     try:
@@ -337,7 +359,9 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         os.replace(temporary, target)
     except OSError as exc:
         _discard(temporary)
-        raise CredentialError(f"{target} could not be written: {exc}") from exc
+        raise CredentialError(
+            f"the credentials file could not be written: {_why(exc)}"
+        ) from exc
     except BaseException:
         _discard(temporary)
         raise
@@ -362,8 +386,8 @@ def _read_ours(target: Path) -> str:
         owner = getattr(os, "getuid", None)
         if owner is not None and os.fstat(handle).st_uid != owner():
             raise CredentialError(
-                f"{target} is owned by another user, so it is not the file "
-                f"Pressless wrote"
+                "the credentials file is owned by another user, so it is "
+                "not the file Pressless wrote"
             )
     except BaseException:
         os.close(handle)
@@ -384,14 +408,20 @@ def _read_mapping(target: Path) -> dict | None:
     except FileNotFoundError:
         return None
     except OSError as exc:
-        raise CredentialError(f"{target} could not be read: {exc}") from exc
+        raise CredentialError(
+            f"the credentials file could not be read: {_why(exc)}"
+        ) from exc
 
     try:
         raw = json.loads(text)
     except (ValueError, UnicodeDecodeError) as exc:
-        raise CredentialError(f"{target} is not valid JSON: {exc}") from exc
+        raise CredentialError(
+            f"the credentials file is not valid JSON: {exc}"
+        ) from exc
     if not isinstance(raw, dict):
-        raise CredentialError(f"{target} holds {type(raw).__name__}, not an object")
+        raise CredentialError(
+            f"the credentials file holds {type(raw).__name__}, not an object"
+        )
     return raw
 
 

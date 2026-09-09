@@ -1,7 +1,7 @@
 # PRESS-0001 — Settings: what is true of this machine, and nothing else
 
 **Status:** accepted (2026-09-04). A third run of two cold-eyes loops, both folded in; the tail is empty. A violent cap — a majority of the last loop’s findings landed on text the run itself wrote, so the review ends here and the document routes to implementation rather than to a further gate. What the run mostly did was audit: about one finding in ten falls inside the change that armed it.
-**Amended 2026-09-07, before implementation**, on a decision the user
+**Amended 2026-09-07 and since implemented**, on a decision the user
 took: where the filesystem granted a wider mode than `mkstemp` asked
 for, `save()` says so once and completes rather than refusing. That
 changes direction, so the gate re-armed and ran to the spec cap of 2 —
@@ -239,14 +239,19 @@ whatever directory the process happens to be in, which differs between the
 Face's server and a command-line run, so the finished site lands in two
 places.
 
-**No message any of these carries names the path or the repository in
-`owner/name` form.** `docs/design.md` § Logging puts that on the part that
-RAISES, so it is this module's rule. The settings file is named by what it is;
-a repository is named by its short half. **An `OSError` is reported by its
-reason and never by its own words** — a stock file error quotes the path it
-failed on. **The values `load()` hands back are not messages and are
-untouched**: § Logging's own carve-out is the field he typed it into, and the
-Face shows him the folder he picked and the repository he typed.
+**No message this module raises names a path, an account, or the repository
+in `owner/name` form.** The rule is the module's rather than this table's:
+`docs/design.md` § Logging puts it on the part that RAISES, and `save()`'s
+read-back failures carry it exactly as `load()`'s do. The settings file is
+named by what it is; a repository is named by its short half. **An `OSError`
+is reported by `strerror`, never by its own words** — a stock file error
+quotes the path it failed on, and `str(exc)` puts it straight back. **A shape
+refusal names the key and never the value**: `site_folder` is a path and
+`repository` is `owner/name`, so quoting what he typed puts both forbidden
+things into the message reporting them. **The values `load()` hands back are
+not messages and are untouched**: § Logging's carve-out is the field he typed
+it into, and the Face shows him the folder he picked and the repository he
+typed.
 
 **Nothing in the failing rows writes.** A file we could not read is a file
 we do not overwrite: the writer's settings are recoverable by hand only as
@@ -290,8 +295,9 @@ platform, read at call time through a `_is_windows()` helper**, as
 `credentials.py` already does and for the reason its docstring gives — so a
 test can patch it. Measured while implementing: `os.name` cannot be patched in
 a test without breaking `pathlib`, which branches on it to choose a path
-class. PRESS-0005 §4.5 names the same seam and §11 requires the two to agree. **The capability rule governs the owner-only test,
-never this suppression.**
+class. PRESS-0005 §4.5 names the same seam and §11 requires the two to agree. **The capability rule governs the owner-only test
+and the ordinary-save row, never this suppression.** Those two rest on what
+the mount grants; the suppression patches the helper and rests on nothing.
 
 Keys `load()` did not recognise are carried through unchanged, **at the top
 level only**: `credentials` is rebuilt from the dataclass, so a stranger key
@@ -450,13 +456,13 @@ which is the writer's choice of somewhere else and is stored absolute.
   so run from exFAT or CIFS it would report a breach of a rule this document
   does not make there. Windows fails that same check, so it needs no clause of
   its own.
-  **The notice half is tested separately and never skips.** The grant is
+  **The three patched rows never skip.** The grant is
   read off the descriptor, so a test that makes that read report a wider
   mode exercises the branch on any filesystem. Without one, the half of
   this rule that fires on a non-enforcing mount would be unfalsifiable on
   exactly the machines that enforce modes correctly — which is every
   machine the suite normally runs on.
-  **Four rows, and none of them is optional.** One patches the grant
+  **Five rows, and none of them is optional.** One patches the grant
   wider and asserts the notice. One saves ordinarily on an enforcing mount
   and asserts NO notice — without it a condition that is inverted, or keyed
   on anything but the grant, warns on every save and stays green. One
@@ -467,6 +473,11 @@ which is the writer's choice of somewhere else and is stored absolute.
   asserts no notice** — the only case that separates the two candidate
   predicates, since a `0644` fixture passes against either. A mutation probe
   is what found that: with a `0644` case alone, `granted != 0o600` survived.
+  **And one asserts what the notice SAYS** — that its text carries neither
+  the settings file's path nor the folder holding it. Without that row the
+  naming clause above cannot fail, and the shipped
+  `::test_a_wider_grant_is_reported` asserts its opposite: that the path IS
+  in the notice.
   *Breaks when:* an implementer opens the target directly, or carries the
   old file's mode onto the new one to preserve what the writer chose; or
   refuses the save on a wider grant, which is the branch Credentials
@@ -476,8 +487,9 @@ which is the writer's choice of somewhere else and is stored absolute.
   observed, with no check scheduled today. **It is outside the notice
   half too**, and this is the reason: `mkstemp` never grants `0600`
   there, so a notice keyed on the grant would fire on every save and
-  carry no information. §4.4 names `os.name` as the discriminator, since
-  the grant cannot tell the two cases apart.
+  carry no information. §4.4 names the platform, read through
+  `_is_windows()`, as the discriminator, since the grant cannot tell the two
+  cases apart.
 
 ## 6. Failure modes
 
@@ -590,7 +602,8 @@ loading or saving does anything.
 | INV-5 | `tests/test_settings.py::test_save_is_atomic` |
 | INV-6 | `tests/test_settings.py::test_field_names_are_the_documented_set` |
 | INV-7 | `tests/test_settings.py::test_only_touches_its_own_file` |
-| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_save_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.4's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit |
+| INV-8 | `tests/test_settings.py::test_a_saved_file_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_save_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. The first and third patch what they need; `::test_an_ordinary_save_emits_no_notice` takes `tests/_mode_support.py`'s guard, because its condition is the mount. The second is what stops an inverted or over-broad condition passing; the third exercises §4.4's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit. `::test_the_notice_names_no_path` is the fifth row, holding the naming clause |
+| §4.3's message rule — no path, no account, no `owner/name` | `tests/test_settings.py::test_the_notice_names_no_path` for the notice. **Nothing walks `load()`'s and `save()`'s own messages**, so a `SettingsError` could name the path and this suite stays green. PRESS-0117's `tests/test_failure_messages.py` walks the Publisher and Insights and does not reach this module |
 | INV-8's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | The key names other parts bind to (§4.1) | **half** — INV-6 fails on a rename here, so it cannot happen by accident. Nothing makes the consuming part follow: each reads the key independently, and a shared constant would be a part depending on Settings' internals, which § What may depend on what rule 7 forbids. PRESS-0008 is the first consumer that would notice |
 | The untouchable list actually protecting the repository root (§2) | **nothing here** — Settings holds the list and cannot check it is obeyed; the Publisher is where a breach shows, tracked by PRESS-0009 |
@@ -620,9 +633,9 @@ loading or saving does anything.
   document may state it alone. **INV-8's wider-grant notice is part of
   that rule** and INV-11 carries the mirror; both were amended together
   (PRESS-0097).
-- **PRESS-0011 owns what a `SettingsNotice` looks like to the writer.**
-  §4.1 fixes the category and the moment one is emitted; no notice's
-  wording is a contract.
+- **PRESS-0011 owns how a `SettingsNotice` READS.** §4.1 fixes the category
+  and the moment one is emitted, and INV-8 fixes what it may not name. The
+  wording beyond that is not a contract.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
@@ -639,3 +652,4 @@ loading or saving does anything.
 | 7 | 2026-09-06 | 3, cold — identical brief, packet rebuilt whole from disk with `docs/design.md` GIVEN WHOLE (loop 6's window stopped mid-rule 4 and four lane open questions were that gap), plus the PRESS-0042 bullet and `credentials.py`'s capability check | 0 | 2 | 0 | 3 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A VIOLENT cap — three of the five landed on text loop 6 wrote**, each anchor checked against that loop's ledger rather than recall. **All three lanes found the same one:** INV-7's *Test:* clause never prescribed a file Settings did not write, so the addition-rule half had no falsifier — and loop 6 had seeded exactly such a file in the shipped test while leaving the clause and its "runs in an empty folder" note untouched, so the note was now false of the test it describes. **The sharpest was loop 6's own scoping fix eating itself:** INV-8 was narrowed to "a filesystem that enforces POSIX modes" while its test still skipped on `os.name`, which cannot see a mount — run from exFAT or CIFS the suite would report a breach of a rule the document does not make there. The guard is now the capability `mkstemp` was granted, read off the descriptor as Credentials reads it (PRESS-0042), shared in `tests/_mode_support.py` and stated in PRESS-0005 INV-11 too. Loop 6 also left INV-8 claiming PRESS-0022 *confirms* the Windows outcome where §6 and §10 both say it is only where it COULD be observed, with no check scheduled. **Two pre-existing:** INV-5 prescribed asserting the replace destination equals `path_for(folder)`, which passes when both are wrong together — the shipped test already pinned the literal and the spec never asked; and §4.2's UTF-8 half had no falsifier while its `\n` twin did, the cited test raising `SettingsError` under either encoding. A new test asserts the encoding at the call, and mutation killed both a dropped read-side and write-side `encoding=`. |
 | 8 | 2026-09-07 | 3, cold — genre pinned `spec`; packet carried `save()` and its helpers whole, `credentials.py::_write_file`, `tests/_mode_support.py` whole and PRESS-0005's §4.5, INV-11 and §11. Windows declared an unrunnable region | 2 | 2 | 2 | 1 | **Seven verified, seven fixed; two dismissed as unverified. Armed by the wider-grant amendment, whose own mirror defects were swept before dispatch.** **Two lanes found the sharpest, and it reaches both documents**: the qualifier "on a system whose own filesystem enforces modes" named no observable, and the grant is IDENTICAL in the case that must notice and the case that must not — so the implementer had to invent a discriminator, and PRESS-0005's `write` had to invent the same one under a §11 saying neither may state the rule alone. One lane added that probing for a second signal would breach INV-7. `os.name` is now named in both. **The same lane found "wider" undefined**, with the two precedents disagreeing: measured, `credentials.py` tests `granted & 0o077` and `_mode_support.py` tests `granted != 0o600`, which differ on `0o700` and `0o400`; both specs now pin Credentials'. **And a pre-existing cross-platform defect it could not run and I could**: `site_folder` is absolute by the RUNNING platform's rule — `PureWindowsPath("/home/w/site").is_absolute()` is `False` — while §4.2 calls the file a shape carried between machines, so a settings file carried across is refused rather than loaded. §4.2 now says the portability is the bytes and never the values. **Three more:** INV-8 claimed §10 recorded its Windows half and §10 had no such row; "never skips" contradicted the Windows exclusion against §7's run-everywhere rule; and nothing falsified the NEGATIVE — an inverted condition would warn on every save and stay green, so a second test row is named. **Two dismissed as unverified, both my packet's fault:** a lane predicted the Publisher deleting an untouchable entry with a trailing slash, and PRESS-0009 §4.4 carries that tolerance with a named test; another predicted `settings.json` had no breaking-surface record, and `versioning-overrides.md` already carries one. Both lanes flagged the gap themselves, and a third lane looked PRESS-0009 up and reported it correct. **1b yield: two defects, both mine** — a `credentials.py` window opening mid-function and a `settings.py` window opening mid-expression, both re-cut before dispatch. |
 | 9 | 2026-09-07 | 3, cold — identical brief; packet rebuilt whole from disk and extended with `load()` whole and windows on the two neighbours loop 8's dismissals had needed | 1 | 2 | 1 | 0 | **Four verified, four fixed, none dismissed; one collateral in PRESS-0002. Cap reached (2 for a spec); the tail is empty. A VIOLENT cap — all four landed on text this run wrote**, so the review ends and the document routes to implementation. **All three lanes found the same defect**, and it was a self-contradiction one loop old: INV-8 said the notice test "asserts the opposite" on Windows while §10's new row said nothing checks it and the paragraph twelve lines down puts Windows outside the notice half. Two lanes proposed opposite repairs; the branch is settled as OBSERVABLE, because §4.4 makes `os.name` the discriminator and a test can patch it, so the alternative would leave an omitted platform guard unfalsifiable. §10 now names three notice rows and separates the branch from its unobservable premise. **One lane found the `warnings` justification false for the callers that matter** — measured, the default filter shows a repeat once but a CAPTURING caller sees every one, and the Face must capture to render while `pytest.warns` captures to assert. So "repeats nothing" was true of nobody who sees a notice; both specs now say one notice per occasion and leave suppression to the caller. **Two lanes found §6 still saying `save()` "does not probe permissions first"** after §4.4 gave it a descriptor read, which taken literally drops the notice branch entirely; scoped to the target's writability. **And resolving a lane's open question found INV-8 crediting Credentials with the skip guard's predicate**, where the guard is `!= 0o600` and Credentials is `& 0o077` — harmless until loop 8 made that distinction load-bearing. **Collateral: PRESS-0002 quoted the changed §6 sentence verbatim** and drew a probe-versus-no-probe contrast that is now false in substance — `save()` reads the same grant and differs in refusing versus reporting. Corrected there. **1b yield: one defect, mine** — a window opening mid-expression, re-cut; and captions naming loop 8's conclusions, removed before dispatch as Phase 5 forbids. |
+| 10 | 2026-09-09 | 3, cold — genre pinned `spec`; loop 1 of a new run, armed by PRESS-0117 giving §4.3 a message rule (no path, no account, no `owner/name`). Packet carried `docs/design.md` § Errors and § Logging quoted whole plus the module's message-bearing lines. **The packet asserted the code was not yet written; it ships, and all three lanes said so.** Finding 3 exists only because they checked it anyway | 3 | 3 | 0 | 1 | **Six verified, six fixed, none dismissed.** Stopped at loop 1 by instruction — no second loop, so this is surfaced-and-fixed rather than converged, and no cold read has seen the fixes. **Three lanes each found INV-8 naming `os.name` where §4.4 rules `os.name` out by name and the shipped code uses `_is_windows()`** — an implementer would branch on a seam §10's own prescribed test cannot patch. **Three found `never skips` against the shipped `_require_posix_modes` guard.** **The gate's own trigger was the largest finding: the new rule had no falsifier anywhere, and `::test_a_wider_grant_is_reported` asserted its opposite — that the path IS in the notice.** Fixed by a fifth INV-8 row, `::test_the_notice_names_no_path`, proved red against the shipped message. Also widened the rule from §4.3's `load()` table to every message the module raises, added the account, named `strerror` outright, narrowed §11's *no notice's wording is a contract*, and corrected the status block's *before implementation* |

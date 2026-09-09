@@ -1244,6 +1244,33 @@ Publish again after fixing it works. Holds S1, S5, S6.
   being told.
 
   Closes PRESS-0068 item 4, which is that item's last open half.
+  Progress (2026-09-09). Publisher, Insights, Credentials and
+  Settings now meet the rule; Store, pages and packaging are the
+  remainder. PRESS-0001 and PRESS-0002 were amended and gated;
+  PRESS-0009 and PRESS-0019 needed no amendment because no clause
+  pinned a path.
+
+  The surface was wider than a variable per site. Every OSError site
+  leaked twice -- the variable, and the error's own words beside it,
+  which quote the path they failed on. `_why` reports strerror alone,
+  duplicated per module because INV-1 forbids a shared part.
+
+  Two decisions the gate forced. A shape refusal names the KEY and
+  never the value: site_folder is a path and repository is owner/name,
+  so quoting what he typed puts both forbidden things into the message
+  reporting them. And Credentials names no secret at all -- it is
+  handed an opaque account and cannot tell the publishing key from the
+  Google sign-in, so it says "that secret" and the Face supplies the
+  noun.
+
+  Three tests now hold the rule, each proved red against the shipped
+  messages first: tests/test_failure_messages.py walks Publisher and
+  Insights, INV-6's walk gained the account and path clauses, and
+  ::test_the_notice_names_no_path is INV-8's new fifth row. That last
+  one replaced an assertion requiring the path to BE in the notice.
+
+  The gate ran one loop, not two, by user instruction. Eleven verified
+  findings, all fixed, none dismissed. No cold read has seen the fixes.
   **Layman:** Error messages currently include the folder path on his computer, which names him. They will name the thing that failed instead.
   Kind: review-fix.
   Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
@@ -3892,7 +3919,7 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane store -- low cluster.
 
-- 📋 [PRESS-0068] **Credentials low cluster: a PyInstaller build may report every Windows machine as having no credential store, plus three smaller items.**
+- ✅ [PRESS-0068] **Credentials low cluster: a PyInstaller build may report every Windows machine as having no credential store, plus three smaller items.**
   1. PACKAGING RISK, and it belongs to PRESS-0022 rather than to this
   file. Every keyring backend, Windows included, is discovered through
   the keyring distribution's entry_points.txt via
@@ -4011,6 +4038,23 @@ already-built code ships in whichever release comes next.
   part that RAISES leaves them out rather than the Face stripping them.
   The substitutes are there too -- a location is a label, a repository is
   its short name.
+  Item 4 is FIXED (2026-09-09), by PRESS-0117 rather than here. The
+  rule the item deferred to is applied: credentials.py names neither
+  the account nor the path in any message, and INV-6 now asserts all
+  three clauses rather than the secret alone.
+
+  The item's own note that the surface is wider than this module was
+  right and understated. Settings, Publisher and Insights carried it
+  too, and every OSError site leaked the path a second time through the
+  error's own words.
+
+  Items 1, 2 and 3 remain as recorded: 1 closed by PRESS-0022's check
+  on the built artefact, 2 fixed, 3 declined. Nothing in this item is
+  outstanding.
+  Shipped 2026-09-09. All four items are resolved: 1 closed by
+  PRESS-0022's check on the built artefact, 2 fixed, 3 declined, 4 fixed
+  by PRESS-0117. Delivering item 1's check is PRESS-0022's, not this
+  item's.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.

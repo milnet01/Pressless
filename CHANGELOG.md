@@ -195,6 +195,24 @@ appears once something has actually shipped.)
 
 ### Fixed
 
+- **Failure messages no longer name a folder on his computer** (PRESS-0117)
+  The Publisher, Insights, Credentials and Settings all put the full
+  folder path into messages when something went wrong, and Credentials
+  named the account his key is filed under. Both identify him, and the
+  message is what he would send to whoever helps him. They now name the
+  thing that failed instead.
+
+- **A file error no longer repeats the path in its own words** (PRESS-0117)
+  Where the operating system reported a problem, its own wording was
+  pasted into the message, and that wording quotes the file it failed
+  on. So every one of those messages named the path twice. Only the
+  reason is kept now.
+
+- **Setup no longer pastes a password store's own error text into its message** (PRESS-0068)
+  The store Pressless asks can be a plain file, and its errors quote
+  their own location under his home folder. Setup now reports what kind
+  of failure it was and nothing more.
+
 - **The entry-format promise now says which parser it is about** (PRESS-0060)
   ADR-0001 promised that anything the parser does not recognise is kept
   exactly as written, without saying which parser. It means the one that reads

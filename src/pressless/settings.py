@@ -77,6 +77,21 @@ class SettingsError(Exception):
     """A settings file we will not act on."""
 
 
+def _why(exc: OSError) -> str:
+    """The reason an OSError carries, never its own words.
+
+    `str(exc)` on a stock file error quotes the path it failed on, and
+    `docs/design.md` § Logging forbids a full filesystem path in anything
+    Pressless shows or writes down. `strerror` is the reason alone, and it
+    is absent on an OSError raised without one, so the type stands in.
+
+    Deliberately not shared with the other parts that need it: §5 INV-1 has
+    this module import no other part of Pressless, and a shared helper would
+    be a new part the design does not have.
+    """
+    return exc.strerror or type(exc).__name__
+
+
 def path_for(folder: Path) -> Path:
     return Path(folder) / FILE_NAME
 
@@ -93,18 +108,20 @@ def load(folder: Path) -> Settings:
     try:
         text = target.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
-        raise NotSetUp(f"there is no settings file at {target}") from exc
+        raise NotSetUp("there is no settings file") from exc
     except UnicodeDecodeError as exc:
         # A UnicodeDecodeError is a ValueError and NOT an OSError, so it
         # escaped both arms below and left load()/save() raising something
         # in neither of this module's families -- §4.3 has this row, and
         # the Face has nothing to report it with (PRESS-0049).
         raise SettingsError(
-            f"{target} is not readable as UTF-8, so it cannot be parsed: "
+            "the settings file is not readable as UTF-8, so it cannot be parsed: "
             f"{exc}"
         ) from exc
     except OSError as exc:
-        raise SettingsError(f"{target} could not be read: {exc}") from exc
+        raise SettingsError(
+            f"the settings file could not be read: {_why(exc)}"
+        ) from exc
 
     try:
         raw = json.loads(text)
@@ -113,9 +130,9 @@ def load(folder: Path) -> Settings:
         # both arms and left load() raising something in neither of this
         # module's families -- §4.3 has this row (PRESS-0066), the same
         # family as PRESS-0049 and far cheaper.
-        raise SettingsError(f"{target} is not valid JSON: {exc}") from exc
+        raise SettingsError(f"the settings file is not valid JSON: {exc}") from exc
     if not isinstance(raw, dict):
-        raise SettingsError(f"{target} holds {type(raw).__name__}, not an object")
+        raise SettingsError(f"the settings file holds {type(raw).__name__}, not an object")
 
     version = raw.get("version")
     # The type is checked as well as the value. A bool IS an int in Python, so
@@ -124,7 +141,7 @@ def load(folder: Path) -> Settings:
     # number 1, and this gate guards every future migration (PRESS-0066).
     if type(version) is not int or version != FILE_VERSION:
         raise SettingsError(
-            f"{target} has version {version!r}; this Pressless reads "
+            f"the settings file has version {version!r}; this Pressless reads "
             f"version {FILE_VERSION}"
         )
 
@@ -137,7 +154,7 @@ def load(folder: Path) -> Settings:
     for index, entry in enumerate(untouchable):
         if not isinstance(entry, str):
             raise SettingsError(
-                f"{target}: untouchable[{index}] is "
+                f"untouchable[{index}] is "
                 f"{type(entry).__name__}, not a name"
             )
         # Shape, not merely type (§4.3). PRESS-0009 §4.4 matches an entry
@@ -147,9 +164,9 @@ def load(folder: Path) -> Settings:
         # entry unambiguously, and the Publisher ignores it (PRESS-0044).
         if not entry.rstrip("/") or "/" in entry.rstrip("/"):
             raise SettingsError(
-                f"{target}: untouchable[{index}] is {entry!r}, which is not "
-                f"a repository-root name; an entry naming a path inside a "
-                f"directory protects nothing"
+                f"untouchable[{index}] is {entry!r}, which is not "
+                "a repository-root name; an entry naming a path inside a "
+                "directory protects nothing"
             )
 
     store = _required(credentials, "store", str, target, "credentials.")
@@ -162,19 +179,18 @@ def load(folder: Path) -> Settings:
     # later has less to say about it than this one does (§4.3).
     if not Path(site_folder).is_absolute():
         raise SettingsError(
-            f"{target}: site_folder is {site_folder!r}, which is not an "
-            f"absolute path"
+            "site_folder is not an absolute path"
         )
     owner, _, name = repository.partition("/")
     # The character check subsumes the second-slash one that stood here: "/"
     # is not a name character either (PRESS-0066).
     if not owner or not name or not _NAME_CHARS.issuperset(owner + name):
         raise SettingsError(
-            f"{target}: repository is {repository!r}, not \"owner/name\""
+            "repository is not \"owner/name\""
         )
     if store not in _STORES:
         raise SettingsError(
-            f"{target}: credentials.store is {store!r}, not one of "
+            f"credentials.store is {store!r}, not one of "
             f"{' or '.join(repr(s) for s in _STORES)}"
         )
     analytics_property_id = _optional(raw, "analytics_property_id", str, target)
@@ -187,9 +203,9 @@ def load(folder: Path) -> Settings:
         analytics_property_id.isascii() and analytics_property_id.isdigit()
     ):
         raise SettingsError(
-            f"{target}: analytics_property_id is {analytics_property_id!r}, "
-            f"not the numeric property id; the tag in the site's footer is a "
-            f"different identifier and fails every fetch"
+            f"analytics_property_id is {analytics_property_id!r}, "
+            "not the numeric property id; the tag in the site's footer is a "
+            "different identifier and fails every fetch"
         )
 
     return Settings(
@@ -228,21 +244,23 @@ def save(folder: Path, settings: Settings) -> None:
         # in neither of this module's families -- §4.3 has this row, and
         # the Face has nothing to report it with (PRESS-0049).
         raise SettingsError(
-            f"{target} is not readable as UTF-8, so it cannot be parsed: "
+            "the settings file is not readable as UTF-8, so it cannot be parsed: "
             f"{exc}"
         ) from exc
     except OSError as exc:
-        raise SettingsError(f"{target} could not be read: {exc}") from exc
+        raise SettingsError(
+            f"the settings file could not be read: {_why(exc)}"
+        ) from exc
     else:
         try:
             carried = json.loads(existing)
         except (ValueError, RecursionError) as exc:
             raise SettingsError(
-                f"{target} is not valid JSON, so saving over it would discard "
+                "the settings file is not valid JSON, so saving over it would discard "
                 f"what could not be parsed: {exc}"
             ) from exc
         if not isinstance(carried, dict):
-            raise SettingsError(f"{target} holds {type(carried).__name__}, not an object")
+            raise SettingsError(f"the settings file holds {type(carried).__name__}, not an object")
         carried_version = carried.get("version")
         # The same test load() makes, type and value (§4.2). Comparing with
         # != alone left the two ends disagreeing: a file load() refuses was
@@ -255,9 +273,9 @@ def save(folder: Path, settings: Settings) -> None:
             # this build's own, so an older Pressless relabelled a file a
             # later one wrote and neither could then read it (PRESS-0053).
             raise SettingsError(
-                f"{target} has version {carried_version!r}; this Pressless "
+                f"the settings file has version {carried_version!r}; this Pressless "
                 f"writes version {FILE_VERSION}, and saving over it would "
-                f"relabel a file written by another"
+                "relabel a file written by another"
             )
 
     data = dict(carried)
@@ -280,7 +298,9 @@ def save(folder: Path, settings: Settings) -> None:
             dir=str(folder), prefix=".settings-", suffix=".tmp"
         )
     except OSError as exc:
-        raise SettingsError(f"{target} could not be written: {exc}") from exc
+        raise SettingsError(
+            f"the settings file could not be written: {_why(exc)}"
+        ) from exc
     try:
         try:
             _report_a_wide_grant(handle, target)
@@ -314,7 +334,9 @@ def save(folder: Path, settings: Settings) -> None:
         os.replace(temporary, target)
     except OSError as exc:
         _discard(temporary)
-        raise SettingsError(f"{target} could not be written: {exc}") from exc
+        raise SettingsError(
+            f"the settings file could not be written: {_why(exc)}"
+        ) from exc
     except BaseException:
         _discard(temporary)
         raise
@@ -353,9 +375,9 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
     granted = stat.S_IMODE(os.fstat(handle).st_mode)
     if granted & 0o077:
         warnings.warn(
-            f"{target} could not be made private: this filesystem granted "
+            "the settings file could not be made private: this filesystem granted "
             f"mode {granted:03o} rather than owner-only, so others with an "
-            f"account on this machine can read it",
+            "account on this machine can read it",
             SettingsNotice,
             stacklevel=2,
         )
@@ -363,11 +385,11 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
 
 def _required(mapping: dict, key: str, kind: type, target: Path, prefix: str = ""):
     if key not in mapping:
-        raise SettingsError(f"{target} is missing {prefix}{key}")
+        raise SettingsError(f"the settings file is missing {prefix}{key}")
     value = mapping[key]
     if not isinstance(value, kind):
         raise SettingsError(
-            f"{target}: {prefix}{key} is {type(value).__name__}, "
+            f"{prefix}{key} is {type(value).__name__}, "
             f"not {kind.__name__}"
         )
     return value
@@ -382,7 +404,7 @@ def _optional(mapping: dict, key: str, kind: type, target: Path, prefix: str = "
         return None
     if not isinstance(value, kind):
         raise SettingsError(
-            f"{target}: {prefix}{key} is {type(value).__name__}, "
+            f"{prefix}{key} is {type(value).__name__}, "
             f"not {kind.__name__} or absent"
         )
     return value

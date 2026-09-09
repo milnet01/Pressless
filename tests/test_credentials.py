@@ -317,6 +317,22 @@ def test_no_failure_names_the_secret(tmp_path, monkeypatch):
     leaked = [m for m in messages if SENTINEL in m]
     assert not leaked, f"a failure message carries the secret: {leaked!r}"
 
+    # INV-6's other two clauses (PRESS-0117). docs/design.md § Logging forbids
+    # three things, and the secret is only the first. The account is
+    # Settings.credentials.github_account, so a message quoting it names the
+    # writer; the folder is where Pressless sits on his machine.
+    named_account = [m for m in messages if "publishing-key" in m]
+    assert not named_account, (
+        f"a failure message carries the account the secret is filed under: "
+        f"{named_account!r}. The module cannot tell one secret from another, "
+        f"so it says 'that secret' and the Face supplies the noun."
+    )
+    named_path = [m for m in messages if str(tmp_path) in m]
+    assert not named_path, (
+        f"a failure message carries the folder handed in: {named_path!r}. "
+        f"The credentials file is named by what it is, never by where it sits."
+    )
+
 
 def test_choice_names_the_answering_store(monkeypatch):
     """INV-7: choose() names the store that ANSWERED the round-trip, not the

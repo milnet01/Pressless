@@ -892,8 +892,37 @@ def test_a_wider_grant_is_reported(tmp_path, monkeypatch):
     target = path_for(tmp_path)
     assert target.is_file(), "the save did not complete"
     assert load(tmp_path) == settings, "the settings did not survive the save"
-    assert str(target) in " ".join(str(each.message) for each in caught), (
-        "the notice did not name the file"
+    said = " ".join(str(each.message) for each in caught)
+    assert FILE_NAME.removesuffix(".json") in said or "settings file" in said, (
+        f"the notice did not name the file by what it is; it said {said!r}"
+    )
+
+
+def test_the_notice_names_no_path(tmp_path, monkeypatch):
+    """INV-8's fifth row: the notice says WHICH file without saying where.
+
+    The other four rows assert only WHETHER a notice fires, so without this
+    one INV-8's naming clause cannot fail. It is not hypothetical -- this
+    test's own sibling above asserted the opposite until PRESS-0117, that
+    the full path WAS in the notice, and a conformer keeping it green
+    breached docs/design.md § Logging with the suite silent.
+
+    Breaks when an implementer interpolates the target to say which file,
+    which is the obvious way to write the sentence."""
+    _write(tmp_path, _valid_mapping())
+    settings = load(tmp_path)
+    _wide_grant(monkeypatch)
+
+    with pytest.warns(SettingsNotice) as caught:
+        save(tmp_path, settings)
+
+    said = " ".join(str(each.message) for each in caught)
+    assert str(path_for(tmp_path)) not in said, (
+        f"the notice names the settings file's full path: {said!r}. It "
+        f"carries his home directory, and the Face renders and logs it."
+    )
+    assert str(tmp_path) not in said, (
+        f"the notice names the folder holding the settings file: {said!r}"
     )
 
 
