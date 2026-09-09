@@ -423,7 +423,7 @@ thing nothing backs up.
 | When | What happens |
 |---|---|
 | `$APPIMAGE` unset or stale on a frozen Linux run | `NotPackaged`. Pressless stops and says it cannot tell where it is, naming what it looked for |
-| The folder's parent is read-only or full | `FolderUnusable`, naming the folder as a label — *the Pressless folder, beside the program* — and never as a path (`docs/design.md` § Logging). Never a fallback (INV-5) |
+| The folder's parent is read-only or full | `FolderUnusable`, naming the path. Never a fallback (INV-5) |
 | The folder is on a mount with no POSIX modes | `credentials.write` raises `NoStore` per PRESS-0002 §4.6 — correct, and newly reachable now that the writer chooses the drive |
 | The bundle registers no credential backend | it reports `store: file`, which §4.5 does not treat as a failure. §7 step 3 is what catches it, by creating a store first — so the release never ships one (INV-6) |
 | The writer extracts, or saves, version 2 elsewhere | first-run setup, writing stranded beside version 1. Accepted (scope decision 2); §4.6 states it in both systems' steps |
