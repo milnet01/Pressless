@@ -1375,7 +1375,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
   Lanes: Credentials, Settings, Store, Publisher, Insights.
 
-- 📋 [PRESS-0118] **S6 says nothing of a publish cut short by Pressless itself stopping during the last step.**
+- ✅ [PRESS-0118] **S6 says nothing of a publish cut short by Pressless itself stopping during the last step.**
   S6's exception covers GitHub taking the last step without confirming
   it, and he is told plainly. If Pressless or his machine stops while
   that request is in flight, the answer goes to nobody and nothing tells
@@ -1392,6 +1392,11 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Pressless or his machine stopping during the last step is not covered,
   and that publishing again settles it. No in-progress marker is built.
   Lands as one sentence in docs/discovery.md, which owes a review round.
+  Resolved (2026-09-11). S6 in docs/discovery.md now says that Pressless
+  or his machine stopping partway through a publish is outside it, and that
+  clicking Publish again is safe and settles it (commit dd27683). Its review
+  round is docs/reviews/discovery-loop-log.md row 2 (commit 95a55a6). No
+  in-progress marker is built, as decided. The flip was missed at the time.
   **Layman:** If Pressless crashes while the last step of a publish is on its way, nothing tells him afterwards whether his site changed.
   Kind: investigate.
   Source: review-contract 2026-09-11 discovery.md loop 1, lane 3.
