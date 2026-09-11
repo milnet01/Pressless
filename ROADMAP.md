@@ -410,6 +410,11 @@ while the stakes are zero. Holds S2, S3, S4.
   folder -- so that label points a helper at the wrong one. Choose a label
   naming `Pressless-data` when the Face's sentences are written; that edit
   to design.md re-arms its gate.
+  Decided by the user (2026-09-11): the location label is "the
+  Pressless-data folder, beside the program", so a helper on Windows
+  cannot open the program's own Pressless/ folder instead. design.md
+  § Errors is amended to match and re-gated. Spec drafted as
+  docs/specs/PRESS-0011-face.md.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
@@ -921,6 +926,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Milestone: v0.5.0. Blocks S6 — items 1 to 3 are bare KeyError and
   OSError escapes from the Publisher, and a bare exception is not a
   sentence he understands.
+  Item 5 answered by the PRESS-0011 spec (2026-09-11, § 3 decision 4):
+  the Face never formats a failure's cause, context or traceback. It shows
+  and logs a typed failure's own words and an unforeseen one's type alone,
+  so a backend message quoting a secret cannot reach the log by that route.
   **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes publisher/credentials -- residue.
