@@ -6388,7 +6388,7 @@ already-built code ships in whichever release comes next.
   Kind: investigate.
   Source: review-contract 2026-09-08 PRESS-0009 loop 1, lane A.
 
-- 📋 [PRESS-0119] **The leak sweep misses two strings that identify the writer.**
+- ✅ [PRESS-0119] **The leak sweep misses two strings that identify the writer.**
   Found 2026-09-11 while measuring the archive for PRESS-0007. The sweep's
   pattern in scripts/local-ci.sh and CLAUDE.md catches his name's fragments
   and one spelling of the site's name, and misses a second spelling of it
@@ -6399,6 +6399,12 @@ already-built code ships in whichever release comes next.
   not spell them: for example a separator-tolerant form of the spelling
   already present, and a hash comparison for the host. The maintainer's
   own memory for these sessions holds the exact strings.
+  Resolved (2026-09-11): the pattern in scripts/local-ci.sh tolerates one
+  separator in the site's name, and further strings come from the
+  machine-local key ants.pressless.leakPatterns, set on the maintainer's
+  machine. CLAUDE.md's hand sweep now runs the gate's own leak step. Its
+  review found tag messages unswept, so the gate also scans every ref.
+  Swept clean over the tree, history, messages and refs.
   **Layman:** The check that stops the writer's identity leaking into this public project misses two ways of spelling it.
   Kind: security.
   Source: in-session-2026-09-11.

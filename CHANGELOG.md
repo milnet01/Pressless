@@ -515,6 +515,12 @@ appears once something has actually shipped.)
 
 ### Security
 
+- **The leak sweep catches more ways the writer could be named** (PRESS-0119)
+  The gate's sweep now matches the site's name with a separator in it,
+  reads further patterns from a machine-local key that never enters the
+  repository, and checks tag messages as well as commits. A checkout
+  without the key says so on every run.
+
 - **A failed read of the publishing key can no longer quote the store's own words** (PRESS-0100)
   When the operating system's password store fails, its own message can
   repeat what it was handling. Saving the key already guarded against

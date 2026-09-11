@@ -108,7 +108,8 @@ git config ants.pressless.archive /path/to/wordpress-export.xml
 what a green push proves. They load the sibling
 generator in a private workspace, so they skip where no generator is
 found at all — which includes the isolated checkout the pre-push hook
-builds. **Absence is the only skip** (PRESS-0108): a generator that is
+builds, unless `PRESSLESS_GENERATOR` is exported in the pushing shell.
+**Absence is the only skip** (PRESS-0108): a generator that is
 present and will not load, has been renamed, or is one of several
 candidates is a FAILURE naming its cause, because a skip reporting every
 cause as absence could stop the S2 round trip silently. Set
@@ -124,16 +125,16 @@ PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest
 ```
 
 **Two test results mean less than they look.** `test_marks_is_pure`
-(INV-7) passes against *any* module that imports nothing forbidden — an
-empty file included — so it is evidence about imports, never about the
-code working. And with `marks.py` absent the suite errors at
+(INV-7) passes against *any* module that imports and calls nothing
+forbidden — an empty file included — so it is evidence about imports and
+calls, never about the code working. And with `marks.py` absent the suite errors at
 *collection*, so no assertion runs at all: a run that says nothing failed
 may have run nothing. Read the collected count, not the exit code.
 
 **`spec_lint` does not check a spec's test surfaces here, and says so only
-in its fields.** It resolves a surface only in a `tests/features/<name>/`
-shape, which this project does not use, so its three test-surface checks
-sit in `skipped[]` with `surfaces_checked: false` while it reports `ok`.
+in one field.** It resolves a surface only in a `tests/features/<name>/`
+shape, which this project does not use, so on a spec here it reports
+`surfaces_resolved: 0` beside `surfaces_checked: true` and `ok`.
 `doc_citations` counts a citation `ok` when the cited line exists, and
 `unchecked` when nothing on that line was compared. So each `*Test:*`
 clause is resolved by hand before its item ships: the named test must
@@ -230,9 +231,10 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-The gate sweeps all three surfaces a push publishes: the tree, the files
-in every commit, and the commit messages. `git grep` reads trees only, so
-a name in a subject line passes a tree sweep. Where no hook runs the
+The gate sweeps what a push publishes: the tree, the files in every
+commit, the commit messages, and every ref with its message, a tag's
+included. `git grep` reads trees only, so a name in a subject line
+passes a tree sweep. Where no hook runs the
 gate, run its leak step by hand:
 
 ```
@@ -346,4 +348,4 @@ in `docs/standards/`, with the reason. **`versioning-overrides.md` is
 not one of those** — it holds the answers `versioning.md` §§ 3 and 4 ask
 every project for, which is why a project following the global set
 unmodified still writes it. That directory's own `README.md` sorts the
-two, and a departure would be a third kind of file.
+two: a departure is its kind 1, a deltas-only file.

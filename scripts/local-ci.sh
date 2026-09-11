@@ -23,16 +23,16 @@ fail() {
 }
 
 # ── Leak sweep ──────────────────────────────────────────────────────────────
-# Three surfaces, because a push publishes all three: the tree, the files in
-# every commit, and the commit messages. `git grep` reads trees only, so a name
-# in a subject line passes it without a hit.
+# Four surfaces, because a push publishes all four: the tree, the files in
+# every commit, the commit messages, and the refs, a tag's message among them.
+# `git grep` reads trees only, so a name in a subject line passes it unseen.
 #
-# CLAUDE.md documents these patterns, so its own lines match. Those lines carry
-# the pipe-separated pattern itself; a real leak would not. Filtering on that
-# needs no path list and no line numbers, so it cannot go stale.
+# This script, and earlier CLAUDE.md in the history, spell these patterns, so
+# those lines match. They carry the pipe-separated pattern itself; a real leak
+# would not. Filtering on that needs no path list and no line numbers.
 step "leak sweep"
 PAT='charl|jordaan|18[^a-z0-9]?down|G-Y7N2F5SNY2|192\.168'
-# All three surfaces search PAT. SELF is not a second pattern: it is the
+# Every surface searches PAT. SELF is not a second pattern: it is the
 # literal fragment every line that merely QUOTES the pattern contains, which
 # is what the self-exclusion below matches on. It stops short of the site's
 # name, so it also matches the older spelling of the pattern that the history
@@ -48,8 +48,8 @@ if [[ -n $extra ]]; then
 else
     printf 'note: ants.pressless.leakPatterns is not set -- only the pattern above is swept\n'
 fi
-# Each surface is fed in as text and matched here, so all three are matched the
-# same way -- and the commit-message surface has no matcher of its own.
+# Each surface is fed in as text and matched here, so all are matched the same
+# way -- and the message and ref surfaces have no matcher of their own.
 scan() {
     local what=$1 hits
     hits=$(grep -inE "$PAT" | grep -vF "$SELF" || true)
@@ -61,6 +61,8 @@ scan() {
 }
 git grep -n -iE "$PAT" -- . | scan "tree"
 git log --all --format='%H %s%n%b' | scan "commit messages"
+# An annotated tag carries a message of its own, which no commit log shows.
+git for-each-ref --format='%(refname) %(contents)' | scan "refs and tag messages"
 # shellcheck disable=SC2046  # the revision list must expand into arguments
 git grep -n -iE "$PAT" $(git rev-list --all) -- . | scan "history"
 
