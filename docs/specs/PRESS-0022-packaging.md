@@ -287,7 +287,7 @@ is fixed here rather than invented by whoever writes the program.
 
 ```
 pressless: ok
-folder: <absolute path>
+folder: <the folder, relative to the artefact's own folder>
 store: <keyring|file> <member name>
 ```
 
@@ -296,6 +296,11 @@ store: <keyring|file> <member name>
 | Did it start at all? | it printed, on a machine with no interpreter | `pressless: ok` |
 | Where is its folder, and can it be written? | `paths.own_folder()` then `paths.ensure()` | `folder:` |
 | Which credential store answered? | `credentials.choose()` | `store:` |
+
+**`folder:` is relative**, computed with `os.path.relpath` from
+`artefact_path().parent`, so the report names no full path
+(`docs/design.md` § Logging). A correct build prints `Pressless-data` on
+both systems; any other value is the misplacement INV-2 names.
 
 **It exits non-zero only where a question could not be answered at
 all** — `NotPackaged`, `FolderUnusable`, or `choose()` raising. **A
@@ -373,9 +378,11 @@ thing nothing backs up.
   value in the writer's environment moves his folder.
 
 - **INV-5** — `ensure()` raises `FolderUnusable` rather than choosing
-  another location, and names the path it tried.
+  another location, naming the folder by its label and never by its
+  path (§6).
   *Test:* `tests/test_paths.py::test_unusable_folder_never_falls_back`,
-  against a read-only parent directory. **It must skip where the user
+  against a read-only parent directory, asserting the tried path appears
+  nowhere in the message. **It must skip where the user
   can write to a read-only directory anyway** — root defeats the
   fixture, and a test that cannot fail is worse than an absent one.
   *Breaks when:* a fallback to the home directory is added — which
@@ -422,8 +429,8 @@ thing nothing backs up.
 
 | When | What happens |
 |---|---|
-| `$APPIMAGE` unset or stale on a frozen Linux run | `NotPackaged`. Pressless stops and says it cannot tell where it is, naming what it looked for |
-| The folder's parent is read-only or full | `FolderUnusable`, naming the folder by its label — *the Pressless folder, beside the program* — and never by its path (`docs/design.md` § Logging). Never a fallback (INV-5) |
+| `$APPIMAGE` unset or stale on a frozen Linux run | `NotPackaged`. Pressless stops and says it cannot tell where it is, naming the variable it read, never the path that variable held |
+| The folder's parent is read-only or full | `FolderUnusable`, naming the folder by its label (`docs/design.md` § Errors) and never by its path (§ Logging). Never a fallback (INV-5) |
 | The folder is on a mount with no POSIX modes | `credentials.write` raises `NoStore` per PRESS-0002 §4.6 — correct, and newly reachable now that the writer chooses the drive |
 | The bundle registers no credential backend | it reports `store: file`, which §4.5 does not treat as a failure. §7 step 3 is what catches it, by creating a store first — so the release never ships one (INV-6) |
 | The writer extracts, or saves, version 2 elsewhere | first-run setup, writing stranded beside version 1. Accepted (scope decision 2); §4.6 states it in both systems' steps |
@@ -546,7 +553,7 @@ against it, and throw it away.
 | Rule | What catches a breach |
 |------|----------------------|
 | INV-1 | `tests/test_paths.py::test_paths_imports_nothing_of_ours`. The converse — Settings or Credentials importing `paths` — is caught by PRESS-0001 INV-1 and PRESS-0002 INV-1, not here |
-| INV-2 | **half** — the test patches `sys.frozen` and `$APPIMAGE`; the suite builds no AppImage. The release job builds one and runs `--self-check`, which reports the resolved folder and would show it landing under the mount |
+| INV-2 | **half** — the test patches `sys.frozen` and `$APPIMAGE`; the suite builds no AppImage. The release job builds one and runs `--self-check`, whose `folder:` line reads `Pressless-data` only where the folder did not land under the mount |
 | INV-3 | `tests/test_paths.py::test_stale_appimage_is_not_an_address` |
 | INV-4 | `tests/test_paths.py::test_override_is_ignored_when_frozen` |
 | INV-5 | `tests/test_paths.py::test_unusable_folder_never_falls_back` |
@@ -587,6 +594,7 @@ against it, and throw it away.
 |------|------|-------|----|----|----|----|---------|
 | 1 | 2026-09-02 | 3, cold — genre pinned `spec`; the packet declared Windows and AppImage behaviour an unrunnable region up front, so Q1 was out of scope there | 2 | 5 | 1 | 2 | **Ten verified, ten fixed, none dismissed. All three lanes independently found the same Q4**, which is the run's strongest signal: INV-6 read the credential store's MEMBER NAME, and PRESS-0002 §4.2 returns `Choice("file", "file")` off Windows — so the invariant passed green against exactly the metadata-less bundle §4.3 exists to reject. It now requires the store KIND. Its twin: §7's red run for it was unreachable, because the metadata comes from PyInstaller's shipped hook rather than the flag §7 said to drop. **The best Q2 was a release that could never go green** — the Linux self-check ran on the frozen folder, where `$APPIMAGE` is unset, so `artefact_path()` raises `NotPackaged`; and one `env -i` run was serving both INV-6 and INV-7, while `env -i` strips the session bus a keyring member needs. §7 is now three steps and runs the wrapped AppImage. **One Q2 caught a breach of this spec's own source**: ADR-0004 requires the Windows job to run the test suite, and §4.4 had it freeze and self-check only. **Two Q2s were the design being stated Windows-first**: `Pressless-data` was called unbound when every installed machine binds to it (now INV-8), and §14's extract-over rule described nothing that happens on Linux, where each release is a differently-named file. **Both Q1s were mine, not the lanes'** — a false universal about `folder` arguments that `credentials.choose()` breaks, and a rejection of one-file resting on `sys.executable`; all three lanes flagged the second as an open question and a measurement settled it false, so the one-folder choice now stands on the unpack delay alone. Q3: nothing said how a version tag reaches the artefact filename. Resolved clean and not counted: PRESS-0002 §4.6 does support §6's non-POSIX-mount row, raised by all three lanes. |
 | 2 | 2026-09-02 | 3, cold — identical brief, packet rebuilt from disk and extended with the onefile measurement, PRESS-0002 §4.6 and ADR-0004 § Consequences | 1 | 6 | 3 | 2 | **Twelve verified, twelve fixed, none dismissed. Cap reached (2 for a spec), and it is a VIOLENT cap** — about ten of the twelve landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. So the review ends here and the document is routed to implementation rather than to a third loop; nothing in the run suggests a third would stop. **The root cause of half the loop is one thing loop 1 created**: it made `--self-check` serve three consumers — the release job's exit code, the pytest tests, the Windows box — and pinned neither its output nor its exit rule, so §6 promised a metadata-less bundle never ships while §10 said the Linux arm may skip. §4.5 now fixes three machine-readable lines and says a `store: file` answer is NOT a failure, because the program cannot tell no-store from lost-metadata. **The sharpest finding is that loop 1's own fix was circular**: it let INV-6's Linux arm skip where no store is present, and a metadata-less bundle produces exactly that observation — so the skip condition WAS the failure condition and INV-6 could never go red. §7 step 3 now CREATES the session rather than hoping for one. **Two findings were loop 1 breaking its neighbours:** §8 still rejected one-file for the `sys.executable` reason loop 1 had just deleted from §4.1, and loop 1's own Windows suite step made INV-2 and INV-3 fail on `windows-latest`, because neither fixture patched `sys.platform` and the win32 row is read first. Also fixed: `env -i` named as the Windows clean room, where that runner ships Python and no clean room can be made; INV-8 false on the `PRESSLESS_FOLDER` branch; a floor pin promising byte reproducibility; and a versioned filename in a README nothing updates. **A packet defect of mine, reported by all three lanes and recorded rather than hidden:** the PRESS-0001 and PRESS-0002 §4.1 windows were empty — a `#` comment inside a python fence read as a heading — so §2's quotation went unverified by lanes in both loops. I verified it by grep; the lanes could not, and raised it as an open question rather than a finding, which is them working. Resolved clean and not counted: libfuse locates `fusermount` by absolute path, so `env -i` does not break an AppImage mount. |
+| 3 | 2026-09-11 | 3, cold — genre pinned `spec`; gating the path-free `FolderUnusable` row (PRESS-0117). Windows, PyInstaller and AppImage unrunnable | 0 | 3 | 1 | 0 | **Four verified: three fixed, one surfaced on PRESS-0011. One loop only, by user instruction: not converged.** All three lanes: INV-5 still named the tried path, and the self-check report printed an absolute path the double-click shows; the report's `folder:` is now relative and reads `Pressless-data` on a correct build. `NotPackaged` no longer names what the variable held. The design label "the Pressless folder" is confusable with `Pressless/` on Windows; the row now defers to design.md, and the label is PRESS-0011's to change. |
 | 2-post | 2026-09-02 | **No reviewer was dispatched.** Author-side, after the cap, while answering the section 15 questions | 1 | 0 | 1 | 0 | **Two findings, two fixed. Not a review loop** — the gate ended at loop 2's violent cap and is not re-run; this row exists because a row no dispatched review produced is otherwise written by nobody. **Q1: `scripts/local-ci.sh` cannot run on `windows-latest` as section 7 step 1 requires it to**, and section 7 was written without checking the script. It invokes `python3`, a spelling the Windows installer does not create, and its leak sweep walks `git rev-list --all`, which a shallow clone answers falsely — the exact failure `ci.yml`'s own `fetch-depth: 0` comment describes. Both are now named in step 1 and in section 11 as this item's to fix. Found by reading the script after lane D asked whether it was runnable there and I asserted section 7 without opening it. **Q3: section 15's two questions are decided** by the user — the folder stays `Pressless-data`, and the Windows batch file stays because section 4.5's program prints and exits, so a bare double-clicked `.exe` would close before it could be read. Both moved to section 3 as decisions 5 and 6, and section 15 is now empty. **Verified separately and NOT a finding:** `windows-latest` (Server 2025) does ship Python 3.9 to 3.13, so section 7 step 2's claim that no clean room can be made there holds. |
 
 ## 13. Resource cost

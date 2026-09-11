@@ -403,6 +403,13 @@ while the stakes are zero. Holds S2, S3, S4.
   in Pressless raised, it records the TYPE alone, because a stock file error
   quotes the path it failed on; docs/design.md § Logging is the contract and
   PRESS-0003 § 2 says why the raise-site rule does not cover that class.
+  For the error contract (2026-09-11, from the PRESS-0022 gate): docs/design.md
+  § Errors gives the location label as "the Pressless folder, beside the
+  program". On disk that folder is `Pressless-data` (PRESS-0022 scope
+  decision 5), and on Windows it sits beside the program's own `Pressless/`
+  folder -- so that label points a helper at the wrong one. Choose a label
+  naming `Pressless-data` when the Face's sentences are written; that edit
+  to design.md re-arms its gate.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
