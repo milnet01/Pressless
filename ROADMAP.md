@@ -381,6 +381,11 @@ while the stakes are zero. Holds S2, S3, S4.
   every photograph byte for byte, and no contact value written. Every
   Breaks-when route was mutation-probed and killed. Still owed:
   decision 10's fixed pages and furniture, after PRESS-0008's spec.
+  Open for the user (2026-09-11): picture descriptions. Import lists a
+  picture's alt text rather than carrying it, since Marks has only the
+  caption, which shows on the page. Over the real archive that is most of
+  the report's alt lines. Carrying alt text as a caption would change what
+  readers see, so it waits on the user's decision.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
