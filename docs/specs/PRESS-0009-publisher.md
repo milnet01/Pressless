@@ -581,7 +581,12 @@ behaviour.
   which makes every unlisted path look new and every deletion invisible.
 
 - **INV-7** — No failure raised by this module carries the key, in its
-  message or its representation.
+  message or its representation. **Those two are the surfaces it
+  covers.** The key also sits as a value in the request headers of the
+  frame that raises, where a handler printing a traceback's local
+  variables would show it. `docs/design.md` § Errors closes that surface
+  rather than this module: the Face shows a typed failure's own words and
+  an unforeseen one's type alone, never a raw traceback.
   *Test:* `tests/test_publisher.py::test_no_failure_names_the_key` —
   force each failure type with a recognisable key value; assert that
   value appears in neither `str()` nor `repr()` of what is raised.
@@ -820,13 +825,8 @@ its own type; the rows above credit them on that condition.
   GitHub traffic — so the rule grants that traffic too.
 - `docs/design.md` § The parts is unchanged, and rules 7 and 10 are used
   as they stand — which is what §3 decision 2 records.
-- **`docs/design.md` § the untouchable rule names one tolerance and now
-  needs two.** It says the match ignores "any trailing slash on the
-  entry" and stops there, which was exhaustive when it was written. §4.4
-  now also folds case, so a maintainer conforming the code to that
-  paragraph — the document §4.4 itself names as the rule's owner — writes
-  the exact comparison INV-2 calls a breach. That document has its own
-  gate, so it is filed as PRESS-0112 rather than edited from here.
+- `docs/design.md`'s untouchable paragraph names both of §4.4's
+  tolerances, case and the trailing slash (PRESS-0112).
 - **The list's derivation must fold case the way §4.4 does.** §9 puts the
   derivation outside this spec, and Setup's filter removes everything the
   Builder produces. An exact-cased filter against a case-folding
@@ -842,11 +842,8 @@ its own type; the rows above credit them on that condition.
   per the header. Its bullet stays as its own unit of work and closes with
   the code this contract governs; nothing about its scope moves. PRESS-0014
   and PRESS-0015, which depend on it, are unaffected.
-- **`docs/design.md` § Errors admits one unknown-outcome case — the
-  reference update sent and *no result back*.** §6 reaches the same state
-  by a second route, a server error answering that update, which is a
-  result coming back. The section needs the second route named. That is
-  another document's gate, not this one's.
+- `docs/design.md` § Errors names both of §6's routes to
+  `OutcomeUnknown` (PRESS-0096).
 - `docs/decisions/ADR-0002` is unchanged and is this spec's source.
 - `CHANGELOG.md` — an entry when it ships.
 - PRESS-0001 and PRESS-0002 are unchanged. This spec consumes
