@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture, which wait on PRESS-0008.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -119,8 +119,8 @@ Lookup = Callable[[str], str | None]   # to an attachment's Store name, or None
 
 def resolve_slug(raw: str, post_id: str) -> str: ...
 def is_markup(body: str) -> bool: ...
-def convert(body: str, picture_by_address: Lookup,
-            picture_by_id: Lookup) -> tuple[str, tuple[str, ...]]: ...
+def convert(body: str, picture_by_address: Lookup, picture_by_id: Lookup, *,
+            old_site: str = "") -> tuple[str, tuple[str, ...]]: ...
 def visible_lines(markup: str) -> tuple[str, ...]: ...
 def run(export: Path, originals: Path, into: Path) -> Report: ...
 def main(argv: list[str]) -> int: ...   # python -m pressless_import EXPORT ORIGINALS INTO
@@ -130,8 +130,9 @@ def main(argv: list[str]) -> int: ...   # python -m pressless_import EXPORT ORIG
 dropped. `picture_by_address` resolves an `<img>`'s address, and
 `picture_by_id` a gallery's attachment id. Both answer for every
 attachment, a video included, and `None` for anything that is not one;
-the element decides whether it is shown as a picture. `convert` and
-`visible_lines` touch no disk.
+the element decides whether it is shown as a picture. `old_site` is the
+WordPress site's host, which tells a link to one of its pages from a link
+to another site. `convert` and `visible_lines` touch no disk.
 
 `main` prints the report and exits 0, or prints why it stopped and exits 1.
 Its words never name a full filesystem path (`docs/design.md` § Logging):
@@ -385,8 +386,9 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 - **INV-9** — What Import could not convert is in `Report.dropped`, by entry.
   *Test:* `tests/test_importer.py::test_what_is_dropped_is_reported` — a
-  markup body holding a `<table>`, a `<p style="font-size:2em">` and a
-  `wp:social-link` block comment, whose address the report names.
+  markup body holding a `<table>`, a `<p class="lead"
+  style="font-size:2em">` and a `wp:social-link` block comment, whose
+  address the report names.
   *Breaks when:* an unknown tag is removed without a record.
 
 - **INV-10** — Import reaches no network.

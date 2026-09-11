@@ -17,6 +17,16 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Import carries the WordPress archive into Pressless's own files, once** (PRESS-0007)
+  `python -m pressless_import EXPORT ORIGINALS INTO` makes a new
+  Pressless-data folder holding every entry, draft, comment and
+  photograph, or makes nothing at all. WordPress-HTML entries become
+  marks, the lines a reader sees checked against the original. Whatever
+  could not be carried as written is listed, entry by entry, for the
+  maintainer to read before handing the folder over. The fixed pages and
+  furniture follow once PRESS-0008 settles how a page is parted from its
+  header and footer.
+
 - **Marks gains a link mark and a quote mark** (PRESS-0004)
   `{link: address}words{/}` makes a link. The address must be one http
   or https address, or the mark stays as typed. Lines beginning `>`

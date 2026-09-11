@@ -134,6 +134,17 @@ if [[ -z ${PRESSLESS_ARCHIVE-} ]]; then
         printf 'note: ants.pressless.archive is set but %s is missing -- S2 not proven\n' "$archive"
     fi
 fi
+# Import's archive tests also read the photograph originals (PRESS-0007 §7),
+# which are the writer's own files and stay out of this repository the same
+# way: git config ants.pressless.originals /path/to/originals
+if [[ -z ${PRESSLESS_ORIGINALS-} ]]; then
+    originals=$(git config --get ants.pressless.originals || true)
+    if [[ -n $originals && -d $originals ]]; then
+        export PRESSLESS_ORIGINALS="$originals"
+    elif [[ -n $originals ]]; then
+        printf 'note: ants.pressless.originals is set but that folder is missing\n'
+    fi
+fi
 
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.

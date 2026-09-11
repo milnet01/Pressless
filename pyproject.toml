@@ -88,6 +88,10 @@ select = [
 "tests/test_marks_archive.py" = ["S101", "S314"]
 "tests/test_store_archive.py" = ["S101", "S314"]
 "tests/test_store_extras_archive.py" = ["S101", "S314"]
+# The same file, read by Import on the maintainer's machine, once
+# (PRESS-0007 §4.8). And its archive tests read it too.
+"src/pressless_import/*" = ["S314"]
+"tests/test_importer_archive.py" = ["S101", "S314"]
 # S310: both modules build their request URL from a module-level literal
 # (`API`), so the scheme is never attacker-chosen. Suppressed rather than
 # guarded because the guard would be a second place to keep the scheme true;

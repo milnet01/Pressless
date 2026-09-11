@@ -325,7 +325,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § Where the fixed pages live.
   Lanes: Store.
 
-- 📋 [PRESS-0007] **Import carries twelve years across, once, and declines nothing it could not get back.**
+- 🚧 [PRESS-0007] **Import carries twelve years across, once, and declines nothing it could not get back.**
   The WordPress export becomes Store files: every published post with its title, slug, date, categories and tags; the drafts and the private posts as drafts, because they are his writing and he never deleted them; the trashed ones skipped, because he did. The published comments with commenter names only -- email addresses and IP addresses must never
   enter the Store at all.
   The Daily Prompt entries come across WITH their tag. Filtering here
@@ -374,6 +374,13 @@ while the stakes are zero. Holds S2, S3, S4.
   site's own posts is wrong for pages. Three links in WordPress pages
   point at other pages on the old site. The spec's review added a row for
   them: their words are kept and the link is listed in the report.
+  Progress (2026-09-11): built, test-first, in src/pressless_import/.
+  Over the real export and originals it carries every published entry,
+  draft, comment and photograph, and its archive tests pass: the slug
+  rule, the markup test, every plain body, no line a reader sees lost,
+  every photograph byte for byte, and no contact value written. Every
+  Breaks-when route was mutation-probed and killed. Still owed:
+  decision 10's fixed pages and furniture, after PRESS-0008's spec.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.

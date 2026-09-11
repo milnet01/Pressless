@@ -4,7 +4,8 @@
 
 **State:** 5 — Building. **In flight:** `PRESS-0022` (built and proven on
 Linux locally; the release workflow and the Windows half first run at the
-first tag). What is done is deliberately not listed here: `roadmap_query`
+first tag), and `PRESS-0007` (Import built; its fixed pages and furniture
+wait on PRESS-0008's spec). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
@@ -68,9 +69,9 @@ present and executable**. Those two decide whether anything is gated at all;
 `ants.gate.docsGlob` only decides which checks run.
 
 **Machine-local git config keys, and a fresh clone has none of them.**
-The two below belong here; `ants.pressless.archive` has its own
-paragraph further down, and `ants.pressless.leakPatterns` sits with the
-leak sweep.
+The two below belong here; `ants.pressless.archive` and
+`ants.pressless.originals` have their own paragraph further down, and
+`ants.pressless.leakPatterns` sits with the leak sweep.
 
 ```bash
 git config core.hooksPath .githooks
@@ -91,8 +92,9 @@ which is the check a markdown edit in this repository can actually
 breach, and no test reads a document as data. Narrow it if either stops
 being true — and a narrowing reverts on any clone where the key is unset.
 
-**Three test files are skipped in CI and they are the most important
-ones.** `tests/test_marks_archive.py`, `tests/test_store_archive.py` and
+**The archive test files are skipped in CI and they are the most
+important ones.** `tests/test_marks_archive.py`,
+`tests/test_store_archive.py` and
 `tests/test_store_extras_archive.py` prove S2 against the real WordPress
 export, which is personal data and cannot live in a public repository —
 so they run only where that file is, and a green CI run says nothing
@@ -122,6 +124,15 @@ Or set it for one run:
 
 ```bash
 PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest
+```
+
+`tests/test_importer_archive.py` proves Import against the same export
+(PRESS-0007). Its INV-6 and INV-7 tests run the whole import, so they
+also need the photograph originals, held the same way; its INV-2 and
+INV-3 tests need the sibling generator; INV-5's needs the export alone:
+
+```bash
+git config ants.pressless.originals /path/to/originals
 ```
 
 **Two test results mean less than they look.** `test_marks_is_pure`
