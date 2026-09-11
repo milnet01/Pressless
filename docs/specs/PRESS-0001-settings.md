@@ -625,7 +625,7 @@ loading or saving does anything.
 ## 11. Cross-doc impact
 
 - `CLAUDE.md` — the state block only. This suite needs no environment
-  variable, so § Build and test's note about the one test that does is
+  variable, so § Build and test's note about the tests that do is
   unchanged.
 - `CHANGELOG.md` — an entry when it ships.
 - `docs/specs/PRESS-0005-store.md` — §4.5 and INV-11 carry the same

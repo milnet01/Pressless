@@ -40,7 +40,10 @@ PRESS-0001's own gate rather than from a third loop here: that run's
 lanes read this document's paired rule as a cross-reference and found
 the wider-grant qualifier naming no observable, and "wider" itself
 undefined. §11 requires the two documents to agree, so the fix landed in
-both. PRESS-0001 §12 row 8 records it.
+both. PRESS-0001 §12 row 8 records it. **Amended 2026-09-11, before
+implementation**, on two decisions the user took: no message names a
+full path (PRESS-0117), and deleting moves a file into a bin through
+`move_to_bin` (PRESS-0099). Both change direction, so the gate re-armed.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -175,6 +178,7 @@ LIST_SEPARATOR = ", "
 FILE_SUFFIX = ".txt"
 PUBLISHED_FOLDER = "published"
 DRAFTS_FOLDER = "drafts"
+BIN_FOLDER = "bin"
 
 def path_for(folder: Path, slug: str, *, draft: bool) -> Path: ...
 def exists(folder: Path, slug: str) -> bool: ...   # raises on an illegal slug
@@ -183,6 +187,7 @@ def read(path: Path) -> Entry: ...
 def write(folder: Path, entry: Entry, *, draft: bool) -> Path: ...
 def publish(folder: Path, slug: str) -> Path: ...
 def unpublish(folder: Path, slug: str) -> Path: ...
+def move_to_bin(folder: Path, path: Path) -> Path: ...
 
 class StoreError(Exception): ...
 class EntryNotFound(StoreError): ...
@@ -223,6 +228,20 @@ raise `FileExistsError`, so the move alone would answer `StoreError`
 where §6 requires `SlugInUse`. The check gives the ordinary occupied
 case its stated type; the move gives the raced one its guarantee. Neither reads or writes a body, so neither can alter
 one.
+
+**`move_to_bin` is how anything the Store holds is deleted, and nothing
+is ever unlinked.** `docs/design.md` sends a deleted entry, its comments
+file, and any file but an entry that undo sets aside, to a bin in
+Pressless's own folder. The
+call takes a path inside one of the Store's own sub-folders and refuses
+any other with `StoreError`. It moves the file to
+`bin/<stamp>/<the same relative path>` under `folder` and returns the new
+path. `<stamp>` is the moment of the move, `YYYY-MM-DD-HHMMSS`. **Keeping
+the relative path is what lets the writer move a file back by hand**:
+`drafts/seaside.txt` goes back into `drafts/`, and its name still matches
+its `Slug` header. The move is `_move`'s, so it never overwrites
+(INV-10) and fails the same way where there are no hard links. Nothing
+in Pressless empties the bin.
 
 **Three rules need the Store to tell the caller something without
 failing, so it raises nothing and warns instead.** A `StoreNotice` is
@@ -369,6 +388,7 @@ Every single newline is a line break.
 <Pressless's own folder>/
     published/<slug>.txt
     drafts/<slug>.txt
+    bin/<stamp>/<the relative path it was moved from>
 ```
 
 `.txt` so that double-clicking opens a text editor on Windows, which
@@ -401,7 +421,7 @@ without taking the publish away.
 **Before any move**, a hand-renamed `.TXT` alone on Linux leaves an
 address `exists` reports as taken whose file `read` cannot open, since
 `path_for` composes `<slug>.txt`, and `read` raises `EntryNotFound`
-naming the path it looked for. **After a move it is the other way
+naming the slug it looked for. **After a move it is the other way
 about**: the destination holds the moved `.txt`, which reads, and the
 `.TXT` beside it is what the notice names. Either way nothing writes
 over his file, and the repair is the writer's, as §4.4 already says of
@@ -411,7 +431,7 @@ a name that disagrees with its `Slug` header.
 Its slug is legal, `path_for` accepts it, and §4.3 returns it once, so
 the listing rule has nothing to report — that rule is about a NAME the
 Store will not accept, never about a file it cannot find. What the
-writer meets is `read`'s `EntryNotFound` naming the path it looked
+writer meets is `read`'s `EntryNotFound` naming the slug it looked
 for, which is §4.4's own carve-out, and INV-13's notice where a move
 strands one.
 
@@ -424,8 +444,15 @@ nothing here writes into the site folder.
 `read` opens one file and returns an `Entry`. It writes nothing —
 not a repair, not a normalisation, not a re-save of a file whose
 header it found untidy. A file that cannot be parsed raises
-`StoreError` naming the path; it is never rewritten into something
-parseable.
+`StoreError` naming the file by its own name; it is never rewritten
+into something parseable.
+
+**No message raised here names a full path.** `docs/design.md` § Logging
+puts that on the part that RAISES rather than on the Face, so it is this
+module's rule. An entry is named by its slug and any other file by its
+own name, never by the folder it sits in. **An `OSError` is reported by
+its reason and never by its own words** — a stock file error quotes the
+path it failed on, which is the thing being kept out.
 
 `list_slugs` returns the slugs in one folder, sorted, read off the
 file names rather than by opening anything. **Every name it returns is
@@ -687,7 +714,7 @@ is true of a template is PRESS-0006's (§9).
   writable by its owner and by nobody else, on a filesystem that
   enforces POSIX modes. **Where the mount granted a mode wider than
   owner-only — any group or other bit set — `write` emits a
-  `StoreNotice` naming the file and completes.** His own words
+  `StoreNotice` naming the entry by its slug, and completes.** His own words
   are not a secret, and refusing would stop him saving on a memory
   stick, which is the worse outcome; Credentials still refuses
   (PRESS-0042), because what it holds is one.
@@ -739,8 +766,9 @@ is true of a template is PRESS-0006's (§9).
   Windows run is the only place it could be observed. **It is outside
   the notice half too**, and this is the reason: `mkstemp` never grants
   `0600` there, so a notice keyed on the grant would fire on every write
-  and carry no information. §4.5 names `os.name` as the discriminator,
-  since the grant cannot tell the two cases apart.
+  and carry no information. §4.5 names the platform, read through
+  `_is_windows()`, as the discriminator, since the grant cannot tell the
+  two cases apart.
 
 - **INV-12** — `list_slugs`, `list_html` and `list_templates` return
   only names their own `path_for` accepts, and emit one `StoreNotice`
@@ -811,6 +839,20 @@ is true of a template is PRESS-0006's (§9).
   file and INV-10 governs, so the test skips where one folder cannot
   hold both.
 
+- **INV-14** — `move_to_bin` deletes nothing. After it returns, the
+  file's bytes sit unchanged at the returned path under `bin/`, at the
+  relative path it was moved from, and nothing remains where it was. A
+  path outside the Store's own sub-folders is refused and nothing moves.
+  *Test:* `tests/test_store.py::test_binning_keeps_the_bytes` — write a
+  draft, bin it, and assert the returned path ends in `drafts/<slug>.txt`,
+  holds the same bytes, and that the draft's own path no longer names a
+  file. `::test_binning_refuses_a_path_outside_the_store` hands in a
+  file beside the folder and asserts `StoreError` and that the file is
+  still there.
+  *Breaks when:* an implementer unlinks instead of moving, or names the
+  bin's copy by the slug alone, so binning one slug twice overwrites the
+  first.
+
 ## 6. Failure modes
 
 - **The handed folder does not exist.** `read` and `list_slugs` raise
@@ -826,15 +868,15 @@ is true of a template is PRESS-0006's (§9).
   rather than the caller's, so a fresh install needs no setup step for
   them — which is what lets Import write the whole archive in one go.
 - **A file that cannot be parsed** — no blank line, a header line with
-  no colon, a missing `Slug` or `Date`. `StoreError` naming the path.
-  Never repaired in place (INV-2).
+  no colon, a missing `Slug` or `Date`. `StoreError` naming the file by
+  its own name. Never repaired in place (INV-2).
 - **A file whose name does not match its `Slug` header**, which a
   hand-rename produces. `StoreError` naming both, per §4.4. Nothing is
   moved and nothing is rewritten; the repair is the writer's, and it
   is either name.
 - **A file whose `Slug` header is not a legal slug**, which a
-  hand-created file produces. `StoreError` naming the path and the
-  slug. §4.2's rule is stated of a slug rather than only of one being
+  hand-created file produces. `StoreError` naming the file by its own
+  name and the slug it carries. §4.2's rule is stated of a slug rather than only of one being
   written, so it is refused when the file is opened; without that the
   entry read and only its save was refused.
 - **A slug whose file name is too long for the platform.** Distinct
@@ -852,7 +894,7 @@ is true of a template is PRESS-0006's (§9).
   that is not published.** `EntryNotFound`. Nothing is moved.
 - **The folder is on a filesystem with no hard links** — an exFAT or
   FAT drive the writer chose. `os.link` fails, so `_move` answers
-  `StoreError` carrying the system's own message and nothing is
+  `StoreError` carrying the system's reason and nothing is
   moved: `publish` and `unpublish` cannot succeed there at all, and
   say so each time rather than failing quietly. The entry itself is
   readable and writable; only the two moves are lost.
@@ -875,9 +917,13 @@ is true of a template is PRESS-0006's (§9).
   an exFAT, NTFS, CIFS or FUSE mount the writer chose, on a system whose
   own filesystem does enforce modes. **Not Windows, where none does and
   INV-11 says why.** `write`
-  completes and emits a `StoreNotice` naming the file (INV-11). Distinct
+  completes and emits a `StoreNotice` naming the entry by its slug
+  (INV-11). Distinct
   from the no-hard-links case above, which costs him the two moves;
   this costs him nothing but a privacy the mount cannot give.
+- **`move_to_bin` handed a path outside the Store's own sub-folders.**
+  `StoreError`, and nothing moves (INV-14). A path naming no file is
+  `EntryNotFound`.
 
 ## 7. Tests
 
@@ -984,13 +1030,6 @@ imports.
 - Choosing a slug for a new entry, and what the writer is shown when a
   write fails — PRESS-0011 owns the error contract, PRESS-0012 the
   editor.
-- **Removing an entry.** This surface has no delete, and that is a gap
-  rather than a decision: `docs/design.md` § Where everything sits on
-  disk has `content/` "uploaded, updated, and pruned when he deletes an
-  entry", so something must remove one. Nothing here or in any sibling
-  spec says what. Filed as PRESS-0099; until it is settled, no part may
-  compose a path and unlink it, which `docs/design.md` rule 7 forbids
-  anyway.
 - Finding Pressless's own folder from the running program —
   PRESS-0022.
 
@@ -1012,6 +1051,7 @@ imports.
 | INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
+| INV-14 | `tests/test_store.py::test_binning_keeps_the_bytes` and `::test_binning_refuses_a_path_outside_the_store` |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent OR no sibling generator is found at all (§7), so neither a green CI run nor a green push says anything about it. A generator that is present and will not serve — unloadable, renamed, or one of several candidates — FAILS rather than skipping (PRESS-0108)** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
 | That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |
@@ -1057,6 +1097,8 @@ imports.
   amended in the same batch (PRESS-0103). Neither document may state
   either rule alone. ADR-0001 is
   implemented, not amended.
+- PRESS-0006's files are binned by `move_to_bin` too, and that document
+  names it.
 
 ## 12. Cold-eyes loop log
 
