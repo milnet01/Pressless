@@ -85,7 +85,10 @@ nothing should be built in a way that locks them out either.
 - **S6** — When publishing fails — no internet, wrong key, GitHub down —
   he is told so in a sentence he understands, the site is unchanged, and
   clicking Publish again after fixing it works. He is never left unsure
-  whether it went out.
+  whether it went out. **One failure is the exception**: where GitHub may
+  have taken the last step without confirming it, nobody can know whether
+  the site changed, so he is told plainly that the outcome is unknown and
+  what to do next.
 - **S7** — An entry he has not finished is not on the live site. He can
   close the app mid-sentence, come back tomorrow, and it is where he
   left it and nowhere else.
