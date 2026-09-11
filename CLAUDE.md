@@ -10,8 +10,8 @@ the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
 queued, blocked or newly filed.
 
-> Keep the block above true, and keep it to three facts — the state, what
-> is in flight, and what is done. That is the only position this project
+> Keep the block above true, and keep it to two facts — the state and
+> what is in flight. That is the only position this project
 > records; everything else is read off the roadmap. Everything else about where
 > work stands is read off things that cannot lie — whether a spec exists,
 > whether tests fail, what `git status` says, whether the roadmap bullet
@@ -64,7 +64,7 @@ that same file** — it holds no checks of its own, so the two cannot
 drift. The machine-wide hook discovers the script by name and runs it
 over the commits being pushed — so a failing tree cannot leave a machine
 where `core.hooksPath` is set **and `~/.claude/githooks/pre-push` is
-present**. Those two decide whether anything is gated at all;
+present and executable**. Those two decide whether anything is gated at all;
 `ants.gate.docsGlob` only decides which checks run.
 
 **Three machine-local git config keys, and a fresh clone has none of
@@ -76,14 +76,14 @@ git config core.hooksPath .githooks
 git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.txt|*.rst'
 ```
 
-**`core.hooksPath` is what makes any hook fire at all.** Unset, git looks
-in `.git/hooks`, nothing runs, and nothing says so. `.githooks/pre-push`
+**`core.hooksPath` is what makes any hook fire at all.** Unset here and
+machine-wide, git looks in `.git/hooks`, nothing runs, and nothing says so. `.githooks/pre-push`
 only delegates to the machine-wide gate; where that is absent it prints
 `NOTHING WAS CHECKED` and exits 0, so it warns rather than blocks.
 
 **`ants.gate.docsGlob` records a decision rather than changing one.** Its
 value here is deliberately the hook's own fallback, so setting it alters
-no behaviour today. `commits.md` § 4.2 makes the *unset* key the breach: a
+no behaviour today. `local-gate.md` § 6.2 makes the *unset* key the breach: a
 shared hook cannot know what a given pipeline reads, so it has to be
 told. The wide list is right here because `--docs` runs the leak sweep,
 which is the check a markdown edit in this repository can actually
@@ -104,7 +104,7 @@ git config ants.pressless.archive /path/to/wordpress-export.xml
 ```
 
 **The first two need a second thing the third does not**, and it decides
-what a green push proves. They resolve a slug through the sibling
+what a green push proves. They load the sibling
 generator in a private workspace, so they skip where no generator is
 found at all — which includes the isolated checkout the pre-push hook
 builds. **Absence is the only skip** (PRESS-0108): a generator that is
@@ -134,9 +134,9 @@ in its fields.** It resolves a surface only in a `tests/features/<name>/`
 shape, which this project does not use, so its three test-surface checks
 sit in `skipped[]` with `surfaces_checked: false` while it reports `ok`.
 `doc_citations` counts a citation `ok` when the cited line exists, and
-`unchecked` when nothing on that line was compared. So a spec's author
-resolves each `*Test:*` clause by hand: the named test must exist and
-must assert what the clause says.
+`unchecked` when nothing on that line was compared. So each `*Test:*`
+clause is resolved by hand before its item ships: the named test must
+exist and must assert what the clause says.
 
 **Proving a test red before the code exists takes a stub; proving it
 CATCHES anything takes more.** `mutation_probe` refuses without a green
@@ -214,7 +214,7 @@ it into a document was the mistake, not just the leak.
 
 **The sibling generator's own source names him, and so does the
 directory it sits in.** Decision 4 sends you there — `safe_slug` is the
-one place a slug is resolved — and the three archive tests import it, so
+one place a slug is resolved — and two archive tests load that generator, so
 a session reading it is normal rather than exceptional. Its docstrings
 carry his name, and the sibling directory is named after him, so the
 PATH is an identifier even when the code is not. Never write either into
