@@ -353,6 +353,12 @@ while the stakes are zero. Holds S2, S3, S4.
   to the old site wraps a picture, and those links are dropped with the
   picture kept (the spec's §3 decision 7). The link mark carries the
   external links.
+  Spec accepted (2026-09-11): docs/specs/PRESS-0007-import.md, two cold
+  loops, eight and ten findings, all fixed; the tail is empty. Build order:
+  PRESS-0004's link and quote marks first (tests for INV-11 and INV-12 are
+  written in tests/test_marks.py and tests/test_marks_archive.py, uncommitted
+  and red until marks.py gains them), then pressless_import, test-first, then
+  the fixed pages and furniture after PRESS-0008's spec.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -6362,6 +6368,21 @@ already-built code ships in whichever release comes next.
   **Layman:** Five different things that can stop a publish all look identical to the part that has to explain them to the writer.
   Kind: investigate.
   Source: review-contract 2026-09-08 PRESS-0009 loop 1, lane A.
+
+- 📋 [PRESS-0119] **The leak sweep misses two strings that identify the writer.**
+  Found 2026-09-11 while measuring the archive for PRESS-0007. The sweep's
+  pattern in scripts/local-ci.sh and CLAUDE.md catches his name's fragments
+  and one spelling of the site's name, and misses a second spelling of it
+  (with a separator between its two parts) and the old WordPress host name.
+  Either could enter a document, a commit message or a review packet and
+  pass the gate. Extending the pattern by writing those strings into this
+  public repository would publish them, so the fix is a pattern that does
+  not spell them: for example a separator-tolerant form of the spelling
+  already present, and a hash comparison for the host. The maintainer's
+  own memory for these sessions holds the exact strings.
+  **Layman:** The check that stops the writer's identity leaking into this public project misses two ways of spelling it.
+  Kind: security.
+  Source: in-session-2026-09-11.
 
 ## Milestones
 
