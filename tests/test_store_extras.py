@@ -818,8 +818,9 @@ def test_encodings_are_as_specified(tmp_path, monkeypatch):
 # itself, and a copy-a-photograph call could then be added with this green.
 _PRESS_0005_SURFACE = {
     "Entry", "RECOGNISED_FIELDS", "LIST_SEPARATOR", "FILE_SUFFIX",
-    "PUBLISHED_FOLDER", "DRAFTS_FOLDER",
+    "PUBLISHED_FOLDER", "DRAFTS_FOLDER", "BIN_FOLDER",
     "path_for", "exists", "list_slugs", "read", "write", "publish", "unpublish",
+    "move_to_bin",
     "StoreError", "EntryNotFound", "SlugInUse", "StoreNotice",
 }
 _PRESS_0006_SURFACE = {
@@ -1068,8 +1069,12 @@ def test_every_writer_here_reports_a_wider_grant(tmp_path, monkeypatch):
         with pytest.warns(StoreNotice) as caught:
             target = call()
         assert target.is_file(), f"writing {what} did not complete"
-        assert str(target) in " ".join(str(each.message) for each in caught), (
+        said = " ".join(str(each.message) for each in caught)
+        assert target.name in said, (
             f"the notice for {what} did not name the file it was about"
+        )
+        assert str(tmp_path) not in said, (
+            f"the notice for {what} names the folder: {said!r}"
         )
 
 

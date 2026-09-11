@@ -44,6 +44,7 @@ LIST_SEPARATOR = ", "
 FILE_SUFFIX = ".txt"
 PUBLISHED_FOLDER = "published"
 DRAFTS_FOLDER = "drafts"
+BIN_FOLDER = "bin"
 
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -133,7 +134,7 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
     """
     handed = Path(folder)
     if not handed.is_dir():
-        raise StoreError(f"{handed} is not a folder")
+        raise StoreError("the folder handed to the Store is not a folder")
     subfolder = handed / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
     return _only_usable(
         _raw_names(subfolder, FILE_SUFFIX),
@@ -177,7 +178,7 @@ def read(path: Path) -> Entry:
     """Read one entry file. Writes nothing -- ever (§4.4, INV-2).
 
     Not a repair, not a normalisation, not a re-save of a header it found
-    untidy. A file that cannot be parsed raises StoreError naming the path;
+    untidy. A file that cannot be parsed raises StoreError naming the file;
     it is never rewritten into something parseable, because S3 invites
     hand-editing and a silent repair loses what the writer meant.
 
@@ -189,14 +190,14 @@ def read(path: Path) -> Entry:
     try:
         data = target.read_bytes()
     except FileNotFoundError as exc:
-        raise EntryNotFound(f"there is no entry at {target}") from exc
+        raise EntryNotFound(f"there is no entry {target.stem!r}") from exc
     except OSError as exc:
-        raise StoreError(f"{target} could not be read: {exc}") from exc
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
 
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise StoreError(f"{target} is not UTF-8: {exc}") from exc
+        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
 
     # A blank line ends the header, and a Windows editor spells that line
     # "\r\n\r\n" -- which contains no "\n\n" at all, so looking only for the
@@ -209,7 +210,7 @@ def read(path: Path) -> Entry:
     breaks = [at for at in (text.find("\n\n"), text.find("\r\n\r\n")) if at >= 0]
     if not breaks:
         raise StoreError(
-            f"{target} has no blank line, so where the header ends and the "
+            f"{target.name} has no blank line, so where the header ends and the "
             f"body begins is undecidable"
         )
     at = min(breaks)
@@ -226,7 +227,7 @@ def read(path: Path) -> Entry:
     for line in header.split("\n"):
         name, colon, value = line.partition(":")
         if not colon:
-            raise StoreError(f"{target}: header line {line!r} has no colon")
+            raise StoreError(f"{target.name}: header line {line!r} has no colon")
         # Compared stripped, so " Title: x" is the Title rather than a near
         # miss routed to extra -- which read back as an empty title and made
         # write() emit a second, empty "Title:" line beside it (PRESS-0048).
@@ -252,7 +253,7 @@ def read(path: Path) -> Entry:
     # entry has no address, and without a date it has no place in the
     # archive.
     if not slug:
-        raise StoreError(f"{target} has no Slug, so it names no address")
+        raise StoreError(f"{target.name} has no Slug, so it names no address")
     # §4.2 states the slug rule of a slug, not only of one being written. A
     # hand-created file agreeing with its own header otherwise read as an
     # Entry `write` refuses, so the refusal reached him after he had edited
@@ -261,13 +262,13 @@ def read(path: Path) -> Entry:
     try:
         _refuse_illegal_slug(slug, "a slug")
     except StoreError as exc:
-        raise StoreError(f"{target}: {exc}") from exc
+        raise StoreError(f"{target.name}: {exc}") from exc
     if date is None:
-        raise StoreError(f"{target} has no Date")
+        raise StoreError(f"{target.name} has no Date")
 
     if target.stem != slug:
         raise StoreError(
-            f"{target} is named {target.stem!r} but its Slug header says "
+            f"{target.name} is named for {target.stem!r} but its Slug header says "
             f"{slug!r}; the header is authoritative, so rename the file or "
             f"correct the header"
         )
@@ -317,6 +318,61 @@ def unpublish(folder: Path, slug: str) -> Path:
     return _move(folder, slug, from_draft=False)
 
 
+def _now() -> datetime:
+    """The moment a move into the bin is stamped with (§4.1).
+
+    A function rather than an inline call so a test can set it: two
+    binnings a second apart must land in two folders, and nothing short of
+    controlling the clock can show that they do (INV-14).
+    """
+    return datetime.now()  # noqa: DTZ005 -- a folder name, read by him
+
+
+def move_to_bin(folder: Path, path: Path) -> Path:
+    """Move one file the Store holds into the bin, and say where it went.
+
+    Nothing the Store holds is ever unlinked (§4.1, INV-14). The file goes to
+    bin/<stamp>/<its relative path>, so the writer can move it back by hand
+    and an entry's name still matches its Slug header. Exactly the path it is
+    handed: an entry's comments file is the caller's second call.
+
+    Only a file inside one of _BINNABLE's folders. A photograph's original,
+    the bin itself, and a file directly in `folder` -- where the settings
+    file lives -- are refused, so no caller can bin one by mistake.
+    """
+    handed = Path(folder)
+    source = Path(path)
+    try:
+        relative = source.relative_to(handed)
+    except ValueError:
+        relative = None
+    if (
+        relative is None
+        or len(relative.parts) != 2
+        or relative.parts[0] not in _BINNABLE
+    ):
+        raise StoreError(
+            f"{source.name} is not a file the Store holds as writing, so it "
+            f"was not moved to the bin"
+        )
+    if not source.is_file():
+        raise EntryNotFound(f"there is no file {source.name} to move to the bin")
+    target = handed / BIN_FOLDER / _now().strftime("%Y-%m-%d-%H%M%S") / relative
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _move_without_overwriting(source, target)
+    except FileExistsError as exc:
+        raise StoreError(
+            f"the bin already holds {relative.as_posix()} from this second; "
+            f"nothing was moved"
+        ) from exc
+    except OSError as exc:
+        raise StoreError(
+            f"{source.name} could not be moved to the bin: {_why(exc)}"
+        ) from exc
+    return target
+
+
 def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     """The one mechanism behind publish and unpublish.
 
@@ -328,9 +384,9 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     source = path_for(folder, slug, draft=from_draft)
     target = path_for(folder, slug, draft=not from_draft)
     if not source.is_file():
-        raise EntryNotFound(f"there is no entry at {source}")
+        raise EntryNotFound(f"there is no entry {slug!r} in {source.parent.name}")
     occupied = (
-        f"{target} already holds {slug!r}; nothing was moved. One of the "
+        f"{target.parent.name} already holds {slug!r}; nothing was moved. One of the "
         f"two has to be renamed before this can go ahead"
     )
     if target.exists():
@@ -344,7 +400,9 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
         # check is a check, not a guarantee (PRESS-0067).
         raise SlugInUse(occupied) from exc
     except OSError as exc:
-        raise StoreError(f"{source} could not be moved to {target}: {exc}") from exc
+        raise StoreError(
+            f"{slug!r} could not be moved to {target.parent.name}: {_why(exc)}"
+        ) from exc
     return target
 
 
@@ -371,7 +429,7 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
     for path in folder.iterdir():
         if path.name != target.name and path.name.lower() == target.name.lower():
             warnings.warn(
-                f"{path} names the same entry as {target.name} and is not the "
+                f"{path.name} names the same entry as {target.name} and is not the "
                 f"file Pressless reads; after this move the folder holds both, "
                 f"and {path.name} can only be reached by renaming it",
                 StoreNotice,
@@ -394,7 +452,7 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
     raise the same error, so the caller branches once.
 
     The POSIX route needs a filesystem that has hard links. On one that does
-    not, a move raises StoreError carrying the system's own message, which is
+    not, a move raises StoreError carrying the system's reason, which is
     visible rather than quiet.
     """
     if os.name == "nt":
@@ -493,8 +551,22 @@ def _parse_date(value: str, target: Path) -> datetime:
         return datetime.strptime(value, _DATE_FORMAT)  # noqa: DTZ007
     except ValueError as exc:
         raise StoreError(
-            f"{target}: Date is {value!r}, not YYYY-MM-DD HH:MM:SS"
+            f"{target.name}: Date is {value!r}, not YYYY-MM-DD HH:MM:SS"
         ) from exc
+
+
+def _why(exc: Exception) -> str:
+    """The reason an error carries, never its own words.
+
+    A stock file error quotes the path it failed on, and PRESS-0005 § 4.4
+    forbids a full path in anything the Store raises or emits. `strerror` is
+    the reason alone. A UnicodeError names no path, so its own words stand.
+    Duplicated from publisher.py on purpose: design rule 7 forbids reaching
+    into another part.
+    """
+    if isinstance(exc, OSError):
+        return exc.strerror or type(exc).__name__
+    return str(exc)
 
 
 def _discard(temporary: str) -> None:
@@ -541,6 +613,13 @@ COMMENTS_FOLDER = "comments"
 PHOTOGRAPHS_FOLDER = "photographs"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
+
+# What move_to_bin takes a file from (PRESS-0005 §4.1): every folder of
+# writing the Store holds, and nothing else.
+_BINNABLE = (
+    PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
+    TEMPLATES_FOLDER, COMMENTS_FOLDER,
+)
 
 # §3 decision 2: the site has exactly one header, one footer and one
 # navigation. The page set is open (decision 8) and this one is not -- both
@@ -590,7 +669,7 @@ def list_html(folder: Path, kind: str) -> tuple[str, ...]:
     """
     handed = Path(folder)
     if not handed.is_dir():
-        raise StoreError(f"{handed} is not a folder")
+        raise StoreError("the folder handed to the Store is not a folder")
     subfolder = handed / _html_subfolder(kind)
     return _only_usable(
         _raw_names(subfolder, HTML_SUFFIX),
@@ -611,16 +690,16 @@ def read_html(path: Path) -> str:
     try:
         data = target.read_bytes()
     except FileNotFoundError as exc:
-        raise StoreError(f"there is no file at {target}") from exc
+        raise StoreError(f"there is no file {target.name}") from exc
     except OSError as exc:
-        raise StoreError(f"{target} could not be read: {exc}") from exc
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
 
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError as exc:
         # Not decoded with a replacement character: that would silently change
         # his page on the next save (§6).
-        raise StoreError(f"{target} is not UTF-8: {exc}") from exc
+        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
 
 
 def write_html(folder: Path, kind: str, name: str, html: str) -> Path:
@@ -651,7 +730,7 @@ def list_templates(folder: Path) -> tuple[str, ...]:
     """
     handed = Path(folder)
     if not handed.is_dir():
-        raise StoreError(f"{handed} is not a folder")
+        raise StoreError("the folder handed to the Store is not a folder")
     subfolder = handed / TEMPLATES_FOLDER
     return _only_usable(
         _raw_names(subfolder, FILE_SUFFIX),
@@ -709,28 +788,28 @@ def read_comments(path: Path) -> tuple[Comment, ...]:
     except FileNotFoundError:
         return ()
     except OSError as exc:
-        raise StoreError(f"{target} could not be read: {exc}") from exc
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
 
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise StoreError(f"{target} is not UTF-8: {exc}") from exc
+        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
     try:
         carried = json.loads(text)
     except ValueError as exc:
         # Never rewritten into something parseable (§6): a silent repair loses
         # what was there, and these are records nobody can retype.
-        raise StoreError(f"{target} is not JSON: {exc}") from exc
+        raise StoreError(f"{target.name} is not JSON: {exc}") from exc
     if not isinstance(carried, list):
         raise StoreError(
-            f"{target} holds a {type(carried).__name__}, not a list of comments"
+            f"{target.name} holds a {type(carried).__name__}, not a list of comments"
         )
 
     comments: list[Comment] = []
     for position, record in enumerate(carried):
         if not isinstance(record, dict):
             raise StoreError(
-                f"{target}: comment {position} is a {type(record).__name__}, "
+                f"{target.name}: comment {position} is a {type(record).__name__}, "
                 f"not an object"
             )
         _refuse_the_wrong_comment_fields(record, position, target)
@@ -861,7 +940,7 @@ def _refuse_illegal_slug(name: str, what: str) -> None:
 
 def _refuse_the_wrong_comment_fields(record: dict, position: int, target: Path) -> None:
     """§6: a comments file carrying a field the record does not have raises,
-    naming the path and the field.
+    naming the file and the field.
 
     Unlike an entry's unknown header field, which ADR-0001 keeps, an
     unexpected field here is most likely one §4.5 forbids -- the email address
@@ -870,14 +949,14 @@ def _refuse_the_wrong_comment_fields(record: dict, position: int, target: Path) 
     unexpected = sorted(set(record) - set(_COMMENT_FIELDS))
     if unexpected:
         raise StoreError(
-            f"{target}: comment {position} carries {unexpected!r}, which a "
+            f"{target.name}: comment {position} carries {unexpected!r}, which a "
             f"comment does not have. A comment is {list(_COMMENT_FIELDS)!r} "
             f"and nothing else"
         )
     missing = sorted(set(_COMMENT_FIELDS) - set(record))
     if missing:
         raise StoreError(
-            f"{target}: comment {position} is missing {missing!r}"
+            f"{target.name}: comment {position} is missing {missing!r}"
         )
 
 
@@ -901,14 +980,14 @@ def _refuse_unsound_identifiers(comments: tuple[Comment, ...], target: Path) -> 
     for comment in comments:
         if not comment.identifier:
             raise StoreError(
-                f"{target}: a comment has an empty identifier; nothing was "
+                f"{target.name}: a comment has an empty identifier; nothing was "
                 f"written. An empty identifier is also what a top-level "
                 f"comment's parent holds, so a reply to this one would be "
                 f"read as top-level rather than refused"
             )
         if comment.identifier in seen:
             raise StoreError(
-                f"{target}: two comments share the identifier "
+                f"{target.name}: two comments share the identifier "
                 f"{comment.identifier!r}; nothing was written. A reply naming "
                 f"it could not say which of the two it answers"
             )
@@ -931,7 +1010,7 @@ def _refuse_a_dangling_reply(comments: tuple[Comment, ...], target: Path) -> Non
     for comment in comments:
         if comment.parent and comment.parent not in held:
             raise DanglingReply(
-                f"{target}: comment {comment.identifier!r} replies to "
+                f"{target.name}: comment {comment.identifier!r} replies to "
                 f"{comment.parent!r}, which is not in the same set; nothing "
                 f"was written"
             )
@@ -956,7 +1035,7 @@ def _refuse_a_zoned_date(comments: tuple[Comment, ...], target: Path) -> None:
         date = comment.date
         if date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None:
             raise StoreError(
-                f"{target}: comment {comment.identifier!r} carries the time "
+                f"{target.name}: comment {comment.identifier!r} carries the time "
                 f"zone {date.tzinfo}, and a comment's date is written without "
                 f"one -- the offset would be dropped in silence and the "
                 f"comment stored at a wall clock from somewhere else. Drop "
@@ -1014,7 +1093,7 @@ def _only_usable(
             compose(name)
         except StoreError as exc:
             warnings.warn(
-                f"{subfolder / file_name} was passed over: {exc}",
+                f"{subfolder.name}/{file_name} was passed over: {exc}",
                 StoreNotice,
                 stacklevel=3,
             )
@@ -1035,7 +1114,7 @@ def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
     """
     handed = Path(folder)
     if not handed.is_dir():
-        raise StoreError(f"{handed} is not a folder")
+        raise StoreError("the folder handed to the Store is not a folder")
     destination = handed / subfolder
     if not destination.is_dir():
         return ()
@@ -1109,7 +1188,7 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
     granted = stat.S_IMODE(os.fstat(handle).st_mode)
     if granted & 0o077:
         warnings.warn(
-            f"{target} could not be made private: this filesystem granted "
+            f"{target.name} could not be made private: this filesystem granted "
             f"mode {granted:03o} rather than owner-only, so others with an "
             f"account on this machine can read it",
             StoreNotice,
@@ -1134,19 +1213,21 @@ def _write_atomically(
     """
     handed = Path(folder)
     if not handed.is_dir():
-        raise StoreError(f"{handed} is not a folder")
+        raise StoreError("the folder handed to the Store is not a folder")
     destination = Path(target).parent
     try:
         destination.mkdir(exist_ok=True)
     except OSError as exc:
-        raise StoreError(f"{destination} could not be created: {exc}") from exc
+        raise StoreError(
+            f"{destination.name} could not be created: {_why(exc)}"
+        ) from exc
 
     try:
         handle, temporary = tempfile.mkstemp(
             dir=str(destination), prefix=prefix, suffix=".tmp"
         )
     except OSError as exc:
-        raise StoreError(f"{target} could not be written: {exc}") from exc
+        raise StoreError(f"{target.name} could not be written: {_why(exc)}") from exc
     try:
         try:
             _report_a_wide_grant(handle, target)
@@ -1173,7 +1254,7 @@ def _write_atomically(
     # raw: that is a bug in the caller, and StoreError would hide it.
     except (OSError, UnicodeError) as exc:
         _discard(temporary)
-        raise StoreError(f"{target} could not be written: {exc}") from exc
+        raise StoreError(f"{target.name} could not be written: {_why(exc)}") from exc
     except BaseException:
         _discard(temporary)
         raise

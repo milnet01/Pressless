@@ -17,6 +17,10 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Store deletes a file by moving it into a bin in Pressless's own folder** (PRESS-0099)
+  move_to_bin keeps the file's place under a dated folder, so he can move
+  it back by hand. Nothing the Store holds is ever unlinked.
+
 - **A rolling plain-English log, beside the settings and bounded forever** (PRESS-0003)
   Pressless now keeps a plain diary of what it did, in its own folder
   next to the settings file. It rolls by size and keeps exactly one old
@@ -194,6 +198,11 @@ appears once something has actually shipped.)
   is discarded by the next write.
 
 ### Fixed
+
+- **Failure messages from the Store and the Publisher no longer name a folder on his computer or the account his site is published under** (PRESS-0117)
+  A file is named by its own name, an entry by its slug, and a request by
+  what it asked for. A system error is reported by its reason, never by
+  its own words, which quote the path it failed on.
 
 - **Failure messages no longer name a folder on his computer** (PRESS-0117)
   The Publisher, Insights, Credentials and Settings all put the full

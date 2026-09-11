@@ -11,17 +11,19 @@
 # proves each message clean without ever proving the RULE holds. Here the
 # walk is the test, so a part that gains a message gains a row.
 #
-# The two modules covered are the ones whose contracts pin no path, so
-# their messages were changed with no spec amendment. Credentials and
-# Settings are PRESS-0001 and PRESS-0002's, whose §4 tables now name the
-# file by what it is; Store, pages and packaging still carry the breach
-# and are PRESS-0117's remainder.
+# The Publisher, Insights and the Store are walked here; the Store's rule is
+# PRESS-0005 § 4.4 and PRESS-0006 § 4.4. Credentials and Settings are
+# walked in their own suites, against PRESS-0001 and PRESS-0002's § 4
+# tables. Packaging is not built yet, so it has nothing to walk.
 #
 # NOT ASSERTED, deliberately: that a message is useful. Anonymity and
 # diagnosability trade against each other, and this file holds only the
 # side that can be checked mechanically.
+import json
 import os
 import re
+from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -34,17 +36,27 @@ from test_publisher import (
     _Transport,
     _writes,
 )
+from test_store import _wide_grant
 
+from pressless import store
 from pressless.insights import InsightsError
 from pressless.insights import read as insights_read
 from pressless.publisher import (
+    Conflict,
     FetchNotWritten,
     PublishError,
+    RateLimited,
+    Refused,
+    RemoteStateMissing,
+    RepositoryMissing,
     SiteFolderMissing,
     SiteWouldBeEmptied,
+    TooLarge,
+    Unreachable,
     fetch_previous,
     publish,
 )
+from pressless.store import EntryNotFound, SlugInUse, StoreError, StoreNotice
 
 # An absolute POSIX path: a slash that opens the string or follows a space
 # or a quote, then a segment, then another slash. A site-relative path like
@@ -222,3 +234,198 @@ def test_no_insights_failure_names_a_path(tmp_path):
         )
 
     _refuse_a_path("InsightsError from Insights", str(caught.value), tmp_path)
+
+
+def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
+    """Every message the Store raises or warns with names no path.
+
+    PRESS-0005 § 4.4 and PRESS-0006 § 4.4 put the rule on the Store: an entry
+    is named by its slug, any other file by its own name, and an `OSError` by
+    its reason. One site per kind of failure the Store reports, its notices
+    included -- a notice reaches the log exactly as a failure does.
+
+    Every offender is collected before the assertion, so a red run names
+    each site at once rather than the first.
+
+    Breaks when an implementer interpolates `target` to say which file
+    failed. The file's own name already says that, and says nothing about
+    where Pressless sits on his machine.
+    """
+    folder = tmp_path / "pressless"
+    folder.mkdir()
+    messages: list[tuple[str, str]] = []
+
+    def failure(what, invoke, kind=StoreError):
+        with pytest.raises(kind) as caught:
+            invoke()
+        messages.append((what, str(caught.value)))
+
+    def notice(what, invoke):
+        with pytest.warns(StoreNotice) as caught:
+            invoke()
+        messages.extend((what, str(w.message)) for w in caught)
+
+    def put(relative: str, data: bytes) -> Path:
+        target = folder / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        return target
+
+    entry = folder / "published" / "an-entry.txt"
+    failure("a missing entry", lambda: store.read(entry), EntryNotFound)
+    for what, data in (
+        ("an entry that is not UTF-8", b"Slug: an-entry\n\n\xff"),
+        ("an entry with no blank line", b"Slug: an-entry"),
+        ("a header line with no colon", b"Slug an-entry\n\nbody"),
+        ("an entry with no Slug", b"Date: 2026-01-01 00:00:00\n\nbody"),
+        ("an entry whose Slug is illegal", b"Slug: An_Entry\n\nbody"),
+        ("an entry with no Date", b"Slug: an-entry\n\nbody"),
+        ("an entry with a malformed Date", b"Slug: an-entry\nDate: soon\n\nbody"),
+        ("an entry named unlike its Slug",
+         b"Slug: another\nDate: 2026-01-01 00:00:00\n\nbody"),
+    ):
+        put("published/an-entry.txt", data)
+        failure(what, lambda: store.read(entry))
+    entry.unlink()
+
+    failure("a handed folder that is not one",
+            lambda: store.list_slugs(tmp_path / "absent", draft=False))
+    failure("publishing a draft that is not there",
+            lambda: store.publish(folder, "no-such-entry"), EntryNotFound)
+
+    good = store.Entry(
+        slug="taken", title="", date=datetime(2026, 1, 1), categories=(),
+        tags=(), body="body", extra=(),
+    )
+    store.write(folder, good, draft=True)
+    store.write(folder, good, draft=False)
+    failure("publishing onto a slug already published",
+            lambda: store.publish(folder, "taken"), SlugInUse)
+
+    def no_hard_links(source, target):
+        raise OSError(1, "Operation not permitted", str(source))
+
+    store.write(folder, replace(good, slug="stuck"), draft=True)
+    monkeypatch.setattr(store.os, "link", no_hard_links)
+    failure("a move on a filesystem with no hard links",
+            lambda: store.publish(folder, "stuck"))
+    monkeypatch.undo()
+
+    def full_disk(*args, **kwargs):
+        raise OSError(28, "No space left on device", str(folder))
+
+    monkeypatch.setattr(store.tempfile, "mkstemp", full_disk)
+    failure("a write onto a full disk",
+            lambda: store.write(folder, replace(good, slug="full"), draft=True))
+    monkeypatch.undo()
+
+    page = store.html_path_for(folder, "pages", "about")
+    failure("a missing page", lambda: store.read_html(page))
+    put("pages/about.html", b"\xff")
+    failure("a page that is not UTF-8", lambda: store.read_html(page))
+
+    comments = store.comments_path_for(folder, "an-entry")
+    record = {"identifier": "1", "author": "a reader", "author_url": "",
+              "date": "2026-01-01 00:00:00", "body": "a comment", "parent": ""}
+    for what, carried in (
+        ("comments that are not JSON", b"{"),
+        ("comments that are not a list", b"{}"),
+        ("a comment that is not an object", b"[1]"),
+        ("a comment carrying an extra field",
+         json.dumps([{**record, "email": "x"}]).encode()),
+        ("a comment missing a field",
+         json.dumps([{k: v for k, v in record.items() if k != "body"}]).encode()),
+    ):
+        put("comments/an-entry.json", carried)
+        failure(what, lambda: store.read_comments(comments))
+
+    one = store.Comment(identifier="1", author="a reader", author_url="",
+                        date=datetime(2026, 1, 1), body="a comment", parent="")
+    for what, kind, carried in (
+        ("a reply to a comment that is absent", store.DanglingReply,
+         (replace(one, parent="9"),)),
+        ("a comment with no identifier", StoreError, (replace(one, identifier=""),)),
+        ("two comments sharing an identifier", StoreError, (one, one)),
+        ("a comment date carrying a zone", StoreError,
+         (replace(one, date=datetime(2026, 1, 1, tzinfo=timezone.utc)),)),
+    ):
+        failure(
+            what,
+            lambda carried=carried: store.write_comments(folder, "an-entry", carried),
+            kind,
+        )
+
+    put("drafts/unusable_name.txt", b"")
+    notice("a listing passing a file over",
+           lambda: store.list_slugs(folder, draft=True))
+    (folder / "drafts" / "unusable_name.txt").unlink()
+
+    store.write(folder, replace(good, slug="twin"), draft=True)
+    put("published/twin.TXT", b"Slug: twin\n\nbody")
+    notice("a move stranding a second file",
+           lambda: store.publish(folder, "twin"))
+
+    _wide_grant(monkeypatch)
+    notice("a write the mount would not make private",
+           lambda: store.write(folder, replace(good, slug="wide"), draft=True))
+
+    offenders = [
+        (what, message) for what, message in messages
+        if str(tmp_path) in message or _ABSOLUTE.search(message)
+    ]
+    assert not offenders, (
+        "docs/design.md § Logging forbids a full filesystem path in anything "
+        "Pressless shows or writes down, and PRESS-0005 § 4.4 puts that on the "
+        "Store. These messages name one:\n"
+        + "\n".join(f"  {what}: {message!r}" for what, message in offenders)
+    )
+
+
+def test_no_publisher_failure_names_the_account(tmp_path):
+    """No Publisher message names the account a repository sits under.
+
+    docs/design.md § Logging: a repository is named by its short name, never
+    `account/name`. Every request URL carries `repos/<account>/<name>`, and
+    these messages quoted the URL whole, so each named the account his site
+    is published under -- which identifies him as surely as a path does.
+
+    Breaks when an implementer puts the URL back in a message to make a
+    failure diagnosable. The method and what was asked for say which request
+    failed; the account adds nothing but him.
+    """
+    site = tmp_path / "site"
+    site.mkdir()
+    (site / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    branch = ("/repos/", (200, {}, json.dumps({"default_branch": "main"}).encode()))
+
+    def answer(status, headers=None):
+        return (status, headers or {}, b"{}")
+
+    def raised(kind, reads, writes=None, **failing):
+        with pytest.raises(kind) as caught:
+            publish(
+                _settings(), site, "a-token", "a commit message",
+                transport=_Transport(reads=reads, writes=writes or _writes(),
+                                     **failing),
+            )
+        return kind.__name__, str(caught.value)
+
+    messages = [
+        raised(Refused, [("/repos/", answer(401))]),
+        raised(RepositoryMissing, [("/repos/", answer(404))]),
+        raised(RemoteStateMissing, [("/commits/", answer(404)), branch]),
+        raised(TooLarge, [("/commits/", answer(413)), branch]),
+        raised(PublishError, [("/commits/", answer(502)), branch]),
+        raised(RateLimited, [("/repos/", answer(429, {"retry-after": "99999"}))]),
+        raised(Unreachable, _reads(listing), fail_at="/repos/", fail_on_read=True),
+        raised(Conflict, _reads(listing),
+               writes=[("/git/refs", answer(409))] + _writes()),
+    ]
+
+    offenders = [(kind, message) for kind, message in messages if "owner/" in message]
+    assert not offenders, (
+        "docs/design.md § Logging names a repository by its short name, never "
+        "account/name. These Publisher messages name the account:\n"
+        + "\n".join(f"  {kind}: {message!r}" for kind, message in offenders)
+    )

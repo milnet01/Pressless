@@ -821,7 +821,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
   Lanes: Face, Settings.
 
-- 📋 [PRESS-0028] **S6 is stated absolutely in discovery, and the system admits one case.**
+- ✅ [PRESS-0028] **S6 is stated absolutely in discovery, and the system admits one case.**
   docs/discovery.md S6 reads that he is never left unsure whether it went
   out. The PRESS-0009 spec settles the exception: a failure during the
   reference update is the one case where the site's state is genuinely
@@ -844,6 +844,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
   final step cannot be known, he is told plainly that it is unknown and
   what to do next. Worded to cover both routes PRESS-0096 names, not the
   dropped-connection route alone.
+  Resolved (2026-09-11). S6 admits the unknown-outcome case and says
+  publishing again is still safe; gated, record in
+  docs/reviews/discovery-loop-log.md. A crash of Pressless mid-publish is
+  filed as PRESS-0118.
   **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
   Kind: doc.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
@@ -1181,7 +1185,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Kind: investigate.
   Source: user question 2026-09-04, verified against GitHub's REST documentation the same day.
 
-- 📋 [PRESS-0096] **design.md admits one unknown-outcome case and the Publisher now reaches that state by two routes.**
+- ✅ [PRESS-0096] **design.md admits one unknown-outcome case and the Publisher now reaches that state by two routes.**
   docs/design.md section Errors says the unknown-outcome sentence covers
   the reference update being sent and no result coming back, and calls
   that the one case S6 admits.
@@ -1199,11 +1203,13 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Milestone: v0.5.0. Blocks S6 — the sign says he is never left unsure
   whether it went out, and the Publisher reaches an unknown-outcome state
   by two routes.
+  Resolved (2026-09-11). design.md § Errors names both routes to an
+  unknown outcome; gated, loop 13.
   **Layman:** The design document promises the writer a clear answer in a case where the app can no longer give one.
   Kind: doc-fix.
   Source: review-contract 2026-09-05, PRESS-0009 gate loop 2.
 
-- 📋 [PRESS-0099] **Nothing in any contract can remove an entry, though the design says a deleted entry is pruned from the site.**
+- ✅ [PRESS-0099] **Nothing in any contract can remove an entry, though the design says a deleted entry is pruned from the site.**
   The Store's surface is path_for, exists, list_slugs, read, write,
   publish and unpublish. There is no removal call, and the words delete
   and remove appear nowhere in PRESS-0005 except inside the move.
@@ -1232,11 +1238,15 @@ Publish again after fixing it works. Holds S1, S5, S6.
   one. The site loses it on the next publish, because the Builder no
   longer copies it into content/ and the Publisher prunes what it was not
   handed. Lands as amendments to docs/design.md and PRESS-0005.
+  Resolved (2026-09-11). move_to_bin moves one file into
+  bin/<stamp>/<its relative path> and unlinks nothing (PRESS-0005 INV-14,
+  design.md). Built and tested, each Breaks-when route mutation-probed and
+  killed. The Face's delete control is PRESS-0012's.
   **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
 
-- 📋 [PRESS-0117] **Every part's failure messages meet the no-paths rule, not just Credentials and Settings.**
+- ✅ [PRESS-0117] **Every part's failure messages meet the no-paths rule, not just Credentials and Settings.**
   docs/design.md § Logging forbids a credential, an account name or a
   full filesystem path in anything Pressless shows or writes down, and
   puts the obligation on the part that RAISES rather than on the Face.
@@ -1312,6 +1322,15 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Both belong with this item's remainder -- Store, pages and packaging --
   since fixing PRESS-0005's message rule and this sentence is one gate
   rather than two.
+  Resolved (2026-09-11). Store, pages and packaging specs amended and
+  gated; every built part now meets the rule. The Store's messages name a
+  file by its own name and an entry by its slug, and report an OSError by
+  its reason. The Publisher's messages no longer carry repos/<account>/
+  <name>, which a review lane found the earlier pass had missed. Held by
+  tests/test_failure_messages.py's Store and account walks, each proved
+  red first and mutation-probed. Packaging's code does not exist yet; its
+  spec now requires the rule. One review round per document, by user
+  instruction, so no second cold read has seen the fixes.
   **Layman:** Error messages currently include the folder path on his computer, which names him. They will name the thing that failed instead.
   Kind: review-fix.
   Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
@@ -1370,7 +1389,7 @@ is not on the live site. Holds S7, S10.
   Source: design-2026-08-24 § What may depend on what rule 1.
   Lanes: Face.
 
-- 📋 [PRESS-0030] **Nothing says which part builds the preview page.**
+- ✅ [PRESS-0030] **Nothing says which part builds the preview page.**
   docs/design.md requires the preview show a real page built with the
   change before it is published -- the promise that makes a footer edit
   safe, and it calls that the highest-blast-radius edit in the app. The
@@ -1396,6 +1415,9 @@ is not on the live site. Holds S7, S10.
   change, which only the Builder produces, and S7 forbids unfinished work
   in the site folder, which the next publish would carry. No other option
   keeps both. Lands as an amendment to docs/design.md.
+  Resolved (2026-09-11). design.md: the Builder builds the preview into a
+  preview folder in Pressless's own folder, handed the Face's photograph
+  rule; gated, loop 13.
   **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
@@ -1454,7 +1476,7 @@ that it is back. Holds S9.
   Source: design-2026-08-24 § What undo actually does.
   Lanes: Face.
 
-- 📋 [PRESS-0031] **Undo has no stated answer for an edit made since the last publish.**
+- ✅ [PRESS-0031] **Undo has no stated answer for an edit made since the last publish.**
   Undo is sourced entirely from the repository: fetch the previous state,
   write its content/ back into the Store, rebuild, publish. Persistence
   keeps one file per entry, renamed over the old one, so no local prior
@@ -1479,6 +1501,9 @@ that it is back. Holds S9.
   separate draft beside the restored entry, the way a kept fixed page
   sits beside the fetched state, so an undo deletes nothing of his. Lands
   as an amendment to docs/design.md.
+  Resolved (2026-09-11). design.md: undo keeps an edit that differs from
+  the fetched state -- an entry's as a new draft under a slug the Face
+  chooses, any other file's in the bin; gated, loop 13.
   **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
@@ -2056,7 +2081,7 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: in-session-2026-08-31, found while gating PRESS-0006.
 
-- 📋 [PRESS-0037] **A spec's mechanical checks report themselves clean when they did not run.**
+- ✅ [PRESS-0037] **A spec's mechanical checks report themselves clean when they did not run.**
   `spec_lint` returns `ok: true` with `findings: []` while its three
   test-surface checks are listed in `skipped[]` and `surfaces_checked` is
   false: the verb resolves a surface only in a `tests/features/<name>/`
@@ -2076,6 +2101,9 @@ already-built code ships in whichever release comes next.
   14's gate, which is a cost this session should not spend silently.
 
   Blocked-by: nothing.
+  Resolved (2026-09-11). CLAUDE.md § Build and test says spec_lint skips
+  test surfaces here and that each *Test:* clause is resolved by hand
+  before its item ships; gated, loop 4.
   **Layman:** Two of our automatic document checks return a tick even when they checked nothing, and a future session will read that tick as a pass.
   Kind: doc.
   Source: in-session-2026-08-31, met while gating PRESS-0006.
@@ -4977,7 +5005,7 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: in-session-2026-09-02, measured while answering the user's versioning question.
 
-- 📋 [PRESS-0087] **The publishing key sits in a frame local that INV-7's test cannot reach.**
+- ✅ [PRESS-0087] **The publishing key sits in a frame local that INV-7's test cannot reach.**
   INV-7 is tested on str() and repr() of what is raised, and both are
   clean. But the key also lives as a VALUE in the headers dict of the
   frame that raises, so any locals-dumping traceback handler or crash
@@ -5008,6 +5036,10 @@ already-built code ships in whichever release comes next.
   failure no part of Pressless raised, where the Face shows and records
   the type alone; that is the branch a locals-dumping handler would sit
   in, so it is covered by construction rather than by a promise.
+  Resolved (2026-09-11). PRESS-0009 INV-7 names the two surfaces it
+  covers; design.md § Errors closes the third, since the Face never shows
+  a raw traceback. Nothing in src/ formats a traceback's locals. Gated,
+  loop 13.
   **Layman:** A crash report that lists variables could show the publishing key, even though every error message is careful never to.
   Kind: security.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 2 on 2026-09-02.
@@ -6051,7 +6083,7 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: roadmap-format.md 3.2, changed 2026-09-06; in-session 2026-09-07.
 
-- 📋 [PRESS-0112] **design.md states the untouchable match's tolerance exhaustively, and PRESS-0009 now needs a second one.**
+- ✅ [PRESS-0112] **design.md states the untouchable match's tolerance exhaustively, and PRESS-0009 now needs a second one.**
   design.md's untouchable paragraph reads "matched with any trailing
   slash on the entry ignored", which was an exhaustive statement of the
   tolerance when it was written.
@@ -6074,6 +6106,9 @@ already-built code ships in whichever release comes next.
   never uploaded and never removed and the home page silently stops
   updating. That derivation is out of PRESS-0009's scope, so whichever
   document ends up owning Setup carries it.
+  Resolved (2026-09-11). design.md's untouchable match ignores case and
+  the trailing slash, and Setup's derivation compares names the same way;
+  gated, loop 13. PRESS-0021 builds the derivation.
   **Layman:** The design document and the publisher's contract now disagree about how a protected filename is compared.
   Kind: doc-fix.
   Source: review-contract 2026-09-08 loop 1 lane 3, on the PRESS-0078 amendment.

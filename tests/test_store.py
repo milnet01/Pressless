@@ -34,6 +34,7 @@ from pressless.store import (
     list_html,
     list_slugs,
     list_templates,
+    move_to_bin,
     path_for,
     publish,
     read,
@@ -1369,16 +1370,19 @@ def test_a_listing_returns_only_usable_names(tmp_path):
     # The empty-slug file is dropped by the folded set before any filter sees
     # it, so it is the one case that proves the listing reads raw names.
     #
-    # The needle is the WHOLE path, not the suffix: `.txt` also occurs inside
-    # `My_Entry.txt`'s path, so searching for it alone passed whether or not
+    # The needle is the folder and the name, not the suffix: `.txt` also occurs
+    # inside `My_Entry.txt`, so searching for it alone passed whether or not
     # this file was named at all -- which a mutation probe caught after the
-    # test had gone green.
-    stranded = str(tmp_path / _PUBLISHED / _SUFFIX)
+    # test had gone green. Relative, because PRESS-0005 § 4.4 forbids the
+    # notice the full path.
+    stranded = f"{_PUBLISHED}/{_SUFFIX}"
     with pytest.warns(StoreNotice) as caught:
         list_slugs(tmp_path, draft=False)
-    assert any(stranded in str(each.message) for each in caught), (
+    said = " ".join(str(each.message) for each in caught)
+    assert stranded in said, (
         f"nothing named {stranded!r}, the file called exactly {_SUFFIX!r}"
     )
+    assert str(tmp_path) not in said, f"a notice names the folder: {said!r}"
 
 
 def test_a_stranded_file_is_reported(tmp_path):
@@ -1425,9 +1429,75 @@ def test_a_wider_grant_is_reported(tmp_path, monkeypatch):
         target = write(tmp_path, _entry(), draft=False)
     assert target.is_file(), "the write did not complete"
     assert read(target).slug == "an-example", "the entry did not survive"
-    assert str(target) in " ".join(str(each.message) for each in caught), (
-        "the notice did not name the file"
+    assert target.stem in " ".join(str(each.message) for each in caught), (
+        "the notice did not name the entry"
     )
+
+
+def test_the_notice_names_no_path(tmp_path, monkeypatch):
+    """INV-11's naming clause: the wider-grant notice names the entry by its
+    slug, and neither its path nor its folder.
+
+    The row above asserts the notice fires; this one asserts what it SAYS.
+    Without it the naming clause cannot fail -- that test once asserted the
+    path WAS in the notice, which is the breach `docs/design.md` § Logging
+    forbids."""
+    _wide_grant(monkeypatch)
+    with pytest.warns(StoreNotice) as caught:
+        write(tmp_path, _entry(), draft=False)
+    said = " ".join(str(each.message) for each in caught)
+    assert "an-example" in said, f"the notice did not name the entry: {said!r}"
+    assert str(tmp_path) not in said, f"the notice names the folder: {said!r}"
+
+
+def test_binning_keeps_the_bytes(tmp_path, monkeypatch):
+    """INV-14: move_to_bin deletes nothing.
+
+    The file lands at bin/<stamp>/<its relative path> with its bytes intact
+    and is gone from where it was. Binning the same path again a second later
+    must keep BOTH copies: a bin named by the slug alone passes a single
+    binning and loses the first copy on the second, so only a second binning
+    under a controlled clock can see it."""
+    moments = iter([datetime(2026, 9, 11, 10, 0, 0), datetime(2026, 9, 11, 10, 0, 1)])  # noqa: DTZ001
+    monkeypatch.setattr(store_module, "_now", lambda: next(moments))
+
+    write(tmp_path, _entry("seaside", body="first\n"), draft=True)
+    draft = path_for(tmp_path, "seaside", draft=True)
+    first_bytes = draft.read_bytes()
+    first = move_to_bin(tmp_path, draft)
+    assert first.parts[-2:] == (_DRAFTS, f"seaside{_SUFFIX}"), (
+        f"the bin's copy is not at its relative path: {first}"
+    )
+    assert first.read_bytes() == first_bytes, "the bin's copy changed"
+    assert not draft.exists(), "the draft is still where it was"
+
+    write(tmp_path, _entry("seaside", body="second\n"), draft=True)
+    second = move_to_bin(tmp_path, draft)
+    assert second != first, "the second binning landed on the first"
+    assert first.read_bytes() == first_bytes, "the second binning lost the first copy"
+    assert second.read_bytes() != first_bytes, "the second copy is not the second draft"
+
+
+def test_binning_refuses_a_path_outside_the_store(tmp_path):
+    """INV-14's refusal: only a file inside one of the Store's folders of
+    writing is binned. A file beside the folder, a file directly in it --
+    where the settings file lives -- and a photograph's original are each
+    refused with StoreError, and each is still there afterwards."""
+    folder = tmp_path / "pressless"
+    folder.mkdir()
+    beside = tmp_path / "beside.txt"
+    loose = folder / "settings.json"
+    photograph = folder / "photographs" / "seaside.jpg"
+    photograph.parent.mkdir()
+    for path in (beside, loose, photograph):
+        path.write_bytes(b"keep me")
+        with pytest.raises(StoreError) as caught:
+            move_to_bin(folder, path)
+        assert type(caught.value) is StoreError, (
+            f"{path.name} was refused as {type(caught.value).__name__}, not as "
+            f"a path outside the Store"
+        )
+        assert path.read_bytes() == b"keep me", f"{path.name} was moved or changed"
 
 
 def test_an_ordinary_write_emits_no_notice(tmp_path):

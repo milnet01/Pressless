@@ -524,7 +524,9 @@ class _Session:
                 # The reference update is the one request whose failure
                 # leaves the site's state genuinely unknown (§6).
                 failure = OutcomeUnknown if outcome_unknown else Unreachable
-                raise failure(f"no answer from GitHub for {method} {url}") from exc
+                raise failure(
+                    f"no answer from GitHub for {method} {_without_account(url)}"
+                ) from exc
 
             hint = _retry_hint(status, response_headers)
             if hint is not None:
@@ -533,12 +535,14 @@ class _Session:
                     # with nothing said to the writer (PRESS-0046).
                     raise RateLimited(
                         f"GitHub asked us to wait {hint:.0f}s on {method} "
-                        f"{url}, longer than a publish will block for"
+                        f"{_without_account(url)}, longer than a publish "
+                        f"will block for"
                     )
                 attempts += 1
                 if attempts > MAX_RETRIES:
                     raise RateLimited(
-                        f"GitHub asked us to wait on {method} {url} and was "
+                        f"GitHub asked us to wait on {method} "
+                        f"{_without_account(url)} and was "
                         f"still asking after {MAX_RETRIES} retries"
                     )
                 # Clamped rather than raised. The check above raises on what
@@ -605,6 +609,20 @@ def _tree(session: _Session, repository: str, ref: str,
 def _repo_url(repository: str, suffix: str) -> str:
     base = f"{API}/repos/{repository}"
     return f"{base}/{suffix}" if suffix else base
+
+
+def _without_account(url: str) -> str:
+    """The request's URL with the account it sits under taken out.
+
+    Every URL here carries `repos/<account>/<name>`, and `docs/design.md`
+    § Logging names a repository by its short name, never `account/name`:
+    the account identifies the writer as surely as a path does. The method
+    and what was asked for still say which request failed.
+    """
+    head, marker, rest = url.partition("/repos/")
+    if not marker:
+        return url
+    return f"{head}{marker}{rest.partition('/')[2]}"
 
 
 def _why(exc: OSError) -> str:
@@ -837,7 +855,7 @@ def _names_the_repository(url: str) -> bool:
 
 def _failure(status: int, method: str, url: str) -> PublishError:
     """The typed failure for an HTTP status (§6). Never carries the key."""
-    where = f"{method} {url}"
+    where = f"{method} {_without_account(url)}"
     if status in (401, 403):
         return Refused(f"GitHub refused the publishing key for {where}")
     if status == 404:
