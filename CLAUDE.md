@@ -129,6 +129,15 @@ code working. And with `marks.py` absent the suite errors at
 *collection*, so no assertion runs at all: a run that says nothing failed
 may have run nothing. Read the collected count, not the exit code.
 
+**`spec_lint` does not check a spec's test surfaces here, and says so only
+in its fields.** It resolves a surface only in a `tests/features/<name>/`
+shape, which this project does not use, so its three test-surface checks
+sit in `skipped[]` with `surfaces_checked: false` while it reports `ok`.
+`doc_citations` counts a citation `ok` when the cited line exists, and
+`unchecked` when nothing on that line was compared. So a spec's author
+resolves each `*Test:*` clause by hand: the named test must exist and
+must assert what the clause says.
+
 **Proving a test red before the code exists takes a stub; proving it
 CATCHES anything takes more.** `mutation_probe` refuses without a green
 baseline, so it cannot run while the tests are red — the two checks never
