@@ -832,6 +832,11 @@ Publish again after fixing it works. Holds S1, S5, S6.
   applied.
   Milestone: v0.5.0. Blocks S6 — discovery states the sign absolutely and
   the system admits a case it does not cover.
+  Decided by the user (2026-09-11): S6 is reworded to admit the case
+  rather than the system growing a re-check. Where the outcome of the
+  final step cannot be known, he is told plainly that it is unknown and
+  what to do next. Worded to cover both routes PRESS-0096 names, not the
+  dropped-connection route alone.
   **Layman:** One promise says he is never left guessing whether his site went out. There is a single failure where nobody can tell, so the promise needs to say so.
   Kind: doc.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
@@ -1214,6 +1219,12 @@ Publish again after fixing it works. Holds S1, S5, S6.
   what happens to a published entry's fetched copy.
   Milestone: v0.5.0. Blocks S9 — no contract can remove an entry, and
   design.md has a deleted entry pruned from the site.
+  Decided by the user (2026-09-11): removal belongs to the Store, and a
+  deleted entry is moved into a bin in Pressless's own folder rather than
+  unlinked, so a deleted draft can be recovered as well as a published
+  one. The site loses it on the next publish, because the Builder no
+  longer copies it into content/ and the Publisher prunes what it was not
+  handed. Lands as amendments to docs/design.md and PRESS-0005.
   **Layman:** The app has no way to delete a post, yet the design promises a deleted post disappears from the website.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, lane 2.
@@ -1354,6 +1365,12 @@ is not on the live site. Holds S7, S10.
   sends.
   Milestone: v0.5.0. Blocks S10 — seeing it before publishing is what the
   preview is for, and no part owns building it.
+  Settled 2026-09-11 by derivation, stated to the user and not
+  overridden: the Builder builds the preview into a throwaway folder in
+  Pressless's own folder. design.md promises a real page built with the
+  change, which only the Builder produces, and S7 forbids unfinished work
+  in the site folder, which the next publish would carry. No other option
+  keeps both. Lands as an amendment to docs/design.md.
   **Layman:** Before he publishes, Pressless shows him the page. Nobody has decided which part of the app makes that page, and the two answers behave differently.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
@@ -1432,6 +1449,11 @@ that it is back. Holds S9.
   has chosen.
   Milestone: v0.5.0. Blocks S9 — getting the site back in one step has no
   stated answer for an edit made since the last publish.
+  Decided by the user (2026-09-11): undo still goes ahead in one step.
+  An entry edited since the last publish keeps his unpublished text as a
+  separate draft beside the restored entry, the way a kept fixed page
+  sits beside the fetched state, so an undo deletes nothing of his. Lands
+  as an amendment to docs/design.md.
   **Layman:** Undo brings the site back to how it was. If he changed something and has not published it yet, nobody has said what undo does to that change.
   Kind: investigate.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
