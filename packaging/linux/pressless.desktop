@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pressless
+Comment=Write and publish your own site
+Exec=Pressless
+Icon=pressless
+Categories=Office;
+Terminal=true

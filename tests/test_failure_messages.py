@@ -166,7 +166,11 @@ def test_no_publisher_failure_names_a_path(tmp_path):
 
 
 @pytest.mark.skipif(
-    os.geteuid() == 0, reason="root reads a mode-000 file, so nothing fails"
+    # getattr, because Windows has no geteuid and the release job runs this
+    # suite there (PRESS-0022 § 7 step 1): called bare, the decorator raises
+    # at collection and takes the whole file with it.
+    getattr(os, "geteuid", lambda: -1)() == 0,
+    reason="root reads a mode-000 file, so nothing fails",
 )
 def test_an_unreadable_site_file_names_no_path(tmp_path):
     """The site file that cannot be read is named relative to the folder.

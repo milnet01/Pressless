@@ -17,6 +17,11 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Pressless can be packaged: an AppImage for Linux and a zip for Windows, built by a release workflow from a version tag** (PRESS-0022)
+  Each artefact keeps the writer's folder, Pressless-data, beside itself.
+  Today it runs a self-check that reports where that folder is and which
+  password store it found; the app itself replaces it later.
+
 - **The Store deletes a file by moving it into a bin in Pressless's own folder** (PRESS-0099)
   move_to_bin keeps the file's place under a dated folder, so he can move
   it back by hand. Nothing the Store holds is ever unlinked.

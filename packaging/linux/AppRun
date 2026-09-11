@@ -1,0 +1,8 @@
+#!/bin/sh
+# The AppImage's entry point: run the frozen program inside the mount.
+#
+# Shell built-ins only. The release job runs the AppImage in a clean room with
+# PATH=/nonexistent (PRESS-0022 INV-7), where dirname and readlink do not
+# exist. The AppImage runtime sets $APPDIR to the mount; ${0%/*} covers a run
+# straight from the AppDir.
+exec "${APPDIR:-${0%/*}}/usr/bin/Pressless/Pressless" "$@"

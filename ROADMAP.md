@@ -579,6 +579,21 @@ while the stakes are zero. Holds S2, S3, S4.
 
   Not started: no code, no workflow, no tests. Nothing in section 4 is
   built.
+  Progress (2026-09-11). Built: paths.py (§ 4.2), the self-check program
+  (§ 4.5), scripts/freeze_flags.py, the Linux and Windows build scripts,
+  .github/workflows/release.yml, the INV-6 test, README § Install, and the
+  interpreter fix in local-ci.sh. Every invariant red first; paths and the
+  self-check mutation-probed, every route killed.
+
+  Proven on Linux, locally: the AppImage builds with a pinned runtime,
+  self-checks "folder: Pressless-data" and "store: keyring kwallet
+  DBusKeyring", and runs in the env -i clean room (INV-7). INV-6 passed
+  against it and failed, for its own reason, against a bundle with
+  keyring's metadata withheld. No keyring probe was left behind.
+
+  Not yet run anywhere: the release workflow, and all of the Windows half.
+  Their first run is the first tag, which follows the rest of v0.1.0.
+  Stays in progress until then, and until the staged Windows box run.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
@@ -4157,6 +4172,11 @@ already-built code ships in whichever release comes next.
   PRESS-0022's check on the built artefact, 2 fixed, 3 declined, 4 fixed
   by PRESS-0117. Delivering item 1's check is PRESS-0022's, not this
   item's.
+  Fold-back from PRESS-0022 (2026-09-11): item 1's prescribed build flags
+  are superseded, as PRESS-0022 § 4.3 measured. PyInstaller's shipped hooks
+  collect keyring's metadata, and the check is INV-6 instead -- the built
+  artefact must report a keyring store. A local AppImage built that day
+  reported "store: keyring kwallet DBusKeyring". Items 2 to 4 stay open.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.

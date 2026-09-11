@@ -2,8 +2,9 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** `PRESS-0022` (spec accepted, no
-code) and `PRESS-0073` (its code items done, waiting on `PRESS-0011` for
+**State:** 5 — Building. **In flight:** `PRESS-0022` (built and proven on
+Linux locally; the release workflow and the Windows half first run at the
+first tag) and `PRESS-0073` (its code items done, waiting on `PRESS-0011` for
 the rest). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
@@ -47,8 +48,8 @@ Python. One runtime dependency today — `keyring`, the operating system's
 credential store, reached only by `credentials.py` (PRESS-0002); `Pillow`
 joins it when photographs land (§ Stack). That is present state, not a
 cap. The gate needs `pytest`, `pytest-randomly` and `ruff` on top, and
-PyInstaller is a build-time packager that belongs beside those rather
-than in `dependencies`. `pip install -e '.[dev]'` installs what CI runs.
+PyInstaller is the `packaging` group beside those, never a runtime
+dependency (PRESS-0022). `pip install -e '.[dev]'` installs what CI runs.
 `pyproject.toml` holds the packaging and the pytest settings; `src/` is
 on the path through it, so there is no install step beyond that one.
 

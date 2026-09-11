@@ -1,6 +1,9 @@
 # PRESS-0022 — Package Pressless into one artefact per system
 
-**Status:** accepted (2026-09-02). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. **A violent cap:** about ten of loop 2's twelve findings landed on text loop 1 wrote, so a third cold read would mostly repair the second. The document is routed to implementation rather than to another gate, and implementation is the better third reviewer. **One region no cold read could judge:** Windows and AppImage behaviour is unrunnable from this machine, which the packet declared up front — §10 records what that leaves unchecked, and PRESS-0022 exists to make it observable.
+**Status:** accepted (2026-09-02). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. **A violent cap:** about ten of loop 2's twelve findings landed on text loop 1 wrote, so a third cold read would mostly repair the second. The document is routed to implementation rather than to another gate, and implementation is the better third reviewer. **One region no cold read could judge:** Windows and AppImage behaviour is unrunnable from this machine, which the packet declared up front — §10 records what that leaves unchecked, and PRESS-0022 exists to make it observable. **Amended 2026-09-11 to
+record what was built**: the pinned AppImage runtime (§4.4) and
+`FUSERMOUNT_PROG` in the clean room (§7). Neither changes direction, so
+the gate did not re-arm.
 **Kind:** package.
 **Source:** ROADMAP PRESS-0022 (`docs/design.md` § The stack, and what it
 rules out; § Where everything sits on disk; ADR-0004).
@@ -245,6 +248,13 @@ The Linux job downloads `appimagetool` and wraps the frozen folder in
 an `AppDir` with the three files an AppImage requires — `AppRun`, a
 `.desktop` file and an icon.
 
+**It downloads the AppImage runtime too, pinned to a dated release and
+checked against its hash**, and hands it to `appimagetool` with
+`--runtime-file`. Left to itself `appimagetool` fetches the runtime from a
+release tagged `continuous`, which moves, so one commit could ship a
+different runtime on each build. Measured 2026-09-11: that download also
+hung a local build outright.
+
 **The tag is the version, and it reaches two places.** The workflow
 triggers on `v<X.Y.Z>`; the artefact filenames of §4.1 and
 `pyproject.toml`'s `version` carry the same `<X.Y.Z>`. **The README
@@ -470,8 +480,11 @@ cannot serve them all.**
    same on both jobs. Without it the sweep reports a clean history it
    never fetched, which is the failure mode that comment exists to
    prevent.
-2. **INV-7, in a clean room. Linux only**: `env -i PATH=/nonexistent`
-   on the AppImage. There is no Windows form of it and none is
+2. **INV-7, in a clean room. Linux only**: `env -i PATH=/nonexistent
+   FUSERMOUNT_PROG=<fusermount>` on the AppImage. The pinned runtime looks
+   for `fusermount` on `PATH` and honours `FUSERMOUNT_PROG` where it finds
+   none; `fusermount` is not an interpreter, so the room stays clean.
+   Measured 2026-09-11: without it the AppImage cannot mount. There is no Windows form of it and none is
    invented: `windows-latest` ships Python, so a clean room cannot be
    made there by clearing variables. **INV-7's Windows evidence is the
    staged box**, which has no interpreter at all.

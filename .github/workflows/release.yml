@@ -1,0 +1,158 @@
+# Builds and publishes the two artefacts when a version tag is pushed
+# (PRESS-0022 § 4.4 and § 7). The gate workflow is untouched: releasing is a
+# different trigger and a different file. ADR-0004 requires this from the first
+# release, because there is no other way to produce the Windows file.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is load-bearing, as in ci.yml: the gate's leak sweep
+      # walks every commit, and a shallow clone reports a clean history it
+      # never fetched.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev,packaging]'
+
+      # A mislabelled artefact must not be published (§ 4.4).
+      - name: The tag is the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: test "${TAG#v}" = "$(python scripts/freeze_flags.py version)"
+
+      - name: The suite (step 1)
+        run: ./scripts/local-ci.sh
+
+      - name: Tools for the AppImage and the session
+        run: |
+          sudo apt-get update
+          # fuse3 provides fusermount3, which the type-2 AppImage runtime
+          # (appimagetool's own and the artefact's) uses to mount itself.
+          sudo apt-get install -y fuse3 gnome-keyring dbus-x11
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          # The runtime is pinned and its hash checked: appimagetool would
+          # otherwise fetch it from a release tagged `continuous`, which moves.
+          curl -fsSL -o "$RUNNER_TEMP/runtime-x86_64" \
+            https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
+          echo "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  $RUNNER_TEMP/runtime-x86_64" \
+            | sha256sum -c -
+
+      - name: Build
+        id: build
+        run: |
+          echo "artefact=$(APPIMAGETOOL="$RUNNER_TEMP/appimagetool" \
+            APPIMAGE_RUNTIME="$RUNNER_TEMP/runtime-x86_64" \
+            ./scripts/build-linux.sh | tail -n 1)" >> "$GITHUB_OUTPUT"
+
+      # The wrapped AppImage, never the bare frozen folder: $APPIMAGE is set by
+      # the AppImage runtime and nothing else (§ 7).
+      # The runtime finds fusermount on PATH and honours FUSERMOUNT_PROG where
+      # it cannot. fusermount is not an interpreter, so the room stays clean.
+      - name: INV-7, in a clean room (step 2)
+        env:
+          ARTEFACT: ${{ steps.build.outputs.artefact }}
+        run: |
+          env -i PATH=/nonexistent FUSERMOUNT_PROG="$(command -v fusermount3)" \
+            "$GITHUB_WORKSPACE/$ARTEFACT" --self-check
+
+      # Its own step: env -i would strip the very session this one creates.
+      - name: INV-6, under a session the job creates (step 3)
+        env:
+          ARTEFACT: ${{ steps.build.outputs.artefact }}
+        # The single quotes are deliberate: the inner shell, inside the new
+        # session, is what must expand these.
+        run: |
+          # shellcheck disable=SC2016
+          dbus-run-session -- bash -c '
+            set -e
+            printf pressless | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            PRESSLESS_ARTEFACT="$GITHUB_WORKSPACE/$ARTEFACT" \
+              python -m pytest -m packaging tests/features/packaging -ra
+          '
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux
+          path: dist/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev,packaging]'
+
+      - name: The tag is the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: test "${TAG#v}" = "$(python scripts/freeze_flags.py version | tr -d '\r')"
+
+      # ADR-0004 § Consequences: the Windows job runs the suite, not only the
+      # build. This is the first place any of it runs on Windows.
+      - name: The suite (step 1)
+        run: ./scripts/local-ci.sh
+
+      - name: Build
+        run: ./scripts/build-windows.sh
+
+      # No clean room here: windows-latest ships Python, so none can be made by
+      # clearing variables. The staged test box is INV-7's Windows evidence.
+      - name: INV-6 (step 3)
+        run: |
+          PRESSLESS_ARTEFACT="$GITHUB_WORKSPACE/build/freeze/dist/Pressless/Pressless.exe" \
+            python -m pytest -m packaging tests/features/packaging -ra
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "Pressless $TAG" --notes "What changed is in CHANGELOG.md."
