@@ -370,6 +370,10 @@ while the stakes are zero. Holds S2, S3, S4.
   its hex colour as a colour mark, with other styling still dropped and
   listed, and so each list item becomes its own line. One review round,
   per the amendment budget. PRESS-0004's link and quote marks are built.
+  Correction (2026-09-11): the note saying no link points at the old
+  site's own posts is wrong for pages. Three links in WordPress pages
+  point at other pages on the old site. The spec's review added a row for
+  them: their words are kept and the link is listed in the report.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.

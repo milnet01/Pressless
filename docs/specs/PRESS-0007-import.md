@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -59,7 +59,8 @@ writer receives that folder; nothing in his copy of Pressless runs Import.
    `<slug>-<post id>`. A published address is a breaking surface
    (PRESS-0005 §3 decision 4); a draft has no address yet.
 6. **(decided here) A photograph keeps its own file name in the Store.**
-   Where two share one, each takes its upload year and month in front,
+   Where two share one — compared without regard to case, as Windows
+   compares them — each takes its upload year and month in front,
    `YYYY-MM-<name>`. PRESS-0016 owns how an entry names a photograph from
    here on, and inherits these names.
 7. **(decided here) A picture link is dropped and its picture kept.** The
@@ -114,7 +115,7 @@ class Report:
 
 class ImportStopped(Exception): ...   # INTO was not made
 
-Lookup = Callable[[str], str | None]   # to a photograph's Store name, or None
+Lookup = Callable[[str], str | None]   # to an attachment's Store name, or None
 
 def resolve_slug(raw: str, post_id: str) -> str: ...
 def is_markup(body: str) -> bool: ...
@@ -127,8 +128,10 @@ def main(argv: list[str]) -> int: ...   # python -m pressless_import EXPORT ORIG
 
 `convert` takes one markup body and returns the marked text and what it
 dropped. `picture_by_address` resolves an `<img>`'s address, and
-`picture_by_id` a gallery's attachment id. `convert` and `visible_lines`
-touch no disk.
+`picture_by_id` a gallery's attachment id. Both answer for every
+attachment, a video included, and `None` for anything that is not one;
+the element decides whether it is shown as a picture. `convert` and
+`visible_lines` touch no disk.
 
 `main` prints the report and exits 0, or prints why it stopped and exits 1.
 Its words never name a full filesystem path (`docs/design.md` § Logging):
@@ -157,9 +160,10 @@ rather than running `wpautop()` over it** (PRESS-0004 §2): it holds
 boundary, in any case. That is `is_markup`.
 
 **Every other body is plain, and is written byte for byte.** It is already
-the Store's format, and PRESS-0004 INV-5 proves Marks renders it as the
-live site does. That holds for a plain body carrying a stray `<span>` or a
-`[gallery]` shortcode too, which the live site shows as written today;
+the Store's format, and Marks renders it as today's `wpautop()` does:
+PRESS-0004 INV-5 proves that for posts, and INV-3's archive test for every
+plain body Import carries, pages included. That holds for a plain body
+carrying a stray `<span>` or a `[gallery]` shortcode too, which the live site shows as written today;
 Import lists such a shortcode in the report so the maintainer can decide.
 
 **In a markup body a newline is a space**, as it is to a browser. Only the
@@ -175,7 +179,8 @@ table's rows make a line or a paragraph.
 | `<em>`, `<i>` | `*…*` |
 | a hex `color:` in the `style` of a `<span>`, `<p>`, `<a>`, `<div>` or `<h1>` to `<h6>` | its contents inside `{#…}…{/}`, beside whatever else the element becomes; the rest of the style listed |
 | `<a href="…">` to another site | `{link: …}…{/}` |
-| `<a>` around a picture | the picture alone (decision 7) |
+| `<a href="…">` to a page or post on the old site | its words, without the link; listed |
+| `<a>` around a picture | the picture alone; a link to anything but that picture's own file is listed (decision 7) |
 | `<img>`, and a `<figure>` holding one | `{photo: name}` on its own line; with a `<figcaption>`, `{photo: name \| caption}` |
 | `[gallery ids="…"]` | one picture mark per id, in order |
 | `<blockquote>`, and a pull-quote `<figure>` holding one | its lines, each beginning `> `; a line holding only `>` between its paragraphs |
@@ -214,9 +219,9 @@ allows exactly them**: a `[gallery]` shortcode's text becomes its pictures,
 and a video, an embed or a picture with no attachment gains its address as a
 link's words. **So does a pair of `*` in his own words**, which Marks styles
 since there is no escape character (PRESS-0004 §3 decision 3). That one is
-allowed only where the WordPress body's own text holds `*`, the lines match
-once `*` is removed from both, and the rendered lines hold no more `*` than
-the source did — so an asterisk the converter added is never taken for his.
+allowed only where each rendered line can be made from its source line by
+deleting `*` characters and nothing else — so an asterisk the converter
+added is never taken for his.
 Every difference, allowed or not, is listed in `Report.dropped`.
 
 ### 4.4 Slugs
@@ -253,8 +258,10 @@ file it will find.
 
 ### 4.6 Comments
 
-Every approved comment on a carried item is carried, in the export's order,
-into the comments file named for that item's Store slug (PRESS-0006 §4.1).
+Every comment on a carried item that today's site shows —
+`wp:comment_approved` of `1`, and a `wp:comment_type` that is empty or
+`comment` — is carried, in the export's order, into the comments file
+named for that item's Store slug (PRESS-0006 §4.1).
 `comment_id` fills `identifier`; a `comment_parent` of `0` becomes `""`
 (PRESS-0006 §4.2). **The comment's email address and IP address are never
 read into anything Import holds**, so no route can write them into the
@@ -316,6 +323,9 @@ all, and the Store's own refusals need no copy here (design rule 7).
   — a plain body holding `&nbsp;`, a lone `*`, a stray `<span id="…">` and a
   `[gallery ids="1"]`, which is also listed in the report; and a body
   holding `<p>` is converted.
+  `tests/test_importer_archive.py::test_markup_is_decided_as_today` — on
+  every carried item `is_markup` agrees with today's generator, and every
+  plain body renders through Marks exactly as `wpautop()` renders it.
   *Breaks when:* a plain body is run through the converter, or `is_markup`
   departs from today's generator's test.
 
@@ -338,6 +348,9 @@ all, and the Store's own refusals need no copy here (design rule 7).
   `visible_lines` before and after over the real archive, and fails on any
   difference §4.3 does not allow, whether or not the report lists it; it
   prints how many bodies it compared and each allowed difference.
+  `visible_lines` itself is held by
+  `tests/test_importer.py::test_visible_lines_breaks_where_a_reader_sees_one`,
+  one fixture per split point §4.3 names.
   *Breaks when:* a row drops its words, a quotation loses a line, a caption
   is lost, a newline in markup becomes a line break, a `<div>`'s line is
   merged into the next, or an asterisk the converter added is taken for
@@ -351,9 +364,10 @@ all, and the Store's own refusals need no copy here (design rule 7).
   *Breaks when:* two same-named originals are written to one file, or a
   body keeps the WordPress address.
 
-- **INV-7** — Every approved comment on a carried item is in its entry's
-  comments file, with `0` read as top level, and no commenter's email
-  address or IP address reaches any file Import writes.
+- **INV-7** — Every comment §4.6 carries is in its entry's comments file,
+  with `0` read as top level, and no value from a commenter's email or IP
+  field reaches any file Import writes. A body is carried verbatim, as
+  PRESS-0006 INV-4 says.
   *Test:* `tests/test_importer.py::test_comments_follow_their_entry` —
   a reply, a top-level comment and a contact address in the fixture.
   `tests/test_importer_archive.py::test_no_address_reaches_the_folder`.
@@ -377,8 +391,9 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 - **INV-10** — Import reaches no network.
   *Test:* `tests/test_importer.py::test_import_reaches_no_network` — walks
-  every module of `pressless_import` for its imports, as PRESS-0004 INV-7's
-  test does, and refuses `socket`, `http`, `urllib.request` and `ssl`.
+  every module of `pressless_import` for its imports and admits only an
+  allowlist, as PRESS-0004 INV-7's test does, comparing full dotted names so
+  that `urllib.parse` is admitted and `urllib.request` is not.
   *Breaks when:* a picture is fetched from the old site.
 
 ## 6. Failure modes
@@ -400,14 +415,17 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 `tests/test_importer.py` — pure, in CI, over small exports and originals
 built in the test. It carries the tests §5 names for INV-1, INV-2, INV-3,
-INV-4, INV-6, INV-7, INV-8, INV-9 and INV-10.
+INV-4, INV-6, INV-7, INV-8, INV-9 and INV-10, and INV-5's test of
+`visible_lines`.
 
 `tests/test_importer_archive.py` — marked `archive`, over the real export
-and the maintainer's originals. It needs `PRESSLESS_ARCHIVE`, a
-`PRESSLESS_ORIGINALS` folder, and today's generator for INV-2's slug rule.
-Absence skips; anything present and unusable fails, as the other archive
-tests do (CLAUDE.md). It carries INV-2's, INV-5's, INV-6's and INV-7's
-archive tests, runs the whole import into a temporary folder, and prints
+and the maintainer's originals. It needs `PRESSLESS_ARCHIVE`. The tests
+that run the whole import also need a `PRESSLESS_ORIGINALS` folder, which
+the gate sets from the machine-local key `ants.pressless.originals` as it
+sets the archive's; INV-2's and INV-3's need today's generator. Each skips
+only where what it needs is absent; anything present and unusable fails,
+as the other archive tests do (CLAUDE.md). It carries INV-2's, INV-3's,
+INV-5's, INV-6's and INV-7's archive tests, runs the whole import into a temporary folder, and prints
 what it carried and the report.
 
 Each test is seen failing against a stub before the code exists, then
@@ -446,9 +464,9 @@ mutation-probed once it lands.
 |------|----------------------|
 | INV-1 | `tests/test_importer.py::test_every_carried_item_lands_once` |
 | INV-2 | `tests/test_importer.py::test_a_contested_slug_goes_to_the_live_address`, `tests/test_importer_archive.py::test_slugs_match_the_live_rule` |
-| INV-3 | `tests/test_importer.py::test_a_plain_body_is_written_as_it_is` |
+| INV-3 | `tests/test_importer.py::test_a_plain_body_is_written_as_it_is`, `tests/test_importer_archive.py::test_markup_is_decided_as_today` |
 | INV-4 | `tests/test_importer.py::test_each_construct_becomes_its_mark` |
-| INV-5 | `tests/test_importer_archive.py::test_no_line_is_lost` — **skipped in CI**; it runs where the archive and the originals are |
+| INV-5 | `tests/test_importer_archive.py::test_no_line_is_lost` — **skipped in CI**; it runs where the archive and the originals are — and `tests/test_importer.py::test_visible_lines_breaks_where_a_reader_sees_one` |
 | INV-6 | `tests/test_importer.py::test_photographs_arrive_under_their_names`, `tests/test_importer_archive.py::test_every_picture_resolves` |
 | INV-7 | `tests/test_importer.py::test_comments_follow_their_entry`, `tests/test_importer_archive.py::test_no_address_reaches_the_folder` |
 | INV-8 | `tests/test_importer.py::test_nothing_is_made_when_it_stops` |
@@ -472,6 +490,9 @@ mutation-probed once it lands.
 - `pyproject.toml` — S314 ignored for `src/pressless_import/`, with §4.8's
   reason; `setuptools` finds the new package under `src/` as it finds
   `pressless`.
+- `scripts/local-ci.sh` and `CLAUDE.md` — the gate sets
+  `PRESSLESS_ORIGINALS` from the machine-local key `ants.pressless.originals`,
+  and `CLAUDE.md` names that key beside the archive's.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
