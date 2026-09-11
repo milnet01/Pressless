@@ -435,7 +435,7 @@ means by one store, one fallback, one rule.
    cannot say that**: the reference update was sent, and either no answer
    came back or GitHub answered it with a server error. Either way the
    update may have been applied, so the sentence says the outcome is
-   unknown rather than guessing. That is the one case S6 admits.
+   unknown rather than guessing.
 3. **What to do next.** *"Check your internet and click Publish again."*
    An error that does not say this leaves him stuck holding a fact.
 

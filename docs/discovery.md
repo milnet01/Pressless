@@ -86,12 +86,12 @@ nothing should be built in a way that locks them out either.
 - **S6** — When publishing fails — no internet, wrong key, GitHub down —
   he is told so in a sentence he understands, the site is unchanged, and
   clicking Publish again after fixing it works. He is never left unsure
-  whether it went out. **One failure is the exception**: where GitHub may
-  have taken the last step without confirming it, nobody can know whether
+  whether it went out, **except** where GitHub may have taken the last
+  step without confirming it, or where something Pressless did not
+  foresee fails while a publish is running. Then nobody can know whether
   the site changed, so he is told plainly that the outcome is unknown.
-  Clicking Publish again is still safe, and settles it. Pressless or his
-  machine stopping during that step is outside S6; publishing again
-  settles that too.
+  Pressless or his machine stopping partway through a publish is outside
+  S6. Either way, clicking Publish again is safe and settles it.
 - **S7** — An entry he has not finished is not on the live site. He can
   close the app mid-sentence, come back tomorrow, and it is where he
   left it and nowhere else.
