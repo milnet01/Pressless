@@ -232,15 +232,21 @@ one.
 **`move_to_bin` is how anything the Store holds is deleted, and nothing
 is ever unlinked.** `docs/design.md` sends a deleted entry, its comments
 file, and any file but an entry that undo sets aside, to a bin in
-Pressless's own folder. The
-call takes a path inside one of the Store's own sub-folders and refuses
-any other with `StoreError`. It moves the file to
+Pressless's own folder. The call moves exactly the one path it is
+handed, so binning an entry's comments file is a second call. It takes
+a file inside `published/`, `drafts/`, `pages/`, `furniture/`,
+`templates/` or `comments/`, and refuses anything else with
+`StoreError` — a photograph, the bin itself, or a file directly in
+`folder` such as the settings file. It moves the file to
 `bin/<stamp>/<the same relative path>` under `folder` and returns the new
-path. `<stamp>` is the moment of the move, `YYYY-MM-DD-HHMMSS`. **Keeping
+path. `<stamp>` is the moment of the move, `YYYY-MM-DD-HHMMSS`, read
+through a module-level `_now()` so a test can set it. **Keeping
 the relative path is what lets the writer move a file back by hand**:
 `drafts/seaside.txt` goes back into `drafts/`, and its name still matches
-its `Slug` header. The move is `_move`'s, so it never overwrites
-(INV-10) and fails the same way where there are no hard links. Nothing
+its `Slug` header. The move is `_move_without_overwriting`'s, so it never
+overwrites (INV-10): binning one path twice within a second finds the
+first copy there and is refused with `StoreError`. Where there are no
+hard links it fails as `publish` does (§6). Nothing
 in Pressless empties the bin.
 
 **Three rules need the Store to tell the caller something without
@@ -447,7 +453,7 @@ header it found untidy. A file that cannot be parsed raises
 `StoreError` naming the file by its own name; it is never rewritten
 into something parseable.
 
-**No message raised here names a full path.** `docs/design.md` § Logging
+**No message raised, and no notice emitted, here names a full path.** `docs/design.md` § Logging
 puts that on the part that RAISES rather than on the Face, so it is this
 module's rule. An entry is named by its slug and any other file by its
 own name, never by the folder it sits in. **An `OSError` is reported by
@@ -746,7 +752,7 @@ is true of a template is PRESS-0006's (§9).
   this rule that fires on a non-enforcing mount would be unfalsifiable
   on exactly the machines that enforce modes correctly — which is every
   machine the suite normally runs on.
-  **Four rows, and none of them is optional.** One patches the grant
+  **Every row below is required.** One patches the grant
   wider and asserts the notice. One writes ordinarily on an enforcing
   mount and asserts NO notice — without it a condition that is inverted,
   or keyed on anything but the grant, warns on every write and stays
@@ -757,7 +763,9 @@ is true of a template is PRESS-0006's (§9).
   patches the grant to `0700` and asserts no notice** — the only case
   that separates the two candidate predicates, since a `0644` fixture
   passes against either. A mutation probe is what found that: with a
-  `0644` case alone, `granted != 0o600` survived.
+  `0644` case alone, `granted != 0o600` survived. **And one asserts what
+  the notice SAYS** — the entry's slug, and neither its path nor its
+  folder. Without it the naming clause above cannot fail.
   *Breaks when:* an implementer opens the target directly, or carries
   the old file's mode onto the new one to preserve what the writer
   chose; or refuses the write on a wider grant, which is the branch
@@ -842,13 +850,15 @@ is true of a template is PRESS-0006's (§9).
 - **INV-14** — `move_to_bin` deletes nothing. After it returns, the
   file's bytes sit unchanged at the returned path under `bin/`, at the
   relative path it was moved from, and nothing remains where it was. A
-  path outside the Store's own sub-folders is refused and nothing moves.
+  path outside the sub-folders §4.1 names is refused and nothing moves.
   *Test:* `tests/test_store.py::test_binning_keeps_the_bytes` — write a
   draft, bin it, and assert the returned path ends in `drafts/<slug>.txt`,
   holds the same bytes, and that the draft's own path no longer names a
-  file. `::test_binning_refuses_a_path_outside_the_store` hands in a
-  file beside the folder and asserts `StoreError` and that the file is
-  still there.
+  file. Then write the draft again, set `_now()` a second later, bin it
+  again, and assert both copies survive under different stamps.
+  `::test_binning_refuses_a_path_outside_the_store` hands in a file
+  beside the folder, a file directly in it and a photograph, and asserts
+  `StoreError` for each and that each file is still there.
   *Breaks when:* an implementer unlinks instead of moving, or names the
   bin's copy by the slug alone, so binning one slug twice overwrites the
   first.
@@ -893,11 +903,11 @@ is true of a template is PRESS-0006's (§9).
 - **`publish` on a slug that is not a draft, or `unpublish` on one
   that is not published.** `EntryNotFound`. Nothing is moved.
 - **The folder is on a filesystem with no hard links** — an exFAT or
-  FAT drive the writer chose. `os.link` fails, so `_move` answers
+  FAT drive the writer chose. `os.link` fails, so the move answers
   `StoreError` carrying the system's reason and nothing is
-  moved: `publish` and `unpublish` cannot succeed there at all, and
+  moved: `publish`, `unpublish` and `move_to_bin` cannot succeed there at all, and
   say so each time rather than failing quietly. The entry itself is
-  readable and writable; only the two moves are lost.
+  readable and writable; only the moves are lost, deleting among them.
 - **`publish` onto a slug the published folder already holds, or
   `unpublish` onto one the drafts folder holds.** `SlugInUse`.
   Nothing is moved and neither file is opened. §3 decision 5's
@@ -919,9 +929,9 @@ is true of a template is PRESS-0006's (§9).
   INV-11 says why.** `write`
   completes and emits a `StoreNotice` naming the entry by its slug
   (INV-11). Distinct
-  from the no-hard-links case above, which costs him the two moves;
+  from the no-hard-links case above, which costs him the moves;
   this costs him nothing but a privacy the mount cannot give.
-- **`move_to_bin` handed a path outside the Store's own sub-folders.**
+- **`move_to_bin` handed a path outside the sub-folders §4.1 names.**
   `StoreError`, and nothing moves (INV-14). A path naming no file is
   `EntryNotFound`.
 
@@ -1047,11 +1057,12 @@ imports.
 | INV-8 | `tests/test_store.py::test_field_names_are_the_documented_set` |
 | INV-9 | `tests/test_store.py::test_a_value_that_would_break_the_format_is_refused`, plus `::test_a_colon_in_an_extra_name_is_refused`, `::test_an_extra_named_like_a_real_field_is_refused` and `::test_an_extra_name_that_is_only_spaces_is_refused` for the three extra-name refusals, each a silent data-loss route rather than a malformed file |
 | INV-10 | `tests/test_store.py::test_a_move_never_overwrites` |
-| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit |
+| INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit. `::test_the_notice_names_no_path` holds the naming clause |
 | INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
 | INV-14 | `tests/test_store.py::test_binning_keeps_the_bytes` and `::test_binning_refuses_a_path_outside_the_store` |
+| §4.4's rule that no message or notice names a full path | `tests/test_failure_messages.py::test_no_store_failure_names_a_path`, which triggers each raising route and each notice under a temporary folder and asserts none names it |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent OR no sibling generator is found at all (§7), so neither a green CI run nor a green push says anything about it. A generator that is present and will not serve — unloadable, renamed, or one of several candidates — FAILS rather than skipping (PRESS-0108)** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
 | That no two entries in ONE folder want one slug (§3 decision 5) | `tests/test_store_archive.py` — `write` is create-or-replace within its own folder, so a same-folder collision loses an entry and the round trip comes back short |
@@ -1117,6 +1128,7 @@ imports.
 | 9 | 2026-09-06 | 3, cold — identical brief; packet rebuilt whole from disk and extended with ADR-0003, `versioning-overrides.md` and the PRESS-0007 bullet, and with two packet facts loop 8 got wrong corrected | 1 | 0 | 4 | 0 | **Five verified, five fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the run ships. A CALM cap — one of the five landed on text loop 8 wrote**, anchors checked against that loop's ledger. **Over the whole run, only two of thirteen findings touched the change that armed the gate: this was an audit far more than a gate, and the document is at the size where a spec begins paying twice.** **Two lanes found loop 8's own fix, and it had over-corrected:** loop 8 wrote that the move refuses "never by an `exists()` check before it", where `_move` deliberately checks first AND catches `FileExistsError` — its comment reads "The check is a check, not a guarantee". Following the sentence literally drops a check that is load-bearing: on a filesystem with no hard links `os.link` fails before it can raise `FileExistsError`, so an occupied destination would answer `StoreError` where §6 requires `SlugInUse`. Now stated as cannot REST on, with that case named. **Four Q3s, each a decision left for the implementer to invent.** Two lanes: `list_slugs` never said whether its output satisfies §4.2, and measurement settles it — a hand-dropped `My_Entry.txt` is listed and `path_for` then refuses that same value, so PRESS-0008's natural loop aborts on one stray file. Recorded, with PRESS-0098 asking whether the trade is right. One lane: the Store has NO removal call while `design.md` has `content/` "pruned when he deletes an entry" — filed as PRESS-0099, since no roadmap item owned it either. One lane: the permission rule is scoped to `write`, and a move carries the inode, so a draft widened to `0644` is still `0644` once published — measured, and now stated rather than accidental. One lane: no failure mode for a filesystem without hard links, where `publish` can never succeed. |
 | 10 | 2026-09-07 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, `tests/_mode_support.py` whole, four PRESS-0001 windows and two `design.md` sections. Windows declared an unrunnable region | 1 | 4 | 2 | 1 | **Eight verified, eight fixed, none dismissed; one filed against a neighbour (PRESS-0103). Armed by the 2026-09-07 amendment, and six of the eight landed on the text it added** — 4a-min's pattern, every one an addition. **All three lanes found the same three.** §4.5 still said the Store "does not check the grant the way Credentials does", which the amended INV-11 contradicts, so an implementer ships no notice branch and INV-11's own never-skipping test has nothing to patch. INV-12's "names their own `path_for` accepts" and §4.4's "share the name rule" are different filters — measured, `html_path_for` refuses a legal slug outside `FURNITURE_NAMES` for furniture and accepts the same name for pages — so §4.4 now states the per-listing test. And §1 and §9 both give the rest of the Store to PRESS-0006 while INV-12 binds its listings; §11 routes it. **Two lanes found two more:** INV-12's fixture was unreachable for `list_html`, which sees only `.html`; and INV-10's "a slug held in both folders" is INV-13's case verbatim under §4.3's folded view, so a check built on `_slugs_in` raises `SlugInUse` exactly where INV-13 requires success. **The sharpest was one lane's:** `_slugs_in` already drops a file named exactly `.txt` in silence — the only unusable name reaching production today, dropped where INV-12 forbade the notice from living. **One came from an open question two lanes raised and neither filed**; executing it settled it — after a publish the destination holds the moved `.txt` and `read` opens it, so this run's own rewrite had left §4.3 describing the wrong state. Also fixed: INV-11 was silent on whether Windows is inside the notice half, where `mkstemp` never grants `0600` and a grant-keyed notice would fire on every save. **1b yield: one defect, mine** — a window labelled §11 that held §10, re-cut before dispatch. |
 | 11 | 2026-09-07 | 3, cold — identical brief; packet rebuilt whole from disk and extended with PRESS-0006's listing paragraph. Windows declared an unrunnable region | 2 | 2 | 2 | 2 | **Eight verified, eight fixed, none dismissed; the tail is empty. Cap reached (2 for a spec). A VIOLENT cap — every one of the eight landed on text loop 10 wrote**, so the review ends here and the document routes to implementation. **All three lanes found the same two.** §4.5 stated the wider-grant notice with no platform condition while INV-11 and §6 both exclude Windows, so an implementer building §4.5 literally warns on every Windows save. And INV-12's test named three folders where furniture is a fourth: measured, `banner` is refused under furniture and ACCEPTED under pages, so the furniture half had no falsifier at all. **Two lanes found the test could not falsify its own central clause** — `My_Entry` survives `_slugs_in`, so an implementation filtering the folded set satisfies every assertion while the `.txt`-exact file is still dropped in silence, which is the breach INV-12 was written against. **The sharpest was one lane's:** §9 called `_list_names` "the shared listing helper" when `list_slugs` does not use it and `list_photographs` does — a filter placed there reaches a listing this rule excludes and leaves the entries listing unfiltered. The same lane found INV-13 naming `_slugs_in` as the folded view, which returns slugs and so cannot name the stranded file the notice must carry. **Also fixed:** "reads the folder's raw names" contradicted §4.3's "returns it once"; §1 and §11 both said PRESS-0006 already carried the listing rule, where PRESS-0103 is filed to add it; and whether a folded twin is a passed-over file was left to two readings that build differently. **1b yield: zero — every citation windowed, none defective.** |
+| 12 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0117's no-path messages and PRESS-0099's `move_to_bin`. Windows unrunnable | 1 | 2 | 1 | 4 | **Eight verified, eight fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** All three lanes: `move_to_bin` fails with no hard links while § 6 said only the two moves are lost; the no-path rule had no test; INV-11's naming clause had none either, and its shipped test asserts the path IS there. Also fixed: "The move is `_move`'s" was false, the bin test could not see a stamp-less bin, the accepted sub-folders were unnamed, "raised" did not reach a notice, and who bins the comments file was unsaid. All eight inside the gated span. |
 
 ## 13. Resource cost
 
