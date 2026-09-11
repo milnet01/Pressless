@@ -35,6 +35,11 @@ dependencies = ["keyring>=25"]
 # that catches a test passing only because an earlier one ran first, and
 # the seed it prints in the run header reproduces any failure.
 dev = ["pytest>=9", "pytest-randomly>=4", "ruff>=0.16"]
+# The packager (PRESS-0022 § 4.4). Build-time only, so beside the gate's
+# tools rather than in `dependencies`. A floor at the version the spec's
+# measurements were taken with, not a pin: two builds months apart may use
+# different releases, and byte-reproducible builds are not claimed.
+packaging = ["pyinstaller>=6.20"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -53,6 +58,7 @@ pythonpath = ["src"]
 addopts = "--strict-markers"
 markers = [
     "archive: exercises the real WordPress export; requires PRESSLESS_ARCHIVE and is skipped cleanly otherwise (PRESS-0004 INV-5)",
+    "packaging: runs a built artefact; requires PRESSLESS_ARTEFACT and is skipped cleanly otherwise (PRESS-0022 INV-6)",
 ]
 
 [tool.ruff]

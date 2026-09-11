@@ -27,7 +27,36 @@ around it yet — nothing here writes, builds or publishes a site.
 
 ## Install
 
-(Once there is something to install.)
+Download from the [latest release](https://github.com/milnet01/Pressless/releases/latest).
+Today the program only checks that it runs and prints what it found; the
+app itself comes later.
+
+Pressless keeps your writing in a folder called `Pressless-data`, beside
+the file you download. So put that file where you want your writing to
+live.
+
+### Linux
+
+1. Download `Pressless-<version>-x86_64.AppImage`.
+2. Save it in the folder where you want your writing kept.
+3. Right-click it, choose **Properties → Permissions**, and tick **Allow
+   executing file as program**.
+4. Double-click it.
+
+**To upgrade**, save the new AppImage in the same folder as the old one.
+Saved anywhere else, it starts empty, and your writing stays beside the
+old copy — the one place nothing else keeps a copy of it.
+
+### Windows
+
+1. Download `Pressless-<version>-windows.zip`.
+2. Extract it into the folder where you want your writing kept. You get a
+   `Pressless` folder and `Start Pressless.bat`.
+3. Double-click `Start Pressless.bat`.
+
+**To upgrade**, extract the new zip over the old copy, in the same folder.
+Extracted anywhere else, it starts empty, and your writing stays beside
+the old copy — the one place nothing else keeps a copy of it.
 
 ## Usage
 

@@ -57,6 +57,21 @@ if ((DOCS_ONLY)); then
     exit 0
 fi
 
+# ── The interpreter ─────────────────────────────────────────────────────────
+# Resolved, never named. The release workflow runs this file on windows-latest
+# too (PRESS-0022 § 7 step 1), where the installer ships python.exe and creates
+# no python3 -- and a python3 that IS on PATH there can be a store alias that
+# runs nothing. So each candidate must actually run. On Linux python3 wins, as
+# it always did.
+PY=
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys' 2>/dev/null; then
+        PY=$candidate
+        break
+    fi
+done
+[[ -n $PY ]] || fail "no working python3 or python on PATH"
+
 # ── What is about to run ────────────────────────────────────────────────────
 # REPORTED, never enforced. The dev floors in pyproject.toml are open on
 # purpose and that file says why: a release that breaks the project should
@@ -72,11 +87,11 @@ fi
 # readable from either (PRESS-0105).
 step "tool versions"
 ruff --version
-python3 -m pytest --version
+"$PY" -m pytest --version
 # A plugin has no --version of its own, and an ABSENT one is the case worth
 # reporting: without it the suite runs in file order, which is the PRESS-0027
 # failure exactly. Said in words rather than left to a missing line.
-python3 - <<'PY'
+"$PY" - <<'PY'
 from importlib.metadata import PackageNotFoundError, version
 try:
     print(f"pytest-randomly {version('pytest-randomly')}")
@@ -109,6 +124,6 @@ fi
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.
 step "pytest"
-python3 -m pytest -ra || fail "tests"
+"$PY" -m pytest -ra || fail "tests"
 
 printf '\nall checks passed\n'
