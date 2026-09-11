@@ -365,6 +365,11 @@ while the stakes are zero. Holds S2, S3, S4.
   written in tests/test_marks.py and tests/test_marks_archive.py, uncommitted
   and red until marks.py gains them), then pressless_import, test-first, then
   the fixed pages and furniture after PRESS-0008's spec.
+  Decided by the user (2026-09-11), after an export census: the spec is
+  amended so a paragraph, link or heading coloured on the element keeps
+  its hex colour as a colour mark, with other styling still dropped and
+  listed, and so each list item becomes its own line. One review round,
+  per the amendment budget. PRESS-0004's link and quote marks are built.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -390,6 +395,10 @@ while the stakes are zero. Holds S2, S3, S4.
   fetchable, or leave it out, so that an undo demotes it to a draft and
   the filter stops being reversible? The Builder and undo (PRESS-0015)
   must agree.
+  Decided by the user (2026-09-11): the Builder copies a Daily Prompt
+  entry the filter excludes into content/ like any other published
+  entry. It is on no page, but an undo then keeps it published, so the
+  filter stays reversible. It was public on the old site already.
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.
@@ -1563,6 +1572,10 @@ that it is back. Holds S9.
   publish would demote every imported entry to a draft. Either the first
   publish cannot be undone, or undo does something else when the fetched
   state holds no content/.
+  Decided by the user (2026-09-11): the writer's first publish cannot
+  be undone. The Face offers no undo for it and says why in one plain
+  sentence, so his files and the site always agree. The maintainer is on
+  hand for that first publish instead.
   **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.

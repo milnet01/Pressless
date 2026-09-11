@@ -31,11 +31,23 @@ fail() {
 # the pipe-separated pattern itself; a real leak would not. Filtering on that
 # needs no path list and no line numbers, so it cannot go stale.
 step "leak sweep"
-PAT='charl|jordaan|18down|G-Y7N2F5SNY2|192\.168'
+PAT='charl|jordaan|18[^a-z0-9]?down|G-Y7N2F5SNY2|192\.168'
 # All three surfaces search PAT. SELF is not a second pattern: it is the
 # literal fragment every line that merely QUOTES the pattern contains, which
-# is what the self-exclusion below matches on.
-SELF='charl|jordaan|18down'
+# is what the self-exclusion below matches on. It stops short of the site's
+# name, so it also matches the older spelling of the pattern that the history
+# still holds (PRESS-0119).
+SELF='charl|jordaan|18'
+# Strings that identify the writer but cannot be spelled here without
+# publishing them live in a machine-local config key, as the archive path
+# below does (PRESS-0119). Every push from the maintainer's machine sweeps
+# them; a checkout without the key says so rather than passing quietly.
+extra=$(git config --get ants.pressless.leakPatterns || true)
+if [[ -n $extra ]]; then
+    PAT="$PAT|$extra"
+else
+    printf 'note: ants.pressless.leakPatterns is not set -- only the pattern above is swept\n'
+fi
 # Each surface is fed in as text and matched here, so all three are matched the
 # same way -- and the commit-message surface has no matcher of its own.
 scan() {

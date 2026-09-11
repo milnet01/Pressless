@@ -67,9 +67,10 @@ where `core.hooksPath` is set **and `~/.claude/githooks/pre-push` is
 present and executable**. Those two decide whether anything is gated at all;
 `ants.gate.docsGlob` only decides which checks run.
 
-**Three machine-local git config keys, and a fresh clone has none of
-them.** Two belong here; `ants.pressless.archive` has its own paragraph
-below.
+**Machine-local git config keys, and a fresh clone has none of them.**
+The two below belong here; `ants.pressless.archive` has its own
+paragraph further down, and `ants.pressless.leakPatterns` sits with the
+leak sweep.
 
 ```bash
 git config core.hooksPath .githooks
@@ -229,31 +230,22 @@ reason this needs saying. De-personalising a file changes nothing about
 what `git log` serves. The pre-public history was archived off-repo
 before the first push rather than published.
 
-The gate sweeps all three surfaces, so where it runs this is already
-done. Sweep by hand where it does not. **The only expected hits are the
-pattern lines themselves** — the ones below, and the copies of them in
-`scripts/local-ci.sh`, which name what they are looking for. Anything
-else means something leaked:
+The gate sweeps all three surfaces a push publishes: the tree, the files
+in every commit, and the commit messages. `git grep` reads trees only, so
+a name in a subject line passes a tree sweep. Where no hook runs the
+gate, run its leak step by hand:
 
 ```
-git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" -- .
+./scripts/local-ci.sh --docs
 ```
 
-And sweep the history too, not just the tree — that is the mistake this
-whole section exists to prevent:
+**The pattern lives in that script and nowhere else**, so a hand sweep
+cannot drift from the gate. Strings that identify the writer but cannot
+be spelled in a public repository sit in a machine-local key the script
+reads (PRESS-0119). A checkout without it says so on every run:
 
-```
-git grep -n -iE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168" $(git rev-list --all) -- . \
-  | grep -vF 'charl|jordaan|18down'
-```
-
-**That searches the FILES in every commit, and not the commit MESSAGES.**
-`git grep` reads trees, so a name written into a subject line passes it
-without a hit — and a message is published by the same push. Sweep those
-separately:
-
-```
-git log --all --format='%H %s%n%b' | grep -inE "charl|jordaan|18down|G-Y7N2F5SNY2|192\.168"
+```bash
+git config ants.pressless.leakPatterns '<more patterns, pipe-separated>'
 ```
 
 ### The roadmap carries two `Layman:` styles, and they stay
