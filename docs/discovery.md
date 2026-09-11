@@ -89,7 +89,9 @@ nothing should be built in a way that locks them out either.
   whether it went out. **One failure is the exception**: where GitHub may
   have taken the last step without confirming it, nobody can know whether
   the site changed, so he is told plainly that the outcome is unknown.
-  Clicking Publish again is still safe, and settles it.
+  Clicking Publish again is still safe, and settles it. Pressless or his
+  machine stopping during that step is outside S6; publishing again
+  settles that too.
 - **S7** — An entry he has not finished is not on the live site. He can
   close the app mid-sentence, come back tomorrow, and it is where he
   left it and nowhere else.

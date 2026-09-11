@@ -1349,6 +1349,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
   something shown at next launch, or state that such a stop is outside
   S6. That is a decision about a sign of success, so it was surfaced
   rather than fixed inside the gate.
+  Decided by the user (2026-09-11): leave it outside S6. S6 says that
+  Pressless or his machine stopping during the last step is not covered,
+  and that publishing again settles it. No in-progress marker is built.
+  Lands as one sentence in docs/discovery.md, which owes a review round.
   **Layman:** If Pressless crashes while the last step of a publish is on its way, nothing tells him afterwards whether his site changed.
   Kind: investigate.
   Source: review-contract 2026-09-11 discovery.md loop 1, lane 3.
