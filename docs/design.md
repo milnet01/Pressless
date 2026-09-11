@@ -146,6 +146,13 @@ must show a real page built with the change *before* it is published,
 and undo must be offered in the same breath as the edit rather than
 found later in a menu.
 
+**The Builder builds that preview, into a preview folder in Pressless's
+own folder.** Only the Builder produces a real page. The site folder is
+ruled out: the next publish would carry a draft's page, which is S7
+broken. So the Face hands the Builder the change and the preview folder,
+and never hands that folder to the Publisher. Each preview replaces the
+last.
+
 **And Pressless must say plainly that editing a header inside a page is
 wasted work**, because the next build overwrites it from the single
 copy. The sibling workspace learned this the expensive way — the header
@@ -170,7 +177,11 @@ brought back by one. It ends with the site and his own files
 agreeing, which is the only reading of "back the way it was" that
 survives the next thing he does. **Drafts are untouched by an undo**,
 since they were never in the repository to fetch back — so an unfinished
-poem can never be lost to one. **Undo reaches back one publish and no
+poem can never be lost to one. **Nor is an edit he has not published
+yet.** Where a file in the Store differs from the copy the last publish
+sent, undo keeps his version before writing the fetched one over it: an
+entry's becomes a new draft beside it, and any other file's goes to the
+bin (§ Where everything sits on disk). **Undo reaches back one publish and no
 further**: pressing it again returns the state the first undo replaced,
 so it is a toggle rather than a history.
 
@@ -193,14 +204,18 @@ repository rather than reading it from this paragraph.
 **The rule says what the list must contain; the list is what the
 Publisher consults.** At publish it removes any path absent from the
 folder it was handed unless its first segment is on the list, matched
-with any trailing slash on the entry ignored: Settings accepts `CNAME/`,
-and compared exactly that entry protects nothing. It never
+ignoring case and any trailing slash on the entry, with the fold
+PRESS-0009 § 4.4 names: Settings accepts `CNAME/`, and compared exactly
+that entry protects nothing. It never
 re-evaluates the rule there — the Builder stops producing a page the
 writer has just deleted too, so the rule would protect exactly what he
 asked to remove. **Setup derives it — the Face asks the Publisher what
 sits at the repository root, removes everything the Builder produces, and
 writes the rest into Settings — and the Face offers that same action
-afterwards**. **The Builder is what names its own root output**, for the
+afterwards**. **That removal compares names the way the Publisher does.**
+An exact-cased one leaves a stale `Index.html` on the list, after which
+`index.html` is never uploaded and the home page silently stops
+updating. **The Builder is what names its own root output**, for the
 reason rule 2 gives: a list kept anywhere else is a list kept in step by
 hand, and it rots the day the Builder writes something new, because a file added to the
 root outside Pressless is unprotected until it runs again.
@@ -213,6 +228,14 @@ every other thing it was handed, so it is uploaded, updated, and pruned
 when he deletes an entry. That last part matters: on the untouchable
 reading, a deleted poem's source text would have stayed on the web
 forever.
+
+**Deleting an entry moves it to the bin, and the Store is what moves
+it.** The bin is a folder in Pressless's own folder. A draft and a
+published entry go there alike, and he can move either back; nothing
+Pressless does empties it. A deleted published entry leaves the site on
+the next publish, because the Builder no longer copies it into
+`content/`. Renaming an entry's slug writes the new file and moves the
+old one to the bin.
 
 **`COPY-ME-new-page.html` stays on the site.** Templates retire it as a
 *way of working* — he is no longer expected to find, copy and rename a
@@ -232,7 +255,9 @@ is serving — and Marks renders what it is given without touching a disk.
 Rule 3 holds, rule 7 holds, and there is no second copy to drift. **The
 preview shows the original scaled in the browser**, so a photograph in an
 unbuilt draft is visible immediately rather than appearing as a broken
-image, which is what S10 asks for. Originals are never modified and never published —
+image, which is what S10 asks for. A preview build is handed the Face's
+rule rather than the Builder's, which is how a built preview page shows
+the original too. Originals are never modified and never published —
 the same rule the sibling workspace already runs on, and here it is
 forced: the existing originals alone are **453 MB against GitHub Pages'
 1 GB limit**.
@@ -346,7 +371,7 @@ keeping is also published.
 | Where | What lives there | Published? |
 |---|---|---|
 | **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, fixed pages, templates, page furniture and historical comments, in their source form | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Drafts are outside the site folder because of the measurement above,
@@ -402,9 +427,10 @@ means by one store, one fallback, one rule.
 2. **What it means for his site.** *"Your site has not changed."* This
    is S6's actual requirement — he is told where his site stands — and
    it is the part a technical error message always omits. **One failure
-   cannot say that**: where the reference update was sent and no result
-   came back, the sentence says the outcome is unknown rather than
-   guessing. That is the one case S6 admits.
+   cannot say that**: the reference update was sent, and either no answer
+   came back or GitHub answered it with a server error. Either way the
+   update may have been applied, so the sentence says the outcome is
+   unknown rather than guessing. That is the one case S6 admits.
 3. **What to do next.** *"Check your internet and click Publish again."*
    An error that does not say this leaves him stuck holding a fact.
 
