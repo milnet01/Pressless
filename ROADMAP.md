@@ -362,7 +362,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § The parts, § What may depend on what.
   Lanes: Builder.
 
-- 📋 [PRESS-0011] **The Face: the local server, and the error contract every message keeps.**
+- ✅ [PRESS-0011] **The Face: the local server, and the error contract every message keeps.**
   The standard library's own web server, opening in his normal browser and
   reachable only from his machine.
   Every message says what happened in his words, what it means for his
@@ -415,6 +415,16 @@ while the stakes are zero. Holds S2, S3, S4.
   cannot open the program's own Pressless/ folder instead. design.md
   § Errors is amended to match and re-gated. Spec drafted as
   docs/specs/PRESS-0011-face.md.
+  Started (2026-09-11). Spec accepted: docs/specs/PRESS-0011-face.md,
+  gated for one loop by user instruction, with eleven verified and eleven
+  fixed. Building src/pressless/face.py test-first against it.
+  Resolved (2026-09-11). src/pressless/face.py and tests/test_face.py,
+  one test per invariant, each seen failing against a stub first. Every
+  route the invariants' Breaks-when names was mutation-probed and killed.
+  One survivor showed INV-8's test repeated a notice from two lines, which
+  the default warnings filter never suppresses; it now repeats from one
+  line and the re-probe kills it. Not yet reached by a double-click:
+  PRESS-0013 wires pressless.__main__ to face.serve.
   **Layman:** The app opens in his normal browser, and every message tells him what happened, what it means for his site, and what to do next.
   Kind: implement.
   Source: design-2026-08-24 § Errors.
@@ -873,7 +883,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: PRESS-0026 design gate 2026-08-27, loop 7, filed not fixed.
   Lanes: Publisher, Face.
 
-- 🚧 [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
+- ✅ [PRESS-0073] **Four more untyped escapes and a library config path that can execute code, none of them covered by the typed-failure items.**
   Residue from two lanes' dim-7 findings that PRESS-0040 (the
   http.client family) does not cover.
 
@@ -930,6 +940,11 @@ Publish again after fixing it works. Holds S1, S5, S6.
   the Face never formats a failure's cause, context or traceback. It shows
   and logs a typed failure's own words and an unforeseen one's type alone,
   so a backend message quoting a secret cannot reach the log by that route.
+  Resolved (2026-09-11). Item 5 is built: the Face never formats a
+  failure's cause, context or traceback, and
+  tests/test_face.py::test_details_carry_no_cause holds it, mutation-probed.
+  Items 1 to 3 were fixed earlier and item 4 is recorded as the keyring
+  library's own property, so nothing here is left open.
   **Layman:** A few more ways the app can fail with an unexpected error instead of a clear message.
   Kind: review-fix.
   Source: review-code 2026-08-31 lanes publisher/credentials -- residue.

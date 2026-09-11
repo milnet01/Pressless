@@ -17,6 +17,13 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Face: Pressless's own web server, and a plain sentence for every failure.** (PRESS-0011)
+  Pressless serves its pages from his own computer only, behind a secret
+  made at launch, and every failure any part raises now becomes three
+  parts: what happened, what it means for his site, and what to do next.
+  Show details names the log file and the Pressless-data folder, with
+  buttons to copy its location or open it, and never prints a path.
+
 - **Pressless can be packaged: an AppImage for Linux and a zip for Windows, built by a release workflow from a version tag** (PRESS-0022)
   Each artefact keeps the writer's folder, Pressless-data, beside itself.
   Today it runs a self-check that reports where that folder is and which

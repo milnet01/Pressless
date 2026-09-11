@@ -328,7 +328,9 @@ capture, it lands on that request's list.
   completes.
   *Test:* `tests/test_face.py::test_a_notice_is_shown_and_the_call_completes`
   — the Store lists a folder holding a hand-dropped file it passes over,
-  twice, inside `capture()`: each listing returns, two notices are on the
+  twice from one call site, inside `capture()` — the default filter keys on
+  where a warning is raised, so only a repeat from one line tests it: each
+  listing returns, two notices are on the
   captured list and in the log, and `render_notices` shows each with the words
   "Your site has not changed." and `NOTICE_NEXT`'s sentence, written out in the
   test.

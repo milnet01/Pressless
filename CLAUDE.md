@@ -4,8 +4,7 @@
 
 **State:** 5 — Building. **In flight:** `PRESS-0022` (built and proven on
 Linux locally; the release workflow and the Windows half first run at the
-first tag) and `PRESS-0073` (its code items done, waiting on `PRESS-0011` for
-the rest). What is done is deliberately not listed here: `roadmap_query`
+first tag). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
