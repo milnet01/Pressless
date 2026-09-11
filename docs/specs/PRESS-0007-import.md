@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -44,7 +44,9 @@ writer receives that folder; nothing in his copy of Pressless runs Import.
    rule 9 records it.
 2. **The WordPress-HTML bodies are converted into marks, the link and quote
    marks included.** Decided by the user 2026-09-11; PRESS-0004 §3 decision
-   4 adds the two marks.
+   4 adds the two marks. **So is a colour set on a paragraph, link, `<div>`
+   or heading**, decided by the user the same day, after a census found the
+   archive's colours set there rather than on a `<span>`.
 3. **Everything is carried** (`docs/design.md` *What Import brings
    across*): published posts as published entries, drafts and private posts
    as drafts, trashed posts never. Daily Prompt entries keep their tag.
@@ -166,11 +168,12 @@ table's rows make a line or a paragraph.
 | WordPress | Becomes |
 |---|---|
 | `<!-- wp:… -->` block comments | nothing |
+| a `wp:social-link` block comment | nothing, as today's site shows; its address listed |
 | `<p>` | a paragraph: a blank line after it |
 | `<br>` | a new line |
 | `<strong>`, `<b>` | `**…**` |
 | `<em>`, `<i>` | `*…*` |
-| `<span style="color:#…">` with a hex colour | `{#…}…{/}` |
+| a hex `color:` in the `style` of a `<span>`, `<p>`, `<a>`, `<div>` or `<h1>` to `<h6>` | its contents inside `{#…}…{/}`, beside whatever else the element becomes; the rest of the style listed |
 | `<a href="…">` to another site | `{link: …}…{/}` |
 | `<a>` around a picture | the picture alone (decision 7) |
 | `<img>`, and a `<figure>` holding one | `{photo: name}` on its own line; with a `<figcaption>`, `{photo: name \| caption}` |
@@ -321,7 +324,8 @@ all, and the Store's own refusals need no copy here (design rule 7).
   whitespace or crosses a line.
   *Test:* `tests/test_importer.py::test_each_construct_becomes_its_mark` —
   one fixture per row, plus `<strong> word</strong>`, `<a href="…"> x</a>`,
-  `<strong>a<br>b</strong>`, `<strong><em>x</em></strong>`,
+  `<strong>a<br>b</strong>`, `<p style="color:#c0453a">a<br>b</p>`,
+  `<strong><em>x</em></strong>`,
   `<div>a</div><div>b</div>`, an address holding `&amp;`, and a newline
   inside a `<p>`.
   *Breaks when:* a row is converted to something else, whitespace is left
@@ -367,7 +371,8 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 - **INV-9** — What Import could not convert is in `Report.dropped`, by entry.
   *Test:* `tests/test_importer.py::test_what_is_dropped_is_reported` — a
-  markup body holding a `<table>` and a `<p style="font-size:2em">`.
+  markup body holding a `<table>`, a `<p style="font-size:2em">` and a
+  `wp:social-link` block comment, whose address the report names.
   *Breaks when:* an unknown tag is removed without a record.
 
 - **INV-10** — Import reaches no network.
