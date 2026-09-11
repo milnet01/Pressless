@@ -1310,6 +1310,24 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: in-session-2026-09-09, widened from PRESS-0068 item 4.
   Lanes: Credentials, Settings, Store, Publisher, Insights.
 
+- 📋 [PRESS-0118] **S6 says nothing of a publish cut short by Pressless itself stopping during the last step.**
+  S6's exception covers GitHub taking the last step without confirming
+  it, and he is told plainly. If Pressless or his machine stops while
+  that request is in flight, the answer goes to nobody and nothing tells
+  him on the next launch. PRESS-0009 § 6 covers a stop BEFORE the
+  reference update and nothing after it.
+
+  Publishing again is safe either way -- a publish against a site that
+  already matches sends nothing -- so no writing is at risk. What is open
+  is the promise: widen S6's exception to his own machine stopping, with
+  something shown at next launch, or state that such a stop is outside
+  S6. That is a decision about a sign of success, so it was surfaced
+  rather than fixed inside the gate.
+  **Layman:** If Pressless crashes while the last step of a publish is on its way, nothing tells him afterwards whether his site changed.
+  Kind: investigate.
+  Source: review-contract 2026-09-11 discovery.md loop 1, lane 3.
+  Lanes: Publisher, Face.
+
 ## 0.3.0 — he writes in Pressless
 
 The editor box, styled as the finished page, with the preview beside it, and one

@@ -11,7 +11,8 @@ be things you could actually observe.
 `~/.claude/workflow.md` § 2. It passes when a stranger could read it and
 say whether a given feature serves it.
 
-**Status:** agreed 2026-08-17; amended and re-agreed 2026-08-24.
+**Status:** agreed 2026-08-17; amended and re-agreed 2026-08-24; S6
+amended 2026-09-11 on the user's decision.
 
 **What the amendment changed, and why it is recorded rather than quietly
 patched.** Three things were asked for on 2026-08-24: a what-you-see-is-
@@ -87,8 +88,8 @@ nothing should be built in a way that locks them out either.
   clicking Publish again after fixing it works. He is never left unsure
   whether it went out. **One failure is the exception**: where GitHub may
   have taken the last step without confirming it, nobody can know whether
-  the site changed, so he is told plainly that the outcome is unknown and
-  what to do next.
+  the site changed, so he is told plainly that the outcome is unknown.
+  Clicking Publish again is still safe, and settles it.
 - **S7** — An entry he has not finished is not on the live site. He can
   close the app mid-sentence, come back tomorrow, and it is where he
   left it and nowhere else.
@@ -240,7 +241,7 @@ the thing it touches is built.
 - **Does the visitor-statistics decision still hold?** This document
   says city was explicitly not wanted; what went live on 2026-08-23
   reports it. Nothing in the first version depends on the answer —
-  Pressless neither collects nor shows these numbers — but the two
+  Pressless shows visits by country only (S11) — but the two
   records disagree and one of them should change. It is his call,
   and it is a question about the site rather than about this app.
 - **Likes and dislikes on entries — agreed in principle 2026-08-24,
