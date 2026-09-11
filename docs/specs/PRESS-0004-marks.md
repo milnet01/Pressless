@@ -17,11 +17,13 @@ the trust boundary's whole defence, which was never true of the
 photograph name — it reaches `photo_src` before any escaping — so §4.2
 now pins that name's grammar; and a photograph's caption is now its
 description. Both change what a conformer builds, so this one was gated,
-reaching its cap with an empty tail on 2026-09-06.
+reaching its cap with an empty tail on 2026-09-06. Amended again
+2026-09-11 (PRESS-0007): §3 decision 4 adds the link and quote marks,
+with INV-11 and INV-12. That changes what is built, so it is gated.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
-**Blocker for:** PRESS-0008, PRESS-0012, PRESS-0016, PRESS-0018.
+**Blocker for:** PRESS-0007, PRESS-0008, PRESS-0012, PRESS-0016, PRESS-0018.
 
 <!-- Layman -->
 **In plain English:** the small styling language — bold, italic, a colour,
@@ -80,7 +82,8 @@ not a property of the code.
 
 ## 3. Scope decisions (agreed with the user)
 
-Three choices below were preference rather than deduction. The rest follow
+The choices below marked as the user's or as decided here were preference
+rather than deduction. The rest follow
 from §2.
 
 1. **The two named site colours are `{accent}` and `{muted}`.** ADR-0001
@@ -95,6 +98,14 @@ from §2.
 3. **There is no escape character.** A writer cannot type a literal
    `{accent}` and have it appear on the page. §8 records why, and §9 keeps
    the door open.
+4. **Marks gains a link mark and a quote mark.** Decided with the user
+   2026-09-11, so the archive's WordPress-HTML entries convert with
+   nothing he wrote lost (PRESS-0007). **(decided here: the syntax.)** A
+   link is `{link: address}words{/}`, because every other mark that takes
+   an argument is a brace mark. A quotation is lines beginning with `>`,
+   because a quotation spans lines and no mark may (INV-3). **A picture's
+   link to its own full-size file is not carried**: that file is an
+   original, and originals are never published (PRESS-0007 §3 decision 7).
 
 ## 4. Design
 
@@ -127,7 +138,7 @@ callable is how rule 3 is kept while the picture mark still works.
 @dataclass(frozen=True)
 class Mark:
     name: str        # "bold", "colour", "rainbow", "photo" -- Span.mark
-    kind: str        # "wrap" | "block"
+    kind: str        # "wrap" | "block" | "prefix"
     opens: str       # literal prefix; longest is tried first
     closes: str | None       # None for a block mark
     arg: str | None          # regex the argument must match IN FULL
@@ -136,11 +147,12 @@ class Mark:
     example: str             # what the cheat sheet shows, and a fixture
     explains: str            # one plain-English line, his words not ours
 
-Renderer = Callable[[Span | Photo, str, PhotoSrc], str]
+Renderer = Callable[[Span | Photo | Quote, str, PhotoSrc], str]
 ```
 
 A `Renderer` receives its node, its already-rendered children, and
-`photo_src`. Only the `photo` row uses `photo_src`; only `{rainbow}`
+`photo_src`. A `Quote`'s children are its rendered paragraphs, joined by
+`\n`. Only the `photo` row uses `photo_src`; only `{rainbow}`
 ignores the rendered children and walks its own text itself.
 
 **`MARKS` is the only route to a mark.** `to_html` holds no delimiter
@@ -162,10 +174,12 @@ The rows:
 | `colour` | `{#c0453a}word{/}` | wrap | `<span style="color:#c0453a">word</span>` |
 | `rainbow` | `{rainbow}word{/}` | wrap | one `<span class="mk-rainbow" style="--mk-i:N">` per unit, below |
 | `photo` | `{photo: seaside.jpg}`, or `{photo: seaside.jpg \| Late light}` | block | `<figure><img src="…" alt=""></figure>`; with a caption, `alt` carries it and a `<figcaption>` follows |
+| `link` | `{link: https://example.org}the words{/}` | wrap | `<a href="https://example.org">the words</a>` |
+| `quote` | lines beginning `>` | prefix | `<blockquote>` holding its paragraphs, below |
 
 `arg` is `^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$` on the `colour` row, the
-name-and-caption grammar below on the `photo` row, and `None` on the
-rest. `content` is `"marks"` everywhere except `rainbow`, which is
+name-and-caption grammar below on the `photo` row, the address grammar
+below on the `link` row, and `None` on the rest. `content` is `"marks"` everywhere except `rainbow`, which is
 `"text"`.
 
 **A photograph's caption is its description.** Where a caption is
@@ -207,6 +221,23 @@ a place in the document and §4.4 the step that puts it there — without
 both, `<figure>` lands inside `<p>`, every parser closes the paragraph at
 it, and the preview and the built page style the same entry differently.
 
+**A link's address is one absolute `http` or `https` address**, matched
+by the `link` row's `arg` in full once the whitespace either side is
+stripped: the scheme, then no whitespace, quote, angle bracket, brace or
+backslash. That refuses `javascript:` and every other scheme, which is
+what defends the `href` (INV-11); §4.6's attribute rule then escapes it.
+It cannot contain `}`, because the argument ends at the first one (§4.5).
+
+**A `prefix` mark owns every line that begins with it.** The `quote`
+row's `opens` is `>`: a line whose first character other than whitespace
+is `>` belongs to a quotation, and a run of such lines is one `Quote`
+(§4.4 step 4). The whitespace before the `>`, the `>`, and one space after
+it where there is one are removed before the line is scanned, so its words
+keep their wrap marks. A block mark inside a quotation stays literal. **No
+line can begin with a literal `>`**: there is no escape character (§3
+decision 3). The archive's raw-text entries hold no such line, which §7's
+run asserts; a converted entry is PRESS-0007's to check (its INV-5).
+
 ### 4.3 The structure
 
 ```python
@@ -220,11 +251,16 @@ class Photo:     mark: str; name: str; caption: str | None
 class Line:      children: tuple[Node, ...]
 @dataclass(frozen=True)
 class Paragraph: lines: tuple[Line, ...]
+@dataclass(frozen=True)
+class Quote:     mark: str; paragraphs: tuple[Paragraph, ...]
 
 Node     = Text | Span | Photo
-Block    = Paragraph | Photo
+Block    = Paragraph | Photo | Quote
 Document = tuple[Block, ...]
 ```
+
+`Quote` carries `mark` for the reason `Photo` does, and holds `Paragraph`s
+so INV-1 reaches inside a quotation unchanged.
 
 `Line` exists as its own level rather than as a `<br>` in a node list
 because that is what makes INV-1 structural: a document cannot represent a
@@ -242,12 +278,18 @@ name, stripped (§4.2), and §4.1 says what a caller may be handed.
 3. A run of blank lines ends a paragraph, where **blank means empty or
    whitespace-only** — `wpautop()` splits on `\n\s*\n`.
 4. A line that is entirely one `block` mark ends the current paragraph and
-   becomes its own `Block` after it.
+   becomes its own `Block` after it. **A run of consecutive lines each
+   beginning with a `prefix` mark does the same, as one `Quote`**: from
+   each line the whitespace before the prefix, the prefix, and one space
+   after it where there is one are removed; a line left empty separates
+   the quote's paragraphs, and each of those is split into lines as below.
 5. Strip each paragraph, and drop it if nothing is left.
 6. Every remaining newline is a `Line` boundary.
 
 Rendering: `<p>` per paragraph, `<br>\n` between lines, a `block` node
-rendered as a sibling of the `<p>` elements, blocks joined by `\n`.
+rendered as a sibling of the `<p>` elements, blocks joined by `\n`. A
+`Quote` is `<blockquote>` holding its paragraphs, each rendered the same
+way and joined by `\n`.
 
 **Steps 2, 3 and 5 discard whitespace deliberately, because `wpautop()`
 does.** Leave them out and INV-5 fails on the first entry with a leading
@@ -275,7 +317,9 @@ matches only when **all** of:
   argument runs from the end of `opens` to the next `}` on the line**, which
   is why an argument-bearing row's `opens` stops short of one: every mark
   that takes an argument is a brace mark, so there is exactly one terminator;
-- a `block` row matches only when the mark is the whole line (§4.2).
+- a `block` row matches only when the mark is the whole line (§4.2);
+- a `prefix` row is never tried here: §4.4 step 4 matches it at the start
+  of a line, before the line is scanned.
 
 **Both adjacency clauses are a `wrap`'s alone**, which is what the two
 `for a wrap` prefixes carry. A `block` row is matched by the whole-line
@@ -369,7 +413,9 @@ one for `alt`.
   apart: an `&` that begins no character reference by §4.6's pattern,
   which Marks escapes and `wpautop()` does not, and
   text forming a complete mark, which Marks renders and `wpautop()`
-  leaves alone. The archive contains neither. The test asserts that
+  leaves alone — among it, since the quote mark (§3 decision 4), a line
+  whose first character other than whitespace is `>`. The archive
+  contains neither. The test asserts that
   emptiness directly and names which set stopped being empty, because an
   agreement nothing enforces breaks silently on the next import.
   *Test:* `tests/test_marks_archive.py::test_matches_wpautop`. Neither the
@@ -441,9 +487,26 @@ one for `alt`.
   *Breaks when:* `alt` is a fixed empty string, which declares every
   photograph decorative whatever the writer captioned it.
 
+- **INV-11** — A link's address reaches `href` only after matching §4.2's
+  address grammar in full, and only escaped by §4.6's attribute rule.
+  *Test:* `tests/test_marks.py::test_a_link_address_cannot_carry_a_script`
+  — `{link: javascript:alert(1)}x{/}` and an address carrying a `"` stay
+  literal; `{link: https://example.org/a?b=1&c=2}x{/}` renders an `href`
+  whose `&` is `&amp;`.
+  *Breaks when:* the grammar is searched rather than matched in full, it
+  admits any scheme, or the address is inserted unescaped.
+
+- **INV-12** — A quotation keeps its lines: consecutive `>` lines are one
+  `<blockquote>`, every newline inside one of its paragraphs produces one
+  `<br>` as INV-1 requires, the prefix never reaches the page, and a blank
+  line ends it.
+  *Test:* `tests/test_marks.py::test_a_quote_keeps_its_lines`.
+  *Breaks when:* a quotation's lines are joined, the `>` is left in the
+  text, or the quotation runs on past a blank line.
+
 **Trust boundary.** An entry body is writer-supplied text rendered into
 HTML that is then published, and it leaves Marks by two routes. The HTML
-is defended by INV-4 and INV-8, with no other sanitiser downstream: the
+is defended by INV-4, INV-8 and INV-11, with no other sanitiser downstream: the
 Builder writes what Marks returns and the Publisher uploads what the
 Builder wrote. The photograph's name is defended by INV-9, because it
 leaves through `photo_src` before any escaping runs.
@@ -461,11 +524,15 @@ leaves through `photo_src` before any escaping runs.
 | `photo_src` returns a name for a picture that does not exist | A broken image on the page. Marks cannot tell — it has no disk. PRESS-0016 owns checking. |
 | An empty body | An empty document, and `render()` returns `""`. Two archive entries are empty. |
 | Nesting past the parser's bound | The rest of the line is literal (§4.5). Nothing raises. |
+| A link address outside §4.2's grammar — `{link: javascript:x}y{/}` | Literal text (INV-11). He sees his own characters in the preview. |
+| A line he meant to begin with a literal `>` | A quotation. There is no escape character (§3 decision 3); the archive's raw-text entries hold no such line, and PRESS-0007 checks the converted ones. |
+| A block mark inside a quotation | Literal text: a quotation's lines hold wrap marks only (§4.2). |
 
 ## 7. Tests
 
 `tests/test_marks.py` — pure, no fixtures on disk, runs in CI. It carries
-the invariant tests named in §5.
+the tests §5 names for INV-1, INV-2, INV-3, INV-4, INV-6, INV-7, INV-8,
+INV-9, INV-10, INV-11 and INV-12.
 
 `tests/test_marks_archive.py` — the INV-5 conformance run over the real
 export. The export is personal data and cannot live in a public repository
@@ -496,6 +563,8 @@ and `write-test` performs that run.
 | **`{rainbow}` parsing marks inside itself** | A character counter threaded through nested rendering, for bold-inside-rainbow. Text-only is the shortest correct thing; §9 keeps it open. |
 | **Blanket `&` → `&amp;`** | Puts literal `&nbsp;` on 104 pages. |
 | **Escaping `&` never** (today's `wpautop`) | Correct for the archive, and leaves a bare `&` in a future entry as invalid HTML. **Not a security difference** — `&lt;` matches the character-reference pattern, so both rules emit it unchanged, and an entity is never re-parsed as markup. Escaping `<` and `>` is what closes injection, and INV-4 does that unconditionally. |
+| **Markdown's `[words](address)` for a link** | A second shape of mark beside the brace family, built from `[` and `(`, which his writing already uses. Every other mark taking an argument is a brace mark. |
+| **`{quote}…{/}` for a quotation** | A quotation spans lines, and no mark may (INV-3). |
 
 ## 9. Out of scope
 
@@ -510,8 +579,8 @@ and `write-test` performs that run.
   existing entries must survive a round trip"*; that promise is about the
   format and binds whatever Import writes, since a Store file is text with
   marks whatever it came from. It does not oblige Marks to parse HTML.
-  What Import writes for them is PRESS-0007's, and until it decides,
-  nothing here can round-trip them.
+  PRESS-0007 converts them into marks, the link and quote marks included
+  (§3 decision 4).
 - An escape character, and marks nested inside `{rainbow}`. Both are
   additions this design leaves room for; neither is queued.
 - The stray `<span id="selectionBoundary_…">` markup visible on 7 built
@@ -532,6 +601,8 @@ and `write-test` performs that run.
 | INV-8 | `tests/test_marks.py::test_colour_argument_cannot_carry_css` |
 | INV-9 | `tests/test_marks.py::test_photo_name_cannot_escape_its_folder` |
 | INV-10 | `tests/test_marks.py::test_a_caption_becomes_the_photograph_description` |
+| INV-11 | `tests/test_marks.py::test_a_link_address_cannot_carry_a_script` |
+| INV-12 | `tests/test_marks.py::test_a_quote_keeps_its_lines` |
 | INV-7's wider claim that no path is resolved in `marks.py` | **nothing** — `test_marks_is_pure` walks imports and call spellings, and a path built by string concatenation needs neither. Rule 3 is kept by review here, not by a test. |
 | §3.1's claim that the site has one accent and one muted ink | **nothing** — a repaint of the site could add a third named colour and this spec would not notice. It is a one-line edit to `MARKS` when it happens. |
 | §4.2's `mk-rainbow` class existing in the site's stylesheet | **nothing** — Marks emits the class and the stylesheet is in another repository. A rainbow run renders as plain text until PRESS-0008 adds the rule; tracked by PRESS-0008. |
@@ -544,6 +615,10 @@ and `write-test` performs that run.
   filled them.
 - `docs/design.md` — no change. This spec settles detail that document
   deliberately left open.
+- PRESS-0007 — Import writes the link and quote marks for the archive's
+  WordPress-HTML entries (§3 decision 4).
+- PRESS-0018 — the cheat sheet gains the two rows, generated from
+  `MARKS`.
 
 ## 12. Cold-eyes loop log
 
@@ -555,3 +630,4 @@ and `write-test` performs that run.
 | 4 | 2026-09-06 | 3, cold — identical brief, packet rebuilt whole from disk and extended with PRESS-0006's INV-11 window; the code's not-yet-caught-up half declared, so it could not be re-found each loop | 4 | 2 | 3 | 1 | **Ten verified, ten fixed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text this run wrote**, each anchor checked against loop 3's ledger — a borderline cap rather than a calm or a violent one: the rainbow unit and the photograph name each took a second pass, while §4.5's glosses and §11 had stood since August. Across both loops, thirteen of twenty-one findings predated the change being gated, so this run was substantially an audit. **Two lanes found §4.5's `b**bs` gloss false of the rule it glosses** — executed: `*a b**bs` is `<em>a b</em>*bs`, so the closer's asterisk clause is not what keeps `b**bs` literal, and an implementer taking the gloss for a fixture writes a test that stays green with the clause deleted, which is what INV-2 was amended to prevent. It now names INV-2's own separating input. **One lane found the neighbouring gloss false the same way**: `**said out loud**` opens at its run's first asterisk, so *an asterisk run cannot open a mark at its first asterisk* is true only of `***x***`, and coding it as written rejects both asterisk rows' own examples. **Two lanes found the rainbow whitespace clause fighting loop 3's new unit clause** — `&nbsp;` is both a unit and whitespace, and the two prescribed opposite output and different indices for every character after it. **One lane found "the opener" undefined for a row with an argument**: the code tests the character after the argument's `}`, so `{#c0453a} word{/}` is literal, and reading it as `opens` alone makes the clause vacuous for that row. §4.5 now defines the opening construct once. **Singles:** §4.6's attribute list omitted the `style` value the colour rows carry, resting that boundary on INV-8's pattern alone; the grammar said nothing about the whitespace the written form `{photo: seaside.jpg}` puts around the name, which the code strips; loop 3's claim that the name grammar *is* what INV-11 accepts was wrong, since this one also refuses a colon and control characters; and §4.5 said *a space* where the code tests whitespace, so `{accent}\tx{/}` divided two implementations. **Two lanes re-found §11's claim that `CLAUDE.md`'s § Stack and § Build and test are placeholders**, dismissed as inert in loop 3 and fixed here: §11 is a checklist somebody works down, so a builder would write into two live sections. **One was mine**, from 4a's re-read: defining the opening construct made §4.5's own reason for scoping the adjacency clauses to a `wrap` stale. **Code-side collateral filed, not fixed here:** `marks.py` and both test files still say *a space*, and three docstrings describe the pre-amendment contract. |
 | 5 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `marks.py` and `test_marks.py` whole, `test_marks_archive.py` with its new shared loader, design.md rules 1-9 and PRESS-0006's INV-11. The export and the generator are on this machine, so no region was declared unrunnable | 3 | 1 | 0 | 1 | **Five verified, five fixed, none dismissed.** Trigger: PRESS-0110 rewriting INV-7 as an allowlist. **Two of the five are this session's own collateral, and both lanes that found the larger one found it independently:** PRESS-0108 made the archive run FAIL where a generator is present and unusable, and §5 and §7 both still said it skipped — built as written, a `skipif` would take the proof of S2 off the only machine that can run it. **One lane found §4.1 claiming Marks enforces the same name rule as PRESS-0006's INV-11 where §4.2 says *at least as strict*;** executed, `photograph_path_for` accepts `C:photo.jpg` and Marks refuses it, so a photograph the Store holds could never be displayed and nobody owned the gap. **One lane found INV-8 attributing the CSS defence to the anchors**; the comparison is `re.fullmatch`, so stripping `^` and `$` still refuses the payload (probed, survived) — the full match is the invariant and `re.search` is what would admit it. **One found §9 putting empty entries outside raw text** where §6 gives them a row and the classifier keeps them, so the population §7 promises to print differed from the one §9 defines. **Q4, found by two lanes:** INV-7's *Breaks when* named path resolution, which its walk cannot see — probed, a concatenated path passes — now narrowed, with §10 disclosing the gap as it already does for two others. **Collateral outside the subject:** the project `CLAUDE.md` told every session these tests skip when the generator is unreachable; corrected. Two ROADMAP progress notes carry the old claim and were left as records. **Five open questions resolved clean and are not counted** — `HAS_TAGS` does not match a selectionBoundary span (run, so §9's claim holds), §4.3's unions are covered by §4.1, INV-2's four routes against five mutations, §4.5's wrap rationale, and INV-5's two-input claim. |
 | 6 | 2026-09-08 | 3, cold — identical brief, scrubbed copy and packet rebuilt whole from disk, no prior-loop findings carried | 2 | 2 | 0 | 0 | **Four verified, four fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation.** **Half landed on text loop 1 wrote**, each anchor checked against loop 1's ledger rather than recalled — borderline rather than calm or violent, and neither says loop 1 was wrong: both say it was incomplete. **Two lanes found loop 1's *Breaks when* over-generalised:** it said all six forbidden calls match *by any spelling*, where the test matches `open` / `__import__` / `import_module` that way and `eval` / `exec` / `compile` by bare name only — built from the clause, the test fails a conformant `marks.py` on its own three `re.compile` calls, and the `builtins` back-door check is dropped entirely. **Two lanes found loop 1 wrote *neither* for *either*** in § 7's skip rule: `skipif` is unconditional on the generator and the loader skips on no candidate regardless of the archive, so built from § 7 an ordinary `pytest` goes red on the maintainer's machine. Both directions executed. **One lane found § 4.5's rationale describing a construct the section no longer defines** — it justifies the adjacency clauses by a space after `{photo:`, but the opening construct now runs to the argument's `}`; executed, `{#c0a} word{/}` is literal, so a builder taking the rationale ships a colour span the code refuses. **The last came from a lane's open question rather than a finding:** § 7 claimed the run prints every figure § 2 describes, and § 2 describes none numerically while two of its four claims have no printed figure; narrowed to the three the run does print. **Collateral outside the subject:** PRESS-0005's What-checks-this row carried the same stale skip claim and was corrected there. **Of the whole run's nine verified findings, two fall inside the gated span** (§ 5 INV-7 and its test); the other seven are audit yield on text the trigger never touched. **Four open questions resolved clean and are not counted** — § 4.1's exports against `__all__`, the nesting-bound wording, INV-2's four routes against five mutations, and the archive figures no packet can settle. **Routing: implementation, not a third loop.** |
+| 7 | 2026-09-11 | 3, cold — genre pinned `spec`; loop 1 of a new run, armed by §3 decision 4's link and quote marks (PRESS-0007). Packet carried `marks.py`, `test_marks_archive.py` and ADR-0001 whole, and the PRESS-0007 roadmap entry. The two marks declared unbuilt | 1 | 4 | 1 | 0 | **Six verified, six fixed, none dismissed. One loop only, by user instruction: not converged.** All three lanes: INV-12 asked for a `<br>` after a quotation's last line, the renderer type left `Quote` out, and a picture's link to its full-size file had no form. Two lanes: a quote line was defined two ways. One each: the line scanner did not exclude the quote row, and "§7's run asserts" covered raw-text entries only. All six inside the amendment. |

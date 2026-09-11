@@ -24,7 +24,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics identifier Insights is queried by. | Everything. It depends on nothing. |
 | **Credentials** | Keeping the two secrets themselves — the GitHub publishing key and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring. Where a file cannot be made private to one user — Windows, where the read-only flag is all there is — there is no fallback: setup stops and says so. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
 | **Store** | Everything that shapes the site: entries as marked text, the fixed pages, the templates, the header, footer and navigation, the historical comments, and any photograph an entry uses. Drafts kept apart from published. Reads, writes, lists. | GitHub, the browser |
-| **Import** | Turning the twelve years in the WordPress export into Store files, once. Run at setup and never again. | GitHub, the browser, the Face |
+| **Import** | Turning the twelve years in the WordPress export into Store files, once, on the maintainer's machine (rule 9). The writer's copy never runs it. | GitHub, the browser, the Face |
 | **Marks** | The small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
 | **Builder** | Turning the Store plus Settings into a finished site folder. This is `build_blog.py` re-homed and separated from the writer. | GitHub, the browser, where the writing came from |
 | **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a previous state of it, when asked. | Entries, pages, poems, what a draft is |
@@ -87,10 +87,18 @@ than hoped for.
    publishing may depend on it. If Google is
    unreachable, or he never sets it up at all, everything from S1 to S10
    still works — the dashboard is the only thing that says so.
-9. **Nothing may depend on Import once it has run.** Setup invokes it,
-   once, before anything else has; after that it is the only part that
-   may be deleted from a working installation without changing what the
-   others do.
+9. **Nothing may depend on Import once it has run.** The maintainer runs
+   it once, before anything else has, on the maintainer's own machine
+   rather than the writer's, because that machine holds the photograph
+   originals Import reads. The writer receives the Pressless-data folder
+   it made, and nothing in his copy of Pressless runs it. **That folder
+   carries the Store and no settings file**: Settings is facts about his
+   machine and site, and setup writes them there, the Daily Prompt filter
+   included (PRESS-0021). **Until his copy holds a Store with a published
+   entry, it offers neither setup nor publishing**: an empty Store builds
+   a site with nothing in it, and a publish would delete his. It is the
+   only part that may be deleted from a working installation without
+   changing what the others do. Decided with the user 2026-09-11.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
     it to the Publisher or Insights as an argument, so rules 5 and 8 stay
     literally true and both parts stay testable without a real keyring.
@@ -300,9 +308,19 @@ direction: carry it, and let the Builder decide what to publish.
   not, and Import must not carry them into the Store at all.
 - **The photographs, and every entry's image references rewritten to the
   picture mark.** The originals go where the Store keeps them, in
-  Pressless's own folder. Rule 9 makes this the only chance: skipped,
+  Pressless's own folder, and come from the maintainer's own copy of
+  them. Rule 9 makes this the only chance: skipped,
   they stay on WordPress and every imported entry goes on pointing at the
   site he is leaving.
+- **The fixed pages and the page furniture, from the live site's own
+  files.** The export does not hold them: the site's pages are written by
+  hand, and its header, footer and navigation come from today's
+  generator. The furniture is taken from the generator's own templates,
+  whose navigation the hand-written pages carry today. **A fixed page is
+  one the site serves as a page — never a file this document names as
+  untouchable.** PRESS-0006 gives both their Store shape; how a
+  hand-written page is parted from the header and footer written into it
+  is settled with the Builder (PRESS-0008).
 
 **Where the cheat sheet comes from.** Marks owns one table of every mark
 it understands, and the cheat sheet is generated from that table — the
@@ -609,3 +627,4 @@ install by rewriting the one component we have evidence about.
 | 12 | 2026-09-08 | 3, cold — identical brief, packet rebuilt whole from disk and re-measured | 1 | 4 | 1 | n/a | **Six verified, six fixed, none dismissed. Cap reached (3 for an ADR); the tail carries no unfixed finding and the run exits.** **A VIOLENT cap: five of the six landed on text THIS RUN wrote**, each anchor checked against loops 10 and 11's ledger rather than recall. **The whole run landed almost entirely on what armed it** — eighteen of nineteen verified findings anchor inside the two sections the gate was armed for, so this was a gate rather than an audit. **The diagnosis is specific and it is not that the document cannot settle: one paragraph accumulated a carve-out per loop.** Loop 10 wrote an absolute rule, loop 11 narrowed it to the raise site and had to widen it back, and loop 11's replacement introduced a chosen-versus-not-chosen axis for locations — which is what three of this loop's findings came from. **Two lanes found that axis admits the leak it forbids:** the site folder is a location he DID choose, so a build failure about it fell outside the rule and could name his home directory in the very file § Errors tells him to send to a helper. One lane found the same axis contradicting *"a repository is its short name, never `account/name`"* — he types `account/name`, so the exception handed back exactly what the substitute removes. **The fix was to delete the axis rather than qualify it again**: the exception is now the field he typed the value into and nothing else, and every failure message and log line takes the substitutes whether or not he chose the location. **Two lanes found § Errors grants the control two actions** — copy the path, or open the folder — while § Logging sanctioned one and called it *the* one exception, so an implementer reading § Logging as governing ships copy alone. Both are named now. **One lane found the unforeseen-failure remedy named only the screen**, leaving what the Face WRITES for a foreign exception uninvented — the obvious build keeps the screen clean and puts `str(exc)` in the log, which is the leak with an extra step. It shows *and records* the type alone. **One Q1, and it was the document over-claiming a decision it was handed:** the rule was attributed wholesale to the user's 2026-09-07 decision, which says *on failure*; the extension to every log line is derived from the same reason and now says so. Found from a lane's open question, not a finding. **Two lanes asked for the roll policy and one judged it implementation detail; the policy is a decision with a consequence and the threshold is not**, so § Logging now records that the log rolls by size keeping one old copy, and leaves the size to the spec. **Route from here: implementation.** A fourth loop would start against a document whose last three loops each repaired the one before, and nothing in the evidence suggests it would differ. The document is not re-gated as it stands; the bar lapses with the next authoring edit that changes direction. |
 | 13 | 2026-09-11 | 3, cold — genre pinned `adr`; gating the decisions of 2026-09-11 (PRESS-0096, 0112, 0030, 0031, 0099). Packet carried discovery's signs, PRESS-0009 § 4.4, § 6 and § 11, PRESS-0005 § 4.1 and § 9, and Store and Publisher windows. Windows, PyInstaller, GitHub and Analytics unrunnable | 0 | 2 | 4 | n/a | **Six verified, six fixed, none dismissed. One loop only, by user instruction: surfaced and fixed, not converged, and no cold read has seen the fixes.** Three landed on the new undo and delete text: undo compared against a copy nothing keeps, a kept draft had no slug of its own, and a rename or delete stranded the comments file. Three were older: the undo toggle left one slug as both draft and published, a kept comments file was republished with its entry a draft, and the last-resort catch keyed on a step the Face cannot see. Four of six inside the gated span. |
 | 14 | 2026-09-11 | 3, cold — genre pinned `adr`; gating § Errors' label for Pressless's own folder, now naming Pressless-data (PRESS-0011). Packet carried `paths.py`, PRESS-0022 § 3 decision 5 and § 4.2, and PRESS-0003 § 3. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 0 | n/a | **Two findings: one verified and fixed, one dismissed. One loop only, by user instruction: not converged.** One lane: § Errors gave one button that copies or opens, while § Logging names two; § Errors now names both. Dismissed: that "beside the program" misleads on Windows, where this document defines the program as the extracted folder, as two other lanes confirmed. Inside the gated sentence. |
+| 15 | 2026-09-11 | 3, cold — genre pinned `adr`; gating rule 9 and *What Import brings across* for the user's decision that the maintainer runs Import (PRESS-0007). Packet carried PRESS-0006 § 3, PRESS-0005 § 3 decisions 4 and 5, and the PRESS-0007 and PRESS-0021 roadmap entries. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 0 | 6 | n/a | **Seven verified: five fixed, two surfaced. One loop only, by user instruction: not converged.** All three lanes: nothing said what the handed folder carries; it is the Store, and setup writes Settings. Two lanes: which copy of the furniture Import takes, and the Store shape cited to the Builder rather than PRESS-0006. One each: the untouchable files are not fixed pages, and an empty Store offers neither setup nor publishing. Surfaced on PRESS-0008 and PRESS-0015: where filtered Daily Prompt entries go, and what undoing the first publish does. Five of seven inside the gated span. |

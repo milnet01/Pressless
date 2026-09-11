@@ -338,6 +338,21 @@ while the stakes are zero. Holds S2, S3, S4.
   entries and must stop rather than overwrite. Deciding which entry keeps
   the slug is this item's. PRESS-0005 §3 decision 5 said nothing in the
   archive collides; that claim is now corrected.
+  Decided by the user (2026-09-11), before the spec:
+  1. The maintainer runs Import once, on the machine that holds the export,
+  the photograph originals and the live site's own files, checks the
+  result, and hands the writer a finished Pressless-data folder. Setup
+  does not run it. docs/design.md says setup invokes it, so that changes,
+  and design.md is re-gated.
+  2. Marks gains a link mark and a quote mark, so the WordPress-HTML
+  entries convert with nothing lost. Links to his old WordPress posts are
+  pointed at the new site. PRESS-0004 is amended and re-gated first.
+  Review budget: up to two rounds for this spec.
+  Correction (2026-09-11): the note above says links to his old WordPress
+  posts are pointed at the new site. There are none. Measured: every link
+  to the old site wraps a picture, and those links are dropped with the
+  picture kept (the spec's §3 decision 7). The link mark carries the
+  external links.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -357,6 +372,12 @@ while the stakes are zero. Holds S2, S3, S4.
   and it owns the naming rule for web-sized photograph copies -- the one
   place that rule is written down.
   Blocked-by: PRESS-0001, PRESS-0004, PRESS-0005, PRESS-0006.
+  Surfaced by the design.md gate, loop 15 (2026-09-11), for a decision:
+  a Daily Prompt entry the filter excludes is published but on no page.
+  Does the Builder copy it into content/, where its text is publicly
+  fetchable, or leave it out, so that an undo demotes it to a draft and
+  the filter stops being reversible? The Builder and undo (PRESS-0015)
+  must agree.
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.
@@ -846,6 +867,11 @@ Publish again after fixing it works. Holds S1, S5, S6.
   conformers could pick differently and both believe they conform.
 
   PRESS-0009 11 records the requirement and points here.
+  Changed by the user's decision on PRESS-0007 (2026-09-11): setup no
+  longer runs Import. The maintainer runs Import once on the machine that
+  holds the photograph originals and hands the writer the finished
+  Pressless-data folder, so "where Import runs, once" is no longer this
+  item's. docs/design.md rule 9 records it.
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
@@ -1519,6 +1545,12 @@ that it is back. Holds S9.
   Offered in the same breath as the edit rather than found later in a
   menu. Claims S9.
   Blocked-by: PRESS-0010, PRESS-0013.
+  Surfaced by the design.md gate, loop 15 (2026-09-11), for a decision:
+  the state before the writer's first publish is the site today's
+  generator built, and it holds no content/ folder. Undoing that first
+  publish would demote every imported entry to a draft. Either the first
+  publish cannot be undone, or undo does something else when the fetched
+  state holds no content/.
   **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
