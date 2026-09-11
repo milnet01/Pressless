@@ -105,11 +105,12 @@ def _forms_a_mark(body: str) -> bool:
     Deliberately conservative -- it may say yes where the parser would
     say no, and a false positive costs a look while a false negative
     costs the invariant. Any brace at all counts, since every brace mark
-    opens with one and the archive has no brace in it; asterisks need
-    §4.5's adjacency rule, since unpaired ones are common in the writing
-    (INV-2's own fixtures)."""
+    opens with one and the archive has no brace in it; a line whose first
+    character other than whitespace is '>' counts, since that is the quote
+    mark (§3 decision 4); asterisks need §4.5's adjacency rule, since
+    unpaired ones are common in the writing (INV-2's own fixtures)."""
     for line in body.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        if "{" in line:
+        if "{" in line or line.lstrip().startswith(">"):
             return True
         for delim in ("**", "*"):
             start = 0

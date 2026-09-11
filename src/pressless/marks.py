@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import groupby
 
 __all__ = [
     "MARKS",
@@ -27,6 +28,7 @@ __all__ = [
     "Paragraph",
     "Photo",
     "PhotoSrc",
+    "Quote",
     "Renderer",
     "Span",
     "Text",
@@ -78,8 +80,17 @@ class Paragraph:
     lines: tuple[Line, ...]
 
 
+@dataclass(frozen=True)
+class Quote:
+    """A quotation. It carries `mark` for the reason Photo does, and holds
+    Paragraphs so INV-1 reaches inside it unchanged."""
+
+    mark: str
+    paragraphs: tuple[Paragraph, ...]
+
+
 Node = Text | Span | Photo
-Block = Paragraph | Photo
+Block = Paragraph | Photo | Quote
 Document = tuple[Block, ...]
 
 #: Given a picture's file name, the address to put in `src`. The Builder
@@ -87,7 +98,8 @@ Document = tuple[Block, ...]
 PhotoSrc = Callable[[str], str]
 
 #: A mark's own HTML: its node, its already-rendered children, `photo_src`.
-Renderer = Callable[[Span | Photo, str, PhotoSrc], str]
+#: A Quote's children are its rendered paragraphs, joined by '\n'.
+Renderer = Callable[[Span | Photo | Quote, str, PhotoSrc], str]
 
 
 # ----------------------------------------------------------------- escaping --
@@ -133,7 +145,7 @@ def _escape_attr(value: str) -> str:
 
 
 def _wrap_in(tag: str) -> Renderer:
-    def render_wrapped(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
+    def render_wrapped(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
         return f"<{tag}>{children}</{tag}>"
 
     return render_wrapped
@@ -143,19 +155,19 @@ def _named_colour(css: str) -> Renderer:
     """§3.2: a named colour renders as the CSS variable, never as a hex
     value, so repainting the site repaints twelve years of entries."""
 
-    def render_named(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
+    def render_named(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
         return f'<span style="color:{_escape_attr(css)}">{children}</span>'
 
     return render_named
 
 
-def _picked_colour(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
+def _picked_colour(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
     # INV-8: this argument reached here only by matching the hex pattern in
     # full. Escaped as well, because the style attribute is a trust boundary.
     return f'<span style="color:{_escape_attr(node.arg or "")}">{children}</span>'
 
 
-def _rainbow(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
+def _rainbow(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
     """One span per unit carrying an index, so the site's stylesheet owns the
     palette and Marks owns no colour decision (§4.2). A unit is a whole
     character reference where the text carries one, and a single character
@@ -181,7 +193,7 @@ def _rainbow(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
     return "".join(out)
 
 
-def _figure(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
+def _figure(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
     """The caller owns the file world: if `photo_src` raises, Marks does not
     catch it (§6)."""
     src = _escape_attr(photo_src(node.name))
@@ -199,6 +211,14 @@ def _figure(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
     return f'<figure><img src="{src}" alt="{alt}">{caption}</figure>'
 
 
+def _link(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+    # INV-11: this argument reached here only by matching the address grammar
+    # in full, so once the whitespace it allows either side is stripped it is
+    # one http or https address. Escaped as well, because href is a trust
+    # boundary (§4.6).
+    return f'<a href="{_escape_attr((node.arg or "").strip())}">{children}</a>'
+
+
 # --------------------------------------------------------------- the table --
 
 
@@ -206,10 +226,10 @@ def _figure(node: Span | Photo, children: str, photo_src: PhotoSrc) -> str:
 class Mark:
     """One mark. MARKS is the only route to any of them (§4.2)."""
 
-    name: str  # Span.mark / Photo.mark
-    kind: str  # "wrap" | "block"
+    name: str  # Span.mark / Photo.mark / Quote.mark
+    kind: str  # "wrap" | "block" | "prefix"
     opens: str  # literal prefix; longest is tried first
-    closes: str | None  # None for a block mark
+    closes: str | None  # None for a block or prefix mark
     arg: str | None  # regex the argument must match IN FULL
     content: str  # "marks" | "text" -- is the body scanned on?
     render: Renderer  # this mark's HTML, built here and nowhere else
@@ -238,6 +258,12 @@ _PHOTO_ARG = (
     r"[^\s|/\\:\x00-\x1f\x7f][^|/\\:\x00-\x1f\x7f]*?)"
     r"\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
 )
+
+# One absolute http or https address, whitespace either side (§4.2). After
+# the scheme: no whitespace, quote, angle bracket, brace or backslash. That
+# refuses javascript: and every other scheme, which is what defends the href
+# (INV-11) -- compared with re.fullmatch, like every row's `arg`.
+_LINK_ADDRESS = r"^\s*https?://[^\s\"'<>{}\\]+\s*$"
 
 
 MARKS: tuple[Mark, ...] = (
@@ -318,6 +344,28 @@ MARKS: tuple[Mark, ...] = (
         example="{photo: seaside.jpg | Late light}",
         explains="A photograph on a line of its own, with a caption if you want one.",
     ),
+    Mark(
+        name="link",
+        kind="wrap",
+        opens="{link:",
+        closes="{/}",
+        arg=_LINK_ADDRESS,
+        content="marks",
+        render=_link,
+        example="{link: https://example.org}the words{/}",
+        explains="A link: the address, then the words a reader clicks.",
+    ),
+    Mark(
+        name="quote",
+        kind="prefix",
+        opens=">",
+        closes=None,
+        arg=None,
+        content="marks",
+        render=_wrap_in("blockquote"),
+        example="> a line someone else wrote",
+        explains="A quotation: begin each of its lines with >. A blank line ends it.",
+    ),
 )
 
 
@@ -330,6 +378,12 @@ _WRAP_MARKS: tuple[Mark, ...] = tuple(
 )
 _BLOCK_MARKS: tuple[Mark, ...] = tuple(
     sorted((row for row in MARKS if row.kind == "block"),
+           key=lambda row: len(row.opens), reverse=True)
+)
+# §4.5: the line scanner never tries a prefix row. §4.4 step 4 matches it at
+# the start of a line, before the line is scanned.
+_PREFIX_MARKS: tuple[Mark, ...] = tuple(
+    sorted((row for row in MARKS if row.kind == "prefix"),
            key=lambda row: len(row.opens), reverse=True)
 )
 
@@ -519,6 +573,43 @@ def _paragraph(lines: list[str]) -> Paragraph | None:
     return Paragraph(tuple(Line(_scan(line)) for line in text.split("\n")))
 
 
+def _end_paragraph(pending: list[str], blocks: list[Block]) -> None:
+    """What has gathered becomes a paragraph, if anything is left of it, and
+    gathering starts again."""
+    paragraph = _paragraph(pending)
+    pending.clear()
+    if paragraph is not None:
+        blocks.append(paragraph)
+
+
+def _prefix_row(line: str) -> Mark | None:
+    """§4.2: the prefix row this line begins with, whitespace before it
+    aside, or None."""
+    stripped = line.lstrip()
+    for row in _PREFIX_MARKS:
+        if stripped.startswith(row.opens):
+            return row
+    return None
+
+
+def _unprefixed(row: Mark, line: str) -> str:
+    """§4.4 step 4: the line without the whitespace before the prefix, the
+    prefix, and one space after it where there is one."""
+    return line.lstrip()[len(row.opens):].removeprefix(" ")
+
+
+def _quote(row: Mark, lines: list[str]) -> Quote | None:
+    """§4.4 step 4: a run of prefixed lines, as one Quote. A line left empty
+    separates its paragraphs, and each is split into lines like any other.
+    None where no paragraph is left, so a lone '>' renders nothing."""
+    paragraphs = tuple(
+        paragraph
+        for part in _PARAGRAPH_BREAK.split("\n".join(lines))
+        if (paragraph := _paragraph(part.split("\n"))) is not None
+    )
+    return Quote(mark=row.name, paragraphs=paragraphs) if paragraphs else None
+
+
 def parse(body: str) -> Document:
     """Text in, structure out (§4.4).
 
@@ -530,20 +621,25 @@ def parse(body: str) -> Document:
     blocks: list[Block] = []
     for chunk in _PARAGRAPH_BREAK.split(body):
         pending: list[str] = []
-        for line in chunk.split("\n"):
-            block = _as_block(line)
-            if block is None:
-                pending.append(line)
+        for row, run in groupby(chunk.split("\n"), key=_prefix_row):
+            if row is not None:
+                # §4.4 step 4: a run of prefixed lines ends the paragraph and
+                # follows it as one Quote. Its lines are only ever scanned,
+                # so a block mark inside one stays literal (§4.2).
+                _end_paragraph(pending, blocks)
+                quote = _quote(row, [_unprefixed(row, line) for line in run])
+                if quote is not None:
+                    blocks.append(quote)
                 continue
-            # §4.4 step 4: the block mark ends the paragraph and follows it.
-            paragraph = _paragraph(pending)
-            pending.clear()
-            if paragraph is not None:
-                blocks.append(paragraph)
-            blocks.append(block)
-        paragraph = _paragraph(pending)
-        if paragraph is not None:
-            blocks.append(paragraph)
+            for line in run:
+                block = _as_block(line)
+                if block is None:
+                    pending.append(line)
+                    continue
+                # §4.4 step 4: the block mark ends the paragraph and follows it.
+                _end_paragraph(pending, blocks)
+                blocks.append(block)
+        _end_paragraph(pending, blocks)
     return tuple(blocks)
 
 
@@ -557,23 +653,28 @@ def to_html(doc: Document, photo_src: PhotoSrc) -> str:
     name. Every mark's HTML comes from its own row's renderer.
     """
 
-    def node_html(node: Node) -> str:
+    def paragraph_html(paragraph: Paragraph) -> str:
+        body = "<br>\n".join(
+            "".join(node_html(node) for node in line.children) for line in paragraph.lines
+        )
+        return f"<p>{body}</p>"
+
+    def node_html(node: Node | Quote) -> str:
         if isinstance(node, Text):
             return _escape_text(node.value)
         row = _ROW_BY_NAME[node.mark]
-        children = (
-            "".join(node_html(child) for child in node.children)
-            if isinstance(node, Span)
-            else ""
-        )
+        if isinstance(node, Span):
+            children = "".join(node_html(child) for child in node.children)
+        elif isinstance(node, Quote):
+            # §4.4: a Quote's paragraphs render as any other, joined by '\n'.
+            children = "\n".join(paragraph_html(p) for p in node.paragraphs)
+        else:
+            children = ""
         return row.render(node, children, photo_src)
 
     def block_html(block: Block) -> str:
         if isinstance(block, Paragraph):
-            body = "<br>\n".join(
-                "".join(node_html(node) for node in line.children) for line in block.lines
-            )
-            return f"<p>{body}</p>"
+            return paragraph_html(block)
         return node_html(block)
 
     return "\n".join(block_html(block) for block in doc)

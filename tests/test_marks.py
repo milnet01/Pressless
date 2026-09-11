@@ -1,4 +1,4 @@
-# INV-1 to INV-4 and INV-6 to INV-10 for PRESS-0004 (Marks) -- every
+# INV-1 to INV-4 and INV-6 to INV-12 for PRESS-0004 (Marks) -- every
 # invariant but INV-5. Pure, no fixtures on disk, runs in
 # CI. INV-5 is the archive conformance run and lives in test_marks_archive.py
 # instead, because it needs a WordPress export that cannot ship in a public
@@ -19,6 +19,7 @@ from pressless.marks import (
     Line,
     Paragraph,
     Photo,
+    Quote,
     Span,
     Text,
     parse,
@@ -43,6 +44,9 @@ def _iter_nodes(obj):
     if isinstance(obj, tuple):
         for item in obj:
             yield from _iter_nodes(item)
+    elif isinstance(obj, Quote):
+        yield obj
+        yield from _iter_nodes(obj.paragraphs)
     elif isinstance(obj, Paragraph):
         for line in obj.lines:
             yield from _iter_nodes(line)
@@ -67,9 +71,12 @@ class _AttrCapture(html.parser.HTMLParser):
         self.srcs: list[str] = []
         self.styles: list[str] = []
         self.alts: list[str] = []
+        self.hrefs: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         attrs_by_name = dict(attrs)
+        if "href" in attrs_by_name:
+            self.hrefs.append(attrs_by_name["href"])
         if "src" in attrs_by_name:
             self.srcs.append(attrs_by_name["src"])
         if "style" in attrs_by_name:
@@ -295,7 +302,7 @@ def test_every_table_row_parses():
         doc = parse(row.example)
         found = [
             n for n in _iter_nodes(doc)
-            if isinstance(n, (Span, Photo)) and n.mark == row.name
+            if isinstance(n, (Span, Photo, Quote)) and n.mark == row.name
         ]
         assert found, (
             f"row {row.name!r}'s own example {row.example!r} did not parse "
@@ -786,4 +793,101 @@ def test_a_caption_becomes_the_photograph_description():
     assert _parsed_attrs(quoted).alts == ['he said "hi" & waved'], (
         f"the alt must decode back to the caption the writer typed, which "
         f"is what the attribute rule buys: {quoted!r}"
+    )
+
+
+# -------------------------------------------------------------- INV-11 ----
+
+
+def test_a_link_address_cannot_carry_a_script():
+    """INV-11: a link's address reaches href only after matching §4.2's
+    address grammar in full, and only escaped by §4.6's attribute rule.
+
+    Breaks when the grammar is searched rather than matched in full, it
+    admits any scheme, or the address is inserted unescaped (spec §5)."""
+    good = render("{link: https://example.org/a?b=1&c=2}a page{/}", _no_photos)
+    assert _parsed_attrs(good).hrefs == ["https://example.org/a?b=1&c=2"], (
+        f"the link must carry the address the writer typed: {good!r}"
+    )
+    assert 'href="https://example.org/a?b=1&amp;c=2"' in good, (
+        f"the address's & must reach the attribute as &amp; (§4.6): {good!r}"
+    )
+    assert ">a page</a>" in good, f"the link's words must be its text: {good!r}"
+
+    nested = render("{link: https://example.org}**read** this{/}", _no_photos)
+    assert "<strong>read</strong> this</a>" in nested, (
+        f"a link's words keep their own marks: {nested!r}"
+    )
+
+    for body in (
+        "{link: javascript:alert(1)}x{/}",  # not http or https
+        '{link: https://example.org/"onmouseover=x}x{/}',  # a quote in it
+        "{link: ftp://example.org}x{/}",  # another scheme
+        "{link: https://example.org x}x{/}",  # whitespace inside
+        "{link: see https://example.org}x{/}",  # matched in part only
+    ):
+        out = render(body, _no_photos)
+        assert "<a" not in out, (
+            f"{body!r} is outside the address grammar and must stay literal: {out!r}"
+        )
+
+
+# -------------------------------------------------------------- INV-12 ----
+
+
+def test_a_quote_keeps_its_lines():
+    """INV-12: a quotation keeps its lines -- consecutive `>` lines are one
+    <blockquote>, every newline inside one of its paragraphs produces one
+    <br> as INV-1 requires, the prefix never reaches the page, and a blank
+    line ends it.
+
+    Breaks when a quotation's lines are joined, the `>` is left in the
+    text, or the quotation runs on past a blank line (spec §5)."""
+    body = (
+        "before\n"
+        "> first line\n"
+        "> second **line**\n"
+        ">\n"
+        "   >another paragraph\n"
+        "after a > sign\n"
+        "\n"
+        "> a new quote"
+    )
+    doc = parse(body)
+    kinds = [type(block).__name__ for block in doc]
+    assert kinds == ["Paragraph", "Quote", "Paragraph", "Quote"], (
+        f"a run of > lines is one quotation between the paragraphs around it, "
+        f"and a blank line ends it: {doc!r}"
+    )
+    quote = doc[1]
+    assert quote.mark == "quote", f"a Quote says which row made it: {quote!r}"
+    assert [len(p.lines) for p in quote.paragraphs] == [2, 1], (
+        f"a line holding only > separates the quotation's paragraphs: {quote!r}"
+    )
+
+    out = render(body, _no_photos)
+    assert out.count("<blockquote>") == 2, f"two quotations expected: {out!r}"
+    assert "first line<br>\nsecond <strong>line</strong></p>" in out, (
+        f"a quotation's lines keep their break and their marks: {out!r}"
+    )
+    assert "another paragraph" in out and "&gt;another" not in out, (
+        f"the > and the whitespace before it never reach the page: {out!r}"
+    )
+    assert "<p>after a &gt; sign</p>" in out, (
+        f"a > inside a line is text, and the line after a quotation is a "
+        f"paragraph of its own: {out!r}"
+    )
+    assert out.count("&gt;") == 1, f"only the mid-line > is literal: {out!r}"
+
+    # The blank line in `body` follows a plain line, so a quotation that ran
+    # on past blank lines would still pass there. This one sits directly
+    # between two runs of > lines.
+    split = render("> one\n\n> two", _no_photos)
+    assert split.count("<blockquote>") == 2, (
+        f"a blank line ends a quotation, even with > lines after it: {split!r}"
+    )
+
+    photo_in_quote = render("> {photo: a.jpg}", _no_photos)
+    assert "<figure" not in photo_in_quote and "{photo: a.jpg}" in photo_in_quote, (
+        f"a block mark inside a quotation stays literal: {photo_in_quote!r}"
     )

@@ -17,6 +17,13 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Marks gains a link mark and a quote mark** (PRESS-0004)
+  `{link: address}words{/}` makes a link. The address must be one http
+  or https address, or the mark stays as typed. Lines beginning `>`
+  make a quotation that keeps its line breaks; a blank line ends it.
+  Import needs both to carry the archive's links and quotations
+  (PRESS-0007).
+
 - **The Face: Pressless's own web server, and a plain sentence for every failure.** (PRESS-0011)
   Pressless serves its pages from his own computer only, behind a secret
   made at launch, and every failure any part raises now becomes three

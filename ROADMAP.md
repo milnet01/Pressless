@@ -223,6 +223,12 @@ while the stakes are zero. Holds S2, S3, S4.
   which global rule 15 says governs, and rule 14's carve-out reaches only
   the review gates. The fixtures were authored inline and the red run —
   which that skill says may never be delegated — was performed here.
+  Progress (2026-09-11): the link and quote marks of §3 decision 4 are
+  built in src/pressless/marks.py, held by INV-11 and INV-12. One
+  mutation per Breaks-when route, all killed; the blank-line route
+  first survived, because the test's only blank line followed a plain
+  line, and the test gained a fixture with a blank line directly
+  between two quotations.
   **Layman:** The small styling language -- bold, italic, colours -- written once so the editor and the live page can never disagree.
   Kind: implement.
   Source: design-2026-08-24 § The parts, ADR-0001.
