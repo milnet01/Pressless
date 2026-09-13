@@ -399,6 +399,13 @@ while the stakes are zero. Holds S2, S3, S4.
   description on the picture mark rather than listed and dropped, which
   needs PRESS-0004's picture mark to gain an optional description first.
   Each amendment gets one review round.
+  Revised by the user (2026-09-13), superseding this item's earlier note
+  on alt text: a count of the export's pictures found real descriptions on
+  a handful and file names, camera codes, a generic word or nothing on the
+  rest. So alt text stays listed in the report and is not carried, and no
+  Marks amendment is owed. After the one-time import the maintainer adds a
+  caption by hand to the few pictures whose alt text was a real
+  description. The assets/ copy for previews still stands.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
