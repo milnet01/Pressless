@@ -104,6 +104,8 @@ def _settings(**overrides) -> Settings:
     values = {
         "site_folder": Path("/writer/Pressless/site"),
         "repository": "owner/name",
+        "site_name": "A Journal",
+        "site_address": "https://example.org",
         "daily_prompt_filter": "dailyprompt-*",
         "untouchable": ("CNAME", ".nojekyll"),
         "credentials": Credentials(

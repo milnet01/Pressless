@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -36,6 +37,15 @@ _NAME_CHARS = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
 )
 
+# §4.3: http or https, a host of ASCII letters, digits, "." and "-", an optional
+# port, and "/"-separated path segments, with an optional trailing "/". The
+# address is joined into sitemap.xml and robots.txt (PRESS-0008 §4.9), where a
+# query, a fragment, a "%" or whitespace carries an address the site does not
+# serve. A pattern rather than a parse, because INV-1 keeps urllib out.
+_SITE_ADDRESS = re.compile(
+    r"https?://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~-]+)*/?"
+)
+
 
 @dataclass(frozen=True)
 class Credentials:
@@ -50,6 +60,8 @@ class Credentials:
 class Settings:
     site_folder: Path             # where the Builder writes the finished site
     repository: str               # "owner/name" on GitHub
+    site_name: str                # the site's own name, in every built page's title
+    site_address: str             # its absolute address, joined into the sitemap
     daily_prompt_filter: str      # fnmatch glob, matched per tag (§4.2)
     untouchable: tuple[str, ...]  # repository-root entries the Publisher leaves alone
     credentials: Credentials      # where the two secrets are kept -- never the secrets
@@ -147,6 +159,8 @@ def load(folder: Path) -> Settings:
 
     site_folder = _required(raw, "site_folder", str, target)
     repository = _required(raw, "repository", str, target)
+    site_name = _required(raw, "site_name", str, target)
+    site_address = _required(raw, "site_address", str, target)
     daily_prompt_filter = _required(raw, "daily_prompt_filter", str, target)
     untouchable = _required(raw, "untouchable", list, target)
     credentials = _required(raw, "credentials", dict, target)
@@ -188,6 +202,15 @@ def load(folder: Path) -> Settings:
         raise SettingsError(
             "repository is not \"owner/name\""
         )
+    # Shape, like repository. Both identify the site, so each refusal names the
+    # key and never quotes the value (§4.3).
+    if not site_name.strip() or "\n" in site_name or "\r" in site_name:
+        raise SettingsError("site_name is empty or holds a line break")
+    if not _SITE_ADDRESS.fullmatch(site_address):
+        raise SettingsError(
+            "site_address is not an absolute http or https address the "
+            "sitemap can carry"
+        )
     if store not in _STORES:
         raise SettingsError(
             f"credentials.store is {store!r}, not one of "
@@ -211,6 +234,8 @@ def load(folder: Path) -> Settings:
     return Settings(
         site_folder=Path(site_folder),
         repository=repository,
+        site_name=site_name,
+        site_address=site_address,
         daily_prompt_filter=daily_prompt_filter,
         untouchable=tuple(untouchable),
         credentials=Credentials(
@@ -283,6 +308,8 @@ def save(folder: Path, settings: Settings) -> None:
         "version": FILE_VERSION,
         "site_folder": str(settings.site_folder),
         "repository": settings.repository,
+        "site_name": settings.site_name,
+        "site_address": settings.site_address,
         "daily_prompt_filter": settings.daily_prompt_filter,
         "untouchable": list(settings.untouchable),
         "credentials": {

@@ -45,6 +45,8 @@ def _valid_mapping(**overrides) -> dict:
         "version": 1,
         "site_folder": "/home/writer/Pressless/site",
         "repository": "owner/owner.github.io",
+        "site_name": "A Journal",
+        "site_address": "https://example.org",
         "daily_prompt_filter": "dailyprompt-*",
         "untouchable": ["CNAME", ".nojekyll", "README.md"],
         "credentials": {
@@ -288,6 +290,8 @@ def test_save_is_atomic(tmp_path, monkeypatch):
 _SETTINGS_FIELDS = {
     "site_folder",
     "repository",
+    "site_name",
+    "site_address",
     "daily_prompt_filter",
     "untouchable",
     "credentials",
@@ -548,6 +552,8 @@ def test_saving_over_an_undecodable_file_is_a_typed_failure(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
+        site_name="A Journal",
+        site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
         credentials=Credentials(store="keyring",
@@ -582,6 +588,8 @@ def test_saving_over_a_newer_settings_file_is_refused(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
+        site_name="A Journal",
+        site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
         credentials=Credentials(store="keyring",
@@ -602,6 +610,8 @@ def test_the_first_save_still_works_with_no_file_to_carry(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
+        site_name="A Journal",
+        site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
         credentials=Credentials(store="keyring",
@@ -671,6 +681,72 @@ def test_a_repository_with_the_punctuation_github_allows_still_loads(tmp_path):
     _write(tmp_path, _valid_mapping(repository="the-owner_1/owner.github.io"))
 
     assert load(tmp_path).repository == "the-owner_1/owner.github.io"
+
+
+@pytest.mark.parametrize("site_name", ["", "   ", "A\nJournal", "A\rJournal"])
+def test_a_site_name_that_is_empty_or_breaks_a_line_is_refused(tmp_path, site_name):
+    """§4.3's site_name row. The Builder writes the name into every page's
+    title (PRESS-0008 §4.3), so an empty one titles every page with nothing
+    and a line break splits the element. The refusal names the key and never
+    quotes the value, which identifies the site.
+    """
+    _write(tmp_path, _valid_mapping(site_name=site_name))
+
+    with pytest.raises(SettingsError) as raised:
+        load(tmp_path)
+    assert "site_name" in str(raised.value)
+    assert "Journal" not in str(raised.value)
+
+
+@pytest.mark.parametrize("site_address", [
+    "example.org",
+    "ftp://example.org",
+    "https://",
+    "https://example.org/?page=1",
+    "https://example.org/#top",
+    "https://example.org/a b",
+    "https://exämple.org",
+    "https://example.org/%7Ewriter",
+    "https://user@example.org",
+])
+def test_a_site_address_that_is_not_an_address_is_refused(tmp_path, site_address):
+    """§4.3's site_address row. The address is joined into sitemap.xml and
+    robots.txt (PRESS-0008 §4.9), where a query, a fragment, a percent escape,
+    whitespace or a non-ASCII host carries an address the site does not
+    serve. The refusal names the key and never quotes the value, which
+    identifies the site.
+    """
+    _write(tmp_path, _valid_mapping(site_address=site_address))
+
+    with pytest.raises(SettingsError) as raised:
+        load(tmp_path)
+    assert "site_address" in str(raised.value)
+    assert site_address not in str(raised.value)
+
+
+@pytest.mark.parametrize("site_address", [
+    "https://example.org",
+    "https://example.org/",
+    "http://example.org:8080",
+    "https://owner.github.io/a-journal/",
+])
+def test_a_site_address_the_builder_can_join_still_loads(tmp_path, site_address):
+    """The half that matters: a trailing slash, a port and a project site's
+    path all load, so the rule refuses punctuation without refusing his site.
+    The save goes into an EMPTY folder: saving over the file it came from
+    carries both keys through whether or not save() writes them, and a
+    mutation probe dropping site_name from save() survived exactly that.
+    """
+    source = tmp_path / "source"
+    source.mkdir()
+    _write(source, _valid_mapping(site_address=site_address))
+
+    target = tmp_path / "target"
+    target.mkdir()
+    save(target, load(source))
+    reloaded = load(target)
+    assert reloaded.site_address == site_address
+    assert reloaded.site_name == "A Journal"
 
 
 def test_deeply_nested_json_is_a_typed_failure(tmp_path):

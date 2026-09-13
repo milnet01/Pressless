@@ -17,6 +17,13 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **Settings holds the site's name and address** (PRESS-0001)
+  The Builder puts the name in every page title and joins the
+  address into the sitemap and robots.txt, so neither is written into
+  this public repository's code; setup will ask for both (PRESS-0021). An address with a
+  query, a fragment, a percent escape, whitespace or a non-ASCII host is
+  refused, and the refusal names the setting without quoting it.
+
 - **Import carries the WordPress archive into Pressless's own files, once** (PRESS-0007)
   `python -m pressless_import EXPORT ORIGINALS INTO` makes a new
   Pressless-data folder holding every entry, draft, comment and

@@ -61,6 +61,12 @@ while the stakes are zero. Holds S2, S3, S4.
   Every read and write names UTF-8, because Python's default is the
   locale's and the app must run on Windows too.
   Progress (2026-08-26): the Analytics field is renamed to analytics_property_id and the spec took a second cold-eyes run, two loops, thirteen verified and thirteen fixed, a calm cap. Three things changed behaviour or contract rather than prose. load() now rejects a relative site_folder -- it was accepted silently, and the Builder would have resolved it against whatever directory the process started in; test_relative_site_folder_is_rejected locks it. INV-7 was an over-broad cleanup claim over the folder that also holds ADR-0003's fallback credentials file and Insights' cache, so a literal implementer would have deleted the publishing key; it is now an addition rule. And INV-5 claimed save() never leaves a file load() rejects, which is false by execution -- save() validates nothing, and §4.4 now says so.
+  Amended (2026-09-13): site_name and site_address join the field set,
+  for PRESS-0008, whose page titles and sitemap need them and whose code
+  may not hold them. Gated one loop by the amendment budget, two found and
+  both fixed, not converged. Built test-first: the field-set test and the
+  new shape tests went red, then green; the gate passed. PRESS-0021 owns
+  asking for the two values at setup.
   Kind: implement.
   Source: design-2026-08-24 § The parts.
   Lanes: Settings.
