@@ -116,7 +116,8 @@ address as given.
 
 **`include_draft` names one draft that is built as though published**, for a
 preview. A publish never passes it; that is the Face's rule and §10 says
-nothing here can check it.
+nothing here can check it. Any other change is previewed after the Face
+saves it to the Store: the Builder builds only what the Store holds.
 
 `web_photograph` is the naming rule for web copies, and this is the one place
 it is written. The file is `photographs/<name>`; the address encodes the name
@@ -168,11 +169,14 @@ Builder turns that into `BuildStopped` naming the entry and the name.
 **The page itself is today's.** Its shell, heading, date line, category and
 tag chips, excerpt, pagination links and comment list are what
 `tools/build_blog.py` in the sibling workspace writes at that address, with
-these differences: the body is `marks.render(entry.body, photo_src)`; the
-site's name comes from `settings.site_name`; and decision 8's stamps are
-gone. §7's archive run compares them. The generator's own code names the
-writer, so it is ported, never copied: no string from it enters this
-repository unread.
+these differences: the body is `marks.render(entry.body, photo_src)`; a
+listing's excerpt, and an untitled entry's teaser, are cut from the text of
+`marks.parse(entry.body)`'s `Text` nodes, lines joined by a space, and
+written through `marks.to_html` as one `Text`; the site's name comes from
+`settings.site_name`; and decision 8's stamps are gone. INV-15's run
+compares the elements it names. The generator's own code names the writer,
+so it is ported, never copied: no string from it enters this repository
+unread.
 
 **A date is written the same on every system.** Month names are English and
 come from a constant, and the day carries no leading zero, built from
@@ -207,16 +211,17 @@ START, is `BuildStopped` naming the page.
 
 **The furniture files, as Import writes them and the Builder reads them:**
 
-- `header` — today's header template, verbatim, with its `<nav>` element
-  replaced by the line `{{NAVIGATION}}`.
-- `navigation` — that `<nav>` element.
+- `header` — today's header template, verbatim, with the
+  `<nav class="primary…">` element `nonav` removes today replaced by the line
+  `{{NAVIGATION}}`.
+- `navigation` — that element.
 - `footer` — today's footer template, verbatim.
 
 **Filling one**, for a page `depth` folders below the root:
 
 | Placeholder | Becomes |
 |---|---|
-| `{{NAVIGATION}}` | the `navigation` file, or nothing where the marker says `nonav` |
+| `{{NAVIGATION}}` | the `navigation` file, or nothing where the marker says `nonav`; replaced first, so the placeholders below are filled inside it too |
 | `{{UP}}` | `../` repeated `depth` times |
 | `{{ANIM1}}` to `{{ANIM3}}` | what today's `tools/templates.py::header` gives them where the marker says `animate`, and nothing otherwise |
 | `{{YEAR}}` | the build's year |
@@ -245,10 +250,12 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
    segment, and `photographs` is not untouchable.
 2. The original is `store.photograph_path_for(folder, name)`. Absent, it is
    `BuildStopped` naming the file.
-3. **A JPEG, PNG or WebP is re-encoded** with Pillow: rotated upright by its
+3. **The format is the one Pillow decodes, never the file name's
+   extension.** A JPEG, PNG or WebP is re-encoded: rotated upright by its
    orientation tag, shrunk to fit `LONGEST_SIDE` on each side and never
-   enlarged, and saved in its own format with no metadata carried. A JPEG is
-   saved progressive at quality 82, as today's `_work/resize.py` does.
+   enlarged, and saved in its own format carrying no EXIF, XMP or comment
+   block. A JPEG is saved progressive at quality 82, as today's
+   `_work/resize.py` does.
 4. **A GIF is copied byte for byte**, so an animation survives. GIF has no
    EXIF block; any comment or XMP block its maker wrote is published as it
    is.
@@ -282,23 +289,33 @@ build writes `content/` too, and it is never published.
    folder to `into`, then remove the old one.
 3. On any failure, remove the new folder; `into` is untouched.
 
-Before step 1, a leftover `<into>.pressless-new` is removed, and where
-`into` is absent while `<into>.pressless-old` exists, the old folder is
-renamed back first. Those two names are Pressless's own. Nothing else beside
-`into` is touched.
+Before step 1, a leftover `<into>.pressless-new` is removed; where `into`
+is absent while `<into>.pressless-old` exists, the old folder is renamed back
+first; and where both exist, the old folder is removed. Those two names are
+Pressless's own. Nothing else beside `into` is touched.
 
-Text is written UTF-8 with `newline="\n"`. The folder is Pressless's alone
-(PRESS-0009 §4.4), so replacing it whole loses nothing of his.
+Text is written UTF-8 with `newline="\n"`.
 
-`SiteFolderUnusable` is raised where `into`'s parent does not exist or a
-rename fails. **No message names a full path**: `into` is *the site folder*
-or *the preview folder*, an entry is its slug, and any other file is its own
-name (`docs/design.md` § Logging).
+**Where `into` exists and holds a first segment outside `ROOT_OUTPUT`, the
+build stops with `SiteFolderUnusable` before step 1 and touches nothing.** The
+folder is Pressless's alone (PRESS-0009 §4.4), but a folder Settings was
+pointed at by mistake is not one the Builder made, and replacing it would
+delete what he keeps there.
+
+`SiteFolderUnusable` is also raised where `into`'s parent does not exist, a
+write into the new folder fails, or a rename fails.
+
+**No message names a full path**: `into` is *the site folder* or *the
+preview folder*, an entry is its slug, and any other file is its own name
+(`docs/design.md` § Logging).
 
 ### 4.9 `sitemap.xml` and `robots.txt`
 
-`sitemap.xml` is a sitemaps.org 0.9 `urlset`. Its `loc` values are
-`settings.site_address` joined to: `/` for the page `index`,
+*The address* below is `settings.site_address` with any trailing `/`
+removed.
+
+`sitemap.xml` is a sitemaps.org 0.9 `urlset`. Its `loc` values are the
+address joined to: `/` for the page `index`,
 `/pages/<name>.html` for each other fixed page in name order,
 `/blog/index.html`, `/blog/archive/index.html`, then each unfiltered entry's
 address in §4.2's order with a `lastmod` of its date as `YYYY-MM-DD`. No
@@ -311,7 +328,7 @@ category, tag or listing page is listed.
 User-agent: *
 Allow: /
 
-Sitemap: <site_address>/sitemap.xml
+Sitemap: <the address>/sitemap.xml
 ```
 
 ### 4.10 What the Builder never does
@@ -363,18 +380,23 @@ Sitemap: <site_address>/sitemap.xml
   is added without `ROOT_OUTPUT`, or a dot-named photograph is copied.
 
 - **INV-5** — A failed build leaves `into` byte-identical and leaves no
-  `.pressless-new` folder.
+  `.pressless-new` folder, and a build never replaces a folder holding a
+  first segment outside `ROOT_OUTPUT`.
   *Test:* `tests/test_builder.py::test_a_failed_build_changes_nothing` — a
   built `into`, then a Store whose last entry names a missing photograph, and
-  one whose category is `Not A Slug`: each raises `BuildStopped`, and `into`
-  hashes the same.
-  *Breaks when:* pages are written into `into` directly, or the new folder
-  survives the failure.
+  one whose category is `Not A Slug`: each raises `BuildStopped`, `into`
+  hashes the same, and no `.pressless-new` folder exists. Then an `into`
+  holding `notes.txt` raises `SiteFolderUnusable` and still holds it.
+  *Breaks when:* pages are written into `into` directly, the new folder
+  survives the failure, or a folder Settings was pointed at by mistake is
+  replaced.
 
 - **INV-6** — Two builds of an unchanged Store in the same year write
   byte-identical folders.
-  *Test:* `tests/test_builder.py::test_a_build_is_reproducible` — two builds
-  of one Store with a JPEG, a PNG and comments, compared file by file.
+  *Test:* `tests/test_builder.py::test_a_build_is_reproducible` — a Store
+  with a JPEG, a PNG, tags and comments is built; a copy of it, its files
+  written in reverse order, is built in a subprocess under a different
+  `PYTHONHASHSEED`; the two folders are compared file by file.
   *Breaks when:* output depends on listing order, a set's order, the clock
   below the year, or an encoder setting that varies; each makes every
   publish upload unchanged files.
@@ -392,22 +414,27 @@ Sitemap: <site_address>/sitemap.xml
   and between them sits the filled furniture of §4.4.
   *Test:* `tests/test_builder.py::test_a_fixed_page_keeps_its_own_bytes` — a
   page with irregular markup around a HEADER pair saying `page="about"
-  nonav`, one saying `animate`, and a page with no markers: the first holds
-  no `<nav>`, `{{UP}}` is filled for its depth, the no-marker page is
-  unchanged, and an unmatched START raises `BuildStopped`.
+  nonav`, one saying `animate`, and a page with no markers. The first's bytes
+  outside its pairs equal the fixture's, both markers remain, and it holds no
+  `<nav>`; the second's navigation carries `{{UP}}` filled for its depth; the
+  no-marker page is unchanged; and an unmatched START raises `BuildStopped`.
   *Breaks when:* the page is run through an HTML parser, the markers are
   dropped, or `nonav` is ignored.
 
 - **INV-9** — A web copy exists for exactly the pictures unfiltered entries
-  name, and a re-encoded one fits `LONGEST_SIDE` and carries no metadata.
+  name; its format is the decoded one; and a re-encoded copy fits
+  `LONGEST_SIDE` and carries no EXIF, XMP or comment block.
   *Test:* `tests/test_builder.py::test_web_copies_are_small_and_carry_nothing`
-  — a large JPEG carrying a GPS tag and an orientation tag, a small PNG, a
-  GIF, a `.heic`-named file and a photograph no entry names: the JPEG fits
-  and is upright, `getexif()` is empty for both re-encoded copies, the GIF is
-  byte-identical, the `.heic` raises `BuildStopped`, and the unnamed one is
-  absent.
+  — a large JPEG carrying a GPS tag, an orientation tag and an XMP packet
+  holding a sentinel; a small JPEG carrying a GPS tag; a small PNG; a GIF; a
+  JPEG named `x.gif`; a file Pillow cannot open; and a photograph no entry
+  names. The large JPEG's copy fits and is upright; neither JPEG's copy has
+  a `getexif()` entry or the sentinel's bytes; the GIF is byte-identical;
+  `x.gif` is re-encoded; the unreadable file raises `BuildStopped`; and the
+  unnamed one is absent.
   *Breaks when:* a small original is copied rather than re-encoded, which
-  publishes its location; or every original is copied.
+  publishes its location; XMP is carried through; the extension decides the
+  format; or every original is copied.
 
 - **INV-10** — An entry body in a page is `marks.render`'s output, and a
   comment body is `marks.to_html`'s output over plain `Text`.
@@ -439,7 +466,8 @@ Sitemap: <site_address>/sitemap.xml
 - **INV-13** — `sitemap.xml` and `robots.txt` are §4.9's.
   *Test:* `tests/test_builder.py::test_the_sitemap_lists_what_readers_find` —
   a filtered entry absent, pages in name order, `lastmod` present on entries
-  only, and `robots.txt` equal to §4.9's text for a given address.
+  only, and `robots.txt` equal to §4.9's text for an address given with a
+  trailing `/`.
   *Breaks when:* a filtered entry is listed, or the address is written from
   code rather than Settings.
 
@@ -449,14 +477,16 @@ Sitemap: <site_address>/sitemap.xml
   temporary folder and asserts no message holds it.
   *Breaks when:* a message formats `into` or a photograph's path.
 
-- **INV-15** — Over the real archive, every page address today's live site
-  serves under `index.html`, `pages/` and `blog/` is built, with the same
-  title, heading, date line, chips and pagination links.
+- **INV-15** — Over the real archive, every `.html` page today's live site
+  serves as `index.html`, under `pages/` or under `blog/` is built at the
+  same address, with the same title, heading, date line, pagination links
+  and chip addresses.
   *Test:* `tests/test_builder_archive.py::test_the_first_publish_moves_no_page`
   — Imports the archive, builds it, and compares against the live site's
-  folder. It fails on any missing address or differing element, and prints
-  every live file under a `ROOT_OUTPUT` segment the build does not produce,
-  every category label that differs from today's, and the build's duration.
+  folder. It fails on a missing `.html` address or a differing element. It
+  prints, and does not fail on, every other live file under a `ROOT_OUTPUT`
+  segment the build does not produce, every category label whose text
+  differs from today's (decision 7), and the build's duration.
   *Breaks when:* an address moves, a page is dropped, or an untitled entry's
   heading changes.
 
@@ -475,9 +505,11 @@ Sitemap: <site_address>/sitemap.xml
 | `include_draft` names no draft | The Store's `EntryNotFound`, unchanged |
 | `include_draft` is also published | `BuildStopped` naming the slug |
 | `into`'s parent does not exist, or a rename fails | `SiteFolderUnusable`; `into` unchanged |
-| The disk fills mid-build | The write fails in the new folder, which is removed; `into` unchanged |
+| `into` holds a first segment outside `ROOT_OUTPUT` | `SiteFolderUnusable`; nothing touched |
+| The disk fills mid-build | `SiteFolderUnusable`; the new folder is removed and `into` unchanged |
 | The app stops mid-build | A leftover new folder is removed on the next build (§4.8) |
 | The app stops between the two renames | The next build renames the old folder back first (§4.8) |
+| The app stops after the second rename | The next build removes the old folder (§4.8) |
 
 ## 7. Tests
 
@@ -488,9 +520,12 @@ INV-7, INV-8, INV-9, INV-10, INV-11, INV-12 and INV-13.
 `tests/test_failure_messages.py` gains INV-14's test.
 
 `tests/test_builder_archive.py` — marked `archive`. It needs
-`PRESSLESS_ARCHIVE`, `PRESSLESS_ORIGINALS`, and `PRESSLESS_LIVE_SITE`, a
-folder holding today's built site, which the gate sets from a new
-machine-local key `ants.pressless.liveSite`. It skips only where one is
+`PRESSLESS_ARCHIVE` and `PRESSLESS_ORIGINALS`; `PRESSLESS_LIVE_SITE`, a
+folder holding today's built site; and `PRESSLESS_SITE_NAME` and
+`PRESSLESS_SITE_ADDRESS`, the Settings values it builds with, which identify
+the writer and so cannot be written here. The gate sets those last three from
+new machine-local keys `ants.pressless.liveSite`, `ants.pressless.siteName`
+and `ants.pressless.siteAddress`. It skips only where one is
 absent, and fails where one is present and unusable, as the other archive
 tests do. It carries INV-15, and runs after PRESS-0007 carries the fixed
 pages and furniture.
@@ -525,7 +560,7 @@ mutation-probed once it lands.
   deferred; not yet queued. PRESS-0009 §10 records the gap.
 - The `mk-rainbow` rule and the `--accent` and `--muted` variables in the
   site's stylesheet — deferred; not yet queued. Decision 3 leaves `assets/`
-  outside Pressless (§15).
+  outside Pressless (§14).
 - Carrying the fixed pages and furniture — PRESS-0007 decision 10.
 - The undo sequence — PRESS-0015.
 - Deriving the untouchable list — PRESS-0021.
@@ -569,15 +604,16 @@ mutation-probed once it lands.
   `SiteFolderUnusable`, with the site part `UNCHANGED`, in the same change, or
   its INV-1 walk fails.
 - **PRESS-0015** — undo reads `content/` at §4.7's paths.
-- **PRESS-0021** — setup removes `ROOT_OUTPUT` from the derived list, folded
-  with `str.casefold()` as PRESS-0009 §4.4 requires.
+- **PRESS-0021** — setup asks for the site's name and address and writes
+  them, and removes `ROOT_OUTPUT` from the derived list, folded with
+  `str.casefold()` as PRESS-0009 §4.4 requires.
 - **PRESS-0004 §10** — its `mk-rainbow` row said this item adds the rule;
   §9 here leaves it outside Pressless.
 - **PRESS-0022** — the packaged program carries Pillow.
 - **`pyproject.toml`** — `Pillow` joins `dependencies`.
-- **`scripts/local-ci.sh` and `CLAUDE.md`** — the gate sets
-  `PRESSLESS_LIVE_SITE` from `ants.pressless.liveSite`, and `CLAUDE.md` names
-  the key beside the archive's.
+- **`scripts/local-ci.sh` and `CLAUDE.md`** — the gate sets §7's three new
+  variables from their keys, and `CLAUDE.md` names the keys beside the
+  archive's.
 - **`CHANGELOG.md`** — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
@@ -603,4 +639,15 @@ chosen in `docs/design.md` § The stack.
   marks render unstyled on the live site until the stylesheet is edited.
 - **Today's `{{ANIM1}}` to `{{ANIM3}}` values** are pinned by reference to
   `tools/templates.py::header` rather than copied here, since they could not
-  be read. INV-15's run compares the home page.
+  be read. Nothing compares them; the home page's header is checked by eye
+  before the first publish.
+- **Where a preview page's stylesheet comes from — a decision for the
+  maintainer.** Pages link to `assets/` relatively, and decision 3 leaves no
+  copy of `assets/` on his machine, so a preview is unstyled and S10 does not
+  hold for it. Either a copy of `assets/` joins the Store, which reverses
+  decision 3 and amends PRESS-0006, PRESS-0007 and `docs/design.md`, or the
+  Face supplies one for a preview (PRESS-0012).
+- **Whether every archive category and tag passes the slug test.**
+  Unverified: a WordPress name may carry an underscore, which the Store's
+  slug set refuses, and the first build then stops (§4.3). INV-15's run
+  meets it first.
