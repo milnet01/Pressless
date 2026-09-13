@@ -10,6 +10,9 @@ VIOLENT cap**: every one of loop 9's four landed on text this run wrote,
 so the review ends here and the document routes to implementation.
 PRESS-0005 §11 requires the two documents to move together, and INV-11
 there carries the mirror; several fixes landed in both.
+**Amended 2026-09-13, before implementation**: `site_name` and
+`site_address` join the field set, for PRESS-0008. That changes direction,
+so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -22,8 +25,9 @@ machine and which site to publish to, so nothing else has to be told twice.
 ## 1. Goal
 
 After this ships there is one place that holds the facts about *this
-machine and this site* — where the finished site folder is written, which
-repository it is published to, which tag the Builder filters, which paths
+machine and this site* — where the finished site folder is written, the
+site's name and address, which repository it is published to, which tag the
+Builder filters, which paths
 in that repository are not ours to touch, where the two credentials are
 kept, and the Analytics property id. Every part reads it except Marks, which is
 pure calculation, and Credentials, which is handed what it needs rather than
@@ -40,8 +44,8 @@ Settings.
 
 Three things make this a contract rather than a file format.
 
-1. **Other code binds to the key names.** The Builder reads the site folder
-   and the Daily Prompt filter, the Publisher reads the repository and the
+1. **Other code binds to the key names.** The Builder reads the site folder,
+   the site's name and address and the Daily Prompt filter, the Publisher reads the repository and the
    untouchable list, Insights reads the Analytics id, and the Face reads where
    the credentials are kept and hands them to PRESS-0002 (`docs/design.md`
    rule 10). A key renamed later is a rename across six parts.
@@ -101,6 +105,8 @@ session.** §8 carries what each beat.
 class Settings:
     site_folder: Path            # where the Builder writes the finished site
     repository: str              # "owner/name" on GitHub
+    site_name: str               # the site's own name, in every built page's title
+    site_address: str            # its absolute address, e.g. "https://example.org"
     daily_prompt_filter: str     # fnmatch glob, matched per tag -- see below
     untouchable: tuple[str, ...] # repository-root entries the Publisher leaves alone
     credentials: Credentials     # where the two secrets are kept -- never the secrets
@@ -146,6 +152,8 @@ not create it, search for it, or fall back to another one.
   "version": 1,
   "site_folder": "/home/writer/Pressless/site",
   "repository": "owner/owner.github.io",
+  "site_name": "A Journal",
+  "site_address": "https://example.org",
   "daily_prompt_filter": "dailyprompt-*",
   "untouchable": ["CNAME", ".nojekyll", "README.md"],
   "credentials": {
@@ -212,6 +220,13 @@ filters entries that are his own tagging habit. The glob is the contract.
 choice of where the built site goes and may sit on another drive entirely, so
 it is never resolved against `folder`.
 
+**`site_name` and `site_address` identify the site**, which is why they are
+here and never in code: the Builder writes the name into every page title and
+joins the address into the sitemap and `robots.txt` (PRESS-0008 §4.9).
+`site_address` is an absolute `http` or `https` address, a trailing `/`
+permitted. No release has shipped, so no settings file written before these
+two keys joined needs to load, and `version` stays `1`.
+
 The `untouchable` values above are illustrative. The real ones are the
 output of § What may depend on what's rule, derived at setup against the
 live repository root.
@@ -226,7 +241,7 @@ live repository root.
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the settings file by what it is |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
-| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as | `SettingsError`, naming the key |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as, `site_name` empty after stripping or holding a line break, `site_address` not `http://` or `https://` followed by a host of letters, digits, `.` and `-`, an optional port, and `/`-separated path segments of letters, digits, `.`, `_`, `~` and `-`, with an optional trailing `/` (a query, fragment, `%` or whitespace would change the addresses `sitemap.xml` and `robots.txt` carry) | `SettingsError`, naming the key |
 | Valid | `Settings` |
 
 **The shape row is why this is a list rather than four cases.** `repository`
@@ -618,6 +633,7 @@ loading or saving does anything.
 | §4.4's sync before the replace | `tests/test_settings.py::test_save_reaches_the_disk_before_the_rename` |
 | §4.4's refusal to save over another build's file | `tests/test_settings.py::test_saving_over_a_newer_settings_file_is_refused` and `::test_a_save_over_a_version_that_is_not_the_number_one_is_refused`, with `::test_the_first_save_still_works_with_no_file_to_carry` holding the no-file case it must not catch. The second is the one that pairs the gate with `load()`'s: without it the two ends can disagree and the suite stays green |
 | §4.3's `analytics_property_id` shape | `tests/test_settings.py::test_a_property_id_that_is_not_numeric_is_refused` and `::test_a_declined_dashboard_still_loads`. The second is the half that matters: ADR-0005 makes the Google step declinable, so the rule has to reject a pasted tag without rejecting a writer who declined |
+| §4.3's `site_name` and `site_address` shape | `tests/test_settings.py::test_a_site_name_that_is_empty_or_breaks_a_line_is_refused`, `::test_a_site_address_that_is_not_an_address_is_refused` and `::test_a_site_address_the_builder_can_join_still_loads`. The last is the half that matters: a trailing `/` and a path both load, so the rule refuses punctuation without refusing a project site |
 | §4.3's not-valid-JSON row, on input that exhausts the parser | `tests/test_settings.py::test_deeply_nested_json_is_a_typed_failure` |
 | `save()` leaving no descriptor behind when it cannot open its temporary file | `tests/test_settings.py::test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor` |
 | §4.4's atomic replace on Windows | **nothing** — `os.replace` is documented atomic on both, and this suite runs on Linux. PRESS-0022 stages the built executable to a Windows box and runs it there before release, which is the only place this would be observed; it schedules no check of its own |
@@ -636,6 +652,10 @@ loading or saving does anything.
 - **PRESS-0011 owns how a `SettingsNotice` READS.** §4.1 fixes the category
   and the moment one is emitted, and INV-8 fixes what it may not name. The
   wording beyond that is not a contract.
+- **PRESS-0008** reads `site_name` and `site_address` (its §3 decision 2),
+  and **PRESS-0021** asks for them at setup and writes them.
+- `docs/design.md` § The parts — the Settings row names the site's name and
+  address.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log

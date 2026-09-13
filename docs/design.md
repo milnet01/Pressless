@@ -21,7 +21,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 
 | Part | Responsible for | Deliberately knows nothing about |
 |---|---|---|
-| **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics identifier Insights is queried by. | Everything. It depends on nothing. |
+| **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, the site's name and address, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics identifier Insights is queried by. | Everything. It depends on nothing. |
 | **Credentials** | Keeping the two secrets themselves — the GitHub publishing key and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring. Where a file cannot be made private to one user — Windows, where the read-only flag is all there is — there is no fallback: setup stops and says so. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
 | **Store** | Everything that shapes the site: entries as marked text, the fixed pages, the templates, the header, footer and navigation, the historical comments, and any photograph an entry uses. Drafts kept apart from published. Reads, writes, lists. | GitHub, the browser |
 | **Import** | Turning the twelve years in the WordPress export into Store files, once, on the maintainer's machine (rule 9). The writer's copy never runs it. | GitHub, the browser, the Face |
