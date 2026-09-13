@@ -392,6 +392,13 @@ while the stakes are zero. Holds S2, S3, S4.
   caption, which shows on the page. Over the real archive that is most of
   the report's alt lines. Carrying alt text as a caption would change what
   readers see, so it waits on the user's decision.
+  Decided by the user (2026-09-13), two amendments owed before decision
+  10's half is built: (1) Import copies the live site's assets/ folder once
+  into Pressless's own folder, as a read-only copy the Face serves for
+  previews and never publishes; (2) picture alt text is carried as a hidden
+  description on the picture mark rather than listed and dropped, which
+  needs PRESS-0004's picture mark to gain an optional description first.
+  Each amendment gets one review round.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -431,6 +438,13 @@ while the stakes are zero. Holds S2, S3, S4.
   links the site's assets/ folder, which the Builder does not produce and
   nothing on his machine holds, so a preview is unstyled until that is
   decided.
+  Decided by the user (2026-09-13): category labels stay derived from the
+  category's short name (spec decision 7); the first-publish run prints
+  every label that differs from today's, checked before the first publish.
+  And the preview question in the spec's section 14 is settled: Import
+  copies the live site's assets/ once into Pressless's own folder, and the
+  Face serves that copy for previews only. The Builder still does not
+  produce assets/.
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.
@@ -1496,6 +1510,10 @@ is not on the live site. Holds S7, S10.
   the app mid-sentence, come back tomorrow, and the draft file is the
   whole of what survives. That is S7 from the writing side.
   Blocked-by: PRESS-0004, PRESS-0005, PRESS-0011.
+  Decided by the user (2026-09-13): a preview page gets the site's look from
+  a copy of the live assets/ folder that Import writes into Pressless's own
+  folder; the Face serves it for previews and it is never published
+  (PRESS-0008 section 14).
   **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § State.

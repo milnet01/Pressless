@@ -68,8 +68,8 @@ its own.
 6. **(decided here) Comments render flat, in the order the file holds them,
    as today's site shows them.** Threading would change what readers see, and
    nobody asked for it.
-7. **(decided here) A category's label is its slug with each hyphen a space
-   and the first letter upper case.** Today's labels are a table in the
+7. **A category's label is its slug with each hyphen a space and the first
+   letter upper case.** Agreed with the user 2026-09-13. Today's labels are a table in the
    generator's code, and the Store holds only the slug. The archive run
    prints every label that differs from today's (§7).
 8. **(decided here) A page's links to the site's stylesheets carry no `?v=`
@@ -662,12 +662,10 @@ chosen in `docs/design.md` § The stack.
   `tools/templates.py::header` rather than copied here, since they could not
   be read. Nothing compares them; the home page's header is checked by eye
   before the first publish.
-- **Where a preview page's stylesheet comes from — a decision for the
-  maintainer.** Pages link to `assets/` relatively, and decision 3 leaves no
-  copy of `assets/` on his machine, so a preview is unstyled and S10 does not
-  hold for it. Either a copy of `assets/` joins the Store, which reverses
-  decision 3 and amends PRESS-0006, PRESS-0007 and `docs/design.md`, or the
-  Face supplies one for a preview (PRESS-0012).
+- **Where a preview page's stylesheet comes from — decided by the user
+  2026-09-13.** Import copies the live site's `assets/` once into
+  Pressless's own folder, and the Face serves that copy for a preview and
+  never publishes it (PRESS-0007, PRESS-0012). Decision 3 stands.
 - **Whether every archive category and tag passes the slug test.**
   Unverified: a WordPress name may carry an underscore, which the Store's
   slug set refuses, and the first build then stops (§4.3). INV-15's run
