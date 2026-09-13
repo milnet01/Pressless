@@ -206,14 +206,15 @@ an asterisk a reader typed stays an asterisk.
 marker pair is
 
 ```
-<!-- HEADER:START page="about" -->
+<!-- HEADER:START page="About" -->
 <!-- HEADER:END -->
 <!-- FOOTER:START -->
 <!-- FOOTER:END -->
 ```
 
 The START comment's attributes are optional and space-separated:
-`page="<word>"`, `animate`, `nonav`. Whatever sits between START and END is
+`page="<word>"`, `animate`, `nonav`; any other attribute is kept and ignored,
+as today. Whatever sits between START and END is
 replaced by the filled furniture; the markers stay. A page with no markers
 is written unchanged. A START with no END after it, or an END with no
 START, is `BuildStopped` naming the page.
@@ -232,12 +233,13 @@ START, is `BuildStopped` naming the page.
 |---|---|
 | `{{NAVIGATION}}` | the `navigation` file, or nothing where the marker says `nonav`; replaced first, so the placeholders below are filled inside it too |
 | `{{UP}}` | `../` repeated `depth` times |
-| `{{ANIM1}}` to `{{ANIM3}}` | what today's `tools/templates.py::header` gives them where the marker says `animate`, and nothing otherwise |
+| `{{ANIM1}}` to `{{ANIM3}}` | ` reveal-load d1`, ` reveal-load d2` and ` reveal-load d3`, each with its leading space, where the marker says `animate`; nothing otherwise |
 | `{{YEAR}}` | the build's year |
 
 The first HTML comment in `header` and in `footer` is removed, as today;
 `navigation` keeps its comments. In the
-navigation, the link whose `data-nav` equals the marker's `page` gains
+navigation, the first link whose `data-nav` equals the marker's `page`, case
+included, gains
 `aria-current="page"`. A generated page is filled as a marker saying
 `page="Journal"` would be. A furniture file the Store does not hold raises
 the Store's own `StoreError`.
@@ -652,24 +654,11 @@ chosen in `docs/design.md` § The stack.
 
 ## 14. Open questions
 
-- **What today's live `pages/` holds besides the fixed pages.** Unverified:
-  the sibling workspace could not be read while this was written. Anything
-  else there is deleted by the first publish; INV-15's run prints it.
-- **Whether the site's stylesheet defines `--accent`, `--muted` and
-  `mk-rainbow`.** Unverified, for the same reason. Where it does not, those
-  marks render unstyled on the live site until the stylesheet is edited.
-- **Today's `{{ANIM1}}` to `{{ANIM3}}` values** are pinned by reference to
-  `tools/templates.py::header` rather than copied here, since they could not
-  be read. Nothing compares them; the home page's header is checked by eye
-  before the first publish.
+- **The site's stylesheet defines `--accent` and `--muted` and has no
+  `mk-rainbow` rule** (read 2026-09-13). A rainbow run shows unstyled on the
+  live site until that rule is added to the stylesheet, which stays outside
+  Pressless (§9).
 - **Where a preview page's stylesheet comes from — decided by the user
   2026-09-13.** Import copies the live site's `assets/` once into
   Pressless's own folder, and the Face serves that copy for a preview and
   never publishes it (PRESS-0007, PRESS-0012). Decision 3 stands.
-- **Whether every archive category and tag passes the slug test.**
-  Unverified: a WordPress name may carry an underscore, which the Store's
-  slug set refuses, and the first build then stops (§4.3). INV-15's run
-  meets it first.
-- **Two details of today's pages were not read**: whether `data-nav` is
-  compared ignoring case, and whether any page uses the `-thumb.jpg` copies,
-  which §4.6 does not make.
