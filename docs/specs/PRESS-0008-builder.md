@@ -1,6 +1,6 @@
 # PRESS-0008 — The Builder: the Store and Settings become the site folder
 
-**Status:** spec draft (2026-09-13).
+**Status:** accepted (2026-09-13).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).
@@ -95,13 +95,19 @@ class Built:
     files: tuple[str, ...]      # every file written, relative to `into`, "/"-separated, sorted
     filtered: tuple[str, ...]   # published slugs the Daily Prompt filter kept off every page
 
+@dataclass(frozen=True)
+class Html:
+    kind: str                   # store.PAGES_FOLDER or store.FURNITURE_FOLDER
+    name: str
+    html: str
+
 class BuildStopped(Exception): ...        # the Store holds something that cannot be built
 class SiteFolderUnusable(Exception): ...  # `into` could not be replaced
 
 def web_photograph(name: str) -> str: ...   # "photographs/" + the name, percent-encoded
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: PhotoSrc | None = None,
-          include_draft: str | None = None) -> Built: ...
+          change: Entry | Html | None = None) -> Built: ...
 ```
 
 `folder` is Pressless's own folder, which holds the Store. `into` is
@@ -114,10 +120,13 @@ the Face chooses (`docs/design.md` rule 1).
 Face's rule, and the Builder writes no web copies and uses that rule's
 address as given.
 
-**`include_draft` names one draft that is built as though published**, for a
-preview. A publish never passes it; that is the Face's rule and §10 says
-nothing here can check it. Any other change is previewed after the Face
-saves it to the Store: the Builder builds only what the Store holds.
+**`change` is what the Face hands the Builder for a preview**
+(`docs/design.md` § What may depend on what): an `Entry` built as though
+published, in place of any published entry with its slug; or an `Html` page
+or furniture file in place of the Store's file of that name. Nothing is
+written to the Store, and `content/` is copied from the Store alone. A
+publish never passes it; that is the Face's rule and §10 says nothing here
+can check it.
 
 `web_photograph` is the naming rule for web copies, and this is the one place
 it is written. The file is `photographs/<name>`; the address encodes the name
@@ -130,14 +139,14 @@ raises passes through unchanged, so the Face's sentences for them apply.
 ### 4.2 What is built
 
 - **Entries.** `store.list_slugs(folder, draft=False)`, each read with
-  `store.read`, plus `include_draft` from the drafts folder. An entry whose
+  `store.read`, plus an `Entry` passed as `change`. An entry whose
   tags match `settings.daily_prompt_filter` by `fnmatch.fnmatchcase`, tag by
   tag, is **filtered**: it is in `content/` and in `Built.filtered`, and on no
   page, listing or sitemap line.
 - **Order.** Newest first by `date`, then by slug ascending where two dates
   are equal. Every listing takes this order.
-- **Nothing else is read**: not the drafts folder beyond `include_draft`, not
-  the bin, not the site folder's previous contents.
+- **Nothing else is read**: not the drafts folder, not the bin, not the
+  site folder's previous contents.
 
 ### 4.3 Where each page goes
 
@@ -226,7 +235,8 @@ START, is `BuildStopped` naming the page.
 | `{{ANIM1}}` to `{{ANIM3}}` | what today's `tools/templates.py::header` gives them where the marker says `animate`, and nothing otherwise |
 | `{{YEAR}}` | the build's year |
 
-The first HTML comment in each furniture file is removed, as today. In the
+The first HTML comment in `header` and in `footer` is removed, as today;
+`navigation` keeps its comments. In the
 navigation, the link whose `data-nav` equals the marker's `page` gains
 `aria-current="page"`. A generated page is filled as a marker saying
 `page="Journal"` would be. A furniture file the Store does not hold raises
@@ -234,7 +244,7 @@ the Store's own `StoreError`.
 
 ### 4.5 S7 — only published writing reaches the folder
 
-The Builder reads the drafts folder for `include_draft` alone. It never
+The Builder never reads the drafts folder. It never
 copies a draft, a draft's comments file, an original photograph or the bin
 into `into`. A template is copied into `content/` and never becomes a page
 (PRESS-0006 decision 3).
@@ -251,14 +261,15 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
 2. The original is `store.photograph_path_for(folder, name)`. Absent, it is
    `BuildStopped` naming the file.
 3. **The format is the one Pillow decodes, never the file name's
-   extension.** A JPEG, PNG or WebP is re-encoded: rotated upright by its
-   orientation tag, shrunk to fit `LONGEST_SIDE` on each side and never
-   enlarged, and saved in its own format carrying no EXIF, XMP or comment
-   block. A JPEG is saved progressive at quality 82, as today's
+   extension.** An image Pillow reports as `JPEG`, `MPO`, `PNG` or `WEBP` is
+   re-encoded: rotated upright by its orientation tag, shrunk to fit
+   `LONGEST_SIDE` on each side and never enlarged, and saved in its own
+   format — an `MPO` as a JPEG of its first picture — carrying no EXIF, XMP
+   or comment block. A JPEG is saved progressive at quality 82, as today's
    `_work/resize.py` does.
-4. **A GIF is copied byte for byte**, so an animation survives. GIF has no
-   EXIF block; any comment or XMP block its maker wrote is published as it
-   is.
+4. **A `GIF` is re-saved with every frame**, each shrunk the same way, its
+   timing kept and no comment or XMP block carried. So no original is
+   published (§4.5).
 5. **Anything else is `BuildStopped`** naming the file. A format Pillow
    cannot open is refused rather than copied, because copying could publish
    location metadata nobody inspected.
@@ -287,7 +298,10 @@ build writes `content/` too, and it is never published.
 1. Build everything into `<into>.pressless-new`, beside `into`.
 2. On success, rename `into` to `<into>.pressless-old`, rename the new
    folder to `into`, then remove the old one.
-3. On any failure, remove the new folder; `into` is untouched.
+3. On a failure before the new folder is renamed to `into`, rename
+   `<into>.pressless-old` back where it exists, then remove the new folder;
+   `into` is as it was. Failing to remove the old folder is not a failed
+   build: the next build removes it.
 
 Before step 1, a leftover `<into>.pressless-new` is removed; where `into`
 is absent while `<into>.pressless-old` exists, the old folder is renamed back
@@ -317,8 +331,9 @@ removed.
 `sitemap.xml` is a sitemaps.org 0.9 `urlset`. Its `loc` values are the
 address joined to: `/` for the page `index`,
 `/pages/<name>.html` for each other fixed page in name order,
-`/blog/index.html`, `/blog/archive/index.html`, then each unfiltered entry's
-address in §4.2's order with a `lastmod` of its date as `YYYY-MM-DD`. No
+`/blog/index.html`, `/blog/archive/index.html`, then
+`/blog/YYYY/MM/DD/<slug>/index.html` for each unfiltered entry in §4.2's
+order, with a `lastmod` of its date as `YYYY-MM-DD`. No
 category, tag or listing page is listed.
 
 `robots.txt` is exactly:
@@ -343,12 +358,13 @@ Sitemap: <the address>/sitemap.xml
 
 ## 5. Invariants
 
-- **INV-1** — A draft's words reach no file in `into`, unless it is
-  `include_draft`.
+- **INV-1** — A draft's words reach no file in `into`, unless the Face hands
+  it as `change`.
   *Test:* `tests/test_builder.py::test_no_draft_reaches_the_folder` — a Store
   holding a draft whose title, body, tag and comment each carry a sentinel,
-  built without `include_draft`; no file under `into` holds a sentinel. Built
-  again with it, the draft's page exists.
+  built without `change`; no file under `into` holds a sentinel. Built again
+  with it as `change`, its page exists and `content/` still holds no
+  sentinel.
   *Breaks when:* the Builder lists the drafts folder, or copies `comments/`
   whole rather than by published slug.
 
@@ -358,7 +374,8 @@ Sitemap: <the address>/sitemap.xml
   — entries tagged `dailyprompt-1234` and `dailyprompt` under the filter
   `dailyprompt-*`: the first is in `Built.filtered`, `content/published/`
   and `content/comments/`, and its slug is in no HTML file and not in
-  `sitemap.xml`; the second has a page, and so does the tag `dailyprompt`.
+  `sitemap.xml`, and `blog/tag/dailyprompt-1234/` does not exist; the second
+  has a page, and so does the tag `dailyprompt`.
   *Breaks when:* the filter is read as a regex or a prefix, applied to
   `content/`, or leaves a tag page listing only filtered entries.
 
@@ -414,10 +431,13 @@ Sitemap: <the address>/sitemap.xml
   and between them sits the filled furniture of §4.4.
   *Test:* `tests/test_builder.py::test_a_fixed_page_keeps_its_own_bytes` — a
   page with irregular markup around a HEADER pair saying `page="about"
-  nonav`, one saying `animate`, and a page with no markers. The first's bytes
-  outside its pairs equal the fixture's, both markers remain, and it holds no
-  `<nav>`; the second's navigation carries `{{UP}}` filled for its depth; the
-  no-marker page is unchanged; and an unmatched START raises `BuildStopped`.
+  nonav`; one with a HEADER pair saying `page="about" animate` and a FOOTER
+  pair; and a page with no markers. The first's bytes outside its pairs equal
+  the fixture's, both markers remain, and it holds no `<nav>`. The second's
+  navigation carries `{{UP}}` filled for its depth and `aria-current="page"`
+  on the link whose `data-nav` is `about`; its footer carries the build's
+  year; and neither furniture file's first comment appears. The no-marker
+  page is unchanged, and an unmatched START raises `BuildStopped`.
   *Breaks when:* the page is run through an HTML parser, the markers are
   dropped, or `nonav` is ignored.
 
@@ -426,15 +446,17 @@ Sitemap: <the address>/sitemap.xml
   `LONGEST_SIDE` and carries no EXIF, XMP or comment block.
   *Test:* `tests/test_builder.py::test_web_copies_are_small_and_carry_nothing`
   — a large JPEG carrying a GPS tag, an orientation tag and an XMP packet
-  holding a sentinel; a small JPEG carrying a GPS tag; a small PNG; a GIF; a
-  JPEG named `x.gif`; a file Pillow cannot open; and a photograph no entry
-  names. The large JPEG's copy fits and is upright; neither JPEG's copy has
-  a `getexif()` entry or the sentinel's bytes; the GIF is byte-identical;
-  `x.gif` is re-encoded; the unreadable file raises `BuildStopped`; and the
-  unnamed one is absent.
+  holding a sentinel; a small JPEG carrying a GPS tag and a comment block
+  holding the sentinel; a small PNG; a large two-frame GIF carrying a
+  comment; a JPEG named `x.gif`; a file Pillow cannot open; a photograph no
+  entry names; and one only a filtered entry names. The large JPEG's copy
+  fits and is upright; neither JPEG's copy has a `getexif()` entry or the
+  sentinel's bytes; the GIF's copy fits, keeps both frames and carries no
+  comment; `x.gif` is re-encoded as a JPEG; the unreadable file raises
+  `BuildStopped`; and neither of the last two has a copy.
   *Breaks when:* a small original is copied rather than re-encoded, which
-  publishes its location; XMP is carried through; the extension decides the
-  format; or every original is copied.
+  publishes its location; XMP or a comment is carried through; the
+  extension decides the format; or a GIF is copied whole.
 
 - **INV-10** — An entry body in a page is `marks.render`'s output, and a
   comment body is `marks.to_html`'s output over plain `Text`.
@@ -502,8 +524,7 @@ Sitemap: <the address>/sitemap.xml
 | A furniture file is absent | The Store's `StoreError`, unchanged |
 | An entry file cannot be parsed | The Store's `StoreError`, unchanged |
 | A listing skips a file | The Store's `StoreNotice`, passed through; the build goes on |
-| `include_draft` names no draft | The Store's `EntryNotFound`, unchanged |
-| `include_draft` is also published | `BuildStopped` naming the slug |
+| `change` is an `Html` whose kind or name the Store refuses | The Store's `StoreError`, unchanged |
 | `into`'s parent does not exist, or a rename fails | `SiteFolderUnusable`; `into` unchanged |
 | `into` holds a first segment outside `ROOT_OUTPUT` | `SiteFolderUnusable`; nothing touched |
 | The disk fills mid-build | `SiteFolderUnusable`; the new folder is removed and `into` unchanged |
@@ -586,7 +607,7 @@ mutation-probed once it lands.
 | INV-13 | `tests/test_builder.py::test_the_sitemap_lists_what_readers_find` |
 | INV-14 | `tests/test_failure_messages.py::test_no_builder_failure_names_a_path` |
 | INV-15 | `tests/test_builder_archive.py::test_the_first_publish_moves_no_page` — **skipped in CI**; it runs where the archive, the originals and the live site are |
-| That a publish build never passes `include_draft` | **nothing here** — the Face's call; PRESS-0012 |
+| That a publish build never passes `change` | **nothing here** — the Face's call; PRESS-0012 |
 | That the Face never hands the preview folder to the Publisher | **nothing here** — the Face's sequence (`docs/design.md` rule 1) |
 | That an ordinary non-dot stray in the site folder is refused | **nothing** — `Built.files` declares the output, and the Publisher does not read it yet (§9) |
 | §4.3's page contents beyond INV-15's elements | **`Partial:`** INV-15 compares the elements it names; the rest of the shell is unchecked |
@@ -597,9 +618,9 @@ mutation-probed once it lands.
   their shape rules and INV-6's field set. Gated before this is built.
 - **`docs/design.md`** — the Settings row of § The parts gains the site's
   name and address.
-- **PRESS-0007 decision 10** — Import writes §4.4's page markers and
-  furniture, reading the live site's folder; `run` gains that folder and
-  `Report` a field.
+- **PRESS-0007 decision 10** — Import writes the fixed pages from the live
+  site's folder with §4.4's markers emptied, and the furniture from today's
+  generator's template files; `run` gains both folders and `Report` a field.
 - **PRESS-0011** — `face.SENTENCES` gains `BuildStopped` and
   `SiteFolderUnusable`, with the site part `UNCHANGED`, in the same change, or
   its INV-1 walk fails.
@@ -651,3 +672,6 @@ chosen in `docs/design.md` § The stack.
   Unverified: a WordPress name may carry an underscore, which the Store's
   slug set refuses, and the first build then stops (§4.3). INV-15's run
   meets it first.
+- **Two details of today's pages were not read**: whether `data-nav` is
+  compared ignoring case, and whether any page uses the `-thumb.jpg` copies,
+  which §4.6 does not make.

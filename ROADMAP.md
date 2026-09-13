@@ -415,6 +415,16 @@ while the stakes are zero. Holds S2, S3, S4.
   entry the filter excludes into content/ like any other published
   entry. It is on no page, but an undo then keeps it published, so the
   filter stays reversible. It was public on the old site already.
+  Spec accepted (2026-09-13): docs/specs/PRESS-0008-builder.md. Two
+  cold review loops, both folded in; the tail is empty. It settles
+  PRESS-0007 decision 10: a fixed page keeps its header and footer
+  markers, emptied, and the Builder fills them from the furniture.
+  Before it is built, PRESS-0001 gains site_name and site_address,
+  which page titles and the sitemap need and this public repository
+  cannot hold. Open for the maintainer (spec section 14): a preview page
+  links the site's assets/ folder, which the Builder does not produce and
+  nothing on his machine holds, so a preview is unstyled until that is
+  decided.
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.
