@@ -1,13 +1,13 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture, which wait on PRESS-0008.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
 
 **Blocked by:** PRESS-0005 and PRESS-0006, shipped; PRESS-0004 §3 decision
-4's link and quote marks, specified and built first; PRESS-0008 for the
-fixed pages and furniture only (§3 decision 10).
+4's link and quote marks, specified and built first; PRESS-0008 §4.4,
+accepted, for the shape of the fixed pages and furniture (§3 decision 10).
 **Blocker for:** PRESS-0008's conformance run, which needs a Store to build.
 
 **Layman:** A one-time job that turns his WordPress entries, their comments
@@ -17,9 +17,11 @@ because it only ever runs once.
 ## 1. Goal
 
 After this ships, the maintainer can run one command over the WordPress
-export and the photograph originals and get a Pressless-data folder holding
-every entry, draft, comment and photograph, in the Store's own files. The
-writer receives that folder; nothing in his copy of Pressless runs Import.
+export, the photograph originals, the live site's folder and today's
+templates, and get a Pressless-data folder holding every entry, draft,
+comment, photograph, fixed page and furniture file in the Store's own files,
+plus a copy of the site's look for previews. The writer receives that folder;
+nothing in his copy of Pressless runs Import.
 
 ## 2. Problem
 
@@ -74,20 +76,35 @@ writer receives that folder; nothing in his copy of Pressless runs Import.
    by entry, and the maintainer reads that report before handing the folder
    over. A conversion that drops something silently is the loss rule 9
    forbids.
-10. **(decided here) The fixed pages and the page furniture are carried
-    once PRESS-0008 settles how a hand-written page is parted from the
-    header and footer written into it.** PRESS-0006 gives both their Store
-    shape. The furniture comes from today's generator's templates, and a
-    fixed page is one the site serves as a page, never an untouchable file
-    (`docs/design.md` *What Import brings across*). `run` then gains the
-    live site's folder and `Report` a field for them. **The maintainer runs
-    Import once, after both halves are built**, since decision 8 forbids
-    adding to a folder already made.
+10. **(decided here) The fixed pages and the page furniture are carried in
+    the shape PRESS-0008 §4.4 reads.** A fixed page is the live site's
+    `index.html`, named `index`, or one of its `pages/<name>.html`. It is one
+    the site serves as a page, never an untouchable file (`docs/design.md`
+    *What Import brings across*). It is carried as it is except that each
+    marker pair is emptied and each `?v=` stamp removed (§4.9): the Builder
+    writes no stamp (PRESS-0008 §3 decision 8), and one left in would never
+    change again, so a browser could go on showing an old stylesheet. The
+    furniture is today's generator's header and footer templates, with the
+    header's navigation cut out into `navigation`. Nothing else in the live
+    site's folder is carried: the Builder does not produce it, so it stays on
+    the site as it is. **The maintainer runs Import once, after both halves
+    are built**, since decision 8 forbids adding to a folder already made.
 11. **(decided here) Import is a package of its own, `pressless_import`,
     beside `pressless` and outside it.** Nothing in Pressless imports it, so
     it can be deleted without changing what the others do (rule 9), and the
     Face's walk of `pressless`'s failure types (PRESS-0011 INV-1) never
     meets it. The packaged program does not carry it.
+12. **Import copies the live site's `assets/` folder once into `INTO`, for
+    previews only.** Decided by the user 2026-09-13 (PRESS-0008 §14). The
+    Face serves that copy beside a preview page and never publishes it
+    (PRESS-0012). **(decided here) Its folder name is
+    `pressless.paths.PREVIEW_ASSETS`.** `paths` imports nothing of
+    Pressless's, so Import and the Face both read the name there and neither
+    depends on the other (rule 9).
+13. **A picture's alt text is listed in the report, not carried.** Decided by
+    the user 2026-09-13, after a count of the export found a real description
+    on only a handful of pictures. The maintainer captions those by hand after
+    the import.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -111,6 +128,7 @@ class Report:
     photographs: int
     renamed_slugs: tuple[tuple[str, str], ...]        # (wanted, given)
     renamed_photographs: tuple[tuple[str, str], ...]  # (upload path, Store name)
+    pages: tuple[str, ...]                            # the fixed pages carried, sorted
     dropped: tuple[Dropped, ...]
 
 class ImportStopped(Exception): ...   # INTO was not made
@@ -122,9 +140,17 @@ def is_markup(body: str) -> bool: ...
 def convert(body: str, picture_by_address: Lookup, picture_by_id: Lookup, *,
             old_site: str = "") -> tuple[str, tuple[str, ...]]: ...
 def visible_lines(markup: str) -> tuple[str, ...]: ...
-def run(export: Path, originals: Path, into: Path) -> Report: ...
-def main(argv: list[str]) -> int: ...   # python -m pressless_import EXPORT ORIGINALS INTO
+def run(export: Path, originals: Path, live_site: Path, templates: Path,
+        into: Path) -> Report: ...
+def main(argv: list[str]) -> int: ...
+# python -m pressless_import EXPORT ORIGINALS LIVE_SITE TEMPLATES INTO
+
+# src/pressless/paths.py
+PREVIEW_ASSETS = "preview-assets"   # §3 decision 12
 ```
+
+`live_site` is the folder today's site is built into. `templates` is the
+folder holding today's generator's `header.html` and `footer.html`.
 
 `convert` takes one markup body and returns the marked text and what it
 dropped. `picture_by_address` resolves an `<img>`'s address, and
@@ -204,7 +230,8 @@ written bold, and the italic is listed**: Marks forms no mark from `***`
 **Anything else** — an unknown tag, an attribute the table does not use, a
 style that is not a hex colour, a picture or gallery id with no attachment —
 keeps its words, loses its markup, and is listed in `Report.dropped`. A
-picture with no attachment keeps its address as a link.
+picture with no attachment keeps its address as a link. A picture's `alt` is
+one such attribute (decision 13).
 
 **Import checks its own work.** For each converted body it compares
 `visible_lines` of the WordPress body with `visible_lines` of what
@@ -272,10 +299,11 @@ Store (PRESS-0006 INV-4).
 
 1. Refuse unless `INTO` does not exist.
 2. Read the export; resolve every slug and its collisions (§4.4).
-3. Trace every picture, and check every original exists (§4.5).
+3. Trace every picture, and check every original exists (§4.5). Read the
+   fixed pages and the templates, and check `assets/` exists (§4.9).
 4. Convert every markup body (§4.3), and build every entry and comment set.
 5. Write everything into a new folder beside `INTO`, through the Store's
-   own calls, and copy the originals into it.
+   own calls, and copy the originals and the preview copy into it.
 6. Only when every write has succeeded, rename that folder to `INTO`.
 
 **Any failure stops Import with `ImportStopped` and removes the folder of
@@ -287,7 +315,7 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 - It never reaches the network. Nothing it reads is fetched.
 - It never writes outside the folder of step 5 and `INTO`, and never
-  changes the export or an original.
+  changes the export, an original, the live site's folder or a template.
 - It never reads Settings or Credentials, and never writes a settings
   file: the handed folder carries the Store alone, and setup writes
   Settings on his machine (`docs/design.md` rule 9).
@@ -296,6 +324,39 @@ all, and the Store's own refusals need no copy here (design rule 7).
   is the writer's own file, read on the maintainer's machine, so the
   untrusted-XML rule `ruff`'s S314 guards against does not apply; the
   archive tests already take the same exemption in `pyproject.toml`.
+
+### 4.9 Fixed pages, furniture and the preview copy
+
+**Fixed pages.** `LIVE_SITE/index.html` is the page `index`, and each
+`LIVE_SITE/pages/<name>.html` is the page `<name>`; nothing deeper under
+`pages/` is one. Each is read as bytes, decoded as UTF-8 and written with
+`store.write_html`, changed in two ways only:
+
+- **Each marker pair is emptied.** A pair is PRESS-0008 §4.4's START comment
+  and the next END comment of the same kind, matched as today's generator
+  matches them. What lies between the START comment's `-->` and the END
+  comment's `<!--` becomes a newline followed by the spaces and tabs in front
+  of the END comment on its line. Both comments stay as written. A START with
+  no END after it, or an END with no START, stops Import naming the page,
+  since the Builder refuses such a page.
+- **Each stamp is removed.** `?v=` and the hex digits after it are removed
+  where they directly follow an address to a file under `assets/` and
+  directly precede a quote.
+
+A `pages/index.html` would take the name `index` twice, and stops Import.
+
+**Furniture.** `footer` is `TEMPLATES/footer.html` as it is. `header` is
+`TEMPLATES/header.html` with its `<nav class="primary…">` element cut out.
+The cut runs from the spaces and tabs in front of that element on its line
+through the newline after its `</nav>`, and is replaced by `{{NAVIGATION}}`
+and a newline. `navigation` is the text cut, without that last newline. So
+putting `navigation` back in place of `{{NAVIGATION}}` gives today's header
+byte for byte. A header holding no such element, or more than one, stops
+Import. Each template's first comment stays; the Builder removes it.
+
+**The preview copy.** `LIVE_SITE/assets/` is copied whole, byte for byte, so
+that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
+`index.html` or no `assets/` folder stops Import.
 
 ## 5. Invariants
 
@@ -398,11 +459,41 @@ all, and the Store's own refusals need no copy here (design rule 7).
   that `urllib.parse` is admitted and `urllib.request` is not.
   *Breaks when:* a picture is fetched from the old site.
 
+- **INV-11** — Each fixed page is the live page with its marker pairs emptied
+  and its stamps removed, and nothing else changed; and `header` with
+  `navigation` put back in place of `{{NAVIGATION}}` equals today's header
+  template.
+  *Test:* `tests/test_importer.py::test_fixed_pages_and_furniture_come_across`
+  — a live site holding `index.html` and `pages/about.html`, whose markers
+  hold indented contents and whose `<head>` links a stamped stylesheet,
+  beside a `pages/sub/deep.html` and a root `other.html`, which are not
+  carried. Then an unpaired START, a header with no navigation element and a
+  `pages/index.html`, each of which stops Import.
+  `tests/test_importer_archive.py::test_the_live_pages_come_across` — over
+  today's live site and templates: every page §4.9 names is carried, no
+  stamp and nothing between a marker pair's comments but whitespace remains,
+  and the header puts back to its template.
+  *Breaks when:* text between the markers survives, a stamp is left, a byte
+  outside the markers changes, or the navigation is cut short.
+
+- **INV-12** — `INTO/<PREVIEW_ASSETS>/` holds every file of the live
+  `assets/` folder byte for byte, and nothing from outside it; and
+  `PREVIEW_ASSETS` is `preview-assets`.
+  *Test:* `tests/test_importer.py::test_the_site_assets_are_copied_for_previews`
+  — a nested file under `assets/` and a file beside it. The name is compared
+  against a literal written out in the test, never imported from `paths`.
+  *Breaks when:* a file is left out, or the name changes after a folder has
+  been handed over, so the Face finds no copy and every preview loses its
+  look.
+
 ## 6. Failure modes
 
 | What happens | What Import does |
 |---|---|
 | `INTO` exists | Stops before reading anything |
+| The live site holds no `index.html` or no `assets/` folder | Stops; nothing is made |
+| A fixed page's markers do not pair, or `pages/index.html` exists | Stops, naming the page; nothing is made |
+| The header template holds no navigation element, or more than one | Stops, naming the file; nothing is made |
 | The export cannot be read, or is not a WXR export | Stops; nothing is made |
 | An original is missing | Stops, naming the file by its own name; nothing is made |
 | The Store refuses a write | Stops, naming the entry by its slug; the folder of step 5 is removed |
@@ -417,17 +508,20 @@ all, and the Store's own refusals need no copy here (design rule 7).
 
 `tests/test_importer.py` — pure, in CI, over small exports and originals
 built in the test. It carries the tests §5 names for INV-1, INV-2, INV-3,
-INV-4, INV-6, INV-7, INV-8, INV-9 and INV-10, and INV-5's test of
-`visible_lines`.
+INV-4, INV-6, INV-7, INV-8, INV-9, INV-10, INV-11 and INV-12, and INV-5's
+test of `visible_lines`.
 
 `tests/test_importer_archive.py` — marked `archive`, over the real export
 and the maintainer's originals. It needs `PRESSLESS_ARCHIVE`. The tests
 that run the whole import also need a `PRESSLESS_ORIGINALS` folder, which
 the gate sets from the machine-local key `ants.pressless.originals` as it
-sets the archive's; INV-2's and INV-3's need today's generator. Each skips
+sets the archive's; `PRESSLESS_LIVE_SITE`, which it sets from
+`ants.pressless.liveSite` (PRESS-0008 §7); and today's generator, whose
+`templates` folder sits beside it. INV-2's and INV-3's need the generator
+too. Each skips
 only where what it needs is absent; anything present and unusable fails,
 as the other archive tests do (CLAUDE.md). It carries INV-2's, INV-3's,
-INV-5's, INV-6's and INV-7's archive tests, runs the whole import into a temporary folder, and prints
+INV-5's, INV-6's, INV-7's and INV-11's archive tests, runs the whole import into a temporary folder, and prints
 what it carried and the report.
 
 Each test is seen failing against a stub before the code exists, then
@@ -459,6 +553,7 @@ mutation-probed once it lands.
 - How an entry names a photograph after Import — PRESS-0016.
 - The untouchable list — setup and the Face (PRESS-0021).
 - Editing what was imported — PRESS-0012.
+- Serving the preview copy — PRESS-0012.
 
 ## 10. What checks this
 
@@ -474,8 +569,10 @@ mutation-probed once it lands.
 | INV-8 | `tests/test_importer.py::test_nothing_is_made_when_it_stops` |
 | INV-9 | `tests/test_importer.py::test_what_is_dropped_is_reported` |
 | INV-10 | `tests/test_importer.py::test_import_reaches_no_network` |
+| INV-11 | `tests/test_importer.py::test_fixed_pages_and_furniture_come_across`, `tests/test_importer_archive.py::test_the_live_pages_come_across` |
+| INV-12 | `tests/test_importer.py::test_the_site_assets_are_copied_for_previews` |
 | That the maintainer reads the report before handing the folder over | **nothing** — a person does it |
-| The fixed pages and furniture (decision 10) | **nothing yet** — not built until PRESS-0008 states their split |
+| That the preview copy is never published | **nothing here** — the Face's, PRESS-0012 |
 
 ## 11. Cross-doc impact
 
@@ -487,14 +584,22 @@ mutation-probed once it lands.
 - PRESS-0006 — Import writes the comments and photographs it shapes.
 - PRESS-0011 — no change: Import is outside `pressless`, so the Face's
   INV-1 walk never meets `ImportStopped` (decision 11).
+- PRESS-0008 — Import writes the fixed pages and furniture §4.4 reads; its
+  §14 decision on previews is decision 12 here.
+- PRESS-0012 — the Face serves the preview copy from `PREVIEW_ASSETS`.
 - PRESS-0016 — inherits decision 6's photograph names.
 - PRESS-0021 — setup no longer runs Import.
+- PRESS-0022 §4.2 and `src/pressless/paths.py` — `paths` gains
+  `PREVIEW_ASSETS`, a string, so its INV-1 still holds.
+- `docs/design.md` — § Where everything sits on disk and rule 9 name the
+  preview copy in Pressless's own folder.
 - `pyproject.toml` — S314 ignored for `src/pressless_import/`, with §4.8's
   reason; `setuptools` finds the new package under `src/` as it finds
   `pressless`.
 - `scripts/local-ci.sh` and `CLAUDE.md` — the gate sets
-  `PRESSLESS_ORIGINALS` from the machine-local key `ants.pressless.originals`,
-  and `CLAUDE.md` names that key beside the archive's.
+  `PRESSLESS_ORIGINALS` from the machine-local key `ants.pressless.originals`
+  and `PRESSLESS_LIVE_SITE` from `ants.pressless.liveSite`, and `CLAUDE.md`
+  names those keys beside the archive's.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
@@ -505,5 +610,5 @@ Rows live in `../reviews/PRESS-0007-import-loop-log.md`.
 
 Runs once. It holds the export and every converted entry in memory, which is
 what lets it resolve every slug before writing, and copies the originals
-once. It keeps nothing afterwards; the folder of step 5 is renamed or
-removed.
+once, and the live site's `assets/` once. It keeps nothing afterwards; the
+folder of step 5 is renamed or removed.

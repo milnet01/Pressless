@@ -92,7 +92,8 @@ than hoped for.
    rather than the writer's, because that machine holds the photograph
    originals Import reads. The writer receives the Pressless-data folder
    it made, and nothing in his copy of Pressless runs it. **That folder
-   carries the Store and no settings file**: Settings is facts about his
+   carries the Store, a copy of the site's `assets/` for previews
+   (PRESS-0007 decision 12), and no settings file**: Settings is facts about his
    machine and site, and setup writes them there, the Daily Prompt filter
    included (PRESS-0021). **Until his copy holds a Store with a published
    entry, it offers neither setup nor publishing**: an empty Store builds
@@ -394,7 +395,7 @@ keeping is also published.
 | Where | What lives there | Published? |
 |---|---|---|
 | **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, fixed pages, templates, page furniture and historical comments, in their source form | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Drafts are outside the site folder because of the measurement above,

@@ -145,6 +145,10 @@ def ensure(folder: Path) -> Path:
     """Create it if absent and prove it writable. Returns it."""
 ```
 
+`paths` also holds `PREVIEW_ASSETS`, the name of the preview copy of the
+site's `assets/` inside Pressless's own folder. PRESS-0007 decision 12 owns
+it; it lives here because Import and the Face both read it.
+
 **`paths.py` imports no other `pressless` module**, keeping the
 direction PRESS-0001 INV-1 and PRESS-0002 INV-1 already enforce on
 their own side. Neither `settings.py` nor `credentials.py` may import
