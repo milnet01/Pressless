@@ -804,7 +804,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
 
-- 📋 [PRESS-0120] **The first release run and the Windows test box prove both downloadable programs.**
+- ✅ [PRESS-0120] **The first release run and the Windows test box prove both downloadable programs.**
   Split from PRESS-0022 by the user (2026-09-17), because that item
   could only close after a release and the release check refuses notes
   citing an unfinished item. What remains is evidence, not code:
@@ -816,6 +816,20 @@ while the stakes are zero. Holds S2, S3, S4.
     self-checks (PRESS-0022 INV-7's Windows evidence).
   A red job is fixed in a patch release; the v0.1.0 tag is never moved.
   Blocked-by: nothing.
+  Shipped (2026-09-17). All three proofs are in:
+  - v0.1.0's release run failed on Windows (Linux passed, nothing was
+    published); the causes were tests, fixed as PRESS-0121, and ci.yml
+    now runs the gate on Windows on every push.
+  - v0.1.1's release run went green on both jobs and published
+    Pressless-0.1.1-windows.zip and Pressless-0.1.1-x86_64.AppImage, its
+    notes the CHANGELOG section.
+  - On the Windows test box, with no Python (the store alias only offers
+    to install one), the unpacked zip self-checks "folder: Pressless-data"
+    and "store: keyring Windows WinVaultKeyring", exit 0, when run in the
+    desktop session. Run over SSH the same program answers "store:
+    unanswered -- CredentialError": an SSH logon cannot reach the Windows
+    credential vault, and the writer never starts it that way.
+  The test folder and the one-off scheduled task were removed afterwards.
   **Layman:** The two downloadable programs have been built on Linux but never run on Windows; the first release is where that is finally checked.
   Kind: test.
   Source: user-decision-2026-09-17, split from PRESS-0022.

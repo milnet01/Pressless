@@ -2,8 +2,8 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** `PRESS-0120` (the first release
-run and the Windows test box prove both downloadable programs). What is done is deliberately not listed here: `roadmap_query`
+**State:** 5 — Building. **In flight:** nothing; v0.1.1 is released, and
+the next queued item is `PRESS-0021` (setup). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
@@ -227,6 +227,13 @@ are both installed.
 an interpreter cannot show that the packaged executable carries
 everything it needs, which is the whole of S4. Anything the app needs at
 runtime it must bring with it.
+
+**A program started over SSH cannot reach the Windows credential vault.**
+The packaged self-check answers `store: unanswered -- CredentialError`
+there and `store: keyring Windows WinVaultKeyring` in the desktop session
+(PRESS-0120). Run anything touching the keyring in the logged-on session:
+a one-off `schtasks /Create ... /IT` then `/Run`, writing its output to a
+file, and delete the task afterwards.
 
 ### This repository is PUBLIC, and nothing here may name the writer
 
