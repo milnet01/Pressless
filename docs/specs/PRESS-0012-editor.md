@@ -108,6 +108,10 @@ def register(face: Face, folder: Path) -> None: ...
 
 `folder` is Pressless's own folder, the one `face.serve` was handed.
 
+**`editor.py` adds the sentences for its two failure types to
+`face.SENTENCES` when it is imported.** It imports the Face, so `face.py`
+cannot import it back.
+
 **`address_for`** removes control and format characters (Unicode categories
 `Cc` and `Cf`), folds to ASCII with NFKD, lowers the case, and joins what is
 left with hyphens: every run of characters outside `a-z` and `0-9` becomes one
@@ -118,8 +122,8 @@ both ends. Where nothing is left it returns `UNTITLED`.
 returns the first that `store.exists` answers `False` for. A candidate
 `store.exists` refuses with `StoreError`, such as `con`, is skipped.
 
-**`working_copy`** returns the draft whose `Replaces` value, stripped, equals
-`slug`, provided `slug` is published. It returns `None` where there is none or
+**`working_copy`** returns the draft whose `Replaces` value equals `slug`, as
+`store.read` gives it, provided `slug` is published. It returns `None` where there is none or
 `slug` is not published. Two such drafts raise `TooManyCopies`. **A draft whose
 `Replaces` names no published entry is an ordinary draft**, everywhere in this
 document.
@@ -182,7 +186,9 @@ class Face:
     def add_files(self, prefix: str, locate: Locate) -> None: ...
 ```
 
-**A page returning a `str`** is wrapped and sent as today. **A page returning a
+**A page returning a `str`** is wrapped and sent as today, and now carries
+`Content-Security-Policy: frame-src 'self'`, so a frame on a Face page can only
+show an address the Face serves. **A page returning a
 `Reply`** is sent as it is: its status, its `Content-Type`, its `Location` when
 set, and `Cache-Control: no-store`.
 
@@ -242,7 +248,7 @@ registered with `publishing=False`.
 |---|---|
 | `GET /` | the list (§ 4.5) |
 | `POST /new` | makes a draft (§ 4.6), then 303 to `/edit?slug=<its address>` |
-| `GET /edit?slug=` | the editor (§ 4.7) |
+| `GET /edit?slug=` | the editor, and a preview of what it opens (§ 4.7) |
 | `POST /save` | saves and previews (§ 4.8) |
 | `POST /address` | changes a draft's address (§ 4.9) |
 | `POST /discard` | bins a working copy (§ 4.10), then 303 to `/edit?slug=<the published entry>` |
@@ -287,8 +293,18 @@ written with `store.write(..., draft=True)`.
 
 The page carries the file's address, whether it is a draft, and `base`: the
 SHA-256 hex digest of the file's bytes as read. It holds the title, categories
-and tags fields, the box, and the preview in an `<iframe>`. Categories and tags
-are shown joined by `store.LIST_SEPARATOR`.
+and tags fields, the box, and the preview in an `<iframe sandbox="allow-same-origin
+allow-scripts">`. Categories and tags are shown joined by
+`store.LIST_SEPARATOR`.
+
+**Opening builds the preview.** Under the lock, `GET /edit` runs § 4.8 step 5
+for the file it opens, so the frame starts at that page, or holds the failure
+in its place. A published entry previews as itself. It writes nothing but the
+preview folder.
+
+**A link followed in the preview stays out of the web.** The sandbox stops it
+opening a new tab or replacing the editor, and the page's `frame-src 'self'`
+stops the frame loading an address outside Pressless (§ 3 decision 4).
 
 - **The box is a `<textarea>` whose content starts with a line break**, then
   the escaped body. An HTML parser drops one line break straight after
@@ -305,7 +321,8 @@ are shown joined by `store.LIST_SEPARATOR`.
 
 **Its script.** About a second after the last change to any field, it posts
 `/save`. It never has two saves in flight; a change made during one is saved
-after it. It saves on `pagehide` too, with `keepalive`. After each reply it
+after it. It saves on `pagehide` too, with `keepalive`, unless a save is already
+in flight; what he typed during that save is then lost (§ 6). After each reply it
 takes the new `slug`, `draft` and `base`, shows the preview or the failure, and
 replaces the address bar's `slug` without reloading. A reply that is not 200
 stops the saving and shows its body. Every value placed in the page is escaped
@@ -407,14 +424,17 @@ made with `store.write_html`.
   same `base` on one draft: the second answers 409 with `ChangedElsewhere`'s
   sentence, and the file holds the first. Then two saves with the same `base`
   on one published entry: the second answers 409, and there is one copy.
-  *Breaks when:* the digest check is dropped, or not made for a published
-  entry.
+  Then a published entry rewritten on disk between opening and saving: the
+  save answers 409 and makes no copy.
+  *Breaks when:* the digest check is dropped, or a published entry is checked
+  only for an existing copy.
 
 - **INV-3** — `working_copy` counts only drafts replacing a published entry.
   *Test:* `test_a_working_copy_replaces_a_published_entry`. A draft whose
-  `Replaces` names a draft is an ordinary draft; one naming `" seaside "` is
+  `Replaces` names a draft is an ordinary draft; one naming `seaside` is
   seaside's copy; two raise `TooManyCopies`.
-  *Breaks when:* the value is not stripped, or the published check is dropped.
+  *Breaks when:* the published check is dropped, which counts the first draft
+  as a copy; or the search stops at the first match, which hides the second.
 
 - **INV-4** — The preview is the Builder's page.
   *Test:* `tests/test_builder.py::test_a_preview_is_the_page_build_writes`. For
@@ -442,23 +462,29 @@ made with `store.write_html`.
   mounted with `within`, with a file beside it and a link inside it pointing
   out. `..`, `%2e%2e`, `a%2f..%2f..`, a backslash, `%00`, an empty segment and
   the link each answer 404 without the outside file's bytes. A file inside
-  answers 200.
-  *Breaks when:* segments are checked before decoding, or `within` does not
-  resolve, which lets the link through.
+  answers 200. Then a mount whose `Locate` joins without confining, so only
+  § 4.3 step 2 can refuse: `%2e%2e/outside.txt` answers 404.
+  *Breaks when:* step 2 is skipped or runs before decoding, which lets the
+  plain join serve the outside file; or `within` does not resolve, which lets
+  the link through.
 
 - **INV-8** — Every file response carries the policy, `nosniff` and the table's
   type.
   *Test:* `tests/test_face.py::test_files_carry_the_policy`. The test writes
   the policy string out, rather than importing `FILES_POLICY`. An `.HTML`, a
-  `.css` and an unknown suffix each carry it, and their types are the table's.
+  `.css`, a `.js` and a `.txt` each carry it, and their types are the table's.
+  `mimetypes` names the last two `application/javascript` and `text/plain` on
+  Linux, so a lookup there fails.
   *Breaks when:* the header is missing on any response, or the type is read
   from `mimetypes`.
 
-- **INV-9** — A `Reply` is sent as it is, and a `str` is still wrapped.
+- **INV-9** — A `Reply` is sent as it is, and a `str` is still wrapped, now
+  with `Content-Security-Policy: frame-src 'self'`.
   *Test:* `tests/test_face.py::test_a_reply_is_sent_as_given`. A 303 with a
-  location, and a JSON body, arrive unwrapped with their status and type. The
-  existing page tests still pass unchanged.
-  *Breaks when:* a `Reply` is wrapped, or its status dropped.
+  location, and a JSON body, arrive unwrapped with their status and type. A
+  `str` page arrives wrapped and carries the header, written out in the test.
+  *Breaks when:* a `Reply` is wrapped, its status dropped, or the header left
+  off a wrapped page.
 
 - **INV-10** — A new entry's address comes from its title and is free.
   *Test:* `test_a_new_entry_gets_a_free_address`. Titles `"Late light — on
@@ -494,7 +520,9 @@ made with `store.write_html`.
   *Test:* `test_a_draft_changes_address`. A draft with a comments file moves
   to a new address: the new files exist, and the old ones are in the bin. An
   address a published entry holds, `con`, a working copy's `slug` and a
-  published `slug` are each refused with a hint and change nothing.
+  published `slug` are each refused with a hint and change nothing. Then, with
+  `store.write` made to raise `StoreError` for the new address, the old draft
+  is still in `drafts/` and the bin is empty.
   *Breaks when:* the old file is binned before the new is written, the
   comments stay behind, or a refusal writes.
 
@@ -545,7 +573,7 @@ and finds them without a change.
 | The disk is full | `StoreError`; saving stops | the file as it was (PRESS-0005 § 4.5) |
 | Pressless stops during an address change | nothing | both copies, or the new one alone |
 | Two windows preview different entries | each sees the last preview built | one preview page |
-| He follows a link inside the preview | *Not found* in the preview | nothing |
+| He follows a link inside the preview | *Not found* for his own site's pages; the browser refuses any address outside Pressless | nothing |
 | He closes the browser before a save lands | nothing | everything up to the last save |
 
 ## 7. Tests
@@ -620,7 +648,7 @@ mutation-probed once the code lands.
 | INV-16 | `tests/test_editor.py::test_the_list_shows_copies_and_unreadable_files` |
 | INV-17 | `tests/test_editor.py::test_a_preview_photograph_is_the_original` |
 | INV-18 | `tests/test_editor.py::test_the_editor_sits_behind_the_faces_boundary` |
-| That the policy blocks Google's script and the players in a browser | **nothing** in CI — by hand, in a preview of a page carrying them, in Chrome and Edge on the Windows box |
+| That the policies block Google's script, the players and a followed outside link in a browser | **nothing** in CI — by hand, in a preview of a page carrying them, in Chrome and Edge on the Windows box |
 | The script's timing, `pagehide` save and no two saves in flight (§ 4.7) | **nothing** in CI — by hand, typing and closing the tab mid-sentence |
 | That the box uses the site's font | **nothing** — read on the page |
 | That the one-page preview keeps up on Windows | **nothing** in CI — the Windows box, by hand, once PRESS-0013 wires the launch |
