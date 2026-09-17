@@ -17,6 +17,18 @@ appears once something has actually shipped.)
 
 ### Added
 
+- **The Builder turns his files into the finished site folder** (PRESS-0008)
+  One call writes every page the live site serves today, at the same
+  address, from his published entries, fixed pages and furniture:
+  the journal and its pages, each category and tag, the archive, the
+  sitemap and robots.txt, plus `content/`, the Store's own files
+  byte for byte. Drafts never reach it. A Daily Prompt entry the
+  filter excludes is in `content/` and on no page. Each photograph an
+  entry shows is re-encoded, at most 1600 pixels on a side, with no
+  EXIF, XMP or comment block, so no location. The new site replaces
+  the old folder only once it is whole, so a failed build changes
+  nothing.
+
 - **Settings holds the site's name and address** (PRESS-0001)
   The Builder puts the name in every page title and joins the
   address into the sitemap and robots.txt, so neither is written into

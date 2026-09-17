@@ -23,7 +23,12 @@ license = { file = "LICENSE" }
 # (dependencies.md §4): 25 is the oldest release where .backends on a chain
 # and errors.NoKeyringError behave as §4.6 records. Nothing caps it, so the
 # newest release is what installs.
-dependencies = ["keyring>=25"]
+#
+# Pillow re-encodes every published photograph, reached only by
+# src/pressless/builder.py (PRESS-0008 § 4.6). A floor at the release the
+# metadata stripping was measured against: which fields a saver carries over
+# from its source has changed between releases, and INV-9 is what checks it.
+dependencies = ["keyring>=25", "Pillow>=12"]
 
 # The gate's tools (scripts/local-ci.sh). Floors record what was measured, not
 # a ceiling: CI installs whatever is newest above them, so a release that

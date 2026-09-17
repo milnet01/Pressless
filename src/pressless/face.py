@@ -30,7 +30,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless import credentials, insights, log, paths, publisher, settings, store
+from pressless import builder, credentials, insights, log, paths, publisher, settings, store
 
 LABEL = "the Pressless-data folder, beside the program"
 
@@ -94,6 +94,16 @@ SENTENCES: dict[type[Exception], Sentence] = {
     store.DanglingReply: _say(
         "A reply points at a comment that is not there, so nothing was saved.",
         "Send the details below to whoever helps you.",
+    ),
+    builder.BuildStopped: _say(
+        "Pressless could not build your site from one of your files.",
+        "Check the file named in the details below, then try again. If it keeps "
+        "happening, send the details to whoever helps you.",
+    ),
+    builder.SiteFolderUnusable: _say(
+        "Pressless could not write the folder your site is built into.",
+        "Check the site folder in Settings, then try again. If it keeps happening, "
+        "send the details below to whoever helps you.",
     ),
     insights.InsightsError: _say(
         "Google sent back an answer Pressless could not use.",

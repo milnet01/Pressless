@@ -1,6 +1,6 @@
 # PRESS-0008 — The Builder: the Store and Settings become the site folder
 
-**Status:** accepted (2026-09-13).
+**Status:** accepted (2026-09-13). Built 2026-09-17.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).

@@ -11,8 +11,8 @@
 # proves each message clean without ever proving the RULE holds. Here the
 # walk is the test, so a part that gains a message gains a row.
 #
-# The Publisher, Insights and the Store are walked here; the Store's rule is
-# PRESS-0005 § 4.4 and PRESS-0006 § 4.4. Credentials and Settings are
+# The Publisher, Insights, the Store and the Builder are walked here; the
+# Store's rule is PRESS-0005 § 4.4 and PRESS-0006 § 4.4. Credentials and Settings are
 # walked in their own suites, against PRESS-0001 and PRESS-0002's § 4
 # tables. Packaging is not built yet, so it has nothing to walk.
 #
@@ -27,6 +27,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from test_builder import _entry as _builder_entry
+from test_builder import _image, _photograph
+from test_builder import _settings as _builder_settings
+from test_builder import _store as _builder_store
 from test_insights import _settings as _insights_settings
 from test_publisher import (
     _blob_hash,
@@ -39,6 +43,7 @@ from test_publisher import (
 from test_store import _wide_grant
 
 from pressless import store
+from pressless.builder import BuildStopped, SiteFolderUnusable, build
 from pressless.insights import InsightsError
 from pressless.insights import read as insights_read
 from pressless.publisher import (
@@ -381,6 +386,67 @@ def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
         "docs/design.md § Logging forbids a full filesystem path in anything "
         "Pressless shows or writes down, and PRESS-0005 § 4.4 puts that on the "
         "Store. These messages name one:\n"
+        + "\n".join(f"  {what}: {message!r}" for what, message in offenders)
+    )
+
+
+def test_no_builder_failure_names_a_path(tmp_path):
+    """PRESS-0008 INV-14: no message the Builder raises names a full path.
+
+    One site per BuildStopped route in § 6, and SiteFolderUnusable for a stray
+    and for a missing parent. The site folder is named by what it is, an entry
+    by its slug, and any other file by its own name (§ 4.8).
+
+    Breaks when a message formats `into` or a photograph's path.
+    """
+    messages: list[tuple[str, str]] = []
+
+    def failure(what, kind, folder, into):
+        with pytest.raises(kind) as caught:
+            build(folder, _builder_settings(), into)
+        messages.append((what, str(caught.value)))
+
+    def one_entry(name, body="Words.", categories=(), pages=None):
+        folder = _builder_store(tmp_path / name, pages=pages)
+        store.write(folder, _builder_entry("an-entry", body=body, categories=categories),
+                    draft=False)
+        return folder
+
+    into = tmp_path / "site"
+    failure("an illegal category", BuildStopped,
+            one_entry("category", categories=("Not A Slug",)), into)
+    failure("a missing original", BuildStopped,
+            one_entry("missing", body="{photo: absent.jpg}"), into)
+    folder = one_entry("dotted", body="{photo: .dotted.jpg}")
+    _photograph(folder, ".dotted.jpg", _image("JPEG"))
+    failure("a dot-named picture", BuildStopped, folder, into)
+    folder = one_entry("refused", body="{photo: a.bmp}")
+    _photograph(folder, "a.bmp", _image("BMP"))
+    failure("a format the Builder refuses", BuildStopped, folder, into)
+    folder = one_entry("unreadable", body="{photo: a.jpg}")
+    _photograph(folder, "a.jpg", b"not a picture")
+    failure("an original Pillow cannot read", BuildStopped, folder, into)
+    failure("unpaired markers", BuildStopped,
+            one_entry("markers", pages={"index": "<!-- HEADER:START -->\n"}), into)
+
+    plain = one_entry("plain")
+    stray = tmp_path / "stray"
+    stray.mkdir()
+    (stray / "notes.txt").write_text("mine", encoding="utf-8")
+    failure("a folder holding a stray", SiteFolderUnusable, plain, stray)
+    failure("a folder whose parent is absent", SiteFolderUnusable, plain,
+            tmp_path / "absent" / "site")
+
+    offenders = []
+    for what, message in messages:
+        try:
+            _refuse_a_path(what, message, tmp_path)
+        except AssertionError:
+            offenders.append((what, message))
+    assert not offenders, (
+        "docs/design.md § Logging forbids a full filesystem path in anything "
+        "Pressless shows or writes down, and PRESS-0008 § 4.8 puts that on the "
+        "Builder. These messages name one:\n"
         + "\n".join(f"  {what}: {message!r}" for what, message in offenders)
     )
 

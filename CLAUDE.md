@@ -43,12 +43,12 @@ records it rather than restating why.
 
 ### Build and test
 
-Python. One runtime dependency today — `keyring`, the operating system's
-credential store, reached only by `credentials.py` (PRESS-0002); `Pillow`
-joins it when photographs land (§ Stack). That is present state, not a
-cap. The gate needs `pytest`, `pytest-randomly` and `ruff` on top, and
-PyInstaller is the `packaging` group beside those, never a runtime
-dependency (PRESS-0022). `pip install -e '.[dev]'` installs what CI runs.
+Python. The runtime dependencies are `keyring`, the operating system's
+credential store, reached only by `credentials.py` (PRESS-0002), and
+`Pillow`, reached only by `builder.py` to re-encode photographs
+(PRESS-0008). That is present state, not a cap. The gate needs
+`pytest`, `pytest-randomly` and `ruff` on top, and PyInstaller is the
+`packaging` group beside those, never a runtime dependency (PRESS-0022). `pip install -e '.[dev]'` installs what CI runs.
 `pyproject.toml` holds the packaging and the pytest settings; `src/` is
 on the path through it, so there is no install step beyond that one.
 
@@ -69,8 +69,9 @@ present and executable**. Those two decide whether anything is gated at all;
 
 **Machine-local git config keys, and a fresh clone has none of them.**
 The two below belong here; `ants.pressless.archive`,
-`ants.pressless.originals`, `ants.pressless.liveSite` and
-`ants.pressless.templates` have their own paragraphs further down, and
+`ants.pressless.originals`, `ants.pressless.liveSite`,
+`ants.pressless.templates`, `ants.pressless.siteName` and
+`ants.pressless.siteAddress` have their own paragraphs further down, and
 `ants.pressless.leakPatterns` sits with the leak sweep.
 
 ```bash
@@ -137,6 +138,18 @@ alone:
 git config ants.pressless.originals /path/to/originals
 git config ants.pressless.liveSite /path/to/the/live/site
 git config ants.pressless.templates /path/to/the/templates
+```
+
+`tests/test_builder_archive.py` proves the Builder against the live site
+(PRESS-0008 INV-15). It imports the archive first, so it needs all of the
+above, and it builds with the site's own name and address. Both identify
+the writer, so they are machine-local values the gate exports as
+`PRESSLESS_SITE_NAME` and `PRESSLESS_SITE_ADDRESS`. Read them off the live
+site — its page titles and `sitemap.xml` — never from memory:
+
+```bash
+git config ants.pressless.siteName '<the name after the dash in a page title>'
+git config ants.pressless.siteAddress '<the address sitemap.xml lists>'
 ```
 
 **Two test results mean less than they look.** `test_marks_is_pure`

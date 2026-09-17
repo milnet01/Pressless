@@ -419,7 +419,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § What Import brings across.
   Lanes: Import.
 
-- 📋 [PRESS-0008] **The Builder turns the Store and Settings into a finished site folder.**
+- ✅ [PRESS-0008] **The Builder turns the Store and Settings into a finished site folder.**
   build_blog.py re-homed and separated from the writer: pagination, the by-year
   archive, the categories and the tags, sitemap.xml and robots.txt. It
   renders through the same Marks part the editor uses and never grows a
@@ -460,6 +460,27 @@ while the stakes are zero. Holds S2, S3, S4.
   copies the live site's assets/ once into Pressless's own folder, and the
   Face serves that copy for previews only. The Builder still does not
   produce assets/.
+  Shipped (2026-09-17): src/pressless/builder.py, built test-first.
+  tests/test_builder.py carries INV-1 to INV-13, test_failure_messages.py
+  INV-14, and test_builder_archive.py INV-15, which imports the real
+  archive, builds it and compares against the live site: no address moved,
+  and every title, heading, date line, pager link and chip address matches.
+  Its one printed label difference is uncategorized (decision 7). Mutation
+  probe: every mutation killed by a real test failure, except one
+  equivalent mutation and one gap spec §10 already marks partial (the
+  listing excerpt's escaping). One survivor was a real gap and got a test:
+  a build that fails right after an interrupted swap must still restore
+  the site folder.
+  Found by diffing the whole build against the live site, for the
+  maintainer: an untitled entry whose only text is a photograph caption
+  now shows its date on listing cards rather than its caption, because
+  spec §4.3 cuts a teaser from text and a caption is not text. Everything
+  else that differs is Import's conversion, the missing stamps, or
+  invisible (a blank line in the home page header, an apostrophe written
+  plainly).
+  PRESS-0022: Pillow is now a runtime dependency, but nothing __main__
+  imports reaches builder.py yet, so the packaged program will not carry
+  Pillow until the Face is wired in (PRESS-0013).
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.

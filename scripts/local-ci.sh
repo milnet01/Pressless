@@ -162,6 +162,21 @@ for pair in "PRESSLESS_LIVE_SITE liveSite" "PRESSLESS_TEMPLATES templates"; do
     fi
 done
 
+# The Builder's archive run builds with the site's own name and address
+# (PRESS-0008 § 7). Both identify the writer, so they are values rather than
+# folders and stay out of this repository the same way:
+#   git config ants.pressless.siteName '<the name in every page title>'
+#   git config ants.pressless.siteAddress '<https://the site's address>'
+for pair in "PRESSLESS_SITE_NAME siteName" "PRESSLESS_SITE_ADDRESS siteAddress"; do
+    set -- $pair
+    if [[ -z ${!1-} ]]; then
+        value=$(git config --get "ants.pressless.$2" || true)
+        if [[ -n $value ]]; then
+            export "$1=$value"
+        fi
+    fi
+done
+
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.
 step "pytest"
