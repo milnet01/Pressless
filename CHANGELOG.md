@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **The editor: a list of entries, New entry, and a box with the real finished page beside it.** (PRESS-0012)
+  His words save themselves a moment after he stops typing. Changes
+  to an entry already on his site wait in a separate copy until he
+  publishes that entry. The preview never counts as a visit and a link
+  followed inside it stays on his computer. Not yet reachable by a
+  double-click; PRESS-0013 wires that.
+
 - **Setup asks for the publishing key once, and the same page reopens as Settings.** (PRESS-0021)
   Anyone can set up, with or without writing brought in: type the
   repository, the site's name and address, and the key. Pressless

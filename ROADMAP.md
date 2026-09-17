@@ -1702,7 +1702,7 @@ button that writes, builds and publishes. A word he styles while typing looks
 the same on the live site as it did in the box, and an entry he has not finished
 is not on the live site. Holds S7, S10.
 
-- 📋 [PRESS-0012] **The editor box, styled as the finished page, with the preview beside it.**
+- ✅ [PRESS-0012] **The editor box, styled as the finished page, with the preview beside it.**
   What he sees is what he gets, because the box renders through the same
   Marks part the Builder uses. Two rendering paths would diverge, and the
   first person to find out would be the writer, after publishing. Claims S10.
@@ -1734,6 +1734,16 @@ is not on the live site. Holds S7, S10.
   5. A new entry with no title gets the address untitled, then untitled-2.
   Needs a spec: the working copy's file shape and the Face's file serving
   bind PRESS-0013, PRESS-0014, PRESS-0015 and PRESS-0016.
+  Resolved (2026-09-17): shipped to docs/specs/PRESS-0012-editor.md,
+  accepted after two review loops (sixteen verified findings, all
+  fixed). src/pressless/editor.py, with builder.preview and the Face's
+  Reply, add_files and within. All eighteen invariants seen red against
+  stubs first; 34 mutations all killed on a test failure. Driven in
+  headless Chrome on a throwaway folder: the preview takes the site's
+  stylesheet, typing saves into a working copy, a followed outside link
+  is refused by frame-src, and leaving mid-sentence saves. Not checked:
+  Edge and Chrome on the Windows box, and a page carrying Google's
+  script (§ 10's by-hand rows). PRESS-0013 wires the launch.
   **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § State.
