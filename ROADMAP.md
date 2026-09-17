@@ -1620,6 +1620,42 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: review-contract 2026-09-11 discovery.md loop 1, lane 3.
   Lanes: Publisher, Face.
 
+- 📋 [PRESS-0124] **Four places the design serves only the first writer, decided before setup is built.**
+  The user, 2026-09-17: Pressless is built for general users as well
+  as the first writer, so no design should cater only for him. Found the
+  same day, each NOT yet decided -- ask the user, recommendation first:
+
+  1. design.md rule 9 offers setup only once the Store holds a published
+     entry. A fresh install with no imported writing can therefore never
+     be set up, and never publish. Recommended: offer setup on an empty
+     Store, and move the guard to publishing, which refuses to replace a
+     live site from a Store holding no published entry -- the harm rule
+     9 exists to stop. Changes design.md rule 9 and PRESS-0021 section
+     4.2, NoWriting and INV-5.
+  2. PRESS-0021 section 4.5 writes daily_prompt_filter as dailyprompt-*
+     on first run, hiding every WordPress Daily Prompt entry for anyone.
+     Recommended: first run writes an empty filter, and the Settings page
+     offers the filter as an optional field, which the first writer's
+     setup fills in. Changes PRESS-0021 sections 4.3 and 4.5.
+  3. Import runs only on the maintainer's machine and needs the sibling
+     generator's templates, so no general user can bring a WordPress
+     blog in. Recommended: file a backlog item for an Import anyone can
+     run; leave PRESS-0007 as shipped.
+  4. Documents say "he" and "the writer" throughout. Recommended: new
+     text addresses any user; existing specs stay as written, since
+     rewording them costs a review gate each. The README's "Moving an
+     existing blog in" section is worded for a handover to one person and
+     should be reworded now.
+
+  1 and 2 amend the accepted PRESS-0021 spec: one review loop, the
+  amendment budget.
+
+  Blocker for: PRESS-0021.
+  **Layman:** Someone starting Pressless fresh, with no blog to bring in, must be able to set it up and use it too.
+  Kind: investigate.
+  Source: user-direction-2026-09-17.
+  Lanes: Face, Settings, Import.
+
 ## 0.3.0 — he writes in Pressless
 
 The editor box, styled as the finished page, with the preview beside it, and one
