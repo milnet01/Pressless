@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget: four verified, four fixed, not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -86,8 +86,7 @@ nothing in his copy of Pressless runs Import.
     change again, so a browser could go on showing an old stylesheet. The
     furniture is today's generator's header and footer templates, with the
     header's navigation cut out into `navigation`. Nothing else in the live
-    site's folder is carried: the Builder does not produce it, so it stays on
-    the site as it is. **The maintainer runs Import once, after both halves
+    site's folder is carried. **The maintainer runs Import once, after both halves
     are built**, since decision 8 forbids adding to a folder already made.
 11. **(decided here) Import is a package of its own, `pressless_import`,
     beside `pressless` and outside it.** Nothing in Pressless imports it, so
@@ -231,7 +230,8 @@ written bold, and the italic is listed**: Marks forms no mark from `***`
 style that is not a hex colour, a picture or gallery id with no attachment —
 keeps its words, loses its markup, and is listed in `Report.dropped`. A
 picture with no attachment keeps its address as a link. A picture's `alt` is
-one such attribute (decision 13).
+listed with its text and the picture's Store name, one line per picture
+(decision 13).
 
 **Import checks its own work.** For each converted body it compares
 `visible_lines` of the WordPress body with `visible_lines` of what
@@ -328,8 +328,9 @@ all, and the Store's own refusals need no copy here (design rule 7).
 ### 4.9 Fixed pages, furniture and the preview copy
 
 **Fixed pages.** `LIVE_SITE/index.html` is the page `index`, and each
-`LIVE_SITE/pages/<name>.html` is the page `<name>`; nothing deeper under
-`pages/` is one. Each is read as bytes, decoded as UTF-8 and written with
+`LIVE_SITE/pages/<name>.html` is the page `<name>`. Any other file under
+`pages/` stops Import, naming it: `pages` is the Builder's (PRESS-0008
+`ROOT_OUTPUT`), so the first publish would not keep it. Each is read as bytes, decoded as UTF-8 and written with
 `store.write_html`, changed in two ways only:
 
 - **Each marker pair is emptied.** A pair is PRESS-0008 §4.4's START comment
@@ -448,9 +449,11 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
 - **INV-9** — What Import could not convert is in `Report.dropped`, by entry.
   *Test:* `tests/test_importer.py::test_what_is_dropped_is_reported` — a
   markup body holding a `<table>`, a `<p class="lead"
-  style="font-size:2em">` and a `wp:social-link` block comment, whose
-  address the report names.
-  *Breaks when:* an unknown tag is removed without a record.
+  style="font-size:2em">`, a `wp:social-link` block comment, whose
+  address the report names, and two pictures with different `alt` texts,
+  each listed with its text and its Store name.
+  *Breaks when:* an unknown tag is removed without a record, or an `alt` is
+  listed without its text or its picture.
 
 - **INV-10** — Import reaches no network.
   *Test:* `tests/test_importer.py::test_import_reaches_no_network` — walks
@@ -466,9 +469,9 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
   *Test:* `tests/test_importer.py::test_fixed_pages_and_furniture_come_across`
   — a live site holding `index.html` and `pages/about.html`, whose markers
   hold indented contents and whose `<head>` links a stamped stylesheet,
-  beside a `pages/sub/deep.html` and a root `other.html`, which are not
-  carried. Then an unpaired START, a header with no navigation element and a
-  `pages/index.html`, each of which stops Import.
+  beside a root `other.html`, which is not carried. Then an unpaired START,
+  a header with no navigation element, a `pages/index.html` and a
+  `pages/sub/deep.html`, each of which stops Import.
   `tests/test_importer_archive.py::test_the_live_pages_come_across` — over
   today's live site and templates: every page §4.9 names is carried, no
   stamp and nothing between a marker pair's comments but whitespace remains,
@@ -492,7 +495,7 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
 |---|---|
 | `INTO` exists | Stops before reading anything |
 | The live site holds no `index.html` or no `assets/` folder | Stops; nothing is made |
-| A fixed page's markers do not pair, or `pages/index.html` exists | Stops, naming the page; nothing is made |
+| A fixed page's markers do not pair, or `pages/` holds a file that is not a fixed page or holds `index.html` | Stops, naming the file; nothing is made |
 | The header template holds no navigation element, or more than one | Stops, naming the file; nothing is made |
 | The export cannot be read, or is not a WXR export | Stops; nothing is made |
 | An original is missing | Stops, naming the file by its own name; nothing is made |
@@ -516,9 +519,10 @@ and the maintainer's originals. It needs `PRESSLESS_ARCHIVE`. The tests
 that run the whole import also need a `PRESSLESS_ORIGINALS` folder, which
 the gate sets from the machine-local key `ants.pressless.originals` as it
 sets the archive's; `PRESSLESS_LIVE_SITE`, which it sets from
-`ants.pressless.liveSite` (PRESS-0008 §7); and today's generator, whose
-`templates` folder sits beside it. INV-2's and INV-3's need the generator
-too. Each skips
+`ants.pressless.liveSite` (PRESS-0008 §7); and `PRESSLESS_TEMPLATES`, the
+folder holding today's header and footer templates, which it sets from
+`ants.pressless.templates`. INV-2's and INV-3's need today's generator. Each
+skips
 only where what it needs is absent; anything present and unusable fails,
 as the other archive tests do (CLAUDE.md). It carries INV-2's, INV-3's,
 INV-5's, INV-6's, INV-7's and INV-11's archive tests, runs the whole import into a temporary folder, and prints
@@ -585,7 +589,8 @@ mutation-probed once it lands.
 - PRESS-0011 — no change: Import is outside `pressless`, so the Face's
   INV-1 walk never meets `ImportStopped` (decision 11).
 - PRESS-0008 — Import writes the fixed pages and furniture §4.4 reads; its
-  §14 decision on previews is decision 12 here.
+  §14 decision on previews is decision 12 here. Its §7 archive test imports
+  the archive, so it needs `PRESSLESS_TEMPLATES` too.
 - PRESS-0012 — the Face serves the preview copy from `PREVIEW_ASSETS`.
 - PRESS-0016 — inherits decision 6's photograph names.
 - PRESS-0021 — setup no longer runs Import.
@@ -598,7 +603,8 @@ mutation-probed once it lands.
   `pressless`.
 - `scripts/local-ci.sh` and `CLAUDE.md` — the gate sets
   `PRESSLESS_ORIGINALS` from the machine-local key `ants.pressless.originals`
-  and `PRESSLESS_LIVE_SITE` from `ants.pressless.liveSite`, and `CLAUDE.md`
+  `PRESSLESS_LIVE_SITE` from `ants.pressless.liveSite` and
+  `PRESSLESS_TEMPLATES` from `ants.pressless.templates`, and `CLAUDE.md`
   names those keys beside the archive's.
 - `CHANGELOG.md` — an Added entry when it ships.
 

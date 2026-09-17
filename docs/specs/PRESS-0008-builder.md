@@ -548,7 +548,8 @@ folder holding today's built site; and `PRESSLESS_SITE_NAME` and
 `PRESSLESS_SITE_ADDRESS`, the Settings values it builds with, which identify
 the writer and so cannot be written here. The gate sets those last three from
 new machine-local keys `ants.pressless.liveSite`, `ants.pressless.siteName`
-and `ants.pressless.siteAddress`. It skips only where one is
+and `ants.pressless.siteAddress`. Its import also needs `PRESSLESS_TEMPLATES`
+(PRESS-0007 §7). It skips only where one is
 absent, and fails where one is present and unusable, as the other archive
 tests do. It carries INV-15, and runs after PRESS-0007 carries the fixed
 pages and furniture.
