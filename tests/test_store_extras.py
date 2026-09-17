@@ -1038,6 +1038,9 @@ def _wide_grant(monkeypatch, mode=0o644):
         st_mode = 0o100000 | mode
 
     monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+    # The report is POSIX-only by design, so on Windows the branch returns
+    # before the read; the platform is what a test patches.
+    monkeypatch.setattr(store_module, "_is_windows", lambda: False)
 
 
 def test_every_writer_here_reports_a_wider_grant(tmp_path, monkeypatch):

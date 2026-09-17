@@ -43,7 +43,9 @@ def _valid_mapping(**overrides) -> dict:
     _ABSENT removes it, which is how INV-3's pair differs by one key only."""
     mapping = {
         "version": 1,
-        "site_folder": "/home/writer/Pressless/site",
+        # Absolute on the system running the suite: on Windows a path with no
+        # drive is not absolute, and Settings rightly refuses it (PRESS-0120).
+        "site_folder": os.path.abspath("/home/writer/Pressless/site"),
         "repository": "owner/owner.github.io",
         "site_name": "A Journal",
         "site_address": "https://example.org",
@@ -945,6 +947,9 @@ def _wide_grant(monkeypatch, mode=0o644):
         st_mode = 0o100000 | mode
 
     monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+    # The report is POSIX-only by design (§4.5), so on Windows the branch
+    # returns before the read; the platform is what a test patches.
+    monkeypatch.setattr(settings_module, "_is_windows", lambda: False)
 
 
 def test_a_wider_grant_is_reported(tmp_path, monkeypatch):

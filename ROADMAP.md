@@ -821,6 +821,28 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: user-decision-2026-09-17, split from PRESS-0022.
   Lanes: Packaging.
 
+- ✅ [PRESS-0121] **Tests written with Linux assumptions failed on Windows, and CI never ran Windows until a release.**
+  Found by PRESS-0120's first release run: the v0.1.0 Windows job's
+  suite failed while Linux passed, so nothing was published. No app
+  code was at fault. Four causes, all in tests:
+  - test_settings.py's example site_folder had no drive, so Settings
+    rightly refused it on Windows before any test reached its point;
+  - the wide-grant helpers in test_settings.py, test_store.py and
+    test_store_extras.py faked the mode read but not the platform, and
+    the report is POSIX-only by design;
+  - test_failure_messages.py patched os.link for a failing move, and
+    Windows moves with os.rename;
+  - the unreadable-site-file test used chmod 000, which Windows ignores;
+    it now refuses the read itself.
+  Verified on Linux, and with store and settings forced onto their
+  Windows branch. ci.yml now runs the gate on windows-latest beside
+  ubuntu-latest on every push, so the fix is proven on Windows there.
+  Shipped (2026-09-17).
+  **Layman:** The first run of the tests on Windows failed because some tests assumed Linux; they now hold on both, and every push checks Windows.
+  Kind: fix.
+  Source: v0.1.0 release run 2026-09-17, windows job.
+  Lanes: Packaging, Settings, Store, Publisher.
+
 ## 0.2.0 — it reaches the live site
 
 Adds the keyring, the Publisher and setup, so the archive he imported reaches

@@ -177,7 +177,7 @@ def test_no_publisher_failure_names_a_path(tmp_path):
     getattr(os, "geteuid", lambda: -1)() == 0,
     reason="root reads a mode-000 file, so nothing fails",
 )
-def test_an_unreadable_site_file_names_no_path(tmp_path):
+def test_an_unreadable_site_file_names_no_path(tmp_path, monkeypatch):
     """The site file that cannot be read is named relative to the folder.
 
     Its own site had the absolute path AND the OSError's words, which name
@@ -192,7 +192,17 @@ def test_an_unreadable_site_file_names_no_path(tmp_path):
     (site / "index.html").write_text("<html>site</html>", encoding="utf-8")
     secret = site / "unreadable.html"
     secret.write_text("<html>cannot be read</html>", encoding="utf-8")
-    secret.chmod(0o000)
+    # The read itself is refused, rather than chmod 000: Windows ignores that
+    # mode, so the file stayed readable there and nothing was raised
+    # (PRESS-0120). The refusal carries the path, as the system's would.
+    real_read_bytes = Path.read_bytes
+
+    def refused(self):
+        if self == secret:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", refused)
 
     try:
         with pytest.raises(PublishError) as caught:
@@ -209,7 +219,7 @@ def test_an_unreadable_site_file_names_no_path(tmp_path):
                 ),
             )
     finally:
-        secret.chmod(0o600)
+        monkeypatch.undo()
 
     message = str(caught.value)
     _refuse_a_path("PublishError for an unreadable site file", message, tmp_path)
@@ -315,8 +325,12 @@ def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
         raise OSError(1, "Operation not permitted", str(source))
 
     store.write(folder, replace(good, slug="stuck"), draft=True)
+    # Both calls a move can make: os.link on POSIX, os.rename on Windows
+    # (store._move_without_overwriting). Patching one left the other system's
+    # move succeeding, so nothing was raised there (PRESS-0120).
     monkeypatch.setattr(store.os, "link", no_hard_links)
-    failure("a move on a filesystem with no hard links",
+    monkeypatch.setattr(store.os, "rename", no_hard_links)
+    failure("a move the filesystem refuses",
             lambda: store.publish(folder, "stuck"))
     monkeypatch.undo()
 

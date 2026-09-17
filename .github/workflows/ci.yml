@@ -14,7 +14,18 @@ permissions:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    # Windows too, on every push: the writer is on Windows, and until this job
+    # the suite ran there only at a release tag, where its first run failed
+    # (PRESS-0120). Both systems run the same script; neither can cancel the
+    # other.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       # fetch-depth: 0 is load-bearing. The gate sweeps every commit and every
       # commit message for the writer's name; a shallow clone has neither, and
