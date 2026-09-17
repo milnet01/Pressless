@@ -7,10 +7,13 @@
 # packaging tests.
 from __future__ import annotations
 
+import urllib.parse
+
 import pytest
 from test_paths import _artefact, _frozen_linux
 
 import pressless.__main__ as main_module
+from pressless import settings
 from pressless.credentials import Choice
 
 # The report's three line keys and the folder's name, written out rather than
@@ -47,15 +50,68 @@ def test_self_check_reports_three_lines(monkeypatch, tmp_path, capsys):
     assert str(tmp_path) not in out, f"the report names a full path: {out!r}"
 
 
+class _Opened:
+    """Replaces the serving half of a double-click (PRESS-0013 § 4.5): the real
+    Face runs, the browser is a recorder, and the wait returns at once."""
+
+    def __init__(self, monkeypatch):
+        self.faces = []
+        self.links = []
+        real_serve = main_module.face.serve
+
+        def serve(folder, *, open_browser=True):
+            served = real_serve(folder, open_browser=False)
+            self.faces.append(served)
+            return served
+
+        monkeypatch.setattr(main_module.face, "serve", serve)
+        monkeypatch.setattr(main_module.webbrowser, "open",
+                            lambda url: self.links.append(url) or True)
+        monkeypatch.setattr(main_module, "_wait", lambda: None)
+
+
 def test_the_double_click_takes_the_same_path(monkeypatch, tmp_path, capsys):
     """No flag at all is the writer's double-click, and it prints the same
     report -- so the route that was tested is the writer's route (§ 4.5)."""
     artefact = _artefact(tmp_path)
     _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
     _store(monkeypatch, Choice("keyring", "SecretService"))
+    _Opened(monkeypatch)
 
     assert main_module.main([]) == 0
     assert capsys.readouterr().out.splitlines()[0] == "pressless: ok"
+
+
+def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
+    """PRESS-0013 INV-8: the double-click serves setup, the editor and
+    publishing, and opens /setup until setup is done; --self-check serves
+    nothing."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+
+    assert main_module.main(["--self-check"]) == 0
+    assert opened.faces == [] and opened.links == []
+
+    assert main_module.main([]) == 0
+    assert capsys.readouterr().out.splitlines()[:3] == [
+        "pressless: ok", f"folder: {_FOLDER_NAME}", "store: keyring SecretService"]
+    pages = set(opened.faces[0]._pages)
+    for route in (("GET", "/setup"), ("GET", "/"), ("POST", "/save"), ("POST", "/publish")):
+        assert route in pages, route
+    assert urllib.parse.urlsplit(opened.links[0]).path == "/setup"
+
+    folder = artefact.parent / _FOLDER_NAME
+    settings.save(folder, settings.Settings(
+        site_folder=folder / "site", repository="owner/owner.github.io",
+        site_name="A Journal", site_address="https://example.org",
+        daily_prompt_filter="", untouchable=(),
+        credentials=settings.Credentials(store="keyring", github_account="github",
+                                         google_account=None),
+        analytics_property_id=None))
+    assert main_module.main([]) == 0
+    assert urllib.parse.urlsplit(opened.links[1]).path == "/"
 
 
 def test_an_unanswerable_question_exits_non_zero(monkeypatch, tmp_path, capsys):

@@ -68,6 +68,10 @@ SENTENCES[TooManyCopies] = Sentence(
     "out of the drafts folder.",
 )
 
+# Every write, preview and publish runs under it; a threading.Lock cannot be
+# taken twice, so `save` leaves it to its caller (PRESS-0013 § 4.1).
+LOCK = threading.Lock()
+
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
 
@@ -115,10 +119,9 @@ def register(face: Face, folder: Path) -> None:
     """Add the editor's routes to `face` (§ 4.4). `folder` is Pressless's own
     folder, the one `face.serve` was handed."""
     folder = Path(folder)
-    lock = threading.Lock()
 
     def route(handler):
-        return lambda request: handler(face, folder, lock, request)
+        return lambda request: handler(face, folder, LOCK, request)
 
     face.add_page("GET", "/", route(_list))
     face.add_page("POST", "/new", route(_new))
@@ -320,6 +323,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
 <label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
 {address}
+<p><button type="button" data-editor="publish">Publish</button>
+ <span id="publish-status"></span></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
 </form>
@@ -329,31 +334,36 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <script>{_EDITOR_SCRIPT}</script>"""
 
 
+def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
+    """PRESS-0012 § 4.8 steps 1 to 4: write the box to its draft, and return the
+    entry written and its new digest. Takes no lock; the caller holds LOCK."""
+    slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
+    path = store.path_for(folder, slug, draft=draft)
+    entry = store.read(path)
+    if _digest(path) != base:
+        raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
+    extra = entry.extra
+    written_slug = slug
+    if not draft:
+        if working_copy(folder, slug) is not None:
+            raise ChangedElsewhere(f"the entry {slug} gained a working copy")
+        written_slug = free_address(folder, slug + COPY_SUFFIX)
+        extra = tuple(field for field in entry.extra
+                      if field[0] != REPLACES) + ((REPLACES, slug),)
+    body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
+    written = store.Entry(
+        slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
+        categories=_list_of(form.get("categories", "")),
+        tags=_list_of(form.get("tags", "")), body=body, extra=extra)
+    return written, _digest(store.write(folder, written, draft=True))
+
+
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.8."""
     form = _form(request)
-    slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
     with lock, face.capture() as notices:
         try:
-            path = store.path_for(folder, slug, draft=draft)
-            entry = store.read(path)
-            if _digest(path) != base:
-                raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
-            extra = entry.extra
-            written_slug = slug
-            if not draft:
-                if working_copy(folder, slug) is not None:
-                    raise ChangedElsewhere(f"the entry {slug} gained a working copy")
-                written_slug = free_address(folder, slug + COPY_SUFFIX)
-                extra = tuple(field for field in entry.extra
-                              if field[0] != REPLACES) + ((REPLACES, slug),)
-            body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
-            written = store.Entry(
-                slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
-                categories=_list_of(form.get("categories", "")),
-                tags=_list_of(form.get("tags", "")), body=body, extra=extra)
-            target = store.write(folder, written, draft=True)
-            new_base = _digest(target)
+            written, new_base = save(folder, form)
         except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
@@ -361,7 +371,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             preview, preview_failure = _preview(face, folder, written, draft=True)
     if failure is not None:
         return _failed(face, notices, failure)
-    return _json({"slug": written_slug, "draft": True, "base": new_base, "preview": preview,
+    return _json({"slug": written.slug, "draft": True, "base": new_base, "preview": preview,
                   "failure": preview_failure, "notices": render_notices(notices)})
 
 
@@ -489,6 +499,31 @@ _EDITOR_SCRIPT = """
   window.addEventListener("pagehide", () => {
     if (stopped || inFlight || !dirty) return;
     fetch("/save", {method: "POST", body: fields(), keepalive: true});
+  });
+
+  const publish = document.querySelector("button[data-editor=publish]");
+  publish.addEventListener("click", async () => {
+    clearTimeout(timer);
+    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
+    const said = document.getElementById("publish-status");
+    publish.disabled = true;
+    said.textContent = "Publishing\u2026 this can take a few minutes the first time. " +
+      "Keep this page open.";
+    try {
+      const answer = await fetch("/publish", {method: "POST", body: fields()});
+      const text = await answer.text();
+      if (answer.status !== 200) { said.textContent = ""; stop(text); return; }
+      const reply = JSON.parse(text);
+      dirty = false;
+      adopt(reply);
+      document.getElementById("failure").innerHTML = reply.failure || "";
+      said.textContent = reply.published
+        ? "Published. Your site shows it within a few minutes." : "";
+    } catch (error) {
+      said.textContent = ""; stop("");
+    } finally {
+      publish.disabled = false;
+    }
   });
 
   const button = document.querySelector("button[data-editor=address]");
