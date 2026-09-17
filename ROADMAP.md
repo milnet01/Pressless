@@ -838,6 +838,13 @@ while the stakes are zero. Holds S2, S3, S4.
   Windows branch. ci.yml now runs the gate on windows-latest beside
   ubuntu-latest on every push, so the fix is proven on Windows there.
   Shipped (2026-09-17).
+  Progress (2026-09-17): the first Windows CI run on these fixes left one
+  failure, which the earlier failures in the same test had hidden. The
+  failure-message walk staged twin.TXT beside twin.txt, and a
+  case-folding filesystem makes them one file, so the Store refuses the
+  move with SlugInUse rather than reporting a stranded twin. The walk now
+  asks the filesystem first, as test_store.py's own twin test does, and
+  checks whichever message results; both branches ran here.
   **Layman:** The first run of the tests on Windows failed because some tests assumed Linux; they now hold on both, and every push checks Windows.
   Kind: fix.
   Source: v0.1.0 release run 2026-09-17, windows job.

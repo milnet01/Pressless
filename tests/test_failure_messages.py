@@ -385,8 +385,15 @@ def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
 
     store.write(folder, replace(good, slug="twin"), draft=True)
     put("published/twin.TXT", b"Slug: twin\n\nbody")
-    notice("a move stranding a second file",
-           lambda: store.publish(folder, "twin"))
+    # A case-folding filesystem (Windows) makes twin.TXT the destination
+    # itself, so the Store refuses the move rather than stranding a second
+    # file. Either message is walked; which one is the filesystem's call.
+    if (folder / "published" / "twin.txt").exists():
+        failure("a move onto a name the filesystem folds",
+                lambda: store.publish(folder, "twin"), SlugInUse)
+    else:
+        notice("a move stranding a second file",
+               lambda: store.publish(folder, "twin"))
 
     _wide_grant(monkeypatch)
     notice("a write the mount would not make private",

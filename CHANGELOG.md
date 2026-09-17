@@ -30,8 +30,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   suite on Windows for the first time, and tests written with Linux
   assumptions failed there -- an example folder with no drive letter,
   permission warnings the app skips on Windows by design, a move that
-  Windows makes with a rename, and a file chmod cannot hide from
-  Windows. No app code changed; the tests now hold on both systems.
+  Windows makes with a rename, a file chmod cannot hide from Windows,
+  and two file names that differ only in case, which Windows treats as
+  one. No app code changed; the tests now hold on both systems.
 
 ## [0.1.0] - 2026-09-17
 
