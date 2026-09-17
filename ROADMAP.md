@@ -1718,6 +1718,22 @@ is not on the live site. Holds S7, S10.
   assets/ folder into Pressless's own folder under the name
   pressless.paths.PREVIEW_ASSETS (PRESS-0007 decision 12). The Face reads
   the name there rather than writing it out, and never publishes the copy.
+  Decided by the user (2026-09-17), before the spec:
+  1. The preview is the real finished page, built one page at a time so
+     it keeps up with typing. Measured the same day: a whole-site preview
+     build took 1.4 s here; one render of an entry's words took 3 ms.
+     The Builder addition is specified in this item's spec, with a pointer
+     from PRESS-0008, so one review covers both.
+  2. Editing a published entry saves to a separate working copy. The live
+     version is unchanged until he publishes that entry.
+  3. In scope: a list of entries, New entry, and title, category and tag
+     fields. Deleting an entry and renaming a published one are a separate
+     item.
+  4. The preview blocks anything from outside his computer, so previews
+     never count as visits.
+  5. A new entry with no title gets the address untitled, then untitled-2.
+  Needs a spec: the working copy's file shape and the Face's file serving
+  bind PRESS-0013, PRESS-0014, PRESS-0015 and PRESS-0016.
   **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § State.
@@ -1748,6 +1764,10 @@ is not on the live site. Holds S7, S10.
   earlier note's reason was wrong. This item also opens /setup when a
   launch meets a SettingsError whose key is site_folder (PRESS-0021
   section 4.8).
+  Decided by the user (2026-09-17, PRESS-0012 questions): a new entry's
+  date is the moment he first publishes it, as WordPress dated his
+  entries. This item sets it. It also publishes a working copy of a
+  published entry over that entry (PRESS-0012 decision 2).
   **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
   Kind: implement.
   Source: design-2026-08-24 § What may depend on what rule 1.
@@ -6783,6 +6803,18 @@ already-built code ships in whichever release comes next.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
   Lanes: Publisher, Face.
+
+- 📋 [PRESS-0128] **Deleting an entry, and changing a published entry's address.**
+  Split off PRESS-0012 by the user's scope decision (2026-09-17). The
+  Store already moves anything it deletes to the bin (PRESS-0099), and
+  docs/design.md says renaming writes the new file and bins the old one.
+  What is not decided: what he is told before a published entry's address
+  changes, since links people shared stop working.
+  Blocked-by: PRESS-0012.
+  **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0012 scope.
+  Lanes: Face.
 
 ## Milestones
 
