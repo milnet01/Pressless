@@ -237,6 +237,21 @@ there and `store: keyring Windows WinVaultKeyring` in the desktop session
 a one-off `schtasks /Create ... /IT` then `/Run`, writing its output to a
 file, and delete the task afterwards.
 
+**A packaged run holds its output back when a script reads it through a
+pipe.** Measured 2026-09-17 on a frozen Linux build: the report appears at
+once in a console and not at all to a reader capturing stdout, so a scripted
+double-click check looks like a hang rather than a failure. Check the
+packaged program from a console, or with `--self-check`, which prints and
+exits.
+
+**A browser check runs through Playwright and the system Chrome.** The
+Claude-in-Chrome extension is not connected on this machine (tried
+2026-09-17); the `playwright` Python package is installed and drives
+`/usr/bin/google-chrome` headless. That is how PRESS-0012's page script, its
+preview and the policy that keeps a followed link inside the frame were
+checked. It says nothing about Windows, which stays the Windows box's by-hand
+row.
+
 ### This repository is PUBLIC, and nothing here may name the writer
 
 `milnet01/Pressless` on GitHub, MIT. The site it publishes belongs to a
