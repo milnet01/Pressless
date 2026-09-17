@@ -473,7 +473,8 @@ made with `store.write_html`.
   mounted with `within`, with a file beside it and a link inside it pointing
   out. `..`, `%2e%2e`, `a%2f..%2f..`, a backslash, `%00`, an empty segment and
   the link each answer 404 without the outside file's bytes. A file inside
-  answers 200. Then a mount whose `Locate` joins without confining, so only
+  answers 200, and a mount at a longer prefix inside it answers its own file.
+  Then a mount whose `Locate` joins without confining, so only
   § 4.3 step 2 can refuse: `%2e%2e/outside.txt` answers 404.
   *Breaks when:* step 2 is skipped or runs before decoding, which lets the
   plain join serve the outside file; or `within` does not resolve, which lets

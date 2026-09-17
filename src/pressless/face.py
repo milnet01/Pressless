@@ -295,7 +295,75 @@ class Request:
     body: bytes
 
 
-Page = Callable[[Request], str]  # returns the page's HTML body
+@dataclass(frozen=True)
+class Reply:
+    """A page's answer sent as it is, unwrapped (PRESS-0012 § 4.3)."""
+    body: bytes
+    content_type: str
+    status: int = 200
+    location: str | None = None
+
+
+Page = Callable[[Request], "str | Reply"]  # a str is the page's HTML body
+Locate = Callable[[str], Path]
+
+FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
+                "style-src 'self' 'unsafe-inline'; font-src 'self'; "
+                "script-src 'self'; connect-src 'self'; frame-src 'none'; "
+                "object-src 'none'; base-uri 'none'; form-action 'none'")
+
+
+# A fixed table rather than `mimetypes`, which reads the Windows registry and so
+# answers whatever another program last wrote there (PRESS-0012 § 4.3).
+_FILE_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+}
+
+# Every wrapped page carries this, so a frame on a Face page can only show an
+# address the Face serves: a link followed in the preview never leaves.
+_FRAMES_POLICY = "frame-src 'self'"
+
+
+def within(folder: Path) -> Locate:
+    """A Locate joining the rest of a path onto `folder`, refusing anything that
+    resolves outside it -- a link inside pointing out included (§ 4.3)."""
+    root = Path(folder)
+
+    def locate(rest: str) -> Path:
+        target = (root / rest).resolve(strict=True)
+        if not target.is_relative_to(root.resolve(strict=True)):
+            raise LookupError("outside the folder")
+        return target
+
+    return locate
+
+
+def _served_file(rest: str, locate: Locate) -> Path | None:
+    """§ 4.3's steps 1 to 4: the file `rest` names, or None for a 404."""
+    try:
+        decoded = urllib.parse.unquote(rest, errors="strict")
+    except UnicodeDecodeError:
+        return None
+    if "\0" in decoded or "\\" in decoded:
+        return None
+    if any(segment in ("", ".", "..") for segment in decoded.split("/")):
+        return None
+    try:
+        target = locate(decoded)
+    except Exception:  # noqa: BLE001 -- any refusal is a 404, never a failure
+        return None
+    return target if target.is_file() else None
 
 
 def _running(request: Request) -> str:
@@ -379,9 +447,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     def _send(
         self, status: int, body: str, content_type: str, headers: tuple[tuple[str, str], ...] = ()
     ) -> None:
-        data = body.encode("utf-8")
+        self._send_bytes(status, body.encode("utf-8"), f"{content_type}; charset=utf-8", headers)
+
+    def _send_bytes(
+        self, status: int, data: bytes, content_type: str,
+        headers: tuple[tuple[str, str], ...] = (),
+    ) -> None:
         self.send_response(status)
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         for name, value in headers:
@@ -442,7 +515,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
         registered = face._pages.get((method, parts.path))
         if registered is None:
-            self._send(404, "Not found", "text/plain")
+            self._send_file(method, parts.path, face)
             return
         page, publishing = registered
         length = int(self.headers.get("Content-Length") or 0) if method == "POST" else 0
@@ -450,9 +523,35 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         try:
             body = page(request)
         except Exception as exc:  # noqa: BLE001 -- § Errors' last-resort catch
-            self._send(500, _page(face.fail(exc, publishing=publishing)), "text/html")
+            self._send(500, _page(face.fail(exc, publishing=publishing)), "text/html",
+                       (("Content-Security-Policy", _FRAMES_POLICY),))
             return
-        self._send(200, _page(body), "text/html")
+        if isinstance(body, Reply):
+            location = (("Location", body.location),) if body.location is not None else ()
+            self._send_bytes(body.status, body.body, body.content_type, location)
+            return
+        self._send(200, _page(body), "text/html",
+                   (("Content-Security-Policy", _FRAMES_POLICY),))
+
+    def _send_file(self, method: str, path: str, face: Face) -> None:
+        """The longest registered prefix's file, or 404 (PRESS-0012 § 4.3)."""
+        prefixes = [prefix for prefix in face._files if path.startswith(prefix)]
+        target = None
+        if method == "GET" and prefixes:
+            prefix = max(prefixes, key=len)
+            target = _served_file(path[len(prefix):], face._files[prefix])
+        try:
+            data = target.read_bytes() if target is not None else None
+        except OSError:
+            data = None  # unreadable is answered like absent, never as a failure
+        if target is None or data is None:
+            self._send(404, "Not found", "text/plain")
+            return
+        kind = _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream")
+        self._send_bytes(200, data, kind, (
+            ("Content-Security-Policy", FILES_POLICY),
+            ("X-Content-Type-Options", "nosniff"),
+        ))
 
 
 class Face:
@@ -463,6 +562,7 @@ class Face:
         self._log = log.open_log(self._folder)
         self._secret = secrets.token_urlsafe(32)
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
+        self._files: dict[str, Locate] = {}
         self._server = _Server(("127.0.0.1", 0), _Handler)
         self._server.face = self
         port = self._server.server_address[1]
@@ -480,6 +580,11 @@ class Face:
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
         """Register `page` for `method` and `path`, replacing any before it."""
         self._pages[(method.upper(), path)] = (page, publishing)
+
+    def add_files(self, prefix: str, locate: Locate) -> None:
+        """Answer GETs under `prefix`, which ends in "/", with the file `locate`
+        names for the rest of the path (PRESS-0012 § 4.3)."""
+        self._files[prefix] = locate
 
     @contextlib.contextmanager
     def capture(self) -> Iterator[list[str]]:

@@ -780,3 +780,49 @@ def test_a_picture_only_entry_is_described_by_its_captions(tmp_path):
         into, titled).read_text(encoding="utf-8")
     assert _card_label(journal, worded) == "Few words."
     assert _card_label(journal, bare) == "6 May 2020"
+
+
+# ------------------------------------------- PRESS-0012 INV-4 and INV-5 ---
+
+
+def test_a_preview_is_the_page_build_writes(tmp_path):
+    """PRESS-0012 INV-4: `preview` writes the bytes `build` writes at the same
+    address for the same entry, so the preview is the Builder's page."""
+    folder = _store(tmp_path)
+    _photograph(folder, "a.jpg", _image("JPEG"))
+    entry = _entry("coloured", title="Coloured", categories=("poetry",), tags=("sea",),
+                   body="A {red: warm} line.\n{photo: a.jpg | Late light}")
+    store.write(folder, entry, draft=False)
+    store.write_comments(folder, entry.slug, (_comment(),))
+
+    def src(name):
+        return f"/originals/{name}"
+
+    whole = tmp_path / "whole"
+    build(folder, _settings(), whole, photo_src=src, change=entry)
+    one = tmp_path / "one"
+    relative = builder.preview(folder, _settings(), one, entry, photo_src=src)
+
+    assert relative == f"blog/{entry.date:%Y/%m/%d}/{entry.slug}/index.html"
+    written = (one / relative).read_bytes()
+    assert written == (whole / relative).read_bytes()
+    assert b"Lovely." in written and b"/originals/a.jpg" in written
+
+
+def test_a_preview_writes_one_page(tmp_path):
+    """PRESS-0012 INV-5: a preview writes one page and no web copy, and each
+    preview replaces the last."""
+    folder = _store(tmp_path)
+    _photograph(folder, "a.jpg", _image("JPEG"))
+    first = _entry("first", body="{photo: a.jpg}")
+    second = _entry("second", date="2021-02-03 04:05:06", body="Other words.")
+    store.write(folder, first, draft=False)
+    store.write(folder, second, draft=True)
+    into = tmp_path / "preview"
+
+    builder.preview(folder, _settings(), into, first, photo_src=lambda name: name)
+    relative = builder.preview(folder, _settings(), into, second,
+                               photo_src=lambda name: name)
+
+    assert _files(into) == [relative]
+    assert not (into / "photographs").exists()

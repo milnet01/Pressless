@@ -34,7 +34,8 @@ from test_importer_archive import (
     imported,  # noqa: F401 -- the fixture, shared rather than copied
 )
 
-from pressless.builder import ROOT_OUTPUT, build
+from pressless import store
+from pressless.builder import ROOT_OUTPUT, build, preview
 from pressless.settings import Credentials, Settings
 
 PRESSLESS_SITE_NAME = os.environ.get("PRESSLESS_SITE_NAME")
@@ -101,6 +102,13 @@ def test_the_first_publish_moves_no_page(imported, tmp_path):  # noqa: F811
     built = build(into_store, settings, settings.site_folder)
     print(f"build: {time.monotonic() - started:.1f} s, {len(built.files)} files, "
           f"{len(built.filtered)} entries filtered")
+    # PRESS-0012 § 3 decision 1's evidence: one page, against the whole site.
+    newest = max(store.list_slugs(into_store, draft=False))
+    started = time.monotonic()
+    preview(into_store, settings, tmp_path / "preview",
+            store.read(store.path_for(into_store, newest, draft=False)),
+            photo_src=lambda name: name)
+    print(f"preview: {time.monotonic() - started:.2f} s, one page")
 
     produced = set(built.files)
     missing, differing, labels = [], [], {}

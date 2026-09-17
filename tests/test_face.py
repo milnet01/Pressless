@@ -309,3 +309,98 @@ def test_the_secret_is_never_printed_or_logged(
         served.stop()
     out, err = capfd.readouterr()
     assert client.secret not in out + err + _log_text(tmp_path)
+
+
+# ------------------------------------------ PRESS-0012 INV-7, INV-8, INV-9 ---
+
+FILES_POLICY_WORDS = (
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+    "font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'none'; "
+    "object-src 'none'; base-uri 'none'; form-action 'none'"
+)
+FRAMES_POLICY_WORDS = "frame-src 'self'"
+
+
+def test_files_never_leave_their_folder(tmp_path: Path) -> None:
+    """PRESS-0012 INV-7."""
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    (mounted / "inside.txt").write_text("inside", encoding="utf-8")
+    (tmp_path / "outside.txt").write_text("OUTSIDE-BYTES", encoding="utf-8")
+    link = mounted / "link.txt"
+    try:
+        link.symlink_to(tmp_path / "outside.txt")
+    except OSError:
+        link = None  # a Windows account without the symlink privilege
+    served = face.serve(tmp_path / "own", open_browser=False)
+    try:
+        served.add_files("/m/", face.within(mounted))
+        served.add_files("/plain/", lambda rest: mounted / rest)
+        nested = tmp_path / "nested"
+        nested.mkdir()
+        (nested / "inside.txt").write_text("nested", encoding="utf-8")
+        served.add_files("/m/sub/", face.within(nested))
+        client = _Client(served)
+        assert client.request("GET", "/m/inside.txt")[0] == 200
+        # The longest registered prefix answers, as the editor's assets need.
+        assert client.request("GET", "/m/sub/inside.txt")[2] == "nested"
+        escapes = ["/m/..", "/m/%2e%2e/outside.txt", "/m/a%2f..%2f..%2foutside.txt",
+                   "/m/..%5coutside.txt", "/m/inside.txt%00", "/m//inside.txt"]
+        if link is not None:
+            escapes.append("/m/link.txt")
+        for path in escapes:
+            status, _, body = client.request("GET", path)
+            assert status == 404, path
+            assert "OUTSIDE-BYTES" not in body, path
+        # Only the Face's own segment check stands between this and the file.
+        status, _, body = client.request("GET", "/plain/%2e%2e/outside.txt")
+        assert status == 404 and "OUTSIDE-BYTES" not in body
+    finally:
+        served.stop()
+
+
+def test_files_carry_the_policy(tmp_path: Path) -> None:
+    """PRESS-0012 INV-8."""
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    types = {"page.HTML": "text/html; charset=utf-8", "site.css": "text/css; charset=utf-8",
+             "site.js": "text/javascript; charset=utf-8",
+             "notes.txt": "application/octet-stream"}
+    for name in types:
+        (mounted / name).write_bytes(b"x")
+    served = face.serve(tmp_path / "own", open_browser=False)
+    try:
+        served.add_files("/m/", face.within(mounted))
+        client = _Client(served)
+        for name, kind in types.items():
+            status, headers, _ = client.request("GET", f"/m/{name}")
+            assert status == 200, name
+            assert headers.get("Content-Security-Policy") == FILES_POLICY_WORDS, name
+            assert headers.get("X-Content-Type-Options") == "nosniff", name
+            assert headers.get("Cache-Control") == "no-store", name
+            assert headers.get("Content-Type") == kind, name
+    finally:
+        served.stop()
+
+
+def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
+    """PRESS-0012 INV-9."""
+    served = face.serve(tmp_path, open_browser=False)
+    try:
+        served.add_page("GET", "/moved", lambda request: face.Reply(
+            b"", "text/plain", status=303, location="/elsewhere"))
+        served.add_page("GET", "/data", lambda request: face.Reply(
+            b'{"a": 1}', "application/json"))
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        client = _Client(served)
+
+        status, headers, body = client.request("GET", "/moved")
+        assert status == 303 and headers.get("Location") == "/elsewhere" and body == ""
+        status, headers, body = client.request("GET", "/data")
+        assert status == 200 and headers.get("Content-Type") == "application/json"
+        assert body == '{"a": 1}'
+        status, headers, body = client.request("GET", "/words")
+        assert status == 200 and body.startswith("<!doctype html>") and "<p>Words</p>" in body
+        assert headers.get("Content-Security-Policy") == FRAMES_POLICY_WORDS
+    finally:
+        served.stop()

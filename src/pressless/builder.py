@@ -35,6 +35,8 @@ from pressless.settings import Settings
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
                "sitemap.xml", "robots.txt")
 PER_PAGE = 20
+STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
+BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
 
 
@@ -89,8 +91,32 @@ def build(folder: Path, settings: Settings, into: Path, *,
     """§4.8, in order: settle what an interrupted build left, refuse a folder
     the Builder did not make, build everything into `<into>.pressless-new`, and
     swap it in only once it is whole."""
-    folder, into = Path(folder), Path(into)
-    shown = "the site folder" if photo_src is None else "the preview folder"
+    folder = Path(folder)
+    return _replace(Path(into), photo_src is None,
+                    lambda new: _Build(folder, settings, new, photo_src, change).run())
+
+
+def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
+            photo_src: marks.PhotoSrc) -> str:
+    """PRESS-0012 §4.2: the one page `build` would write for `entry` published,
+    into `into` by §4.8's order. Returns its path relative to `into`."""
+    folder = Path(folder)
+
+    def write(new: Path) -> str:
+        page = _Build(folder, settings, new, photo_src, entry)
+        page.read_furniture()
+        for name in (*entry.categories, *entry.tags):
+            page.refuse_an_unusable_name(entry, name)
+        page.entry_page(entry)
+        return page.files[0]
+
+    return _replace(Path(into), False, write)
+
+
+def _replace(into: Path, publishing: bool, write):
+    """§4.8's order around `write`, which fills the new folder and returns what
+    the caller hands back."""
+    shown = "the site folder" if publishing else "the preview folder"
     new = into.with_name(f"{into.name}.pressless-new")
     old = into.with_name(f"{into.name}.pressless-old")
 
@@ -109,7 +135,7 @@ def build(folder: Path, settings: Settings, into: Path, *,
         raise SiteFolderUnusable(f"{shown} could not be prepared: {_why(exc)}") from None
 
     try:
-        built = _Build(folder, settings, new, photo_src, change).run()
+        result = write(new)
     except BaseException as exc:
         shutil.rmtree(new, ignore_errors=True)
         if isinstance(exc, OSError):
@@ -130,7 +156,7 @@ def build(folder: Path, settings: Settings, into: Path, *,
         raise SiteFolderUnusable(f"{shown} could not be replaced: {_why(exc)}") from None
     # Not a failed build if this fails: the next one removes it (§4.8).
     shutil.rmtree(old, ignore_errors=True)
-    return built
+    return result
 
 
 def _refuse_a_folder_it_did_not_make(into: Path, shown: str) -> None:
@@ -310,6 +336,15 @@ class _Build:
 
     # -- the whole --
 
+    def read_furniture(self) -> None:
+        """The three furniture files as the Store holds them, for a preview
+        (PRESS-0012 §4.2)."""
+        furniture = {name: store.read_html(
+                         store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
+                     for name in ("header", "navigation", "footer")}
+        self.furniture = _Furniture(furniture["header"], furniture["navigation"],
+                                    furniture["footer"], datetime.now().year)
+
     def run(self) -> Built:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))
                    for slug in store.list_slugs(self.folder, draft=False)}
@@ -369,6 +404,7 @@ class _Build:
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str) -> None:
         up = "../" * depth
+        links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">' for sheet in STYLESHEETS)
         self.write_text(f"{relative}/index.html", f"""<!doctype html>
 <html lang="en">
 <head>
@@ -376,8 +412,7 @@ class _Build:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(title)} — {html.escape(self.settings.site_name)}</title>
 <meta name="description" content="{html.escape(description)}">
-<link rel="stylesheet" href="{up}assets/site.css">
-<link rel="stylesheet" href="{up}assets/blog.css">
+{links}
 </head>
 <body>
 
@@ -429,7 +464,7 @@ class _Build:
     <article class="post">
       <p class="post-meta">{self.meta(entry, up)}</p>
       <h1>{html.escape(heading)}</h1>
-      <div class="post-body prose">
+      <div class="{BODY_CLASS}">
 {marks.render(entry.body, src)}
       </div>
       <p class="post-tags">{tags}</p>
