@@ -6608,6 +6608,38 @@ already-built code ships in whichever release comes next.
   Kind: security.
   Source: in-session-2026-09-11.
 
+- 📋 [PRESS-0123] **A mark carries a value Pressless works out when he publishes.**
+  Asked for by the user 2026-09-17: some values on the site are
+  calculated from a formula, so he needs a way to define them.
+
+  Decided by the user the same day:
+  1. Ready-made calculations, not a formula language. Pressless offers a
+     short menu of sums it already knows -- a span of years since a
+     date, how many entries are published -- and he names one and uses
+     the name.
+  2. Worked out when he publishes. The built page holds plain text, so
+     it works for every reader and carries no script. The cost he
+     accepted: a value that moves with the calendar changes only on his
+     next publish.
+  3. In his entries only. Fixed pages and the page furniture are
+     published exactly as written (docs/design.md), and changing that is
+     not part of this item.
+
+  Still open, for the spec: the mark's spelling, which the cheat sheet
+  (PRESS-0018) binds to; where his named values are kept -- they shape
+  the site, which points at the Store rather than Settings; and the
+  menu's first members. Marks touches no disk and no clock (design
+  rule 3), so the Builder works a value out and hands it in, the way it
+  hands in the photograph naming rule. The preview must show the same
+  value the build would (S10, design rule 2).
+
+  His real example has not been given yet. Ask for it before the spec
+  is written.
+  **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
+  Kind: feature.
+  Source: user-request-2026-09-17.
+  Lanes: Marks, Builder, Store, Face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
