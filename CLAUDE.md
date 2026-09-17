@@ -192,8 +192,10 @@ having run no test, and the envelope still reports `killed`. So the
 mutation proved nothing and reads exactly like the ones that proved
 something. Met 2026-09-08 on PRESS-0003: an `if True:` substitution
 orphaned an `except`, and the batch's eight kills included one that had
-only broken the syntax. Exit 1 with a failure count is a real kill; exit
-2 is a mutation to rewrite. **And a batch of kills does not mean the
+only broken the syntax. Exit 2 is a mutation to rewrite. **Exit 1 is not
+proof either**: a mutation naming something undefined fails every test on
+a `NameError`, which says nothing about the rule it meant to break. Met
+2026-09-17 on PRESS-0021. Mutate with values that run. **And a batch of kills does not mean the
 suite is sound** — the same run's honest survivors were three clauses no
 test could see, two of them invariants the spec argued for at length and
 covered with nothing.
