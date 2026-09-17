@@ -559,7 +559,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § Errors.
   Lanes: Face.
 
-- 🚧 [PRESS-0022] **One double-clickable file per system, built by CI from the first release.**
+- ✅ [PRESS-0022] **One double-clickable file per system, built by CI from the first release.**
   PyInstaller packages Pressless into one file per system. It does not
   cross-compile, so the Windows file must be produced by a Windows runner:
   releases go through GitHub Actions from the very first one, not later
@@ -738,6 +738,13 @@ while the stakes are zero. Holds S2, S3, S4.
   Not yet run anywhere: the release workflow, and all of the Windows half.
   Their first run is the first tag, which follows the rest of v0.1.0.
   Stays in progress until then, and until the staged Windows box run.
+  Shipped (2026-09-17) for what is built and proven: paths.py, the
+  self-check, the flag list, both build scripts, the release workflow and
+  the Linux AppImage, proven locally. Split by the user's decision: the
+  first release run and the Windows evidence are PRESS-0120, because this
+  item could close only after a release and the release check refuses
+  notes citing an unfinished item. The release workflow now publishes the
+  version's CHANGELOG section as its notes.
   Kind: package.
   Source: design-2026-08-24 § The stack, ADR-0004.
   Lanes: Packaging.
@@ -796,6 +803,23 @@ while the stakes are zero. Holds S2, S3, S4.
   **Layman:** Drop a file with the wrong sort of name into the folder and the app may stop building the site, or quietly ignore it -- nothing says which.
   Kind: investigate.
   Source: review-contract 2026-09-06 PRESS-0005 loop 2, two lanes.
+
+- 📋 [PRESS-0120] **The first release run and the Windows test box prove both downloadable programs.**
+  Split from PRESS-0022 by the user (2026-09-17), because that item
+  could only close after a release and the release check refuses notes
+  citing an unfinished item. What remains is evidence, not code:
+  - the release workflow's first run, on the v0.1.0 tag, goes green on
+    both jobs and publishes an AppImage and a zip;
+  - the Windows job's suite passes, the first time this project's tests
+    run on Windows (ADR-0004);
+  - the zip, unpacked on the staged Windows box that has no Python,
+    self-checks (PRESS-0022 INV-7's Windows evidence).
+  A red job is fixed in a patch release; the v0.1.0 tag is never moved.
+  Blocked-by: nothing.
+  **Layman:** The two downloadable programs have been built on Linux but never run on Windows; the first release is where that is finally checked.
+  Kind: test.
+  Source: user-decision-2026-09-17, split from PRESS-0022.
+  Lanes: Packaging.
 
 ## 0.2.0 — it reaches the live site
 

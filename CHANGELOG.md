@@ -12,9 +12,6 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
-(Nothing yet. Scaffolding is not a release — the first dated section
-appears once something has actually shipped.)
-
 ### Added
 
 - **The Builder turns his files into the finished site folder** (PRESS-0008)

@@ -1,0 +1,17 @@
+{
+  "$why": "Pressless's release recipe (cut-release). pyproject.toml holds the only version line: scripts/freeze_flags.py and the release workflow's tag check both read it from there (PRESS-0022 section 4.4).",
+  "version_source": "pyproject.toml",
+  "version_pattern": "(?m)^version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\"",
+  "files": [
+    {
+      "path": "pyproject.toml",
+      "pattern": "\nversion = \"{OLD}\"\n",
+      "replace": "\nversion = \"{NEW}\"\n"
+    }
+  ],
+  "tag": "v{NEW}",
+  "todos": [
+    "Close [Unreleased] into [{NEW}] - {TODAY}: changelog_log op:\"release\" version:\"{NEW}\" date:\"{TODAY}\""
+  ],
+  "post_check": "v=$(python3 scripts/freeze_flags.py version) && grep -Eq \"^## \\[$v\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\\$\" CHANGELOG.md"
+}

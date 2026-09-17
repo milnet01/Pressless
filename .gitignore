@@ -40,6 +40,8 @@ desktop.ini
 # Team-shared Claude Code config that SHOULD be in version control:
 !.claude/settings.json
 !.claude/workflow.md
+# The release recipe: releases.md § 1 wants the version lines recorded.
+!.claude/bump.json
 
 # Logs / runtime
 *.log
