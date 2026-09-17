@@ -139,6 +139,9 @@ with `urllib.parse.quote(name, safe="")`.
 leave `into` as it was (§4.8). A `StoreError` or `StoreNotice` the Store
 raises passes through unchanged, so the Face's sentences for them apply.
 
+`preview`, `STYLESHEETS` and `BODY_CLASS` are added by
+`docs/specs/PRESS-0012-editor.md` § 4.2.
+
 ### 4.2 What is built
 
 - **Entries.** `store.list_slugs(folder, draft=False)`, each read with

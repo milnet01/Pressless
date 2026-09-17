@@ -1,6 +1,7 @@
 # PRESS-0012 — The editor: the box, the real page beside it, and changes kept apart until he publishes
 
-**Status:** draft (2026-09-17).
+**Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
+verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0012 (`docs/design.md` § The parts, § State;
 discovery S2, S7, S10).
@@ -59,7 +60,10 @@ version is untouched until PRESS-0013 publishes them.
    Decided by the user 2026-09-17.
 6. **A new entry is dated when he first publishes it.** Decided by the user
    2026-09-17, and PRESS-0013 sets it. Until then a draft holds the moment he
-   made it, because the Store requires a date.
+   made it, because the Store requires a date. **This item writes no marker**:
+   PRESS-0013 dates every draft it publishes that is not a working copy. An
+   entry undo turns back into a draft would be dated again too, so keeping its
+   date is PRESS-0015's to mark.
 7. **The Builder addition is specified here**, with a pointer from PRESS-0008.
    Decided by the user 2026-09-17, as PRESS-0021 added `settings.check`.
 8. **(decided here) His work saves itself** about a second after he stops
@@ -136,6 +140,7 @@ document.
 # src/pressless/builder.py — added
 
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
+BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 
 def preview(folder: Path, settings: Settings, into: Path, entry: Entry, *,
             photo_src: PhotoSrc) -> str: ...
@@ -157,8 +162,8 @@ change=entry)` writes at that path (INV-4).
   it did not make, write into `<into>.pressless-new`, then swap. So each
   preview replaces the last, and `into` holds only that page.
 
-`page` links `STYLESHEETS` rather than naming them, so the editor links what
-the Builder links.
+`page` links `STYLESHEETS`, and `entry_page` writes the body in `BODY_CLASS`,
+rather than naming them, so the editor uses what the Builder uses.
 
 ### 4.3 Added to the Face
 
@@ -256,6 +261,9 @@ registered with `publishing=False`.
 | `GET /preview/…` | `within(folder / PREVIEW_FOLDER)` |
 | `GET /originals/<name>` | `store.photograph_path_for(folder, name)` |
 
+Every `POST` body is `application/x-www-form-urlencoded`, read with
+`urllib.parse.parse_qs`, as setup's is.
+
 `GET /` replaces the page PRESS-0011 put there. The originals route asks the
 Store where a photograph sits, so the Face never composes a Store path (design
 rule 7).
@@ -313,7 +321,7 @@ stops the frame loading an address outside Pressless (§ 3 decision 4).
   https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
   (a start tag whose tag name is "textarea").
 - The page links `builder.STYLESHEETS` under `/preview/`, and the box takes the
-  class the Builder gives an entry's body, so he types in the site's own font.
+  class `builder.BODY_CLASS`, so he types in the site's own font.
 - A draft that is not a working copy shows its address and a Change address
   button. A working copy shows a Throw away changes button, and says its
   changes are not on the site yet. A published entry says his changes stay on
@@ -321,8 +329,10 @@ stops the frame loading an address outside Pressless (§ 3 decision 4).
 
 **Its script.** About a second after the last change to any field, it posts
 `/save`. It never has two saves in flight; a change made during one is saved
-after it. It saves on `pagehide` too, with `keepalive`, unless a save is already
-in flight; what he typed during that save is then lost (§ 6). After each reply it
+after it. On `pagehide` it saves an unsaved change, with `keepalive`, unless a
+save is already in flight; what he typed during that save is then lost (§ 6).
+Opening an entry and leaving it unchanged saves nothing, so it makes no working
+copy. After each reply it
 takes the new `slug`, `draft` and `base`, shows the preview or the failure, and
 replaces the address bar's `slug` without reloading. A reply that is not 200
 stops the saving and shows its body. Every value placed in the page is escaped
@@ -388,8 +398,8 @@ The order means an interruption leaves two copies, never none. The reply is
 ### 4.10 Throwing away a working copy
 
 Fields: `slug`, `base`. Under the lock, `ChangedElsewhere` unless `slug` is a
-working copy whose digest equals `base`. Then `store.move_to_bin` on it. The
-published entry is not touched.
+working copy whose digest equals `base`, answered as § 4.8's failures are.
+Then `store.move_to_bin` on it. The published entry is not touched.
 
 ### 4.11 What the editor never does
 
@@ -401,6 +411,7 @@ published entry is not touched.
 - It never keeps an entry in memory between requests (`docs/design.md`
   § State).
 - It never rewrites a built page before serving it.
+- It never hands `preview-assets/` to the Builder or the Publisher.
 
 ## 5. Invariants
 
@@ -551,9 +562,10 @@ made with `store.write_html`.
 - **INV-18** — Every editor route sits behind the Face's boundary.
   *Test:* `test_the_editor_sits_behind_the_faces_boundary`. `GET /`, a preview
   file and `POST /save` without the cookie answer 403. `POST /save` with a
-  foreign `Origin` answers 403 and writes nothing.
+  foreign `Origin` answers 403 and writes nothing. The same `POST /save` with
+  the cookie and the Face's own `Origin` then saves.
   *Breaks when:* the editor serves through anything but `add_page` and
-  `add_files`.
+  `add_files`. The last request then gets 404 and nothing is saved.
 
 `ChangedElsewhere` and `TooManyCopies` each get a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` walks the package
@@ -659,18 +671,20 @@ mutation-probed once the code lands.
 - `docs/specs/PRESS-0011-face.md` § 4.1 and § 4.5 — `Reply`, `add_files`,
   `within` and `FILES_POLICY` are added, and `/` becomes the list; the sections
   point here.
-- `docs/specs/PRESS-0008-builder.md` § 4.1 — `preview` and `STYLESHEETS` are
-  added; the section points here.
+- `docs/specs/PRESS-0008-builder.md` § 4.1 — `preview`, `STYLESHEETS` and
+  `BODY_CLASS` are added; the section points here.
 - `docs/specs/PRESS-0007-import.md` § 10 — the row "That the preview copy is
-  never published" is caught by INV-6 here.
+  never published" stays **nothing**: the editor hands `preview-assets/` to no
+  build or publish (§ 4.11), and no test here can see a later part that did.
 - `docs/specs/PRESS-0005-store.md` § 9 — a new entry's address is § 4.1's
   `address_for` and `free_address`.
 - `docs/specs/PRESS-0004-marks.md` § 4.1 — the Face's address rule is
   `editor.photo_src`.
 - PRESS-0013 — calls `editor.register`; publishes a working copy over the
-  entry `Replaces` names, without that field, and bins the copy; dates a new
-  entry at its first publish.
-- PRESS-0015 — a working copy is a draft, so undo leaves it alone.
+  entry `Replaces` names, without that field, and bins the copy; dates every
+  other draft at its first publish (§ 3 decision 6).
+- PRESS-0015 — a working copy is a draft, so undo leaves it alone. An entry
+  undo turns back into a draft needs a mark, or PRESS-0013 dates it again.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log

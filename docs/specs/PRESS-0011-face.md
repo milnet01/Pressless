@@ -111,6 +111,9 @@ class Face:
 `folder` is Pressless's own folder, from `paths.ensure(paths.own_folder())`.
 The Face writes the log there and opens it for the Open folder button.
 
+`Reply`, `add_files`, `within` and `FILES_POLICY` are added by
+`docs/specs/PRESS-0012-editor.md` § 4.3, which also replaces the page at `/`.
+
 ### 4.2 The error contract
 
 **Every failure type the package defines has its own entry in `SENTENCES`,
