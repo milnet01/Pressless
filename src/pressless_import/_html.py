@@ -46,8 +46,9 @@ _KNOWN = (_PARAGRAPHS | _MEDIA
           | {"#root", "br", "strong", "b", "em", "i", "span", "a", "img", "figure",
              "blockquote", "source"})
 # The attributes §4.3's table reads. `style` is read wherever a colour may
-# sit, and figure's class is what marks an embed.
-_USED = {"a": {"href"}, "img": {"src"}, "figure": {"class"}, "source": {"src"},
+# sit, and figure's class is what marks an embed. An img's alt is not carried
+# but listed with its picture, so _picture reads it (decision 13).
+_USED = {"a": {"href"}, "img": {"src", "alt"}, "figure": {"class"}, "source": {"src"},
          **{tag: {"src"} for tag in _MEDIA}}
 
 
@@ -356,6 +357,13 @@ class _Converter:
         caption, self._caption = self._caption, None
         src = img.attrs.get("src", "").strip()
         name = self._by_address(src) if src else None
+        # Decision 13: the text and the picture it describes, one line per
+        # picture, so the maintainer can caption the few real ones by hand. An
+        # empty alt describes nothing and is not listed.
+        alt = " ".join(img.attrs.get("alt", "").split())
+        if alt:
+            where = name or (f"at {src}" if src else "with no address")
+            self.dropped.append(f"the alt text of the picture {where}: {alt}")
         if name is not None:
             mark = f"{{photo: {name} | {caption}}}" if caption else f"{{photo: {name}}}"
             blocks.block(("line", mark))

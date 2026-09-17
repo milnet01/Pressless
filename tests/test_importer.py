@@ -1,4 +1,4 @@
-# INV-1 to INV-4 and INV-6 to INV-10 for PRESS-0007 (Import), and INV-5's
+# INV-1 to INV-4 and INV-6 to INV-12 for PRESS-0007 (Import), and INV-5's
 # test of `visible_lines`. Pure: every export and every original is built in
 # the test, so this runs in CI. The archive halves of INV-2, INV-3, INV-5,
 # INV-6 and INV-7 live in test_importer_archive.py instead, because the export
@@ -101,18 +101,50 @@ def _export(*items: str) -> str:
     )
 
 
-def _world(tmp_path: Path, export_text: str, originals: dict[str, bytes] | None = None):
-    """The export file, an originals folder holding `originals`, and an INTO
-    that does not exist yet."""
+_HEADER = (
+    "<!-- A note for whoever edits this template. -->\n"
+    '  <header class="site">\n'
+    '    <h1><a href="{{UP}}index.html">A site</a></h1>\n'
+    '    <nav class="primary{{ANIM3}}" aria-label="Primary">\n'
+    '      <a href="{{UP}}index.html" data-nav="Home">Home</a>\n'
+    "    </nav>\n"
+    '    <hr class="rule">\n'
+    "  </header>\n"
+)
+_FOOTER = "<!-- Another note. -->\n  <footer>{{YEAR}}</footer>\n"
+
+
+def _files(root: Path, files: dict[str, str | bytes]):
+    root.mkdir(parents=True, exist_ok=True)
+    for relative, data in files.items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(data, bytes):
+            target.write_bytes(data)
+        else:
+            target.write_text(data, encoding="utf-8", newline="")
+
+
+def _world(tmp_path: Path, export_text: str, originals: dict[str, bytes] | None = None, *,
+           live_site: dict[str, str | bytes] | None = None,
+           templates: dict[str, str] | None = None):
+    """The export file, an originals folder holding `originals`, a live site
+    and a templates folder beside them (§4.9's smallest usable ones unless
+    given), and an INTO that does not exist yet."""
     export = tmp_path / "export.xml"
     export.write_text(export_text, encoding="utf-8")
     folder = tmp_path / "originals"
-    folder.mkdir()
-    for upload_path, data in (originals or {}).items():
-        target = folder / upload_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
+    _files(folder, originals or {})
+    _files(tmp_path / "live-site", live_site if live_site is not None else {
+        "index.html": "<p>home</p>\n", "assets/site.css": "body {}\n"})
+    _files(tmp_path / "templates", templates if templates is not None else {
+        "header.html": _HEADER, "footer.html": _FOOTER})
     return export, folder, tmp_path / "pressless-data"
+
+
+def _run(export: Path, originals: Path, into: Path):
+    """run(), handed the live site and templates _world put beside INTO."""
+    return run(export, originals, into.parent / "live-site", into.parent / "templates", into)
 
 
 def _whats(report, slug):
@@ -140,7 +172,7 @@ def test_every_carried_item_lands_once(tmp_path):
         _item(7, kind="nav_menu_item", slug="menu"),
     ), {"2012/05/a.jpg": b"a"})
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     assert store.list_slugs(into, draft=False) == ("published-one",), (
         f"only the published post belongs in published: "
@@ -177,7 +209,7 @@ def test_a_contested_slug_goes_to_the_live_address(tmp_path):
         _item(13, slug="con", title="a device name"),
     ))
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     live = store.read(store.path_for(into, "same", draft=False))
     assert live.title == "the live one", f"the published post keeps the live address: {live!r}"
@@ -214,7 +246,7 @@ def test_a_plain_body_is_written_as_it_is(tmp_path):
         _item(2, slug="marked", body="<p>converted</p>"),
     ))
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     written = store.read(store.path_for(into, "plain", draft=False)).body
     assert written == plain_body, f"a plain body is written byte for byte: {written!r}"
@@ -381,7 +413,7 @@ def test_photographs_arrive_under_their_names(tmp_path):
         _item(1, slug="pictures", body=body),
     ), originals_bytes)
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     expected = {"2012-05-a.jpg": "2012/05/a.jpg", "2013-06-A.JPG": "2013/06/A.JPG",
                 "b.jpg": "2013/06/b.jpg"}
@@ -430,7 +462,7 @@ def test_comments_follow_their_entry(tmp_path):
         ]),
     ))
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     draft_comments = store.read_comments(store.comments_path_for(into, "same-31"))
     assert [(c.identifier, c.parent) for c in draft_comments] == [("101", ""), ("102", "101")], (
@@ -455,7 +487,7 @@ def test_comments_follow_their_entry(tmp_path):
 def _stops(tmp_path, export, originals, into):
     before = sorted(p.name for p in tmp_path.iterdir())
     with pytest.raises(ImportStopped):
-        run(export, originals, into)
+        _run(export, originals, into)
     after = sorted(p.name for p in tmp_path.iterdir())
     assert after == before, f"a stopped import leaves nothing behind: {before!r} -> {after!r}"
 
@@ -475,7 +507,8 @@ def test_nothing_is_made_when_it_stops(tmp_path, capsys):
     assert [p.name for p in into.iterdir()] == ["keep.txt"], "an existing INTO is not changed"
 
     # main says why it stopped, exits 1, and names no full path.
-    assert main([str(export), str(originals), str(into)]) == 1
+    assert main([str(export), str(originals), str(existing / "live-site"),
+                 str(existing / "templates"), str(into)]) == 1
     said = capsys.readouterr()
     assert str(tmp_path) not in said.out + said.err, (
         f"main's words never name a full filesystem path: {said!r}"
@@ -508,15 +541,24 @@ def test_nothing_is_made_when_it_stops(tmp_path, capsys):
 def test_what_is_dropped_is_reported(tmp_path):
     """INV-9: what Import could not convert is in Report.dropped, by entry.
 
-    Breaks when an unknown tag is removed without a record (spec §5)."""
+    Breaks when an unknown tag is removed without a record, or an `alt` is
+    listed without its text or its picture (spec §5)."""
     body = (
         "<table><tr><td>cell</td></tr></table>"
         '<p class="lead" style="font-size:2em">big</p>'
         '<!-- wp:social-link {"url":"https://social.example.org/me","service":"x"} /-->'
+        # Resized addresses, so a line naming the address cannot pass for one
+        # naming the Store name.
+        f'<img alt="a harbour at dusk" src="{UPLOADS}/2012/05/a-300x200.jpg">'
+        f'<img alt="the rehearsal room" src="{UPLOADS}/2012/05/b-1024x768.jpg">'
     )
-    export, originals, into = _world(tmp_path, _export(_item(40, slug="tabled", body=body)))
+    export, originals, into = _world(tmp_path, _export(
+        _item(41, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+        _item(42, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+        _item(40, slug="tabled", body=body),
+    ), {"2012/05/a.jpg": b"a", "2012/05/b.jpg": b"b"})
 
-    report = run(export, originals, into)
+    report = _run(export, originals, into)
 
     written = store.read(store.path_for(into, "tabled", draft=False)).body
     assert "cell" in written and "big" in written, f"the words are kept: {written!r}"
@@ -527,6 +569,152 @@ def test_what_is_dropped_is_reported(tmp_path):
         assert any(word in what for what in whats), (
             f"{word!r} must be listed against its entry: {report.dropped!r}"
         )
+    # Decision 13: each alt is listed with its text and its picture's Store
+    # name, one line per picture, so the maintainer can caption it by hand.
+    for alt, name in (("a harbour at dusk", "a.jpg"), ("the rehearsal room", "b.jpg")):
+        assert any(alt in what and name in what for what in whats), (
+            f"the alt {alt!r} must be listed with {name}: {report.dropped!r}"
+        )
+    assert sum("alt" in what for what in whats) == 2, (
+        f"one line per picture, and the attribute not listed a second time: {whats!r}"
+    )
+
+
+# ----------------------------------------------------------- INV-11 -------
+
+_INDEX = (
+    "<!doctype html>\n"
+    '<link rel="stylesheet" href="assets/site.css?v=0123abcd">\n'
+    '<link rel="alternate" href="https://elsewhere.example.org/feed?v=12ab">\n'
+    "<body>\n"
+    '  <!-- HEADER:START page="Home" animate nonav -->\n'
+    "  <header>yesterday's header</header>\n"
+    "  <!-- HEADER:END -->\n"
+    "<main>his words, and a ?v=1234 in them</main>\n"
+    "\t<!-- FOOTER:START -->\n"
+    "\t<footer>yesterday's footer</footer>\n"
+    "\t<!-- FOOTER:END -->\n"
+    "<script src='assets/site.js?v=89ef'></script>\n"
+)
+_INDEX_CARRIED = (
+    "<!doctype html>\n"
+    '<link rel="stylesheet" href="assets/site.css">\n'
+    '<link rel="alternate" href="https://elsewhere.example.org/feed?v=12ab">\n'
+    "<body>\n"
+    '  <!-- HEADER:START page="Home" animate nonav -->\n'
+    "  <!-- HEADER:END -->\n"
+    "<main>his words, and a ?v=1234 in them</main>\n"
+    "\t<!-- FOOTER:START -->\n"
+    "\t<!-- FOOTER:END -->\n"
+    "<script src='assets/site.js'></script>\n"
+)
+_ABOUT = (
+    '<link rel="stylesheet" href="../assets/site.css?v=0123abcd">\r\n'
+    '<!-- HEADER:START page="About" --><nav>old</nav>\r\n'
+    '    <!--HEADER:END-->\r\n'
+    "<p>about him</p>\r\n"
+)
+_ABOUT_CARRIED = (
+    '<link rel="stylesheet" href="../assets/site.css">\r\n'
+    '<!-- HEADER:START page="About" -->\n'
+    '    <!--HEADER:END-->\r\n'
+    "<p>about him</p>\r\n"
+)
+
+
+def test_fixed_pages_and_furniture_come_across(tmp_path):
+    """INV-11: each fixed page is the live page with its marker pairs emptied
+    and its stamps removed, and nothing else changed; and `header` with
+    `navigation` put back in place of {{NAVIGATION}} equals today's header
+    template.
+
+    Breaks when text between the markers survives, a stamp is left, a byte
+    outside the markers changes, or the navigation is cut short (spec §5)."""
+    site = {"index.html": _INDEX, "pages/about.html": _ABOUT, "other.html": "<p>not a page</p>",
+            "assets/site.css": "body {}\n"}
+    export, originals, into = _world(tmp_path, _export(_item(1, slug="one")), live_site=site)
+
+    report = _run(export, originals, into)
+
+    assert report.pages == ("about", "index"), f"the pages carried, sorted: {report.pages!r}"
+    assert store.list_html(into, store.PAGES_FOLDER) == ("about", "index"), (
+        "only index.html and pages/<name>.html are fixed pages"
+    )
+    for name, expected in (("index", _INDEX_CARRIED), ("about", _ABOUT_CARRIED)):
+        carried = store.read_html(store.html_path_for(into, store.PAGES_FOLDER, name))
+        assert carried == expected, f"{name}: markers emptied, stamps removed, nothing else"
+
+    furniture = {name: store.read_html(store.html_path_for(into, store.FURNITURE_FOLDER, name))
+                 for name in store.FURNITURE_NAMES}
+    assert furniture["footer"] == _FOOTER, "the footer template, as it is"
+    assert "<nav" not in furniture["header"], "the navigation is cut out of the header"
+    assert "\n{{NAVIGATION}}\n" in furniture["header"], "and a line of its own stands in for it"
+    assert furniture["navigation"].startswith("    <nav class=") and \
+        furniture["navigation"].endswith("</nav>"), (
+        f"the navigation is the element, indentation and all: {furniture['navigation']!r}"
+    )
+    rebuilt = furniture["header"].replace("{{NAVIGATION}}", furniture["navigation"])
+    assert rebuilt == _HEADER, "putting the navigation back gives the template byte for byte"
+
+
+@pytest.mark.parametrize("site, templates, why", [
+    ({"pages/x.html": '<!-- HEADER:START page="X" -->\n<p>x</p>\n'}, None, "a START with no END"),
+    ({"pages/x.html": "<p>x</p>\n<!-- FOOTER:END -->\n"}, None, "an END with no START"),
+    ({"pages/x.html": "<!-- HEADER:START -->\n<!-- FOOTER:END -->\n"}, None,
+     "an END of the other kind"),
+    ({"pages/index.html": "<p>again</p>\n"}, None, "the name index taken twice"),
+    ({"pages/sub/deep.html": "<p>deep</p>\n"}, None, "a file under pages/ that is no page"),
+    ({"pages/notes.txt": "a note\n"}, None, "a file under pages/ that is no page"),
+    ({}, {"header.html": "<header></header>\n", "footer.html": _FOOTER}, "a header with no nav"),
+    ({}, {"header.html": _HEADER + _HEADER, "footer.html": _FOOTER}, "a header with two navs"),
+    ({"index.html": None}, None, "a live site with no index.html"),
+    ({"assets/site.css": None}, None, "a live site with no assets/"),
+])
+def test_a_site_that_cannot_be_carried_stops_import(tmp_path, site, templates, why):
+    """INV-11, §4.9 and §6: each of these stops Import, and nothing is made."""
+    live = {"index.html": "<p>home</p>\n", "assets/site.css": "body {}\n"}
+    live.update(site)
+    live = {path: data for path, data in live.items() if data is not None}
+    export, originals, into = _world(tmp_path, _export(_item(1, slug="one")),
+                                     live_site=live, templates=templates)
+    before = sorted(p.name for p in tmp_path.iterdir())
+    with pytest.raises(ImportStopped) as stopped:
+        _run(export, originals, into)
+    assert sorted(p.name for p in tmp_path.iterdir()) == before, f"{why}: nothing is made"
+    assert str(tmp_path) not in str(stopped.value), f"{why}: the message names no full path"
+
+
+# ----------------------------------------------------------- INV-12 -------
+
+
+def test_the_site_assets_are_copied_for_previews(tmp_path):
+    """INV-12: INTO/<PREVIEW_ASSETS>/ holds every file of the live assets/
+    folder byte for byte, and nothing from outside it; and PREVIEW_ASSETS is
+    preview-assets.
+
+    Breaks when a file is left out, or the name changes after a folder has
+    been handed over, so the Face finds no copy and every preview loses its
+    look (spec §5)."""
+    # The name is written out here, never imported from paths: shared, the test
+    # would compare paths against itself (the project CLAUDE.md, INV-5 there).
+    from pressless import paths
+    assert paths.PREVIEW_ASSETS == "preview-assets", "every handed folder binds to this name"
+
+    assets = {"assets/site.css": "body {}\n", "assets/img/deep/logo.png": b"\x89PNG\x00\xff",
+              "assets/fonts/a.woff2": b"\x00\x01"}
+    site = {"index.html": "<p>home</p>\n", "robots.txt": "User-agent: *\n", **assets}
+    export, originals, into = _world(tmp_path, _export(_item(1, slug="one")), live_site=site)
+
+    _run(export, originals, into)
+
+    copy = into / "preview-assets"
+    held = sorted(path.relative_to(copy).as_posix() for path in copy.rglob("*") if path.is_file())
+    assert held == sorted(path.removeprefix("assets/") for path in assets), (
+        f"the copy holds what assets/ holds and nothing else: {held!r}"
+    )
+    for path in assets:
+        assert (copy / path.removeprefix("assets/")).read_bytes() == \
+            (tmp_path / "live-site" / path).read_bytes(), f"{path} byte for byte"
 
 
 # ----------------------------------------------------------- INV-10 -------
@@ -547,7 +735,7 @@ _ALLOWED_IMPORTS = {
     "re", "sys", "unicodedata",
     "urllib", "urllib.parse",           # decoding a slug and an address -- never fetching
     "xml", "xml.etree", "xml.etree.ElementTree",  # the export
-    "pressless", "pressless.marks", "pressless.store",
+    "pressless", "pressless.marks", "pressless.paths", "pressless.store",
 }
 
 

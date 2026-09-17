@@ -4,8 +4,7 @@
 
 **State:** 5 — Building. **In flight:** `PRESS-0022` (built and proven on
 Linux locally; the release workflow and the Windows half first run at the
-first tag), and `PRESS-0007` (Import built; its fixed pages and furniture
-wait on PRESS-0008's spec). What is done is deliberately not listed here: `roadmap_query`
+first tag). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
@@ -69,8 +68,9 @@ present and executable**. Those two decide whether anything is gated at all;
 `ants.gate.docsGlob` only decides which checks run.
 
 **Machine-local git config keys, and a fresh clone has none of them.**
-The two below belong here; `ants.pressless.archive` and
-`ants.pressless.originals` have their own paragraph further down, and
+The two below belong here; `ants.pressless.archive`,
+`ants.pressless.originals`, `ants.pressless.liveSite` and
+`ants.pressless.templates` have their own paragraphs further down, and
 `ants.pressless.leakPatterns` sits with the leak sweep.
 
 ```bash
@@ -127,12 +127,16 @@ PRESSLESS_ARCHIVE=<path to the WordPress export> python3 -m pytest
 ```
 
 `tests/test_importer_archive.py` proves Import against the same export
-(PRESS-0007). Its INV-6 and INV-7 tests run the whole import, so they
-also need the photograph originals, held the same way; its INV-2 and
-INV-3 tests need the sibling generator; INV-5's needs the export alone:
+(PRESS-0007). Its INV-6, INV-7 and INV-11 tests run the whole import, so
+they also need the photograph originals, the live site's folder and
+today's header and footer templates, each held the same way; its INV-2
+and INV-3 tests need the sibling generator; INV-5's needs the export
+alone:
 
 ```bash
 git config ants.pressless.originals /path/to/originals
+git config ants.pressless.liveSite /path/to/the/live/site
+git config ants.pressless.templates /path/to/the/templates
 ```
 
 **Two test results mean less than they look.** `test_marks_is_pure`

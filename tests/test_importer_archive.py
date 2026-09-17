@@ -13,8 +13,9 @@
 """§7: Import over the real export.
 
 Each test skips only where what it reads is absent: PRESSLESS_ARCHIVE for
-all of them, PRESSLESS_ORIGINALS for the ones that run the whole import, and
-today's generator for INV-2's and INV-3's, which compare against it. Anything
+all of them; PRESSLESS_ORIGINALS, PRESSLESS_LIVE_SITE and PRESSLESS_TEMPLATES
+for the ones that run the whole import; and today's generator for INV-2's and
+INV-3's, which compare against it. Anything
 present and unusable fails, as the other archive tests do.
 """
 from __future__ import annotations
@@ -33,10 +34,13 @@ from _archive_oracle import load_generator
 
 from pressless import store
 from pressless.marks import render
+from pressless.paths import PREVIEW_ASSETS
 from pressless_import import convert, is_markup, resolve_slug, run, visible_lines
 
 PRESSLESS_ARCHIVE = os.environ.get("PRESSLESS_ARCHIVE")
 PRESSLESS_ORIGINALS = os.environ.get("PRESSLESS_ORIGINALS")
+PRESSLESS_LIVE_SITE = os.environ.get("PRESSLESS_LIVE_SITE")
+PRESSLESS_TEMPLATES = os.environ.get("PRESSLESS_TEMPLATES")
 
 pytestmark = pytest.mark.archive
 
@@ -47,6 +51,11 @@ needs_archive = pytest.mark.skipif(
 needs_originals = pytest.mark.skipif(
     not PRESSLESS_ORIGINALS,
     reason="PRESS-0007: set PRESSLESS_ORIGINALS to the photograph originals to run this",
+)
+needs_site = pytest.mark.skipif(
+    not (PRESSLESS_LIVE_SITE and PRESSLESS_TEMPLATES),
+    reason="PRESS-0007: set PRESSLESS_LIVE_SITE and PRESSLESS_TEMPLATES to the live site's "
+           "folder and today's templates to run this",
 )
 
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
@@ -163,8 +172,11 @@ def imported(tmp_path_factory):
     since it holds a copy of every original and pytest keeps old temp folders."""
     originals = Path(PRESSLESS_ORIGINALS)
     assert originals.is_dir(), "PRESSLESS_ORIGINALS is set and does not name a folder"
+    live_site, templates = Path(PRESSLESS_LIVE_SITE), Path(PRESSLESS_TEMPLATES)
+    assert live_site.is_dir(), "PRESSLESS_LIVE_SITE is set and does not name a folder"
+    assert templates.is_dir(), "PRESSLESS_TEMPLATES is set and does not name a folder"
     into = tmp_path_factory.mktemp("import") / "pressless-data"
-    report = run(Path(PRESSLESS_ARCHIVE), originals, into)
+    report = run(Path(PRESSLESS_ARCHIVE), originals, live_site, templates, into)
     print(
         f"carried: {report.published} published, {report.drafts} drafts, "
         f"{report.comments} comments, {report.photographs} photographs; "
@@ -260,6 +272,7 @@ def test_no_line_is_lost():
 
 @needs_archive
 @needs_originals
+@needs_site
 def test_every_picture_resolves(imported):
     """INV-6, archive half: every original is in the photographs folder byte
     for byte, every picture mark names a file there, and no traced picture
@@ -298,6 +311,7 @@ def test_every_picture_resolves(imported):
 
 @needs_archive
 @needs_originals
+@needs_site
 def test_no_address_reaches_the_folder(imported):
     """INV-7, archive half: no value the export carries in a commenter's email
     or IP field reaches any file Import writes. The values are never printed,
@@ -312,7 +326,52 @@ def test_no_address_reaches_the_folder(imported):
                 if value:
                     values.add(value.encode("utf-8"))
     assert values, "the export carries no contact value, so this run would prove nothing"
-    files = [path for path in into.rglob("*") if path.is_file()]
+    # Only what Import writes from the export. The fixed pages, furniture and
+    # preview copy are the live site's own files, carried as they are
+    # (decision 10), and the site's published contact address can equal a
+    # commenter's -- the spec's INV-7 scopes them out for that reason.
+    from_the_live_site = {store.PAGES_FOLDER, store.FURNITURE_FOLDER, PREVIEW_ASSETS}
+    files = [path for path in into.rglob("*") if path.is_file()
+             and path.relative_to(into).parts[0] not in from_the_live_site]
     hits = sum(1 for path in files for value in values if value in path.read_bytes())
     print(f"contact values searched for: {len(values)}; files searched: {len(files)}")
     assert not hits, f"{hits} contact value(s) reached a file Import wrote -- not printed"
+
+
+# ----------------------------------------------------------- INV-11 -------
+
+_STAMPED = re.compile(r"""assets/[^"'\s?#]*\?v=[0-9a-fA-F]+["']""")
+_PAIR = re.compile(r"<!--\s*(HEADER|FOOTER):START[^>]*?-->(.*?)<!--\s*\1:END\s*-->", re.S)
+
+
+@needs_archive
+@needs_originals
+@needs_site
+def test_the_live_pages_come_across(imported):
+    """INV-11, archive half: over today's live site and templates, every page
+    §4.9 names is carried, no stamp and nothing between a marker pair's
+    comments but whitespace remains, and the header puts back to its
+    template. Pages are named, their contents never printed."""
+    into, report = imported
+    live_site, templates = Path(PRESSLESS_LIVE_SITE), Path(PRESSLESS_TEMPLATES)
+    expected = {"index"} | {path.stem for path in (live_site / "pages").glob("*.html")}
+    assert report.pages == tuple(sorted(expected)), f"pages carried: {report.pages!r}"
+    for name in report.pages:
+        page = store.read_html(store.html_path_for(into, store.PAGES_FOLDER, name))
+        pairs = _PAIR.findall(page)
+        assert pairs, f"the page {name} carries no marker pair"
+        assert all(not between.strip() for _kind, between in pairs), (
+            f"the page {name} keeps text between a marker pair's comments"
+        )
+        assert not _STAMPED.search(page), f"the page {name} keeps a stamp"
+
+    def furniture(name):
+        return store.read_html(store.html_path_for(into, store.FURNITURE_FOLDER, name))
+
+    template = (templates / "header.html").read_bytes().decode("utf-8")
+    assert "<nav" not in furniture("header"), "the navigation is cut out of the header"
+    assert furniture("header").replace("{{NAVIGATION}}", furniture("navigation")) == template, (
+        "the header puts back to its template byte for byte"
+    )
+    assert furniture("footer") == (templates / "footer.html").read_bytes().decode("utf-8")
+    print(f"fixed pages carried: {len(report.pages)}")

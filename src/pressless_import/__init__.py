@@ -31,6 +31,7 @@ from urllib.parse import unquote, urlparse
 
 from pressless import store
 from pressless.marks import render
+from pressless.paths import PREVIEW_ASSETS
 
 from ._html import Lookup, convert, is_markup, visible_lines
 
@@ -62,6 +63,7 @@ class Report:
     photographs: int
     renamed_slugs: tuple[tuple[str, str], ...]        # (wanted, given)
     renamed_photographs: tuple[tuple[str, str], ...]  # (upload path, Store name)
+    pages: tuple[str, ...]                            # the fixed pages carried, sorted
     dropped: tuple[Dropped, ...]
 
 
@@ -74,6 +76,12 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 _RESIZED = re.compile(r"-\d+x\d+(?=\.[^./]+$)")
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
 _UPLOADS = "/uploads/"
+
+# §4.9, matched as today's generator matches them.
+_START = re.compile(r"<!--\s*(HEADER|FOOTER):START[^>]*?-->")
+_ANY_END = re.compile(r"<!--\s*(?:HEADER|FOOTER):END\s*-->")
+_STAMP = re.compile(r"""(["'](?:\.\./)*assets/[^"'\s?#]*)\?v=[0-9a-fA-F]+(?=["'])""")
+_NAV = re.compile(r'[ \t]*<nav class="primary.*?</nav>\n', re.S)
 
 
 def resolve_slug(raw: str, post_id: str) -> str:
@@ -327,18 +335,109 @@ def _differences(body: str, text: str) -> list[str]:
 # ------------------------------------------------------------- the run ----
 
 
+# ------------------------------------ fixed pages and furniture (§4.9) ----
+
+
+def _read_text(path: Path, shown: str) -> str:
+    try:
+        return path.read_bytes().decode("utf-8")
+    except OSError as exc:
+        raise ImportStopped(
+            f"{shown} could not be read: {exc.strerror or type(exc).__name__}") from None
+    except UnicodeDecodeError:
+        raise ImportStopped(f"{shown} is not UTF-8") from None
+
+
+def _empty_markers(text: str, shown: str) -> str:
+    """Each marker pair emptied: what lies between a START's `-->` and the
+    next END of its kind becomes a newline and the spaces and tabs in front of
+    that END. Both comments stay as written."""
+    out, pos = [], 0
+    while True:
+        start = _START.search(text, pos)
+        before = start.start() if start else len(text)
+        if _ANY_END.search(text, pos, before):
+            raise ImportStopped(f"{shown} has a marker END with no START before it")
+        if start is None:
+            out.append(text[pos:])
+            return "".join(out)
+        kind = start.group(1)
+        end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(text, start.end())
+        if end is None:
+            raise ImportStopped(f"{shown} has a {kind}:START with no {kind}:END after it")
+        between = text[start.end():end.start()]
+        indent = re.search(r"[ \t]*\Z", between).group(0)
+        out.append(text[pos:start.end()] + "\n" + indent + end.group(0))
+        pos = end.end()
+
+
+def _fixed_pages(live_site: Path) -> dict[str, str]:
+    """index.html as `index` and each pages/<name>.html as `<name>`, markers
+    emptied and stamps removed. Anything else under pages/ stops Import: pages
+    is the Builder's, so the first publish would not keep it."""
+    index = live_site / "index.html"
+    if not index.is_file():
+        raise ImportStopped("the live site's folder holds no index.html")
+    if not (live_site / "assets").is_dir():
+        raise ImportStopped("the live site's folder holds no assets folder")
+    found = {"index": index}
+    pages = live_site / "pages"
+    if pages.is_dir():
+        for path in sorted(pages.rglob("*")):
+            if path.is_dir():
+                continue
+            shown = path.relative_to(live_site).as_posix()
+            if path.parent != pages or path.suffix != store.HTML_SUFFIX:
+                raise ImportStopped(
+                    f"{shown} is not a fixed page, and the first publish would not keep it")
+            if path.stem in found:
+                raise ImportStopped(f"{shown} would take the name {path.stem} twice")
+            found[path.stem] = path
+    return {
+        name: _STAMP.sub(r"\1", _empty_markers(
+            _read_text(path, path.relative_to(live_site).as_posix()),
+            path.relative_to(live_site).as_posix()))
+        for name, path in found.items()
+    }
+
+
+def _furniture(templates: Path) -> dict[str, str]:
+    """The footer as it is, and the header with its navigation cut out into
+    `navigation`, a line of `{{NAVIGATION}}` standing in for it."""
+    texts = {}
+    for name in ("header", "footer"):
+        path = templates / f"{name}{store.HTML_SUFFIX}"
+        if not path.is_file():
+            raise ImportStopped(f"the templates folder holds no {path.name}")
+        texts[name] = _read_text(path, path.name)
+    navs = list(_NAV.finditer(texts["header"]))
+    if len(navs) != 1:
+        raise ImportStopped(
+            f"header.html holds {'no' if not navs else 'more than one'} navigation element")
+    nav = navs[0]
+    header = texts["header"]
+    return {
+        "header": header[:nav.start()] + "{{NAVIGATION}}\n" + header[nav.end():],
+        "navigation": nav.group(0)[:-1],
+        "footer": texts["footer"],
+    }
+
+
 def _old_site(channel, ns) -> str:
     base = (_field(channel, "base_blog_url", ns) or _field(channel, "base_site_url", ns)
             or (channel.findtext("link") or "").strip())
     return urlparse(base).netloc
 
 
-def run(export: Path, originals: Path, into: Path) -> Report:
+def run(export: Path, originals: Path, live_site: Path, templates: Path,
+        into: Path) -> Report:
     """§4.7, in order: refuse an INTO that exists; read the export and resolve
-    every slug; trace every picture and check every original; convert every
-    markup body; write it all into a new folder beside INTO; and rename that
-    folder to INTO only once every write has succeeded."""
+    every slug; trace every picture and check every original, and read the
+    fixed pages and templates (§4.9); convert every markup body; write it all
+    into a new folder beside INTO; and rename that folder to INTO only once
+    every write has succeeded."""
     export, originals, into = Path(export), Path(originals), Path(into)
+    live_site, templates = Path(live_site), Path(templates)
     if into.exists() or into.is_symlink():
         raise ImportStopped(f"{into.name} already exists, and Import only makes a new folder")
 
@@ -347,6 +446,8 @@ def run(export: Path, originals: Path, into: Path) -> Report:
     renamed_slugs = _resolve(items)
     names, by_address, by_id = _photographs(channel, ns, originals)
     old_site = _old_site(channel, ns)
+    pages = _fixed_pages(live_site)
+    furniture = _furniture(templates)
 
     bodies = {}
     for item in items:
@@ -380,6 +481,14 @@ def run(export: Path, originals: Path, into: Path) -> Report:
             target = store.photograph_path_for(work, name)
             target.parent.mkdir(exist_ok=True)
             shutil.copyfile(originals / upload_path, target)
+        for kind, texts in ((store.PAGES_FOLDER, pages), (store.FURNITURE_FOLDER, furniture)):
+            for name, text in texts.items():
+                doing = f"the {kind} file {name}"
+                store.write_html(work, kind, name, text)
+        # Decision 12: the preview copy, byte for byte. The Face serves it and
+        # never publishes it.
+        doing = "the preview copy of assets"
+        shutil.copytree(live_site / "assets", work / PREVIEW_ASSETS)
         doing = f"the folder {into.name}"
         if into.exists():
             raise ImportStopped(f"{into.name} appeared while Import was writing")
@@ -401,6 +510,7 @@ def run(export: Path, originals: Path, into: Path) -> Report:
         comments=sum(len(item.comments) for item in items),
         photographs=len(names),
         renamed_slugs=tuple(renamed_slugs),
+        pages=tuple(sorted(pages)),
         renamed_photographs=tuple(
             (upload_path, name) for upload_path, name in names.items()
             if name != upload_path.rsplit("/", 1)[-1]
@@ -416,6 +526,7 @@ def _describe(report: Report, into: str) -> str:
         f"Import made {into}: {report.published} published, {report.drafts} drafts, "
         f"{report.comments} comments, {report.photographs} photographs."
     ]
+    lines.append(f"Fixed pages carried: {', '.join(report.pages)}.")
     if report.renamed_slugs:
         lines.append("Slugs renamed, the live address keeping its own:")
         lines.extend(f"  {wanted} -> {given}" for wanted, given in report.renamed_slugs)
@@ -429,15 +540,16 @@ def _describe(report: Report, into: str) -> str:
 
 
 def main(argv: list[str]) -> int:
-    """python -m pressless_import EXPORT ORIGINALS INTO: prints the report and
-    exits 0, or prints why it stopped and exits 1."""
-    if len(argv) != 3:
-        print("usage: python -m pressless_import EXPORT ORIGINALS INTO", file=sys.stderr)
+    """python -m pressless_import EXPORT ORIGINALS LIVE_SITE TEMPLATES INTO:
+    prints the report and exits 0, or prints why it stopped and exits 1."""
+    if len(argv) != 5:
+        print("usage: python -m pressless_import EXPORT ORIGINALS LIVE_SITE TEMPLATES INTO",
+              file=sys.stderr)
         return 1
     try:
-        report = run(Path(argv[0]), Path(argv[1]), Path(argv[2]))
+        report = run(*(Path(arg) for arg in argv))
     except ImportStopped as exc:
         print(f"Import stopped: {exc}", file=sys.stderr)
         return 1
-    print(_describe(report, Path(argv[2]).name))
+    print(_describe(report, Path(argv[4]).name))
     return 0

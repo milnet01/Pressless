@@ -145,6 +145,22 @@ if [[ -z ${PRESSLESS_ORIGINALS-} ]]; then
         printf 'note: ants.pressless.originals is set but that folder is missing\n'
     fi
 fi
+# The whole import also reads the live site's folder and today's header and
+# footer templates (PRESS-0007 §7), which identify the writer and stay out of
+# this repository the same way:
+#   git config ants.pressless.liveSite /path/to/the/live/site
+#   git config ants.pressless.templates /path/to/the/templates
+for pair in "PRESSLESS_LIVE_SITE liveSite" "PRESSLESS_TEMPLATES templates"; do
+    set -- $pair
+    if [[ -z ${!1-} ]]; then
+        folder=$(git config --get "ants.pressless.$2" || true)
+        if [[ -n $folder && -d $folder ]]; then
+            export "$1=$folder"
+        elif [[ -n $folder ]]; then
+            printf 'note: ants.pressless.%s is set but that folder is missing\n' "$2"
+        fi
+    fi
+done
 
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.

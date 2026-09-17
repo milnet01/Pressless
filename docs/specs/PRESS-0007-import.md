@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11, all but decision 10's fixed pages and furniture. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget: four verified, four fixed, not converged.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11; decisions 10, 12 and 13 built 2026-09-17. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget: four verified, four fixed, not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -429,8 +429,10 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
 
 - **INV-7** — Every comment §4.6 carries is in its entry's comments file,
   with `0` read as top level, and no value from a commenter's email or IP
-  field reaches any file Import writes. A body is carried verbatim, as
-  PRESS-0006 INV-4 says.
+  field reaches any file Import writes from the export. A body is carried
+  verbatim, as PRESS-0006 INV-4 says. The fixed pages, furniture and preview
+  copy come from the live site, where the site's own published contact
+  address can equal a commenter's, so the check does not search them.
   *Test:* `tests/test_importer.py::test_comments_follow_their_entry` —
   a reply, a top-level comment and a contact address in the fixture.
   `tests/test_importer_archive.py::test_no_address_reaches_the_folder`.

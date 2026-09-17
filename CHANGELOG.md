@@ -25,14 +25,15 @@ appears once something has actually shipped.)
   refused, and the refusal names the setting without quoting it.
 
 - **Import carries the WordPress archive into Pressless's own files, once** (PRESS-0007)
-  `python -m pressless_import EXPORT ORIGINALS INTO` makes a new
-  Pressless-data folder holding every entry, draft, comment and
-  photograph, or makes nothing at all. WordPress-HTML entries become
-  marks, the lines a reader sees checked against the original. Whatever
-  could not be carried as written is listed, entry by entry, for the
-  maintainer to read before handing the folder over. The fixed pages and
-  furniture follow once PRESS-0008 settles how a page is parted from its
-  header and footer.
+  `python -m pressless_import EXPORT ORIGINALS LIVE_SITE TEMPLATES INTO`
+  makes a new Pressless-data folder holding every entry, draft, comment,
+  photograph, fixed page and furniture file, plus a copy of the site's
+  `assets/` for previews, or makes nothing at all. WordPress-HTML entries
+  become marks, the lines a reader sees checked against the original.
+  Whatever could not be carried as written is listed, entry by entry,
+  for the maintainer to read before handing the folder over -- each
+  picture's alt text included, so the few real descriptions can be
+  captioned by hand.
 
 - **Marks gains a link mark and a quote mark** (PRESS-0004)
   `{link: address}words{/}` makes a link. The address must be one http

@@ -23,6 +23,13 @@ from pathlib import Path
 # with the Pressless/ folder the Windows zip unpacks beside it).
 FOLDER_NAME = "Pressless-data"
 
+# The preview copy of the live site's assets/, inside that folder. Owned by
+# docs/specs/PRESS-0007-import.md decision 12: Import writes it once and the
+# Face serves it for previews, and it lives here because this module imports
+# nothing of Pressless's, so neither of those two depends on the other. Every
+# handed folder binds to it, so it is as pinned as FOLDER_NAME (INV-12 there).
+PREVIEW_ASSETS = "preview-assets"
+
 # Honoured only when NOT frozen, so a stray value in the writer's environment
 # can never move his writing (INV-4). It is how the suite and a development run
 # get a folder at all.
