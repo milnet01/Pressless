@@ -36,7 +36,7 @@ What is missing is the part you would see and click.
 What comes next, in order:
 
 1. **Setup** — you paste in your GitHub key once and type a few facts
-   about your site. Being designed now.
+   about your site. Built; you will reach it once the next step arrives.
 2. **Writing and publishing** — the editor, the preview and the Publish
    button. This is the first version you could actually use.
 3. **Undo**, then **editing your other pages**, then **photographs and

@@ -1109,3 +1109,59 @@ def test_a_save_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeypa
     with pytest.raises(OSError):
         # An open descriptor answers fstat; a closed one raises EBADF.
         os.fstat(handed[0])
+
+
+# ----------------------------------------------------- PRESS-0021 INV-11 ----
+
+# Each shape refusal, as the key it must name, the file override that makes
+# load() refuse, and the Settings field values that make check() refuse. The
+# keys are written out rather than read from the module (the FILE_NAME rule
+# above): shared, they would compare check() against itself.
+_SHAPE_REFUSALS = [
+    ("site_folder", {"site_folder": "site"}, {"site_folder": Path("site")}),
+    ("repository", {"repository": "ownername"}, {"repository": "ownername"}),
+    ("site_name", {"site_name": " "}, {"site_name": " "}),
+    ("site_address", {"site_address": "ftp://example.org"},
+     {"site_address": "ftp://example.org"}),
+    ("untouchable", {"untouchable": ["assets/css"]}, {"untouchable": ("assets/css",)}),
+    ("untouchable", {"untouchable": [7]}, {"untouchable": (7,)}),
+    ("credentials", {"credentials": {"store": "vault", "github_account": "g"}},
+     {"credentials": Credentials(store="vault", github_account="g", google_account=None)}),
+    ("analytics_property_id", {"analytics_property_id": "G-ABC123"},
+     {"analytics_property_id": "G-ABC123"}),
+]
+
+
+@pytest.mark.parametrize(("key", "on_disk", "in_memory"), _SHAPE_REFUSALS)
+def test_check_refuses_what_load_refuses(tmp_path, key, on_disk, in_memory):
+    """PRESS-0021 INV-11: check() and load() refuse the same shapes, and a
+    shape refusal names its key.
+
+    Breaks when a rule is removed from check() but kept inline in load(), or
+    when `key` names the wrong field. Setup builds a Settings in memory and
+    calls check() on it, so a rule living only in load() lets setup save a
+    file the next launch refuses."""
+    _write(tmp_path, _valid_mapping())
+    valid = load(tmp_path)
+    settings_module.check(valid)
+
+    with pytest.raises(SettingsError) as refused:
+        settings_module.check(dataclasses.replace(valid, **in_memory))
+    assert refused.value.key == key
+
+    _write(tmp_path, _valid_mapping(**on_disk))
+    with pytest.raises(SettingsError) as loaded:
+        load(tmp_path)
+    assert loaded.value.key == key
+
+
+def test_a_refusal_of_the_file_itself_names_no_key(tmp_path):
+    """PRESS-0021 § 4.1: a refusal of the file -- its JSON, its version, a
+    missing or mistyped field -- carries `key` None, so setup never reads one
+    as a refused answer."""
+    for broken in ("{not json", _valid_mapping(version=2),
+                   _valid_mapping(repository=_ABSENT), _valid_mapping(site_name=3)):
+        _write(tmp_path, broken)
+        with pytest.raises(SettingsError) as refused:
+            load(tmp_path)
+        assert refused.value.key is None, broken

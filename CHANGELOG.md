@@ -12,6 +12,17 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Setup asks for the publishing key once, and the same page reopens as Settings.** (PRESS-0021)
+  Anyone can set up, with or without writing brought in: type the
+  repository, the site's name and address, and the key. Pressless
+  checks them with GitHub before saving anything, keeps the key where
+  only this computer's account can read it, and works out which files
+  on the site it must leave alone. The Daily Prompt filter is now an
+  optional field. The page is reached once writing and publishing
+  arrive (PRESS-0013).
+
 ## [0.1.1] - 2026-09-17
 
 ### Changed

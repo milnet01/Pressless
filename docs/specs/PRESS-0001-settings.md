@@ -121,9 +121,11 @@ class Credentials:
 def load(folder: Path) -> Settings: ...
 def save(folder: Path, settings: Settings) -> None: ...
 def path_for(folder: Path) -> Path: ...      # folder / "settings.json"
+def check(settings: Settings) -> None: ...   # the shape rules load applies (PRESS-0021 § 4.1)
 
 class NotSetUp(Exception): ...               # no file yet -- run setup
 class SettingsError(Exception): ...          # a file we will not act on
+    key: str | None                          # the key a shape refusal names (PRESS-0021 § 4.1)
 class SettingsNotice(UserWarning): ...       # said, not raised -- INV-8
 ```
 

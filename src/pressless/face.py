@@ -66,9 +66,6 @@ def _say(what: str, next_step: str, site: Site = Site.UNCHANGED) -> Sentence:
 
 
 _AGAIN = "Try again. If it keeps happening, send the details below to whoever helps you."
-_PUBLISH_AGAIN = (
-    "Click Publish again. If it keeps happening, send the details below to whoever helps you."
-)
 
 # Keyed by the class object, never its name: publisher and insights both define
 # Unreachable, Refused and RateLimited (§ 4.2). Each Publisher type's next step
@@ -102,8 +99,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     builder.SiteFolderUnusable: _say(
         "Pressless could not write the folder your site is built into.",
-        "Check the site folder in Settings, then try again. If it keeps happening, "
-        "send the details below to whoever helps you.",
+        _AGAIN,
     ),
     insights.InsightsError: _say(
         "Google sent back an answer Pressless could not use.",
@@ -145,16 +141,15 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     settings.SettingsError: _say(
         "Pressless could not read its settings.",
-        "Go through setup again. If this keeps happening, send the details below to "
-        "whoever helps you.",
+        "Pressless changed nothing in them. Send the details below to whoever helps you.",
     ),
     publisher.PublishError: _say(
         "GitHub answered in a way Pressless did not expect.",
-        _PUBLISH_AGAIN,
+        _AGAIN,
     ),
     publisher.Unreachable: _say(
         "Pressless could not reach GitHub.",
-        "Check your internet connection and click Publish again.",
+        "Check your internet connection and try again.",
     ),
     publisher.OutcomeUnknown: _say(
         "Pressless lost touch with GitHub while your site was being updated.",
@@ -164,7 +159,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.Refused: _say(
         "GitHub would not accept your publishing key.",
-        "Enter your publishing key again in Settings, then click Publish again.",
+        "Enter your publishing key again in Settings, then try again.",
     ),
     publisher.RepositoryMissing: _say(
         "GitHub could not find your site's repository.",
@@ -172,15 +167,16 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.Conflict: _say(
         "Your site on GitHub changed while Pressless was publishing.",
-        "Click Publish again.",
+        "Try again.",
     ),
     publisher.TooLarge: _say(
         "Something you are publishing is larger than GitHub accepts.",
-        "Remove or shrink the largest file you added, then click Publish again.",
+        "If you added a large file, remove or shrink it. Then try again, and if it keeps "
+        "happening, send the details below to whoever helps you.",
     ),
     publisher.RateLimited: _say(
         "GitHub asked Pressless to slow down.",
-        "Wait a while, then click Publish again.",
+        "Wait a while, then try again.",
     ),
     publisher.NoPreviousState: _say(
         "There is no earlier version of your site to go back to.",
@@ -188,7 +184,8 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.SiteFolderMissing: _say(
         "Pressless could not find the folder your site is built into.",
-        "Check the site folder in Settings, then click Publish again.",
+        "Build your site again, then click Publish again. If it keeps happening, send the "
+        "details below to whoever helps you.",
     ),
     publisher.StrayFile: _say(
         "Your site folder holds a file Pressless did not make.",
@@ -204,7 +201,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.RemoteStateMissing: _say(
         "Something Pressless needed from GitHub was not there.",
-        "Click Publish again.",
+        "Try again.",
     ),
     FolderNotOpened: _say(
         "Pressless could not open the folder.",

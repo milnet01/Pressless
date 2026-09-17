@@ -86,7 +86,17 @@ class SettingsNotice(UserWarning):
 
 
 class SettingsError(Exception):
-    """A settings file we will not act on."""
+    """A settings file we will not act on.
+
+    `key` names the top-level setting a shape refusal refuses, and is None for
+    a refusal of the file itself -- its reading, its JSON, its version, a
+    missing or mistyped field. Setup reads it to tell a refused answer from a
+    file it must leave alone (PRESS-0021 § 4.1).
+    """
+
+    def __init__(self, message: str, key: str | None = None) -> None:
+        super().__init__(message)
+        self.key = key
 
 
 def _why(exc: OSError) -> str:
@@ -164,74 +174,12 @@ def load(folder: Path) -> Settings:
     daily_prompt_filter = _required(raw, "daily_prompt_filter", str, target)
     untouchable = _required(raw, "untouchable", list, target)
     credentials = _required(raw, "credentials", dict, target)
-
-    for index, entry in enumerate(untouchable):
-        if not isinstance(entry, str):
-            raise SettingsError(
-                f"untouchable[{index}] is "
-                f"{type(entry).__name__}, not a name"
-            )
-        # Shape, not merely type (§4.3). PRESS-0009 §4.4 matches an entry
-        # against a path's FIRST segment, so one naming a path inside a
-        # directory protects nothing -- not even itself -- while reading as
-        # configured. A trailing slash is left alone: it names one root
-        # entry unambiguously, and the Publisher ignores it (PRESS-0044).
-        if not entry.rstrip("/") or "/" in entry.rstrip("/"):
-            raise SettingsError(
-                f"untouchable[{index}] is {entry!r}, which is not "
-                "a repository-root name; an entry naming a path inside a "
-                "directory protects nothing"
-            )
-
     store = _required(credentials, "store", str, target, "credentials.")
     github_account = _required(credentials, "github_account", str, target, "credentials.")
     google_account = _optional(credentials, "google_account", str, target, "credentials.")
-
-    # Shape, not merely type. `repository`, `store` and `site_folder` are
-    # contracts other parts read: a str holding "ownername", "vault" or
-    # "site" is present and correctly typed, and the part that meets it
-    # later has less to say about it than this one does (§4.3).
-    if not Path(site_folder).is_absolute():
-        raise SettingsError(
-            "site_folder is not an absolute path"
-        )
-    owner, _, name = repository.partition("/")
-    # The character check subsumes the second-slash one that stood here: "/"
-    # is not a name character either (PRESS-0066).
-    if not owner or not name or not _NAME_CHARS.issuperset(owner + name):
-        raise SettingsError(
-            "repository is not \"owner/name\""
-        )
-    # Shape, like repository. Both identify the site, so each refusal names the
-    # key and never quotes the value (§4.3).
-    if not site_name.strip() or "\n" in site_name or "\r" in site_name:
-        raise SettingsError("site_name is empty or holds a line break")
-    if not _SITE_ADDRESS.fullmatch(site_address):
-        raise SettingsError(
-            "site_address is not an absolute http or https address the "
-            "sitemap can carry"
-        )
-    if store not in _STORES:
-        raise SettingsError(
-            f"credentials.store is {store!r}, not one of "
-            f"{' or '.join(repr(s) for s in _STORES)}"
-        )
     analytics_property_id = _optional(raw, "analytics_property_id", str, target)
-    # Shape, like the three above. §4.2 fixes this as the numeric property id
-    # and says the G-... tag is a different identifier that fails every fetch,
-    # so a pasted tag reached Google as a 404 the writer could not read
-    # (PRESS-0056). isascii() as well, because isdigit() is true of full-width
-    # and superscript digits, which Google's URL is not.
-    if analytics_property_id is not None and not (
-        analytics_property_id.isascii() and analytics_property_id.isdigit()
-    ):
-        raise SettingsError(
-            f"analytics_property_id is {analytics_property_id!r}, "
-            "not the numeric property id; the tag in the site's footer is a "
-            "different identifier and fails every fetch"
-        )
 
-    return Settings(
+    loaded = Settings(
         site_folder=Path(site_folder),
         repository=repository,
         site_name=site_name,
@@ -245,6 +193,84 @@ def load(folder: Path) -> Settings:
         ),
         analytics_property_id=analytics_property_id,
     )
+    check(loaded)
+    return loaded
+
+
+def check(settings: Settings) -> None:
+    """Refuse a Settings whose values have a shape no other part can use.
+
+    Every shape rule load() applies lives here and only here, so setup can
+    check the answers it is about to save against the rules the next launch
+    reads them with (PRESS-0021 § 4.1). Raises SettingsError naming the
+    top-level key it refuses. Stops at the first refusal.
+    """
+    for index, entry in enumerate(settings.untouchable):
+        if not isinstance(entry, str):
+            raise SettingsError(
+                f"untouchable[{index}] is "
+                f"{type(entry).__name__}, not a name",
+                "untouchable",
+            )
+        # Shape, not merely type (§4.3). PRESS-0009 §4.4 matches an entry
+        # against a path's FIRST segment, so one naming a path inside a
+        # directory protects nothing -- not even itself -- while reading as
+        # configured. A trailing slash is left alone: it names one root
+        # entry unambiguously, and the Publisher ignores it (PRESS-0044).
+        if not entry.rstrip("/") or "/" in entry.rstrip("/"):
+            raise SettingsError(
+                f"untouchable[{index}] is {entry!r}, which is not "
+                "a repository-root name; an entry naming a path inside a "
+                "directory protects nothing",
+                "untouchable",
+            )
+
+    # Shape, not merely type. `repository`, `store` and `site_folder` are
+    # contracts other parts read: a str holding "ownername", "vault" or
+    # "site" is present and correctly typed, and the part that meets it
+    # later has less to say about it than this one does (§4.3).
+    if not Path(settings.site_folder).is_absolute():
+        raise SettingsError(
+            "site_folder is not an absolute path", "site_folder"
+        )
+    owner, _, name = settings.repository.partition("/")
+    # The character check subsumes the second-slash one that stood here: "/"
+    # is not a name character either (PRESS-0066).
+    if not owner or not name or not _NAME_CHARS.issuperset(owner + name):
+        raise SettingsError(
+            "repository is not \"owner/name\"", "repository"
+        )
+    # Shape, like repository. Both identify the site, so each refusal names the
+    # key and never quotes the value (§4.3).
+    site_name = settings.site_name
+    if not site_name.strip() or "\n" in site_name or "\r" in site_name:
+        raise SettingsError("site_name is empty or holds a line break", "site_name")
+    if not _SITE_ADDRESS.fullmatch(settings.site_address):
+        raise SettingsError(
+            "site_address is not an absolute http or https address the "
+            "sitemap can carry",
+            "site_address",
+        )
+    store = settings.credentials.store
+    if store not in _STORES:
+        raise SettingsError(
+            f"credentials.store is {store!r}, not one of "
+            f"{' or '.join(repr(s) for s in _STORES)}",
+            "credentials",
+        )
+    # Shape, like the three above. §4.2 fixes this as the numeric property id
+    # and says the G-... tag is a different identifier that fails every fetch,
+    # so a pasted tag reached Google as a 404 the writer could not read
+    # (PRESS-0056). isascii() as well, because isdigit() is true of full-width
+    # and superscript digits, which Google's URL is not.
+    property_id = settings.analytics_property_id
+    if property_id is not None and not (property_id.isascii() and property_id.isdigit()):
+        raise SettingsError(
+            f"analytics_property_id is {property_id!r}, "
+            "not the numeric property id; the tag in the site's footer is a "
+            "different identifier and fails every fetch",
+            "analytics_property_id",
+        )
 
 
 def save(folder: Path, settings: Settings) -> None:

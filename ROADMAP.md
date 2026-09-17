@@ -1012,7 +1012,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
 
-- 📋 [PRESS-0021] **Setup asks for the publishing key once; the same page reopens as Settings.**
+- ✅ [PRESS-0021] **Setup asks for the publishing key once; the same page reopens as Settings.**
   He is asked for his publishing key exactly once, during setup, and never
   sees it again in normal use. Claims S5.
   Reading Analytics is a separate Google authorisation, so setup grows a
@@ -1068,6 +1068,16 @@ Publish again after fixing it works. Holds S1, S5, S6.
   the Store, and the Daily Prompt filter is an optional form field
   (INV-5 rewritten, INV-15 added). One review loop, the amendment
   budget: two verified, two fixed. Ready to build.
+  Resolved (2026-09-17): built test-first. src/pressless/setup.py,
+  settings.check with SettingsError.key, and the Face sentence changes
+  of section 4.8. tests/test_setup.py carries INV-1 to INV-10 and
+  INV-12 to INV-15, red against a NotImplementedError stub first;
+  tests/test_settings.py carries INV-11. Mutation-probed: 29 mutations
+  across both files, all killed with exit 1; the one survivor (the
+  printable half of the key rule) got two more test inputs and was then
+  killed. Full local gate green. Not yet checked: the real keyring
+  prompt on the Windows box, which needs the page wired to a launch
+  (PRESS-0013).
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
@@ -1624,7 +1634,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: review-contract 2026-09-11 discovery.md loop 1, lane 3.
   Lanes: Publisher, Face.
 
-- 📋 [PRESS-0124] **Four places the design serves only the first writer, decided before setup is built.**
+- ✅ [PRESS-0124] **Four places the design serves only the first writer, decided before setup is built.**
   The user, 2026-09-17: Pressless is built for general users as well
   as the first writer, so no design should cater only for him. Found the
   same day, each NOT yet decided -- ask the user, recommendation first:
@@ -1676,6 +1686,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
      unpublishing entries, and undo, still publish.
   7. A GitHub repository with no commits may stop setup. Filed to test
      later (PRESS-0127).
+  Resolved (2026-09-17): every fork decided and acted on. design.md
+  rule 9 and the PRESS-0021 spec amended and gated one loop each
+  (commits 6c9609b, 1b01f55); README reworded; PRESS-0125, PRESS-0126
+  and PRESS-0127 filed.
   **Layman:** Someone starting Pressless fresh, with no blog to bring in, must be able to set it up and use it too.
   Kind: investigate.
   Source: user-direction-2026-09-17.
