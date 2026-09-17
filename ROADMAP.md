@@ -331,7 +331,7 @@ while the stakes are zero. Holds S2, S3, S4.
   Source: design-2026-08-24 § Where the fixed pages live.
   Lanes: Store.
 
-- 🚧 [PRESS-0007] **Import carries twelve years across, once, and declines nothing it could not get back.**
+- ✅ [PRESS-0007] **Import carries twelve years across, once, and declines nothing it could not get back.**
   The WordPress export becomes Store files: every published post with its title, slug, date, categories and tags; the drafts and the private posts as drafts, because they are his writing and he never deleted them; the trashed ones skipped, because he did. The published comments with commenter names only -- email addresses and IP addresses must never
   enter the Store at all.
   The Daily Prompt entries come across WITH their tag. Filtering here
@@ -406,6 +406,14 @@ while the stakes are zero. Holds S2, S3, S4.
   Marks amendment is owed. After the one-time import the maintainer adds a
   caption by hand to the few pictures whose alt text was a real
   description. The assets/ copy for previews still stands.
+  Shipped (2026-09-17): the spec was amended for decision 10's fixed
+  pages and furniture, decision 12's preview copy of assets/ (named by
+  pressless.paths.PREVIEW_ASSETS) and decision 13's alt listing, then gated
+  for one loop (four verified, four fixed), and built test-first. Over the
+  real export, originals, live site and templates every archive test
+  passes. INV-7 was narrowed while building to files written from the
+  export, since the carried footer holds the site's own contact address.
+  Next, the maintainer runs Import once after PRESS-0008 is built.
   **Layman:** A one-time job that turns his 616 WordPress entries into files -- and carries everything, because it only ever runs once.
   Kind: implement.
   Source: design-2026-08-24 § What Import brings across.
@@ -1521,6 +1529,10 @@ is not on the live site. Holds S7, S10.
   a copy of the live assets/ folder that Import writes into Pressless's own
   folder; the Face serves it for previews and it is never published
   (PRESS-0008 section 14).
+  Progress (2026-09-17): Import now writes the preview copy of the live
+  assets/ folder into Pressless's own folder under the name
+  pressless.paths.PREVIEW_ASSETS (PRESS-0007 decision 12). The Face reads
+  the name there rather than writing it out, and never publishes the copy.
   **Layman:** He types into a box that already looks like the finished page, so what he sees is what he gets.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § State.
