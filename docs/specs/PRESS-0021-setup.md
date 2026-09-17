@@ -1,6 +1,7 @@
 # PRESS-0021 — Setup: the publishing key once, and the same page as Settings
 
-**Status:** spec draft (2026-09-17).
+**Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
+verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0021 (`docs/design.md` § What may depend on what,
 ADR-0003, discovery S5).
@@ -66,7 +67,8 @@ publishing key, derives the untouchable list, and saves Settings last.
    one copy of the shape rules (§ 2 item 3).
 7. **(decided here) A refused answer is not a failure.** Nothing happened, so
    it is shown beside its field and not logged. Everything that happens after
-   the answers are accepted is shown through `Face.fail`.
+   the answers are accepted is shown through `Face.fail`, except a repository
+   GitHub cannot find (§ 4.6 step 2).
 8. **(decided here) This item wires no double-click.** PRESS-0013 replaces
    `pressless.__main__` and calls `setup.register` (PRESS-0011 § 3
    decision 6).
@@ -129,7 +131,9 @@ A `StoreError` from the listing is shown through `Face.fail` too, and no form
 is offered.
 
 **A `site_folder` refusal is a file carried from another machine.**
-PRESS-0001 § 4.2 says so, and says the other machine runs setup.
+PRESS-0001 § 4.2 says so, and says the other machine runs setup. First run
+writes § 4.5's first-run values over that file, the Google fields included:
+`load` refused it, so nothing in it is read.
 
 ### 4.3 The form
 
@@ -163,8 +167,8 @@ and GitHub's refusal comes back as `Refused`.
 
 **A refused answer** re-renders the form with the other answers filled in, a
 hint beside the refused field, and an empty key box. `check` stops at its
-first refusal, so a second is found on the next submission. Nothing is written, no
-request is made, and nothing is logged.
+first refusal, so a second is found on the next submission. Nothing is written
+and nothing is logged. No request is made, except for § 4.6 step 2's refusal.
 
 ### 4.5 The candidate `Settings`
 
@@ -194,7 +198,12 @@ through `Face.fail` and ends the request.
 1. **The key in hand.** The key he typed. On Settings with an empty key box,
    `credentials.read(saved store, folder, saved github_account)`.
 2. **Ask GitHub.** `publisher.root_entries(candidate, key, transport)`. The
-   untouchable list is `untouchable(entries)`.
+   untouchable list is `untouchable(entries)`. **A `publisher.RemoteStateMissing`
+   here is a refused `repository` answer**, not a failure: `root_entries`
+   first reads the repository's `commits/HEAD`, and `_names_the_repository`
+   sends a 404 on that address to `RemoteStateMissing`, never to
+   `RepositoryMissing`. The hint says GitHub has no repository by that name
+   that this key can reach.
 3. **Choose the store — first run only.** `credentials.choose()`. Settings
    keeps the saved store and never asks again (PRESS-0002 § 4.2).
 4. **Store the key — only when he typed one.**
@@ -236,8 +245,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
   Pressless changed nothing in its settings, and to send the details to
   whoever helps him.
 - `publisher.SiteFolderMissing` and `builder.SiteFolderUnusable` stop naming
-  a site-folder setting, which this page does not have. Their next step is to
-  open Settings and save it, which rewrites `site_folder` (§ 4.5).
+  a site-folder setting, which this page does not have.
 - **Every sentence a `root_entries` failure can reach names a next step that
   also holds on this page.** Today several end *"then click Publish again"*,
   and setup has no Publish button. They say *"try again"* instead.
@@ -248,10 +256,10 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 - It never saves a settings file with a list it did not derive.
 - It never writes over a settings file `load` refused, unless the refusal's
   `key` is `site_folder` (§ 4.2).
-- It never calls `credentials.choose` once a settings file exists.
+- It never calls `credentials.choose` once a settings file loads.
 - It never runs Import (`docs/design.md` rule 9).
 - It never touches `google_account`, `analytics_property_id` or
-  `daily_prompt_filter` once they are saved.
+  `daily_prompt_filter` in a settings file that loads.
 
 ## 5. Invariants
 
@@ -270,7 +278,8 @@ Every fixture Store holds one published entry, except INV-5's. Without it
   and no call to `credentials.choose`.
   *Test:* `test_nothing_is_written_before_github_answers`. It submits a
   refused site address, then a key GitHub answers 401, then a repository
-  GitHub answers 404.
+  whose `commits/HEAD` GitHub answers 404. The last must re-render the form
+  with the repository hint.
   *Breaks when:* `credentials.write` or `choose` moves ahead of
   `root_entries`, or the address check is dropped and the form reaches
   GitHub.
@@ -278,8 +287,10 @@ Every fixture Store holds one published entry, except INV-5's. Without it
 - **INV-2** — The settings file is saved last. A failure at § 4.6 step 3 or 4
   leaves no settings file on first run, and the previous file byte-identical
   in Settings.
-  *Test:* `test_the_settings_file_is_written_last`, making `choose` raise
-  `CredentialError` and `write` raise `NoStore`.
+  *Test:* `test_the_settings_file_is_written_last`. First run, with `choose`
+  raising `CredentialError`, then with `write` raising `NoStore`. Then
+  Settings, with a new key typed and `write` raising `NoStore`, over a saved
+  file whose `untouchable` differs from the list the run derives.
   *Breaks when:* `save` runs before the key is stored.
 
 - **INV-3** — The derived list is the root minus `builder.ROOT_OUTPUT`,
@@ -298,7 +309,10 @@ Every fixture Store holds one published entry, except INV-5's. Without it
   offers no form and `POST /setup` changes nothing. With one refused for its
   `site_folder`, first run is offered.
   *Test:* `test_an_unreadable_settings_file_is_left_alone`, with a file whose
-  `version` is 2, then a file whose `site_folder` is relative.
+  `repository` is `"ownername"`, then a file whose `site_folder` is relative.
+  `save` accepts the first file, so only setup can protect it. The POST over
+  it must leave its bytes unchanged and record no request, no `choose` and no
+  `write`.
   *Breaks when:* every `SettingsError` from `load` is treated as `NotSetUp`,
   which writes over the first file; or none is, which leaves the second
   machine with no way to set up.
@@ -344,7 +358,8 @@ Every fixture Store holds one published entry, except INV-5's. Without it
 
 - **INV-10** — First run saves the values § 4.5 names, and the file loads.
   *Test:* `test_first_run_saves_a_file_that_loads`. It runs first run twice,
-  with the `choose` double answering `"keyring"` and then `"file"`.
+  each in a fresh folder, with the `choose` double answering `"keyring"` and
+  then `"file"`.
   Each time it asserts `settings.load(folder)` equals the expected
   `Settings`, with `site_folder` equal to `folder / "site"` written out
   rather than read from `SITE_FOLDER`.
@@ -392,7 +407,8 @@ Every fixture Store holds one published entry, except INV-5's. Without it
 | No published entry in the Store | `NoWriting` | nothing |
 | The settings file is unreadable | `SettingsError`, and no form | the file, untouched |
 | The settings file came from another machine | the first-run form | the file, until he saves |
-| GitHub is unreachable, refuses the key, or has no such repository | the Publisher's sentence | nothing new |
+| GitHub is unreachable, or refuses the key | the Publisher's sentence | nothing new |
+| GitHub has no such repository this key can reach | the form, with a hint on the repository | nothing new |
 | Any other failure from `root_entries` | its sentence | nothing new |
 | No keyring, on Windows or a mount without modes | `NoStore`, naming the key | nothing new |
 | The keyring is locked or broken | `CredentialError`, naming the key | nothing new |
