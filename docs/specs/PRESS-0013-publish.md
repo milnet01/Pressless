@@ -80,8 +80,15 @@ MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's addre
 
 class NothingToPublish(Exception): ...   # no published entry would remain
 
+@dataclass(frozen=True)
+class Published:
+    outcome: publisher.Outcome
+    copy_kept: bool          # § 4.3 step 5 could not bin the working copy
+
 def publish(folder: Path, settings: Settings, key: str, *, entry: str | None,
-            transport: publisher.Transport | None = None) -> publisher.Outcome: ...
+            emptying: bool = False,
+            capture: Callable[[], ContextManager[object]] = contextlib.nullcontext,
+            transport: publisher.Transport | None = None) -> Published: ...
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None) -> None: ...
 ```
@@ -89,7 +96,17 @@ def register(face: Face, folder: Path, *,
 `publish` is § 4.3's sequence from the Store move on. `entry` is the address
 of the draft to publish, or `None` to publish the site as the Store holds it.
 PRESS-0014 and PRESS-0128 call it with `None`. `register` adds
-`POST /publish`, with `publishing=True` (§ 4.5).
+`POST /publish`, with `publishing=False`: § 4.3 turns every failure an upload
+can leave unknown into `OutcomeUnknown`, which carries its own sentence.
+
+**`emptying` is true where the caller removed published entries on purpose** —
+PRESS-0128's delete and PRESS-0015's undo. The guard then does not run
+(`docs/design.md` rule 9: those publishes are what was asked for).
+
+**`capture` wraps every Store and Settings call `publish` makes, and never the
+upload.** The route passes `face.capture`. A capture holds a process-wide lock
+for as long as it runs (PRESS-0011 § 4.4), so one around a minutes-long upload
+would stall every other page.
 
 ```python
 # src/pressless/editor.py — added
@@ -101,7 +118,8 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]: ...
 
 `save` is PRESS-0012 § 4.8 steps 1 to 4, moved out of the route so publishing
 runs the same code. It returns the entry written and its new `base`, and raises
-what those steps raise. The editor's own routes take `LOCK` in place of the
+what those steps raise. **It takes no lock; its caller holds `LOCK`**, which
+cannot be taken twice. The editor's own routes take `LOCK` in place of the
 lock `register` made.
 
 `publishing.py` adds its type's sentence to `face.SENTENCES` when it is
@@ -116,25 +134,27 @@ imported, as `editor.py` does, because `face.py` cannot import it back.
 2. **Settings.** `settings.load(folder)`.
 3. **The key.** `credentials.read(store, folder, github_account)` from the
    loaded Settings.
-4. **Publish.** `publish(folder, settings, key, entry=<the saved address>)`.
+4. **Publish.** `publish(folder, settings, key, entry=<the saved address>,
+   capture=face.capture)`.
 
-Every Store and Settings call runs inside `face.capture()`.
+Steps 1 and 2 run inside `face.capture()`; step 4 passes it on.
 
 **A failure at steps 2 to 4 answers status 200 with JSON**, because the save
 at step 1 landed and the page needs its new address and `base`:
 
 ```json
-{"published": false, "slug": "…", "draft": true, "base": "…",
+{"published": false, "slug": "…", "draft": <bool>, "base": "…",
  "failure": "<fragment>", "notices": "<fragment>"}
 ```
 
-The fragment is `face.fail(failure, publishing=…, secret=setup.KEY)`, with
-`publishing` true only for a failure raised from `publisher.publish`. `slug`,
-`draft` and `base` name the file as § 4.3 left it.
+The fragment is `face.fail(failure, publishing=False, secret=setup.KEY)`.
+`slug`, `draft` and `base` name the file as § 4.3 left it: `draft` is false
+where the entry stayed published.
 
 **Success answers the same shape** with `"published": true`, `"failure":
 null`, the published entry's address, `"draft": false`, and the digest of its
-published file.
+published file. Where `copy_kept` is true, `notices` also says the waiting draft
+of his changes was left in place and can be thrown away.
 
 ### 4.3 The sequence
 
@@ -144,17 +164,23 @@ succeeded.
 1. **Move the entry**, where `entry` is not `None`. Read the draft at `entry`.
    - **A working copy** — a draft whose `Replaces` names a published entry.
      Remember that published entry as `store.read` gives it. Then write, as
-     published, the copy's fields under the address `Replaces` names, without
-     any `Replaces` field. The copy keeps its date, which is its entry's.
+     published, the copy's fields under the address `Replaces` names. The copy
+     keeps its date, which is its entry's.
    - **Any other draft.** Remember it as read. Write it with its date set to
      `_now()` with microseconds dropped, then `store.publish` it.
-2. **The guard.** `NothingToPublish` unless `store.list_slugs(folder,
-   draft=False)` is non-empty.
+
+   **Every entry this step writes as published carries no `Replaces` field.**
+   Left on an ordinary draft, it would make a later demoted copy of it read as
+   a working copy of another entry.
+2. **The guard**, unless `emptying`. `NothingToPublish` unless
+   `store.list_slugs(folder, draft=False)` is non-empty.
 3. **Build.** `builder.build(folder, settings, settings.site_folder)`.
 4. **Publish.** `publisher.publish(settings, settings.site_folder, key,
    MESSAGE.format(slug=…), transport)`, with the published address, or `site`
    where `entry` is `None`.
-5. **Finish.** Bin a working copy with `store.move_to_bin`.
+5. **Finish.** Bin a working copy with `store.move_to_bin`. **A failure here
+   never replaces the publish's result**: the copy stays, `copy_kept` is true,
+   and the route's reply says the waiting draft can be thrown away.
 
 `_now()` is a module-level function, so a test can set it.
 
@@ -167,10 +193,15 @@ decision 2):
 | any other draft | `store.unpublish`, then the remembered draft written back |
 
 **Two failures are not put back**: `publisher.OutcomeUnknown`, and any
-exception that is not a `publisher.PublishError`, raised from step 4. GitHub
-may have taken the change, so the entry stays published, step 5 runs, and the
-failure is raised after it. Its sentence says to publish again (PRESS-0011
-§ 4.2).
+exception that is not a `publisher.PublishError`, raised from step 4. **The
+second is raised as `publisher.OutcomeUnknown`**, its message naming only the
+original's type, so every caller reads one signal. GitHub may have taken the
+change, so the entry stays published, step 5 runs, and the `OutcomeUnknown` is
+raised after it whatever step 5 did. Its sentence says to publish again
+(PRESS-0011 § 4.2).
+
+**A put-back writes through the Store**, so a file he edited by hand comes back
+in the Store's own form (PRESS-0005 § 4.2), with the same fields and body.
 
 **A failure while putting back** is raised in place of the original, so he is
 told something is wrong with his files rather than only with GitHub.
@@ -228,7 +259,7 @@ does.
   builds and publishes in that order.
   *Test:* `test_a_draft_is_dated_and_published`. With `_now()` set, the draft
   of 2014 is published, its `Date` is `_now()`, `drafts/` no longer holds it,
-  and the fake transport's reference update names a tree carrying the entry's
+  and the tree the fake transport records being written carries the entry's
   page.
   *Breaks when:* the date is kept, the move is skipped, or the Publisher is
   handed a folder built before the move.
@@ -243,9 +274,9 @@ does.
 
 - **INV-3** — A definite failure puts his files back.
   *Test:* `test_a_failed_publish_puts_the_files_back`. For a draft and for a
-  working copy, the transport answers 401. After each, `published/` and
-  `drafts/` hold byte-identical files to before the click's step 4, and the
-  bin is empty. Then `builder.build` is made to raise `BuildStopped`, with the
+  working copy, the transport answers 401. After each, every file in
+  `published/` and `drafts/` reads back through `store.read` equal to before
+  `publish` was called, no other file is there, and the bin is empty. Then `builder.build` is made to raise `BuildStopped`, with the
   same result.
   *Breaks when:* the move is not put back, or is put back only for one of the
   two kinds.
@@ -267,7 +298,9 @@ does.
   *Test:* `test_publishing_nothing_is_refused`. `publish(…, entry=None)` over a
   Store with furniture and no published entry raises `NothingToPublish`, the
   site folder is not created, and the transport records no request.
-  *Breaks when:* the guard is dropped, or runs after the build.
+  With `emptying=True` the same call builds and publishes.
+  *Breaks when:* the guard is dropped, runs after the build, or ignores
+  `emptying`.
 
 - **INV-7** — The key never reaches a page, the log or the console.
   *Test:* `test_the_key_is_never_shown`, with a sentinel key, through a
@@ -296,8 +329,8 @@ does.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` finds it.
 
 `tests/test_main.py::test_the_double_click_takes_the_same_path` is
-re-fixtured to § 4.5: it replaces `face.serve` and `_wait`, and still asserts
-the first line.
+re-fixtured to § 4.5: it replaces `face.serve`, `webbrowser.open` and `_wait`,
+and still asserts the first line.
 
 ## 6. Failure modes
 
@@ -311,6 +344,7 @@ the first line.
 | GitHub may have taken it | the unknown-outcome sentence | the entry published |
 | Something unforeseen during the upload | the unknown-outcome sentence | the entry published |
 | Putting back fails | the Store's failure | whatever the failure left; nothing is deleted |
+| The copy cannot be binned after a publish | success, and a note that the waiting draft can be thrown away | the entry published and the copy still in `drafts/` |
 | No published entry would remain | `NothingToPublish` | nothing moved |
 | He closes the console mid-publish | nothing | the entry published or not, as far as it got; publishing again settles it |
 | No browser opens | the link, printed in the console | nothing |
@@ -373,7 +407,8 @@ mutation-probed once the code lands.
 - `docs/specs/PRESS-0012-editor.md` § 4.7 and § 4.8 — the page gains the
   button, and the save moves into `editor.save`; the sections point here.
 - `docs/specs/PRESS-0021-setup.md` § 4.8 — the launch opens `/setup` (§ 4.5).
-- PRESS-0015 — undo publishes through `publish` with `entry=None`, and an
+- PRESS-0015 and PRESS-0128 — publish through `publish` with `entry=None` and
+  `emptying=True`. For PRESS-0015, an
   entry it turns back into a draft needs a mark, or this item dates it again
   (PRESS-0012 § 3 decision 6).
 - `CHANGELOG.md` — an Added entry when it ships.
