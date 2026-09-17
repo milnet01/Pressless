@@ -12,6 +12,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-17
+
 ### Changed
 
 - **Every push runs the gate on Windows as well as Linux** (PRESS-0121)
@@ -33,6 +35,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   Windows makes with a rename, a file chmod cannot hide from Windows,
   and two file names that differ only in case, which Windows treats as
   one. No app code changed; the tests now hold on both systems.
+  Everything listed under 0.1.0 below reaches a download for the
+  first time in this release.
 
 ## [0.1.0] - 2026-09-17
 
