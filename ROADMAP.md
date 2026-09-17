@@ -1060,6 +1060,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
      He is never asked.
   The item needs a spec: it spans Face, Settings, Credentials, Publisher
   and Builder, and has partial-failure cases.
+  Progress (2026-09-17): spec accepted, docs/specs/PRESS-0021-setup.md.
+  Two review loops, the spec cap: seventeen verified findings, all
+  fixed, empty tail. A violent cap, so the document is not re-gated as
+  it stands; implementation is the next reviewer. Not yet built.
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
