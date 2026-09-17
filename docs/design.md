@@ -95,11 +95,15 @@ than hoped for.
    carries the Store, a copy of the site's `assets/` for previews
    (PRESS-0007 decision 12), and no settings file**: Settings is facts about his
    machine and site, and setup writes them there, the Daily Prompt filter
-   included (PRESS-0021). **Until his copy holds a Store with a published
-   entry, it offers neither setup nor publishing**: an empty Store builds
-   a site with nothing in it, and a publish would delete his. It is the
-   only part that may be deleted from a working installation without
-   changing what the others do. Decided with the user 2026-09-11.
+   included (PRESS-0021). **Setup is offered on an empty install**, so
+   someone with nothing to bring in can set up and start writing. **A
+   publish refuses while the Store holds no published entry**, and the
+   live site is unchanged: an empty Store builds a site with nothing in
+   it, and publishing that would delete the live one. PRESS-0013 builds
+   that refusal. Changed by the user 2026-09-17 (PRESS-0124), because
+   Pressless is for any user. Import is the only part that may be
+   deleted from a working installation without changing what the others
+   do. Decided with the user 2026-09-11.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
     it to the Publisher or Insights as an argument, so rules 5 and 8 stay
     literally true and both parts stay testable without a real keyring.

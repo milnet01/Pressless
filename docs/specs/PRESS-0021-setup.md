@@ -1,7 +1,9 @@
 # PRESS-0021 — Setup: the publishing key once, and the same page as Settings
 
 **Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
-verified finding fixed, none left in the tail.
+verified finding fixed, none left in the tail. Amended 2026-09-17 for
+PRESS-0124: setup no longer needs published writing, and the Daily Prompt
+filter is an answer on the form.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0021 (`docs/design.md` § What may depend on what,
 ADR-0003, discovery S5).
@@ -72,6 +74,13 @@ publishing key, derives the untouchable list, and saves Settings last.
 8. **(decided here) This item wires no double-click.** PRESS-0013 replaces
    `pressless.__main__` and calls `setup.register` (PRESS-0011 § 3
    decision 6).
+9. **Setup is offered on an empty install.** Decided by the user 2026-09-17
+   (PRESS-0124). Setup never reads the Store. The guard against replacing a
+   live site with an empty one belongs to publishing (`docs/design.md`
+   rule 9), and PRESS-0013 builds it.
+10. **The Daily Prompt filter is an optional answer.** Decided by the user
+    2026-09-17 (PRESS-0124). First run offers an empty box, and an empty
+    filter hides nothing.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -84,11 +93,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
 GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
-DAILY_PROMPT_FILTER = "dailyprompt-*" # first run only; PRESS-0001 § 4.2
 KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
-
-class NoWriting(Exception):
-    """The Store holds no published entry, so setup is not offered."""
 
 def untouchable(root: Iterable[str]) -> tuple[str, ...]: ...
 def register(face: Face, folder: Path, *,
@@ -117,18 +122,18 @@ or mistyped field — keep `key` as `None`.
 
 ### 4.2 Which page he sees
 
-Every request to `/setup` first runs these, in order, inside `face.capture()`:
+Every request to `/setup` first runs `settings.load(folder)` inside
+`face.capture()`:
 
-| Step | Outcome | What `/setup` does |
-|---|---|---|
-| `store.list_slugs(folder, draft=False)` | empty | shows `NoWriting` through `Face.fail`; no form |
-| `settings.load(folder)` | `NotSetUp` | **first run**: an empty form |
-| | `SettingsError` whose `key` is `site_folder` | **first run**: an empty form |
-| | any other `SettingsError` | shows it through `Face.fail`; no form, and a POST writes nothing |
-| | a `Settings` | **Settings**: the form filled from it |
+| Outcome | What `/setup` does |
+|---|---|
+| `NotSetUp` | **first run**: an empty form |
+| `SettingsError` whose `key` is `site_folder` | **first run**: an empty form |
+| any other `SettingsError` | shows it through `Face.fail`; no form, and a POST writes nothing |
+| a `Settings` | **Settings**: the form filled from it |
 
-A `StoreError` from the listing is shown through `Face.fail` too, and no form
-is offered.
+Setup never reads the Store (§ 3 decision 9). A folder holding no Store is
+first run like any other.
 
 **A `site_folder` refusal is a file carried from another machine.**
 PRESS-0001 § 4.2 says so, and says the other machine runs setup. First run
@@ -137,8 +142,9 @@ writes § 4.5's first-run values over that file, the Google fields included:
 
 ### 4.3 The form
 
-Four fields, posted under these names: `repository`, `site_name`,
-`site_address` and `key`. The key is
+Five fields, posted under these names: `repository`, `site_name`,
+`site_address`, `daily_prompt_filter` and `key`. The filter is optional on
+both paths. The key is
 an `<input type="password" autocomplete="off">` with no `value` attribute,
 ever. Every value placed in the page is escaped with
 `html.escape(value, quote=True)`.
@@ -176,12 +182,19 @@ and nothing is logged. No request is made, except for § 4.6 step 2's refusal.
 |---|---|---|
 | `site_folder` | `folder / SITE_FOLDER` | `folder / SITE_FOLDER` |
 | `repository`, `site_name`, `site_address` | his answers | his answers |
-| `daily_prompt_filter` | `DAILY_PROMPT_FILTER` | the saved value |
+| `daily_prompt_filter` | the answer, `""` when the box is empty | the answer, `""` when the box is empty |
 | `untouchable` | `()` until § 4.6 step 2 | `()` until § 4.6 step 2 |
 | `credentials.store` | `"keyring"` until § 4.6 step 3 replaces it | the saved value |
 | `credentials.github_account` | `GITHUB_ACCOUNT` | the saved value |
 | `credentials.google_account` | `None` | the saved value |
 | `analytics_property_id` | `None` | the saved value |
+
+**An empty filter hides nothing.** The Builder excludes an entry when
+`fnmatch.fnmatchcase(tag, pattern)` holds for one of its tags. With `""` that
+holds only for an empty tag, and `store`'s `_parse_list` drops empty tags on
+reading. In Settings the box is filled from the saved value, so an emptied box
+is a cleared filter. Unlike the key box, it does not keep the saved value.
+`check` has no rule for the filter, so it is never a refused answer.
 
 **First run's store is a placeholder** so the candidate passes `check`. Step 3
 replaces it with `Choice.store` before anything is saved.
@@ -238,9 +251,6 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 ### 4.8 Changes to the Face
 
-- `SENTENCES` gains `setup.NoWriting`: what — Pressless has none of his
-  writing yet; next — put the Pressless-data folder he was given beside the
-  program.
 - `settings.SettingsError`'s next step stops sending him to setup. It says
   Pressless changed nothing in its settings, and to send the details to
   whoever helps him.
@@ -258,8 +268,9 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
   `key` is `site_folder` (§ 4.2).
 - It never calls `credentials.choose` once a settings file loads.
 - It never runs Import (`docs/design.md` rule 9).
-- It never touches `google_account`, `analytics_property_id` or
-  `daily_prompt_filter` in a settings file that loads.
+- It never reads the Store.
+- It never touches `google_account` or `analytics_property_id` in a settings
+  file that loads.
 
 ## 5. Invariants
 
@@ -269,9 +280,6 @@ Publisher transport, as `tests/test_publisher.py` does, and recording doubles
 for `credentials.choose`, `read` and `write`. The doubles keep every test off
 the machine's real store, which matters on Windows CI: there
 `credentials.write` refuses the file store.
-
-Every fixture Store holds one published entry, except INV-5's. Without it
-`NoWriting` answers first and the rule under test is never reached.
 
 - **INV-1** — Nothing is written before GitHub has answered. A refused answer,
   or any failure from `root_entries`, leaves no settings file, no stored key,
@@ -317,12 +325,13 @@ Every fixture Store holds one published entry, except INV-5's. Without it
   which writes over the first file; or none is, which leaves the second
   machine with no way to set up.
 
-- **INV-5** — Setup is not offered while the Store holds no published entry.
-  `GET` and `POST` answer with `NoWriting`'s sentence, and `POST` makes no
-  request and writes nothing.
-  *Test:* `test_setup_needs_published_writing`, with a draft and no published
-  entry.
-  *Breaks when:* the Store check is skipped, or counts drafts.
+- **INV-5** — Setup is offered on an empty install. With no Store in `folder`,
+  `GET` offers the first-run form and `POST` saves.
+  *Test:* `test_setup_works_on_an_empty_install`. It runs first run in a
+  folder holding nothing. It asserts the file loads, and that no
+  `store.PUBLISHED_FOLDER` or `store.DRAFTS_FOLDER` was created.
+  *Breaks when:* setup requires published writing, or reads the Store and
+  fails or creates it where none exists.
 
 - **INV-6** — The key never reaches a page, the log or the console.
   *Test:* `test_the_key_is_never_shown`. It submits a sentinel key through a
@@ -348,7 +357,7 @@ Every fixture Store holds one published entry, except INV-5's. Without it
   one.
 
 - **INV-9** — Settings carries forward what the page does not ask.
-  `daily_prompt_filter`, `analytics_property_id`, `credentials.store`,
+  `analytics_property_id`, `credentials.store`,
   `credentials.github_account` and `credentials.google_account` are saved
   unchanged.
   *Test:* `test_settings_keeps_what_it_does_not_ask`, over a saved file with
@@ -390,6 +399,14 @@ Every fixture Store holds one published entry, except INV-5's. Without it
   `Face.fail` without `secret`, so the page names the Face's fallback noun
   instead.
 
+- **INV-15** — The Daily Prompt filter is the answer typed, on both paths. An
+  empty box saves `""`.
+  *Test:* `test_the_filter_is_the_answer`. First run with an empty filter box
+  saves `""`. Settings over a saved `"dailyprompt-*"` shows that value in the
+  box. Posting `"x-*"` saves `"x-*"`, and posting an empty box saves `""`.
+  *Breaks when:* first run writes a default filter, or Settings carries the
+  saved filter forward in place of the answer.
+
 - **INV-14** — The server boundary is the Face's, unchanged. `/setup` is
   reached only through `Face.add_page`, so a request without the cookie, or a
   POST from another origin, is refused before setup runs.
@@ -404,7 +421,7 @@ Every fixture Store holds one published entry, except INV-5's. Without it
 
 | What breaks | What he sees | What is left on disk |
 |---|---|---|
-| No published entry in the Store | `NoWriting` | nothing |
+| A fresh install, with no Store | the first-run form | nothing, until the form is saved |
 | The settings file is unreadable | `SettingsError`, and no form | the file, untouched |
 | The settings file came from another machine | the first-run form | the file, until he saves |
 | GitHub is unreachable, or refuses the key | the Publisher's sentence | nothing new |
@@ -419,12 +436,9 @@ Every fixture Store holds one published entry, except INV-5's. Without it
 ## 7. Tests
 
 `tests/test_setup.py` — new, in CI. It carries INV-1, INV-2, INV-3, INV-4,
-INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-12, INV-13 and INV-14.
+INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-12, INV-13, INV-14 and INV-15.
 
 `tests/test_settings.py` gains INV-11's test.
-
-`tests/test_face.py::test_every_failure_type_has_a_sentence` already walks the
-package, so it fails until `NoWriting` has a sentence.
 
 Each test is seen failing against a stub `setup.py` whose functions raise
 `NotImplementedError`, then mutation-probed once the code lands.
@@ -463,7 +477,7 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 | INV-2 | `tests/test_setup.py::test_the_settings_file_is_written_last` |
 | INV-3 | `tests/test_setup.py::test_the_list_is_the_root_minus_what_the_builder_makes` |
 | INV-4 | `tests/test_setup.py::test_an_unreadable_settings_file_is_left_alone` |
-| INV-5 | `tests/test_setup.py::test_setup_needs_published_writing` |
+| INV-5 | `tests/test_setup.py::test_setup_works_on_an_empty_install` |
 | INV-6 | `tests/test_setup.py::test_the_key_is_never_shown` |
 | INV-7 | `tests/test_setup.py::test_settings_never_asks_for_a_store_again` |
 | INV-8 | `tests/test_setup.py::test_an_empty_key_box_keeps_the_saved_key` |
@@ -473,7 +487,7 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 | INV-12 | `tests/test_setup.py::test_a_malformed_key_is_refused_before_any_request` |
 | INV-13 | `tests/test_setup.py::test_a_credential_failure_names_the_key` |
 | INV-14 | `tests/test_setup.py::test_setup_sits_behind_the_faces_boundary` |
-| That `NoWriting` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
+| INV-15 | `tests/test_setup.py::test_the_filter_is_the_answer` |
 | The page's words and how he makes a key | **nothing** — the implementer's words; read on the page |
 | That a reachable sentence's next step holds on this page (§ 4.8) | **nothing** — words; read against `root_entries`' failure types |
 | The real keyring prompt on Windows, in the desktop session | **nothing** in CI — the Windows box, by hand (`CLAUDE.md`) |
@@ -483,7 +497,9 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 - `docs/specs/PRESS-0001-settings.md` § 4.1 — `check` and `SettingsError.key`
   are added; the section points here.
 - `docs/specs/PRESS-0011-face.md` § 4.5 — `/setup` is one of the pages added.
-- `docs/design.md` rule 9 — unchanged; this item keeps it.
+- `docs/design.md` rule 9 — amended with this spec (PRESS-0124): setup is
+  offered on an empty install, and publishing keeps the guard.
+- PRESS-0013 — builds that publishing guard.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log

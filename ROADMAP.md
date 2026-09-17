@@ -1651,6 +1651,17 @@ Publish again after fixing it works. Holds S1, S5, S6.
   amendment budget.
 
   Blocker for: PRESS-0021.
+  Decided by the user 2026-09-17, each as recommended:
+  1. Setup is offered on an empty Store. The guard moves to publishing:
+     a publish refuses to replace a live site while the Store holds no
+     published entry. That guard is PRESS-0013's to build; design.md
+     rule 9 records it.
+  2. First run writes an empty Daily Prompt filter. Settings offers the
+     filter as an optional field.
+  3. A backlog item is filed for an Import anyone can run. PRESS-0007
+     stays shipped as it is.
+  4. New text addresses any user. Accepted specs stay as written. The
+     README's "Moving an existing blog in" section is reworded now.
   **Layman:** Someone starting Pressless fresh, with no blog to bring in, must be able to set it up and use it too.
   Kind: investigate.
   Source: user-direction-2026-09-17.
@@ -1694,6 +1705,12 @@ is not on the live site. Holds S7, S10.
   The first publish writes the whole site and is slow; every one after it
   writes a handful of files. Worth saying out loud before he meets it.
   Blocked-by: PRESS-0007, PRESS-0008, PRESS-0009, PRESS-0012.
+  Owns a guard from 2026-09-17 (PRESS-0124 fork 1). Setup is now
+  offered on an empty install, so publishing carries the check setup
+  used to: while the Store holds no published entry, a publish refuses
+  and changes nothing on the live site. An empty Store builds a site with
+  nothing in it, and publishing that would delete the live one.
+  docs/design.md rule 9 records it.
   **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
   Kind: implement.
   Source: design-2026-08-24 § What may depend on what rule 1.
@@ -6679,6 +6696,24 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-09-17.
   Lanes: Marks, Builder, Store, Face.
+
+- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress blog in.**
+  PRESS-0007's Import runs on the maintainer's machine only. It reads
+  the photograph originals and the sibling generator's header and footer
+  templates, which a general user does not have. design.md rule 9 records
+  that it runs once, before anything else, and that nothing in the app
+  runs it.
+
+  An Import for any user needs at least its own templates, and a way to
+  start it that rule 9 allows. Neither is designed. PRESS-0007 stays
+  shipped as it is.
+
+  Decided by the user 2026-09-17 (PRESS-0124 fork 3). Needs a spec
+  before building: it touches Import, the Face and design rule 9.
+  **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0124 fork 3.
+  Lanes: Import, Face.
 
 ## Milestones
 

@@ -88,12 +88,16 @@ only place it is kept.
 
 ## Moving an existing blog in
 
-Bringing a WordPress blog across happens once, before Pressless is
-handed to the writer. The person setting it up runs it on their own
-machine and hands over the finished `Pressless-data` folder. There is no
-button for it inside the app, on purpose: it runs once and never again.
+**You cannot bring your own blog in yet.** Once Pressless is ready, you
+will be able to start with an empty one and write from there.
+
+An import from WordPress exists, but it was built for one site. It needs
+that site's own files, so it only runs on the maintainer's computer.
 [docs/specs/PRESS-0007-import.md](docs/specs/PRESS-0007-import.md)
 explains what it carries across.
+
+An import anyone can run is planned (PRESS-0125 on the
+[roadmap](ROADMAP.md)).
 
 ## For the curious
 
