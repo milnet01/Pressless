@@ -1012,7 +1012,7 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Source: design-2026-08-24 § The parts, ADR-0002.
   Lanes: Publisher.
 
-- 📋 [PRESS-0021] **Setup asks for the publishing key once; the dashboard's second step can be declined.**
+- 📋 [PRESS-0021] **Setup asks for the publishing key once; the same page reopens as Settings.**
   He is asked for his publishing key exactly once, during setup, and never
   sees it again in normal use. Claims S5.
   Reading Analytics is a separate Google authorisation, so setup grows a
@@ -1047,6 +1047,19 @@ Publish again after fixing it works. Holds S1, S5, S6.
   holds the photograph originals and hands the writer the finished
   Pressless-data folder, so "where Import runs, once" is no longer this
   item's. docs/design.md rule 9 records it.
+  Decided by the user 2026-09-17, before the spec was written:
+  1. The Google step is split off to PRESS-0122 (0.7.0). This item
+     builds the publishing half and records the dashboard as not set up.
+  2. He types the repository, the site's name and its address himself,
+     on one form checked before anything is saved.
+  3. The same page reopens later as Settings: his answers filled in, an
+     empty key box keeps the saved key, and a button derives the
+     untouchable list again. This is the "in Settings" the Face's
+     existing sentences already point at.
+  4. The site folder is chosen for him, inside Pressless's own folder.
+     He is never asked.
+  The item needs a spec: it spans Face, Settings, Credentials, Publisher
+  and Builder, and has partial-failure cases.
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
@@ -1931,6 +1944,30 @@ success.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.
   Lanes: Face.
+
+- 📋 [PRESS-0122] **Setup's second step: the Google sign-in the dashboard reads with.**
+  Split from PRESS-0021 by the user on 2026-09-17. PRESS-0021 builds
+  the publishing half of setup and records the dashboard as not set up,
+  which PRESS-0001 already allows: google_account and
+  analytics_property_id are both optional.
+
+  What moved here: obtaining the Google authorisation, storing it under
+  its own account name (ADR-0003), asking for the numeric property id,
+  and declining. PRESS-0019 section 9 leaves obtaining AND refreshing the
+  token to setup; both land here, and refreshing is a per-read job rather
+  than a once-only one.
+
+  The mechanism is undecided and needs research first. Google's own
+  rules found 2026-09-17: a consent screen left in Testing issues refresh
+  tokens that expire in 7 days, and an installed app's client secret is
+  not a secret. A service account avoids both and adds a signing
+  library. Neither is chosen.
+
+  Blocker for: PRESS-0020.
+  **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
+  Kind: implement.
+  Source: user-decision-2026-09-17, split from PRESS-0021.
+  Lanes: Face, Credentials, Insights.
 
 ## 1.0.0 — all eleven, and the format is frozen
 
