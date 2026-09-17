@@ -1778,6 +1778,18 @@ is not on the live site. Holds S7, S10.
   date is the moment he first publishes it, as WordPress dated his
   entries. This item sets it. It also publishes a working copy of a
   published entry over that entry (PRESS-0012 decision 2).
+  Decided by the user (2026-09-17), before the spec:
+  1. The Publish button sits on the editor page and publishes the entry
+     open there; the rebuilt site carries any other finished change.
+  2. A publish that fails puts the entry back as it was in his files: a
+     draft stays a draft and a working copy stays waiting. Where the
+     outcome is unknown, it stays published and he is told to publish
+     again.
+  3. On Windows the console window stays, saying to keep it open and to
+     close it to stop Pressless (PRESS-0022 decision 4 revisited).
+  4. While publishing he sees a plain waiting message; no live file count.
+  Needs a spec: the publish sequence binds PRESS-0015's undo, and the
+  launch replaces pressless.__main__ under PRESS-0022's contract.
   **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
   Kind: implement.
   Source: design-2026-08-24 § What may depend on what rule 1.
