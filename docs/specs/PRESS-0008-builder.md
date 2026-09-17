@@ -1,6 +1,9 @@
 # PRESS-0008 — The Builder: the Store and Settings become the site folder
 
-**Status:** accepted (2026-09-13). Built 2026-09-17.
+**Status:** accepted (2026-09-13). Built 2026-09-17. Amended 2026-09-17 by
+the user's decision: a picture-only entry is described by its captions
+(§4.3, INV-16). Gated for one loop by the amendment budget: one verified,
+one fixed, not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).
@@ -179,13 +182,20 @@ Builder turns that into `BuildStopped` naming the entry and the name.
 tag chips, excerpt, pagination links and comment list are what
 `tools/build_blog.py` in the sibling workspace writes at that address, with
 these differences: the body is `marks.render(entry.body, photo_src)`; a
-listing's excerpt, and an untitled entry's teaser, are cut from the text of
-`marks.parse(entry.body)`'s `Text` nodes, lines joined by a space, and
-written through `marks.to_html` as one `Text`; the site's name comes from
+listing's excerpt, and an untitled entry's teaser, are cut from the
+entry's text and written through `marks.to_html` as one `Text`; the site's
+name comes from
 `settings.site_name`; and decision 8's stamps are gone. INV-15's run
 compares the elements it names. The generator's own code names the writer,
 so it is ported, never copied: no string from it enters this repository
 unread.
+
+**An entry's text** is the `Text` nodes of `marks.parse(entry.body)`, lines
+joined by a space. Where those hold nothing but whitespace, it is the
+captions of the body's top-level picture marks, in order, joined by a space
+— so a picture-only entry reads as it does today rather than as its date.
+The page's description is cut from the same text. Decided by the user
+2026-09-17.
 
 **A date is written the same on every system.** Month names are English and
 come from a constant, and the day carries no leading zero, built from
@@ -514,6 +524,19 @@ Sitemap: <the address>/sitemap.xml
   *Breaks when:* an address moves, a page is dropped, or an untitled entry's
   heading changes.
 
+- **INV-16** — An entry whose words are only picture captions is described
+  by those captions; an entry with words is described by its words alone.
+  *Test:* `tests/test_builder.py::test_a_picture_only_entry_is_described_by_its_captions`
+  — an untitled entry of two captioned pictures, a titled one of one, an
+  untitled entry whose captioned picture comes before a few words, and an
+  untitled entry with one uncaptioned picture. The first card's label is
+  both captions in order; the second card's excerpt and page description
+  are its caption; the third card's label is exactly its words, which are
+  short enough that an added caption would show; the fourth card's label
+  is its date.
+  *Breaks when:* captions are ignored, so the card shows a date, or captions
+  are added to an entry that has words.
+
 ## 6. Failure modes
 
 | What happens | What the Builder does |
@@ -538,7 +561,7 @@ Sitemap: <the address>/sitemap.xml
 
 `tests/test_builder.py` — in CI, over Stores built in a temporary folder with
 small generated images. It carries INV-1, INV-2, INV-3, INV-4, INV-5, INV-6,
-INV-7, INV-8, INV-9, INV-10, INV-11, INV-12 and INV-13.
+INV-7, INV-8, INV-9, INV-10, INV-11, INV-12, INV-13 and INV-16.
 
 `tests/test_failure_messages.py` gains INV-14's test.
 
@@ -610,6 +633,7 @@ mutation-probed once it lands.
 | INV-13 | `tests/test_builder.py::test_the_sitemap_lists_what_readers_find` |
 | INV-14 | `tests/test_failure_messages.py::test_no_builder_failure_names_a_path` |
 | INV-15 | `tests/test_builder_archive.py::test_the_first_publish_moves_no_page` — **skipped in CI**; it runs where the archive, the originals and the live site are |
+| INV-16 | `tests/test_builder.py::test_a_picture_only_entry_is_described_by_its_captions` |
 | That a publish build never passes `change` | **nothing here** — the Face's call; PRESS-0012 |
 | That the Face never hands the preview folder to the Publisher | **nothing here** — the Face's sequence (`docs/design.md` rule 1) |
 | That an ordinary non-dot stray in the site folder is refused | **nothing** — `Built.files` declares the output, and the Publisher does not read it yet (§9) |
