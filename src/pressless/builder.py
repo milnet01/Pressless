@@ -186,8 +186,10 @@ def _no_photographs(name: str) -> str:
     raise AssertionError(f"plain text holds no picture, yet one was named: {name}")
 
 
-def _plain_text(doc: marks.Document) -> str:
-    """§4.3: the text of the body's Text nodes, lines joined by a space."""
+def _entry_text(doc: marks.Document) -> str:
+    """§4.3, an entry's text: the body's Text nodes, lines joined by a space --
+    or, where those hold nothing but whitespace, its top-level pictures'
+    captions, so a picture-only entry reads as it does today (INV-16)."""
     lines: list[str] = []
 
     def text_of(nodes) -> str:
@@ -206,7 +208,12 @@ def _plain_text(doc: marks.Document) -> str:
             continue
         lines.extend(text_of(line.children) for paragraph in paragraphs
                      for line in paragraph.lines)
-    return " ".join(lines)
+    words = " ".join(lines)
+    # Judged after decoding, as the cut is: an imported `&nbsp;` is no words.
+    if html.unescape(words).strip():
+        return words
+    return " ".join(block.caption for block in doc
+                    if isinstance(block, marks.Photo) and block.caption)
 
 
 def _excerpt(text: str, limit: int) -> str:
@@ -429,7 +436,7 @@ class _Build:
     </article>
 {comments}
     <p class="back"><a href="{up}blog/index.html">← All journal entries</a></p>"""
-        description = _excerpt(_plain_text(doc), 150) or heading
+        description = _excerpt(_entry_text(doc), 150) or heading
         self.page(relative, depth, heading, description, body)
 
     def comments(self, entry: store.Entry) -> str:
@@ -501,11 +508,11 @@ class _Build:
         up = "../" * depth
         if entry.title:
             label = html.escape(entry.title)
-            excerpt = _excerpt(_plain_text(marks.parse(entry.body)), 180)
+            excerpt = _excerpt(_entry_text(marks.parse(entry.body)), 180)
             excerpt_row = f'\n        <p class="post-excerpt">{_as_text_html(excerpt)}</p>'
             untitled = ""
         else:
-            teaser = _excerpt(_plain_text(marks.parse(entry.body)), 48) \
+            teaser = _excerpt(_entry_text(marks.parse(entry.body)), 48) \
                 or _long_date(entry.date)
             label, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">

@@ -17,6 +17,7 @@ import importlib.util
 import io
 import locale
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -745,3 +746,37 @@ def test_the_sitemap_lists_what_readers_find(tmp_path):
         "\n"
         "Sitemap: https://example.org/sitemap.xml\n"
     )
+
+
+# ----------------------------------------------------------------- INV-16 ---
+
+
+def _card_label(listing: str, entry: store.Entry) -> str:
+    found = re.search(rf'<h2><a href="[^"]*/{entry.slug}/index.html">(.*?)</a></h2>', listing)
+    assert found, f"no card for {entry.slug}"
+    return found.group(1)
+
+
+def test_a_picture_only_entry_is_described_by_its_captions(tmp_path):
+    """INV-16: an entry whose words are only picture captions is described by
+    those captions; an entry with words is described by its words alone."""
+    folder = _store(tmp_path)
+    two = _entry("two-pictures", "2020-05-09 00:00:00",
+                 body="{photo: a.jpg | First caption}\n\n{photo: b.jpg | Second caption}")
+    titled = _entry("titled-picture", "2020-05-08 00:00:00", title="Pictured",
+                    body="{photo: c.jpg | Only caption}")
+    worded = _entry("worded", "2020-05-07 00:00:00",
+                    body="{photo: d.jpg | A caption}\n\nFew words.")
+    bare = _entry("bare-picture", "2020-05-06 00:00:00", body="{photo: e.jpg}")
+    for entry in (two, titled, worded, bare):
+        store.write(folder, entry, draft=False)
+
+    into = tmp_path / "preview"
+    build(folder, _settings(), into, photo_src=lambda name: name)
+    journal = (into / "blog/index.html").read_text(encoding="utf-8")
+    assert _card_label(journal, two) == "First caption Second caption"
+    assert '<p class="post-excerpt">Only caption</p>' in journal
+    assert '<meta name="description" content="Only caption">' in _entry_page(
+        into, titled).read_text(encoding="utf-8")
+    assert _card_label(journal, worded) == "Few words."
+    assert _card_label(journal, bare) == "6 May 2020"

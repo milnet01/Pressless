@@ -481,6 +481,11 @@ while the stakes are zero. Holds S2, S3, S4.
   PRESS-0022: Pillow is now a runtime dependency, but nothing __main__
   imports reaches builder.py yet, so the packaged program will not carry
   Pillow until the Face is wired in (PRESS-0013).
+  Amended and built (2026-09-17), by the user's decision: an entry whose
+  only words are picture captions shows those captions on its cards and
+  in its description, as today's site does (spec section 4.3, INV-16).
+  Gated one loop: one verified finding, fixed. Over the real archive the
+  journal page now matches the live site apart from the removed stamps.
   **Layman:** The part that makes the actual web pages -- his existing site generator, re-homed and no longer needing anyone technical.
   Kind: implement.
   Source: design-2026-08-24 § The parts, § What may depend on what.
