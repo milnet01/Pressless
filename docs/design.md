@@ -95,13 +95,19 @@ than hoped for.
    carries the Store, a copy of the site's `assets/` for previews
    (PRESS-0007 decision 12), and no settings file**: Settings is facts about his
    machine and site, and setup writes them there, the Daily Prompt filter
-   included (PRESS-0021). **Setup is offered on an empty install**, so
-   someone with nothing to bring in can set up and start writing. **A
-   publish refuses while the Store holds no published entry**, and the
-   live site is unchanged: an empty Store builds a site with nothing in
-   it, and publishing that would delete the live one. PRESS-0013 builds
-   that refusal. Changed by the user 2026-09-17 (PRESS-0124), because
-   Pressless is for any user. Import is the only part that may be
+   included (PRESS-0021). **Setup is offered on an empty install.** That
+   install holds no furniture, fixed pages or templates, so it cannot
+   build. Pressless's own starter set supplies them (PRESS-0126); until
+   it ships, an empty install can set up but not preview or publish.
+   **A publish refuses when no published entry would remain**, counting
+   the entry being published, and the live site is unchanged. It guards
+   a Store emptied by accident, such as a program moved beside a new
+   Pressless-data folder, whose publish would replace the journal with
+   none. A publish that follows binning or unpublishing entries is not
+   refused, and nor is undo's: each is the result that was asked for.
+   The check runs before the build, and PRESS-0013 builds it. Changed by
+   the user 2026-09-17 (PRESS-0124), because Pressless is for any user.
+   Import is the only part that may be
    deleted from a working installation without changing what the others
    do. Decided with the user 2026-09-11.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
@@ -633,3 +639,4 @@ install by rewriting the one component we have evidence about.
 | 13 | 2026-09-11 | 3, cold — genre pinned `adr`; gating the decisions of 2026-09-11 (PRESS-0096, 0112, 0030, 0031, 0099). Packet carried discovery's signs, PRESS-0009 § 4.4, § 6 and § 11, PRESS-0005 § 4.1 and § 9, and Store and Publisher windows. Windows, PyInstaller, GitHub and Analytics unrunnable | 0 | 2 | 4 | n/a | **Six verified, six fixed, none dismissed. One loop only, by user instruction: surfaced and fixed, not converged, and no cold read has seen the fixes.** Three landed on the new undo and delete text: undo compared against a copy nothing keeps, a kept draft had no slug of its own, and a rename or delete stranded the comments file. Three were older: the undo toggle left one slug as both draft and published, a kept comments file was republished with its entry a draft, and the last-resort catch keyed on a step the Face cannot see. Four of six inside the gated span. |
 | 14 | 2026-09-11 | 3, cold — genre pinned `adr`; gating § Errors' label for Pressless's own folder, now naming Pressless-data (PRESS-0011). Packet carried `paths.py`, PRESS-0022 § 3 decision 5 and § 4.2, and PRESS-0003 § 3. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 0 | n/a | **Two findings: one verified and fixed, one dismissed. One loop only, by user instruction: not converged.** One lane: § Errors gave one button that copies or opens, while § Logging names two; § Errors now names both. Dismissed: that "beside the program" misleads on Windows, where this document defines the program as the extracted folder, as two other lanes confirmed. Inside the gated sentence. |
 | 15 | 2026-09-11 | 3, cold — genre pinned `adr`; gating rule 9 and *What Import brings across* for the user's decision that the maintainer runs Import (PRESS-0007). Packet carried PRESS-0006 § 3, PRESS-0005 § 3 decisions 4 and 5, and the PRESS-0007 and PRESS-0021 roadmap entries. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 0 | 6 | n/a | **Seven verified: five fixed, two surfaced. One loop only, by user instruction: not converged.** All three lanes: nothing said what the handed folder carries; it is the Store, and setup writes Settings. Two lanes: which copy of the furniture Import takes, and the Store shape cited to the Builder rather than PRESS-0006. One each: the untouchable files are not fixed pages, and an empty Store offers neither setup nor publishing. Surfaced on PRESS-0008 and PRESS-0015: where filtered Daily Prompt entries go, and what undoing the first publish does. Five of seven inside the gated span. |
+| 16 | 2026-09-17 | 3, cold — genre pinned `adr`; gating rule 9 for PRESS-0124 (setup on an empty install, the guard moved to publishing). Packet carried the PRESS-0021 amendment, PRESS-0007 § 1–3, the Publisher's empty-site refusal and an executed build on an empty folder. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 2 | n/a | **Four verified, four fixed after three user decisions, none dismissed. One loop only, by user instruction: not converged.** All three lanes: an empty install does not build an empty site, it stops on a missing `header.html` (executed), and nothing supplied its furniture, pages or templates; the user chose a starter set, PRESS-0126. The guard as written blocked binning the last entry, undo, and a first publish; it now counts the entry being published and exempts both. All four inside the gated span. |

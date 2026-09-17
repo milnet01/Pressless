@@ -1064,6 +1064,10 @@ Publish again after fixing it works. Holds S1, S5, S6.
   Two review loops, the spec cap: seventeen verified findings, all
   fixed, empty tail. A violent cap, so the document is not re-gated as
   it stands; implementation is the next reviewer. Not yet built.
+  Progress (2026-09-17): spec amended for PRESS-0124. Setup never reads
+  the Store, and the Daily Prompt filter is an optional form field
+  (INV-5 rewritten, INV-15 added). One review loop, the amendment
+  budget: two verified, two fixed. Ready to build.
   **Layman:** He pastes his publishing key in once when he first runs Pressless, and never sees it again.
   Kind: implement.
   Source: design-2026-08-24 § The dashboard, ADR-0003.
@@ -1662,6 +1666,16 @@ Publish again after fixing it works. Holds S1, S5, S6.
      stays shipped as it is.
   4. New text addresses any user. Accepted specs stay as written. The
      README's "Moving an existing blog in" section is reworded now.
+  Review gate on the amendment, 2026-09-17, raised three more; the user
+  decided each as recommended:
+  5. An install that never ran Import cannot build: no header, footer,
+     navigation, fixed pages or templates. Pressless ships a plain
+     starter set (PRESS-0126).
+  6. The publish guard refuses only when no published entry would
+     remain, counting the entry being published. Binning or
+     unpublishing entries, and undo, still publish.
+  7. A GitHub repository with no commits may stop setup. Filed to test
+     later (PRESS-0127).
   **Layman:** Someone starting Pressless fresh, with no blog to bring in, must be able to set it up and use it too.
   Kind: investigate.
   Source: user-direction-2026-09-17.
@@ -1711,6 +1725,15 @@ is not on the live site. Holds S7, S10.
   and changes nothing on the live site. An empty Store builds a site with
   nothing in it, and publishing that would delete the live one.
   docs/design.md rule 9 records it.
+  Corrected 2026-09-17 by the design gate and the user's decision. The
+  guard refuses a publish only when no published entry would remain,
+  counting the entry being published. A publish that follows binning or
+  unpublishing entries, and undo's publish, are not refused. The check
+  runs before the build: an install holding no Store does not build an
+  empty site, it fails at the build (StoreError on header.html), so the
+  earlier note's reason was wrong. This item also opens /setup when a
+  launch meets a SettingsError whose key is site_folder (PRESS-0021
+  section 4.8).
   **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
   Kind: implement.
   Source: design-2026-08-24 § What may depend on what rule 1.
@@ -6714,6 +6737,38 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
   Lanes: Import, Face.
+
+- 📋 [PRESS-0126] **A plain starter site for an install that never ran Import.**
+  An install that never ran Import has no furniture, no fixed pages
+  and no templates. Executed 2026-09-17: builder.build on a folder
+  holding no Store raises StoreError, "there is no file header.html".
+  So an empty install can set up (PRESS-0021) but cannot preview or
+  publish.
+
+  Decided by the user 2026-09-17: Pressless ships a plain starter set
+  -- header, footer, navigation, Home and About, and a few templates --
+  and copies it into an empty install. Which part copies it, and when,
+  is this item's to design. docs/design.md rule 9 points here.
+  Needs a spec: it touches the Store, the Face and the package.
+  **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0124 design gate.
+  Lanes: Store, Face.
+
+- 📋 [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
+  publisher.root_entries first reads the repository's commits/HEAD.
+  Four review lanes on 2026-09-17 believed GitHub answers that with
+  409 on a repository holding no commits. publisher._failure maps 409
+  to Conflict, so setup would show the branch-moved sentence and never
+  finish. Not verified: it needs GitHub.
+
+  Decided by the user 2026-09-17: test it later against a real empty
+  repository, and make setup accept one if the belief holds. PRESS-0021
+  is built as specified meanwhile.
+  **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
+  Kind: investigate.
+  Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
+  Lanes: Publisher, Face.
 
 ## Milestones
 

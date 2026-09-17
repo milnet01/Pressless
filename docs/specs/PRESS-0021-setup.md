@@ -253,7 +253,9 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 - `settings.SettingsError`'s next step stops sending him to setup. It says
   Pressless changed nothing in its settings, and to send the details to
-  whoever helps him.
+  whoever helps him. A refusal whose `key` is `site_folder` never reaches
+  that sentence: `/setup` treats it as first run (§ 4.2), and PRESS-0013
+  opens `/setup` when a launch meets one.
 - `publisher.SiteFolderMissing` and `builder.SiteFolderUnusable` stop naming
   a site-folder setting, which this page does not have.
 - **Every sentence a `root_entries` failure can reach names a next step that
@@ -327,11 +329,11 @@ the machine's real store, which matters on Windows CI: there
 
 - **INV-5** — Setup is offered on an empty install. With no Store in `folder`,
   `GET` offers the first-run form and `POST` saves.
-  *Test:* `test_setup_works_on_an_empty_install`. It runs first run in a
-  folder holding nothing. It asserts the file loads, and that no
-  `store.PUBLISHED_FOLDER` or `store.DRAFTS_FOLDER` was created.
-  *Breaks when:* setup requires published writing, or reads the Store and
-  fails or creates it where none exists.
+  *Test:* `test_setup_works_on_an_empty_install`. It replaces every public
+  function of `pressless.store` with one that raises, runs first run in a
+  folder holding nothing, and asserts the saved file loads.
+  *Breaks when:* setup calls into the Store at all, which includes a setup
+  that still requires published writing.
 
 - **INV-6** — The key never reaches a page, the log or the console.
   *Test:* `test_the_key_is_never_shown`. It submits a sentinel key through a
@@ -499,7 +501,8 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 - `docs/specs/PRESS-0011-face.md` § 4.5 — `/setup` is one of the pages added.
 - `docs/design.md` rule 9 — amended with this spec (PRESS-0124): setup is
   offered on an empty install, and publishing keeps the guard.
-- PRESS-0013 — builds that publishing guard.
+- PRESS-0013 — builds that publishing guard, and opens `/setup` when a
+  launch meets a `site_folder` refusal (§ 4.8).
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
