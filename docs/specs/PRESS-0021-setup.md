@@ -97,9 +97,6 @@ def register(face: Face, folder: Path, *,
 `register` adds `GET /setup` and `POST /setup`. `transport` reaches
 `publisher.root_entries` and exists for the tests.
 
-`GITHUB_ACCOUNT` joins § Setup state in `docs/standards/versioning-overrides.md`:
-changing it makes the saved key read as absent.
-
 ```python
 # src/pressless/settings.py — added
 
@@ -124,15 +121,20 @@ Every request to `/setup` first runs these, in order, inside `face.capture()`:
 |---|---|---|
 | `store.list_slugs(folder, draft=False)` | empty | shows `NoWriting` through `Face.fail`; no form |
 | `settings.load(folder)` | `NotSetUp` | **first run**: an empty form |
-| | `SettingsError` | shows it through `Face.fail`; no form, and a POST writes nothing |
+| | `SettingsError` whose `key` is `site_folder` | **first run**: an empty form |
+| | any other `SettingsError` | shows it through `Face.fail`; no form, and a POST writes nothing |
 | | a `Settings` | **Settings**: the form filled from it |
 
 A `StoreError` from the listing is shown through `Face.fail` too, and no form
 is offered.
 
+**A `site_folder` refusal is a file carried from another machine.**
+PRESS-0001 § 4.2 says so, and says the other machine runs setup.
+
 ### 4.3 The form
 
-Four fields: repository, site name, site address, publishing key. The key is
+Four fields, posted under these names: `repository`, `site_name`,
+`site_address` and `key`. The key is
 an `<input type="password" autocomplete="off">` with no `value` attribute,
 ever. Every value placed in the page is escaped with
 `html.escape(value, quote=True)`.
@@ -210,7 +212,8 @@ so it is written last. An interruption before step 5 leaves first run where
 it was, and step 4 replaces a key written by an earlier attempt.
 
 **A credential failure passes `secret=KEY`** to `Face.fail`. That is steps 1,
-3 and 4. `credentials.NoStore` ends setup; its sentence already says so.
+3 and 4. `credentials.NoStore` ends setup, and the page says above the failure that
+setup cannot finish on this computer (ADR-0003).
 
 ### 4.7 Deriving the list
 
@@ -230,8 +233,11 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
   writing yet; next — put the Pressless-data folder he was given beside the
   program.
 - `settings.SettingsError`'s next step stops sending him to setup. It says
-  the settings file has been left as it is, and to send the details to
+  Pressless changed nothing in its settings, and to send the details to
   whoever helps him.
+- `publisher.SiteFolderMissing` and `builder.SiteFolderUnusable` stop naming
+  a site-folder setting, which this page does not have. Their next step is to
+  open Settings and save it, which rewrites `site_folder` (§ 4.5).
 - **Every sentence a `root_entries` failure can reach names a next step that
   also holds on this page.** Today several end *"then click Publish again"*,
   and setup has no Publish button. They say *"try again"* instead.
@@ -240,7 +246,8 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 - It never writes the key into a page, the log, the console or Settings.
 - It never saves a settings file with a list it did not derive.
-- It never writes over a settings file `load` refused.
+- It never writes over a settings file `load` refused, unless the refusal's
+  `key` is `site_folder` (§ 4.2).
 - It never calls `credentials.choose` once a settings file exists.
 - It never runs Import (`docs/design.md` rule 9).
 - It never touches `google_account`, `analytics_property_id` or
@@ -250,8 +257,13 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 The tests below are in `tests/test_setup.py` unless named otherwise. Each
 runs the page through `face.serve(tmp_path, open_browser=False)` with a fake
-Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
-`tests/test_credentials.py` already do.
+Publisher transport, as `tests/test_publisher.py` does, and recording doubles
+for `credentials.choose`, `read` and `write`. The doubles keep every test off
+the machine's real store, which matters on Windows CI: there
+`credentials.write` refuses the file store.
+
+Every fixture Store holds one published entry, except INV-5's. Without it
+`NoWriting` answers first and the rule under test is never reached.
 
 - **INV-1** — Nothing is written before GitHub has answered. A refused answer,
   or any failure from `root_entries`, leaves no settings file, no stored key,
@@ -281,11 +293,15 @@ Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
   `str.lower`, which keeps `STRASSE`; or reads a copy of `ROOT_OUTPUT`, which
   keeps `extra`.
 
-- **INV-4** — A settings file `load` refuses is never written over. With one
-  in place, `GET /setup` offers no form and `POST /setup` changes nothing.
+- **INV-4** — A settings file `load` refuses is never written over, unless
+  the refusal names `site_folder`. With a refused file in place, `GET /setup`
+  offers no form and `POST /setup` changes nothing. With one refused for its
+  `site_folder`, first run is offered.
   *Test:* `test_an_unreadable_settings_file_is_left_alone`, with a file whose
-  `version` is 2.
-  *Breaks when:* a `SettingsError` from `load` is treated as `NotSetUp`.
+  `version` is 2, then a file whose `site_folder` is relative.
+  *Breaks when:* every `SettingsError` from `load` is treated as `NotSetUp`,
+  which writes over the first file; or none is, which leaves the second
+  machine with no way to set up.
 
 - **INV-5** — Setup is not offered while the Store holds no published entry.
   `GET` and `POST` answer with `NoWriting`'s sentence, and `POST` makes no
@@ -305,7 +321,8 @@ Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
 - **INV-7** — `credentials.choose` is called on first run only. In Settings
   the key is read from and written to the saved store.
   *Test:* `test_settings_never_asks_for_a_store_again`, with a saved store of
-  `"file"` and a working keyring.
+  `"file"` and a `choose` double answering `"keyring"`. The `write` double
+  must record `"file"`.
   *Breaks when:* Settings calls `choose`, which files the key in the keyring
   while Settings still names the file.
 
@@ -317,17 +334,17 @@ Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
   one.
 
 - **INV-9** — Settings carries forward what the page does not ask.
-  `daily_prompt_filter`, `analytics_property_id`, `credentials.store` and
-  `credentials.google_account` are saved unchanged.
+  `daily_prompt_filter`, `analytics_property_id`, `credentials.store`,
+  `credentials.github_account` and `credentials.google_account` are saved
+  unchanged.
   *Test:* `test_settings_keeps_what_it_does_not_ask`, over a saved file with
   a property id and a Google account.
   *Breaks when:* Settings builds the candidate from first-run defaults, which
   erases PRESS-0122's fields.
 
 - **INV-10** — First run saves the values § 4.5 names, and the file loads.
-  *Test:* `test_first_run_saves_a_file_that_loads`. It runs first run twice:
-  once with a working keyring, and once with a keyring raising
-  `NoKeyringError` on a non-Windows platform, so `choose` answers `"file"`.
+  *Test:* `test_first_run_saves_a_file_that_loads`. It runs first run twice,
+  with the `choose` double answering `"keyring"` and then `"file"`.
   Each time it asserts `settings.load(folder)` equals the expected
   `Settings`, with `site_folder` equal to `folder / "site"` written out
   rather than read from `SITE_FOLDER`.
@@ -353,18 +370,20 @@ Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
 
 - **INV-13** — A credential failure names the publishing key.
   *Test:* `test_a_credential_failure_names_the_key`. It makes `choose` raise
-  `NoStore`, and `read` raise `NotStored`, and expects `KEY` in the page and
-  no `{secret}`.
+  `NoStore`, and `read` raise `NotStored`, and expects `KEY` in the page.
   *Breaks when:* the failure escapes to the page catch, which calls
-  `Face.fail` without `secret`.
+  `Face.fail` without `secret`, so the page names the Face's fallback noun
+  instead.
 
 - **INV-14** — The server boundary is the Face's, unchanged. `/setup` is
   reached only through `Face.add_page`, so a request without the cookie, or a
   POST from another origin, is refused before setup runs.
   *Test:* `test_setup_sits_behind_the_faces_boundary`, POSTing a key with no
   cookie and then with a foreign `Origin`; both answer 403 and nothing is
-  written.
-  *Breaks when:* setup serves its own handler or bypasses `_dispatch`.
+  written. The same POST with the cookie and the Face's own `Origin` then
+  reaches setup and saves.
+  *Breaks when:* setup serves its own handler or never registers on the Face.
+  The third request then gets 404 and nothing is saved.
 
 ## 6. Failure modes
 
@@ -372,6 +391,7 @@ Publisher transport and a patched `keyring`, as `tests/test_publisher.py` and
 |---|---|---|
 | No published entry in the Store | `NoWriting` | nothing |
 | The settings file is unreadable | `SettingsError`, and no form | the file, untouched |
+| The settings file came from another machine | the first-run form | the file, until he saves |
 | GitHub is unreachable, refuses the key, or has no such repository | the Publisher's sentence | nothing new |
 | Any other failure from `root_entries` | its sentence | nothing new |
 | No keyring, on Windows or a mount without modes | `NoStore`, naming the key | nothing new |
@@ -447,8 +467,6 @@ Each test is seen failing against a stub `setup.py` whose functions raise
 - `docs/specs/PRESS-0001-settings.md` § 4.1 — `check` and `SettingsError.key`
   are added; the section points here.
 - `docs/specs/PRESS-0011-face.md` § 4.5 — `/setup` is one of the pages added.
-- `docs/standards/versioning-overrides.md` § Setup state — its keyring
-  account names bullet names `GITHUB_ACCOUNT`.
 - `docs/design.md` rule 9 — unchanged; this item keeps it.
 - `CHANGELOG.md` — an Added entry when it ships.
 
