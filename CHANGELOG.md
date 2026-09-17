@@ -12,6 +12,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-17
+
 ### Added
 
 - **The Builder turns his files into the finished site folder** (PRESS-0008)
