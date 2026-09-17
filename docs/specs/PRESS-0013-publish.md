@@ -1,6 +1,7 @@
 # PRESS-0013 — Publish: one button writes, builds and publishes, and the double-click opens Pressless
 
-**Status:** draft (2026-09-17).
+**Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
+verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0013 (`docs/design.md` § What may depend on what
 rules 1, 9 and 10; discovery S1, S6).
@@ -61,8 +62,10 @@ opens his browser.
 8. **(decided here) Settings and the key are read before the Store moves.**
    A missing key or an unset machine then needs nothing put back.
 9. **(decided here) The double-click prints the same report, then serves.**
-   `--self-check` prints it and stops. So the route the release job tests is
-   still the writer's route (PRESS-0022 § 4.5).
+   `--self-check` prints it and stops. `pressless.__main__` imports the Face,
+   setup, the editor and publishing at module level, so a packaged
+   `--self-check` proves every part loads in the bundle. Serving itself is not
+   exercised by the release job (§ 10).
 10. **(decided here) The sequence lives in the Face, as
     `src/pressless/publishing.py`.** Only the Face knows the order (design
     rule 1), and only the Face reaches Credentials (rule 10).
@@ -87,7 +90,8 @@ class Published:
 
 def publish(folder: Path, settings: Settings, key: str, *, entry: str | None,
             emptying: bool = False,
-            capture: Callable[[], ContextManager[object]] = contextlib.nullcontext,
+            capture: Callable[[], ContextManager[list[str]]] = _nothing_captured,
+            notices: list[str] | None = None,
             transport: publisher.Transport | None = None) -> Published: ...
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None) -> None: ...
@@ -103,10 +107,13 @@ can leave unknown into `OutcomeUnknown`, which carries its own sentence.
 PRESS-0128's delete and PRESS-0015's undo. The guard then does not run
 (`docs/design.md` rule 9: those publishes are what was asked for).
 
-**`capture` wraps every Store and Settings call `publish` makes, and never the
-upload.** The route passes `face.capture`. A capture holds a process-wide lock
-for as long as it runs (PRESS-0011 § 4.4), so one around a minutes-long upload
-would stall every other page.
+**`capture` wraps every step of § 4.3 but the upload** — the move, the guard,
+the build, the put-back and the finish. The route passes `face.capture`. A
+capture holds a process-wide lock for as long as it runs (PRESS-0011 § 4.4), so
+one around a minutes-long upload would stall setup's page too. **Every list a
+capture yields is added to `notices` when that capture ends**, on success and on
+a raise alike, so the caller shows them. `_nothing_captured` yields an empty
+list.
 
 ```python
 # src/pressless/editor.py — added
@@ -127,7 +134,9 @@ imported, as `editor.py` does, because `face.py` cannot import it back.
 
 ### 4.2 The route
 
-`POST /publish` takes § 4.8's save fields. In order, under `editor.LOCK`:
+`POST /publish` takes § 4.8's save fields. In order, under `editor.LOCK`, which
+it holds for the whole publish, so a put-back cannot meet a save from another
+window. The editor's other pages wait until the publish ends:
 
 1. **Save.** `editor.save(folder, form)`. A failure answers exactly as a
    failed save does (PRESS-0012 § 4.8): status 409, the failure's fragment.
@@ -135,9 +144,10 @@ imported, as `editor.py` does, because `face.py` cannot import it back.
 3. **The key.** `credentials.read(store, folder, github_account)` from the
    loaded Settings.
 4. **Publish.** `publish(folder, settings, key, entry=<the saved address>,
-   capture=face.capture)`.
+   capture=face.capture, notices=<the reply's list>)`.
 
-Steps 1 and 2 run inside `face.capture()`; step 4 passes it on.
+Steps 1 and 2 run inside `face.capture()`; step 4 passes it on. The reply's
+`notices` renders every list gathered.
 
 **A failure at steps 2 to 4 answers status 200 with JSON**, because the save
 at step 1 landed and the page needs its new address and `base`:
@@ -148,13 +158,14 @@ at step 1 landed and the page needs its new address and `base`:
 ```
 
 The fragment is `face.fail(failure, publishing=False, secret=setup.KEY)`.
-`slug`, `draft` and `base` name the file as § 4.3 left it: `draft` is false
-where the entry stayed published.
+**`slug`, `draft` and `base` are read from disk after `publish` returns or
+raises**: the working copy of the published entry where one is left, else the
+published entry, else the draft. So the page's next save goes to a file that
+exists and has the digest it holds.
 
-**Success answers the same shape** with `"published": true`, `"failure":
-null`, the published entry's address, `"draft": false`, and the digest of its
-published file. Where `copy_kept` is true, `notices` also says the waiting draft
-of his changes was left in place and can be thrown away.
+**Success answers the same shape** with `"published": true` and `"failure":
+null`. Where `copy_kept` is true, `notices` also says the waiting draft of his
+changes was left in place and can be thrown away.
 
 ### 4.3 The sequence
 
@@ -164,8 +175,8 @@ succeeded.
 1. **Move the entry**, where `entry` is not `None`. Read the draft at `entry`.
    - **A working copy** — a draft whose `Replaces` names a published entry.
      Remember that published entry as `store.read` gives it. Then write, as
-     published, the copy's fields under the address `Replaces` names. The copy
-     keeps its date, which is its entry's.
+     published, the copy's fields under the address `Replaces` names, with the
+     remembered published entry's date.
    - **Any other draft.** Remember it as read. Write it with its date set to
      `_now()` with microseconds dropped, then `store.publish` it.
 
@@ -182,7 +193,7 @@ succeeded.
    never replaces the publish's result**: the copy stays, `copy_kept` is true,
    and the route's reply says the waiting draft can be thrown away.
 
-`_now()` is a module-level function, so a test can set it.
+`publishing._now()` is a module-level function, so a test can set it.
 
 **A failure at steps 2 to 4 puts step 1 back, then raises it** (§ 3
 decision 2):
@@ -267,10 +278,10 @@ does.
 - **INV-2** — Publishing a working copy writes it over its entry, without
   `Replaces`, and bins the copy.
   *Test:* `test_a_working_copy_is_published_over_its_entry`. The published
-  file holds the copy's body, keeps its entry's date, and carries no
-  `Replaces`. The copy is in the bin.
-  *Breaks when:* the copy is published under its own address, or keeps its
-  `Replaces` field.
+  file holds the copy's body, keeps its entry's date though the copy's `Date`
+  was changed by hand, and carries no `Replaces`. The copy is in the bin.
+  *Breaks when:* the copy is published under its own address, keeps its
+  `Replaces` field, or takes its own date.
 
 - **INV-3** — A definite failure puts his files back.
   *Test:* `test_a_failed_publish_puts_the_files_back`. For a draft and for a
@@ -398,6 +409,7 @@ mutation-probed once the code lands.
 | The script's waiting message and page switch (§ 4.4) | **nothing** in CI — by hand, in a browser |
 | That the console stays open on Windows and closing it stops Pressless | **nothing** in CI — the Windows box, by hand, in the desktop session |
 | A real publish to GitHub | **nothing** in CI — by hand, against the maintainer's test repository |
+| That the packaged program serves and opens the browser | **nothing** in CI — the Windows box, by hand, in the desktop session |
 
 ## 11. Cross-doc impact
 

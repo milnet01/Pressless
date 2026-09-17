@@ -292,7 +292,9 @@ different trigger and a different file.
 `src/pressless/__main__.py`. It exists because packaging cannot be
 proved without something to package, and it is deliberately the
 smallest thing that proves it. PRESS-0013 replaces its body and changes
-nothing in §4.1 to §4.4.
+nothing in §4.1 to §4.4. **`docs/specs/PRESS-0013-publish.md` § 4.5 now
+owns what a double-click does after the report**, and its § 3 revisits
+decisions 4 and 6 below.
 
 It answers the three questions an artefact must answer, and prints one
 machine-readable line for each. **The report's shape is a contract**:

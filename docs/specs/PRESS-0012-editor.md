@@ -340,6 +340,9 @@ with `html.escape(value, quote=True)`.
 
 ### 4.8 A save
 
+Steps 1 to 4 are `editor.save`, and the page gains a Publish button:
+`docs/specs/PRESS-0013-publish.md` § 4.1 and § 4.4.
+
 Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
 `body`. In order, under the lock:
 
