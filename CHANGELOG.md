@@ -14,6 +14,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Publish: one button beside the entry sends it to the live site, and double-clicking Pressless opens it in the browser.** (PRESS-0013)
+  A new entry is dated when it is first published. If publishing
+  fails, his files go back to how they were and he is told what to do;
+  if Pressless cannot tell whether GitHub took it, publishing again
+  settles it. Pressless refuses to replace the site with an empty one.
+  The console window stays open while Pressless runs; closing it stops
+  Pressless.
+
 - **The editor: a list of entries, New entry, and a box with the real finished page beside it.** (PRESS-0012)
   His words save themselves a moment after he stops typing. Changes
   to an entry already on his site wait in a separate copy until he

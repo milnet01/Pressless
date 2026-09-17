@@ -1749,7 +1749,7 @@ is not on the live site. Holds S7, S10.
   Source: design-2026-08-24 § The parts, § State.
   Lanes: Face.
 
-- 📋 [PRESS-0013] **One button: write, build, publish.**
+- ✅ [PRESS-0013] **One button: write, build, publish.**
   The Face owns the order; no lower part calls the next one along. He
   clicks once and within a few minutes it is on the live site, with nobody
   else touching anything. Claims S1.
@@ -1790,6 +1790,16 @@ is not on the live site. Holds S7, S10.
   4. While publishing he sees a plain waiting message; no live file count.
   Needs a spec: the publish sequence binds PRESS-0015's undo, and the
   launch replaces pressless.__main__ under PRESS-0022's contract.
+  Resolved (2026-09-17): shipped to docs/specs/PRESS-0013-publish.md,
+  accepted after two review loops (seventeen verified findings, all
+  fixed; a violent cap, so not gated again as it stands).
+  src/pressless/publishing.py, editor.save and editor.LOCK, and a new
+  __main__ that serves after the report. All nine invariants seen red
+  against stubs first; 17 mutations all killed on a test failure. A
+  frozen build's --self-check answers all three lines, so every part
+  loads in the bundle. Not checked here: a real publish to GitHub
+  through the button, the console window on the Windows box, and the
+  page's publish script in a browser (spec section 10's by-hand rows).
   **Layman:** He clicks Publish once and his new entry is on the live site a few minutes later, with nobody else involved.
   Kind: implement.
   Source: design-2026-08-24 § What may depend on what rule 1.
