@@ -6829,7 +6829,7 @@ already-built code ships in whichever release comes next.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
   Lanes: Store, Face.
 
-- 📋 [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
+- 🚧 [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
   publisher.root_entries first reads the repository's commits/HEAD.
   Four review lanes on 2026-09-17 believed GitHub answers that with
   409 on a repository holding no commits. publisher._failure maps 409
@@ -6865,6 +6865,11 @@ already-built code ships in whichever release comes next.
   Gated for two loops, the spec cap; nine verified, nine fixed, empty tail.
   Owed before release: setup and a first publish against a new empty
   repository, by hand -- the publish read's answer was never measured.
+  Built 2026-09-18, test-first (commit 1488df8): nine tests, each
+  Breaks-when caught by one mutation. Stays in progress until the
+  by-hand check in the spec's §7 passes: finish setup against a new,
+  empty GitHub repository, then publish, and see the site arrive.
+  That is the only check of the publish read's answer.
   **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
