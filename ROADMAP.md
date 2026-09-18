@@ -6856,6 +6856,11 @@ already-built code ships in whichever release comes next.
   small first commit that way and carry on through the Git Data API.
   It adds a request shape ADR-0002 does not name, so it needs a design
   decision before code.
+  Decided by the user 2026-09-18: Pressless starts an empty repository
+  itself -- one small first commit through the Contents API, then setup
+  and publishing carry on as normal, with nothing for the writer to do.
+  Needs a spec: it adds a request shape ADR-0002 does not name, and
+  touches the Publisher and setup.
   **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.

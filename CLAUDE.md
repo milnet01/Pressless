@@ -2,8 +2,9 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** nothing; v0.1.1 is released, v0.3.0's
-items are shipped and not yet released, and the next queued item is `PRESS-0015` (undo). What is done is deliberately not listed here: `roadmap_query`
+**State:** 5 — Building. **In flight:** nothing; v0.1.2 is released, and the next
+queued items are `PRESS-0127` (an empty repository; needs a spec) and
+`PRESS-0015` (undo). What is done is deliberately not listed here: `roadmap_query`
 with `status: "shipped"` answers it, and a list kept by hand goes stale
 the first time a session forgets it — this one had, twice. Run
 `python3 -m pytest` for where code stands, and the roadmap for what is
