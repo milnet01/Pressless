@@ -219,6 +219,12 @@ answer onto the wrong step.
 the module against itself, so `path_for` could name any file and stay green.
 Do not tidy this into an import.
 
+**Every `PublishError` subclass needs a Face sentence, a private one
+included.** `tests/test_face.py::test_every_failure_type_has_a_sentence`
+walks every subclass, so a private type used only for internal control flow
+reddens the gate. PRESS-0127 met this and signalled "empty repository" with a
+`read(..., empty_ok=True)` returning `None` instead. Found 2026-09-18.
+
 **Windows is testable, and that is not obvious from anything else here.**
 Development happens on Linux and the app must run on both. A Windows 10
 test box is reachable over SSH from the maintainer's machine under the
