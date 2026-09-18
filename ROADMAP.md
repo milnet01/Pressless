@@ -6861,6 +6861,10 @@ already-built code ships in whichever release comes next.
   and publishing carry on as normal, with nothing for the writer to do.
   Needs a spec: it adds a request shape ADR-0002 does not name, and
   touches the Publisher and setup.
+  Spec accepted 2026-09-18: docs/specs/PRESS-0127-empty-repository.md.
+  Gated for two loops, the spec cap; nine verified, nine fixed, empty tail.
+  Owed before release: setup and a first publish against a new empty
+  repository, by hand -- the publish read's answer was never measured.
   **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
