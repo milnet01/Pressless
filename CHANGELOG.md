@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A brand-new, empty GitHub repository works: setup finishes, and the first Publish starts it.** (PRESS-0127)
+  Setup used to stop with a sentence about the site having changed.
+  Now the first Publish puts one file of the site in by itself, then
+  publishes the rest as usual. The writer does nothing extra.
+
 ## [0.1.2] - 2026-09-18
 
 ### Added

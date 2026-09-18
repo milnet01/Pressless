@@ -428,6 +428,7 @@ the machine's real store, which matters on Windows CI: there
 | The settings file came from another machine | the first-run form | the file, until he saves |
 | GitHub is unreachable, or refuses the key | the Publisher's sentence | nothing new |
 | GitHub has no such repository this key can reach | the form, with a hint on the repository | nothing new |
+| The repository has no commits yet (PRESS-0127) | setup is done, with nothing left alone | the settings file and the key |
 | Any other failure from `root_entries` | its sentence | nothing new |
 | No keyring, on Windows or a mount without modes | `NoStore`, naming the key | nothing new |
 | The keyring is locked or broken | `CredentialError`, naming the key | nothing new |

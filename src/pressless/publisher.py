@@ -264,11 +264,16 @@ def blob_hash(data: bytes) -> str:
 
 def publish(settings: Settings, folder: Path, token: str, message: str,
             transport: Transport | None = None) -> Outcome:
-    """Make the repository match `folder`, in one commit.
+    """Make the repository match `folder`, in one commit -- two on a
+    repository with no commits.
 
     Four writes in the order §4.3 fixes, and only the last changes what a
     reader sees: blobs, one tree, one commit, one reference update. An
     interruption at any earlier point leaves the site exactly as it was.
+
+    A repository with no commits is first started with one file of the
+    folder, written through the Contents API (PRESS-0127 §4.3). That write
+    precedes the blobs; there is no earlier site for it to damage.
     """
     folder = Path(folder)
     if not folder.is_dir():
@@ -282,15 +287,45 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
 
     session = _Session(transport or _Urllib(), token)
     branch = _default_branch(session, settings.repository)
-    head = session.read(
-        _repo_url(settings.repository, f"commits/{_segment(branch)}")
-    )
+    head_url = _repo_url(settings.repository, f"commits/{_segment(branch)}")
+    untouchable = settings.untouchable
+    local: dict[str, bytes] | None = None
+    started = start_commit = ""
+    head = session.read(head_url, empty_ok=True)
+    if head is None:
+        # The Git Data API cannot write a first commit (PRESS-0127 §2), so one
+        # file goes through the Contents API first. The folder is read before
+        # that write, so every refusal leaves the repository still empty.
+        local = _local_files(folder, untouchable)
+        started = next(
+            (path for path in sorted(local) if not _is_protected(path, untouchable)),
+            "",
+        )
+        if not started:
+            return Outcome(commit="", uploaded=(), removed=())
+        answer = session.write(
+            "PUT",
+            _repo_url(settings.repository, f"contents/{_segment(started)}"),
+            {"message": message,
+             "content": base64.b64encode(local[started]).decode("ascii")},
+            outcome_unknown=True,
+        )
+        written = answer.get("commit")
+        start_commit = _required(written if isinstance(written, dict) else {},
+                                 "sha", "the start commit")
+        head = session.read(head_url, empty_ok=True)
+        if head is None:
+            # The start is made once (PRESS-0127 INV-6), never retried.
+            raise RemoteStateMissing(
+                "GitHub still reports the repository empty after its first "
+                "commit was written"
+            )
     base_commit = _required(head, "sha", "the head commit")
     listing = _tree(session, settings.repository, base_commit)
     remote = _blobs_in(listing)
 
-    untouchable = settings.untouchable
-    local = _local_files(folder, untouchable)
+    if local is None:
+        local = _local_files(folder, untouchable)
 
     uploaded: dict[str, bytes] = {}
     for path, data in sorted(local.items()):
@@ -306,7 +341,10 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     removed = sorted(path for path in unprotected if path not in local)
 
     if not uploaded and not removed:
-        # Nothing differed, so nothing is written at all (§5 INV-4).
+        # Nothing differed, so nothing is written at all (§5 INV-4) -- unless
+        # the start commit already was, and then it is what was published.
+        if started:
+            return Outcome(commit=start_commit, uploaded=(started,), removed=())
         return Outcome(commit="", uploaded=(), removed=())
 
     if not uploaded and len(removed) == len(unprotected):
@@ -356,7 +394,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
                   {"sha": commit, "force": False},
                   outcome_unknown=True)
 
-    return Outcome(commit=commit, uploaded=tuple(sorted(uploaded)),
+    return Outcome(commit=commit,
+                   uploaded=tuple(sorted({*uploaded, started} - {""})),
                    removed=tuple(removed))
 
 
@@ -371,7 +410,10 @@ def root_entries(settings: Settings, token: str,
     remove those and store the rest.
     """
     session = _Session(transport or _Urllib(), token)
-    head = session.read(_repo_url(settings.repository, "commits/HEAD"))
+    head = session.read(_repo_url(settings.repository, "commits/HEAD"),
+                        empty_ok=True)
+    if head is None:
+        return ()
     listing = _tree(session, settings.repository,
                     _required(head, "sha", "the head commit"),
                     recursive=False)
@@ -401,7 +443,12 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     (PRESS-0046).
     """
     session = _Session(transport or _Urllib(), token)
-    current = session.read(_repo_url(settings.repository, "commits/HEAD"))
+    current = session.read(_repo_url(settings.repository, "commits/HEAD"),
+                           empty_ok=True)
+    if current is None:
+        raise NoPreviousState(
+            "the repository has no commits, so there is no state before it"
+        )
     parents = current.get("parents") or []
     if not parents:
         raise NoPreviousState(
@@ -485,8 +532,10 @@ class _Session:
         self._token = token
         self._written = False
 
-    def read(self, url: str) -> dict:
-        return self._call("GET", url, None)
+    def read(self, url: str, *, empty_ok: bool = False) -> dict | None:
+        """GET `url`. With `empty_ok`, a repository with no commits answers
+        None rather than a failure (PRESS-0127 §4.1)."""
+        return self._call("GET", url, None, empty_ok=empty_ok)
 
     def write(self, method: str, url: str, payload: dict, *,
               outcome_unknown: bool = False,
@@ -502,7 +551,7 @@ class _Session:
                           outcome_unknown=outcome_unknown)
 
     def _call(self, method: str, url: str, payload: dict | None, *,
-              outcome_unknown: bool = False) -> dict:
+              outcome_unknown: bool = False, empty_ok: bool = False) -> dict | None:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         headers = {
             "Authorization": f"Bearer {self._token}",
@@ -570,6 +619,12 @@ class _Session:
                     f"GitHub answered {status} to the reference update, so "
                     f"whether the site moved is unknown"
                 )
+            if empty_ok and status in (409, 422) and _says_empty(data):
+                # GitHub's answer for a repository with no commits (PRESS-0127
+                # §4.1). The message is part of the test: its docs give the
+                # status no meaning beyond "conflict". Told apart here, before
+                # any type is chosen, so a 404 keeps its own.
+                return None
             raise _failure(status, method, url)
 
 
@@ -879,6 +934,16 @@ def _failure(status: int, method: str, url: str) -> PublishError:
     if status == 413:
         return TooLarge(f"GitHub refused {where} as too large")
     return PublishError(f"GitHub answered {status} for {where}")
+
+
+def _says_empty(data: bytes) -> bool:
+    """Whether an error answer's `message` names an empty repository."""
+    try:
+        parsed = json.loads(data or b"{}")
+    except ValueError:
+        return False
+    message = parsed.get("message") if isinstance(parsed, dict) else None
+    return isinstance(message, str) and "empty" in message.casefold()
 
 
 def _parse(data: bytes) -> dict:

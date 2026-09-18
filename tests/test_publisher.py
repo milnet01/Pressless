@@ -1992,3 +1992,255 @@ def test_a_blob_with_line_breaks_decodes_whole(tmp_path):
         reads=_blob_reads({"content": wrapped, "encoding": "base64"})))
 
     assert (tmp_path / "index.html").read_bytes() == wanted
+
+
+# ------------------------------------------------ PRESS-0127: empty repo ----
+# docs/specs/PRESS-0127-empty-repository.md. GitHub answers a repository with
+# no commits with 409 "Git Repository is empty." (measured 2026-09-18, the
+# PRESS-0127 roadmap item). The message is written out here rather than
+# imported, for the reason _blob_hash gives.
+
+EMPTY = (409, {}, b'{"message": "Git Repository is empty."}')
+START_COMMIT = "start-commit-sha"
+
+
+def _start_answer(path: str) -> tuple[int, dict, bytes]:
+    """GitHub's 201 to PUT contents/<path>: a content object and the commit."""
+    return (201, {}, json.dumps({"content": {"path": path},
+                                 "commit": {"sha": START_COMMIT}}).encode())
+
+
+class _EmptyRepository(_Transport):
+    """A repository with no commits, until a PUT lands (PRESS-0127 §7).
+
+    Every commit read gives `empty` until a PUT has been recorded, and the
+    `_reads` answers after it -- so the double answers by what has been sent,
+    never by call position. `stays_empty` keeps the empty answer after the
+    PUT, which is the state INV-6 is about.
+    """
+
+    def __init__(self, listing_after: bytes, *, stays_empty: bool = False,
+                 empty: tuple[int, dict, bytes] = EMPTY,
+                 start: tuple[int, dict, bytes] | None = None, **kwargs) -> None:
+        writes = [("/contents/", start or _start_answer("start"))] + _writes()
+        super().__init__(reads=_reads(listing_after), writes=writes, **kwargs)
+        self._stays_empty = stays_empty
+        self._empty = empty
+
+    def request(self, method, url, body, headers):
+        started = any(m == "PUT" for m, _u, _b, _h in self.requests)
+        if method == "GET" and "/commits/" in url and (
+                self._stays_empty or not started):
+            self.requests.append((method, url, body, headers))
+            return self._empty
+        return super().request(method, url, body, headers)
+
+
+def _site(folder: Path, files: dict[str, bytes]) -> Path:
+    folder.mkdir(parents=True, exist_ok=True)
+    for path, data in files.items():
+        (folder / path).parent.mkdir(parents=True, exist_ok=True)
+        (folder / path).write_bytes(data)
+    return folder
+
+
+def _puts(transport) -> list[tuple[str, str, bytes | None, dict]]:
+    return [r for r in transport.requests if r[0] == "PUT"]
+
+
+def test_root_entries_of_an_empty_repository_is_empty():
+    """PRESS-0127 INV-1: an empty repository has no root entries, and asking
+    writes nothing.
+
+    Breaks when: the 409 on commits/HEAD reaches _failure, which raises
+    Conflict -- the branch-moved sentence setup could never get past.
+    """
+    transport = _EmptyRepository(_listing([]))
+
+    assert publisher_module.root_entries(_settings(), "a-token",
+                                         transport=transport) == ()
+    assert _no_writes(transport)
+
+
+def test_fetch_previous_of_an_empty_repository_has_no_previous_state(tmp_path):
+    """PRESS-0127 INV-2: nothing precedes a repository with no commits.
+
+    Breaks when: the empty answer maps to Conflict, or `into` is created
+    before the head read.
+    """
+    into = tmp_path / "fetched"
+
+    with pytest.raises(NoPreviousState):
+        fetch_previous(_settings(), "a-token", into,
+                       transport=_EmptyRepository(_listing([])))
+    assert not into.exists()
+
+
+def test_an_empty_repository_is_started_with_one_real_file(tmp_path):
+    """PRESS-0127 INV-3: one PUT of the first unprotected path, sorted, whose
+    body is the handed message and that file's bytes -- then never a blob.
+
+    `CNAME` sorts first and is untouchable, so a start that ignores the list
+    picks it. `a/page.html` is the right answer; `b.html` is what a start
+    choosing by anything but sorted order is likely to pick.
+
+    Breaks when: the start writes a placeholder, picks a protected or
+    unsorted path, sends a `branch` field, or uploads the start file again as
+    a blob.
+    """
+    start = b"<html>first</html>"
+    folder = _site(tmp_path / "site", {"CNAME": b"example.org",
+                                       "a/page.html": start,
+                                       "b.html": b"<html>second</html>"})
+    transport = _EmptyRepository(_listing([("a/page.html", _blob_hash(start))]),
+                                 start=_start_answer("a/page.html"))
+
+    publish(_settings(), folder, "a-token", "Publish the site",
+            transport=transport)
+
+    puts = _puts(transport)
+    assert len(puts) == 1, f"expected one start write, got {len(puts)}"
+    _method, url, body, _headers = puts[0]
+    assert url.endswith("/repos/owner/name/contents/a/page.html"), url
+    assert json.loads(body) == {
+        "message": "Publish the site",
+        "content": base64.b64encode(start).decode("ascii"),
+    }
+    writes = [r for r in transport.requests if _is_write(r[0])]
+    assert writes[0][0] == "PUT", "the start write must come before any blob"
+    blobs = [json.loads(b)["content"] for m, u, b, _h in transport.requests
+             if m == "POST" and u.endswith("/git/blobs")]
+    assert base64.b64encode(start).decode("ascii") not in blobs
+
+
+def test_nothing_is_written_to_an_empty_repository_before_the_folder_is_accepted(
+        tmp_path):
+    """PRESS-0127 INV-4: every folder refusal comes first, each as its own
+    type, and a folder with nothing unprotected writes nothing at all.
+
+    Breaks when: the start write is made as soon as the empty answer
+    arrives, before _local_files has run.
+    """
+    def attempt(folder):
+        transport = _EmptyRepository(_listing([]))
+        return transport, lambda: publish(_settings(), folder, "a-token", "m",
+                                          transport=transport)
+
+    transport, run = attempt(tmp_path / "missing")
+    with pytest.raises(SiteFolderMissing):
+        run()
+    assert _no_writes(transport)
+
+    stray = _site(tmp_path / "stray", {"index.html": b"x",
+                                       "content/.DS_Store": b"\x00"})
+    transport, run = attempt(stray)
+    with pytest.raises(StrayFile):
+        run()
+    assert _no_writes(transport)
+
+    only_protected = _site(tmp_path / "protected", {"CNAME": b"example.org"})
+    transport, run = attempt(only_protected)
+    assert run() == Outcome(commit="", uploaded=(), removed=())
+    assert _no_writes(transport)
+
+    unreadable = _site(tmp_path / "unreadable", {"index.html": b"x"})
+    (unreadable / "index.html").chmod(0o000)
+    try:
+        if os.access(unreadable / "index.html", os.R_OK):
+            pytest.skip("this user can read a mode-000 file; the unreadable "
+                        "case cannot be reached here")
+        transport, run = attempt(unreadable)
+        with pytest.raises(PublishError) as raised:
+            run()
+        assert type(raised.value) is PublishError
+        assert _no_writes(transport)
+    finally:
+        (unreadable / "index.html").chmod(0o644)
+
+
+def test_a_lost_start_write_is_outcome_unknown(tmp_path):
+    """PRESS-0127 INV-5: the start write changes the branch, so a lost answer
+    or a server error is OutcomeUnknown; a 409 or 422 is Conflict.
+
+    Breaks when: the start write is sent without the outcome-unknown flag the
+    reference update uses, so a dropped connection reads as Unreachable.
+    """
+    folder = _site(tmp_path / "site", {"index.html": b"<html>x</html>"})
+
+    with pytest.raises(OutcomeUnknown):
+        publish(_settings(), folder, "a-token", "m", transport=_EmptyRepository(
+            _listing([]), fail_at="/contents/"))
+
+    with pytest.raises(OutcomeUnknown):
+        publish(_settings(), folder, "a-token", "m", transport=_EmptyRepository(
+            _listing([]), start=(502, {}, b'{"message": "Bad Gateway"}')))
+
+    for status in (409, 422):
+        with pytest.raises(Conflict):
+            publish(_settings(), folder, "a-token", "m",
+                    transport=_EmptyRepository(
+                        _listing([]),
+                        start=(status, {}, b'{"message": "conflict"}')))
+
+
+def test_an_empty_repository_is_started_at_most_once(tmp_path):
+    """PRESS-0127 INV-6: a repository still empty after the start is
+    RemoteStateMissing, with no second write.
+
+    Breaks when: the start sits in a retry loop keyed on the empty answer.
+    """
+    folder = _site(tmp_path / "site", {"index.html": b"<html>x</html>"})
+    transport = _EmptyRepository(_listing([]), stays_empty=True)
+
+    with pytest.raises(RemoteStateMissing):
+        publish(_settings(), folder, "a-token", "m", transport=transport)
+    writes = [r for r in transport.requests if _is_write(r[0])]
+    assert [r[0] for r in writes] == ["PUT"], writes
+
+
+def test_a_conflict_that_does_not_say_empty_is_still_a_conflict(tmp_path):
+    """PRESS-0127 INV-7: only a 409 or 422 whose message says `empty` is an
+    empty repository. Any other stays Conflict and writes nothing.
+
+    This guards today's behaviour, so it passes against the code before
+    PRESS-0127; its proof is the mutation its Breaks-when names.
+
+    Breaks when: the empty test keys on the status alone.
+    """
+    folder = _site(tmp_path / "site", {"index.html": b"<html>x</html>"})
+    for status in (409, 422):
+        transport = _EmptyRepository(
+            _listing([]), empty=(status, {}, b'{"message": "Conflict"}'))
+        with pytest.raises(Conflict):
+            publish(_settings(), folder, "a-token", "m", transport=transport)
+        assert _no_writes(transport)
+        with pytest.raises(Conflict):
+            publisher_module.root_entries(_settings(), "a-token",
+                                          transport=transport)
+
+
+def test_a_started_publish_reports_the_start_file(tmp_path):
+    """PRESS-0127 INV-8: the start file is among what was uploaded, and the
+    commit named is the last one written.
+
+    Breaks when: the second pass returns its own empty Outcome because the
+    start file already matches the listing.
+    """
+    only = b"<html>only</html>"
+    alone = _site(tmp_path / "alone", {"index.html": only})
+    outcome = publish(_settings(), alone, "a-token", "m",
+                      transport=_EmptyRepository(
+                          _listing([("index.html", _blob_hash(only))]),
+                          start=_start_answer("index.html")))
+    assert outcome == Outcome(commit=START_COMMIT, uploaded=("index.html",),
+                              removed=())
+
+    first = b"<html>a</html>"
+    several = _site(tmp_path / "several", {"a.html": first,
+                                           "b.html": b"<html>b</html>"})
+    outcome = publish(_settings(), several, "a-token", "m",
+                      transport=_EmptyRepository(
+                          _listing([("a.html", _blob_hash(first))]),
+                          start=_start_answer("a.html")))
+    assert outcome == Outcome(commit="commit-sha",
+                              uploaded=("a.html", "b.html"), removed=())

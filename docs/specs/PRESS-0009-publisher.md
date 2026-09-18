@@ -210,7 +210,8 @@ reach it two ways. `publish` asks the repository for the branch and then
 reads that branch's head, because it needs the name again for the
 reference update. `root_entries` and `fetch_previous` read `commits/HEAD`,
 which GitHub resolves to the same branch's head, and neither needs the
-name — so each spends one request rather than two. Settings holds no branch field, and
+name — so each spends one request rather than two. A repository with no
+commits answers these reads differently, and PRESS-0127 §4.1 says how. Settings holds no branch field, and
 adding one would change PRESS-0001's shipped file format and its setup —
 so the alternative to resolving it is hard-coding a name that is wrong for
 any repository whose default differs. §10 records that nothing here checks
@@ -548,6 +549,8 @@ behaviour.
   *Breaks when:* an implementer updates the branch per batch to make a
   large first publish resumable, which is the change that turns a
   half-finished publish into a half-updated site.
+  *Amended by PRESS-0127:* a repository with no commits is first
+  started with one file of the folder, before any blob (PRESS-0127 §4.4).
 
 - **INV-4** — A file whose local git blob hash equals the hash in the
   repository listing is not uploaded, and a publish where no file differs
@@ -670,7 +673,7 @@ behaviour.
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
 | Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `RemoteStateMissing` | unchanged |
-| Branch moved since the listing was read | `Conflict` | unchanged |
+| Branch moved since the listing was read — not a read GitHub answers as an empty repository, which PRESS-0127 §4.1 owns | `Conflict` | unchanged |
 | A documented GitHub limit was hit | `TooLarge` | unchanged |
 | Retry hints exhausted | `RateLimited` | unchanged |
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |

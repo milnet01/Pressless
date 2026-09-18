@@ -32,6 +32,9 @@ writes one commit containing only those.
 - We depend on that interface staying as it is. If it changes, publishing
   breaks and the app cannot fall back to git without reintroducing the
   install.
+- That interface cannot write the first commit of an empty repository.
+  Pressless starts one with a single file through GitHub's file
+  interface instead, then publishes as normal (PRESS-0127).
 - We do not get git's own safety checks. If Pressless computes the wrong
   set of changed files, nothing downstream catches it — so that
   computation needs tests that a git-based version would not have needed.

@@ -543,3 +543,36 @@ def test_the_filter_is_the_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         assert settings.load(settings_path).daily_prompt_filter == "x-*"
         browser.post(_answers(key="", daily_prompt_filter=""))
     assert settings.load(settings_path).daily_prompt_filter == ""
+
+
+# ------------------------------------------- PRESS-0127 INV-9: empty repo ----
+
+
+class _EmptyGitHub(_GitHub):
+    """A repository with no commits: GitHub answers the head read 409 with
+    "Git Repository is empty." (measured 2026-09-18, PRESS-0127 § 2)."""
+
+    def request(self, method: str, url: str, body: bytes | None,
+                headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+        if "/commits/" in url:
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 409, {}, b'{"message": "Git Repository is empty."}'
+        return super().request(method, url, body, headers)
+
+
+def test_setup_finishes_against_an_empty_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PRESS-0127 INV-9. Breaks when root_entries raises on the empty answer,
+    or setup starts the repository itself."""
+    _Store(monkeypatch)
+    github = _EmptyGitHub()
+
+    with _setup_page(tmp_path, github) as browser:
+        status, page = browser.post(_answers())
+
+    assert status == 200
+    assert "Setup is done." in page
+    assert settings.load(tmp_path).untouchable == ()
+    assert github.calls, "setup never asked GitHub, so this proved nothing"
+    assert [method for method, _url, _auth in github.calls if method != "GET"] == []
