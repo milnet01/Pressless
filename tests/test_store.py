@@ -857,6 +857,32 @@ def test_a_body_of_its_own_line_endings_does_not_end_the_header(tmp_path):
     )
 
 
+def test_a_move_takes_the_windows_route_where_the_platform_is_windows(
+    tmp_path, monkeypatch
+):
+    """PRESS-0129: a move chooses its route through `_is_windows()`, the
+    one platform signal a test can set (§4.5), so the Windows route runs
+    on Linux too.
+
+    Breaks when: the move branches on `os.name` again, which a test cannot
+    patch without stranding every Path, so only Windows CI could reach it.
+    """
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    monkeypatch.setattr(store_module, "_is_windows", lambda: True)
+    renamed = []
+    real_rename = os.rename
+    monkeypatch.setattr(os, "rename", lambda a, b: (renamed.append(b), real_rename(a, b)))
+
+    def no_link(*args):
+        raise AssertionError("the POSIX route ran where the platform is Windows")
+
+    monkeypatch.setattr(os, "link", no_link)
+
+    target = publish(tmp_path, "moved")
+
+    assert renamed == [target], f"the move made these renames: {renamed!r}"
+
+
 # ------------------------------------------------------------ PRESS-0067 ----
 
 
@@ -1400,14 +1426,11 @@ def test_a_stranded_file_is_reported(tmp_path):
     the writer renamed himself. Where the filesystem folds case the two names
     are one file and INV-10 governs, so the fixture is what decides."""
     _require_hard_links(tmp_path)
+    _require_distinct_case(tmp_path)
     write(tmp_path, _entry(slug="moved"), draft=True)
     stranded = tmp_path / _PUBLISHED
     stranded.mkdir(exist_ok=True)
     (stranded / f"moved{_SUFFIX.upper()}").write_text("the writer's own copy")
-    if not (stranded / f"moved{_SUFFIX.upper()}").exists() or (
-        stranded / f"moved{_SUFFIX}"
-    ).exists():
-        pytest.skip("this filesystem folds case, so one folder cannot hold both")
 
     with pytest.warns(StoreNotice) as caught:
         target = publish(tmp_path, "moved")

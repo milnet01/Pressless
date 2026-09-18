@@ -1939,6 +1939,10 @@ def _blob_reads(blob_body: dict) -> list[tuple[str, tuple[int, dict, bytes]]]:
     # one short of a multiple of four.
     pytest.param({"content": "a", "encoding": "base64"},
                  id="a malformed base64 string"),
+    # PRESS-0129: the "@@@" case above, which decoded to b"" and was written
+    # out as an empty file with the fetch reporting success.
+    pytest.param({"content": "!!!!", "encoding": "base64"},
+                 id="base64 that is all non-alphabet characters"),
     pytest.param({"content": 12345, "encoding": "base64"},
                  id="a non-string content under base64"),
     pytest.param({"content": 12345, "encoding": "none"},
@@ -1971,3 +1975,20 @@ def test_a_malformed_blob_content_field_is_a_typed_failure(tmp_path, blob_body):
     with pytest.raises(PublishError):
         fetch_previous(_settings(), "a-token", tmp_path,
                        transport=_Transport(reads=_blob_reads(blob_body)))
+
+
+def test_a_blob_with_line_breaks_decodes_whole(tmp_path):
+    """PRESS-0129: GitHub's blob answer breaks its base64 into lines. The
+    check that refuses non-alphabet junk must still read that answer whole.
+
+    Breaks when: the decode validates without first dropping whitespace,
+    which refuses every real blob longer than one line.
+    """
+    wanted = b"<html>" + b"the state before this one " * 20 + b"</html>"
+    wrapped = base64.encodebytes(wanted).decode("ascii")
+    assert "\n" in wrapped.rstrip("\n"), "the fixture must span several lines"
+
+    fetch_previous(_settings(), "a-token", tmp_path, transport=_Transport(
+        reads=_blob_reads({"content": wrapped, "encoding": "base64"})))
+
+    assert (tmp_path / "index.html").read_bytes() == wanted

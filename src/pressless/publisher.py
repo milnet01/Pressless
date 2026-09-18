@@ -800,7 +800,9 @@ def _content_of(blob: dict) -> bytes:
     content = blob["content"]
     try:
         if blob.get("encoding", "base64") == "base64":
-            return base64.b64decode(content)
+            # GitHub breaks its base64 into lines. Unvalidated, a blob of
+            # non-alphabet junk decodes to b"" (PRESS-0129).
+            return base64.b64decode("".join(content.split()), validate=True)
         return content.encode("utf-8")
     except (ValueError, TypeError, AttributeError) as exc:
         # Malformed base64, or a content field that is not a string. The bare

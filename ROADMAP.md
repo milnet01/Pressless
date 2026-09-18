@@ -6781,6 +6781,14 @@ already-built code ships in whichever release comes next.
 
   His real example has not been given yet. Ask for it before the spec
   is written.
+  Example given by the user (2026-09-18). The writer makes music and now
+  music videos. He wants a mark such as <music_total> that writes how
+  many songs he has, and the same for his music videos. The count comes
+  from Spotify, YouTube, Amazon Music or Apple Music. It is a variable
+  rather than a formula; the user's view is that more variables make
+  formulas likelier to be wanted. The sources are the ones PRESS-0080
+  asks about and PRESS-0081 to PRESS-0084 would read, so this depends on
+  what PRESS-0080 finds.
   **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
   Kind: feature.
   Source: user-request-2026-09-17.
@@ -6847,6 +6855,35 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0012 scope.
   Lanes: Face.
+
+- ✅ [PRESS-0129] **Three review residues nothing tracked: a garbled blob saved as an empty file, an untestable move branch, and a hand-rolled case probe.**
+  Found 2026-09-18 by sweeping every "not fixed" note in shipped items
+  and the PRESS-0075 test review's cross-references. Each was noted by a
+  lane as "not mine" and never filed.
+
+  1. publisher.py::_content_of decodes base64 without validation. A blob
+     of non-alphabet junk strips to nothing and decodes to b"", so the
+     fetch writes an empty file and reports success -- which the
+     function's own docstring forbids. Executed: b64decode("!!!!") is b"".
+     GitHub's content carries line breaks, so whitespace is dropped
+     before a validating decode.
+  2. store.py::_move_without_overwriting picks its Windows route on
+     os.name, not the patchable _is_windows(), so the suite cannot force
+     that route on Linux. Windows CI runs it; a Linux test cannot.
+  3. test_store.py::test_a_stranded_file_is_reported writes its own
+     case-folding check instead of calling _mode_support's
+     _require_distinct_case, the second copy that file warns against.
+
+  No spec changes: PRESS-0009 4.1 and PRESS-0005 already say what the
+  code must do.
+  Resolved (2026-09-18): all three fixed, test-first. The junk case
+  and the Windows-route test were each seen red against the old code; a
+  line-broken blob test guards the validating decode. The stranded-file
+  test now calls _require_distinct_case. Local gate green.
+  **Layman:** Three small leftovers from earlier reviews: a damaged download could be saved as an empty file without a warning, and two test gaps.
+  Kind: review-fix.
+  Source: roadmap residue sweep 2026-09-18; PRESS-0075 test review lanes 1 and 2; PRESS-0109.
+  Lanes: Publisher, Store, tests.
 
 ## Milestones
 

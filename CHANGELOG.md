@@ -38,6 +38,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   optional field. The page is reached once writing and publishing
   arrive (PRESS-0013).
 
+### Fixed
+
+- **A damaged file fetched back from GitHub is refused instead of saved as an empty file** (PRESS-0129)
+  Before, a garbled answer from GitHub could be written to disk as an
+  empty file, with the fetch reporting success. It is now a failure he
+  is told about.
+
 ## [0.1.1] - 2026-09-17
 
 ### Changed

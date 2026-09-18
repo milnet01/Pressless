@@ -455,7 +455,7 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
     not, a move raises StoreError carrying the system's reason, which is
     visible rather than quiet.
     """
-    if os.name == "nt":
+    if _is_windows():
         os.rename(source, target)
         return
     os.link(source, target)
