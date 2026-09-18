@@ -26,7 +26,9 @@ GitHub answers several requests with `409` and the message
 2026-09-18 against a throwaway empty repository, and recorded on the
 PRESS-0127 roadmap item:
 
-- `GET commits/HEAD` and `GET commits/main` answer 409.
+- `GET commits/HEAD` answers 409.
+- `publish`'s read of `GET commits/main` raised `Conflict`, so it answered
+  409 or 422. Its message was not recorded.
 - `POST git/blobs` and `POST git/trees` answer 409.
 - `PUT contents/<path>` succeeds and creates a first commit. After it,
   `POST git/blobs` succeeds.
@@ -82,8 +84,9 @@ alone.
 
 `fetch_previous` raises before it creates `into`.
 
-An empty answer anywhere else is not handled here and maps to
-`RemoteStateMissing` (§6).
+The empty answer is told apart where the answer is read, before any public
+type is chosen. A 404 on these reads keeps its type, `RemoteStateMissing`,
+so setup still shows its hint for a repository the key cannot reach.
 
 ### 4.2 The public surface
 
@@ -95,9 +98,9 @@ through the same `Transport` seam as every other request.
 `publish` reads the default branch, then its head. When that read reports an
 empty repository:
 
-1. **Read the folder.** `_local_files` runs as it does today, so a folder
-   that is not a directory, a stray and an unreadable file all refuse here.
-   The repository is still empty.
+1. **Read the folder.** `publish`'s directory check has already run, before
+   the first request. `_local_files` then refuses a stray or an unreadable
+   file. The repository is still empty.
 2. **Choose the start file.** It is the first path, in sorted order, that
    `_is_protected` does not match. No such path: return
    `Outcome(commit="", uploaded=(), removed=())` and write nothing.
@@ -163,7 +166,8 @@ with commits and completes it through the normal path.
   a blob.
 
 - **INV-4** — No write request reaches an empty repository before the folder
-  is accepted. A folder that is not a directory, a stray, an unreadable file
+  is accepted. A folder that is not a directory raises `SiteFolderMissing`,
+  a stray `StrayFile`, and an unreadable file `PublishError`. Those three
   and a folder with nothing unprotected each make no write at all.
   *Test:* `tests/test_publisher.py::test_nothing_is_written_to_an_empty_repository_before_the_folder_is_accepted`.
   *Breaks when:* the start write is made as soon as the empty answer
@@ -213,14 +217,13 @@ changes.
 | A 413 on the start write | `TooLarge` | no commits |
 | Still empty after the start write | `RemoteStateMissing` | unknown; the next publish reads it |
 | Any failure after the start write | its PRESS-0009 §6 type | the start file |
-| An empty answer to any read not in §4.1's table | `RemoteStateMissing` | unchanged |
 
 **The next publish settles every row.** A repository still empty is started
 again. One holding the start file is published through the normal path.
 
-**The last-but-one row's sentence is imprecise.** The Face says *"Your site
-has not changed."* for those types, and the repository gained the start
-file. §10 records it.
+**The "Any failure after the start write" row's sentence is imprecise.** The
+Face says *"Your site has not changed."* for those types, and the repository
+gained the start file. §10 records it.
 
 ## 7. Tests
 
@@ -228,13 +231,18 @@ file. §10 records it.
 INV-5, INV-6, INV-7 and INV-8.
 `tests/test_setup.py` gains INV-9's.
 
-The existing `_Transport` double answers by URL and cannot change its answer
-mid-call. The INV-3, INV-6 and INV-8 tests need a head read that answers the
-empty 409 until a `PUT` is recorded, and then a commit. Give that its own
-double, answering each read by URL, as `CLAUDE.md` asks of test doubles.
+The INV-3, INV-6 and INV-8 tests need a head read that answers the empty 409
+until a `PUT` is recorded, and a commit after it. The existing `_Transport`
+gives a read URL one fixed answer, or answers by call position, which
+`CLAUDE.md` warns against for doubles. Give these tests a double whose head
+read changes its answer once a `PUT` is recorded.
 
 Each test is seen failing against today's `publisher.py`, then
 mutation-probed once the code lands, one mutation per *Breaks when*.
+
+**By hand, before release.** Against a new, empty GitHub repository: finish
+setup, then publish. This is the only check that `publish`'s read of
+`commits/{branch}` answers as §4.1 expects, which §2 records as unmeasured.
 
 ## 8. Alternatives considered (and rejected)
 
@@ -273,13 +281,15 @@ mutation-probed once the code lands, one mutation per *Breaks when*.
 | INV-7 | `tests/test_publisher.py::test_a_conflict_that_does_not_say_empty_is_still_a_conflict` |
 | INV-8 | `tests/test_publisher.py::test_a_started_publish_reports_the_start_file` |
 | INV-9 | `tests/test_setup.py::test_setup_finishes_against_an_empty_repository` |
-| That GitHub still answers an empty repository as §2 measured | **nothing** — no test reaches the network. If the wording loses `empty`, an empty repository falls back to today's `Conflict` |
+| §4.1's 404 half — setup still shows its repository hint | `tests/test_setup.py::test_nothing_is_written_before_github_answers` |
+| That GitHub answers an empty repository as §2 records, on `commits/{branch}` too | **Partial:** §7's by-hand check, once, before release. No test reaches the network. If the wording loses `empty`, an empty repository falls back to today's `Conflict` |
 | The Face's *"Your site has not changed."* after a failure past the start write | **nothing** — the sentence is imprecise there (§6). Publishing again settles it, which is S6's promise |
 
 ## 11. Cross-doc impact
 
 - **PRESS-0009** — INV-3 gains *"amended by PRESS-0127"*, pointing at §4.4.
-  §6's 409 row names the empty exception and points here. §4.2's
+  §6's "Branch moved since the listing was read" row names the empty
+  exception and points here. §4.2's
   `root_entries` and `fetch_previous` paragraph points at §4.1. The new
   direction is gated in this spec; those edits are pointers to it.
 - **PRESS-0021** — §6 gains a row: a repository with no commits finishes
