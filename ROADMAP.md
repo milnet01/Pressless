@@ -6839,6 +6839,23 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-17: test it later against a real empty
   repository, and make setup accept one if the belief holds. PRESS-0021
   is built as specified meanwhile.
+  Verified 2026-09-18 against a throwaway empty private repository.
+  The belief holds, and it reaches further than setup.
+  - GET commits/HEAD answers 409, "Git Repository is empty."
+  - publisher.root_entries raises Conflict: "the branch moved since it
+    was read". Setup would show that sentence and never finish.
+  - publisher.publish raises the same Conflict on commits/main, so the
+    first publish fails the same way.
+  - POST git/blobs and POST git/trees also answer 409 "Git Repository
+    is empty." So the Git Data API ADR-0002 publishes through cannot
+    write the first commit. Mapping the 409 alone cannot make publishing
+    work; a first commit has to come from somewhere else.
+  A route exists, verified the same day on the same repository: PUT
+  contents/<path> (the Contents API) creates a first commit in an empty
+  repository, and POST git/blobs then succeeds. So a fix can write one
+  small first commit that way and carry on through the Git Data API.
+  It adds a request shape ADR-0002 does not name, so it needs a design
+  decision before code.
   **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
