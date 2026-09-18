@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pressless"
-version = "0.1.1"
+version = "0.1.2"
 description = "The desktop app that lets a writer manage and publish their own static site, without needing anyone else to do it for them."
 readme = "README.md"
 # The floor is what CI actually exercises, and deliberately not wider: below

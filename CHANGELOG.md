@@ -12,6 +12,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-18
+
 ### Added
 
 - **Publish: one button beside the entry sends it to the live site, and double-clicking Pressless opens it in the browser.** (PRESS-0013)
