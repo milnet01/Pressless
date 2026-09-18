@@ -1,6 +1,6 @@
 # PRESS-0127 — Empty repository: setup finishes, and the first publish starts it
 
-**Status:** spec draft (2026-09-18).
+**Status:** accepted (2026-09-18). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail. A by-hand check against a new empty repository is owed before release (§7).
 **Kind:** fix.
 **Source:** ROADMAP PRESS-0127 (the PRESS-0021 amendment gate, 2026-09-17;
 the probe and the user's decision, 2026-09-18).
@@ -61,9 +61,10 @@ empty.
 
 ### 4.1 Recognising an empty repository
 
-A read (`GET`) answered `409`, whose JSON `message` contains `empty` after
-`str.casefold`, means the repository has no commits. Any other 409 keeps
-today's mapping.
+A read (`GET`) answered `409` or `422`, whose JSON `message` contains `empty`
+after `str.casefold`, means the repository has no commits. Both statuses are
+accepted because §2 could not record which one `commits/{branch}` gives. Any
+other 409 or 422 keeps today's mapping.
 
 The message is part of the test because GitHub's documentation gives a 409
 on `GET commits/{ref}` no meaning beyond *"conflict"*. A status-only test
@@ -159,7 +160,7 @@ with commits and completes it through the normal path.
   and that file's bytes in base64, and nothing else. That path is never
   sent as a blob.
   *Test:* `tests/test_publisher.py::test_an_empty_repository_is_started_with_one_real_file`,
-  against a double whose head read answers the empty 409 until a `PUT` is
+  against a double whose head read gives the empty answer until a `PUT` is
   recorded.
   *Breaks when:* the start writes a placeholder, picks a protected or
   unsorted path, sends a `branch` field, or uploads the start file again as
@@ -185,9 +186,10 @@ with commits and completes it through the normal path.
   *Test:* `tests/test_publisher.py::test_an_empty_repository_is_started_at_most_once`.
   *Breaks when:* the start sits in a retry loop keyed on the empty answer.
 
-- **INV-7** — A 409 answering a read whose message does not contain `empty`
-  keeps today's mapping, `Conflict`, and makes no write.
-  *Test:* `tests/test_publisher.py::test_a_conflict_that_does_not_say_empty_is_still_a_conflict`.
+- **INV-7** — A 409 or 422 answering a read whose message does not contain
+  `empty` keeps today's mapping, `Conflict`, and makes no write.
+  *Test:* `tests/test_publisher.py::test_a_conflict_that_does_not_say_empty_is_still_a_conflict`,
+  which covers both statuses.
   *Breaks when:* the empty test keys on the status alone.
 
 - **INV-8** — After a start, `Outcome.uploaded` includes the start file.
@@ -213,10 +215,15 @@ changes.
 |---|---|---|
 | The folder is refused, or has nothing unprotected | as PRESS-0009 §6, or nothing | no commits |
 | No answer, or a server error, on the start write | `OutcomeUnknown` | no commits, or the start file |
-| A 409 or 422 on the start write — someone wrote first | `Conflict` | whatever the other writer left |
+| A 409 or 422 on the start write | `Conflict` | no commits, or what another writer left |
 | A 413 on the start write | `TooLarge` | no commits |
 | Still empty after the start write | `RemoteStateMissing` | unknown; the next publish reads it |
 | Any failure after the start write | its PRESS-0009 §6 type | the start file |
+
+**Another writer starting the repository first is not detected.** The `PUT`
+carries no `sha` for a new path, so it lands on top of their commit and
+succeeds. The publish then treats their files as it treats any file written
+before a publish begins.
 
 **The next publish settles every row.** A repository still empty is started
 again. One holding the start file is published through the normal path.
@@ -231,14 +238,17 @@ gained the start file. §10 records it.
 INV-5, INV-6, INV-7 and INV-8.
 `tests/test_setup.py` gains INV-9's.
 
-The INV-3, INV-6 and INV-8 tests need a head read that answers the empty 409
-until a `PUT` is recorded, and a commit after it. The existing `_Transport`
-gives a read URL one fixed answer, or answers by call position, which
-`CLAUDE.md` warns against for doubles. Give these tests a double whose head
-read changes its answer once a `PUT` is recorded.
+The INV-3 and INV-8 tests need a head read that gives the empty answer until
+a `PUT` is recorded, and a commit after it. The existing `_Transport` gives a
+read URL one fixed answer, or answers by call position, which `CLAUDE.md`
+warns against for doubles. Give these tests a double whose head read changes
+its answer once a `PUT` is recorded. INV-6's double keeps giving the empty
+answer after the `PUT`.
 
-Each test is seen failing against today's `publisher.py`, then
-mutation-probed once the code lands, one mutation per *Breaks when*.
+Each test except INV-7's is seen failing against today's `publisher.py`.
+INV-7 guards today's behaviour, so it passes today; its proof is the mutation
+its *Breaks when* names. Every test is mutation-probed once the code lands,
+one mutation per *Breaks when*.
 
 **By hand, before release.** Against a new, empty GitHub repository: finish
 setup, then publish. This is the only check that `publish`'s read of
@@ -257,7 +267,7 @@ setup, then publish. This is the only check that `publish`'s read of
   needs anyway.
 - **Write the first commit through the Git Data API.** Not possible:
   `git/blobs` and `git/trees` answer 409 on an empty repository (§2).
-- **Recognise an empty repository by the 409 alone.** Rejected in §4.1. A
+- **Recognise an empty repository by the status alone.** Rejected in §4.1. A
   misread sends a start write to a repository that has commits.
 
 ## 9. Out of scope
