@@ -1899,6 +1899,23 @@ that it is back. Holds S9.
   be undone. The Face offers no undo for it and says why in one plain
   sentence, so his files and the site always agree. The maintainer is on
   hand for that first publish instead.
+  Decided by the user 2026-09-19, for the spec:
+  1. A definite failure (GitHub refuses, the build fails) puts his
+  files back as they were before Undo, as Publish does. An unknown
+  outcome stays undone.
+  2. Undo is offered beside the Published message on the editor page
+  and as "Undo the last publish" on the front page.
+  3. The button always shows. After a first publish, pressing it
+  changes nothing and says why in one sentence. No GitHub check
+  before showing it.
+  4. A saved working copy of an entry Undo demotes is kept; publishing
+  it later puts the entry back on the site with his changes.
+  Spec not yet drafted. Contracts it must honour: design.md "What
+  undo actually does"; PRESS-0009 sections 3.1, 3.4 and 4.5;
+  PRESS-0008 section 4.7; PRESS-0005 publish, unpublish and
+  move_to_bin; PRESS-0012 decision 6 (a demoted entry needs a date
+  mark); PRESS-0013 sections 4.1 and 4.3 (emptying=True); PRESS-0127
+  section 9.
   **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
