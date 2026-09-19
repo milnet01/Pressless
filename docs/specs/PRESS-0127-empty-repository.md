@@ -28,7 +28,8 @@ PRESS-0127 roadmap item:
 
 - `GET commits/HEAD` answers 409.
 - `publish`'s read of `GET commits/main` raised `Conflict`, so it answered
-  409 or 422. Its message was not recorded.
+  409 or 422. Its message was not recorded. Re-measured 2026-09-19: 409,
+  `Git Repository is empty.`
 - `POST git/blobs` and `POST git/trees` answer 409.
 - `PUT contents/<path>` succeeds and creates a first commit. After it,
   `POST git/blobs` succeeds.
@@ -252,7 +253,8 @@ one mutation per *Breaks when*.
 
 **By hand, before release.** Against a new, empty GitHub repository: finish
 setup, then publish. This is the only check that `publish`'s read of
-`commits/{branch}` answers as §4.1 expects, which §2 records as unmeasured.
+`commits/{branch}` answers as §4.1 expects. Passed 2026-09-19; the
+PRESS-0127 roadmap item records the run.
 
 ## 8. Alternatives considered (and rejected)
 

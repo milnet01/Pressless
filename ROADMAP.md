@@ -1,4 +1,5 @@
 <!-- ants-roadmap-format: 1 -->
+<!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -12,6 +13,7 @@
 **Legend**
 
 - ✅ Done · 🚧 In progress · 📋 Planned · 💭 Considered
+- 🚫 Dropped (closed, not done)
 
 ## 0.1.0 — twelve years survived
 
@@ -6829,7 +6831,7 @@ already-built code ships in whichever release comes next.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
   Lanes: Store, Face.
 
-- 🚧 [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
+- ✅ [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
   publisher.root_entries first reads the repository's commits/HEAD.
   Four review lanes on 2026-09-17 believed GitHub answers that with
   409 on a repository holding no commits. publisher._failure maps 409
@@ -6870,6 +6872,12 @@ already-built code ships in whichever release comes next.
   by-hand check in the spec's §7 passes: finish setup against a new,
   empty GitHub repository, then publish, and see the site arrive.
   That is the only check of the publish read's answer.
+  By-hand check passed 2026-09-19, against a new empty private
+  repository. GitHub answered GET commits/{branch} and commits/HEAD
+  with 409 "Git Repository is empty." Setup's root_entries read
+  returned nothing. Publish wrote the start commit, then the site
+  commit on top; every file arrived. A second publish wrote nothing.
+  Driven through publisher.py directly, not through the browser form.
   **Layman:** Check that someone with a brand-new, empty GitHub repository can finish setup.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
