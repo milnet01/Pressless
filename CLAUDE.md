@@ -15,7 +15,6 @@ Nothing here records it, deliberately. Read it:
 
 A position written down is maintained by hand, and starts lying the
 first time a session forgets it while still reading as authoritative.
-This block said v0.3.0 for two milestones after that one shipped.
 
 ## How work is done here
 
@@ -75,8 +74,11 @@ so. `.githooks/pre-push` only delegates to the machine-wide gate; where
 that is absent it prints `NOTHING WAS CHECKED` and exits 0, so it warns
 rather than blocks.
 
-**`ants.gate.docsGlob`'s value here is the hook's own fallback**, so
-setting it alters no behaviour today. The wide list is right because
+**`local-gate.md` § 6.2 makes the UNSET key the breach**: a shared hook
+cannot know what a given pipeline reads, so it has to be told, and that
+standard's own table says nothing announces the omission. The value
+here is the hook's own fallback, so setting it alters no behaviour
+today — set it anyway. The wide list is right because
 `--docs` runs the leak sweep, which is the check a markdown edit in this
 repository can actually breach, and no test reads a document as data.
 Narrow it if either stops being true — and a narrowing reverts on any

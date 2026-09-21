@@ -29,10 +29,12 @@ cap belongs in `CLAUDE.md`, where it instructs someone; moving it here
 on 2026-09-21 left the sentence reading as a possible architectural
 rule, and the cold read that day found it.
 
-`ants.gate.docsGlob` records a decision rather than changing one. Its
-value is the hook's own fallback, so setting it alters no behaviour
-today. `local-gate.md` § 6.2 makes the *unset* key the breach: a shared
-hook cannot know what a given pipeline reads, so it has to be told.
+The rule that an UNSET `ants.gate.docsGlob` is the breach was moved here
+on 2026-09-21 and put straight back. Without it `CLAUDE.md` said only
+that setting the key alters no behaviour, which reads as permission to
+skip it — and `local-gate.md` § 6.2's own table says nothing announces
+the omission, so the breach would never have surfaced. Three cold lanes
+found it independently.
 
 **Absence is the only skip** for the generator-loading archive tests
 (PRESS-0108). A skip reporting every cause as absence could stop the S2
