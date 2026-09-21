@@ -1954,6 +1954,29 @@ that it is back. Holds S9.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
   Lanes: Face, Store.
 
+- 📋 [PRESS-0134] **The design says a demoted entry's comments move with it, and PRESS-0015 decided they stay.**
+  docs/design.md section What undo actually does says an entry's
+  comments file follows its entry -- demoted, published, binned or
+  renamed with it. PRESS-0015 section 3 decision 8, taken by the user
+  2026-09-21, narrows the demoted case: the comments stay filed under the
+  entry's own address and are simply not built while it is a draft.
+
+  Both lanes that found it reasoned the same way. A builder reading
+  design.md bins the comments file on demotion, so a later republish
+  comes back without them. A builder reading PRESS-0015 leaves it alone.
+
+  Not carried into PRESS-0015 by the gate that found it: the rule's home
+  is design.md, the change is a decision rather than a correction, and
+  design.md is gated as an ADR. PRESS-0015 section 11 records the
+  amendment as owed.
+
+  Route: amend the sentence, then re-gate design.md only if the amendment
+  changes direction for work still to come -- CLAUDE.md rule 14 decides
+  that. Recording what was already decided does not re-arm the gate.
+  **Layman:** One sentence in the design disagrees with what was decided about reader comments when an entry is put back.
+  Kind: doc-fix.
+  Source: review-contract loop 1 on PRESS-0015, 2026-09-21 -- two lanes.
+
 ## 0.5.0 — the rest of the site is his too
 
 The fixed pages are edited in the same box as an entry, with the code behind a
