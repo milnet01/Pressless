@@ -2025,6 +2025,38 @@ writing an entry to do it. Holds S8.
   Source: design-2026-08-24 § Where the fixed pages live.
   Lanes: Face, Store.
 
+- 📋 [PRESS-0135] **A full code review before the 0.5.0 milestone ships.**
+  Decided by the user 2026-09-21: a code review runs just before the
+  0.5.0 milestone ships. Concretely that is after PRESS-0015 and
+  PRESS-0014 are built.
+
+  Why it is worth a whole pass rather than a diff review. The only
+  review-code sweep on record ran 2026-08-31. Every source module has
+  changed since, and four did not exist then at all -- face.py appeared
+  2026-09-11, and publishing.py, editor.py and setup.py all appeared
+  2026-09-17. So the milestones that shipped in 0.1.1 and 0.1.2 (Publish,
+  the editor, Setup) are precisely the code no cold reviewer has ever
+  read. Measured with git log --diff-filter=A on each module.
+
+  Route: review-code, a lane per subsystem, each briefed against the
+  specs that subsystem is bound by. Not /code-review, which takes a diff
+  or one PR.
+
+  Worth handing the session that runs it: the archive tests need
+  PRESSLESS_ARCHIVE, and two of them also need PRESSLESS_GENERATOR, or a
+  green run proves less than it looks; docs/reviews/ is review run state
+  rather than subject, so it belongs in exclude_glob; and PRESS-0133's
+  by-hand checks are delivery gaps rather than code-review findings.
+
+  Note on the version: the user said "v0.5.0", and 0.5.0 is a ROADMAP
+  MILESTONE rather than a release number. Feature work on the 0.x line
+  ships as a PATCH here -- the 0.2.0 and 0.3.0 milestones went out inside
+  0.1.1 and 0.1.2. Confirm which number cut-release is given when the
+  time comes.
+  **Layman:** Someone reads the whole codebase with fresh eyes before the next big step, because a lot of it has never been read that way.
+  Kind: review-fix.
+  Source: user-decision-2026-09-21.
+
 ## 0.6.0 — pictures and helpers
 
 Photographs from the picture mark through to the web-sized copy, a list of
