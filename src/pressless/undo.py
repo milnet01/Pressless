@@ -382,17 +382,19 @@ def _summary(result: Undone) -> str:
     """One clause each for `restored`, `demoted` and `kept` (§ 4.2)."""
     clauses = []
     if result.restored:
-        clauses.append(f"{_count(len(result.restored), 'entry', 'entries')} put back")
+        clauses.append(f"{_count(len(result.restored))} put back")
     if result.demoted:
-        clauses.append(
-            f"{_count(len(result.demoted), 'entry', 'entries')} turned back into a draft")
+        clauses.append(f"{_count(len(result.demoted))} turned back into "
+                       + ("a draft" if len(result.demoted) == 1 else "drafts"))
     if result.kept:
-        clauses.append(
-            f"your own version of {_count(len(result.kept), 'entry', 'entries')} kept as a draft")
+        many = len(result.kept) > 1
+        clauses.append(f"your own {'versions' if many else 'version'} of "
+                       f"{_count(len(result.kept))} kept as "
+                       + ("drafts" if many else "a draft"))
     if not clauses:
         return "Your site was already as it was before the last publish."
     return "Your site is back the way it was: " + ", ".join(clauses) + "."
 
 
-def _count(number: int, one: str, many: str) -> str:
-    return f"1 {one}" if number == 1 else f"{number} {many}"
+def _count(number: int) -> str:
+    return "1 entry" if number == 1 else f"{number} entries"
