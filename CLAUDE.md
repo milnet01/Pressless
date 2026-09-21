@@ -374,11 +374,14 @@ packet. Do not reach for the bypass token or relaunch with the unlock
 variable: neither is warranted, because no edit to that surface is
 intended.
 
-**A trap worth knowing: a section intro written by
-`roadmap_log op:create_section` cannot be amended by any verb**, and a
-hand edit to `ROADMAP.md` is discarded by the next render. Never put a
-count, an id list or a date in one. The Milestones section carries a
-stale item count for exactly this reason; filed as Ants MCP feedback.
+**A section intro is amendable now, and it was not when the Milestones
+intro was written.** `roadmap_log op:"set_intro"` replaces one
+(ANTS-4949); verified here 2026-09-21 with a dry run against
+`milestones`, which reported `replaced_intro_chars: 1981`. A hand edit
+to `ROADMAP.md` is still discarded by the next render, so the verb is
+the only route. **Still avoid a count, an id list or a date in an
+intro** — the Milestones intro carries all three and every one has gone
+stale (PRESS-0136). Amendable is not the same as maintained.
 
 ### Roadmap IDs
 

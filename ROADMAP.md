@@ -7170,6 +7170,42 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
 
+- 📋 [PRESS-0136] **The Milestones intro names a three-milestone scheme the section headings abandoned.**
+  Three claims in that intro are false, and they disagree with the
+  section headings a reader sees first.
+
+  1. "Every one of the 22 items above belongs to exactly one milestone
+     below." The roadmap holds 135 items (roadmap_query, 2026-09-21).
+  2. It names three milestones -- v0.1.0, v0.5.0, v1.0.0 -- and assigns
+     ids to each by hand. The `##` headings run 0.1.0, 0.2.0, 0.3.0,
+     0.4.0, 0.5.0, 0.6.0, 0.7.0, 1.0.0.
+  3. Its v0.5.0 is "he publishes without a phone call" and holds
+     PRESS-0015. The heading for 0.5.0 is "the rest of the site is his
+     too", and PRESS-0015 sits under 0.4.0 -- "he can undo".
+
+  So a reader asking which milestone PRESS-0015 belongs to gets two
+  answers depending on where they look.
+
+  What is still true and should survive any rewrite: a version number
+  here says which of the eleven signs of success hold, not how many
+  items are done, and `docs/discovery.md` § Signs it is working owns
+  S1-S11. The per-milestone S-mappings are the part worth keeping.
+
+  Why it sat: the intro was unamendable by any verb when it was written,
+  and a hand edit to ROADMAP.md is discarded by the next render.
+  `roadmap_log op:"set_intro"` (ANTS-4949) closes that -- verified
+  2026-09-21 by a dry run reporting `replaced_intro_chars: 1981`. So
+  this is now fixable, which is why it is filed rather than endured.
+
+  Route: rewrite the intro through `op:"set_intro"`, dropping the item
+  count and the hand-kept id lists entirely -- both go stale by
+  construction, and the section headings plus each item's own section
+  already carry the mapping. Keep the S1-S11 assignment per milestone
+  and the ADR-0004 note about CI building every release.
+  **Layman:** The summary at the bottom of the roadmap describes a plan the rest of the roadmap no longer follows.
+  Kind: doc-fix.
+  Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
