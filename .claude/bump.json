@@ -11,7 +11,8 @@
   ],
   "tag": "v{NEW}",
   "todos": [
-    "Close [Unreleased] into [{NEW}] - {TODAY}: changelog_log op:\"release\" version:\"{NEW}\" date:\"{TODAY}\""
+    "Close [Unreleased] into [{NEW}] - {TODAY}: changelog_log op:\"release\" version:\"{NEW}\" date:\"{TODAY}\"",
+    "Run the by-hand checks no gate can run, and say in the report which were run: Edge and Chrome on the Windows box, the console window there, the real keyring prompt in the logged-on desktop session, and a real publish through the Publish button. Owed before every release, which is why it is here and not under a milestone. PRESS-0133 holds the detail and what is still outstanding."
   ],
   "post_check": "v=$(python3 scripts/freeze_flags.py version) && grep -Eq \"^## \\[$v\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\\$\" CHANGELOG.md"
 }

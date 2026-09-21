@@ -2116,6 +2116,103 @@ writing an entry to do it. Holds S8.
   Kind: review-fix.
   Source: user-decision-2026-09-21.
 
+- 📋 [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
+  Asked for by the user 2026-08-25. Modelled on the sibling project
+  finbreak, which ships this and has already paid for the mistakes: read
+  `tests/features/auto_update/spec.md` there before designing anything, and
+  the modules it names under `src/finbreak/services/`.
+
+  What to carry across, and why each one is not optional:
+
+  The download is verified against an Ed25519 signature before it is
+  installed, and a tampered blob or signature installs nothing. An updater
+  without this is a way to run someone else's code on his machine. The
+  private key never enters the repository, and a test scans for one.
+
+  Network access lives in a single module, with a test that fails if any
+  other module imports a network library. The design already forbids Marks
+  and the Builder from touching the network; this is how that stays true
+  once an updater exists.
+
+  On Linux the AppImage is swapped in place, staging the temporary file on
+  the same filesystem so the replace is atomic. finbreak finds the running
+  AppImage through the `APPIMAGE` environment variable -- which is also the
+  answer PRESS-0022 needs, and it is now sourced rather than assumed.
+
+  The relaunch spawns a detached process and exits; it must not re-exec in
+  place. finbreak hit exactly that bug between two releases and the app
+  closed without reopening.
+
+  Windows cannot overwrite its own running program, so the swap happens
+  out of process after Pressless exits. Our Windows build is an extracted
+  folder rather than one file, so what gets replaced differs from
+  finbreak's and the shape needs deciding.
+
+  A failed check is silent and changes nothing. A failed verification is
+  shown, in the three-part form the design requires, and leaves the
+  installed version alone.
+
+  Two things are open and are not decided here: whether updating is on by
+  default -- finbreak's is off, and its user is technical, which he is not
+  -- and what he is offered besides Update now.
+
+  Blocked-by: PRESS-0022.
+  Milestone: v0.5.0. It rides with the Publisher and the one button,
+  because that is when he starts using Pressless daily and a fix needs a
+  way to reach him. The hop from v0.1.0 to v0.5.0 is therefore the one
+  download he still does by hand, and every hop after it is automatic.
+  Recorded here rather than in the Milestones section because that
+  section's intro is store-owned prose and no verb amends it -- so its
+  sentence naming the item count was already stale when this item was
+  filed, and could not be corrected. Filed as Ants MCP feedback.
+  **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
+  Kind: feature.
+  Source: user-request-2026-08-25.
+
+- 📋 [PRESS-0136] **The Milestones intro is rewritten to the sign-of-success mapping alone.**
+  Three claims in that intro are false, and they disagree with the
+  section headings a reader sees first.
+
+  1. "Every one of the 22 items above belongs to exactly one milestone
+     below." The roadmap holds 135 items (roadmap_query, 2026-09-21).
+  2. It names three milestones -- v0.1.0, v0.5.0, v1.0.0 -- and assigns
+     ids to each by hand. The `##` headings run 0.1.0, 0.2.0, 0.3.0,
+     0.4.0, 0.5.0, 0.6.0, 0.7.0, 1.0.0.
+  3. Its v0.5.0 is "he publishes without a phone call" and holds
+     PRESS-0015. The heading for 0.5.0 is "the rest of the site is his
+     too", and PRESS-0015 sits under 0.4.0 -- "he can undo".
+
+  So a reader asking which milestone PRESS-0015 belongs to gets two
+  answers depending on where they look.
+
+  What is still true and should survive any rewrite: a version number
+  here says which of the eleven signs of success hold, not how many
+  items are done, and `docs/discovery.md` § Signs it is working owns
+  S1-S11. The per-milestone S-mappings are the part worth keeping.
+
+  Why it sat: the intro was unamendable by any verb when it was written,
+  and a hand edit to ROADMAP.md is discarded by the next render.
+  `roadmap_log op:"set_intro"` (ANTS-4949) closes that -- verified
+  2026-09-21 by a dry run reporting `replaced_intro_chars: 1981`. So
+  this is now fixable, which is why it is filed rather than endured.
+
+  Route: rewrite the intro through `op:"set_intro"`, dropping the item
+  count and the hand-kept id lists entirely -- both go stale by
+  construction, and the section headings plus each item's own section
+  already carry the mapping. Keep the S1-S11 assignment per milestone
+  and the ADR-0004 note about CI building every release.
+  Rescoped (2026-09-21). The re-sectioning that put every open item under
+  the version heading naming the release it reaches supersedes the other
+  half of this item: the item count and the hand-kept id lists are gone
+  from the scope, because the headings and each item's own section now
+  carry the mapping. What is left is the part worth keeping -- which of
+  the eleven signs of success each version makes true, per
+  `docs/discovery.md` § Signs it is working -- plus the note that CI
+  builds every release. Route unchanged: `roadmap_log op:"set_intro"`.
+  **Layman:** The summary at the bottom of the roadmap describes a plan the rest of the roadmap no longer follows.
+  Kind: doc-fix.
+  Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
+
 ## 0.6.0 — pictures and helpers
 
 Photographs from the picture mark through to the web-sized copy, a list of
@@ -2166,6 +2263,58 @@ that makes daily use pleasant rather than merely possible.
   Kind: implement.
   Source: design-2026-08-24 § Where the cheat sheet comes from.
   Lanes: Marks, Face.
+
+- 📋 [PRESS-0123] **A mark carries a value Pressless works out when he publishes.**
+  Asked for by the user 2026-09-17: some values on the site are
+  calculated from a formula, so he needs a way to define them.
+
+  Decided by the user the same day:
+  1. Ready-made calculations, not a formula language. Pressless offers a
+     short menu of sums it already knows -- a span of years since a
+     date, how many entries are published -- and he names one and uses
+     the name.
+  2. Worked out when he publishes. The built page holds plain text, so
+     it works for every reader and carries no script. The cost he
+     accepted: a value that moves with the calendar changes only on his
+     next publish.
+  3. In his entries only. Fixed pages and the page furniture are
+     published exactly as written (docs/design.md), and changing that is
+     not part of this item.
+
+  Still open, for the spec: the mark's spelling, which the cheat sheet
+  (PRESS-0018) binds to; where his named values are kept -- they shape
+  the site, which points at the Store rather than Settings; and the
+  menu's first members. Marks touches no disk and no clock (design
+  rule 3), so the Builder works a value out and hands it in, the way it
+  hands in the photograph naming rule. The preview must show the same
+  value the build would (S10, design rule 2).
+
+  His real example has not been given yet. Ask for it before the spec
+  is written.
+  Example given by the user (2026-09-18). The writer makes music and now
+  music videos. He wants a mark such as <music_total> that writes how
+  many songs he has, and the same for his music videos. The count comes
+  from Spotify, YouTube, Amazon Music or Apple Music. It is a variable
+  rather than a formula; the user's view is that more variables make
+  formulas likelier to be wanted. The sources are the ones PRESS-0080
+  asks about and PRESS-0081 to PRESS-0084 would read, so this depends on
+  what PRESS-0080 finds.
+  **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
+  Kind: feature.
+  Source: user-request-2026-09-17.
+  Lanes: Marks, Builder, Store, Face.
+
+- 📋 [PRESS-0128] **Deleting an entry, and changing a published entry's address.**
+  Split off PRESS-0012 by the user's scope decision (2026-09-17). The
+  Store already moves anything it deletes to the bin (PRESS-0099), and
+  docs/design.md says renaming writes the new file and bins the old one.
+  What is not decided: what he is told before a published entry's address
+  changes, since links people shared stop working.
+  Blocked-by: PRESS-0012.
+  **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0012 scope.
+  Lanes: Face.
 
 ## 0.7.0 — he can see who is reading
 
@@ -2269,6 +2418,152 @@ success.
   Source: user-decision-2026-09-17, split from PRESS-0021.
   Lanes: Face, Credentials, Insights.
 
+- 📋 [PRESS-0132] **Two Insights questions are marked open and owned by no item.**
+  PRESS-0063 marked both open rather than answered, and closed without
+  routing either.
+
+  1. The zero-visitor reading is unverified against the live API
+     (PRESS-0056 item 5).
+  2. Whether the aggregate row _total reads is separated out could not be
+     measured: the analytics MCP exposes no metric_aggregations argument
+     (PRESS-0074 item 8).
+
+  Neither can be settled from the tests -- both need the live Google
+  Analytics API. Route: answer them while building PRESS-0020, which is
+  the first work that reads the real service.
+  **Layman:** Two questions about the visitor figures still need checking against Google's real service.
+  Kind: investigate.
+  Source: review residue 2026-09-21, from PRESS-0063's own note.
+
+## 0.8.0 — a stranger can start from nothing
+
+- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress blog in.**
+  PRESS-0007's Import runs on the maintainer's machine only. It reads
+  the photograph originals and the sibling generator's header and footer
+  templates, which a general user does not have. design.md rule 9 records
+  that it runs once, before anything else, and that nothing in the app
+  runs it.
+
+  An Import for any user needs at least its own templates, and a way to
+  start it that rule 9 allows. Neither is designed. PRESS-0007 stays
+  shipped as it is.
+
+  Decided by the user 2026-09-17 (PRESS-0124 fork 3). Needs a spec
+  before building: it touches Import, the Face and design rule 9.
+  **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0124 fork 3.
+  Lanes: Import, Face.
+
+- 📋 [PRESS-0126] **A plain starter site for an install that never ran Import.**
+  An install that never ran Import has no furniture, no fixed pages
+  and no templates. Executed 2026-09-17: builder.build on a folder
+  holding no Store raises StoreError, "there is no file header.html".
+  So an empty install can set up (PRESS-0021) but cannot preview or
+  publish.
+
+  Decided by the user 2026-09-17: Pressless ships a plain starter set
+  -- header, footer, navigation, Home and About, and a few templates --
+  and copies it into an empty install. Which part copies it, and when,
+  is this item's to design. docs/design.md rule 9 points here.
+  Needs a spec: it touches the Store, the Face and the package.
+  **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0124 design gate.
+  Lanes: Store, Face.
+
+## 0.9.0 — the figures from everywhere else
+
+- 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
+  docs/design.md § What may depend on what, rule 8: "Insights may read
+  Settings, may talk to Google, and keeps one cache file in Pressless's
+  own folder -- and nothing else." Taken literally that forbids every
+  source the writer has now asked for, so the rule is widened before any
+  of them is built rather than breached four times.
+
+  What the amendment has to settle, not just permit: whether one cache
+  file still serves N sources or each keeps its own, and whether the rule
+  names services one by one or states a shape ("read-only, outward, and
+  nothing about writing or publishing may depend on it"). The second
+  reads better and stops the rule needing an edit per service.
+
+  Rule 10 already carries the pattern for the secrets -- the Face fetches
+  each one from Credentials and hands it over as an argument -- so it
+  needs widening only in the same breath, not redesigning.
+
+  Editing design.md re-arms global rule 14's cold-eyes gate, which is the
+  real cost of this item and the reason it is filed rather than done in
+  passing.
+
+  Blocked-by: nothing.
+  **Layman:** The design says the stats part may only talk to Google. Adding YouTube, Spotify, Apple and Amazon means changing that rule first.
+  Kind: doc.
+  Source: user-request-2026-09-02.
+  Lanes: Insights, design.
+
+- 📋 [PRESS-0080] **Whether the three music services publish listening figures at all, and by what route.**
+  The three music items behind this one all assume figures can be
+  fetched. That assumption is doubtful and checking it is cheap, so it is
+  checked once here rather than discovered three times during
+  implementation.
+
+  The position to disprove, held as of filing and NOT taken as settled --
+  re-read each service's own current documentation, because this is
+  recalled rather than verified and these surfaces change:
+
+  - Spotify's Web API returns catalogue data, an artist's follower count
+    and a 0-100 popularity score. Stream counts and listener numbers are
+    Spotify for Artists', which has no public API.
+  - Apple's Music API is catalogue too. Apple Music for Artists has no
+    public API.
+  - Amazon Music for Artists has no public API.
+
+  If that holds, the honest answer for those three is not an app that
+  fetches figures. The fallback worth pricing is the export each service
+  offers a signed-in artist: a file he downloads and Pressless reads,
+  which needs no API and no secret, and shows figures dated to the last
+  download rather than live.
+
+  Deliverable: for each of the three, one of -- a usable API, a
+  downloadable export, or nothing -- with the documentation page that
+  says so. YouTube is not in scope here; its two APIs are public and its
+  item is startable.
+
+  Blocked-by: nothing.
+  **Layman:** Before building anything, find out whether Spotify, Apple and Amazon actually let an app fetch his listening figures -- they may not.
+  Kind: investigate.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0081] **Insights asks YouTube how the channel and its videos are being watched.**
+  Two levels, because the writer asked for both: the channel as a whole,
+  and the individual videos and music on it.
+
+  The startable one of the four. Google publishes two APIs and they
+  answer different questions. The Data API v3 gives public counts --
+  views, likes, comments per video, subscribers per channel -- and needs
+  only an API key. The Analytics API gives the owner-only figures --
+  watch time, how far through people get, where they came from -- and
+  needs OAuth as the channel's owner. Decide which the dashboard is
+  asking for before building; the public counts alone may be the whole
+  of what was wanted, and they are far cheaper to reach.
+
+  It sits behind the same wall PRESS-0019 put Google Analytics behind:
+  read-only, outward, and nothing about writing or publishing may depend
+  on it. If YouTube is unreachable, or he never sets it up, the rest of
+  the app is unaffected. The secret comes from the Face as an argument,
+  per design rule 10.
+
+  No spec expected -- one subsystem, and the shape is PRESS-0019's,
+  already built and tested. Confirm against spec-format.md § 1 rather
+  than assuming.
+
+  Blocked-by: PRESS-0079.
+  **Layman:** The dashboard also shows how his YouTube channel is doing, and how each video and music track on it is doing.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
 ## 1.0.0 — all eleven, and the format is frozen
 
 No new capability. What makes this 1.0 rather than 0.9 is the promise attached
@@ -2276,6 +2571,27 @@ to it: an entry file written by 1.0 stays readable by every later version.
 Before 1.0 the on-disk format may still change; after it, S3 stops being a
 design intention and becomes a compatibility guarantee. The exit condition and
 the breaking surfaces are owned by docs/standards/versioning-overrides.md.
+
+- 📋 [PRESS-0138] **Freeze the breaking surfaces, and put a check on each one.**
+  `docs/standards/versioning-overrides.md` names the breaking surfaces --
+  the writer's own files, Setup state, and the live site -- and its own
+  `What checks this` table answers "Nothing" for most of them. So the
+  1.0.0 heading claims a frozen format that nothing holds in place.
+
+  What this item owes: a check per surface that fails when the shape
+  changes, and the declaration that the surfaces are stable from 1.0.0.
+  `tests/test_settings.py::test_field_names_are_the_documented_set` is the
+  one that already exists and the pattern for the rest.
+
+  Filed because a version heading carrying no item reads as a nearly
+  finished release while the thing it names has not been started.
+
+  Blocked-by: nothing, though PRESS-0088 alters INV-4 and must land first
+  if it lands at all.
+  **Layman:** Before version 1.0, the shapes of his files, his setup and his site are promised not to change without warning — and a test proves each promise, so nothing can break it quietly.
+  Kind: implement.
+  Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
+  Lanes: Store, Settings, Builder.
 
 ## Backlog — no version yet
 
@@ -2285,59 +2601,6 @@ version only when a sign of success fails while it is open — decided with the
 user, on the grounds that forcing every review fix into a bucket would be
 inventing structure. Unmapped here is an answer rather than a gap. A defect in
 already-built code ships in whichever release comes next.
-
-- 📋 [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
-  Asked for by the user 2026-08-25. Modelled on the sibling project
-  finbreak, which ships this and has already paid for the mistakes: read
-  `tests/features/auto_update/spec.md` there before designing anything, and
-  the modules it names under `src/finbreak/services/`.
-
-  What to carry across, and why each one is not optional:
-
-  The download is verified against an Ed25519 signature before it is
-  installed, and a tampered blob or signature installs nothing. An updater
-  without this is a way to run someone else's code on his machine. The
-  private key never enters the repository, and a test scans for one.
-
-  Network access lives in a single module, with a test that fails if any
-  other module imports a network library. The design already forbids Marks
-  and the Builder from touching the network; this is how that stays true
-  once an updater exists.
-
-  On Linux the AppImage is swapped in place, staging the temporary file on
-  the same filesystem so the replace is atomic. finbreak finds the running
-  AppImage through the `APPIMAGE` environment variable -- which is also the
-  answer PRESS-0022 needs, and it is now sourced rather than assumed.
-
-  The relaunch spawns a detached process and exits; it must not re-exec in
-  place. finbreak hit exactly that bug between two releases and the app
-  closed without reopening.
-
-  Windows cannot overwrite its own running program, so the swap happens
-  out of process after Pressless exits. Our Windows build is an extracted
-  folder rather than one file, so what gets replaced differs from
-  finbreak's and the shape needs deciding.
-
-  A failed check is silent and changes nothing. A failed verification is
-  shown, in the three-part form the design requires, and leaves the
-  installed version alone.
-
-  Two things are open and are not decided here: whether updating is on by
-  default -- finbreak's is off, and its user is technical, which he is not
-  -- and what he is offered besides Update now.
-
-  Blocked-by: PRESS-0022.
-  Milestone: v0.5.0. It rides with the Publisher and the one button,
-  because that is when he starts using Pressless daily and a fix needs a
-  way to reach him. The hop from v0.1.0 to v0.5.0 is therefore the one
-  download he still does by hand, and every hop after it is automatic.
-  Recorded here rather than in the Milestones section because that
-  section's intro is store-owned prose and no verb amends it -- so its
-  sentence naming the item count was already stale when this item was
-  filed, and could not be corrected. Filed as Ants MCP feedback.
-  **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
-  Kind: feature.
-  Source: user-request-2026-08-25.
 
 - ✅ [PRESS-0024] **The pre-push hook reads as a safety net and gates nothing.**
   Measured 2026-08-25 while checking this project is still a correct
@@ -5327,96 +5590,6 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
 
-- 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
-  docs/design.md § What may depend on what, rule 8: "Insights may read
-  Settings, may talk to Google, and keeps one cache file in Pressless's
-  own folder -- and nothing else." Taken literally that forbids every
-  source the writer has now asked for, so the rule is widened before any
-  of them is built rather than breached four times.
-
-  What the amendment has to settle, not just permit: whether one cache
-  file still serves N sources or each keeps its own, and whether the rule
-  names services one by one or states a shape ("read-only, outward, and
-  nothing about writing or publishing may depend on it"). The second
-  reads better and stops the rule needing an edit per service.
-
-  Rule 10 already carries the pattern for the secrets -- the Face fetches
-  each one from Credentials and hands it over as an argument -- so it
-  needs widening only in the same breath, not redesigning.
-
-  Editing design.md re-arms global rule 14's cold-eyes gate, which is the
-  real cost of this item and the reason it is filed rather than done in
-  passing.
-
-  Blocked-by: nothing.
-  **Layman:** The design says the stats part may only talk to Google. Adding YouTube, Spotify, Apple and Amazon means changing that rule first.
-  Kind: doc.
-  Source: user-request-2026-09-02.
-  Lanes: Insights, design.
-
-- 📋 [PRESS-0080] **Whether the three music services publish listening figures at all, and by what route.**
-  The three music items behind this one all assume figures can be
-  fetched. That assumption is doubtful and checking it is cheap, so it is
-  checked once here rather than discovered three times during
-  implementation.
-
-  The position to disprove, held as of filing and NOT taken as settled --
-  re-read each service's own current documentation, because this is
-  recalled rather than verified and these surfaces change:
-
-  - Spotify's Web API returns catalogue data, an artist's follower count
-    and a 0-100 popularity score. Stream counts and listener numbers are
-    Spotify for Artists', which has no public API.
-  - Apple's Music API is catalogue too. Apple Music for Artists has no
-    public API.
-  - Amazon Music for Artists has no public API.
-
-  If that holds, the honest answer for those three is not an app that
-  fetches figures. The fallback worth pricing is the export each service
-  offers a signed-in artist: a file he downloads and Pressless reads,
-  which needs no API and no secret, and shows figures dated to the last
-  download rather than live.
-
-  Deliverable: for each of the three, one of -- a usable API, a
-  downloadable export, or nothing -- with the documentation page that
-  says so. YouTube is not in scope here; its two APIs are public and its
-  item is startable.
-
-  Blocked-by: nothing.
-  **Layman:** Before building anything, find out whether Spotify, Apple and Amazon actually let an app fetch his listening figures -- they may not.
-  Kind: investigate.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0081] **Insights asks YouTube how the channel and its videos are being watched.**
-  Two levels, because the writer asked for both: the channel as a whole,
-  and the individual videos and music on it.
-
-  The startable one of the four. Google publishes two APIs and they
-  answer different questions. The Data API v3 gives public counts --
-  views, likes, comments per video, subscribers per channel -- and needs
-  only an API key. The Analytics API gives the owner-only figures --
-  watch time, how far through people get, where they came from -- and
-  needs OAuth as the channel's owner. Decide which the dashboard is
-  asking for before building; the public counts alone may be the whole
-  of what was wanted, and they are far cheaper to reach.
-
-  It sits behind the same wall PRESS-0019 put Google Analytics behind:
-  read-only, outward, and nothing about writing or publishing may depend
-  on it. If YouTube is unreachable, or he never sets it up, the rest of
-  the app is unaffected. The secret comes from the Face as an argument,
-  per design rule 10.
-
-  No spec expected -- one subsystem, and the shape is PRESS-0019's,
-  already built and tested. Confirm against spec-format.md § 1 rather
-  than assuming.
-
-  Blocked-by: PRESS-0079.
-  **Layman:** The dashboard also shows how his YouTube channel is doing, and how each video and music track on it is doing.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
 - 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
   What this fetches, and whether it can fetch anything, is PRESS-0080's
   to answer first. The doubt is specific: Spotify's public API is a
@@ -5434,6 +5607,12 @@ already-built code ships in whichever release comes next.
   follower count and Spotify's own popularity score for each release.
 
   Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): whether this is buildable as asked is
+  PRESS-0080's to answer, and this item's own doubt is that the figures
+  live behind a sign-in with no public API. Placing it under a version
+  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
+  and goes back to the user if the honest version reads an export
+  instead.
   **Layman:** The dashboard also shows how his music is doing on Spotify.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -5455,6 +5634,10 @@ already-built code ships in whichever release comes next.
   three do not carry. Price that before committing to it.
 
   Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
+  for Artists publishes anything is PRESS-0080's to answer, and the paid
+  developer account is a cost to price before committing. It joins 0.9.0
+  only if a route exists.
   **Layman:** The dashboard also shows how his music is doing on Apple Music.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -5473,6 +5656,9 @@ already-built code ships in whichever release comes next.
   of thing that gets an account suspended.
 
   Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082, and this is the
+  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
+  real outcome to report rather than work to schedule.
   **Layman:** The dashboard also shows how his music is doing on Amazon Music.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -5675,6 +5861,11 @@ already-built code ships in whichever release comes next.
   contract, which should not be spent on a guess. Effectively blocked-by
   PRESS-0022 and PRESS-0016 -- not by anything either of them must
   build, but by the measurement only they make possible.
+  No version (2026-09-21): one item spanning two. The measurement becomes
+  possible once photographs and packaging are on the Windows box, and the
+  fix that follows alters INV-4, a settled contract. Which version carries
+  the fix depends on a number nobody has taken, so it takes neither until
+  then. It must land before 1.0.0 freezes the format.
   **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
@@ -6908,81 +7099,6 @@ already-built code ships in whichever release comes next.
   Kind: security.
   Source: in-session-2026-09-11.
 
-- 📋 [PRESS-0123] **A mark carries a value Pressless works out when he publishes.**
-  Asked for by the user 2026-09-17: some values on the site are
-  calculated from a formula, so he needs a way to define them.
-
-  Decided by the user the same day:
-  1. Ready-made calculations, not a formula language. Pressless offers a
-     short menu of sums it already knows -- a span of years since a
-     date, how many entries are published -- and he names one and uses
-     the name.
-  2. Worked out when he publishes. The built page holds plain text, so
-     it works for every reader and carries no script. The cost he
-     accepted: a value that moves with the calendar changes only on his
-     next publish.
-  3. In his entries only. Fixed pages and the page furniture are
-     published exactly as written (docs/design.md), and changing that is
-     not part of this item.
-
-  Still open, for the spec: the mark's spelling, which the cheat sheet
-  (PRESS-0018) binds to; where his named values are kept -- they shape
-  the site, which points at the Store rather than Settings; and the
-  menu's first members. Marks touches no disk and no clock (design
-  rule 3), so the Builder works a value out and hands it in, the way it
-  hands in the photograph naming rule. The preview must show the same
-  value the build would (S10, design rule 2).
-
-  His real example has not been given yet. Ask for it before the spec
-  is written.
-  Example given by the user (2026-09-18). The writer makes music and now
-  music videos. He wants a mark such as <music_total> that writes how
-  many songs he has, and the same for his music videos. The count comes
-  from Spotify, YouTube, Amazon Music or Apple Music. It is a variable
-  rather than a formula; the user's view is that more variables make
-  formulas likelier to be wanted. The sources are the ones PRESS-0080
-  asks about and PRESS-0081 to PRESS-0084 would read, so this depends on
-  what PRESS-0080 finds.
-  **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
-  Kind: feature.
-  Source: user-request-2026-09-17.
-  Lanes: Marks, Builder, Store, Face.
-
-- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress blog in.**
-  PRESS-0007's Import runs on the maintainer's machine only. It reads
-  the photograph originals and the sibling generator's header and footer
-  templates, which a general user does not have. design.md rule 9 records
-  that it runs once, before anything else, and that nothing in the app
-  runs it.
-
-  An Import for any user needs at least its own templates, and a way to
-  start it that rule 9 allows. Neither is designed. PRESS-0007 stays
-  shipped as it is.
-
-  Decided by the user 2026-09-17 (PRESS-0124 fork 3). Needs a spec
-  before building: it touches Import, the Face and design rule 9.
-  **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
-  Kind: feature.
-  Source: user-decision-2026-09-17 PRESS-0124 fork 3.
-  Lanes: Import, Face.
-
-- 📋 [PRESS-0126] **A plain starter site for an install that never ran Import.**
-  An install that never ran Import has no furniture, no fixed pages
-  and no templates. Executed 2026-09-17: builder.build on a folder
-  holding no Store raises StoreError, "there is no file header.html".
-  So an empty install can set up (PRESS-0021) but cannot preview or
-  publish.
-
-  Decided by the user 2026-09-17: Pressless ships a plain starter set
-  -- header, footer, navigation, Home and About, and a few templates --
-  and copies it into an empty install. Which part copies it, and when,
-  is this item's to design. docs/design.md rule 9 points here.
-  Needs a spec: it touches the Store, the Face and the package.
-  **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
-  Kind: feature.
-  Source: user-decision-2026-09-17 PRESS-0124 design gate.
-  Lanes: Store, Face.
-
 - ✅ [PRESS-0127] **Setup against a GitHub repository that has no commits yet.**
   publisher.root_entries first reads the repository's commits/HEAD.
   Four review lanes on 2026-09-17 believed GitHub answers that with
@@ -7034,18 +7150,6 @@ already-built code ships in whichever release comes next.
   Kind: investigate.
   Source: user-decision-2026-09-17 PRESS-0021 amendment gate.
   Lanes: Publisher, Face.
-
-- 📋 [PRESS-0128] **Deleting an entry, and changing a published entry's address.**
-  Split off PRESS-0012 by the user's scope decision (2026-09-17). The
-  Store already moves anything it deletes to the bin (PRESS-0099), and
-  docs/design.md says renaming writes the new file and bins the old one.
-  What is not decided: what he is told before a published entry's address
-  changes, since links people shared stop working.
-  Blocked-by: PRESS-0012.
-  **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
-  Kind: feature.
-  Source: user-decision-2026-09-17 PRESS-0012 scope.
-  Lanes: Face.
 
 - ✅ [PRESS-0129] **Three review residues nothing tracked: a garbled blob saved as an empty file, an untestable move branch, and a hand-rolled case probe.**
   Found 2026-09-18 by sweeping every "not fixed" note in shipped items
@@ -7138,23 +7242,6 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review residue 2026-09-21, from PRESS-0075's recorded probe.
 
-- 📋 [PRESS-0132] **Two Insights questions are marked open and owned by no item.**
-  PRESS-0063 marked both open rather than answered, and closed without
-  routing either.
-
-  1. The zero-visitor reading is unverified against the live API
-     (PRESS-0056 item 5).
-  2. Whether the aggregate row _total reads is separated out could not be
-     measured: the analytics MCP exposes no metric_aggregations argument
-     (PRESS-0074 item 8).
-
-  Neither can be settled from the tests -- both need the live Google
-  Analytics API. Route: answer them while building PRESS-0020, which is
-  the first work that reads the real service.
-  **Layman:** Two questions about the visitor figures still need checking against Google's real service.
-  Kind: investigate.
-  Source: review residue 2026-09-21, from PRESS-0063's own note.
-
 - 📋 [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
   Each is a section 10 row in its own spec reading "nothing in CI -- by
   hand", and each item's shipped note says it was not run. PRESS-0120
@@ -7211,45 +7298,15 @@ already-built code ships in whichever release comes next.
   window; the real keyring prompt in the desktop session; and a real
   publish to GitHub through the button. The last is additionally blocked
   on the GitHub account problem recorded 2026-09-07.
+  No version (2026-09-21): an obligation owed before every release is not
+  a milestone item. Pinned to one version it becomes false the moment that
+  version ships without it, which is how three shipped items each came to
+  record "by hand, not run". The obligation is recorded in
+  `.claude/bump.json` under the release recipe's own steps, where
+  `cut-release` reads it; this item stays open for the checks still owed.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
-
-- 📋 [PRESS-0136] **The Milestones intro names a three-milestone scheme the section headings abandoned.**
-  Three claims in that intro are false, and they disagree with the
-  section headings a reader sees first.
-
-  1. "Every one of the 22 items above belongs to exactly one milestone
-     below." The roadmap holds 135 items (roadmap_query, 2026-09-21).
-  2. It names three milestones -- v0.1.0, v0.5.0, v1.0.0 -- and assigns
-     ids to each by hand. The `##` headings run 0.1.0, 0.2.0, 0.3.0,
-     0.4.0, 0.5.0, 0.6.0, 0.7.0, 1.0.0.
-  3. Its v0.5.0 is "he publishes without a phone call" and holds
-     PRESS-0015. The heading for 0.5.0 is "the rest of the site is his
-     too", and PRESS-0015 sits under 0.4.0 -- "he can undo".
-
-  So a reader asking which milestone PRESS-0015 belongs to gets two
-  answers depending on where they look.
-
-  What is still true and should survive any rewrite: a version number
-  here says which of the eleven signs of success hold, not how many
-  items are done, and `docs/discovery.md` § Signs it is working owns
-  S1-S11. The per-milestone S-mappings are the part worth keeping.
-
-  Why it sat: the intro was unamendable by any verb when it was written,
-  and a hand edit to ROADMAP.md is discarded by the next render.
-  `roadmap_log op:"set_intro"` (ANTS-4949) closes that -- verified
-  2026-09-21 by a dry run reporting `replaced_intro_chars: 1981`. So
-  this is now fixable, which is why it is filed rather than endured.
-
-  Route: rewrite the intro through `op:"set_intro"`, dropping the item
-  count and the hand-kept id lists entirely -- both go stale by
-  construction, and the section headings plus each item's own section
-  already carry the mapping. Keep the S1-S11 assignment per milestone
-  and the ADR-0004 note about CI building every release.
-  **Layman:** The summary at the bottom of the roadmap describes a plan the rest of the roadmap no longer follows.
-  Kind: doc-fix.
-  Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
 
 - ✅ [PRESS-0137] **CLAUDE.md states what is true now; its history moves to its own file.**
   Every live rule keeps its wording. What moves is dated provenance,
