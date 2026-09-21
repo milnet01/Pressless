@@ -1910,12 +1910,33 @@ that it is back. Holds S9.
   before showing it.
   4. A saved working copy of an entry Undo demotes is kept; publishing
   it later puts the entry back on the site with his changes.
-  Spec not yet drafted. Contracts it must honour: design.md "What
+  Contracts the spec had to honour, listed here before it was written: design.md "What
   undo actually does"; PRESS-0009 sections 3.1, 3.4 and 4.5;
   PRESS-0008 section 4.7; PRESS-0005 publish, unpublish and
   move_to_bin; PRESS-0012 decision 6 (a demoted entry needs a date
   mark); PRESS-0013 sections 4.1 and 4.3 (emptying=True); PRESS-0127
   section 9.
+  Spec accepted (2026-09-21): docs/specs/PRESS-0015-undo.md. Status stays
+  planned -- the contract exists, the work has not started.
+
+  Two review loops, the spec cap. Thirteen findings verified, thirteen
+  fixed, none dismissed and none left in the tail. Loop log in
+  docs/reviews/PRESS-0015-undo-loop-log.md.
+
+  The cap was VIOLENT: three of loop 2's four findings landed on text loop
+  1 wrote, each anchor checked with git log -S rather than recalled. Per
+  review-contract's cap rule the review of this document as it stands ends
+  there; it is not re-gated and goes to implementation, which exercises the
+  contract against real code.
+
+  Twelve invariants. The two that cost the design: a demoted entry carries
+  an Undone mark so publishing it again keeps its date rather than taking
+  today's, and publishing._move is widened so a working copy whose Replaces
+  names a demoted draft still publishes over it. Both change
+  publishing.py, which PRESS-0013 owns; section 11 records it.
+
+  Owed by this item and filed separately: PRESS-0134, the design.md
+  amendment for the comments decision.
   **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.
