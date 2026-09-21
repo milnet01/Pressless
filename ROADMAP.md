@@ -7315,6 +7315,15 @@ already-built code ships in whichever release comes next.
   Resolved (2026-09-21): CLAUDE.md 21385 -> 16451 bytes, a 23% cut to
   what loads every turn; docs/history/claude-md.md carries the moved
   prose. Commit 18d7f36.
+  Gated (2026-09-21): `review-contract`, genre standard, two loops, three
+  cold lanes each, rows 6 and 7 of `docs/claude-md-review-2026-08-27.md`.
+  Five verified, five fixed. Three of the five were this item's own
+  collateral: the streamline moved a rule's REASON to the history file and
+  the rule went with it — the dependency sentence lost "not a cap", the
+  `ants.gate.docsGlob` paragraph lost § 6.2's unset-is-the-breach rule,
+  and the history file went on describing the old position block as
+  current. The lesson is narrower than "instructions wearing a date": a
+  rule stated together with its reason travels with the reason.
   **Layman:** The project's instruction file gets shorter, so a session reaches the instruction without reading how it came to say that. Nothing is thrown away — the dated corrections and the arguments move to a history file the instruction file points at.
   Kind: doc.
   Source: user-request-2026-09-21 (CFG-0492).
