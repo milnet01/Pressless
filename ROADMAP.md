@@ -6958,7 +6958,7 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: review residue 2026-09-21, from PRESS-0076's unbumped deltas.
 
-- 📋 [PRESS-0131] **The whitespace rule inside a rainbow run has no test that can fail.**
+- ✅ [PRESS-0131] **The whitespace rule inside a rainbow run has no test that can fail.**
   PRESS-0004 section 4.2 says a unit that is a single whitespace character
   is emitted bare and does not advance the index. marks.py::_rainbow
   implements it with the `if unit.isspace()` branch.
@@ -6971,6 +6971,34 @@ already-built code ships in whichever release comes next.
 
   Route: write-test, then a mutation probe that removes the branch and
   shows the new test red.
+  Resolved (2026-09-21). One conformance test in tests/test_marks.py,
+  test_rainbow_whitespace_unit_is_bare_and_does_not_advance_the_index,
+  carrying two fixtures: a space and a tab between two letters. Each
+  asserts both observables the rule states -- the whitespace unit is
+  emitted bare, and the unit after it carries the index it would have
+  carried had the whitespace not been counted.
+
+  Route 4 of write-test: the guard has never been absent, so there was no
+  broken state to revert to and the test was never seen red on the live
+  tree. The mutation probe is the evidence instead, which is this
+  project's own rule for exactly this case.
+
+  Six mutations of marks.py::_rainbow, each against a green baseline,
+  the file restored and verified byte-identical afterwards. All six
+  killed: the guard removed; the continue deleted; an index advance added
+  inside the whitespace branch; the whitespace unit wrapped in a span;
+  the predicate narrowed to a plain space; the predicate widened to every
+  unit.
+
+  The narrowing survived the first probe and is why the tab fixture
+  exists. The rule says "a single whitespace character", and isspace() is
+  what makes that true of a tab as well as a space -- a test carrying only
+  a space could not see a predicate that had stopped being true of
+  anything else. Read as a false kill guard: the index-advance mutation
+  was also applied by hand, and its failure is an assertion naming the
+  index rule, not a syntax or name error.
+
+  Gate green afterwards: 436 passed, 1 skipped.
   **Layman:** One rule about spaces in rainbow text is not checked by anything.
   Kind: test.
   Source: review residue 2026-09-21, from PRESS-0075's recorded probe.

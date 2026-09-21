@@ -690,6 +690,85 @@ def test_rainbow_leaves_a_character_reference_intact():
     )
 
 
+# ------------------------------------------------------------ PRESS-0131 ----
+
+
+def test_rainbow_whitespace_unit_is_bare_and_does_not_advance_the_index():
+    """PRESS-0131: spec §4.2 -- a rainbow unit that is a single whitespace
+    character is emitted bare, with no span wrapper, and does not advance
+    `N`, the per-unit index that numbers every OTHER unit in the run.
+
+    Both halves have to be checked, and a fix for one can leave the other
+    broken: an implementation that stops wrapping whitespace but still
+    increments `index` for it satisfies "bare" while every unit after the
+    whitespace carries an index one higher than it should.
+
+    '{rainbow}A B{/}' holds three units: 'A', a single space, and 'B'.
+    'A' takes index 0. The space must reach the output as a literal
+    character with no span around it. 'B' must then carry index 1 -- the
+    index it would have carried had the space never been counted -- not 2.
+
+    Breaks when the `unit.isspace()` branch either wraps its unit in a
+    span (breaking "bare") or still runs `index += 1` before continuing
+    (breaking "does not advance").
+    """
+    out = render("{rainbow}A B{/}", _no_photos)
+
+    first_span = '<span class="mk-rainbow" style="--mk-i:0">A</span>'
+    assert first_span in out, (
+        f"expected the run's first unit 'A' to carry index 0, "
+        f"got: {out!r}"
+    )
+
+    # (a) the whitespace unit is emitted bare -- a literal space sitting
+    # directly between the two spans, with no span wrapper of its own.
+    assert f"{first_span} <span" in out, (
+        f"a single whitespace unit inside a rainbow run must be emitted "
+        f"bare, with no span wrapper around it -- expected {first_span!r} "
+        f"followed by a literal space and the next span, got: {out!r}"
+    )
+
+    # (b) the whitespace unit does not advance the index -- 'B' is the
+    # second NON-whitespace unit, so it carries index 1, not 2.
+    second_span = '<span class="mk-rainbow" style="--mk-i:1">B</span>'
+    assert second_span in out, (
+        f"the unit after a bare whitespace unit must carry the index it "
+        f"would have carried had the whitespace not been counted (1, not "
+        f"2 -- 'B' is only the second non-whitespace unit) -- expected "
+        f"{second_span!r} in the output, got: {out!r}"
+    )
+    assert "--mk-i:2" not in out, (
+        f"this fixture holds only two non-whitespace units ('A' and 'B'), "
+        f"so no index above 1 may appear; an index of 2 means the "
+        f"whitespace unit consumed an index slot of its own: {out!r}"
+    )
+
+    # The rule names "a single whitespace character", not "a single space" --
+    # it is `unit.isspace()` that makes that true of a tab as well as a
+    # space. A predicate narrowed to `unit == " "` passes every assertion
+    # above and still sends a tab down the wrap-and-advance path: measured
+    # by mutation probe 2026-09-21, which killed every other route into
+    # this rule and survived exactly this one.
+    tab_run = render("{rainbow}A\tB{/}", _no_photos)
+    assert f"{first_span}\t<span" in tab_run, (
+        f"a single TAB unit inside a rainbow run must be emitted bare too "
+        f"-- the rule is 'a single whitespace character', not 'a single "
+        f"space' -- expected {first_span!r} followed by a literal tab and "
+        f"the next span, got: {tab_run!r}"
+    )
+    assert second_span in tab_run, (
+        f"the unit after a bare tab must carry the index it would have "
+        f"carried had the tab not been counted (1, not 2 -- 'B' is only "
+        f"the second non-whitespace unit) -- expected {second_span!r} in "
+        f"the output, got: {tab_run!r}"
+    )
+    assert "--mk-i:2" not in tab_run, (
+        f"this fixture holds only two non-whitespace units ('A' and 'B'), "
+        f"so no index above 1 may appear; an index of 2 means the tab "
+        f"consumed an index slot of its own: {tab_run!r}"
+    )
+
+
 # --------------------------------------------------------------- INV-9 ----
 
 
