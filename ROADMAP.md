@@ -7127,6 +7127,45 @@ already-built code ships in whichever release comes next.
 
   The browser half is reachable here through Playwright and the system
   Chrome; the Windows half is the Windows box's, in the logged-on session.
+  Progress (2026-09-21): the browser half is run and now repeatable.
+  `scripts/by-hand-browser-checks.py` drives a throwaway instance --
+  temp folder, the Publisher tests' recording transport double -- with
+  Playwright and the system Chrome. Fourteen checks, all passing. It is
+  deliberately outside the gate and outside CI, so each spec's § 10 row
+  stays true.
+
+  Run by hand: `python3 scripts/by-hand-browser-checks.py`.
+
+  Proved, against a real browser rather than read:
+  - PRESS-0012 § 4.7 script row, whole: the save waits about a second
+    after the change (measured 1.18-1.22s across runs); four changes
+    inside the window coalesce to one POST, so no two saves are in
+    flight; `pagehide` saves an unsaved change. The box is a `textarea`
+    and the preview an iframe sandboxed `allow-same-origin
+    allow-scripts`.
+  - PRESS-0012 § 10 policy row, the Chrome half only: a preview page
+    carrying Google's tag script and a YouTube embed reports
+    `script-src-elem <- googletagmanager.com` and `frame-src <-
+    youtube.com` as violations, while a same-origin script file on the
+    same page still runs. `FILES_POLICY` is the policy that does it; the
+    editor page's `frame-src 'self'` is a different one and blocks no
+    script, which is correct.
+  - PRESS-0013 § 4.4 script row: the Publish button shows "Publishing…
+    this can take a few minutes the first time. Keep this page open.",
+    the Publish button is disabled while that shows, the message is then
+    replaced by "Published. Your site shows it within a few minutes.",
+    and the address bar carries the slug.
+
+  Two probe defects found and fixed before believing a result, both of
+  which had read as code defects: the first sample targeted the page's
+  first `button`, which is Change address rather than Publish; and the
+  first policy probe tested the editor page and used an inline marker
+  script, which `script-src 'self'` correctly blocks.
+
+  Still owed, and still this item: Edge; the Windows box's console
+  window; the real keyring prompt in the desktop session; and a real
+  publish to GitHub through the button. The last is additionally blocked
+  on the GitHub account problem recorded 2026-09-07.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
