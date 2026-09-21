@@ -10,10 +10,12 @@ headings.
 
 ## Where this project is
 
-The block records the state and what is in flight, and nothing else.
-What is done is deliberately not listed: `roadmap_query` with
-`status: "shipped"` answers it, and a list kept by hand goes stale the
-first time a session forgets it — this one had, twice.
+The section recorded a state number, what was in flight, and the version
+being worked towards, until 2026-09-21. What is done was deliberately
+never listed: `roadmap_query` with `status: "shipped"` answers it, and a
+list kept by hand goes stale the first time a session forgets it — this
+one had, twice. The recorded position went the same way, and for the
+same reason: it said v0.3.0 for two milestones after v0.3.0 shipped.
 
 A recorded step number starts lying the first time a session forgets to
 update it, and still reads as authoritative. So position inside an item
@@ -21,9 +23,11 @@ is read off things that cannot lie rather than recorded.
 
 ## Build and test
 
-The runtime dependencies were `keyring` and `Pillow` when the list was
-written, reached only by `credentials.py` (PRESS-0002) and `builder.py`
-(PRESS-0008). That was present state, not a cap.
+`keyring` and `Pillow` were the whole of the runtime dependencies when
+the list was written. The qualifier saying the reach statement is not a
+cap belongs in `CLAUDE.md`, where it instructs someone; moving it here
+on 2026-09-21 left the sentence reading as a possible architectural
+rule, and the cold read that day found it.
 
 `ants.gate.docsGlob` records a decision rather than changing one. Its
 value is the hook's own fallback, so setting it alters no behaviour

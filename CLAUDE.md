@@ -4,9 +4,11 @@
 
 Nothing here records it, deliberately. Read it:
 
-- **The version being worked towards** is the lowest heading in
-  `ROADMAP.md` still carrying open items.
-- **What is in flight** is the 🚧 bullet.
+- **The version being worked towards** is the lowest version heading in
+  `ROADMAP.md` still carrying open items. `Backlog — no version yet` and
+  `Milestones` are not versions, wherever they sit in the file.
+- **What is in flight** is the un-parked 🚧 bullet — `workflow.md` § 1
+  owns what parked means, and what it means when every bullet is.
 - **Where an item has got to** is whether a spec exists, whether tests
   fail, and what `git status` says. Never a recorded step number.
 - **What is done** is `roadmap_query` with `status: "shipped"`.
@@ -37,7 +39,8 @@ stack, and what it rules out owns the choice and the reasoning.
 ### Build and test
 
 `keyring` is reached only by `credentials.py` (PRESS-0002) and `Pillow`
-only by `builder.py` (PRESS-0008). The gate needs `pytest`,
+only by `builder.py` (PRESS-0008). That is present state, not a cap.
+The gate needs `pytest`,
 `pytest-randomly` and `ruff` on top, and PyInstaller is the `packaging`
 group beside those, never a runtime dependency (PRESS-0022).
 `pip install -e '.[dev]'` installs what CI runs. `pyproject.toml` holds
@@ -54,9 +57,9 @@ ruff check src/ tests/     # lint alone
 **`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
 that same file** — it holds no checks of its own, so the two cannot
 drift. The machine-wide hook discovers the script by name and runs it
-over the commits being pushed. Two things decide whether anything is
-gated at all: `core.hooksPath` must be set, and
-`~/.claude/githooks/pre-push` must be present and executable.
+over the commits being pushed. Whether anything is gated at all needs
+`core.hooksPath` set, and `$ANTS_GLOBAL_HOOKS/pre-push` — defaulting to
+`~/.claude/githooks/pre-push` — present and executable.
 `ants.gate.docsGlob` only decides which checks run.
 
 **Machine-local git config keys, and a fresh clone has none of them.**
