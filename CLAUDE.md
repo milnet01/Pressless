@@ -2,15 +2,18 @@
 
 ## Where this project is
 
-**State:** 5 — Building. **In flight:** nothing. Next: open review
-findings, then the roadmap towards v0.5.0.
+Nothing here records it, deliberately. Read it:
 
-> Keep the block above true, and keep it to two facts — the state and
-> what is in flight. Everything else is read off things that cannot lie:
-> whether a spec exists, whether tests fail, what `git status` says,
-> whether the roadmap bullet is 🚧. `roadmap_query` with
-> `status: "shipped"` answers what is done. `python3 -m pytest` answers
-> where the code stands. Do not record a step number.
+- **The version being worked towards** is the lowest heading in
+  `ROADMAP.md` still carrying open items.
+- **What is in flight** is the 🚧 bullet.
+- **Where an item has got to** is whether a spec exists, whether tests
+  fail, and what `git status` says. Never a recorded step number.
+- **What is done** is `roadmap_query` with `status: "shipped"`.
+
+A position written down is maintained by hand, and starts lying the
+first time a session forgets it while still reading as authoritative.
+This block said v0.3.0 for two milestones after that one shipped.
 
 ## How work is done here
 
