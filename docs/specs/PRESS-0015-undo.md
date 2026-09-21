@@ -1,6 +1,6 @@
 # PRESS-0015 — Undo: one step back, ending with the site and his files agreeing
 
-**Status:** spec draft (2026-09-21).
+**Status:** accepted (2026-09-21). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -63,7 +63,10 @@ puts his files back as they were before the press.
    2026-08-26 (PRESS-0009 § 3 decision 1). Pressing it twice returns the state
    the first press replaced.
 7. **(decided here) A version of his that undo writes over becomes an
-   ordinary draft, not a working copy.** Decided by the user 2026-09-21. A
+   ordinary draft, not a working copy of the entry undo just put back.** A
+   `Replaces` it already carried, naming some other entry, is kept — that is
+   his working copy of that entry and undo does not orphan it.
+   Decided by the user 2026-09-21. A
    working copy would make the press reversible in one click, and an entry may
    already have one — two drafts naming one entry is `editor.TooManyCopies`,
    which refuses to open it until he moves one out by hand. § 8 records the
@@ -165,10 +168,14 @@ the failure beside what it already shows:
 
 Success answers `"undone": true`, `"failure": null`, and a `summary` fragment
 naming what changed: `restored`, `demoted` and `kept`, one clause each.
-**The page reloads on success only**, on both pages, because either may now be
-showing an entry whose state changed. **A failure does not reload** — the
-`failure` and `notices` fragments stay on screen, or he never reads why the
-undo stopped.
+
+**Neither page reloads itself, on success or on failure.** Both may now be
+showing an entry whose state changed, so a reload is tempting — but the reply
+is the only place the summary and the gathered `notices` exist, and a reload
+throws both away before he has read them. Instead each page replaces the box
+with what came back and offers a link back to his list, which he follows when
+he is ready. That is also what makes the captures § 4.1 requires worth
+holding.
 
 ### 4.3 The sequence
 
@@ -190,25 +197,32 @@ succeeded.
    file is read through the Store's own reader for its kind (§ 4.4). A file
    the Store cannot read raises here, with the Store untouched.
 5. **Reconcile the Store** (§ 4.4), recording a reversal for every change.
-   **Each reversal carries the value the reconcile read before it wrote** —
-   which it already holds, since reading it is how it decided the file
-   differs — and puts that value back through the Store's own writer. **A
-   reversal never bins a file it is putting back**, because nothing moves a
-   file out of the bin and `store.move_to_bin` stamps to the second, so
-   binning one path twice inside a second is refused and would replace the
-   failure being reported. A file the forward pass binned stays binned, as a
-   spare copy of what is now back in place. **The one thing a reversal does
-   bin is a file the reconcile itself created** — a kept draft — since that is
-   the only removal the Store offers, and it is a path the forward pass never
-   binned.
+   Each reversal is decided by what the forward action did:
+
+   | What the reconcile did | How the reversal undoes it |
+   |---|---|
+   | wrote over a file that was there | writes the remembered value back |
+   | wrote a file that was absent | `store.move_to_bin` |
+   | created a kept draft | `store.move_to_bin` |
+   | demoted an entry | writes the remembered entry over the demoted draft, then `store.publish` |
+
+   **A reversal never bins a file it is putting back.** Nothing moves a file
+   out of the bin, and `store.move_to_bin` stamps to the second, so binning
+   one path twice inside a second is refused and would replace the failure
+   being reported. A file the forward pass binned stays binned, as a spare
+   copy of what is now back in place. **Binning is the only removal the Store
+   offers**, so it is how every file the reconcile created goes.
 6. **Publish.** `publishing.publish(folder, settings, key, entry=None,
    emptying=True, capture=capture, notices=notices, transport=transport)`.
    `emptying=True` because undo's publish is the result that was asked for
    (`docs/design.md` rule 9, PRESS-0013 § 4.1).
 7. **Finish.** Empty the fetch area.
 
-**A definite failure at step 6 runs the reversals in reverse order, then
-raises it** (§ 3 decision 1). A definite failure is any exception but
+**A definite failure at step 5 or step 6 runs the reversals recorded so far,
+in reverse order, then raises it** (§ 3 decision 1). Step 5 is a long run of
+Store writes and can fail part way — a full disk, a refused `move_to_bin` —
+and a reconcile abandoned where it stopped is the part-old, part-new Store
+step 4 and INV-11 exist to prevent. A definite failure is any exception but
 `publisher.OutcomeUnknown`. **An `OutcomeUnknown` leaves the Store as undo
 made it** and is raised after step 7: GitHub may have taken the change, and
 his files must not disagree with a site that may already show the older state.
@@ -318,8 +332,9 @@ It always shows (§ 3 decision 3).
 script shows after a publish (PRESS-0013 § 4.4).
 
 Both post `/undo`, disable the button, and show *"Putting your site back…
-this can take a few minutes. Keep this page open."* On a JSON reply they show
-the failure and stay, or show the summary and reload (§ 4.2).
+this can take a few minutes. Keep this page open."* On a JSON reply each
+replaces the box with the failure, or with the summary and the notices, and
+shows a link back to his list. Neither reloads (§ 4.2).
 
 ### 4.7 What this item never does
 
@@ -385,8 +400,9 @@ does.
   *Test:* `test_his_own_version_is_kept_beside_the_one_put_back`. For a
   published entry whose Store version differs, and for a draft whose slug the
   fetched state publishes, the kept draft holds the title, date, categories,
-  tags and body the Store held, its `Slug` is the free address, and it names no
-  entry undo restored in a `Replaces` field. Equality of the whole `Entry` is
+  tags and body the Store held, its `Slug` is the free address, and its
+  `Replaces` does not name the entry it was kept from. A `Replaces` naming
+  some other entry survives (§ 3 decision 7). Equality of the whole `Entry` is
   not asserted: `store.Entry` is frozen and carries `slug`, and the kept draft
   is written under a different address, so it can never hold.
   *Breaks when:* the differing version is overwritten, or is kept as a working
@@ -421,7 +437,9 @@ does.
   *Test:* `test_a_definite_failure_puts_the_files_back`. With the transport
   answering 401, and again with `builder.build` made to raise, every file in
   `published/`, `drafts/`, `pages/`, `furniture/`, `templates/` and
-  `comments/` reads back equal to before the undo. With the transport raising
+  `comments/` reads back equal to before the undo, **and no folder holds a
+  file it did not hold before** — without that clause the test cannot see a
+  file the reconcile created and the reversal left. With the transport raising
   on the reference update, the Store holds the undone state instead.
   *Breaks when:* every failure is reversed, which contradicts a site that may
   already show the older state.
@@ -457,6 +475,7 @@ does.
 | A file cannot be built | `BuildStopped` | his files put back |
 | GitHub refuses the upload | its sentence | his files put back |
 | GitHub may have taken it | the unknown-outcome sentence | his files left undone |
+| A Store write fails during the reconcile | the Store's failure | the reversals recorded so far are run, so his files are as they were |
 | Putting back fails | the Store's failure | whatever the failure left; nothing deleted |
 | The fetch area cannot be written | `FetchNotWritten` | nothing moved; the area is emptied |
 | A copy of a demoted entry is published and the drafts cannot be binned — **the Publish route's, not undo's** (§ 4.5) | success, and a note that the waiting drafts can be thrown away | the entry published, both drafts still in `drafts/` |
@@ -526,7 +545,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-11 | `tests/test_undo.py::test_an_unreadable_fetched_file_moves_nothing` |
 | INV-12 | `tests/test_undo.py::test_the_key_is_never_shown` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
-| The buttons and the reload (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
+| The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
 | A real undo against GitHub | **nothing** in CI — by hand, against the maintainer's test repository |
 | That the move phase of a fetch is not all-or-nothing | **nothing** — PRESS-0009 § 4.5 records the residual window; INV-1 removes undo's exposure to it by never reusing the folder, and does not close it |
 | That pressing Undo twice is a toggle rather than a history | **nothing** — decided behaviour (§ 6); PRESS-0009 § 10 records the same gap |
