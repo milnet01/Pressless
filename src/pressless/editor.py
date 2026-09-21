@@ -242,11 +242,19 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
     return (render_notices(notices) + failure +
             '<h1>Your writing</h1>'
+            '<div id="undo-result"></div>'
+            '<div id="listing">'
             '<form method="post" action="/new"><label>Title '
             '<input name="title" autocomplete="off"></label> '
             "<button>New entry</button></form>"
+            # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
+            # showing it (§ 3 decision 3).
+            '<p><button type="button" data-undo>Undo the last publish</button> '
+            '<span id="undo-status"></span></p>'
             f"<h2>Drafts</h2>{rows(drafts, unreadable[True])}"
-            f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}")
+            f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}"
+            "</div>"
+            f"<script>{_UNDO_SCRIPT}</script>")
 
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -324,14 +332,18 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
 {address}
 <p><button type="button" data-editor="publish">Publish</button>
- <span id="publish-status"></span></p>
+ <span id="publish-status"></span>
+ <button type="button" data-undo>Undo the last publish</button>
+ <span id="undo-status"></span></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
 </form>
 <div id="failure">{failure or ""}</div>
+<div id="undo-result"></div>
 <iframe id="preview" title="Preview" sandbox="allow-same-origin allow-scripts"
  src="{attr(preview or 'about:blank')}"></iframe>
-<script>{_EDITOR_SCRIPT}</script>"""
+<script>{_EDITOR_SCRIPT}</script>
+<script>{_UNDO_SCRIPT}</script>"""
 
 
 def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
@@ -442,6 +454,59 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
 
 # The page's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved.
+# PRESS-0015 s 4.6. Both pages carry this. Neither reloads itself (s 4.2):
+# the reply is the only place the summary and the gathered notices exist, and a
+# reload throws both away before he has read them. So the box is replaced with
+# what came back, and a link back to his list is offered instead.
+_UNDO_SCRIPT = """
+(() => {
+  const button = document.querySelector("button[data-undo]");
+  if (!button) return;
+  const said = document.getElementById("undo-status");
+  const result = document.getElementById("undo-result");
+
+  const show = (fragment, sentence) => {
+    result.innerHTML = fragment || "";
+    if (sentence) {
+      const line = document.createElement("p");
+      line.textContent = sentence;
+      result.appendChild(line);
+    }
+    const back = document.createElement("p");
+    const link = document.createElement("a");
+    link.href = "/";
+    link.textContent = "Back to your writing";
+    back.appendChild(link);
+    result.appendChild(back);
+    for (const box of [document.getElementById("editor"),
+                       document.getElementById("listing")]) {
+      if (box) box.hidden = true;
+    }
+  };
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    said.textContent = "Putting your site back\u2026 this can take a few minutes. " +
+      "Keep this page open.";
+    try {
+      const answer = await fetch("/undo", {method: "POST"});
+      const text = await answer.text();
+      said.textContent = "";
+      if (answer.status !== 200) { show("", text); return; }
+      const reply = JSON.parse(text);
+      show((reply.notices || "") + (reply.undone ? "" : reply.failure || ""),
+           reply.undone ? reply.summary : "");
+    } catch (error) {
+      said.textContent = "";
+      show("", "Pressless could not reach itself. Your site was not changed.");
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+"""
+
+
 _EDITOR_SCRIPT = """
 (() => {
   const form = document.getElementById("editor");

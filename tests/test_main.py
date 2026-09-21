@@ -98,7 +98,8 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
     assert capsys.readouterr().out.splitlines()[:3] == [
         "pressless: ok", f"folder: {_FOLDER_NAME}", "store: keyring SecretService"]
     pages = set(opened.faces[0]._pages)
-    for route in (("GET", "/setup"), ("GET", "/"), ("POST", "/save"), ("POST", "/publish")):
+    for route in (("GET", "/setup"), ("GET", "/"), ("POST", "/save"), ("POST", "/publish"),
+                  ("POST", "/undo")):
         assert route in pages, route
     assert urllib.parse.urlsplit(opened.links[0]).path == "/setup"
 

@@ -1877,7 +1877,7 @@ that it is back. Holds S9.
   Source: design-2026-08-24 § What undo actually does.
   Lanes: Publisher.
 
-- 📋 [PRESS-0015] **Undo in one step, ending with the site and his own files agreeing.**
+- ✅ [PRESS-0015] **Undo in one step, ending with the site and his own files agreeing.**
   A revert alone is not enough: the Store would still hold the text that
   caused the trouble, so the site would be right for an hour and wrong
   again without him doing anything wrong. Undo is therefore a sequence the
@@ -1937,6 +1937,51 @@ that it is back. Holds S9.
 
   Owed by this item and filed separately: PRESS-0134, the design.md
   amendment for the comments decision.
+  Resolved (2026-09-21): built to the accepted spec. New
+  `src/pressless/undo.py` runs § 4.3's sequence -- empty the fetch area,
+  fetch the previous state, refuse a first publish, read the whole
+  fetched state before writing anything, reconcile, publish with
+  `emptying=True`, empty the fetch area again however it ends. A definite
+  failure runs the reversals recorded so far, in reverse order; an
+  `OutcomeUnknown` leaves the Store as undo made it.
+
+  `publishing.py` gained `UNDONE`, `undone_stamp()` and § 4.5's two
+  `_move` changes: a marked draft keeps its date and is stripped of the
+  mark when published, and a draft whose `Replaces` names a MARKED draft
+  publishes over that address with the demoted draft's date. `_Moved.copy`
+  is a list, so both drafts are binned at the finish step.
+  `__main__._serve` registers `undo.register`; both pages gained the Undo
+  button and a shared script (§ 4.6).
+
+  All 12 invariants have the test § 5 names, under those names.
+  `tests/test_undo.py` carries nine; INV-3, INV-4 and INV-5 are in
+  `tests/test_publishing.py`, being about `_move` rather than the
+  sequence. Gate green: 448 passed, 1 skipped.
+
+  **The tests were proved to CATCH, not just to pass.** 19 mutations
+  across both modules, every one killed and every one exit 1 -- no false
+  kill from an unparseable file. The first pass had FOUR honest
+  survivors, all closed rather than noted: nothing failed if the
+  template, comment or page restore was skipped entirely, if a superseded
+  file was overwritten instead of binned first, or if a kept draft kept a
+  `Replaces` naming the entry just put back. INV-6's assertion was the
+  worst -- vacuous, because its fixture carried no `Replaces` for the
+  clause to strip. Its fixture now carries the case that would refute it.
+
+  § 4.6 checked end to end in a real browser through
+  `scripts/by-hand-browser-checks.py`, now 19 checks: both pages carry the
+  button, it shows "Putting your site back… this can take a few minutes.
+  Keep this page open.", and the reply replaces the box with the Face
+  sentence and a link back without reloading.
+
+  One judgement call the spec's § 4.3 table does not state outright. For
+  the branch where a DRAFT holds the fetched slug, the forward pass bins
+  his draft, and the table's reversal rows would leave `drafts/` short of
+  it -- which INV-10 requires to read back equal. The reversal therefore
+  also writes his draft back from the value held in memory. That is what
+  makes § 4.3's "a file the forward pass binned stays binned, as a spare
+  copy of what is now back in place" true: something has to be back in
+  place for the binned copy to be spare. Flagged rather than assumed.
   **Layman:** After a change that made the site wrong, one step puts it back -- and he can see that it worked.
   Kind: implement.
   Source: design-2026-08-24 § What undo actually does.

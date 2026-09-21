@@ -25,6 +25,11 @@ from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, rend
 
 MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
 
+# The header marking a draft undo demoted (PRESS-0015 § 4.5). Nothing parses the
+# value -- it is the moment of the demotion, written so that a person reading his
+# own file can see what happened. Presence is what is read.
+UNDONE = "Undone"
+
 _T = TypeVar("_T")
 
 
@@ -51,6 +56,11 @@ class Published:
 
 def _now() -> datetime:
     return datetime.now()
+
+
+def undone_stamp() -> str:
+    """The moment of a demotion, for the `UNDONE` header (PRESS-0015 § 4.5)."""
+    return _now().replace(microsecond=0).isoformat(sep=" ")
 
 
 @contextlib.contextmanager
@@ -85,10 +95,11 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         builder.build(folder, settings, settings.site_folder)
 
     def finish() -> bool:
-        if moved is None or moved.copy is None:
+        if moved is None or not moved.copy:
             return False
         try:
-            captured(lambda: store.move_to_bin(folder, moved.copy))
+            for path in moved.copy:
+                captured(lambda target=path: store.move_to_bin(folder, target))
         except Exception:  # noqa: BLE001 -- never replaces the publish's result (§ 4.3 step 5)
             return True
         return False
@@ -116,7 +127,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
 @dataclass
 class _Moved:
     published: str                  # the address now published
-    copy: Path | None               # the working copy to bin once published
+    copy: list[Path]                # the drafts to bin once published; may be empty
     put_back: Callable[[], None]
 
 
@@ -126,24 +137,45 @@ def _move(folder: Path, entry: str | None) -> _Moved | None:
         return None
     path = store.path_for(folder, entry, draft=True)
     draft = store.read(path)
-    stripped = tuple(field for field in draft.extra if field[0] != editor.REPLACES)
+    stripped = tuple(field for field in draft.extra
+                     if field[0] not in (editor.REPLACES, UNDONE))
     named = next((value for name, value in draft.extra if name == editor.REPLACES), None)
 
     if named is not None and named in store.list_slugs(folder, draft=False):
         remembered = store.read(store.path_for(folder, named, draft=False))
         store.write(folder, dataclasses.replace(draft, slug=named, date=remembered.date,
                                                 extra=stripped), draft=False)
-        return _Moved(named, path, lambda: store.write(folder, remembered, draft=False))
+        return _Moved(named, [path], lambda: store.write(folder, remembered, draft=False))
 
-    store.write(folder, dataclasses.replace(draft, date=_now().replace(microsecond=0),
-                                            extra=stripped), draft=True)
+    # PRESS-0015 § 4.5: a draft whose `Replaces` names a draft carrying the mark
+    # is a working copy of the entry undo demoted. The mark is what makes this
+    # safe -- without it any draft naming another would publish over it.
+    if named is not None and named in store.list_slugs(folder, draft=True):
+        demoted_path = store.path_for(folder, named, draft=True)
+        demoted = store.read(demoted_path)
+        if any(name == UNDONE for name, _ in demoted.extra):
+            store.write(folder, dataclasses.replace(draft, slug=named, date=demoted.date,
+                                                    extra=stripped), draft=False)
+            # Nothing else removes a file the Store did not hold before, so the
+            # put-back bins what was just written and leaves his two drafts as
+            # they were (§ 4.5).
+            return _Moved(named, [path, demoted_path],
+                          lambda: store.move_to_bin(
+                              folder, store.path_for(folder, named, draft=False)))
+
+    # A draft carrying the mark keeps its date: § 2 item 3's branch would
+    # otherwise date an entry from years ago to today and put it at the top of
+    # his site (PRESS-0015 § 4.5).
+    marked = any(name == UNDONE for name, _ in draft.extra)
+    dated = draft.date if marked else _now().replace(microsecond=0)
+    store.write(folder, dataclasses.replace(draft, date=dated, extra=stripped), draft=True)
     store.publish(folder, entry)
 
     def put_back() -> None:
         store.unpublish(folder, entry)
         store.write(folder, draft, draft=True)
 
-    return _Moved(entry, None, put_back)
+    return _Moved(entry, [], put_back)
 
 
 def register(face: Face, folder: Path, *,

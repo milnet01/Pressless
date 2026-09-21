@@ -12,6 +12,24 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Undo the last publish, in one step, from either page** (PRESS-0015)
+  Puts your site back the way it was before the last time you published,
+  and leaves your own files agreeing with it. An entry that was not on the
+  site before becomes a draft again rather than being deleted, and marks
+  itself so that publishing it later keeps its original date. Where your
+  copy of something differs from the older version, your copy is kept as a
+  draft beside the one put back, so nothing of yours is lost. Anything the
+  older version did not include is left alone.
+
+  It reaches back exactly one publish and is a toggle: press it again and
+  you are back where you started. Your first publish cannot be undone,
+  because there is no earlier version to go back to. If the upload fails
+  outright your files are put back as they were; if it stops without
+  saying whether it worked, your files are left matching what the site may
+  already show.
+
 ### Fixed
 
 - **A rule about how spaces are coloured in rainbow text was checked by nothing, and could have been broken without a test noticing** (PRESS-0131)

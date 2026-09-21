@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 import test_publishing as tp  # noqa: E402
 
-from pressless import credentials, editor, face, publishing, store  # noqa: E402
+from pressless import credentials, editor, face, publishing, store, undo  # noqa: E402
 
 RESULTS: list[tuple[str, bool, str]] = []
 
@@ -53,6 +53,7 @@ def main() -> int:
     try:
         editor.register(served, folder)
         publishing.register(served, folder, transport=tp._github())
+        undo.register(served, folder, transport=tp._github())
         parts = urllib.parse.urlsplit(served.url)
         secret = urllib.parse.parse_qs(parts.query)["t"][0]
         origin = f"http://{parts.netloc}"
@@ -135,7 +136,9 @@ def run(origin: str, secret: str, folder: Path) -> None:
 
         # ---- PRESS-0013 s4.4: the Publish button, its message and the switch --
         page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
-        publish = page.locator("button:has-text('Publish'), input[value*='Publish']")
+        # Exact text: "Publish" is a substring of "Undo the last publish", so a
+        # has-text selector matches both and the count says nothing.
+        publish = page.get_by_role("button", name="Publish", exact=True)
         check("PRESS-0013 s4.4: the editor page carries a Publish button",
               publish.count() >= 1, f"count={publish.count()}")
 
@@ -144,19 +147,26 @@ def run(origin: str, secret: str, folder: Path) -> None:
             # Sample from the click until the reply lands. The transport is a
             # double, so the in-flight window is short; a single poll can miss
             # it entirely and that is a fact about the probe, not the page.
+            # A MutationObserver on the status element rather than a timer:
+            # the in-flight window against a transport double can be shorter
+            # than any sampling interval, so polling misses a message that was
+            # genuinely shown. This records every value it ever held.
             page.evaluate(
                 """() => {
                      window.__seen = [];
-                     const b = [...document.querySelectorAll('button')]
-                       .find(x => x.textContent.trim() === 'Publish');
+                     const said = document.getElementById("publish-status");
+                     const b = [...document.querySelectorAll("button")]
+                       .find(x => x.textContent.trim() === "Publish");
                      const grab = () => window.__seen.push(
-                       document.body.innerText.slice(0, 400) + '||' +
-                       (b && b.disabled ? 'DISABLED' : 'enabled'));
-                     window.__t = setInterval(grab, 20); grab();
+                       said.textContent + "||" +
+                       (b && b.disabled ? "DISABLED" : "enabled"));
+                     new MutationObserver(grab).observe(
+                       said, {childList: true, characterData: true, subtree: true});
+                     window.__grab = grab;
                    }""")
             btn.click()
             page.wait_for_timeout(3000)
-            samples = page.evaluate("() => { clearInterval(window.__t); return window.__seen; }")
+            samples = page.evaluate("() => window.__seen")
             waiting = [x for x in samples
                        if "this can take a few minutes the first time" in x]
             disabled_while_waiting = [x for x in waiting if x.endswith("DISABLED")]
@@ -174,6 +184,43 @@ def run(origin: str, secret: str, folder: Path) -> None:
                   in after, repr(_snip(after, "Published")))
             check("PRESS-0013 s4.4: the address bar carries the slug",
                   "slug=seaside" in page.url, page.url.split("?")[-1][:60])
+
+        # ---- PRESS-0015 s 4.6: the Undo button on both pages ---------------
+        undo_here = page.get_by_role("button", name="Undo the last publish",
+                                     exact=True)
+        check("PRESS-0015 s4.6: the editor page carries an Undo button",
+              undo_here.count() == 1, f"count={undo_here.count()}")
+
+        page.goto(f"{origin}/", wait_until="networkidle")
+        undo_list = page.get_by_role("button", name="Undo the last publish",
+                                     exact=True)
+        check("PRESS-0015 s4.6: the list page carries an Undo button, always shown",
+              undo_list.count() == 1, f"count={undo_list.count()}")
+
+        if undo_list.count() == 1:
+            page.evaluate(
+                """() => {
+                     window.__undo = [];
+                     const said = document.getElementById("undo-status");
+                     new MutationObserver(
+                       () => window.__undo.push(said.textContent)
+                     ).observe(said, {childList: true, characterData: true,
+                                      subtree: true});
+                   }""")
+            undo_list.click()
+            page.wait_for_timeout(4000)
+            said = page.evaluate("() => window.__undo")
+            check("PRESS-0015 s4.6: it shows the putting-back message",
+                  any("Putting your site back" in x and "Keep this page open" in x
+                      for x in said),
+                  f"{len(said)} status changes: {said!r}"[:180])
+            result = page.inner_text("#undo-result")
+            check("PRESS-0015 s4.6: the reply replaces the box and links back",
+                  "Back to your writing" in result
+                  and page.locator("#listing").is_hidden(),
+                  repr(result[:140]))
+            check("PRESS-0015 s4.6: the page did not reload itself",
+                  page.evaluate("() => window.__undo !== undefined"))
 
         print("\n  console during the run:")
         for line in console[-12:]:

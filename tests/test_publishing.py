@@ -297,3 +297,77 @@ def test_a_failed_publish_names_the_saved_file(tmp_path, monkeypatch):
     assert reply["published"] is False and copy is not None
     assert reply["slug"] == copy and reply["draft"] is True
     assert reply["base"] == _base(folder, copy, draft=True)
+
+
+# ---------------------------------------- PRESS-0015 INV-3, INV-4, INV-5 ---
+#
+# The three that live here rather than in tests/test_undo.py: each is about
+# what `publishing._move` does with the mark undo leaves, not about the undo
+# sequence (docs/specs/PRESS-0015-undo.md § 5).
+
+
+UNDONE = "Undone"
+
+
+def test_a_demoted_draft_keeps_its_date(tmp_path, monkeypatch):
+    """PRESS-0015 INV-3: publishing a demoted draft again keeps the date it
+    carried as a published entry, and strips the mark."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", date="2014-11-09 21:32:00",
+                               extra=((UNDONE, "2026-09-21 14:02:11"),)), draft=True)
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    _key(monkeypatch)
+    with _pressless(folder, _github()) as browser:
+        status, text = browser.publish("seaside", True, _base(folder, "seaside", draft=True),
+                                       folder=folder)
+    assert status == 200, text
+    published = store.read(store.path_for(folder, "seaside", draft=False))
+    assert published.date == datetime(2014, 11, 9, 21, 32)
+    assert all(name != UNDONE for name, _ in published.extra)
+    assert UNDONE not in store.path_for(folder, "seaside", draft=False).read_text("utf-8")
+
+
+def test_a_copy_of_a_demoted_entry_publishes_over_it(tmp_path, monkeypatch):
+    """PRESS-0015 INV-4: a working copy whose `Replaces` names a demoted draft
+    publishes over that address, and both drafts are binned."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Before.", date="2014-11-09 21:32:00",
+                               extra=((UNDONE, "2026-09-21 14:02:11"),)), draft=True)
+    store.write(folder, _entry("seaside-changes", body="After.",
+                               date="2020-01-01 00:00:00",
+                               extra=((REPLACES, "seaside"),)), draft=True)
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    _key(monkeypatch)
+    with _pressless(folder, _github()) as browser:
+        status, text = browser.publish("seaside-changes", True,
+                                       _base(folder, "seaside-changes", draft=True),
+                                       folder=folder)
+    assert status == 200, text
+    published = store.read(store.path_for(folder, "seaside", draft=False))
+    assert published.body == "After."
+    assert published.date == datetime(2014, 11, 9, 21, 32)
+    assert all(name not in (REPLACES, UNDONE) for name, _ in published.extra)
+    assert store.list_slugs(folder, draft=True) == ()
+    assert _binned(folder) == ["seaside-changes.txt", "seaside.txt"]
+
+
+def test_a_replaces_naming_a_plain_draft_is_not_a_copy(tmp_path, monkeypatch):
+    """PRESS-0015 INV-5: the widening in INV-4 keys on the mark, not on
+    `Replaces` alone -- otherwise one draft would destroy another."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Mine.", date="2014-11-09 21:32:00"),
+                draft=True)
+    store.write(folder, _entry("seaside-changes", body="After.",
+                               extra=((REPLACES, "seaside"),)), draft=True)
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    _key(monkeypatch)
+    with _pressless(folder, _github()) as browser:
+        status, text = browser.publish("seaside-changes", True,
+                                       _base(folder, "seaside-changes", draft=True),
+                                       folder=folder)
+    assert status == 200, text
+    assert store.list_slugs(folder, draft=False) == ("seaside-changes",)
+    published = store.read(store.path_for(folder, "seaside-changes", draft=False))
+    assert published.body == "After."
+    left = store.read(store.path_for(folder, "seaside", draft=True))
+    assert left.body == "Mine." and left.date == datetime(2014, 11, 9, 21, 32)
