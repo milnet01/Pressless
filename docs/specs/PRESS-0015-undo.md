@@ -72,10 +72,12 @@ puts his files back as they were before the press.
    Decided by the user 2026-09-21. A demoted entry's comments are not built,
    because the Builder writes `content/comments/<slug>.json` for published
    entries only (PRESS-0008 § 4.7); publish it again and they return.
-9. **(decided here) Publishing honours a copy of a demoted entry; the editor's
-   pages are unchanged.** Decided by the user 2026-09-21. Decision 4 is met in
-   `publishing._move`. The list and the edit page keep today's wording, so
-   PRESS-0012's spec is not reopened.
+9. **(decided here) Publishing honours a copy of a demoted entry, and neither
+   page says anything about demoted entries.** Decided by the user 2026-09-21.
+   Decision 4 is met in `publishing._move` alone. The list and the edit page
+   keep today's wording about working copies, which talks about published
+   entries. **Both pages still gain decision 2's Undo button** (§ 4.6); that is
+   the only change either one takes.
 10. **(decided here) The sequence lives in the Face, as
     `src/pressless/undo.py`.** Only the Face knows the order (`docs/design.md`
     rule 1), and only the Face may copy from the fetch area into the Store
@@ -102,9 +104,9 @@ class NothingToUndo(Exception): ...   # the state before holds no content/ (§ 3
 @dataclass(frozen=True)
 class Undone:
     outcome: publisher.Outcome
+    restored: tuple[str, ...]  # addresses the fetched state put back
     demoted: tuple[str, ...]   # entries turned back into drafts
     kept: tuple[str, ...]      # addresses his own versions were kept under
-    copy_kept: bool            # publishing.Published.copy_kept, passed through
 
 def undo(folder: Path, settings: Settings, key: str, *,
          capture: Callable[[], ContextManager[list[str]]] = _nothing_captured,
@@ -121,9 +123,22 @@ def register(face: Face, folder: Path, *,
 UNDONE = "Undone"    # the header marking a draft undo demoted; § 4.5
 ```
 
-`undo` is § 4.3's sequence. `capture` and `notices` carry PRESS-0013 § 4.1's
-meaning unchanged, and `undo` passes both to `publishing.publish`. `register`
-adds `POST /undo`.
+`undo` is § 4.3's sequence. `notices` carries PRESS-0013 § 4.1's meaning
+unchanged, and `undo` passes both it and `capture` to `publishing.publish`.
+`register` adds `POST /undo`.
+
+**`capture` wraps steps 4 and 5 — the read and the reconcile — and nothing
+else.** The reconcile writes many files, and PRESS-0005 § 4.1 emits a
+`StoreNotice` only a capturing caller sees, so those have to be inside one. The
+fetch is outside it for the reason PRESS-0013 § 4.1 gives about the upload: a
+capture holds a process-wide lock (PRESS-0011 § 4.4), and a fetch is minutes
+long, so one around it would stall setup's page. `publishing.publish` then
+applies `capture` to its own steps as it already does.
+
+**`undo.register` is called from `pressless.__main__`**, beside
+`setup.register`, `editor.register` and `publishing.register` (PRESS-0013
+§ 4.5 step 3). Without that line `POST /undo` is never added and no button can
+reach it.
 
 `undo.py` adds `NothingToUndo`'s sentence to `face.SENTENCES` when it is
 imported, as `publishing.py` and `editor.py` do.
@@ -140,8 +155,8 @@ through. In order:
    notices=<the reply's list>, transport=…)`.
 
 Steps 1 and 2 run inside `face.capture()`; step 3 passes it on. A failure at
-any step answers status 200 with JSON, because the page has to reload either
-way:
+any step answers status 200 rather than an error status, so the page can render
+the failure beside what it already shows:
 
 ```json
 {"undone": false, "failure": "<fragment>", "notices": "<fragment>",
@@ -149,9 +164,11 @@ way:
 ```
 
 Success answers `"undone": true`, `"failure": null`, and a `summary` fragment
-naming what changed: how many entries came back, which became drafts, and the
-addresses his own versions were kept under. **The page reloads on success**,
-on both pages, because either may now be showing an entry whose state changed.
+naming what changed: `restored`, `demoted` and `kept`, one clause each.
+**The page reloads on success only**, on both pages, because either may now be
+showing an entry whose state changed. **A failure does not reload** — the
+`failure` and `notices` fragments stay on screen, or he never reads why the
+undo stopped.
 
 ### 4.3 The sequence
 
@@ -173,6 +190,17 @@ succeeded.
    file is read through the Store's own reader for its kind (§ 4.4). A file
    the Store cannot read raises here, with the Store untouched.
 5. **Reconcile the Store** (§ 4.4), recording a reversal for every change.
+   **Each reversal carries the value the reconcile read before it wrote** —
+   which it already holds, since reading it is how it decided the file
+   differs — and puts that value back through the Store's own writer. **A
+   reversal never bins a file it is putting back**, because nothing moves a
+   file out of the bin and `store.move_to_bin` stamps to the second, so
+   binning one path twice inside a second is refused and would replace the
+   failure being reported. A file the forward pass binned stays binned, as a
+   spare copy of what is now back in place. **The one thing a reversal does
+   bin is a file the reconcile itself created** — a kept draft — since that is
+   the only removal the Store offers, and it is a path the forward pass never
+   binned.
 6. **Publish.** `publishing.publish(folder, settings, key, entry=None,
    emptying=True, capture=capture, notices=notices, transport=transport)`.
    `emptying=True` because undo's publish is the result that was asked for
@@ -217,9 +245,10 @@ dataclasses, so each compares by value.
   `Replaces` field (§ 3 decision 7). Then the fetched entry is written as
   published.
 - **A draft holds that slug.** His draft is written under
-  `editor.free_address(folder, slug + KEPT_SUFFIX)` and the old draft file is
-  binned, then the fetched entry is written as published. Otherwise one slug
-  would name two files, which `docs/design.md` rules out.
+  `editor.free_address(folder, slug + KEPT_SUFFIX)`, **keeping its own fields**
+  — so a draft that was a working copy of some other entry stays one — and the
+  old draft file is binned. Then the fetched entry is written as published.
+  Otherwise one slug would name two files, which `docs/design.md` rules out.
 - **The Store holds neither.** The fetched entry is written as published.
 
 **An entry the Store publishes and the fetched state does not hold** is
@@ -238,7 +267,12 @@ Store.
 **Photograph originals are never touched.** They never reach the site folder,
 so the fetched state cannot hold one.
 
-**Comments are not moved with a demoted entry** (§ 3 decision 8).
+**Comments are not moved with a demoted entry** (§ 3 decision 8). The comments
+folder is not split into published and draft, so there is nowhere for a
+demotion to move the file to, and the Builder already holds a draft's comments
+back. **This narrows `docs/design.md`**, which says an entry's comments file
+follows its entry *demoted*, published, binned or renamed with it; § 11 carries
+the amendment that document is owed.
 
 ### 4.5 The demotion mark
 
@@ -285,7 +319,7 @@ script shows after a publish (PRESS-0013 § 4.4).
 
 Both post `/undo`, disable the button, and show *"Putting your site back…
 this can take a few minutes. Keep this page open."* On a JSON reply they show
-the failure, or the summary, and reload.
+the failure and stay, or show the summary and reload (§ 4.2).
 
 ### 4.7 What this item never does
 
@@ -350,11 +384,14 @@ does.
   a free address, with no `Replaces`.
   *Test:* `test_his_own_version_is_kept_beside_the_one_put_back`. For a
   published entry whose Store version differs, and for a draft whose slug the
-  fetched state publishes, the kept draft reads back equal to what the Store
-  held, its address is not the entry's, and it carries no `Replaces` field.
+  fetched state publishes, the kept draft holds the title, date, categories,
+  tags and body the Store held, its `Slug` is the free address, and it names no
+  entry undo restored in a `Replaces` field. Equality of the whole `Entry` is
+  not asserted: `store.Entry` is frozen and carries `slug`, and the kept draft
+  is written under a different address, so it can never hold.
   *Breaks when:* the differing version is overwritten, or is kept as a working
-  copy — which § 3 decision 7 rules out and `editor.TooManyCopies` would then
-  refuse.
+  copy of the entry just put back — which § 3 decision 7 rules out and
+  `editor.TooManyCopies` would then refuse.
 
 - **INV-7** — A fixed page, template or furniture file the fetched state does
   not hold is kept untouched.
@@ -422,7 +459,7 @@ does.
 | GitHub may have taken it | the unknown-outcome sentence | his files left undone |
 | Putting back fails | the Store's failure | whatever the failure left; nothing deleted |
 | The fetch area cannot be written | `FetchNotWritten` | nothing moved; the area is emptied |
-| A copy of a demoted entry is published and the drafts cannot be binned | success, and a note that the waiting drafts can be thrown away | the entry published, both drafts still in `drafts/` |
+| A copy of a demoted entry is published and the drafts cannot be binned — **the Publish route's, not undo's** (§ 4.5) | success, and a note that the waiting drafts can be thrown away | the entry published, both drafts still in `drafts/` |
 | He closes the console mid-undo | nothing | as far as it got; pressing Undo again settles it |
 
 **Pressing Undo twice returns the site to the state the first press
@@ -501,6 +538,18 @@ mutation-probed once the code lands, one mutation per route each invariant's
   point here. Its § 11 already says this item owes the mark.
 - `docs/specs/PRESS-0012-editor.md` § 3 decision 6 — the marker it leaves to
   this item is `publishing.UNDONE`; the decision points here.
+- `docs/specs/PRESS-0012-editor.md` § 4.5 and § 4.7 — the list and the editor
+  page each gain the Undo button (§ 4.6), as PRESS-0013 § 11 pointed them at
+  the Publish button. Nothing else on either page changes (§ 3 decision 9).
+- `docs/specs/PRESS-0013-publish.md` § 4.5 step 3 — the launch registers
+  `undo.register` beside the other three, and `pressless.__main__` gains that
+  line. PRESS-0013's INV-8 asserts which routes are registered, so its test
+  gains `/undo`.
+- `docs/design.md` § What undo actually does — **an amendment is owed.** That
+  section says an entry's comments file follows its entry *demoted*, published,
+  binned or renamed with it. § 3 decision 8 narrows the demoted case to staying
+  filed under the same address. It is a gated design document and the change is
+  a decision rather than a correction, so it is filed rather than made here.
 - `docs/specs/PRESS-0009-publisher.md` § 4.5 — its warning that this item must
   not assume `into` is whole is met by § 4.3 step 1; the section points here.
 - `docs/specs/PRESS-0005-store.md` — no change. Undo uses the calls it already
