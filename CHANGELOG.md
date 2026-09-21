@@ -14,6 +14,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A rule about how spaces are coloured in rainbow text was checked by nothing, and could have been broken without a test noticing** (PRESS-0131)
+
 - **A brand-new, empty GitHub repository works: setup finishes, and the first Publish starts it.** (PRESS-0127)
   Setup used to stop with a sentence about the site having changed.
   Now the first Publish puts one file of the site in by itself, then
