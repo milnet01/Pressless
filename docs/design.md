@@ -203,9 +203,12 @@ never names two files. **Nor is an edit he has not published yet.**
 Where a file in the Store differs from the fetched one, undo keeps his
 version before writing over it: an entry's becomes a new draft under a
 slug of its own, which the Face chooses, and any other file's goes to
-the bin (§ Where everything sits on disk). **An entry's comments file
-follows its entry** — demoted, published, binned or renamed with it —
-so a draft's comments are never published. **Undo reaches back one publish and no
+the bin (§ Where everything sits on disk). **An entry's comments file is
+filed under the entry's own address**, and moves only when that address
+does — binned or renamed with it. **Demotion leaves it where it is**: the
+Builder writes comments for published entries only (PRESS-0008 §4.7), so
+a draft's comments are never published, and publishing the entry again
+brings them back. **Undo reaches back one publish and no
 further**: pressing it again returns the state the first undo replaced,
 so it is a toggle rather than a history.
 

@@ -1975,7 +1975,7 @@ that it is back. Holds S9.
   Source: PRESS-0026 design gate 2026-08-27, loop 8, stop condition -- needs a decision.
   Lanes: Face, Store.
 
-- 📋 [PRESS-0134] **The design says a demoted entry's comments move with it, and PRESS-0015 decided they stay.**
+- ✅ [PRESS-0134] **The design says a demoted entry's comments move with it, and PRESS-0015 decided they stay.**
   docs/design.md section What undo actually does says an entry's
   comments file follows its entry -- demoted, published, binned or
   renamed with it. PRESS-0015 section 3 decision 8, taken by the user
@@ -1994,6 +1994,20 @@ that it is back. Holds S9.
   Route: amend the sentence, then re-gate design.md only if the amendment
   changes direction for work still to come -- CLAUDE.md rule 14 decides
   that. Recording what was already decided does not re-arm the gate.
+  Resolved (2026-09-21): docs/design.md § What undo actually does now
+  says the comments file is filed under the entry's own address and moves
+  only when that address does, and that demotion leaves it where it is.
+  It cites PRESS-0008 §4.7 for the Builder writing comments for published
+  entries only, which is what makes a demoted entry's comments unbuilt
+  rather than binned. Checked: the cited line reads "content/comments/
+  <slug>.json for every published entry that has one".
+
+  No gate. CLAUDE.md rule 14: the edit does change what a conformer
+  reading design.md would build, but the decision it records was already
+  cold-reviewed inside PRESS-0015's two loops, and the undo feature is
+  built from that spec rather than from design.md. Grey zone goes to No,
+  and a wrong No is picked up by the next real gate on this document.
+  Decided with the user 2026-09-21.
   **Layman:** One sentence in the design disagrees with what was decided about reader comments when an entry is put back.
   Kind: doc-fix.
   Source: review-contract loop 1 on PRESS-0015, 2026-09-21 -- two lanes.
