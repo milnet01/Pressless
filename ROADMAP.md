@@ -4626,7 +4626,7 @@ already-built code ships in whichever release comes next.
   are superseded, as PRESS-0022 § 4.3 measured. PyInstaller's shipped hooks
   collect keyring's metadata, and the check is INV-6 instead -- the built
   artefact must report a keyring store. A local AppImage built that day
-  reported "store: keyring kwallet DBusKeyring". Items 2 to 4 stay open.
+  reported "store: keyring kwallet DBusKeyring". This fold-back reaches item 1 only; items 2 to 4 stand as the Shipped note above records them. Corrected 2026-09-21: it read "Items 2 to 4 stay open", which contradicts that note three lines above it in this same bullet, and PRESS-0117's own record of fixing item 4.
   **Layman:** Once the app is packaged, Windows users could be told their PC has no password store when it does.
   Kind: review-fix.
   Source: review-code 2026-08-31 lane credentials -- low cluster.
@@ -6940,6 +6940,78 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: roadmap residue sweep 2026-09-18; PRESS-0075 test review lanes 1 and 2; PRESS-0109.
   Lanes: Publisher, Store, tests.
+
+- ✅ [PRESS-0130] **CI and the release job pinned different majors of the same two actions.**
+  ci.yml pinned actions/checkout v5.1.0 and actions/setup-python v6.3.0
+  while release.yml pinned v7.0.1 and v7.0.0 -- the same two actions at
+  different majors in one repository. PRESS-0076 measured both as behind
+  and recorded that nothing was bumped; only the EOL half (PRESS-0104)
+  and the dev floors (PRESS-0105) were filed, so the bump itself was
+  never routed anywhere.
+
+  Resolved (2026-09-21): ci.yml now carries release.yml's pins. Both SHAs
+  were resolved against GitHub's own tag refs before the edit, and both
+  tags are the current latest release. The two workflows now name
+  identical pins. actionlint and zizmor report no finding on the changed
+  file.
+  **Layman:** The two automated checks used different versions of the same tools; they now match.
+  Kind: chore.
+  Source: review residue 2026-09-21, from PRESS-0076's unbumped deltas.
+
+- 📋 [PRESS-0131] **The whitespace rule inside a rainbow run has no test that can fail.**
+  PRESS-0004 section 4.2 says a unit that is a single whitespace character
+  is emitted bare and does not advance the index. marks.py::_rainbow
+  implements it with the `if unit.isspace()` branch.
+
+  PRESS-0075 recorded, from a mutation probe run while closing PRESS-0070,
+  that the guard can be removed and the suite stays green. The five items
+  that sweep filed (PRESS-0106 to PRESS-0110) each cover other clauses, so
+  this one was never routed. The rainbow tests in tests/test_marks.py name
+  character references, not the whitespace rule.
+
+  Route: write-test, then a mutation probe that removes the branch and
+  shows the new test red.
+  **Layman:** One rule about spaces in rainbow text is not checked by anything.
+  Kind: test.
+  Source: review residue 2026-09-21, from PRESS-0075's recorded probe.
+
+- 📋 [PRESS-0132] **Two Insights questions are marked open and owned by no item.**
+  PRESS-0063 marked both open rather than answered, and closed without
+  routing either.
+
+  1. The zero-visitor reading is unverified against the live API
+     (PRESS-0056 item 5).
+  2. Whether the aggregate row _total reads is separated out could not be
+     measured: the analytics MCP exposes no metric_aggregations argument
+     (PRESS-0074 item 8).
+
+  Neither can be settled from the tests -- both need the live Google
+  Analytics API. Route: answer them while building PRESS-0020, which is
+  the first work that reads the real service.
+  **Layman:** Two questions about the visitor figures still need checking against Google's real service.
+  Kind: investigate.
+  Source: review residue 2026-09-21, from PRESS-0063's own note.
+
+- 📋 [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
+  Each is a section 10 row in its own spec reading "nothing in CI -- by
+  hand", and each item's shipped note says it was not run. PRESS-0120
+  delivered the packaging and self-check evidence on the Windows box and
+  not these.
+
+  - PRESS-0012: Edge and Chrome on the Windows box, and a page carrying
+    Google's script.
+  - PRESS-0013: a real publish to GitHub through the Publish button; the
+    console window on the Windows box; the page's publish script in a
+    browser.
+  - PRESS-0021: the real keyring prompt on the Windows box, which needed
+    the page wired to a launch -- PRESS-0013 wired it and did not run the
+    check.
+
+  The browser half is reachable here through Playwright and the system
+  Chrome; the Windows half is the Windows box's, in the logged-on session.
+  **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
+  Kind: test.
+  Source: review residue 2026-09-21, from the three items' own shipped notes.
 
 ## Milestones
 
