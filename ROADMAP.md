@@ -2169,7 +2169,7 @@ writing an entry to do it. Holds S8.
   Kind: feature.
   Source: user-request-2026-08-25.
 
-- 📋 [PRESS-0136] **The Milestones intro is rewritten to the sign-of-success mapping alone.**
+- ✅ [PRESS-0136] **The Milestones intro is rewritten to the sign-of-success mapping alone.**
   Three claims in that intro are false, and they disagree with the
   section headings a reader sees first.
 
@@ -2209,6 +2209,16 @@ writing an entry to do it. Holds S8.
   the eleven signs of success each version makes true, per
   `docs/discovery.md` § Signs it is working -- plus the note that CI
   builds every release. Route unchanged: `roadmap_log op:"set_intro"`.
+  Resolved (2026-09-21): rewritten through `op:"set_intro"`. The item
+  count and the hand-kept id lists are gone — each heading's own items are
+  its list. What is left is the S1-S11 assignment per heading, re-derived
+  from the items each heading actually holds rather than carried over from
+  the abandoned three-milestone scheme, plus the ADR-0004 note on CI
+  building every release. The eleven are accounted for exactly once:
+  S2, S3, S4 at 0.1.0; S5, S6 at 0.2.0; S1, S7, S10 at 0.3.0; S9 at
+  0.4.0; S8 at 0.5.0; S11 at 0.7.0. 0.6.0, 0.8.0 and 0.9.0 name none, and
+  say so. The intro now also says all eleven hold from 0.7.0, so what
+  1.0.0 adds is the format promise — which is PRESS-0138.
   **Layman:** The summary at the bottom of the roadmap describes a plan the rest of the roadmap no longer follows.
   Kind: doc-fix.
   Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
@@ -7330,35 +7340,49 @@ already-built code ships in whichever release comes next.
 
 ## Milestones
 
-A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
-many items are done. `docs/discovery.md` § Signs it is working owns S1-S11.
-Every one of the 22 items above belongs to exactly one milestone below, and none
-belongs to two. Agreed with the user 2026-08-25.
+A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
+how many items are done. `docs/discovery.md` § Signs it is working owns
+S1-S11. Each heading's own items are its list; none is kept here.
 
-**v0.1.0 - twelve years survived.** PRESS-0001, 0003, 0004, 0005, 0006, 0007,
-0008, 0011, 0022. He installs the packaged file, points it at the WordPress
-export, and looks at his whole archive rendered on his own machine. There is no
-Publisher yet, so nothing can reach the live site: the one irreversible step,
-Import, is exercised while the stakes are zero. Holds S2, S3, S4. Deliberately
-read-only - the editor box waits for v0.5.0 so that he never has a box that
-writes to nowhere.
+**0.1.0 - twelve years survived.** S2, S3, S4. He installs the packaged
+file, points it at the WordPress export, and looks at his whole archive
+rendered on his own machine. There is no Publisher yet, so nothing can
+reach the live site: Import, the one irreversible step, is exercised
+while the stakes are zero.
 
-**v0.5.0 - he publishes without a phone call.** PRESS-0002, 0009, 0010, 0012,
-0013, 0015, 0021. Adds the keyring, the Publisher, undo in one step, the editor
-box, the one button and setup. Holds S1, S5, S6, S7, S9, S10. This is the
-version that does the thing the project exists for. It is 0.5 rather than 1.0
-because it has been used by one person for a week, not a season.
+**0.2.0 - it reaches the live site.** S5, S6. The keyring, setup and the
+Publisher. He is asked for his key once, and a publish that fails tells
+him what happened and leaves the site as it was.
 
-**v1.0.0 - all eleven, and the format is frozen.** PRESS-0014, 0016, 0017, 0018,
-0019, 0020. Adds fixed pages, photographs, templates, the cheat sheet and the
-dashboard. Holds S8 and S11, so all eleven hold. What actually makes it 1.0
-rather than 0.9 is the promise attached to it: an entry file written by 1.0
-stays readable by every later version. Before 1.0 the on-disk format of ADR-0001
-may still change; after it, S3 stops being a design intention and becomes a
-compatibility guarantee.
+**0.3.0 - he writes in Pressless.** S1, S7, S10. The editor box, the
+preview and the one button. This is the version that does the thing the
+project exists for.
 
-**Every release is built by CI, including the first.** ADR-0004: PyInstaller
-does not cross-compile, so `Pressless.exe` can only be produced by a Windows
-runner, and S4 cannot be demonstrated without one. That is why PRESS-0022 sits
-in v0.1.0 rather than at the end - packaging is not the last step, it is the
-first release's precondition.
+**0.4.0 - he can undo.** S9. A change that made the site wrong comes back
+in one step.
+
+**0.5.0 - the rest of the site is his too.** S8. His fixed pages, not
+just his entries.
+
+**0.6.0 - pictures and helpers.** No new sign. Photographs, templates and
+the cheat sheet add capability the eleven do not name.
+
+**0.7.0 - he can see who is reading.** S11. All eleven hold from here.
+
+**0.8.0 - a stranger can start from nothing.** No new sign. The eleven
+are written about one writer; this is what somebody else needs to begin.
+
+**0.9.0 - the figures from everywhere else.** No new sign. It widens
+S11's sources past Google.
+
+**1.0.0 - all eleven, and the format is frozen.** The eleven already hold
+from 0.7.0, so what 1.0.0 adds is the promise: an entry file written by
+1.0 stays readable by every later version. Before 1.0 the on-disk format
+of ADR-0001 may still change; after it, S3 stops being a design intention
+and becomes a compatibility guarantee.
+
+**Every release is built by CI, including the first.** ADR-0004:
+PyInstaller does not cross-compile, so `Pressless.exe` can only be
+produced by a Windows runner, and S4 cannot be demonstrated without one.
+That is why packaging sits in 0.1.0 rather than at the end - it is not
+the last step, it is the first release's precondition.

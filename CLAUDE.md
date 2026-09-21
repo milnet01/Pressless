@@ -62,6 +62,8 @@ over the commits being pushed. Whether anything is gated at all needs
 `ants.gate.docsGlob` only decides which checks run.
 
 **Machine-local git config keys, and a fresh clone has none of them.**
+The two below are the gate's. Further keys have their own paragraphs in
+this section, so read it through before setting a clone up.
 
 ```bash
 git config core.hooksPath .githooks
