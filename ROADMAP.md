@@ -7251,6 +7251,17 @@ already-built code ships in whichever release comes next.
   Kind: doc-fix.
   Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
 
+- ✅ [PRESS-0137] **CLAUDE.md states what is true now; its history moves to its own file.**
+  Every live rule keeps its wording. What moves is dated provenance,
+  superseded wording and the argument that settled a rule. A pointer at
+  the foot reaches the moved prose.
+  Resolved (2026-09-21): CLAUDE.md 21385 -> 16451 bytes, a 23% cut to
+  what loads every turn; docs/history/claude-md.md carries the moved
+  prose. Commit 18d7f36.
+  **Layman:** The project's instruction file gets shorter, so a session reaches the instruction without reading how it came to say that. Nothing is thrown away — the dated corrections and the arguments move to a history file the instruction file points at.
+  Kind: doc.
+  Source: user-request-2026-09-21 (CFG-0492).
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not how
