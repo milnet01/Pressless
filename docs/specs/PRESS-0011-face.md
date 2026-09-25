@@ -69,6 +69,7 @@ LABEL = "the Pressless-data folder, beside the program"
 class Site(enum.Enum):
     UNCHANGED = "Your site has not changed."
     UNKNOWN = "Pressless cannot tell whether your site changed."
+    UPDATED = "Your site has been updated."      # a notice's only, § 4.4
 
 @dataclass(frozen=True)
 class Sentence:
@@ -83,7 +84,12 @@ def sentence_for(failure: BaseException, *, publishing: bool,
 def details_for(failure: BaseException) -> str: ...
 def render_failure(failure: BaseException, *, publishing: bool,
                    secret: str | None = None) -> str: ...   # an HTML fragment
-def render_notices(notices: list[str]) -> str: ...           # an HTML fragment
+def render_notices(notices: list[str | Notice]) -> str: ...  # an HTML fragment
+
+@dataclass(frozen=True)
+class Notice:
+    text: str
+    site: Site = Site.UNCHANGED
 
 NOTICE_NEXT = "Nothing was lost. Send this to whoever helps you if you did not expect it."
 
@@ -201,8 +207,11 @@ Source: https://docs.python.org/3/library/warnings.html#warnings.catch_warnings
 
 **Each captured notice is shown through `render_notices` and noted in the
 log.** It is shown in the three parts `docs/design.md` § Errors requires: its
-own words, `Site.UNCHANGED` — a Store or Settings call never touches the site
-— and `NOTICE_NEXT`. One next step serves every notice because `StoreNotice`
+own words, its site part, and `NOTICE_NEXT`. A captured notice is a plain
+string, and its site part is `Site.UNCHANGED`: a Store or Settings call never
+touches the site. A part adding a notice about a publish passes a `Notice`
+naming its own (PRESS-0145): `UPDATED` after a publish that succeeded,
+`UNKNOWN` after `publisher.OutcomeUnknown`. One next step serves every notice because `StoreNotice`
 covers three occasions under one type, so the Face cannot tell them apart. A
 notice is not a failure: the call it came from completes.
 
@@ -272,8 +281,8 @@ capture, it lands on that request's list.
   `insights.Refused`. The walk, not a hand list, is what lets a new type fail
   this.
 
-- **INV-2** — The site part is `UNKNOWN` for `OutcomeUnknown` and for an
-  unforeseen failure while publishing, and `UNCHANGED` for everything else.
+- **INV-2** — A failure's site part is `UNKNOWN` for `OutcomeUnknown` and for
+  an unforeseen failure while publishing, and `UNCHANGED` for every other.
   *Test:* `tests/test_face.py::test_what_it_means_for_his_site` — over
   `OutcomeUnknown`, a typed failure, a subclass with no entry of its own, and
   a `RuntimeError` with `publishing` true and false.
@@ -338,10 +347,12 @@ capture, it lands on that request's list.
   listing returns, two notices are on the
   captured list and in the log, and `render_notices` shows each with the words
   "Your site has not changed." and `NOTICE_NEXT`'s sentence, written out in the
-  test.
+  test. A `Notice` carrying `UPDATED` shows "Your site has been updated." and
+  not "Your site has not changed."
   *Breaks when:* a notice is left to the default warnings filter, which shows
-  the second once only; is turned into a failure; or is shown without the
-  site and next-step parts.
+  the second once only; is turned into a failure; is shown without the
+  site and next-step parts; or a `Notice`'s own site part is replaced by
+  `UNCHANGED`.
 
 - **INV-9** — The secret is never printed or logged after the opening link.
   *Test:* `tests/test_face.py::test_the_secret_is_never_printed_or_logged` —
