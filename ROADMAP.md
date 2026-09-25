@@ -2446,7 +2446,7 @@ writing an entry to do it. Holds S8.
   Source: review-contract 2026-09-25 PRESS-0014 loop 3.
   Lanes: page_editor.
 
-- 📋 [PRESS-0145] **A notice after a publish no longer says his site has not changed.**
+- ✅ [PRESS-0145] **A notice after a publish no longer says his site has not changed.**
   face.render_notices gives every notice the same second part,
   Site.UNCHANGED ("Your site has not changed."). page_editor's kept-copy
   notice follows a publish that succeeded, so its reply reads "Your
@@ -2457,6 +2457,21 @@ writing an entry to do it. Holds S8.
   A notice carrying its own Site changes PRESS-0011 section 4.4, so this
   costs a review gate on that spec. Check every notice source
   (StoreNotice, SettingsNotice, page_editor's) for which Site is true.
+  Shipped 2026-09-25. PRESS-0011 amended and gated (loop-log rows 2
+  and 3, cap reached, empty tail): Site.UPDATED, a Notice carrying its
+  own site part, render_notices taking either. The kept-copy notices
+  in publishing.py and page_editor.py now say "Your site has been
+  updated." after success and the unknown sentence after
+  OutcomeUnknown. Tests: test_face INV-6 and INV-8 gain Notice cases;
+  test_publishing and test_page_editor test_a_copy_left_behind_is_said
+  check each caller's site part. Five mutations, all killed.
+
+  Correction to PRESS-0011 loop-log row 3, which is not edited: it says
+  one of its two findings landed inside the armed change's span.
+  Neither did. Both, the cookie rule and the page-raises row, lie
+  outside what 47cb4c0 changed; the share is 0 of 2.
+
+  Publish's own unknown-outcome path is PRESS-0147.
   **Layman:** After publishing a page, Pressless can show "your changes were published" beside "your site has not changed"; only one of those can be true.
   Kind: fix.
   Source: in-session-2026-09-25 while building PRESS-0144.
@@ -7666,6 +7681,21 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: in-session-2026-09-25 while scoping PRESS-0145.
   Lanes: publishing.
+
+- 📋 [PRESS-0148] **A category typed with a capital letter or a space stops every preview and publish.**
+  Seen 2026-09-25 in a demo folder: an entry filed under "Poems" made
+  the editor's preview fail with BuildStopped, "cannot be part of an
+  address: one or more of a-z, 0-9 and '-'". The editor takes the
+  category box as typed, and the Builder uses each category as an
+  address segment. The imported archive's categories were already
+  address-shaped, so the first writer never meets this; a fresh install
+  does on its first category. Decide between turning a typed category
+  into an address and refusing it at save with a hint. That choice
+  likely touches PRESS-0012 and PRESS-0008.
+  **Layman:** Typing a category the way you would write it, such as "Poems", stops Pressless building your site; it should either accept it or say so when you type it.
+  Kind: ux.
+  Source: in-session-2026-09-25 making demo screenshots.
+  Lanes: editor, builder.
 
 ## Milestones
 

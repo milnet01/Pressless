@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A note shown after a publish no longer also says your site has not changed.** (PRESS-0145)
+
 - **Publishing and the dashboard reach GitHub and Google from the Linux download on Linux systems such as openSUSE, instead of saying they could not connect.** (PRESS-0142)
 
 - **The Linux download opens the browser and the Open folder button on Linux systems whose shell is bash, such as openSUSE.** (PRESS-0146)

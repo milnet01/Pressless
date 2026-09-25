@@ -27,6 +27,7 @@ from pressless import builder, credentials, editor, publisher, publishing, setti
 from pressless.face import (
     SENTENCES,
     Face,
+    Notice,
     Reply,
     Request,
     Sentence,
@@ -515,7 +516,7 @@ def _publish(face: Face, folder: Path, request: Request,
                                    notices=notices, transport=transport)
             except publisher.OutcomeUnknown:
                 if finish():
-                    notices.append(_KEPT_COPY_UNKNOWN)
+                    notices.append(Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN))
                 raise
             except BaseException:
                 # A failure here is raised in place of the original (§ 4.7).
@@ -529,7 +530,7 @@ def _publish(face: Face, folder: Path, request: Request,
             failure = None
             published = True
             if kept:
-                notices.append(_KEPT_COPY)
+                notices.append(Notice(_KEPT_COPY, Site.UPDATED))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
     return _json({"published": published, "waiting": waiting, "base": base,

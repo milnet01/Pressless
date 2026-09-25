@@ -326,12 +326,13 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
 
     monkeypatch.setattr(store, "move_to_bin", cannot_bin)
     changed = ABOUT_WORDS.replace("Hello", "Published")
-    for name, transport, left in (
+    for name, transport, left, site in (
         ("published", _Transport(reads=_reads(_listing([])), writes=_writes()),
-         "Your changes were published, but their waiting copy was left in place."),
+         "Your changes were published, but their waiting copy was left in place.",
+         "Your site has been updated."),
         ("unknown", _Transport(reads=_reads(_listing([])), writes=_writes(),
                                fail_at="/git/refs"),
-         "their waiting copy was left in place."),
+         "their waiting copy was left in place.", UNKNOWN_WORDS),
     ):
         folder = _folder(tmp_path / name)
         with _pages(folder, transport) as browser:
@@ -342,6 +343,9 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
         assert status == 200, text
         reply = json.loads(text)
         assert left in html.unescape(reply["notices"]), (name, reply)
+        # PRESS-0145: the notice's own site part, never "not changed".
+        assert site in html.unescape(reply["notices"]), (name, reply)
+        assert "Your site has not changed." not in html.unescape(reply["notices"]), reply
         assert reply["waiting"] is True, (name, reply)
         if name == "unknown":
             assert "Your changes were published" not in html.unescape(reply["notices"]), reply

@@ -48,6 +48,7 @@ _UNNAMED_NOUN = "that secret"
 class Site(enum.Enum):
     UNCHANGED = "Your site has not changed."
     UNKNOWN = "Pressless cannot tell whether your site changed."
+    UPDATED = "Your site has been updated."  # a notice's only (§ 4.4)
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,15 @@ class Sentence:
     what: str  # what happened, in his words; may hold the "{secret}" slot
     site: Site  # what it means for his site
     next: str  # what to do next
+
+
+@dataclass(frozen=True)
+class Notice:
+    """A notice a part adds about a publish, with its own site part (§ 4.4).
+    A captured Store or Settings notice is a plain string: those calls never
+    touch the site (PRESS-0145)."""
+    text: str
+    site: Site = Site.UNCHANGED
 
 
 class FolderNotOpened(Exception):
@@ -270,19 +280,22 @@ def render_failure(
     )
 
 
-def render_notices(notices: list[str]) -> str:
+def render_notices(notices: list[str | Notice]) -> str:
     """Each notice in the three parts § Errors requires, escaped (§ 4.4).
 
     A notice names files he named himself, so its words are text, not markup.
+    A plain string is a Store or Settings notice, whose site part is
+    UNCHANGED; a Notice carries its own (PRESS-0145).
     """
     if not notices:
         return ""
     e = html.escape
+    shown = [notice if isinstance(notice, Notice) else Notice(notice) for notice in notices]
     items = "".join(
-        f'<li><p class="what">{e(notice)}</p>'
-        f'<p class="site">{e(Site.UNCHANGED.value)}</p>'
+        f'<li><p class="what">{e(notice.text)}</p>'
+        f'<p class="site">{e(notice.site.value)}</p>'
         f'<p class="next">{e(NOTICE_NEXT)}</p></li>'
-        for notice in notices
+        for notice in shown
     )
     return f'<ul class="notices">{items}</ul>'
 

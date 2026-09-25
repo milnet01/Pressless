@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import html
 import http.client
 import json
 import urllib.parse
@@ -170,6 +171,33 @@ def test_a_working_copy_is_published_over_its_entry(tmp_path, monkeypatch):
     assert all(name != REPLACES for name, _ in published.extra)
     assert store.list_slugs(folder, draft=True) == ()
     assert _binned(folder) == ["seaside-changes.txt"]
+
+
+def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
+    """§ 4.2: a working copy that cannot be binned after a publish that
+    succeeded is named in the reply, and its site part says the site was
+    updated -- never that it did not change (PRESS-0145)."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Before."), draft=False)
+    store.write(folder, _entry("seaside-changes", body="After.", date="2020-01-01 00:00:00",
+                               extra=((REPLACES, "seaside"),)), draft=True)
+    _key(monkeypatch)
+
+    def cannot_bin(folder, path):
+        raise store.StoreError("the bin is not writable")
+
+    monkeypatch.setattr(store, "move_to_bin", cannot_bin)
+    with _pressless(folder, _github()) as browser:
+        status, text = browser.publish("seaside-changes", True,
+                                       _base(folder, "seaside-changes", draft=True),
+                                       folder=folder)
+    assert status == 200, text
+    reply = json.loads(text)
+    assert reply["published"] is True, reply
+    notices = html.unescape(reply["notices"])
+    assert "was left in place after publishing" in notices, notices
+    assert "Your site has been updated." in notices, notices
+    assert "Your site has not changed." not in notices, notices
 
 
 # ------------------------------------------------------------------ INV-3 ---

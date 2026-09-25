@@ -240,7 +240,9 @@ def test_a_failure_is_escaped_on_the_page() -> None:
         store.StoreError("<script>alert(1)</script>"), publishing=False
     )
     notices = face.render_notices(["<script>alert(2)</script> was passed over"])
-    for shown in (fragment, notices):
+    kept = face.render_notices([face.Notice("<script>alert(3)</script> was left",
+                                            face.Site.UPDATED)])
+    for shown in (fragment, notices, kept):
         assert "&lt;script&gt;" in shown
         assert "<script>" not in shown
 
@@ -293,6 +295,12 @@ def test_a_notice_is_shown_and_the_call_completes(tmp_path: Path) -> None:
     shown = face.render_notices(notices)
     assert shown.count(UNCHANGED_WORDS) == 2
     assert shown.count(NOTICE_NEXT_WORDS) == 2
+
+    # PRESS-0145: a Notice shows its own site part, never UNCHANGED's.
+    updated = face.render_notices([face.Notice("The copy was left.", face.Site.UPDATED)])
+    assert "Your site has been updated." in updated
+    assert UNCHANGED_WORDS not in updated
+    assert NOTICE_NEXT_WORDS in updated
 
 
 def test_the_secret_is_never_printed_or_logged(

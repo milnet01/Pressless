@@ -21,7 +21,16 @@ from pathlib import Path
 from typing import TypeVar
 
 from pressless import builder, credentials, editor, publisher, settings, setup, store
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
+from pressless.face import (
+    SENTENCES,
+    Face,
+    Notice,
+    Reply,
+    Request,
+    Sentence,
+    Site,
+    render_notices,
+)
 
 MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
 
@@ -222,7 +231,7 @@ def _publish(face: Face, folder: Path, request: Request,
             failure = None
             published = True
             if result.copy_kept:
-                notices.append(_KEPT_COPY)
+                notices.append(Notice(_KEPT_COPY, Site.UPDATED))
         slug, draft, base = gathered(lambda: _left(folder, written))
 
     return Reply(json.dumps({
