@@ -2351,6 +2351,23 @@ writing an entry to do it. Holds S8.
   Source: review residue 2026-09-25, from PRESS-0015's own Resolved note.
   Lanes: Face.
 
+- 📋 [PRESS-0142] **The Linux AppImage verifies GitHub's and Google's certificates on any distribution.**
+  Measured 2026-09-25: the released v0.1.2 AppImage bundles a libcrypto
+  whose OPENSSLDIR is /usr/lib/ssl (strings over the extracted
+  _internal/libcrypto.so.3). openSUSE has no such directory, and the
+  bundle carries no certifi. So publisher.py and insights.py, which use
+  urllib's default TLS context, very likely fail certificate checks from
+  the AppImage here. Not yet proven by a live publish from the AppImage.
+  finbreak shipped the same bug and fixed it with certifi
+  (update_fetch.py::_ssl_context there). PRESS-0023 section 4.5 already
+  builds its own certifi context and names this item's scope as out of
+  it (section 9). Prove it first with a packaged run, then fix. Add a
+  row to the PRESS-0133 by-hand checks.
+  **Layman:** Publishing and the dashboard work from the Linux download on every kind of Linux, not only the kind it was built on.
+  Kind: fix.
+  Source: in-session-2026-09-25 PRESS-0023 spec research.
+  Lanes: publisher, insights, packaging.
+
 ## 0.6.0 — pictures and helpers
 
 Photographs from the picture mark through to the web-sized copy, a list of
