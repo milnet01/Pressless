@@ -1,6 +1,6 @@
 # PRESS-0014 — Editing a fixed page: the words in a box, the code behind a button
 
-**Status:** draft (2026-09-25).
+**Status:** accepted (2026-09-25). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0014 (`docs/design.md` § What may depend on what,
 under *Where the fixed pages live*; discovery S8).
@@ -117,12 +117,13 @@ HOME = "index"                      # the fixed page furniture previews first
 
 class PiecesChanged(Exception): ... # the box holds a different number of paragraphs
 
-def pieces(html: str) -> tuple[Piece, ...]: ...
-def words(html: str) -> str: ...
-def put_words(html: str, box: str) -> str: ...
+def pieces(name: str, html: str) -> tuple[Piece, ...]: ...
+def words(name: str, html: str) -> str: ...
+def put_words(name: str, html: str, box: str) -> str: ...
 def put_code(html: str, text: str) -> str: ...
-def stray_furniture(html: str) -> bool: ...
-def register(face: Face, folder: Path) -> None: ...
+def stray_furniture(name: str, html: str) -> bool: ...
+def register(face: Face, folder: Path, *,
+             transport: publisher.Transport | None = None) -> None: ...
 ```
 
 `page_editor.py` adds `PiecesChanged`'s sentence to `face.SENTENCES` when it
@@ -137,7 +138,8 @@ doctype and a processing instruction are markup. Each piece is found with
 Python's `html.parser.HTMLParser`, which reads markup that is not well
 formed rather than refusing it, so such a page still has pieces.
 
-**`pieces(html)` returns the pieces the box shows, in file order.** It leaves
+**`pieces(name, html)` returns the pieces the box shows, in file order.**
+`BuildStopped` from `furniture_spans` passes through it. It leaves
 out:
 
 - text inside a `script`, `style` or `template` element;
@@ -147,14 +149,14 @@ out:
 **A piece's shown form** is `html.unescape(piece)`, with every run of
 whitespace made one space, and stripped.
 
-**`words(html)`** is the shown forms joined by one blank line, `"\n\n"`.
+**`words(name, html)`** is the shown forms joined by one blank line, `"\n\n"`.
 
-**`put_words(html, box)`** reads the box back:
+**`put_words(name, html, box)`** reads the box back:
 
 1. `\r\n` and a lone `\r` become `\n`.
 2. It is split on every line that is empty or whitespace alone. Each part is
    stripped, and empty parts at either end are dropped.
-3. **A count that differs from `pieces(html)`'s raises `PiecesChanged`.**
+3. **A count that differs from `pieces(name, html)`'s raises `PiecesChanged`.**
 4. A part equal to its piece's shown form leaves the piece's bytes as they
    are. Any other part replaces the piece with the piece's own leading
    whitespace, then `html.escape(part, quote=False)`, then its own trailing
@@ -167,13 +169,15 @@ Every byte outside a changed piece is the file's as it was.
 **`put_code(html, text)`** turns the posted text into the file to write. The
 text's `\r\n` and lone `\r` become `\n`. Its lines are matched against the
 file's lines, compared without their endings, with `difflib.SequenceMatcher`.
-**A line the match leaves unchanged keeps its own ending.** Any other line
-takes the ending of the line before it in the result, or the file's first
-line's ending where it is first, or `\n` for a file with none. The text's last
-line ends as the file's last line did.
+**The posted text decides which lines end**: every line but a last one with no
+line break after it. **An ending line the match leaves unchanged ends as it did
+in the file**, where it had an ending there. Any other ending line takes the
+ending of the line before it in the result, or the file's first line's ending
+where it is first, or `\n` for a file with none.
 
-**`stray_furniture(html)`** is true where any span `furniture_spans` returns
-holds anything but whitespace. After a code-view save
+**`stray_furniture(name, html)`** is true where any span `furniture_spans`
+returns holds anything but whitespace, and false where `furniture_spans`
+raises: the preview shows that failure instead. After a code-view save
 of a fixed page it adds a notice: *"The text you put between the header or
 footer markers will be replaced from the one Header or Footer when your site
 is built. Edit the Header or Footer instead."*
@@ -199,12 +203,16 @@ first fixed page `list_html` gives, else the newest entry.
 **The list at `/`** (PRESS-0012 § 4.5) gains a section after the entries: each
 fixed page by name, `index` shown as *Home*, then *Header*, *Footer* and
 *Navigation*. Each row opens `/page?kind=&name=` and says where its changes
-are not on the site yet.
+are not on the site yet. `editor._list` draws it from `store.list_html` and
+`store.html_path_for(..., waiting=True)`, so `editor.py` imports nothing of
+`page_editor.py`, which imports it.
 
 ### 4.5 The page editor
 
 `GET /page` reads the waiting copy where one exists, else the live file.
-`EntryNotFound` through `Face.fail` where neither exists.
+`EntryNotFound` through `Face.fail` where neither exists. **A file whose
+markers do not pair opens in the code view**, whatever `view` says, with
+`BuildStopped`'s sentence above the box.
 
 The page carries `kind`, `name`, `view`, `show`, `waiting` (`1` where it read
 the waiting copy, else `0`), and `base`: the SHA-256 hex digest of the file's
@@ -250,7 +258,8 @@ under the lock:
    settings, folder / editor.PREVIEW_FOLDER, Html(kind, name, <the new
    file>), show=…, photo_src=editor.photo_src)`. A fixed page shows itself.
 
-A failure at steps 1, 2 and 4 answers `Reply` status 409 holding
+A failure at steps 1, 2 and 4, and a `BuildStopped` at step 3, answers `Reply`
+status 409 holding
 `face.fail(failure, publishing=False)`, and nothing is written. **A failure at
 step 5 keeps the save** and is shown in the preview's place, as PRESS-0012
 § 4.8 does.
@@ -258,7 +267,7 @@ step 5 keeps the save** and is shown in the preview's place, as PRESS-0012
 A save answers status 200, `application/json`:
 
 ```json
-{"waiting": true, "base": "…", "preview": "/preview/…" or null,
+{"waiting": <bool>, "base": "…", "preview": "/preview/…" or null,
  "failure": "<fragment>" or null, "hint": "<sentence>" or null,
  "notices": "<fragment>"}
 ```
@@ -277,7 +286,8 @@ throughout:
 3. **Move.** Remember the live file's text. Write the waiting copy's text over
    it with `store.write_html`.
 4. **Publish.** `publishing.publish(folder, settings, key, entry=None,
-   capture=face.capture, notices=…)`.
+   capture=face.capture, notices=…, transport=transport)`, with the
+   `transport` `register` was handed, as `publishing.register` takes one.
 5. **Finish.** Bin the waiting copy. A failure here never replaces the
    publish's result; the reply says the waiting copy was left and can be
    thrown away.
@@ -337,7 +347,8 @@ route tests run through `face.serve(tmp_path, open_browser=False)`, as
   page saving.
   *Test:* `test_a_changed_paragraph_count_writes_nothing`. A box with one
   paragraph added, and one with a paragraph emptied, each answer 200 with
-  `PiecesChanged`'s sentence as `hint`, the old `base`, and no waiting copy.
+  `PiecesChanged`'s sentence as `hint`, the old `base`, `waiting` false, and no
+  waiting copy.
   *Breaks when:* extra paragraphs are appended to the last piece, or the
   refusal answers 409.
 

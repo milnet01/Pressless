@@ -2079,6 +2079,12 @@ writing an entry to do it. Holds S8.
   the next build overwrites it from the single copy.
   Claims S8.
   Blocked-by: PRESS-0006, PRESS-0012, PRESS-0013.
+  Spec accepted (2026-09-25): docs/specs/PRESS-0014-fixed-pages.md.
+  The user's four calls: changes wait in a copy until he publishes that
+  page; one box with fixed paragraphs; furniture previews on the home
+  page with a picker; a warning when text lands between the markers.
+  Gated for two loops, the spec cap: twelve verified, twelve fixed,
+  none in the tail. Next: build it test-first, from section 5.
   **Layman:** He can change the wording on his About page himself, and open the page's own code when he wants to.
   Kind: implement.
   Source: design-2026-08-24 § Where the fixed pages live.
