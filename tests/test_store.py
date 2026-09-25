@@ -70,15 +70,16 @@ def _entry(slug: str = "an-example", **overrides) -> Entry:
     return Entry(**fields)
 
 
-def _snapshot(folder: Path) -> dict[str, bytes]:
-    """Every file under `folder`, by path relative to it, with its bytes.
+def _snapshot(folder: Path) -> dict[str, bytes | None]:
+    """Every file and folder under `folder`, by path relative to it: a
+    file's bytes, and None for a folder.
 
-    Both halves matter wherever this is used: the key set catches a file
-    created or removed, and the bytes catch one rewritten in place."""
+    The key set catches a path created or removed -- a folder included, so
+    a path function that makes one eagerly is seen (PRESS-0139) -- and the
+    bytes catch a file rewritten in place."""
     return {
-        str(path.relative_to(folder)): path.read_bytes()
+        str(path.relative_to(folder)): path.read_bytes() if path.is_file() else None
         for path in sorted(folder.rglob("*"))
-        if path.is_file()
     }
 
 

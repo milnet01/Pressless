@@ -435,9 +435,12 @@ def test_no_address_the_export_carries_reaches_a_file_the_store_writes(tmp_path)
     """INV-4 against the real export: no `comment_author_email` and no
     `comment_author_IP` value the archive holds appears in anything written.
 
-    The Store has no field for either (§4.1), so this can only fail where an
-    implementer widened `Comment` or kept the export record beside it — which
-    publishes a real reader's address the first time the site is built.
+    What this proves is about the real data: none of the export's contact
+    values sits inside the six fields a comment carries — an author link
+    spelled `mailto:` would be one. It cannot catch a widened `Comment`:
+    `_comment` fills six named fields, so a seventh stays empty and nothing
+    leaks. That half of INV-4 is `test_store_extras.py`'s, which asserts
+    `Comment`'s field names.
 
     Every file under the handed folder is searched, not only the comments
     files: a leak into a temporary file left behind is still a leak.

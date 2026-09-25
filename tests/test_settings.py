@@ -405,18 +405,28 @@ def test_only_touches_its_own_file(tmp_path, monkeypatch):
     # add that fallback and every assertion above stays green. So the
     # second phase hands load() an EMPTY folder whose parent does hold a
     # settings file, which is the shape a parent search would satisfy.
+    # A parent search written as `Path.exists()` opens nothing and asks
+    # `os.stat` instead, so this phase watches that too (PRESS-0139).
     child = tmp_path / "pressless"
     child.mkdir()
     opened.clear()
+    real_stat = os.stat
+
+    def watched_stat(path, *args, **kwargs):
+        _record(path)
+        return real_stat(path, *args, **kwargs)
+
     monkeypatch.setattr(builtins, "open", watched_open)
     monkeypatch.setattr(io, "open", watched_io_open)
     monkeypatch.setattr(os, "open", watched_os_open)
+    monkeypatch.setattr(os, "stat", watched_stat)
     try:
         with pytest.raises(NotSetUp):
             load(child)
     finally:
         monkeypatch.undo()
 
+    assert opened, "no filesystem call was recorded in phase 2 — the watch did not fire"
     outside = [p for p in opened if os.path.dirname(p) != os.path.realpath(child)]
     assert not outside, (
         f"load() on a folder with no settings file opened {outside!r} — it "

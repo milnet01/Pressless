@@ -12,12 +12,16 @@
 
 Where the oracle comes from
 ----------------------------
-`wpautop()`, and the raw-text/Gutenberg/classic-HTML classification
-`render_body()` makes before calling it, live in a sibling PRIVATE
-workspace's `tools/build_blog.py` — today's generator, not part of
-Pressless and not part of this repository. It is loaded here by file
-path rather than by package import, because it sits outside `src/` and
-is never installed; nothing from it is copied into this file.
+`wpautop()` lives in a sibling PRIVATE workspace's `tools/build_blog.py`
+— today's generator, not part of Pressless and not part of this
+repository. It is loaded here by file path rather than by package
+import, because it sits outside `src/` and is never installed.
+
+The raw-text/Gutenberg/classic-HTML classification `render_body()` makes
+before calling it is NOT loaded. `_raw_text_only` below re-states its
+two checks, reading only the generator's own `HAS_TAGS` pattern. So a change to how
+`render_body()` classifies is invisible here until that function is
+re-read (PRESS-0139).
 
 That module will not exist on any other machine or in CI, so this test
 is skipped, cleanly, in two independent cases: PRESSLESS_ARCHIVE unset

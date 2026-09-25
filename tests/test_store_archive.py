@@ -51,7 +51,6 @@ the personal-data section of this project's CLAUDE.md requires.
 from __future__ import annotations
 
 import os
-import re
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import datetime
@@ -71,8 +70,18 @@ needs_archive = pytest.mark.skipif(
     reason="PRESS-0005: set PRESSLESS_ARCHIVE to a WordPress export path to run this",
 )
 
-# §4.2: a slug is one or more of a-z, 0-9 and '-', and nothing else.
-LEGAL_SLUG = re.compile(r"[a-z0-9-]+\Z")
+
+def _refused(slug: str) -> bool:
+    """Whether the Store refuses `slug`, asked of the Store itself.
+
+    §4.2's character set is half the rule; the reserved device names are the
+    other half. A copy of the pattern here would pass `nul` (PRESS-0139)."""
+    try:
+        store.path_for(Path("pressless"), slug, draft=False)
+    except store.StoreError:
+        return True
+    return False
+
 
 # §6's failure mode: a slug whose file name the platform cannot hold. Windows
 # refuses a path over 260 characters unless long paths are enabled, and the
@@ -210,12 +219,11 @@ def test_the_archive_resolves_to_slugs_the_store_can_hold():
         f"Pressless's own folder before Windows' {WINDOWS_PATH_LIMIT}-character limit (§6)"
     )
 
-    illegal = [entry.slug for entry in entries if not LEGAL_SLUG.match(entry.slug)]
+    illegal = [entry.slug for entry in entries if _refused(entry.slug)]
     assert not illegal, (
-        f"{len(illegal)}/{len(entries)} entries resolve to a slug outside §4.2's "
-        f"set (a-z, 0-9, '-', non-empty), which the Store refuses (INV-9). "
-        f"Expected every resolved slug to match {LEGAL_SLUG.pattern!r}; "
-        f"first offender: {illegal[0]!r}"
+        f"{len(illegal)}/{len(entries)} entries resolve to a slug the Store "
+        f"refuses (§4.2, INV-9). Expected store.path_for to accept every "
+        f"resolved slug; first offender: {illegal[0]!r}"
     )
 
 

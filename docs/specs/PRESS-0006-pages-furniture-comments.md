@@ -653,7 +653,7 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-1 page and furniture bytes survive | `test_html_survives_a_round_trip` |
 | INV-2 imports | `test_store_imports_nothing_forbidden` |
 | INV-3 name rule | `test_illegal_names_are_refused` |
-| INV-4 no contact details | `test_comments_carry_no_contact_details`, and the archive run over the real export |
+| INV-4 no contact details | `test_comments_carry_no_contact_details`. The archive run over the real export shows only that the six carried fields hold none of the export's contact values; it cannot see a widened `Comment` |
 | INV-5 dangling reply refused | `test_a_dangling_reply_is_refused` |
 | INV-6 comments round trip | `test_comments_survive_a_round_trip`, and the archive run |
 | INV-7 a template is never an entry | `test_a_template_is_never_an_entry` |

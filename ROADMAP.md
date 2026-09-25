@@ -2223,6 +2223,68 @@ writing an entry to do it. Holds S8.
   Kind: doc-fix.
   Source: in-session-2026-09-21, found while confirming roadmap_log op:set_intro.
 
+- ✅ [PRESS-0139] **Seven test-review findings were recorded and never filed.**
+  PRESS-0075's review filed PRESS-0106 to PRESS-0110 from its lanes.
+  These are the rest. Each was checked against the current tests on
+  2026-09-25 and is still as the review describes.
+
+  1. tests/test_store_extras_archive.py -- the contact-details test
+     claims to fail on a widened `Comment`. It cannot: `_comment` fills
+     six named fields, so a new field stays empty. The field-name check
+     is test_store_extras.py's. PRESS-0006 section 10 repeats the claim.
+     Fix: say what the archive run does prove -- no contact value the
+     export holds reaches the six fields a comment carries.
+  2. tests/test_store_archive.py -- `LEGAL_SLUG` omits the Store's
+     reserved device names, so a slug `nul` passes a test named "slugs
+     the Store can hold". Fix: ask `store.path_for`.
+  3. tests/test_marks_archive.py -- the header says the `render_body`
+     classification lives in the sibling workspace; `_raw_text_only`
+     re-implements it here. Fix: the header says which half is local.
+  4. tests/test_publisher.py -- the header still says the stub raises
+     `NotImplementedError`. Fix: the header.
+  5. tests/test_publisher.py -- `assert retried_once.waits` is true from
+     pacing alone. The behaviour is covered elsewhere. Fix: assert the
+     hint's own wait.
+  6. `_snapshot` in test_store.py and test_store_extras.py keeps files
+     only, so a path function that makes a folder is unseen. Fix: keep
+     folders too.
+  7. tests/test_settings.py INV-7 phase 2 has no guard that the watch
+     fired, and a parent search by `Path.exists` records nothing. Fix:
+     the guard, and watch `os.stat`.
+
+  Not carried: the round trip leaving out `extra` (lane 5, LOW).
+  PRESS-0060 ruled ADR-0001's keep-unknown-fields promise is about the
+  marks parser, and the archive fixture builds no extra fields.
+  Resolved (2026-09-25): all seven, as the fix lines say. Each
+  strengthened check was seen red against a mutation breaking its rule:
+  the hint wait removed (item 5), `html_path_for` making its folder
+  eagerly (item 6), and `load` probing the parent folder with
+  `Path.exists` (item 7). Item 2 was run against the real export, and
+  the new check refuses `nul` and `com1` where the old copy accepted
+  them. Items 1, 3 and 4 correct claims. Item 3's comparison was made
+  against the generator's own `render_body`. Gate green: 448 passed,
+  1 skipped.
+  **Layman:** A few tests claim to check more than they can, or carry stale notes, and one test's description promises a protection it cannot give.
+  Kind: test.
+  Source: review residue 2026-09-25, from docs/reviews/PRESS-0075-test-review-2026-09-07.md.
+  Lanes: tests.
+
+- 📋 [PRESS-0140] **The undo spec leaves out a reversal the undo code performs.**
+  When a draft holds the slug the fetched state publishes, the forward
+  pass bins that draft. On a failure, `undo.py::_restore_over_draft`
+  writes it back. docs/specs/PRESS-0015-undo.md section 4.3 step 5's
+  reversal table has no row for this, and its prose says a file the
+  forward pass binned stays binned. PRESS-0015's Resolved note flagged
+  it and nothing routed it.
+
+  Route: write-spec step 8. The code exists and is tested, so the
+  amendment records what was built and re-arms no gate (CLAUDE.md rule
+  14). An implementation row goes in the loop log.
+  **Layman:** The written plan for Undo misses one step the finished Undo really does, so anyone rebuilding it from the plan would lose a draft on a failure.
+  Kind: doc-fix.
+  Source: review residue 2026-09-25, from PRESS-0015's own Resolved note.
+  Lanes: Face.
+
 ## 0.6.0 — pictures and helpers
 
 Photographs from the picture mark through to the web-sized copy, a list of
@@ -2399,6 +2461,10 @@ success.
   while a control emoji rendered normally. So it is flags specifically
   that are missing, and the images are needed rather than merely prudent.
   Blocked-by: PRESS-0011, PRESS-0019.
+  Owed from PRESS-0019 (2026-09-25): that spec's section 11 says this
+  item must record the set of time spans the dashboard offers, and its
+  section 4.2 requires it. Its section 10 says nothing else can enforce
+  that, so this item's spec states the set.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.
@@ -7337,6 +7403,21 @@ already-built code ships in whichever release comes next.
   **Layman:** The project's instruction file gets shorter, so a session reaches the instruction without reading how it came to say that. Nothing is thrown away — the dated corrections and the arguments move to a history file the instruction file points at.
   Kind: doc.
   Source: user-request-2026-09-21 (CFG-0492).
+
+- 📋 [PRESS-0141] **The safe-write steps are written out in four modules.**
+  PRESS-0039 said the helper question was filed separately and that it
+  did not close it. Nothing carried it. Write a temporary file, flush,
+  fsync, then replace: credentials.py, insights.py, settings.py and
+  store.py each spell those steps out.
+
+  Decided by the user 2026-09-25: file it, do not do it now. Each copy
+  works and is tested, and a shared helper rewrites INV-1 in PRESS-0001
+  and PRESS-0002, which costs a review gate on each. Do it when a fifth
+  copy would otherwise appear.
+  **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
+  Kind: refactor.
+  Source: review residue 2026-09-25, from PRESS-0039's own note.
+  Lanes: Settings, Credentials, Insights, Store.
 
 ## Milestones
 

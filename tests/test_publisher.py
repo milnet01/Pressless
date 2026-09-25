@@ -6,12 +6,8 @@
 #
 # Why this exists: docs/specs/PRESS-0009-publisher.md is the contract.
 #
-# INV-1 passes against the stub, by design (spec §7) -- it is evidence
-# about imports, never about where the key came from. Every other
-# invariant needs the real implementation; against the stub each one fails
-# where it calls publish(), root_entries() or fetch_previous(), because the
-# stub raises NotImplementedError unconditionally. That failure is expected
-# and is the point of this run (PRESS-0009 is not yet implemented).
+# INV-1 is evidence about imports, never about where the key came from
+# (spec §7).
 from __future__ import annotations
 
 import ast
@@ -783,16 +779,19 @@ def test_writes_are_paced_and_hints_retried(tmp_path):
         "a publish that hit one rate-limit hint and was retried did not "
         "complete"
     )
-    assert retried_once.waits, (
-        "no wait() call was recorded between a rate-limited write and its "
-        "retry"
-    )
-
     # Successive writes are paced even without a rate-limit hint. Counted
     # by method, never by position, so an extra leading read changes
     # nothing here either.
     paced = _Transport(reads=_reads(listing), writes=_writes())
     publish(settings, tmp_path, "a-token", "message", transport=paced)
+    # The hint's own wait, told apart from pacing by count: the double's
+    # Retry-After and PACE_SECONDS are both one second, so the retried run
+    # was non-empty from pacing alone (PRESS-0139).
+    assert len(retried_once.waits) == len(paced.waits) + 1, (
+        f"a rate-limited write was retried without waiting out its hint: "
+        f"expected one wait more than the same publish unlimited "
+        f"({len(paced.waits)} + 1), actual {len(retried_once.waits)}"
+    )
     write_count = sum(1 for method, *_ in paced.requests if _is_write(method))
     assert len(paced.waits) >= write_count - 1, (
         f"only {len(paced.waits)} wait() call(s) were recorded for "
