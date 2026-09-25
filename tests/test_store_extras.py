@@ -835,6 +835,7 @@ _PRESS_0006_SURFACE = {
     "comments_path_for", "read_comments", "write_comments",
     "photograph_path_for", "list_photographs",
 }
+_PRESS_0014_SURFACE = {"WAITING_FOLDERS"}
 
 # §3 decision 10 leaves a photograph's file name to PRESS-0016 -- the archive's
 # own attachment names carry underscores and would not pass the slug rule -- so
@@ -895,10 +896,11 @@ def test_photographs_stay_where_they_are(tmp_path):
     )
 
     surface = _public_names(store_module)
-    expected_surface = _PRESS_0005_SURFACE | _PRESS_0006_SURFACE
+    expected_surface = _PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
-        f"with PRESS-0006 §4.1's. Added: {sorted(surface - expected_surface)!r}. "
+        f"with PRESS-0006 §4.1's and PRESS-0014 §4.1's. "
+        f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"
     )
@@ -1102,3 +1104,28 @@ def test_an_ordinary_write_here_says_nothing(tmp_path):
     assert not notices, (
         f"an ordinary write said {[str(each.message) for each in notices]}"
     )
+
+
+# ------------------------------------------------------ PRESS-0014 INV-16 ---
+
+
+def test_waiting_copies_follow_the_name_rule(tmp_path):
+    """PRESS-0014 INV-16: a waiting copy's path takes the live file's name rule,
+    furniture set included, and move_to_bin takes a waiting copy."""
+    for kind, folder_name in ((_PAGES, "pages-waiting"), (_FURNITURE, "furniture-waiting")):
+        for description, name in _ILLEGAL_NAMES.items():
+            with pytest.raises(StoreError):
+                html_path_for(tmp_path, kind, name, waiting=True)
+                pytest.fail(f"{description} was accepted for a waiting copy")
+        assert html_path_for(tmp_path, kind, "footer", waiting=True) == (
+            tmp_path / folder_name / f"footer{_HTML_SUFFIX}")
+    with pytest.raises(StoreError):
+        html_path_for(tmp_path, _FURNITURE, "sidebar", waiting=True)
+    assert not any(tmp_path.iterdir())
+
+    for kind in (_PAGES, _FURNITURE):
+        written = write_html(tmp_path, kind, "footer", "<p>Waiting</p>", waiting=True)
+        binned = store_module.move_to_bin(tmp_path, written)
+        assert not written.exists()
+        assert binned.read_text(encoding="utf-8") == "<p>Waiting</p>"
+        assert binned.parent.name == written.parent.name

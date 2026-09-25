@@ -826,3 +826,94 @@ def test_a_preview_writes_one_page(tmp_path):
 
     assert _files(into) == [relative]
     assert not (into / "photographs").exists()
+
+
+# ------------------------------------------- PRESS-0014 INV-8, 10 and 11 ---
+
+_PAGES_WITH_MARKERS = {
+    "index": "<html><body>\n<!-- HEADER:START nonav animate -->\n<!-- HEADER:END -->\n"
+             "<p>Home</p>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n</body></html>\n",
+    "about": "<html><body>\n  <!-- HEADER:START page=\"about\" -->\n  <!-- HEADER:END -->\n"
+             "<p>About</p>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n</body></html>\n",
+}
+
+
+def test_a_waiting_copy_is_not_built(tmp_path):
+    """PRESS-0014 INV-8: a waiting copy of a page or of the footer changes
+    nothing the Builder writes, and content/ carries neither folder."""
+    folder = _store(tmp_path, pages=_PAGES_WITH_MARKERS)
+    store.write(folder, _entry("seaside"), draft=False)
+    without = tmp_path / "without"
+    build(folder, _settings(), without)
+
+    store.write_html(folder, store.PAGES_FOLDER, "about", f"<p>{SENTINEL}</p>", waiting=True)
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer", f"<p>{SENTINEL}</p>",
+                     waiting=True)
+    assert (folder / "pages-waiting" / "about.html").is_file()
+    assert (folder / "furniture-waiting" / "footer.html").is_file()
+    with_them = tmp_path / "with"
+    build(folder, _settings(), with_them)
+
+    assert _digest(with_them) == _digest(without)
+    assert not (with_them / "content" / "pages-waiting").exists()
+    assert not (with_them / "content" / "furniture-waiting").exists()
+
+
+def test_a_page_preview_is_the_page_build_writes(tmp_path):
+    """PRESS-0014 INV-10: `preview_html` writes the bytes `build` writes for
+    the same change, whichever page it shows."""
+    folder = _store(tmp_path, pages=_PAGES_WITH_MARKERS)
+    older = _entry("older", date="2019-01-02 03:04:05")
+    tied = _entry("b-tied", date="2021-05-06 07:08:09")
+    newest = _entry("a-tied", date="2021-05-06 07:08:09")
+    prompt = _entry("prompted", date="2022-01-01 00:00:00", tags=("dailyprompt-1",))
+    for entry in (older, tied, newest, prompt):
+        store.write(folder, entry, draft=False)
+    footer = builder.Html(store.FURNITURE_FOLDER, "footer",
+                          f"<footer>{SENTINEL} {{{{YEAR}}}}</footer>\n")
+    about = builder.Html(store.PAGES_FOLDER, "about",
+                         _PAGES_WITH_MARKERS["about"].replace("About", SENTINEL))
+
+    def src(name):
+        return f"/originals/{name}"
+
+    for change, show, expected in (
+            (footer, "about", "pages/about.html"),
+            (footer, "index", "index.html"),
+            (footer, None, f"blog/{newest.date:%Y/%m/%d}/{newest.slug}/index.html"),
+            (about, "about", "pages/about.html")):
+        whole = tmp_path / "whole"
+        build(folder, _settings(), whole, photo_src=src, change=change)
+        one = tmp_path / "one"
+        relative = builder.preview_html(folder, _settings(), one, change, show=show,
+                                        photo_src=src)
+        assert relative == expected, (change.name, show)
+        written = (one / relative).read_bytes()
+        assert written == (whole / relative).read_bytes(), (change.name, show)
+        assert SENTINEL.encode("utf-8") in written, (change.name, show)
+
+    with pytest.raises(BuildStopped):
+        builder.preview_html(folder, _settings(), tmp_path / "one", footer, show="missing",
+                             photo_src=src)
+    empty = _store(tmp_path / "empty", pages=_PAGES_WITH_MARKERS)
+    with pytest.raises(BuildStopped):
+        builder.preview_html(empty, _settings(), tmp_path / "one", footer, show=None,
+                             photo_src=src)
+
+
+def test_a_page_preview_writes_one_page(tmp_path):
+    """PRESS-0014 INV-11: a page preview writes one page, and each preview
+    replaces the last."""
+    folder = _store(tmp_path, pages=_PAGES_WITH_MARKERS)
+    _photograph(folder, "a.jpg", _image("JPEG"))
+    store.write(folder, _entry("pictured", body="{photo: a.jpg}"), draft=False)
+    footer = builder.Html(store.FURNITURE_FOLDER, "footer", "<footer>Changed</footer>\n")
+    into = tmp_path / "preview"
+
+    builder.preview_html(folder, _settings(), into, footer, show="about",
+                         photo_src=lambda name: name)
+    relative = builder.preview_html(folder, _settings(), into, footer, show="index",
+                                    photo_src=lambda name: name)
+
+    assert relative == "index.html"
+    assert _files(into) == [relative]

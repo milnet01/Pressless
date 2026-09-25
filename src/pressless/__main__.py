@@ -9,9 +9,9 @@ tests/features/packaging/ parses the lines.
     store: <keyring|file> <member name>
 
 `--self-check` stops there. The double-click then serves the Face, with setup,
-the editor, publishing and undo on it, opens his browser, and runs until the console
-window is closed. Every part is imported here at module level, so a packaged
-`--self-check` proves each one loads in the bundle.
+the editor, publishing, undo and the page editor on it, opens his browser,
+and runs until the console window is closed. Every part is imported here at
+module level, so a packaged `--self-check` proves each one loads in the bundle.
 """
 from __future__ import annotations
 
@@ -22,7 +22,17 @@ import urllib.parse
 import webbrowser
 from pathlib import Path
 
-from pressless import credentials, editor, face, paths, publishing, settings, setup, undo
+from pressless import (
+    credentials,
+    editor,
+    face,
+    page_editor,
+    paths,
+    publishing,
+    settings,
+    setup,
+    undo,
+)
 
 _USAGE = "usage: pressless [--self-check]"
 
@@ -71,6 +81,7 @@ def _serve(folder: Path) -> int:
         editor.register(served, folder)
         publishing.register(served, folder)
         undo.register(served, folder)
+        page_editor.register(served, folder)
 
         first = "/"
         with served.capture():

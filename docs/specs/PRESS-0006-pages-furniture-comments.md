@@ -193,6 +193,9 @@ page and a furniture file are the same thing — HTML held verbatim — in
 different folders; only what reads them differs, and that is the
 Builder's business rather than the Store's.
 
+`html_path_for` and `write_html` take `waiting`, and the Store exports
+`WAITING_FOLDERS`: `docs/specs/PRESS-0014-fixed-pages.md` § 4.1 owns both.
+
 There is no `read_template`: PRESS-0005's `read` takes a path and a
 template file is an entry file, so it already reads one. `write_template`
 exists only because `write` chooses between the two entry folders and a
@@ -282,6 +285,10 @@ format an entry's `Date` header uses, so one date rule covers the Store.
 
 A comments file is named for the entry it belongs to, which is what
 makes it findable without an index.
+
+`pages-waiting/` and `furniture-waiting/` hold the copies his edits wait
+in, under the live file's name (`docs/specs/PRESS-0014-fixed-pages.md`
+§ 4.1). The Builder reads neither.
 
 Every name that becomes a slug-shaped file name — a page's, a furniture
 file's, a template's, and the slug a comments file is named for — is

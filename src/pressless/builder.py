@@ -113,6 +113,33 @@ def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
     return _replace(Path(into), False, write)
 
 
+def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
+                 show: str | None, photo_src: marks.PhotoSrc) -> str:
+    """PRESS-0014 § 4.1: the one page `build` would write for `show` with
+    `change` in place, into `into` by §4.8's order. `show` names a fixed page;
+    None names his newest entry the Daily Prompt filter keeps. Returns its path
+    relative to `into`."""
+    folder = Path(folder)
+
+    def write(new: Path) -> str:
+        page = _Build(folder, settings, new, photo_src, change)
+        pages = page.read_html()
+        if show is None:
+            shown = page.shown(page.read_entries())
+            if not shown:
+                raise BuildStopped("there is no published entry to show the change on")
+            for name in (*shown[0].categories, *shown[0].tags):
+                page.refuse_an_unusable_name(shown[0], name)
+            page.entry_page(shown[0])
+        elif show in pages:
+            page.fixed_page(show, pages[show])
+        else:
+            raise BuildStopped(f"there is no page {show} to show the change on")
+        return page.files[0]
+
+    return _replace(Path(into), False, write)
+
+
 def _replace(into: Path, publishing: bool, write):
     """§4.8's order around `write`, which fills the new folder and returns what
     the caller hands back."""
@@ -279,30 +306,44 @@ class _Furniture:
         return text.replace("{{YEAR}}", str(self.year))
 
 
+def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]:
+    """PRESS-0014 § 4.1: the offsets of the text inside each marker block, from
+    the end of a START marker to the start of the next END marker of its kind.
+    The Builder fills these and the page editor reads around them, so both find
+    them here (§ 3 decision 8)."""
+    spans, pos = [], 0
+    while True:
+        start = _START.search(html, pos)
+        before = start.start() if start else len(html)
+        if _ANY_END.search(html, pos, before):
+            raise BuildStopped(f"the page {name} has a marker END with no START before it")
+        if start is None:
+            return tuple(spans)
+        kind = start.group(1)
+        end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(html, start.end())
+        if end is None:
+            raise BuildStopped(f"the page {name} has a {kind}:START with no {kind}:END after it")
+        spans.append((start.end(), end.start()))
+        pos = end.end()
+
+
 def _fill_fixed_page(name: str, text: str, depth: int, furniture: _Furniture) -> str:
     """Byte for byte, except between each marker pair, which gets the filled
     furniture on lines of its own. The markers stay."""
     out, pos = [], 0
-    while True:
+    for inside, closing in furniture_spans(name, text):
         start = _START.search(text, pos)
-        before = start.start() if start else len(text)
-        if _ANY_END.search(text, pos, before):
-            raise BuildStopped(f"the page {name} has a marker END with no START before it")
-        if start is None:
-            out.append(text[pos:])
-            return "".join(out)
-        kind = start.group(1)
-        end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(text, start.end())
-        if end is None:
-            raise BuildStopped(f"the page {name} has a {kind}:START with no {kind}:END after it")
+        end = _ANY_END.match(text, closing)
         attrs = start.group("attrs").split()
         page = next((found.group(1) for attr in attrs
                      if (found := _PAGE_ATTR.fullmatch(attr))), "")
-        block = furniture.fill(kind, depth, page=page, animate="animate" in attrs,
+        block = furniture.fill(start.group(1), depth, page=page, animate="animate" in attrs,
                                nav="nonav" not in attrs)
-        indent = re.search(r"[ \t]*\Z", text[start.end():end.start()]).group(0)
-        out.append(text[pos:start.end()] + "\n" + block + "\n" + indent + end.group(0))
+        indent = re.search(r"[ \t]*\Z", text[inside:closing]).group(0)
+        out.append(text[pos:inside] + "\n" + block + "\n" + indent + end.group(0))
         pos = end.end()
+    out.append(text[pos:])
+    return "".join(out)
 
 
 # --------------------------------------------------------------- the build --
@@ -345,11 +386,17 @@ class _Build:
         self.furniture = _Furniture(furniture["header"], furniture["navigation"],
                                     furniture["footer"], datetime.now().year)
 
-    def run(self) -> Built:
+    def read_entries(self) -> dict[str, store.Entry]:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))
                    for slug in store.list_slugs(self.folder, draft=False)}
         if isinstance(self.change, store.Entry):
             entries[self.change.slug] = self.change
+        return entries
+
+    def read_html(self) -> dict[str, str]:
+        """The fixed pages and the furniture as the Store holds them, with
+        `change` in place of the one it names. Sets the furniture; returns the
+        pages."""
         pages = {name: store.read_html(store.html_path_for(self.folder, store.PAGES_FOLDER, name))
                  for name in store.list_html(self.folder, store.PAGES_FOLDER)}
         furniture = {name: store.read_html(
@@ -365,14 +412,26 @@ class _Build:
                 self.change.name] = self.change.html
         self.furniture = _Furniture(furniture["header"], furniture["navigation"],
                                     furniture["footer"], datetime.now().year)
+        return pages
 
+    def filtered(self, entries: dict[str, store.Entry]) -> list[str]:
         pattern = self.settings.daily_prompt_filter
-        filtered = sorted(slug for slug, entry in entries.items()
-                          if any(fnmatch.fnmatchcase(tag, pattern) for tag in entry.tags))
-        shown = sorted(
+        return sorted(slug for slug, entry in entries.items()
+                      if any(fnmatch.fnmatchcase(tag, pattern) for tag in entry.tags))
+
+    def shown(self, entries: dict[str, store.Entry]) -> list[store.Entry]:
+        """What the Daily Prompt filter keeps, newest first, by date then address."""
+        filtered = self.filtered(entries)
+        return sorted(
             sorted((entry for slug, entry in entries.items() if slug not in filtered),
                    key=lambda entry: entry.slug),
             key=lambda entry: entry.date, reverse=True)
+
+    def run(self) -> Built:
+        entries = self.read_entries()
+        pages = self.read_html()
+        filtered = self.filtered(entries)
+        shown = self.shown(entries)
         for entry in shown:
             for name in (*entry.categories, *entry.tags):
                 self.refuse_an_unusable_name(entry, name)
@@ -382,12 +441,15 @@ class _Build:
         self.listings(shown)
         self.archive(shown)
         for name, text in pages.items():
-            depth = 0 if name == "index" else 1
-            relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
-            self.write_text(relative, _fill_fixed_page(name, text, depth, self.furniture))
+            self.fixed_page(name, text)
         self.content()
         self.sitemap(sorted(pages), shown)
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
+
+    def fixed_page(self, name: str, text: str) -> None:
+        depth = 0 if name == "index" else 1
+        relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
+        self.write_text(relative, _fill_fixed_page(name, text, depth, self.furniture))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug

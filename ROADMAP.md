@@ -2063,7 +2063,7 @@ The fixed pages are edited in the same box as an entry, with the code behind a
 show-me-the-code view. He changes the wording on his About page himself, without
 writing an entry to do it. Holds S8.
 
-- 📋 [PRESS-0014] **Editing a fixed page: the words in the same box, the code behind a show-me-the-code view.**
+- ✅ [PRESS-0014] **Editing a fixed page: the words in the same box, the code behind a show-me-the-code view.**
   The plain box shows only the page's visible words and writes them back
   in place, leaving every tag around them byte-for-byte as it was. The
   code view edits the file entire. Neither regenerates the page, so Marks
@@ -2085,6 +2085,15 @@ writing an entry to do it. Holds S8.
   page with a picker; a warning when text lands between the markers.
   Gated for two loops, the spec cap: twelve verified, twelve fixed,
   none in the tail. Next: build it test-first, from section 5.
+  Shipped (2026-09-25), test-first from section 5. All sixteen tests
+  were seen failing against stubs, then passing. One mutation per route
+  each Breaks-when names: 26 mutations, every one caught, every one
+  parsed. INV-15 has no mutation to try: the Face offers only add_page
+  for a route that saves. Two points the spec left open: the picker spells
+  the newest entry as show=_newest, which no page name can hold; and a
+  missing page raises EntryNotFound. The box treats every blank line as a
+  paragraph break, as section 4.2 says, so an extra blank line is refused
+  with the hint. By-hand rows are in PRESS-0133.
   **Layman:** He can change the wording on his About page himself, and open the page's own code when he wants to.
   Kind: implement.
   Source: design-2026-08-24 § Where the fixed pages live.
@@ -2716,6 +2725,9 @@ the breaking surfaces are owned by docs/standards/versioning-overrides.md.
 
   Blocked-by: nothing, though PRESS-0088 alters INV-4 and must land first
   if it lands at all.
+  PRESS-0014 (2026-09-25) adds two folders to the writer's own files:
+  pages-waiting/ and furniture-waiting/, each holding a copy under the
+  live file's name. They are a surface this item's check must cover.
   **Layman:** Before version 1.0, the shapes of his files, his setup and his site are promised not to change without warning — and a test proves each promise, so nothing can break it quietly.
   Kind: implement.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
@@ -7432,6 +7444,15 @@ already-built code ships in whichever release comes next.
   record "by hand, not run". The obligation is recorded in
   `.claude/bump.json` under the release recipe's own steps, where
   `cut-release` reads it; this item stays open for the checks still owed.
+  PRESS-0014 rows (2026-09-25), from its spec's section 10. A one-off
+  headless Chrome run proved: the list's pages section; the words view;
+  an edit auto-saving into the waiting copy and the preview showing it;
+  Show me the code saving an unsaved change before it switches; the
+  paragraph-count hint; no view switch on the furniture; the picker's
+  newest-entry link. Not yet in scripts/by-hand-browser-checks.py.
+  Still owed: the save timing measured as PRESS-0012's was; Edge on the
+  Windows box; a real page publish through the button; and the words
+  view read against the live site's About, Music and Privacy.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

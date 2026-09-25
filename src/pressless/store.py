@@ -614,11 +614,15 @@ PHOTOGRAPHS_FOLDER = "photographs"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
+# Where a fixed page or furniture file waits while he edits it, under its own
+# name, until he publishes it (PRESS-0014 § 4.1). The Builder lists neither.
+WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-waiting"}
+
 # What move_to_bin takes a file from (PRESS-0005 §4.1): every folder of
 # writing the Store holds, and nothing else.
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
-    TEMPLATES_FOLDER, COMMENTS_FOLDER,
+    TEMPLATES_FOLDER, COMMENTS_FOLDER, *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -637,13 +641,17 @@ class DanglingReply(StoreError):
     """A reply names a parent its own set does not hold; nothing was written."""
 
 
-def html_path_for(folder: Path, kind: str, name: str) -> Path:
+def html_path_for(folder: Path, kind: str, name: str, *,
+                  waiting: bool = False) -> Path:
     """Where the fixed page or furniture file `name` sits (§4.3).
 
     One pair of calls serves both because a fixed page and a furniture file
     are the same thing -- HTML held verbatim -- in different folders. Only
     what reads them differs, and that is the Builder's business rather than
     the Store's (§4.1).
+
+    With `waiting`, the copy his edits wait in until he publishes the page:
+    same name, same rules, its own folder (PRESS-0014 § 4.1).
     """
     subfolder = _html_subfolder(kind)
     _refuse_illegal_slug(name, f"a {kind} name")
@@ -653,6 +661,8 @@ def html_path_for(folder: Path, kind: str, name: str) -> Path:
             f"{', one '.join(FURNITURE_NAMES)}, and an open furniture folder "
             f"would let a fourth exist that the Builder has no place for"
         )
+    if waiting:
+        subfolder = WAITING_FOLDERS[kind]
     return Path(folder) / subfolder / f"{name}{HTML_SUFFIX}"
 
 
@@ -702,7 +712,8 @@ def read_html(path: Path) -> str:
         raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
 
 
-def write_html(folder: Path, kind: str, name: str, html: str) -> Path:
+def write_html(folder: Path, kind: str, name: str, html: str, *,
+               waiting: bool = False) -> Path:
     """Write a page or furniture file, whole or not at all (§4.4).
 
     Written with newline translation OFF, so the line endings he saved are the
@@ -711,7 +722,7 @@ def write_html(folder: Path, kind: str, name: str, html: str) -> Path:
     entire, so its bytes are his, and rewriting them on save is the
     reformatting §3 decision 1 exists to forbid (INV-1, INV-10).
     """
-    target = html_path_for(folder, kind, name)
+    target = html_path_for(folder, kind, name, waiting=waiting)
     _write_atomically(folder, target, html, prefix=".page-", newline="")
     return target
 

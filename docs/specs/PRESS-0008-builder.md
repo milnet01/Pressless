@@ -140,7 +140,8 @@ leave `into` as it was (§4.8). A `StoreError` or `StoreNotice` the Store
 raises passes through unchanged, so the Face's sentences for them apply.
 
 `preview`, `STYLESHEETS` and `BODY_CLASS` are added by
-`docs/specs/PRESS-0012-editor.md` § 4.2.
+`docs/specs/PRESS-0012-editor.md` § 4.2. `preview_html` and
+`furniture_spans` are added by `docs/specs/PRESS-0014-fixed-pages.md` § 4.1.
 
 ### 4.2 What is built
 
@@ -230,7 +231,9 @@ The START comment's attributes are optional and space-separated:
 as today. Whatever sits between START and END is
 replaced by the filled furniture; the markers stay. A page with no markers
 is written unchanged. A START with no END after it, or an END with no
-START, is `BuildStopped` naming the page.
+START, is `BuildStopped` naming the page. `furniture_spans` finds the pairs
+for the Builder and the page editor alike (`docs/specs/PRESS-0014-fixed-pages.md`
+§ 4.1).
 
 **The furniture files, as Import writes them and the Builder reads them:**
 

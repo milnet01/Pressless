@@ -279,6 +279,8 @@ row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
   Pressless cannot open. The first such failure is shown through `Face.fail`
   above the list. The list is still shown.
 - A New entry form with one field, the title.
+- After the entries, his fixed pages and the furniture:
+  `docs/specs/PRESS-0014-fixed-pages.md` § 4.4.
 
 ### 4.6 A new entry
 

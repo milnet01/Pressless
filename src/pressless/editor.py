@@ -220,6 +220,11 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                 except store.StoreError as exc:
                     first_failure = first_failure or exc
                     unreadable[draft].append(slug)
+        try:
+            pages = _pages(folder)
+        except store.StoreError as exc:
+            first_failure = first_failure or exc
+            pages = "<p>Pressless cannot open your pages folder.</p>"
     published = {entry.slug for entry in readable[False]}
     changed = {_replaces(entry) for entry in readable[True]} & published
     drafts = [entry for entry in readable[True] if _replaces(entry) not in published]
@@ -253,8 +258,27 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             '<span id="undo-status"></span></p>'
             f"<h2>Drafts</h2>{rows(drafts, unreadable[True])}"
             f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}"
+            f"<h2>Your pages</h2>{pages}"
             "</div>"
             f"<script>{_UNDO_SCRIPT}</script>")
+
+
+def _pages(folder: Path) -> str:
+    """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
+    saying where its changes are not on the site yet. Drawn from the Store
+    alone, so this module imports nothing of page_editor.py."""
+    rows = [(store.PAGES_FOLDER, name, "Home" if name == "index" else name)
+            for name in store.list_html(folder, store.PAGES_FOLDER)]
+    rows += [(store.FURNITURE_FOLDER, name, name.capitalize())
+             for name in ("header", "footer", "navigation")]
+    items = []
+    for kind, name, label in rows:
+        address = "/page?" + urllib.parse.urlencode({"kind": kind, "name": name})
+        note = (" <em>changes not on your site yet</em>"
+                if store.html_path_for(folder, kind, name, waiting=True).is_file() else "")
+        items.append(f'<li><a href="{html.escape(address, quote=True)}">'
+                     f"{html.escape(label)}</a>{note}</li>")
+    return "<ul>" + "".join(items) + "</ul>"
 
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:

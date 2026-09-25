@@ -14,6 +14,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Your fixed pages, header, footer and navigation can be edited from your list** (PRESS-0014)
+  A page opens as its words in one box, with the real page beside
+  it; Show me the code opens the page's own code for anything the
+  box cannot do. The header, footer and navigation open as code,
+  with a choice of which page to see them on. Changes wait in a
+  copy of their own until you press Publish on that page, so
+  publishing anything else never sends them out half-finished.
+
 - **Undo the last publish, in one step, from either page** (PRESS-0015)
   Puts your site back the way it was before the last time you published,
   and leaves your own files agreeing with it. An entry that was not on the
