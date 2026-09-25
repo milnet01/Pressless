@@ -6,3 +6,4 @@
 
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
+| 1 | 2026-09-25 | 3, cold; every lane held every question | 1 | 3 | 7 | 2 | Thirteen verified, thirteen fixed, none dismissed. All three lanes found the download seam buffering a whole body, the check's failed step with no route to the log, and the list page with no seam for the offer. Also fixed: the Linux spawn failure, update.log's word order, the lock's unfalsifiable clause, the key literal, zip directory entries (checked against the v0.1.2 zip), and a .sig that can carry two keys. Windows helper runtime declared unrunnable. Lanes saw the draft's commit subject. |

@@ -64,7 +64,9 @@ move after it is not.
    one list covers the Windows zip without a per-file manifest inside it.
 4. **(decided here) A key change is shipped before it is used.** The program
    trusts every key in a short list. A new key goes into a release signed with
-   the old one, and only the release after it is signed with the new key. **A
+   the old one. From then on every release is signed with both keys until the
+   maintainer drops the old one, so a copy that missed or skipped the release
+   carrying the new key still verifies the next. **A
    lost private key cannot be recovered from**: each installed copy must then
    be updated by hand once. That is stated, not solved.
 5. **(decided here) CI never signs.** CI builds a draft release. The maintainer
@@ -86,8 +88,8 @@ A new part, **the Updater**, joins `docs/design.md` § The parts:
 | Module | Job | May not |
 |---|---|---|
 | `src/pressless/updater.py` | Ask GitHub for the latest release, prove its signed list, download an artefact and check it against the list. Read and write `updates.json`. | Open the Store, Settings or Credentials; call Marks, the Builder or the Face |
-| `src/pressless/update_key.py` | Hold `TRUSTED`, the tuple of raw 32-byte Ed25519 public keys. | Import anything of Pressless's |
-| `src/pressless/installer.py` | Put a checked artefact in place of the running one and start the new one. | Import a network module |
+| `src/pressless/update_key.py` | Hold `TRUSTED`, a tuple of base64 strings, each a raw 32-byte Ed25519 public key, decoded where a signature is checked. | Import anything of Pressless's |
+| `src/pressless/installer.py` | Put a checked artefact in place of the running one and start the new one. Define `UpdateError` and `InstallFailed`. | Import a network module, or `updater` |
 | `src/pressless/updating.py` | The Face side: start the check, show the offer and the switch, run Update now. | Be imported by any part but `__main__` |
 
 **Network modules stay in three files: `publisher.py`, `insights.py` and
@@ -130,8 +132,9 @@ linux Pressless-<X.Y.Z>-x86_64.AppImage <size in bytes> <sha256, 64 lowercase he
 windows Pressless-<X.Y.Z>-windows.zip <size in bytes> <sha256, 64 lowercase hex>
 ```
 
-The `.sig` is the raw 64-byte Ed25519 signature over the list's exact bytes. It
-verifies if any key in `update_key.TRUSTED` verifies it. A list that differs
+The `.sig` holds one to four raw 64-byte Ed25519 signatures over the list's
+exact bytes, concatenated. It verifies if any one of them verifies against any
+key in `update_key.TRUSTED`. A list that differs
 from this shape in any byte is refused whole.
 
 ### 4.4 The check
@@ -145,12 +148,30 @@ class Offer:
     sha256: str       # from the signed list
 
 def check(folder: Path, running: str, platform: str,
-          transport: Transport = _Urllib()) -> Offer | None: ...
+          transport: Transport = _Urllib()) -> Offer | Miss: ...
+
+@dataclass(frozen=True)
+class Miss:
+    step: int         # the step of the list below that failed
 ```
 
-`platform` is `"linux"` or `"windows"`. `Transport` mirrors
-`publisher.Transport`: tests hand in a double that answers by URL. Steps, and
-the first that fails returns `None`:
+`platform` is `"linux"` or `"windows"`. `Transport` is `updater.py`'s own.
+`publisher.Transport` returns a whole body, and every read here is bounded or
+chunked:
+
+```python
+class Transport(Protocol):
+    def open(self, url: str) -> Response: ...  # redirects followed under § 4.5
+
+class Response(Protocol):
+    status: int
+    headers: dict[str, str]
+    def read(self, n: int) -> bytes: ...  # at most n bytes; b"" at the end
+    def close(self) -> None: ...
+```
+
+Tests hand in a double that answers by URL. Steps, and the first that fails
+returns `Miss(step)` with its number:
 
 1. `updates.json` says the check is off. No request is made.
 2. GET `https://api.github.com/repos/<REPOSITORY>/releases/latest`, read up to
@@ -159,15 +180,18 @@ the first that fails returns `None`:
 4. The release holds exactly one asset named for the list and one for its
    `.sig`, and one for this platform's artefact, each with an https
    `browser_download_url`.
-5. Download the list (at most 16 KiB) and the `.sig` (exactly 64 bytes).
+5. Download the list (at most 16 KiB) and the `.sig` (64, 128, 192 or 256
+   bytes).
 6. The signature verifies (§ 4.3), and the list parses.
 7. **The list's `version` equals the tag's.** A signed list for 0.1.2 behind a
    tag reading 0.1.9 is an old release served as new, and is refused.
 8. The list's line for `platform` names the asset found in step 4, with a size
    no larger than 512 MiB.
 
-**A failed check is silent.** Every exception is caught, nothing is shown, and
-one line goes to the rolling log naming the step, never a URL or a path.
+**A failed check is silent.** Every exception is caught and becomes the
+`Miss` of the step it happened in, and nothing is shown. For a `Miss` past
+step 1, `updating` writes one line to the rolling log naming the step, never a
+URL or a path.
 
 **The check runs only in a packaged build.** Where `paths.artefact_path()`
 raises `NotPackaged`, `updating` never calls `check`, and the switch reads
@@ -206,7 +230,8 @@ A short download is never reported as tampering (FIBR-0327).
 
 **On Windows the checked zip is then unpacked** into a new folder beside
 `Pressless/`, named `Pressless.new-<random>`. Every member must be
-`Start Pressless.bat` or lie under `Pressless/`, with no absolute path, no
+`Start Pressless.bat`, or `Pressless/` or a path under it — directory entries
+included, which the build's `shutil.make_archive` writes — with no absolute path, no
 `..` part and no drive letter; any other member raises `UpdateRejected` before
 anything is written, and the zip and the folder are removed. The zip is removed
 once unpacked.
@@ -218,9 +243,10 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> None: ...
 def apply_windows(program: Path, staged: Path, folder: Path) -> None: ...
 ```
 
-Each returns once a detached helper is spawned, and raises `InstallFailed`
-where it cannot get that far. The caller then exits (§ 4.9); nothing
-re-executes in place. `folder` is Pressless's own folder, where the helper
+Each raises `InstallFailed` where nothing has changed yet, and otherwise
+returns: on Linux once `os.replace` has succeeded, whether or not the helper
+then starts; on Windows once the helper is spawned. The caller then exits
+(§ 4.9); nothing re-executes in place. `folder` is Pressless's own folder, where the helper
 writes `update.log`.
 
 **Linux.** `chmod 0o755` the staged file, then `os.replace` it over
@@ -231,8 +257,10 @@ writes `update.log`.
 ["/bin/sh", "-c", WAITER, "sh", str(appimage), str(os.getpid()), str(log)]
 ```
 
-`WAITER` is a constant: it polls `kill -0 "$2"` every 0.1 s for at most 60 s,
-then `exec "$1"`. **The paths arrive as arguments and never appear in the
+Before the spawn, Python overwrites `update.log` with `swapped`. `WAITER` is a
+constant: it appends `waiting` to `"$3"`, polls `kill -0 "$2"` every 0.1 s for
+at most 60 s, appends `started`, then `exec "$1"`. A spawn that fails writes
+`not started` and returns, because the new file is already in place. **The paths arrive as arguments and never appear in the
 script text** (FIBR-0327). The environment drops `APPDIR`, `APPIMAGE` and
 `ARGV0`, sets `PYINSTALLER_RESET_ENVIRONMENT=1`, and restores
 `LD_LIBRARY_PATH` and `LD_PRELOAD` from their `_ORIG` copies, dropping each
@@ -244,7 +272,8 @@ by absolute path, with `-NoProfile -NonInteractive -File` and a script written
 beside the staged folder. The three paths arrive as the script's arguments. The
 script:
 
-1. Waits until no process's image path lies under `program`, polling every
+1. Overwrites `update.log` with `waiting`, then waits until no process's image
+   path lies under `program`, polling every
    200 ms for at most 60 s — **by image path, never by PID** (FIBR-0131). A
    process still there at 60 s: remove the staged folder, log `gave up`, start
    nothing.
@@ -263,31 +292,40 @@ raises `InstallFailed`.
 
 **`update.log` is overwritten by each update, not appended**, so it stays one
 update long. It holds fixed words only — `waiting`, `swapped`, `rolled back`,
-`gave up`, `started` — each after a timestamp. No path and no error text reach
+`gave up`, `started`, `not started` — each after a timestamp. No path and no error text reach
 it, because § Logging forbids a full path in anything Pressless writes down.
 
 ### 4.8 Signing a release
 
 `scripts/make-signing-key.py <path>` writes a new Ed25519 private key to
-`<path>`, owner-only, and prints only the public key in base64. It refuses a
+`<path>`, owner-only, and prints only the public key, in `TRUSTED`'s base64
+form. It refuses a
 path that exists or lies inside the repository. The maintainer runs it once and
 pastes the printed key into `update_key.TRUSTED`. **The private key never
 enters the repository or a session's context.**
 
 The release workflow creates the release as a **draft** (`gh release create
---draft`). Then `scripts/sign-release.py v<X.Y.Z>`, run by hand:
+--draft`). Then `scripts/sign-release.py v<X.Y.Z>`, run by hand. It reads
+`PRESSLESS_UPDATE_REPOSITORY` as `updater.py` does, so § 7.1's scratch
+repository — a fork carrying the release workflow — is signed the same way:
 
-1. Reads the key's path from `git config ants.pressless.signingKey`.
+1. Reads every key path from `git config --get-all ants.pressless.signingKey`.
 2. Refuses unless the release is a draft and the release workflow run that
    built it was for the tag's own commit (FIBR-0318).
-3. Downloads the two artefacts, writes the list (§ 4.3), and signs it.
-4. **Verifies the signature against `update_key.TRUSTED` as committed at the
-   tag**, and refuses to attach anything if it fails.
+3. Downloads the two artefacts, writes the list (§ 4.3), and signs it with
+   each key.
+4. **Verifies every signature against `update_key.TRUSTED` as committed at
+   the tag**, and refuses to attach anything if one fails.
 5. Uploads the list and its `.sig`, reads the asset list back, and requires
    exactly the four names (FIBR-0275).
 6. Publishes the draft.
 
 ### 4.9 What he sees
+
+**`updating` reaches the page at `/` through a new
+`Face.add_to_list(render, *, above)`**, where `render` returns HTML.
+`editor._list` puts each registered piece above or below the list. The editor
+never imports `updating`.
 
 **The switch**, one line under the list at `/`: *"Pressless looks for a new
 version each time it starts."* with **Stop looking**, or *"Pressless does not
@@ -308,7 +346,8 @@ A missing file reads as `check: true, skip: null`. So does a file that does not
 parse or has another shape, and the switch then shows what is actually in force.
 
 **The offer and a Later are held in memory for the life of the process.** That
-is a second exception to § State beside the Insights cache. Nothing of his is
+is an exception to § State, which names none today — it calls the Insights
+cache a cache rather than an exception. Nothing of his is
 in them, and losing them costs one check at the next start. Skip is written to
 `updates.json`.
 
@@ -337,7 +376,8 @@ Each is a typed failure with a three-part sentence in `face.SENTENCES`:
 | `UpdateRejected` | The download did not prove it came from Pressless, so nothing was installed. | not changed | Keep using this version, and send the details below to whoever helps you. |
 | `InstallFailed` | Pressless could not put the new version in place. This version is still installed. | not changed | Try again later. If it keeps happening, send the details below to whoever helps you. |
 
-`updater.UpdateError` is the base of all four and carries the generic sentence.
+`installer.UpdateError` is the base of all four and carries the generic
+sentence. `updater.py` defines the first three as its subclasses.
 
 ### 4.11 One Pressless per folder
 
@@ -359,8 +399,10 @@ window and start it again."* and exits 3, serving nothing.
   `TRUSTED` and whose version equals a tag greater than the running version.
   *Test:* `tests/test_updater.py::test_only_a_signed_newer_list_is_offered` —
   one fixture per step of § 4.4, signed with a throwaway key patched into
-  `TRUSTED`; one byte changed in the list or the `.sig` gives `None`.
-  *Breaks when:* any step is skipped, or a `.sig` from another key verifies.
+  `TRUSTED`; one byte changed in the list or the `.sig` gives a `Miss`, and a
+  `.sig` of two signatures verifies where either key is trusted.
+  *Breaks when:* any step is skipped, a `.sig` from another key verifies, or
+  only the first signature in a `.sig` is tried.
 - **INV-3** — An empty `TRUSTED` offers nothing. *Test:*
   `tests/test_updater.py::test_no_key_no_offer`. *Breaks when:* verification
   is skipped where no key exists.
@@ -369,7 +411,8 @@ window and start it again."* and exits 3, serving nothing.
   *Breaks when:* the version is read from the tag alone (Problem 3).
 - **INV-5** — A failed check raises nothing and shows nothing. *Test:*
   `tests/test_updater.py::test_a_failed_check_is_silent` — a double raising at
-  each request returns `None`, and the log line names no URL and no path.
+  each request makes `check` return a `Miss` naming that step, and the line
+  `updating` then writes names no URL and no path.
   *Breaks when:* an exception escapes the check thread, or a log line carries
   a URL.
 - **INV-6** — Only bytes matching the list's size and hash are returned from
@@ -388,8 +431,10 @@ window and start it again."* and exits 3, serving nothing.
   other module imports one.
 - **INV-9** — A Windows zip with a member outside `Start Pressless.bat` and
   `Pressless/`, or with an absolute, `..` or drive-lettered path, writes
-  nothing. *Test:* `tests/test_updater.py::test_a_stray_zip_member_writes_nothing`.
-  *Breaks when:* members are checked while being written.
+  nothing, and a zip made by `build-windows.sh`'s own `shutil.make_archive`
+  call unpacks. *Test:* `tests/test_updater.py::test_a_stray_zip_member_writes_nothing`.
+  *Breaks when:* members are checked while being written, or a directory entry
+  is refused.
 - **INV-10** — On Linux a failure before `os.replace` leaves the AppImage
   byte-for-byte as it was and removes the staged file; success leaves the new
   bytes at mode 0755. *Test:* `tests/test_installer.py::test_linux_swap`, with
@@ -398,8 +443,9 @@ window and start it again."* and exits 3, serving nothing.
 - **INV-11** — The Linux helper gets the paths as arguments, the environment
   of § 4.7 and a new session, and nothing re-executes in place.
   *Test:* `tests/test_installer.py::test_linux_helper` — an AppImage path
-  holding an apostrophe and a space never appears in `WAITER`; `os.execv` is
-  never called. *Breaks when:* a path is spliced into the script, or the
+  holding an apostrophe and a space: the script element of the argv handed to
+  `Popen` equals `WAITER` and holds neither path, and `os.execv` is never
+  called. *Breaks when:* a path is spliced into the script, or the
   helper inherits `LD_LIBRARY_PATH` pointing into the bundle.
 - **INV-12** — The Windows helper waits by image path, not PID, and names
   PowerShell by absolute path. *Test:* `tests/test_installer.py::test_windows_helper`
@@ -423,8 +469,9 @@ window and start it again."* and exits 3, serving nothing.
   *Breaks when:* the lock is skipped, or released before the exit.
 - **INV-16** — A second serving start on a held folder serves nothing and
   exits 3; `--self-check` is unaffected. *Test:*
-  `tests/test_main.py::test_one_pressless_per_folder`. *Breaks when:* the lock
-  is advisory-only on one platform, or taken by `--self-check`.
+  `tests/test_main.py::test_one_pressless_per_folder`. *Breaks when:* on
+  either platform the lock is not taken, is taken blocking, or is released
+  before the process ends; or `--self-check` takes it.
 - **INV-17** — `__version__` equals `pyproject.toml`'s `version`. *Test:*
   `tests/test_version.py::test_the_program_knows_its_version`. *Breaks when:*
   a release bumps one and not the other.
@@ -486,7 +533,8 @@ the one that ships it:
 1. Build and sign releases N+1 and N+2 into a scratch repository, and start
    release N with `PRESSLESS_UPDATE_REPOSITORY` naming it.
 2. Start release N, click Update now. It reopens by itself as N+1, and
-   `update.log` reads `waiting`, `swapped`, `started`.
+   `update.log` reads `swapped`, `waiting`, `started` on Linux and `waiting`,
+   `swapped`, `started` on Windows.
 3. From N+1, update to N+2 the same way.
 4. `Pressless-data`'s file list and every file's hash are unchanged across
    both.
@@ -554,9 +602,12 @@ over SSH cannot reach the credential vault).
 ## 11. Cross-doc impact
 
 - `docs/design.md` § The parts gains the Updater row, § What may depend on
-  what gains its rule (§ 4.1 here), § State gains the in-memory offer as its
-  second exception, and § Where everything sits on disk lists `updates.json`,
+  what gains its rule (§ 4.1 here), § State gains the in-memory offer as an
+  exception, and § Where everything sits on disk lists `updates.json`,
   `update.log` and `pressless.lock` in Pressless's own folder.
+- `docs/specs/PRESS-0011-face.md` — `Face.add_to_list`, and
+  `docs/specs/PRESS-0012-editor.md` § 4.5 — the list renders what is
+  registered there.
 - `docs/specs/PRESS-0022-packaging.md` § 4.4 — the release is a draft until
   signed, and § 14 — after the first updating release, moving to a new version
   is the updater's job.
