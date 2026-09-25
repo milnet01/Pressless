@@ -155,7 +155,8 @@ whitespace made one space, and stripped.
 
 1. `\r\n` and a lone `\r` become `\n`.
 2. It is split on every line that is empty or whitespace alone. Each part is
-   stripped, and empty parts at either end are dropped.
+   stripped, and every empty part is dropped, so a run of blank lines is one
+   gap (PRESS-0143).
 3. **A count that differs from `pieces(name, html)`'s raises `PiecesChanged`.**
 4. A part equal to its piece's shown form leaves the piece's bytes as they
    are. Any other part replaces the piece with the piece's own leading
@@ -348,9 +349,12 @@ route tests run through `face.serve(tmp_path, open_browser=False)`, as
   *Test:* `test_a_changed_paragraph_count_writes_nothing`. A box with one
   paragraph added, and one with a paragraph emptied, each answer 200 with
   `PiecesChanged`'s sentence as `hint`, the old `base`, `waiting` false, and no
-  waiting copy.
-  *Breaks when:* extra paragraphs are appended to the last piece, or the
-  refusal answers 409.
+  waiting copy. Passed to `put_words`, a box with an extra blank line between
+  two paragraphs returns what the box without it returns, and a box with one
+  paragraph's words deleted raises `PiecesChanged` whether two or three blank
+  lines are left where it was.
+  *Breaks when:* extra paragraphs are appended to the last piece, the
+  refusal answers 409, or a run of blank lines is read as an empty paragraph.
 
 - **INV-4** — Words go back as words.
   *Test:* `test_typed_markup_is_written_as_text`. A paragraph changed to

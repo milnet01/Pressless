@@ -2368,6 +2368,22 @@ writing an entry to do it. Holds S8.
   Source: in-session-2026-09-25 PRESS-0023 spec research.
   Lanes: publisher, insights, packaging.
 
+- 🚧 [PRESS-0143] **The words box forgives an extra blank line between paragraphs.**
+  Decided by the user 2026-09-25. put_words splits the box on every
+  empty line, so two blank lines in a row make an empty paragraph and
+  the save is refused as PiecesChanged. A run of blank lines becomes
+  one gap, and an empty part is dropped.
+
+  Side effect, accepted: a paragraph emptied in the box is then always
+  refused, where today it slips through as an empty paragraph when only
+  one blank line surrounds it. That matches PRESS-0014 scope decision 2.
+
+  Changes PRESS-0014 section 4.2 step 2, so it re-arms that spec's gate.
+  **Layman:** Leaving an extra empty line between paragraphs in the words box no longer stops the page saving.
+  Kind: enhancement.
+  Source: user-decision-2026-09-25 PRESS-0014 open question.
+  Lanes: page_editor.
+
 ## 0.6.0 — pictures and helpers
 
 Photographs from the picture mark through to the web-sized copy, a list of
