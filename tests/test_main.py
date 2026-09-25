@@ -165,6 +165,28 @@ def test_it_writes_nothing_but_the_folder(monkeypatch, tmp_path, capsys):
     assert list((artefact.parent / _FOLDER_NAME).iterdir()) == []
 
 
+def test_programs_it_starts_do_not_load_the_bundle(monkeypatch, tmp_path, capsys):
+    """PRESS-0146: PyInstaller points LD_LIBRARY_PATH at the bundle, and a
+    /bin/sh that is bash then loads the bundle's libreadline and dies -- the
+    browser launcher and xdg-open among it. A frozen Linux run hands its
+    children the value from before the bundle: the _ORIG copy, or nothing."""
+    artefact = _artefact(tmp_path)
+    bundle = str(tmp_path / "mount" / "_internal")
+    for orig in ("/usr/lib/before", None):
+        _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+        _store(monkeypatch, Choice("keyring", "SecretService"))
+        for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
+            monkeypatch.setenv(name, bundle)
+            if orig is None:
+                monkeypatch.delenv(f"{name}_ORIG", raising=False)
+            else:
+                monkeypatch.setenv(f"{name}_ORIG", orig)
+
+        assert main_module.main(["--self-check"]) == 0
+        for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
+            assert main_module.os.environ.get(name) == orig, (name, orig)
+
+
 def test_there_is_no_other_flag(monkeypatch, tmp_path, capsys):
     """Only the double-click and --self-check exist (§ 4.5); anything else is
     refused rather than read as one of them."""

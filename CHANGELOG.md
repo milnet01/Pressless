@@ -44,6 +44,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **The Linux download opens the browser and the Open folder button on Linux systems whose shell is bash, such as openSUSE.** (PRESS-0146)
+
 - **When Pressless cannot tell whether a page was published and cannot tidy away its saved changes, it now says so.** (PRESS-0144)
 
 - **Seven tests from an earlier review now check what they claim to, or say plainly what they cannot** (PRESS-0139)

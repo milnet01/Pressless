@@ -50,6 +50,7 @@ def main(argv: list[str]) -> int:
         print(_USAGE, file=sys.stderr)
         raise SystemExit(2)
 
+    _unbundle_environment()
     print("pressless: ok")
     try:
         folder = paths.ensure(paths.own_folder())
@@ -71,6 +72,26 @@ def main(argv: list[str]) -> int:
     if argv == ["--self-check"]:
         return 0
     return _serve(folder)
+
+
+def _unbundle_environment() -> None:
+    """Give every program Pressless starts the loader paths from before the
+    bundle (PRESS-0146).
+
+    PyInstaller points LD_LIBRARY_PATH at the bundle, keeping any earlier value
+    as LD_LIBRARY_PATH_ORIG. A /bin/sh that is bash then loads the bundle's
+    libreadline and dies, and the browser launchers are sh scripts. The loader
+    read the variable when this process started, so changing it here moves
+    only what children see.
+    """
+    if not getattr(sys, "frozen", False) or sys.platform == "win32":
+        return
+    for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
+        before = os.environ.get(f"{name}_ORIG")
+        if before is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = before
 
 
 def _serve(folder: Path) -> int:

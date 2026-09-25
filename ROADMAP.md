@@ -2363,6 +2363,16 @@ writing an entry to do it. Holds S8.
   builds its own certifi context and names this item's scope as out of
   it (section 9). Prove it first with a packaged run, then fix. Add a
   row to the PRESS-0133 by-hand checks.
+  Proven 2026-09-25 with the released v0.1.2 AppImage on this openSUSE
+  machine. Setup was posted a fake key for a public repository. As
+  shipped: "Pressless could not reach GitHub" (publisher.Unreachable).
+  The same run with SSL_CERT_FILE=/etc/ssl/ca-bundle.pem: "GitHub would
+  not accept your publishing key" (publisher.Refused, the 401). The
+  same request from source: HTTP 401. So the bundled OpenSSL finds no
+  certificates here, and Publish and Insights both fail from the
+  AppImage. The proof row for PRESS-0133 is now this probe, repeatable
+  with any fake key. User decision 2026-09-25: fix it right after
+  PRESS-0023.
   **Layman:** Publishing and the dashboard work from the Linux download on every kind of Linux, not only the kind it was built on.
   Kind: fix.
   Source: in-session-2026-09-25 PRESS-0023 spec research.
@@ -2419,6 +2429,38 @@ writing an entry to do it. Holds S8.
   Kind: fix.
   Source: in-session-2026-09-25 while building PRESS-0144.
   Lanes: face, page_editor.
+
+- ✅ [PRESS-0146] **The Linux AppImage opens his browser and his folder on any distribution.**
+  Measured 2026-09-25 with the released v0.1.2 AppImage on openSUSE.
+  PyInstaller's bootloader points LD_LIBRARY_PATH at the bundle's
+  _internal, with no LD_LIBRARY_PATH_ORIG when none was set. Every
+  program Pressless starts inherits it. /bin/sh here is bash, which then
+  loads the bundle's libreadline and dies: "symbol lookup error: /bin/sh:
+  undefined symbol: rl_full_quoting_desired". A BROWSER script recorded
+  nothing until wrapped in env -u LD_LIBRARY_PATH.
+
+  webbrowser tries /usr/bin/firefox first here, and it and xdg-open are
+  both sh scripts. webbrowser counts a launcher that started as success,
+  so the link is not printed either: he sees only "Pressless is
+  running". The Open folder button (face._open_folder) is the same path.
+  CI builds and runs on Ubuntu, where /bin/sh is dash, so nothing there
+  could see it.
+
+  Fix: on a frozen Linux run, restore LD_LIBRARY_PATH and LD_PRELOAD in
+  os.environ from their _ORIG copies, dropping each where there is none,
+  before anything is started. The loader read the variable at exec, so
+  the running process keeps its libraries. Add a row to PRESS-0133: the
+  double-click opens a browser from the AppImage on openSUSE.
+  Shipped 2026-09-25 as __main__._unbundle_environment, run first in
+  main() on a frozen non-Windows run.
+  test_programs_it_starts_do_not_load_the_bundle holds both the _ORIG
+  and the no-_ORIG case for both variables; removing the call, keeping
+  the variable without an _ORIG, and dropping LD_PRELOAD were each
+  killed. Not yet seen in a built AppImage: that is a PRESS-0133 row.
+  **Layman:** On some kinds of Linux the downloaded Pressless starts but never opens the browser, so he sees nothing to click; this makes it open.
+  Kind: fix.
+  Source: in-session-2026-09-25 measuring FIBR-0320 against a packaged run.
+  Lanes: main, face, packaging.
 
 ## 0.6.0 — pictures and helpers
 
@@ -7527,6 +7569,11 @@ already-built code ships in whichever release comes next.
   Still owed: the save timing measured as PRESS-0012's was; Edge on the
   Windows box; a real page publish through the button; and the words
   view read against the live site's About, Music and Privacy.
+  Rows added 2026-09-25, all on the next built AppImage, on openSUSE:
+  the double-click opens a browser tab, and Open folder opens the
+  folder (PRESS-0146); Setup with a fake key answers "would not accept
+  your publishing key", not "could not reach GitHub" (PRESS-0142, once
+  fixed). And PRESS-0023's two-cycle update check on each system.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
