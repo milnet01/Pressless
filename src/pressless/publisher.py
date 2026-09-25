@@ -22,6 +22,7 @@ import http.client
 import json
 import os
 import shutil
+import ssl
 import tempfile
 import time
 import urllib.error
@@ -30,6 +31,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+import certifi
 
 from pressless.settings import Settings
 
@@ -221,7 +224,11 @@ class _Urllib:
 
     def __init__(self, timeout: float = TIMEOUT_SECONDS) -> None:
         self._timeout = timeout
-        self._opener = urllib.request.build_opener(_NoCrossOriginAuth)
+        # Certificates from the bundled certifi set, never the host's store: the
+        # AppImage's OpenSSL looks where openSUSE keeps nothing (PRESS-0142).
+        context = ssl.create_default_context(cafile=certifi.where())
+        self._opener = urllib.request.build_opener(
+            _NoCrossOriginAuth, urllib.request.HTTPSHandler(context=context))
 
     def request(self, method: str, url: str, body: bytes | None,
                 headers: dict[str, str]
