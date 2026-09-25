@@ -2127,6 +2127,12 @@ writing an entry to do it. Holds S8.
   ships as a PATCH here -- the 0.2.0 and 0.3.0 milestones went out inside
   0.1.1 and 0.1.2. Confirm which number cut-release is given when the
   time comes.
+  Decided by the user 2026-09-25: the release carrying the 0.5.0
+  milestone is numbered 0.1.3. Also decided: the user's own steps come as
+  one batch before tagging. They make the signing key
+  (scripts/make-signing-key.py), paste its line into update_key.TRUSTED
+  and set ants.pressless.signingKey, then run the PRESS-0133 by-hand
+  checks. Ask before tagging.
   **Layman:** Someone reads the whole codebase with fresh eyes before the next big step, because a lot of it has never been read that way.
   Kind: review-fix.
   Source: user-decision-2026-09-21.
