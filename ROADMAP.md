@@ -2165,6 +2165,42 @@ writing an entry to do it. Holds S8.
   section's intro is store-owned prose and no verb amends it -- so its
   sentence naming the item count was already stale when this item was
   filed, and could not be corrected. Filed as Ants MCP feedback.
+  Lessons from finbreak's own session (2026-09-25), to design against.
+  Ids are finbreak's (FIBR-).
+
+  Relaunch. A detached waiter polls until the old process is gone
+  (about 60s cap), then starts the new one; spawn-and-exit raced the
+  teardown (FIBR-0107). Keep a relaunch log from day one. Restore
+  LD_LIBRARY_PATH and LD_PRELOAD from their _ORIG copies before
+  spawning, or the waiter loads the bundle's libraries (FIBR-0122). Pass
+  the install path as an argument, never spliced into script text
+  (FIBR-0327). A relaunch fix proves out only on the update AFTER the
+  one that ships it.
+
+  Download. Every redirect hop must be https (FIBR-0167). Install
+  exactly the bytes verified: write the verified buffer to a fresh temp
+  (FIBR-0170). Check Content-Length first, so a short download reads
+  as "ended early", not as tampering. A single-instance guard stops a
+  relaunch racing a manual start (FIBR-0189).
+
+  Windows. finbreak is one file; ours is one folder. Its helper is a
+  detached powershell.exe from %SystemRoot%. It waits on the IMAGE PATH,
+  not a PID (FIBR-0131), and swaps with Move-Item retries. finbreak's
+  suggestion for a folder, not proven: wait on any process whose image
+  is under the folder, swap by directory rename with rollback, and sign
+  an archive or a per-file manifest.
+
+  Signing. A raw Ed25519 public key in one module. A per-asset .sig
+  verified before install. CI never signs: the release script signs
+  locally, then verifies against the committed key and refuses to
+  attach on failure. After upload, read the asset list back
+  (FIBR-0275). Require the CI run's commit to equal the tag's
+  (FIBR-0318). The private-key test should match
+  `BEGIN [A-Z ]*PRIVATE KEY`; finbreak's matches one spelling only.
+
+  Decide early; open in finbreak: anti-rollback, since a signature
+  covers bytes, not the version (FIBR-0169); a signing-key rotation
+  stranding installed updaters (FIBR-0301).
   **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
   Kind: feature.
   Source: user-request-2026-08-25.
