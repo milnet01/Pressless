@@ -1,6 +1,6 @@
 # PRESS-0023 — Pressless updates itself, and installs nothing it cannot prove we signed
 
-**Status:** spec draft (2026-09-25).
+**Status:** accepted (2026-09-25). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0023 (user-request-2026-08-25; finbreak's
 updater lessons, FIBR-*).
@@ -190,12 +190,11 @@ returns `Miss(step)` with its number:
 
 **A failed check is silent.** Every exception is caught and becomes the
 `Miss` of the step it happened in, and nothing is shown. For a `Miss` past
-step 1, `updating` writes one line to the rolling log naming the step, never a
-URL or a path.
+step 1, `updating` writes one line to the rolling log through a new
+`Face.note(text)`, naming the step, never a URL or a path.
 
 **The check runs only in a packaged build.** Where `paths.artefact_path()`
-raises `NotPackaged`, `updating` never calls `check`, and the switch reads
-*"Updates are not available when Pressless is run this way."*
+raises `NotPackaged`, `updating` never calls `check`.
 
 ### 4.5 TLS and redirects
 
@@ -239,13 +238,14 @@ once unpacked.
 ### 4.7 Putting it in place
 
 ```python
-def apply_linux(appimage: Path, staged: Path, folder: Path) -> None: ...
+def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool: ...  # helper started
 def apply_windows(program: Path, staged: Path, folder: Path) -> None: ...
 ```
 
 Each raises `InstallFailed` where nothing has changed yet, and otherwise
 returns: on Linux once `os.replace` has succeeded, whether or not the helper
-then starts; on Windows once the helper is spawned. The caller then exits
+then starts, returning whether it did; on Windows once the helper is
+spawned. The caller then exits
 (§ 4.9); nothing re-executes in place. `folder` is Pressless's own folder, where the helper
 writes `update.log`.
 
@@ -260,7 +260,7 @@ writes `update.log`.
 Before the spawn, Python overwrites `update.log` with `swapped`. `WAITER` is a
 constant: it appends `waiting` to `"$3"`, polls `kill -0 "$2"` every 0.1 s for
 at most 60 s, appends `started`, then `exec "$1"`. A spawn that fails writes
-`not started` and returns, because the new file is already in place. **The paths arrive as arguments and never appear in the
+`not started` and returns `False`, because the new file is already in place. **The paths arrive as arguments and never appear in the
 script text** (FIBR-0327). The environment drops `APPDIR`, `APPIMAGE` and
 `ARGV0`, sets `PYINSTALLER_RESET_ENVIRONMENT=1`, and restores
 `LD_LIBRARY_PATH` and `LD_PRELOAD` from their `_ORIG` copies, dropping each
@@ -277,14 +277,15 @@ script:
    200 ms for at most 60 s — **by image path, never by PID** (FIBR-0131). A
    process still there at 60 s: remove the staged folder, log `gave up`, start
    nothing.
-2. Renames `program` to `Pressless.old`, then the staged `Pressless` folder to
-   `program`, retrying each rename five times 500 ms apart.
+2. Removes a `Pressless.old` left by an earlier run, renames `program` to
+   `Pressless.old`, then the staged `Pressless` folder to `program`, retrying
+   each rename five times 500 ms apart, and appends `swapped`.
 3. If the second rename fails, renames `Pressless.old` back and logs
    `rolled back`. Otherwise it moves the staged `Start Pressless.bat` over the
    old one where the two differ — `cmd.exe` re-reads a running batch file
    from its old offset — and removes `Pressless.old`.
 4. Starts `Start Pressless.bat` with the working directory set to its folder,
-   then removes its own script file.
+   appends `started`, then removes its own script file.
 
 `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
 the module loads on Linux. A spawn that fails removes the staged folder and
@@ -324,8 +325,8 @@ repository — a fork carrying the release workflow — is signed the same way:
 
 **`updating` reaches the page at `/` through a new
 `Face.add_to_list(render, *, above)`**, where `render` returns HTML.
-`editor._list` puts each registered piece above or below the list. The editor
-never imports `updating`.
+`editor._list` reads them back with `Face.list_pieces(above)` and puts each
+above or below the list. The editor never imports `updating`.
 
 **The switch**, one line under the list at `/`: *"Pressless looks for a new
 version each time it starts."* with **Stop looking**, or *"Pressless does not
@@ -362,8 +363,12 @@ in them, and losing them costs one check at the next start. Skip is written to
 4. Answer with a page: *"Pressless is installing version <X.Y.Z> and will open
    again by itself in a moment. You can close this tab."* On Windows the
    console also prints *"Pressless is updating. You can close this window."*
-5. Exit once the answer is sent. The new process opens a fresh tab as any start
-   does.
+   Where `apply_linux` returned `False` the page says instead: *"Pressless is
+   updated to version <X.Y.Z> but could not open again by itself. Close its
+   window and start it again."*
+5. Exit once the answer is sent, through a new `Face.after_reply(action)` that
+   runs `action` once the current response is flushed. The new process opens a
+   fresh tab as any start does.
 
 ### 4.10 Failures he can see
 
@@ -417,9 +422,10 @@ window and start it again."* and exits 3, serving nothing.
   a URL.
 - **INV-6** — Only bytes matching the list's size and hash are returned from
   `download`, and every failure removes the file. *Test:*
-  `tests/test_updater.py::test_download_rows` — one case per row of § 4.6.
-  *Breaks when:* the hash is compared after the file is kept, or a short
-  stream raises `UpdateRejected`.
+  `tests/test_updater.py::test_download_rows` — one case per row of § 4.6,
+  and the returned file's parent is `beside`. *Breaks when:* the hash is
+  compared after the file is kept, a short stream raises `UpdateRejected`, or
+  the file is staged anywhere but `beside`.
 - **INV-7** — No request follows a hop that is not https. *Test:*
   `tests/test_updater.py::test_redirect_to_http_is_refused` — the redirect
   handler raises on an `http://` target and passes an `https://` one.
@@ -438,14 +444,16 @@ window and start it again."* and exits 3, serving nothing.
 - **INV-10** — On Linux a failure before `os.replace` leaves the AppImage
   byte-for-byte as it was and removes the staged file; success leaves the new
   bytes at mode 0755. *Test:* `tests/test_installer.py::test_linux_swap`, with
-  `Popen` and `os._exit` replaced. *Breaks when:* the file is written in place
-  or staged on another filesystem.
+  `Popen` and `os._exit` replaced. *Breaks when:* the file is written in
+  place.
 - **INV-11** — The Linux helper gets the paths as arguments, the environment
   of § 4.7 and a new session, and nothing re-executes in place.
   *Test:* `tests/test_installer.py::test_linux_helper` — an AppImage path
   holding an apostrophe and a space: the script element of the argv handed to
-  `Popen` equals `WAITER` and holds neither path, and `os.execv` is never
-  called. *Breaks when:* a path is spliced into the script, or the
+  `Popen` equals `WAITER` and holds neither path; the `env` handed to it has
+  no `APPDIR`, `APPIMAGE` or `ARGV0`, sets `PYINSTALLER_RESET_ENVIRONMENT=1`,
+  and takes `LD_LIBRARY_PATH` from `LD_LIBRARY_PATH_ORIG` or drops it;
+  `start_new_session` is true; and `os.execv` is never called. *Breaks when:* a path is spliced into the script, or the
   helper inherits `LD_LIBRARY_PATH` pointing into the bundle.
 - **INV-12** — The Windows helper waits by image path, not PID, and names
   PowerShell by absolute path. *Test:* `tests/test_installer.py::test_windows_helper`
@@ -465,8 +473,10 @@ window and start it again."* and exits 3, serving nothing.
   staged file or folder is put inside Pressless's own folder.
 - **INV-15** — Update now takes `editor.LOCK` before applying and holds it to
   the exit. *Test:* `tests/test_updating.py::test_update_waits_for_a_save` — with
-  the lock held by another thread, apply is not reached until it is released.
-  *Breaks when:* the lock is skipped, or released before the exit.
+  the lock held by another thread, apply is not reached until it is released;
+  and with the exit replaced, `editor.LOCK.locked()` is still true after Update
+  now returns. *Breaks when:* the lock is skipped, or released before the
+  exit.
 - **INV-16** — A second serving start on a held folder serves nothing and
   exits 3; `--self-check` is unaffected. *Test:*
   `tests/test_main.py::test_one_pressless_per_folder`. *Breaks when:* on
@@ -530,12 +540,13 @@ A helper's runtime cannot be proved by the suite, only its command. So, for
 each system, two cycles — a restart fix proves out only on the update after
 the one that ships it:
 
-1. Build and sign releases N+1 and N+2 into a scratch repository, and start
-   release N with `PRESSLESS_UPDATE_REPOSITORY` naming it.
+1. Build releases N+1 and N+2 into a scratch repository, sign and publish
+   N+1 only, and start release N with `PRESSLESS_UPDATE_REPOSITORY` naming it.
 2. Start release N, click Update now. It reopens by itself as N+1, and
    `update.log` reads `swapped`, `waiting`, `started` on Linux and `waiting`,
    `swapped`, `started` on Windows.
-3. From N+1, update to N+2 the same way.
+3. Only now publish N+2 — published earlier, it is what N is offered — and
+   from N+1 update to it the same way.
 4. `Pressless-data`'s file list and every file's hash are unchanged across
    both.
 
@@ -605,7 +616,8 @@ over SSH cannot reach the credential vault).
   what gains its rule (§ 4.1 here), § State gains the in-memory offer as an
   exception, and § Where everything sits on disk lists `updates.json`,
   `update.log` and `pressless.lock` in Pressless's own folder.
-- `docs/specs/PRESS-0011-face.md` — `Face.add_to_list`, and
+- `docs/specs/PRESS-0011-face.md` — `Face.add_to_list`, `Face.list_pieces`,
+  `Face.note` and `Face.after_reply`, and
   `docs/specs/PRESS-0012-editor.md` § 4.5 — the list renders what is
   registered there.
 - `docs/specs/PRESS-0022-packaging.md` § 4.4 — the release is a draft until

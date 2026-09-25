@@ -2221,6 +2221,11 @@ writing an entry to do it. Holds S8.
   own roadmap note quoting a key header. Describe a header in words;
   never spell one out, here or in a spec or a test fixture. Build the
   test's marker at run time, so the test does not match itself.
+  Progress (2026-09-25): the user decided the two open calls. Updating
+  is on by default and can be turned off; the offer is Update now, Later
+  and Skip this version. Spec docs/specs/PRESS-0023-self-update.md
+  accepted after two review loops, every finding fixed. Build next,
+  test-first.
   **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
   Kind: feature.
   Source: user-request-2026-08-25.
