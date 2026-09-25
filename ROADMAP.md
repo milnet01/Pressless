@@ -2246,6 +2246,12 @@ writing an entry to do it. Holds S8.
   update_key.TRUSTED and sets ants.pressless.signingKey. Until then
   TRUSTED is empty and nothing is offered (INV-3). The two-cycle check
   on each system is a PRESS-0133 row.
+  Packaged check 2026-09-25, on that local AppImage: --self-check
+  loads every part (cryptography and certifi are in the bundle); the
+  start-up check reached GitHub over TLS and logged "stopped at step
+  3" (0.1.2 is not newer than itself); a second start printed "already
+  running" and exited 3. The swap and relaunch still need the two-cycle
+  release check.
   **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
   Kind: feature.
   Source: user-request-2026-08-25.
@@ -2371,7 +2377,7 @@ writing an entry to do it. Holds S8.
   Source: review residue 2026-09-25, from PRESS-0015's own Resolved note.
   Lanes: Face.
 
-- 📋 [PRESS-0142] **The Linux AppImage verifies GitHub's and Google's certificates on any distribution.**
+- ✅ [PRESS-0142] **The Linux AppImage verifies GitHub's and Google's certificates on any distribution.**
   Measured 2026-09-25: the released v0.1.2 AppImage bundles a libcrypto
   whose OPENSSLDIR is /usr/lib/ssl (strings over the extracted
   _internal/libcrypto.so.3). openSUSE has no such directory, and the
@@ -2393,6 +2399,12 @@ writing an entry to do it. Holds S8.
   AppImage. The proof row for PRESS-0133 is now this probe, repeatable
   with any fake key. User decision 2026-09-25: fix it right after
   PRESS-0023.
+  Shipped 2026-09-25 (dd7d442): publisher and insights build their TLS
+  context from certifi.where(), as the Updater does. Proven on an
+  AppImage built locally from that commit with the release's pinned
+  tools, on openSUSE: the fake-key Setup probe now answers "GitHub would
+  not accept your publishing key" (the 401), where v0.1.2 answered
+  "could not reach GitHub". test_certificates covers all three clients.
   **Layman:** Publishing and the dashboard work from the Linux download on every kind of Linux, not only the kind it was built on.
   Kind: fix.
   Source: in-session-2026-09-25 PRESS-0023 spec research.
@@ -2477,6 +2489,9 @@ writing an entry to do it. Holds S8.
   and the no-_ORIG case for both variables; removing the call, keeping
   the variable without an _ORIG, and dropping LD_PRELOAD were each
   killed. Not yet seen in a built AppImage: that is a PRESS-0133 row.
+  Proven 2026-09-25 on a locally built AppImage (same build as
+  PRESS-0142's proof), openSUSE: a plain #!/bin/sh BROWSER script ran
+  and recorded the link, with no env wrapper. v0.1.2 crashed on it.
   **Layman:** On some kinds of Linux the downloaded Pressless starts but never opens the browser, so he sees nothing to click; this makes it open.
   Kind: fix.
   Source: in-session-2026-09-25 measuring FIBR-0320 against a packaged run.
@@ -7594,6 +7609,9 @@ already-built code ships in whichever release comes next.
   folder (PRESS-0146); Setup with a fake key answers "would not accept
   your publishing key", not "could not reach GitHub" (PRESS-0142, once
   fixed). And PRESS-0023's two-cycle update check on each system.
+  2026-09-25: the PRESS-0142 and PRESS-0146 Linux rows passed on a
+  locally built AppImage. Still owed on the release build itself, and
+  nothing yet on Windows for either.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

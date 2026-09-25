@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Publishing and the dashboard reach GitHub and Google from the Linux download on Linux systems such as openSUSE, instead of saying they could not connect.** (PRESS-0142)
+
 - **The Linux download opens the browser and the Open folder button on Linux systems whose shell is bash, such as openSUSE.** (PRESS-0146)
 
 - **When Pressless cannot tell whether a page was published and cannot tidy away its saved changes, it now says so.** (PRESS-0144)
