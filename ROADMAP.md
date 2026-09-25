@@ -7651,6 +7651,22 @@ already-built code ships in whichever release comes next.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
   Lanes: Settings, Credentials, Insights, Store.
 
+- 📋 [PRESS-0147] **An entry's unknown publish outcome says when its working copy was left.**
+  The entry counterpart of PRESS-0144. publishing.publish runs step 5
+  on OutcomeUnknown and drops finish()'s answer, so a working copy that
+  could not be binned goes unmentioned. That matches PRESS-0013 as
+  written: section 4.3 raises the OutcomeUnknown "whatever step 5 did",
+  and section 4.2 gives the kept-copy note to success alone.
+
+  So the fix changes PRESS-0013 and costs its review gate. Shape: the
+  OutcomeUnknown carries whether the copy was kept, and the route adds
+  a Notice with Site.UNKNOWN (PRESS-0145). Rare: it needs both an
+  unknown outcome and a bin that cannot be written.
+  **Layman:** If Pressless cannot tell whether an entry went live and also cannot tidy away its saved changes, it should say so, as the page editor now does.
+  Kind: fix.
+  Source: in-session-2026-09-25 while scoping PRESS-0145.
+  Lanes: publishing.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

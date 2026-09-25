@@ -326,7 +326,8 @@ capture, it lands on that request's list.
 - **INV-6** — A failure's words and a notice's reach the page escaped.
   *Test:* `tests/test_face.py::test_a_failure_is_escaped_on_the_page` — a
   `store.StoreError` whose words hold `<script>`, and a notice whose words
-  hold `<script>`: each fragment holds `&lt;script&gt;` and no `<script>`.
+  hold `<script>`, once as a string and once as a `Notice`: each fragment
+  holds `&lt;script&gt;` and no `<script>`.
   *Breaks when:* `render_failure` or `render_notices` inserts raw text.
 
 - **INV-7** — The page names the log by its file name and its folder by
