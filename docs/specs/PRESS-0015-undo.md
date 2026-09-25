@@ -204,6 +204,7 @@ succeeded.
    | wrote over a file that was there | writes the remembered value back |
    | wrote a file that was absent | `store.move_to_bin` |
    | created a kept draft | `store.move_to_bin` |
+   | binned a draft to free its slug | writes the remembered draft back |
    | demoted an entry | writes the remembered entry over the demoted draft, then `store.publish` |
 
    **A reversal never bins a file it is putting back.** Nothing moves a file

@@ -2269,7 +2269,7 @@ writing an entry to do it. Holds S8.
   Source: review residue 2026-09-25, from docs/reviews/PRESS-0075-test-review-2026-09-07.md.
   Lanes: tests.
 
-- 📋 [PRESS-0140] **The undo spec leaves out a reversal the undo code performs.**
+- ✅ [PRESS-0140] **The undo spec leaves out a reversal the undo code performs.**
   When a draft holds the slug the fetched state publishes, the forward
   pass bins that draft. On a failure, `undo.py::_restore_over_draft`
   writes it back. docs/specs/PRESS-0015-undo.md section 4.3 step 5's
@@ -2280,6 +2280,11 @@ writing an entry to do it. Holds S8.
   Route: write-spec step 8. The code exists and is tested, so the
   amendment records what was built and re-arms no gate (CLAUDE.md rule
   14). An implementation row goes in the loop log.
+  Resolved (2026-09-25): one row in section 4.3 step 5's table --
+  binned a draft to free its slug, reversed by writing the remembered
+  draft back. The prose beside it already holds: the binned file does
+  stay binned, as a spare copy. INV-10's test covers the case with its
+  `tideline` draft. An implementation row, 2-impl, is in the loop log.
   **Layman:** The written plan for Undo misses one step the finished Undo really does, so anyone rebuilding it from the plan would lose a draft on a failure.
   Kind: doc-fix.
   Source: review residue 2026-09-25, from PRESS-0015's own Resolved note.
