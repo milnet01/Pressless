@@ -2201,6 +2201,11 @@ writing an entry to do it. Holds S8.
   Decide early; open in finbreak: anti-rollback, since a signature
   covers bytes, not the version (FIBR-0169); a signing-key rotation
   stranding installed updaters (FIBR-0301).
+  One more from finbreak (FIBR-0355, 2026-09-25): the private-key scan
+  reads every tracked file, prose included, and finbreak's caught its
+  own roadmap note quoting a key header. Describe a header in words;
+  never spell one out, here or in a spec or a test fixture. Build the
+  test's marker at run time, so the test does not match itself.
   **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
   Kind: feature.
   Source: user-request-2026-08-25.

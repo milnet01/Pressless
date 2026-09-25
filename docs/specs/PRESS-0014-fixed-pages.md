@@ -58,9 +58,9 @@ that page, and a publish of anything else leaves them waiting.
    `src/pressless/page_editor.py`.** `editor.py` already carries the entry
    editor, and only the Face knows what order things happen in (design
    rule 1).
-8. **(decided here) The marker patterns become the Builder's public
-   constants.** The Builder fills the markers and this item finds them, so
-   both read one pattern.
+8. **(decided here) The Builder exports how it finds the marker blocks.**
+   The Builder fills each block and this item reads around them, so both use
+   one function.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -88,22 +88,25 @@ only.
 ```python
 # src/pressless/builder.py — added
 
-MARKER_START: re.Pattern    # the marker that opens a header or footer block
-MARKER_END: re.Pattern      # the marker that closes one
-
+def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]: ...
 def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
                  show: str | None, photo_src: PhotoSrc) -> str: ...
 ```
 
-`MARKER_START` and `MARKER_END` are today's `_START` and `_ANY_END`, renamed.
+`furniture_spans` returns the offsets of the text inside each marker block:
+from the end of a `HEADER:START` or `FOOTER:START` marker to the start of the
+next END marker **of the same kind**. It raises `BuildStopped` naming `name`
+where an END has no START before it, or a START has no END after it.
+`_fill_fixed_page` fills the spans it returns.
 
 `preview_html` writes the one page `build(folder, settings, into,
 photo_src=photo_src, change=change)` would write for `show`, and returns its
 path relative to `into` as `preview` does. `show` names a fixed page; `None`
-names his newest published entry, by date then address. It keeps
-PRESS-0012 § 4.2's rules: no web copy of a photograph, no Daily Prompt filter,
-PRESS-0008 § 4.8's order, and each preview replacing the last. `None` with no published
-entry, or a `show` the Store does not hold, raises `BuildStopped`.
+names his newest published entry the Daily Prompt filter keeps, by date then
+address, since `build` writes no page for one it filters out. It keeps
+PRESS-0012 § 4.2's other rules: no web copy of a photograph, PRESS-0008
+§ 4.8's order, and each preview replacing the last. `None` with no such entry,
+or a `show` the Store does not hold, raises `BuildStopped`.
 
 ```python
 # src/pressless/page_editor.py
@@ -134,10 +137,11 @@ doctype and a processing instruction are markup. Each piece is found with
 Python's `html.parser.HTMLParser`, which reads markup that is not well
 formed rather than refusing it, so such a page still has pieces.
 
-**What the box leaves out:**
+**`pieces(html)` returns the pieces the box shows, in file order.** It leaves
+out:
 
 - text inside a `script`, `style` or `template` element;
-- text between `MARKER_START` and the `MARKER_END` after it;
+- text inside a span `furniture_spans` returns;
 - a piece whose shown form is empty.
 
 **A piece's shown form** is `html.unescape(piece)`, with every run of
@@ -168,8 +172,8 @@ takes the ending of the line before it in the result, or the file's first
 line's ending where it is first, or `\n` for a file with none. The text's last
 line ends as the file's last line did.
 
-**`stray_furniture(html)`** is true where any `MARKER_START` and the
-`MARKER_END` after it enclose anything but whitespace. After a code-view save
+**`stray_furniture(html)`** is true where any span `furniture_spans` returns
+holds anything but whitespace. After a code-view save
 of a fixed page it adds a notice: *"The text you put between the header or
 footer markers will be replaced from the one Header or Footer when your site
 is built. Edit the Header or Footer instead."*
@@ -202,8 +206,9 @@ are not on the site yet.
 `GET /page` reads the waiting copy where one exists, else the live file.
 `EntryNotFound` through `Face.fail` where neither exists.
 
-The page carries `kind`, `name`, `view`, `show`, and `base`: the SHA-256 hex
-digest of the file's bytes as read. It holds one `<textarea>` whose content
+The page carries `kind`, `name`, `view`, `show`, `waiting` (`1` where it read
+the waiting copy, else `0`), and `base`: the SHA-256 hex digest of the file's
+bytes as read. It holds one `<textarea>` whose content
 starts with a line break (PRESS-0012 § 4.7) and then the escaped words or the
 escaped file. The preview sits in the same sandboxed frame as the entry
 editor's.
@@ -229,14 +234,13 @@ and saves an unsaved change first.
 
 ### 4.6 A save
 
-Fields: `kind`, `name`, `view`, `show`, `base`, `text`. In order, under the
-lock:
+Fields: `kind`, `name`, `view`, `show`, `waiting`, `base`, `text`. In order,
+under the lock:
 
-1. **Read the file**: the waiting copy where one exists, else the live file.
-   Neither raises `EntryNotFound`.
+1. **Read the file `waiting` names.** A missing one raises `EntryNotFound`.
 2. **Check it is the one this window saw.** A digest that differs from `base`
    raises `editor.ChangedElsewhere`. So does a waiting copy that exists where
-   this window read the live file.
+   `waiting` is `0`.
 3. **Make the new file.** `put_words` or `put_code`, by `view`.
    **`PiecesChanged` writes nothing** and answers § 4.6's JSON with `hint` set
    to its sentence and `base` unchanged. The page keeps saving.
@@ -254,9 +258,12 @@ step 5 keeps the save** and is shown in the preview's place, as PRESS-0012
 A save answers status 200, `application/json`:
 
 ```json
-{"base": "…", "preview": "/preview/…" or null, "failure": "<fragment>" or null,
- "hint": "<sentence>" or null, "notices": "<fragment>"}
+{"waiting": true, "base": "…", "preview": "/preview/…" or null,
+ "failure": "<fragment>" or null, "hint": "<sentence>" or null,
+ "notices": "<fragment>"}
 ```
+
+`waiting` and `base` name the file the page saves to next.
 
 ### 4.7 Publishing a page
 
@@ -264,7 +271,8 @@ A save answers status 200, `application/json`:
 throughout:
 
 1. **Save**, as § 4.6 steps 1 to 4. A 409 there answers as a failed save does.
-   A `PiecesChanged` answers its hint and publishes nothing.
+   A `PiecesChanged` publishes nothing and answers status 200 with the reply
+   below, `published` false and `hint` set to its sentence.
 2. **Settings and the key**, as PRESS-0013 § 4.2 steps 2 and 3.
 3. **Move.** Remember the live file's text. Write the waiting copy's text over
    it with `store.write_html`.
@@ -280,9 +288,10 @@ then is shown.** The waiting copy is left as it is. **An
 PRESS-0013 § 4.3 has it. A failure while putting back is shown in place of the
 original.
 
-The reply is PRESS-0013 § 4.2's JSON, with `slug` and `draft` left out and
-`base` the digest of the file the page saves to next: the waiting copy where
-one is left, else the live file.
+The reply is PRESS-0013 § 4.2's JSON with `slug` and `draft` left out, and
+`waiting`, `base` and `hint` as § 4.6's reply has them. `waiting` and `base`
+are read from disk after the publish: the waiting copy where one is left, else
+the live file.
 
 ### 4.8 Throwing away changes
 
@@ -370,10 +379,10 @@ route tests run through `face.serve(tmp_path, open_browser=False)`, as
   definite failure puts the live file back.
   *Test:* `test_publishing_a_page`. Through the recording transport PRESS-0013
   uses: a publish leaves the live file holding the copy's text, the copy in
-  the bin, and the uploaded page holding the change. With the key refused, the
-  live file's bytes are the originals and the copy is unchanged. With the
-  reference update raising, the live file holds the change and the copy is in
-  the bin.
+  the bin, and the uploaded page holding the change. With the transport
+  answering 401, the live file's bytes are the originals and the copy is
+  unchanged. With the transport raising on the reference update, the live file
+  holds the change and the copy is in the bin.
   *Breaks when:* the copy is binned before the upload, or an unknown outcome
   is put back.
 
@@ -395,7 +404,8 @@ route tests run through `face.serve(tmp_path, open_browser=False)`, as
   else is.
   *Test:* `test_stray_furniture_is_warned_about`. A code save putting a word
   between `FOOTER:START` and `FOOTER:END` answers with the notice. A save
-  leaving only whitespace there, and a words save, answer without it.
+  leaving only whitespace there answers without it, and so does a words save
+  of a page whose live file already holds a word there.
   *Breaks when:* the check reads the whole file, or runs on words saves.
 
 - **INV-13** — The furniture opens in the code view only.
@@ -507,8 +517,8 @@ then mutation-probed once the code lands, one mutation per route its
 - `docs/specs/PRESS-0006-pages-furniture-comments.md` § 4.1 and § 4.3 —
   `html_path_for` and `write_html` gain `waiting`, and the two waiting folders
   join the layout. The sections point here.
-- `docs/specs/PRESS-0008-builder.md` § 4.1 and § 4.4 — `preview_html`,
-  `MARKER_START` and `MARKER_END` are added. The sections point here.
+- `docs/specs/PRESS-0008-builder.md` § 4.1 and § 4.4 — `preview_html` and
+  `furniture_spans` are added. The sections point here.
 - `docs/specs/PRESS-0012-editor.md` § 4.5 — the list gains the pages section.
 - `docs/specs/PRESS-0013-publish.md` § 4.1 — it already names this item as a
   caller of `publish` with `entry=None`; no change.
