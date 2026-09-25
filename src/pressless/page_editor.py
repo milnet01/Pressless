@@ -59,6 +59,10 @@ STRAY = ("The text you put between the header or footer markers will be replaced
 
 _KEPT_COPY = ("Your changes were published, but their waiting copy was left in place. "
               "You can throw it away.")
+# After an unknown outcome the live file already holds the changes (§ 4.7), so
+# throwing the copy away loses nothing either way (PRESS-0144).
+_KEPT_COPY_UNKNOWN = ("Pressless cannot tell whether your changes were published, and "
+                      "their waiting copy was left in place. You can throw it away.")
 
 _HIDDEN = frozenset(("script", "style", "template"))
 _LABELS = {"header": "Header", "footer": "Footer", "navigation": "Navigation"}
@@ -153,10 +157,8 @@ def put_words(name: str, html_text: str, box: str) -> str:
             parts.append("\n".join(current).strip())
             current = []
     parts.append("\n".join(current).strip())
-    while parts and not parts[0]:
-        parts.pop(0)
-    while parts and not parts[-1]:
-        parts.pop()
+    # Every empty part goes, so a run of blank lines is one gap (PRESS-0143).
+    parts = [part for part in parts if part]
 
     found = pieces(name, html_text)
     if len(parts) != len(found):
@@ -512,7 +514,8 @@ def _publish(face: Face, folder: Path, request: Request,
                 publishing.publish(folder, saved, key, entry=None, capture=face.capture,
                                    notices=notices, transport=transport)
             except publisher.OutcomeUnknown:
-                finish()
+                if finish():
+                    notices.append(_KEPT_COPY_UNKNOWN)
                 raise
             except BaseException:
                 # A failure here is raised in place of the original (§ 4.7).

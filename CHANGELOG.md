@@ -38,7 +38,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   saying whether it worked, your files are left matching what the site may
   already show.
 
+### Changed
+
+- **An extra blank line between paragraphs in the words box no longer stops the page saving.** (PRESS-0143)
+
 ### Fixed
+
+- **When Pressless cannot tell whether a page was published and cannot tidy away its saved changes, it now says so.** (PRESS-0144)
 
 - **Seven tests from an earlier review now check what they claim to, or say plainly what they cannot** (PRESS-0139)
 

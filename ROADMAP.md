@@ -2368,7 +2368,7 @@ writing an entry to do it. Holds S8.
   Source: in-session-2026-09-25 PRESS-0023 spec research.
   Lanes: publisher, insights, packaging.
 
-- 🚧 [PRESS-0143] **The words box forgives an extra blank line between paragraphs.**
+- ✅ [PRESS-0143] **The words box forgives an extra blank line between paragraphs.**
   Decided by the user 2026-09-25. put_words splits the box on every
   empty line, so two blank lines in a row make an empty paragraph and
   the save is refused as PiecesChanged. A run of blank lines becomes
@@ -2379,10 +2379,46 @@ writing an entry to do it. Holds S8.
   one blank line surrounds it. That matches PRESS-0014 scope decision 2.
 
   Changes PRESS-0014 section 4.2 step 2, so it re-arms that spec's gate.
+  Shipped 2026-09-25. put_words drops every empty part. PRESS-0014's
+  review gate re-ran (loop 3) and converged with no edit to the spec.
+  test_a_changed_paragraph_count_writes_nothing holds both cases; the
+  old end-only drop was restored as a mutation and killed.
   **Layman:** Leaving an extra empty line between paragraphs in the words box no longer stops the page saving.
   Kind: enhancement.
   Source: user-decision-2026-09-25 PRESS-0014 open question.
   Lanes: page_editor.
+
+- ✅ [PRESS-0144] **An unknown publish outcome says when a page's waiting copy was left.**
+  PRESS-0014 section 4.7 step 5 runs on an OutcomeUnknown too, and says
+  the reply notes a waiting copy that could not be binned. page_editor's
+  _publish calls finish() on that path and drops its answer, so the
+  note shows only after a publish that succeeded. The page then says
+  "changes not on your site yet" with no word about the copy.
+  Shipped 2026-09-25. The unknown path now adds its own notice, which
+  does not claim the changes were published.
+  test_a_copy_left_behind_is_said covers both paths; dropping the note
+  and reusing the success wording were each killed. The notice's
+  second part is still wrong on both paths: PRESS-0145.
+  **Layman:** If Pressless cannot tell whether a page went live and also cannot tidy away its saved changes, it now says so.
+  Kind: review-fix.
+  Source: review-contract 2026-09-25 PRESS-0014 loop 3.
+  Lanes: page_editor.
+
+- 📋 [PRESS-0145] **A notice after a publish no longer says his site has not changed.**
+  face.render_notices gives every notice the same second part,
+  Site.UNCHANGED ("Your site has not changed."). page_editor's kept-copy
+  notice follows a publish that succeeded, so its reply reads "Your
+  changes were published ..." and then "Your site has not changed." The
+  PRESS-0144 notice follows an unknown outcome, where the true second
+  part is PRESS-0011's UNKNOWN wording.
+
+  A notice carrying its own Site changes PRESS-0011 section 4.4, so this
+  costs a review gate on that spec. Check every notice source
+  (StoreNotice, SettingsNotice, page_editor's) for which Site is true.
+  **Layman:** After publishing a page, Pressless can show "your changes were published" beside "your site has not changed"; only one of those can be true.
+  Kind: fix.
+  Source: in-session-2026-09-25 while building PRESS-0144.
+  Lanes: face, page_editor.
 
 ## 0.6.0 — pictures and helpers
 

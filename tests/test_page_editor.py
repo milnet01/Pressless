@@ -173,6 +173,15 @@ def test_a_changed_paragraph_count_writes_nothing(tmp_path):
             assert reply["waiting"] is False
             assert not _waiting(folder, "pages", "about").exists()
 
+    # PRESS-0143: a run of blank lines is one gap, and an emptied paragraph is
+    # refused however many blank lines it leaves behind.
+    spaced = ABOUT_WORDS.replace("Hello\n\n", "Hello\n\n\n  \n")
+    assert (page_editor.put_words("about", ABOUT, spaced)
+            == page_editor.put_words("about", ABOUT, ABOUT_WORDS))
+    for gap in ("\n\n\n", "\n\n\n\n"):
+        with pytest.raises(page_editor.PiecesChanged):
+            page_editor.put_words("about", ABOUT, f"Hello{gap}Second one.")
+
 
 # ------------------------------------------------------------------ INV-4 ---
 
@@ -303,6 +312,39 @@ def test_publishing_a_page(tmp_path, monkeypatch):
     assert _live(folder, "pages", "about").read_bytes() == written
     assert not _waiting(folder, "pages", "about").exists()
     assert f"{PAGES_WAITING}/about.html" in _binned(folder)
+
+
+def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
+    """§ 4.7 step 5 on both paths that run it (PRESS-0144): a waiting copy
+    that cannot be binned is named in the reply after a publish that
+    succeeded AND after one whose outcome is unknown -- which must not claim
+    the changes were published."""
+    _key(monkeypatch)
+
+    def cannot_bin(folder, path):
+        raise store.StoreError("the bin is not writable")
+
+    monkeypatch.setattr(store, "move_to_bin", cannot_bin)
+    changed = ABOUT_WORDS.replace("Hello", "Published")
+    for name, transport, left in (
+        ("published", _Transport(reads=_reads(_listing([])), writes=_writes()),
+         "Your changes were published, but their waiting copy was left in place."),
+        ("unknown", _Transport(reads=_reads(_listing([])), writes=_writes(),
+                               fail_at="/git/refs"),
+         "their waiting copy was left in place."),
+    ):
+        folder = _folder(tmp_path / name)
+        with _pages(folder, transport) as browser:
+            status, _, text = _save(browser, "pages", "about", "words", changed,
+                                    waiting=False,
+                                    base=_digest(_live(folder, "pages", "about")),
+                                    route="/page/publish")
+        assert status == 200, text
+        reply = json.loads(text)
+        assert left in html.unescape(reply["notices"]), (name, reply)
+        assert reply["waiting"] is True, (name, reply)
+        if name == "unknown":
+            assert "Your changes were published" not in html.unescape(reply["notices"]), reply
 
 
 # ----------------------------------------------------------------- INV-12 ---
