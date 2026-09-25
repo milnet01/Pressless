@@ -225,10 +225,11 @@ capture, it lands on that request's list.
 - `http.server.ThreadingHTTPServer` bound to `("127.0.0.1", 0)`, so the
   system picks the port. Run in a background thread; `stop` shuts it down.
 - **The secret** is `secrets.token_urlsafe(32)`, made by `serve`. `url` is
-  `http://127.0.0.1:<port>/?t=<secret>`. A request carrying the right `t`
-  gets `Set-Cookie: pressless-<port>=<secret>; HttpOnly; SameSite=Strict;
-  Path=/` and a redirect to the same path without the query. Every other
-  request must carry that cookie, or it is refused with 403.
+  `http://127.0.0.1:<port>/?t=<secret>`. A GET carrying `t` is checked
+  against the secret: the right one gets `Set-Cookie: pressless-<port>=<secret>;
+  HttpOnly; SameSite=Strict; Path=/` and a redirect to the same path without
+  the query, and a wrong one is refused with 403 whatever cookie it carries.
+  Every other request must carry that cookie, or it is refused with 403.
 - **The cookie's name carries the port.** Browsers do not separate cookies
   by port, so a second Pressless would otherwise overwrite the first's.
   Source: https://www.rfc-editor.org/rfc/rfc6265#section-8.5
@@ -371,7 +372,7 @@ capture, it lands on that request's list.
 | Something raises a type with no entry | The last-resort sentence, with the site part from `publishing` |
 | A notice is raised | Shows it as a line and logs it; the call completes |
 | No browser opens | Prints `url` to the console |
-| A page's work raises | The last-resort sentence on the page, the type alone in the log, nothing on the console |
+| A page's work raises | `Face.fail` shows it as the first two rows say; nothing on the console |
 | A request names a method and path no `add_page` registered | 404, with a plain body |
 | The platform opener is missing or fails | Says it could not open the folder, and leaves Copy location working |
 | The log cannot be written | Nothing on screen: the log never raises (PRESS-0003 § 4.4) |
