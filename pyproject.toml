@@ -28,7 +28,17 @@ license = { file = "LICENSE" }
 # src/pressless/builder.py (PRESS-0008 § 4.6). A floor at the release the
 # metadata stripping was measured against: which fields a saver carries over
 # from its source has changed between releases, and INV-9 is what checks it.
-dependencies = ["keyring>=25", "Pillow>=12"]
+#
+# cryptography verifies a release's Ed25519 signature, reached only by
+# src/pressless/updater.py and the two signing scripts (PRESS-0023 § 4.1). A
+# floor at the release the updater was built and tested with. A pure-Python
+# verifier was rejected: security code nobody else reviews (§ 8).
+#
+# certifi is the CA set the Updater verifies GitHub's certificate against,
+# because the AppImage's OpenSSL looks where openSUSE keeps nothing (PRESS-0142,
+# measured with the v0.1.2 AppImage). A floor at the set measured; a newer set
+# only ever adds and retires roots, so nothing caps it.
+dependencies = ["keyring>=25", "Pillow>=12", "cryptography>=47", "certifi>=2026.4.22"]
 
 # The gate's tools (scripts/local-ci.sh). Floors record what was measured, not
 # a ceiling: CI installs whatever is newest above them, so a release that

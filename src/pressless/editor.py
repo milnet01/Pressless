@@ -247,6 +247,9 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
     return (render_notices(notices) + failure +
             '<h1>Your writing</h1>'
+            # PRESS-0023 § 4.9: what other parts show here, without this
+            # module importing them.
+            + "".join(face.list_pieces(above=True)) +
             '<div id="undo-result"></div>'
             '<div id="listing">'
             '<form method="post" action="/new"><label>Title '
@@ -260,6 +263,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}"
             f"<h2>Your pages</h2>{pages}"
             "</div>"
+            + "".join(face.list_pieces(above=False)) +
             f"<script>{_UNDO_SCRIPT}</script>")
 
 

@@ -520,6 +520,18 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         page, publishing = registered
         length = int(self.headers.get("Content-Length") or 0) if method == "POST" else 0
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
+        face._reply.after = []
+        try:
+            self._answer(face, page, request, publishing)
+        finally:
+            # PRESS-0023 § 4.9 step 5: what runs once this answer is sent.
+            actions, face._reply.after = face._reply.after, None
+            if actions:
+                self.wfile.flush()
+                for action in actions:
+                    action()
+
+    def _answer(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
         try:
             body = page(request)
         except Exception as exc:  # noqa: BLE001 -- § Errors' last-resort catch
@@ -563,6 +575,8 @@ class Face:
         self._secret = secrets.token_urlsafe(32)
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
         self._files: dict[str, Locate] = {}
+        self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
+        self._reply = threading.local()
         self._server = _Server(("127.0.0.1", 0), _Handler)
         self._server.face = self
         port = self._server.server_address[1]
@@ -585,6 +599,28 @@ class Face:
         """Answer GETs under `prefix`, which ends in "/", with the file `locate`
         names for the rest of the path (PRESS-0012 § 4.3)."""
         self._files[prefix] = locate
+
+    def add_to_list(self, render: Callable[[], str], *, above: bool) -> None:
+        """Have the list at / show `render()`'s HTML above or below the list
+        (PRESS-0023 § 4.9), so a part can reach that page without the editor
+        importing it."""
+        self._list_pieces[above].append(render)
+
+    def list_pieces(self, above: bool) -> list[str]:
+        """What every part registered for that side of the list shows now."""
+        return [render() for render in self._list_pieces[above]]
+
+    def note(self, text: str) -> None:
+        """One line in the rolling log. The caller keeps URLs and paths out."""
+        self._log.note(text)
+
+    def after_reply(self, action: Callable[[], None]) -> None:
+        """Run `action` once the current request's answer has been sent
+        (PRESS-0023 § 4.9 step 5). Only inside a page."""
+        pending = getattr(self._reply, "after", None)
+        if pending is None:
+            raise RuntimeError("after_reply was called outside a request")
+        pending.append(action)
 
     @contextlib.contextmanager
     def capture(self) -> Iterator[list[str]]:

@@ -227,7 +227,8 @@ chunk is written; nothing is read back.
 
 A short download is never reported as tampering (FIBR-0327).
 
-**On Windows the checked zip is then unpacked** into a new folder beside
+**On Windows the checked zip is then unpacked**, by
+`unpack(archive: Path, beside: Path) -> Path`, into a new folder beside
 `Pressless/`, named `Pressless.new-<random>`. Every member must be
 `Start Pressless.bat`, or `Pressless/` or a path under it — directory entries
 included, which the build's `shutil.make_archive` writes — with no absolute path, no
@@ -268,8 +269,10 @@ where there is none (FIBR-0122). `start_new_session=True`, stdin, stdout and
 stderr to `/dev/null`.
 
 **Windows.** Spawn `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`
-by absolute path, with `-NoProfile -NonInteractive -File` and a script written
-beside the staged folder. The three paths arrive as the script's arguments. The
+by absolute path, with `-NoProfile -NonInteractive -ExecutionPolicy Bypass
+-File` and a script written beside the staged folder. The policy flag is for
+that one process: a Windows desktop's default policy refuses to run a script
+file at all. The three paths arrive as the script's arguments. The
 script:
 
 1. Overwrites `update.log` with `waiting`, then waits until no process's image
@@ -279,7 +282,9 @@ script:
    nothing.
 2. Removes a `Pressless.old` left by an earlier run, renames `program` to
    `Pressless.old`, then the staged `Pressless` folder to `program`, retrying
-   each rename five times 500 ms apart, and appends `swapped`.
+   each rename five times 500 ms apart, and appends `swapped`. Where the first
+   rename fails, nothing has moved: it removes the staged folder, logs
+   `gave up` and starts nothing.
 3. If the second rename fails, renames `Pressless.old` back and logs
    `rolled back`. Otherwise it moves the staged `Start Pressless.bat` over the
    old one where the two differ — `cmd.exe` re-reads a running batch file

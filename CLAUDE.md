@@ -190,6 +190,16 @@ included.** `tests/test_face.py::test_every_failure_type_has_a_sentence`
 walks every subclass, so a private type used only for internal control
 flow reddens the gate.
 
+**A release is a draft until it is signed.** The release workflow builds
+it; `scripts/sign-release.py v<X.Y.Z>`, run on the maintainer's machine,
+signs and publishes it (PRESS-0023 § 4.8). It reads each key's path from
+a machine-local key. The key lives outside the repository and never
+enters a session:
+
+```bash
+git config --add ants.pressless.signingKey <path to the key>
+```
+
 **Windows is testable, and that is not obvious from anything else here.**
 Development happens on Linux and the app must run on both. A Windows 10
 test box is reachable over SSH from the maintainer's machine under the

@@ -7,6 +7,8 @@
 # packaging tests.
 from __future__ import annotations
 
+import sys
+import threading
 import urllib.parse
 
 import pytest
@@ -68,6 +70,12 @@ class _Opened:
         monkeypatch.setattr(main_module.webbrowser, "open",
                             lambda url: self.links.append(url) or True)
         monkeypatch.setattr(main_module, "_wait", lambda: None)
+        # A frozen run starts the update check (PRESS-0023 § 4.4); no test
+        # reaches the network, so it answers "off" without asking.
+        self.checks: list[tuple] = []
+        monkeypatch.setattr(main_module.updating.updater, "check",
+                            lambda *args: self.checks.append(args)
+                            or main_module.updating.updater.Miss(1))
 
 
 def test_the_double_click_takes_the_same_path(monkeypatch, tmp_path, capsys):
@@ -100,7 +108,8 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
     pages = set(opened.faces[0]._pages)
     for route in (("GET", "/setup"), ("GET", "/"), ("POST", "/save"), ("POST", "/publish"),
                   ("POST", "/undo"), ("GET", "/page"), ("POST", "/page/save"),
-                  ("POST", "/page/discard"), ("POST", "/page/publish")):
+                  ("POST", "/page/discard"), ("POST", "/page/publish"),
+                  ("POST", "/update"), ("POST", "/update/checking")):
         assert route in pages, route
     assert urllib.parse.urlsplit(opened.links[0]).path == "/setup"
 
@@ -185,6 +194,67 @@ def test_programs_it_starts_do_not_load_the_bundle(monkeypatch, tmp_path, capsys
         assert main_module.main(["--self-check"]) == 0
         for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
             assert main_module.os.environ.get(name) == orig, (name, orig)
+
+
+_ALREADY = ("Pressless is already running. Use the browser tab it opened, or close its "
+            "window and start it again.")
+
+
+def _try_lock(path) -> object | None:
+    """Take the folder's lock the way a second Pressless would: its own open
+    file, exclusive and non-blocking. The handle, or None where it is held."""
+    handle = open(path, "a+b")  # noqa: SIM115 -- held open while the lock is
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    return handle
+
+
+def test_one_pressless_per_folder(monkeypatch, tmp_path, capsys):
+    """PRESS-0023 INV-16. Breaks when the lock is not taken, is taken
+    blocking, or is released before the process ends; or --self-check takes
+    it."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+    folder = artefact.parent / _FOLDER_NAME
+    folder.mkdir()
+    lock = folder / "pressless.lock"
+
+    other = _try_lock(lock)
+    assert other is not None
+    try:
+        answered: list[int] = []
+        second = threading.Thread(target=lambda: answered.append(main_module.main([])))
+        second.start()
+        second.join(5)
+        assert answered == [3], "a second start served, or waited on the lock"
+        assert _ALREADY in capsys.readouterr().out
+        assert opened.faces == []
+        assert main_module.main(["--self-check"]) == 0
+    finally:
+        other.close()
+
+    held_while_serving: list[bool] = []
+
+    def serving() -> None:
+        handle = _try_lock(lock)
+        held_while_serving.append(handle is None)
+        if handle is not None:
+            handle.close()
+
+    monkeypatch.setattr(main_module, "_wait", serving)
+    assert main_module.main([]) == 0
+    assert held_while_serving == [True], "the lock was not held while serving"
 
 
 def test_there_is_no_other_flag(monkeypatch, tmp_path, capsys):

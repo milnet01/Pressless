@@ -170,5 +170,7 @@ jobs:
           ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" \
             || { echo "CHANGELOG.md has no section for $TAG" >&2; exit 1; }
-          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+          # A draft (PRESS-0023 § 4.8): invisible to the Updater until
+          # scripts/sign-release.py, run by hand, signs and publishes it.
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --draft \
             --title "Pressless $TAG" --notes-file "$RUNNER_TEMP/notes.md"

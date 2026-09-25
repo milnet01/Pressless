@@ -281,6 +281,8 @@ row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
 - A New entry form with one field, the title.
 - After the entries, his fixed pages and the furniture:
   `docs/specs/PRESS-0014-fixed-pages.md` § 4.4.
+- Whatever other parts registered through `Face.add_to_list`, above and
+  below the list (`docs/specs/PRESS-0023-self-update.md` § 4.9).
 
 ### 4.6 A new entry
 

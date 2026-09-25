@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless looks for a new version when it starts, offers Update now, Later or Skip this version, and installs only a release signed by its maintainer.** (PRESS-0023)
+  The looking can be turned off from the line under the list. Only
+  one Pressless can run against a folder at a time; a second start
+  says the first is already running.
+
 - **Your fixed pages, header, footer and navigation can be edited from your list** (PRESS-0014)
   A page opens as its words in one box, with the real page beside
   it; Show me the code opens the page's own code for anything the

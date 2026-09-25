@@ -21,6 +21,7 @@ import threading
 import urllib.parse
 import webbrowser
 from pathlib import Path
+from typing import BinaryIO
 
 from pressless import (
     credentials,
@@ -32,9 +33,13 @@ from pressless import (
     settings,
     setup,
     undo,
+    updating,
 )
 
 _USAGE = "usage: pressless [--self-check]"
+_LOCK_NAME = "pressless.lock"
+_ALREADY = ("Pressless is already running. Use the browser tab it opened, or close its "
+            "window and start it again.")
 
 
 def main(argv: list[str]) -> int:
@@ -94,8 +99,37 @@ def _unbundle_environment() -> None:
             os.environ[name] = before
 
 
+def _hold(folder: Path) -> BinaryIO | None:
+    """The folder's lock, held for the life of the process (PRESS-0023 § 4.11),
+    or None where another Pressless holds it. Never waits."""
+    handle = open(folder / _LOCK_NAME, "a+b")  # noqa: SIM115 -- open while held
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    return handle
+
+
 def _serve(folder: Path) -> int:
-    """PRESS-0013 § 4.5 steps 3 to 6."""
+    """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
+    held = _hold(folder)
+    if held is None:
+        print(_ALREADY)
+        return 3
+    try:
+        return _serve_held(folder)
+    finally:
+        held.close()
+
+
+def _serve_held(folder: Path) -> int:
     served = face.serve(folder, open_browser=False)
     try:
         setup.register(served, folder)
@@ -103,6 +137,7 @@ def _serve(folder: Path) -> int:
         publishing.register(served, folder)
         undo.register(served, folder)
         page_editor.register(served, folder)
+        updating.register(served, folder)
 
         first = "/"
         with served.capture():

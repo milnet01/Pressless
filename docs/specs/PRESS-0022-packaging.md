@@ -247,6 +247,8 @@ jobs, `ubuntu-latest` and `windows-latest`, each freezing and running
 §4.5's self-check on its own runner, then attaching its artefact to the
 release. ADR-0004 requires this from the first release rather than
 later, because there is no other way to produce the Windows file.
+The release it creates is a draft until `scripts/sign-release.py` signs
+and publishes it (`docs/specs/PRESS-0023-self-update.md` § 4.8).
 
 The Linux job downloads `appimagetool` and wraps the frozen folder in
 an `AppDir` with the three files an AppImage requires — `AppRun`, a
@@ -648,6 +650,11 @@ untouched, so `settings.json` and the credential are where they were.
 that case is accepted rather than solved. §4.6 states it in the steps,
 which is the only place it can be stated — the app cannot see where he
 chose to extract, and §10 records that nothing checks it.
+
+**From the first release carrying PRESS-0023 on, moving to a newer
+version is the updater's job**, and it replaces the program in place, so
+the folder stays beside it. The steps above still govern the move to
+that first release.
 
 ## 15. Open questions
 

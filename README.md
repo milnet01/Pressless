@@ -86,6 +86,11 @@ Put it anywhere else and it starts with an empty `Pressless-data`
 folder. Your writing stays beside the old copy, and that folder is the
 only place it is kept.
 
+**From 0.1.3 on, Pressless updates itself.** When a new version is
+out, the list of your writing says so, and **Update now** installs it
+in place and opens Pressless again. It installs only a version signed
+by its maintainer. The line under the list turns the looking off.
+
 ## Moving an existing blog in
 
 **You cannot bring your own blog in yet.** Once Pressless is ready, you

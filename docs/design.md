@@ -29,6 +29,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Builder** | Turning the Store plus Settings into a finished site folder. This is `build_blog.py` re-homed and separated from the writer. | GitHub, the browser, where the writing came from |
 | **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a previous state of it, when asked. | Entries, pages, poems, what a draft is |
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, and which countries. | Entries, pages, marks, HTML, GitHub |
+| **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | His writing, the Store, Settings, Credentials, the site |
 | **Face** | The local web server and the pages he sees in his browser — the editor, the preview, the buttons, the cheat sheet, the dashboard. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
 
 **Marks is a part rather than a detail inside the editor**, and that is
@@ -113,6 +114,12 @@ than hoped for.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
     it to the Publisher or Insights as an argument, so rules 5 and 8 stay
     literally true and both parts stay testable without a real keyring.
+11. **The Updater may talk to GitHub about Pressless's own releases, and
+    writes only beside the program and to its own files in Pressless's own
+    folder.** It opens neither the Store, Settings nor Credentials. The
+    Face starts it and draws what it finds. Only a release whose signed
+    list verifies against a key built into the program is ever offered
+    (PRESS-0023).
 
 **Where the fixed pages live.** Home, About, Music **and Privacy** are
 the Store's, not the Builder's — they are writing he edits, and the only
@@ -408,7 +415,7 @@ keeping is also published.
 | Where | What lives there | Published? |
 |---|---|---|
 | **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, fixed pages, templates, page furniture and historical comments, in their source form | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends, the updater's `updates.json` and `update.log`, and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Drafts are outside the site folder because of the measurement above,
@@ -513,6 +520,11 @@ file costs nothing but a fresh fetch. Nothing else in Pressless may keep
 one: a cache of his
 writing would be a second copy that can disagree with the first, and
 which one is true is exactly the question S3 exists to make unaskable.
+
+**Updating holds one thing in memory, and it is the exception.** A newer
+version found at start, and his Later, last as long as the process
+(PRESS-0023 § 4.9). Nothing of his is in them, and losing them costs one
+check at the next start.
 
 ### Persistence
 

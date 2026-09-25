@@ -2131,7 +2131,7 @@ writing an entry to do it. Holds S8.
   Kind: review-fix.
   Source: user-decision-2026-09-21.
 
-- 📋 [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
+- ✅ [PRESS-0023] **Pressless updates itself, and installs nothing it cannot prove we signed.**
   Asked for by the user 2026-08-25. Modelled on the sibling project
   finbreak, which ships this and has already paid for the mistakes: read
   `tests/features/auto_update/spec.md` there before designing anything, and
@@ -2226,6 +2226,26 @@ writing an entry to do it. Holds S8.
   and Skip this version. Spec docs/specs/PRESS-0023-self-update.md
   accepted after two review loops, every finding fixed. Build next,
   test-first.
+  Built 2026-09-25, test-first: every test in section 10 seen red
+  against stubs, then green. One mutation per route in each invariant's
+  Breaks-when, 42 in all: every one killed on an assertion. Two survived
+  at first (INV-9, INV-14) because their tests read only the end state;
+  both now watch the moment that matters. Gate: 492 passed, 1 skipped
+  (the built-artefact test, as before).
+
+  Found while building: a Windows desktop's default script policy is
+  Restricted (read on the Windows box), so the spec's -File alone would
+  never have run the helper; -ExecutionPolicy Bypass added and recorded
+  in section 4.7. The Windows helper script ran on the Windows box
+  against dummy folders: swapped, replaced the batch file, relaunched it,
+  and cleaned up. FIBR-0320 does not apply: a live onedir AppImage runs
+  Python in one process.
+
+  Before any release: the maintainer makes the key
+  (scripts/make-signing-key.py), pastes the public line into
+  update_key.TRUSTED and sets ants.pressless.signingKey. Until then
+  TRUSTED is empty and nothing is offered (INV-3). The two-cycle check
+  on each system is a PRESS-0133 row.
   **Layman:** Pressless tells him when there is a newer version and installs it for him, so he never has to download anything again.
   Kind: feature.
   Source: user-request-2026-08-25.
