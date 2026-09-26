@@ -7694,7 +7694,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-25 while scoping PRESS-0145.
   Lanes: publishing.
 
-- 📋 [PRESS-0148] **A category typed with a capital letter or a space stops every preview and publish.**
+- ✅ [PRESS-0148] **A category typed with a capital letter or a space stops every preview and publish.**
   Seen 2026-09-25 in a demo folder: an entry filed under "Poems" made
   the editor's preview fail with BuildStopped, "cannot be part of an
   address: one or more of a-z, 0-9 and '-'". The editor takes the
@@ -7710,6 +7710,14 @@ already-built code ships in whichever release comes next.
   form. Tags are included: they become folder names too. A name that
   converts to nothing refuses the save with a message naming it. Only
   PRESS-0012 changes; the Builder and the file format stay as they are.
+  Shipped 2026-09-26. PRESS-0012 amended and re-gated to the cap
+  (loop 3 one fixed, loop 4 two fixed, tail empty). A save keeps a
+  category or tag the Store accepts, converts any other with
+  name_address, drops repeats, and leaves out one with nothing usable
+  behind a LeftOut notice. The boxes keep what was typed, since a save
+  runs while he types (user-approved change of plan). Proof:
+  test_a_save_turns_names_into_addresses red on the old code; four
+  hand mutations killed; full gate 496 passed, 1 skipped.
   **Layman:** Typing a category the way you would write it, such as "Poems", stops Pressless building your site; it should either accept it or say so when you type it.
   Kind: ux.
   Source: in-session-2026-09-25 making demo screenshots.
