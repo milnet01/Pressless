@@ -7709,6 +7709,20 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-25 making demo screenshots.
   Lanes: editor, builder.
 
+- 📋 [PRESS-0149] **SECURITY.md misses two trust boundaries and calls the project unreleased.**
+  Its Trust boundaries section names four crossings. It leaves out
+  the Face's own server on 127.0.0.1 (face.serve), which the browser
+  drives and every other page in that browser can reach. It also
+  leaves out self-update (updater.py, PRESS-0023), which downloads a
+  release and checks its signature before running it. Each entry
+  names what crosses and what is checked there, per
+  ~/.claude/standards/security.md section 1. "Supported versions"
+  says no version is released; v0.1.0 to v0.1.2 are tagged.
+  **Layman:** The security page leaves out two ways data comes into Pressless, and it wrongly says no version has been released.
+  Kind: doc-fix.
+  Source: in-session-2026-09-26, from a peer session's security.md question.
+  Lanes: docs.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
