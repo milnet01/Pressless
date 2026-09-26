@@ -780,3 +780,65 @@ def test_import_reaches_no_network():
         f"the walk saw no import of the export's parser, so it is not reading "
         f"pressless_import at all: {sorted(seen)!r}"
     )
+
+
+@pytest.mark.parametrize("attachment",
+                         ["{outside}", "../outside.jpg", "2012/05/../../../outside.jpg"])
+def test_an_attachment_address_leaving_the_uploads_folder_stops_it(tmp_path, attachment):
+    """PRESS-0135 #33: an attachment's upload path is joined onto ORIGINALS and
+    the file copied into INTO, which is handed on. A path that is absolute, or
+    climbs out with `..`, reached any file the maintainer can read: pathlib
+    drops the left side for an absolute right side. It stops the run and copies
+    nothing.
+
+    Breaks when the upload path is joined without checking it stays inside.
+    """
+    outside = tmp_path / "outside.jpg"
+    outside.write_bytes(b"not an upload")
+    address = attachment.format(outside="/" + str(outside).lstrip("/"))
+    export, originals, into = _world(tmp_path, _export(
+        _item("1", slug="seaside", body="Words."),
+        _item("9", kind="attachment", attachment=address)),
+        {"2012/05/real.jpg": b"an upload"})
+    _stops(tmp_path, export, originals, into)
+
+
+def test_markup_nested_too_deeply_stops_it_by_name(tmp_path):
+    """PRESS-0135 #37: the converter walks the tree recursively, and every
+    unclosed tag nests the next, so a few hundred unclosed ones raised a raw
+    RecursionError -- a traceback, not the ImportStopped decision 9's run
+    ends on. Marks caps its own nesting for the same reason (PRESS-0054).
+
+    Breaks when the conversion's RecursionError escapes untyped.
+    """
+    export, originals, into = _world(tmp_path, _export(
+        _item("1", slug="seaside", body="<p>" + "<b>" * 5000 + "deep</p>")))
+    _stops(tmp_path, export, originals, into)
+
+
+def test_a_report_prints_no_control_characters(tmp_path, monkeypatch, capsys):
+    """PRESS-0135 #38: the report and a stop's message print alt text,
+    addresses and upload paths from the export as they came, and decision 9
+    makes the maintainer read that report. A character reference to ESC in an
+    attribute, or %1b in an address, printed raw lets a crafted export rewrite
+    the lines on his terminal. Control and format characters print escaped.
+
+    Breaks when anything from the export reaches the terminal unescaped.
+    """
+    import pressless_import as imp
+
+    hostile = "\x1b[2Jwiped‮"
+    report = imp.Report(1, 0, 0, 0, ((hostile, "seaside"),), (), ("about",),
+                        (imp.Dropped("seaside", hostile),))
+    monkeypatch.setattr(imp, "run", lambda *args: report)
+    assert imp.main(["a", "b", "c", "d", "into"]) == 0
+
+    def stopped(*args):
+        raise imp.ImportStopped(f"attachment {hostile} is missing")
+
+    monkeypatch.setattr(imp, "run", stopped)
+    assert imp.main(["a", "b", "c", "d", "into"]) == 1
+    printed = capsys.readouterr()
+    for stream in (printed.out, printed.err):
+        assert "\x1b" not in stream and "‮" not in stream, repr(stream)
+        assert "\\x1b" in stream, repr(stream)

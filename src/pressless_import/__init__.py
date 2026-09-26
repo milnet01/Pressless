@@ -26,7 +26,7 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
 from pressless import store
@@ -262,6 +262,10 @@ def _photographs(channel, ns, originals: Path):
         upload_path = _upload_path(_field(item, "attachment_url", ns))
         if not upload_path:
             raise ImportStopped(f"attachment {post_id} names no place in the uploads folder")
+        if upload_path.startswith("/") or ".." in PurePosixPath(upload_path).parts:
+            # Joined onto ORIGINALS and copied into INTO: an absolute path
+            # replaces ORIGINALS outright, and `..` climbs out of it (PRESS-0135).
+            raise ImportStopped(f"attachment {post_id}'s address leaves the uploads folder")
         attachments.append((post_id, upload_path))
     shared: dict[str, set[str]] = {}
     for _post_id, upload_path in attachments:
@@ -452,9 +456,16 @@ def run(export: Path, originals: Path, live_site: Path, templates: Path,
     bodies = {}
     for item in items:
         if is_markup(item.body):
-            text, whats = convert(item.body, by_address, by_id, old_site=old_site)
+            try:
+                text, whats = convert(item.body, by_address, by_id, old_site=old_site)
+                differences = _differences(item.body, text)
+            except RecursionError:
+                # Every unclosed tag nests the next, and the tree is walked
+                # recursively (PRESS-0135).
+                raise ImportStopped(
+                    f"post {item.post_id}'s body is nested too deeply to convert") from None
             item.dropped.extend(whats)
-            item.dropped.extend(_differences(item.body, text))
+            item.dropped.extend(differences)
             bodies[item.post_id] = text
         else:
             if _GALLERY.search(item.body):
@@ -536,7 +547,17 @@ def _describe(report: Report, into: str) -> str:
     if report.dropped:
         lines.append("Not carried as written -- read these before handing the folder over:")
         lines.extend(f"  {d.slug}: {d.what}" for d in report.dropped)
-    return "\n".join(lines)
+    return "\n".join(_printable(line) for line in lines)
+
+
+def _printable(text: str) -> str:
+    """`text` with every control and format character escaped. Alt text,
+    addresses and upload paths come from the export, and one carrying ESC or a
+    direction override could rewrite the report on the terminal (PRESS-0135)."""
+    return "".join(
+        ch.encode("unicode_escape").decode("ascii")
+        if unicodedata.category(ch) in ("Cc", "Cf") else ch
+        for ch in text)
 
 
 def main(argv: list[str]) -> int:
@@ -549,7 +570,7 @@ def main(argv: list[str]) -> int:
     try:
         report = run(*(Path(arg) for arg in argv))
     except ImportStopped as exc:
-        print(f"Import stopped: {exc}", file=sys.stderr)
+        print(f"Import stopped: {_printable(str(exc))}", file=sys.stderr)
         return 1
     print(_describe(report, Path(argv[4]).name))
     return 0
