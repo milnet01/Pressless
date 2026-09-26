@@ -49,6 +49,26 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Typing while a publish runs is saved afterwards, instead of the editor stopping with "Not saved" beside a publish that worked.** (PRESS-0135)
+  Change address now waits for a save already on its way, and a change
+  too large to send as you close the page makes the browser ask first.
+
+- **On Windows, Update now restarts Pressless when it was started by double-clicking Pressless.exe, and from a folder whose name holds square brackets.** (PRESS-0135)
+
+- **On Windows, a save waits a moment when another program, such as the virus scanner, is reading the file, instead of failing.** (PRESS-0135)
+
+- **If an undo or a publish fails part-way, every file it changed is put back.** (PRESS-0135)
+
+- **When Pressless cannot tell whether an entry was published and cannot tidy away its saved changes, it now says so.** (PRESS-0147)
+
+- **A site folder that is a link to another folder keeps publishing, and a Windows folder junction inside it is refused rather than published.** (PRESS-0135)
+
+- **Open folder says when it could not open the folder, and a failure's details never carry your publishing key.** (PRESS-0135)
+
+- **A broken answer from Google no longer shows as a week nobody visited, and several failures now show their own sentence instead of the general one.** (PRESS-0135)
+
+- **A category or tag typed like "Poems" or "Short Stories" is stored as poems and short-stories, so it no longer stops every preview and publish.** (PRESS-0148)
+
 - **A note shown after a publish no longer also says your site has not changed.** (PRESS-0145)
 
 - **Publishing and the dashboard reach GitHub and Google from the Linux download on Linux systems such as openSUSE, instead of saying they could not connect.** (PRESS-0142)

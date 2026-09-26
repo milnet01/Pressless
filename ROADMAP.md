@@ -2099,7 +2099,7 @@ writing an entry to do it. Holds S8.
   Source: design-2026-08-24 § Where the fixed pages live.
   Lanes: Face, Store.
 
-- 📋 [PRESS-0135] **A full code review before the 0.5.0 milestone ships.**
+- ✅ [PRESS-0135] **A full code review before the 0.5.0 milestone ships.**
   Decided by the user 2026-09-21: a code review runs just before the
   0.5.0 milestone ships. Concretely that is after PRESS-0015 and
   PRESS-0014 are built.
@@ -2133,6 +2133,14 @@ writing an entry to do it. Holds S8.
   (scripts/make-signing-key.py), paste its line into update_key.TRUSTED
   and set ants.pressless.signingKey, then run the PRESS-0133 by-hand
   checks. Ask before tagging.
+  Shipped 2026-09-26. review-code ran ten cold lanes, one per
+  subsystem, each briefed against its specs (about 1.66M tokens):
+  0 Critical, 3 High, 37 Medium, about 58 Low. Every High and Medium
+  has a disposition: 25 fixed test-first in commits 694a2df to f4ba32b,
+  each new test red on the old code; 15 queued as PRESS-0151 to
+  PRESS-0161 because each changes a spec or rests on a decision. The
+  Windows claims were confirmed on the Windows box before fixing. Lows
+  are PRESS-0162. Full gate after the batch: 533 passed, 1 skipped.
   **Layman:** Someone reads the whole codebase with fresh eyes before the next big step, because a lot of it has never been read that way.
   Kind: review-fix.
   Source: user-decision-2026-09-21.
@@ -7921,6 +7929,20 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
   Lanes: import.
+
+- 📋 [PRESS-0162] **The PRESS-0135 sweep's Low findings still need triage.**
+  The sweep's High and Medium findings were closed on 2026-09-26: 25
+  fixed, 15 queued as PRESS-0151 to PRESS-0161. The Low rung was not
+  worked. Every lane's full return is kept verbatim, outside the
+  repository because it quotes code, at
+  /mnt/Games/Scripts/Linux/Pressless-reviews/2026-09-26-review-code-PRESS-0135.md.
+  Three Lows were fixed in passing: the bracketed-path restart (lane
+  Update), __main__.py's stale usage line (lane Import), and the
+  release pin line lengths. Close the rest with close-findings, by
+  subject, the way the Mediums went.
+  **Layman:** The code review also listed many small issues; they are written down and still need sorting into fix or leave.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135, Low and Info rungs.
 
 ## Milestones
 
