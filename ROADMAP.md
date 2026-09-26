@@ -7791,7 +7791,7 @@ already-built code ships in whichever release comes next.
   pluralised counts as comments() already does. Queued, not fixed,
   because it changes PRESS-0008.
   **Layman:** The blog's index pages say it holds poetry, lyrics and photographs whatever the writer actually posts, and say "1 entries".
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Builder, #12.
   Lanes: builder.
 
@@ -7818,7 +7818,7 @@ already-built code ships in whichever release comes next.
   compare ignoring Undone, and bin rather than keep where that is the
   only difference (recommended).
   **Layman:** Undoing, then undoing again, leaves extra draft copies the writer never made.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Undo, #25.
   Lanes: undo.
 
@@ -7829,7 +7829,7 @@ already-built code ships in whichever release comes next.
   never says what happens to one. Decide before PRESS-0020 draws
   flags: drop it, or keep it under a named unknown code.
   **Layman:** The visitor map could be handed a country called (not set) and show a broken flag.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Insights, #32.
   Lanes: insights.
 
@@ -7842,7 +7842,7 @@ already-built code ships in whichever release comes next.
   that is built: decide markup the way WordPress did (block content
   is <!-- wp:, anything else runs through a wpautop-equivalent).
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
   Lanes: import.
 
@@ -7854,7 +7854,7 @@ already-built code ships in whichever release comes next.
   kept statuses, so the fix is the spec's: carry them as drafts, or
   report each skipped item. Mostly bites under PRESS-0125.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
   Lanes: import.
 
@@ -7865,7 +7865,7 @@ already-built code ships in whichever release comes next.
   there is no way forward. Decide in PRESS-0125's spec whether to list
   the item and carry on.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
   Lanes: import.
 
@@ -7889,7 +7889,7 @@ already-built code ships in whichever release comes next.
   Also: settings.py has its own os.replace with the same Windows
   refusal PRESS-0135 #2 fixed in the Store (error 5 while scanned).
   **Layman:** On Windows, renaming an entry's file by hand and then starting a new entry can wipe out the renamed one; a few other file names behave differently on Windows too.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.
   Lanes: store.
 
@@ -7901,9 +7901,26 @@ already-built code ships in whichever release comes next.
   type or sentence of its own in PRESS-0009, then a check of the
   listing before staging that names the path.
   **Layman:** Undo on Windows could fail with advice to free disk space when the real cause is two file names Windows cannot tell apart.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, #10.
   Lanes: publisher.
+
+- 📋 [PRESS-0161] **Import runs list items and table cells together, and shows script and style text as words.**
+  _html.py splits lines only at br, img, div, p, blockquote, figure and
+  headings, the list PRESS-0007 section 4.3 gives. So <li>one</li>
+  <li>two</li> becomes "onetwo", table cells fuse, pre loses its line
+  breaks, and the report says "its words kept". visible_lines fuses the
+  same way, so INV-5's self-check is blind to it. <script> and <style>
+  contents are handed on as text and become visible paragraphs.
+  Both change PRESS-0007's conversion table and how an archive
+  converts, so the spec comes first: split at li, tr, td/th, hr and
+  pre (keeping pre's newlines) in both the converter and
+  visible_lines, and drop script and style contents with a listing.
+  Belongs with PRESS-0125, where other blogs' posts reach it.
+  **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
+  Lanes: import.
 
 ## Milestones
 
