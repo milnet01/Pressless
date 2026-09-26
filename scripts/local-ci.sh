@@ -63,8 +63,14 @@ git grep -n -iE "$PAT" -- . | scan "tree"
 git log --all --format='%H %s%n%b' | scan "commit messages"
 # An annotated tag carries a message of its own, which no commit log shows.
 git for-each-ref --format='%(refname) %(contents)' | scan "refs and tag messages"
-# shellcheck disable=SC2046  # the revision list must expand into arguments
-git grep -n -iE "$PAT" $(git rev-list --all) -- . | scan "history"
+# In batches: one command line holding every revision passes Windows' limit
+# (about 790 of them) as the history grows, and the release job runs this on
+# windows-latest (PRESS-0135). git grep exits 1 for a batch with no match, which
+# is not a failure; any other exit still fails the gate.
+# shellcheck disable=SC2016  # $0 and $@ belong to the inner shell
+git rev-list --all \
+    | xargs -n 200 sh -c 'git grep -n -iE "$0" "$@" -- . || [ $? -eq 1 ]' "$PAT" \
+    | scan "history"
 
 if ((DOCS_ONLY)); then
     printf '\ndocumentation-only: no test here reads a document, so nothing else to run.\n'

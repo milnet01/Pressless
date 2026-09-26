@@ -45,15 +45,19 @@ jobs:
           # fuse3 provides fusermount3, which the type-2 AppImage runtime
           # (appimagetool's own and the artefact's) uses to mount itself.
           sudo apt-get install -y fuse3 gnome-keyring dbus-x11
+          # The build tool is pinned and hash-checked like the runtime below: it
+          # writes the artefact the release signs (PRESS-0135).
           curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
             https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          tool=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
+          echo "$tool  $RUNNER_TEMP/appimagetool" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/appimagetool"
           # The runtime is pinned and its hash checked: appimagetool would
           # otherwise fetch it from a release tagged `continuous`, which moves.
           curl -fsSL -o "$RUNNER_TEMP/runtime-x86_64" \
             https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
-          echo "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  $RUNNER_TEMP/runtime-x86_64" \
-            | sha256sum -c -
+          runtime=2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
+          echo "$runtime  $RUNNER_TEMP/runtime-x86_64" | sha256sum -c -
 
       - name: Build
         id: build
