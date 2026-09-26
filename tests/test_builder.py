@@ -917,3 +917,31 @@ def test_a_page_preview_writes_one_page(tmp_path):
 
     assert relative == "index.html"
     assert _files(into) == [relative]
+
+
+def test_a_linked_site_folder_keeps_building(tmp_path):
+    """PRESS-0135 #11: a site folder that is a symlink -- one kept on another
+    drive, say -- had the LINK renamed away on the first build, and every
+    later build then failed on the leftover link, which rmtree will not
+    remove, naming nothing he could act on. The link is followed to the real
+    folder, which is replaced in place, so the link keeps working.
+
+    A leftover old folder that is not a directory is removed as a file.
+
+    Breaks when the swap renames the link itself, or rmtree meets a link.
+    """
+    folder = _store(tmp_path)
+    store.write(folder, _entry("first"), draft=False)
+    real = tmp_path / "elsewhere" / "site"
+    real.parent.mkdir()
+    link = tmp_path / "site"
+    build(folder, _settings(), real)
+    link.symlink_to(real, target_is_directory=True)
+    for _ in range(3):
+        build(folder, _settings(), link)
+    assert link.is_symlink() and (link / "index.html").is_file()
+
+    stray = tmp_path / "elsewhere" / "site.pressless-old"
+    stray.symlink_to(tmp_path / "nowhere")
+    build(folder, _settings(), link)
+    assert not stray.is_symlink() and not stray.exists()

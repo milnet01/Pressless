@@ -144,6 +144,10 @@ def _replace(into: Path, publishing: bool, write):
     """§4.8's order around `write`, which fills the new folder and returns what
     the caller hands back."""
     shown = "the site folder" if publishing else "the preview folder"
+    if into.is_symlink():
+        # The real folder is what is replaced; renaming the link itself away
+        # left a leftover no later build could remove (PRESS-0135).
+        into = Path(os.path.realpath(into))
     new = into.with_name(f"{into.name}.pressless-new")
     old = into.with_name(f"{into.name}.pressless-old")
 
@@ -153,10 +157,10 @@ def _replace(into: Path, publishing: bool, write):
         if not into.exists() and old.is_dir():
             os.rename(old, into)
         _refuse_a_folder_it_did_not_make(into, shown)
-        if new.exists():
-            shutil.rmtree(new)
-        if into.exists() and old.exists():
-            shutil.rmtree(old)
+        if new.exists() or new.is_symlink():
+            _remove(new)
+        if into.exists() and (old.exists() or old.is_symlink()):
+            _remove(old)
         new.mkdir()
     except OSError as exc:
         raise SiteFolderUnusable(f"{shown} could not be prepared: {_why(exc)}") from None
@@ -184,6 +188,15 @@ def _replace(into: Path, publishing: bool, write):
     # Not a failed build if this fails: the next one removes it (§4.8).
     shutil.rmtree(old, ignore_errors=True)
     return result
+
+
+def _remove(path: Path) -> None:
+    """A leftover of an interrupted run, whatever it turned out to be: rmtree
+    refuses a link or a file (PRESS-0135)."""
+    if path.is_symlink() or not path.is_dir():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
 
 
 def _refuse_a_folder_it_did_not_make(into: Path, shown: str) -> None:
