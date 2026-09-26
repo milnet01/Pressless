@@ -91,7 +91,7 @@ class Published:
 def publish(folder: Path, settings: Settings, key: str, *, entry: str | None,
             emptying: bool = False,
             capture: Callable[[], ContextManager[list[str]]] = _nothing_captured,
-            notices: list[str] | None = None,
+            notices: list[str | face.Notice] | None = None,
             transport: publisher.Transport | None = None) -> Published: ...
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None) -> None: ...
@@ -209,7 +209,11 @@ second is raised as `publisher.OutcomeUnknown`**, its message naming only the
 original's type, so every caller reads one signal. GitHub may have taken the
 change, so the entry stays published, step 5 runs, and the `OutcomeUnknown` is
 raised after it whatever step 5 did. Its sentence says to publish again
-(PRESS-0011 § 4.2).
+(PRESS-0011 § 4.2). **Where step 5 could not bin the copy, `publish`
+first adds a `face.Notice` with `Site.UNKNOWN` to `notices`** (PRESS-0147).
+It says Pressless cannot tell whether his changes were published, that their
+waiting draft was left in place, and that he can throw it away. The move
+landed, so the published entry already holds the copy's changes.
 
 **A put-back writes through the Store**, so a file he edited by hand comes back
 in the Store's own form (PRESS-0005 § 4.2), with the same fields and body.
@@ -297,7 +301,11 @@ does.
   the reference update, which the Publisher reports as `OutcomeUnknown`. The
   entry is published, the copy is binned, and the reply's fragment says the
   outcome is unknown.
-  *Breaks when:* every `PublishError` is put back.
+  *Test:* `test_an_unknown_outcome_says_the_copy_was_left`. The same, with
+  `store.move_to_bin` made to raise. The copy stays, and the reply's
+  `notices` carries the unknown-outcome sentence and not the success one.
+  *Breaks when:* every `PublishError` is put back, or step 5's answer is
+  dropped on an unknown outcome.
 
 - **INV-5** — Nothing moves before the key is read.
   *Test:* `test_nothing_moves_without_a_key`. The credentials double raises
@@ -400,7 +408,7 @@ mutation-probed once the code lands.
 | INV-1 | `tests/test_publishing.py::test_a_draft_is_dated_and_published` |
 | INV-2 | `tests/test_publishing.py::test_a_working_copy_is_published_over_its_entry` |
 | INV-3 | `tests/test_publishing.py::test_a_failed_publish_puts_the_files_back` |
-| INV-4 | `tests/test_publishing.py::test_an_unknown_outcome_stays_published` |
+| INV-4 | `tests/test_publishing.py::test_an_unknown_outcome_stays_published`, `::test_an_unknown_outcome_says_the_copy_was_left` |
 | INV-5 | `tests/test_publishing.py::test_nothing_moves_without_a_key` |
 | INV-6 | `tests/test_publishing.py::test_publishing_nothing_is_refused` |
 | INV-7 | `tests/test_publishing.py::test_the_key_is_never_shown` |
