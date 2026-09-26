@@ -7782,6 +7782,93 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Face, #17 and #20.
   Lanes: face.
 
+- 📋 [PRESS-0152] **Every user's listing pages describe the first writer's journal, and a single entry reads "1 entries".**
+  builder.py's _JOURNAL_LEAD is fixed text ("poetry, lyrics, photographs
+  and passing thoughts") written on every user's journal and listing
+  pages, and the counts print "1 entries" at a count of one.
+  PRESS-0008 section 4.3 mandates "the page itself is today's", so the
+  fix is the spec's first: the lead from Settings or the Store, and
+  pluralised counts as comments() already does. Queued, not fixed,
+  because it changes PRESS-0008.
+  **Layman:** The blog's index pages say it holds poetry, lyrics and photographs whatever the writer actually posts, and say "1 entries".
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Builder, #12.
+  Lanes: builder.
+
+- 📋 [PRESS-0153] **Setup can succeed into an endless "enter your key again" where the keyring chain reads from a different member than it wrote to.**
+  credentials.choose() names the store by walking the chain's members,
+  but read() goes through the whole chain. A chain where an earlier
+  member answers reads while a later one takes the write would make
+  setup succeed and every later read raise NotStored. Unverified: does
+  any real chain behave so? Measure on the development machine and
+  the Windows box first; the fix, if real, is choose() reading its
+  probe back through keyring.get_keyring().
+  **Layman:** On some computers the saved publishing key might never be found again, and nothing tells setup so.
+  Kind: investigate.
+  Source: review-code 2026-09-26 PRESS-0135 lane Setup, #22.
+  Lanes: credentials.
+
+- 📋 [PRESS-0154] **Pressing Undo twice keeps a spurious "your own version" copy of every entry the first press demoted.**
+  The second undo fetches a state publishing entry E while the Store
+  holds E as the demoted draft. That draft differs only by its Undone
+  header, so _restore_over_draft keeps it as his version under
+  E-before-undo, still marked. PRESS-0015 section 4.4's wording is met
+  literally; the design says the toggle's draft is published again
+  rather than left beside a copy. Needs a decision in PRESS-0015:
+  compare ignoring Undone, and bin rather than keep where that is the
+  only difference (recommended).
+  **Layman:** Undoing, then undoing again, leaves extra draft copies the writer never made.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Undo, #25.
+  Lanes: undo.
+
+- 📋 [PRESS-0155] **Insights passes a country value that is not a two-letter code, such as GA4's (not set), through as a country.**
+  insights.py filters only RESERVED_ values; anything else becomes a
+  Country, whose code the flag lookup binds to as ISO 3166-1 alpha-2.
+  GA4 documents (not set) for dimensions it cannot resolve. PRESS-0019
+  never says what happens to one. Decide before PRESS-0020 draws
+  flags: drop it, or keep it under a named unknown code.
+  **Layman:** The visitor map could be handed a country called (not set) and show a broken flag.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Insights, #32.
+  Lanes: insights.
+
+- 📋 [PRESS-0156] **Import decides what counts as HTML by the first writer's archive, and a link or italic word erases every paragraph for other blogs.**
+  _html.py treats any post holding p, em, a, img and similar tags as
+  markup and collapses its newlines. That matches PRESS-0007 section
+  4.3, whose premise is the sibling generator passing such bodies
+  through. Other WordPress blogs ran wpautop() on classic-editor
+  posts, so readers saw paragraphs. Owed to PRESS-0125's spec before
+  that is built: decide markup the way WordPress did (block content
+  is <!-- wp:, anything else runs through a wpautop-equivalent).
+  **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
+  Lanes: import.
+
+- 📋 [PRESS-0157] **Import skips pending and scheduled posts without a word.**
+  pressless_import keeps only publish, draft and private posts;
+  pending and future ones, and other post types, are skipped with
+  nothing in the Report. docs/design.md says everything is carried,
+  and decision 9 forbids silent loss. PRESS-0007 section 4.2 lists the
+  kept statuses, so the fix is the spec's: carry them as drafts, or
+  report each skipped item. Mostly bites under PRESS-0125.
+  **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
+  Lanes: import.
+
+- 📋 [PRESS-0158] **One dangling reply or one missing photograph original stops a whole import.**
+  An approved reply to a trashed parent (the Store's DanglingReply) or
+  an attachment whose original is missing stops the run, as PRESS-0007
+  INV-8 requires. For a general user's old blog that cannot be edited,
+  there is no way forward. Decide in PRESS-0125's spec whether to list
+  the item and carry on.
+  **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
+  Lanes: import.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
