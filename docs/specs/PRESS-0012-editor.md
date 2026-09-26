@@ -102,8 +102,10 @@ ORIGINALS_ADDRESS = "/originals/"
 
 class ChangedElsewhere(Exception): ...   # the file is not the one this window last saw
 class TooManyCopies(Exception): ...      # two drafts replace one published entry
+class LeftOut(store.StoreNotice): ...    # a typed category or tag with nothing to keep
 
 def address_for(title: str) -> str: ...
+def name_address(name: str) -> str: ...
 def free_address(folder: Path, wanted: str) -> str: ...
 def working_copy(folder: Path, slug: str) -> str | None: ...
 def photo_src(name: str) -> str: ...
@@ -121,6 +123,9 @@ cannot import it back.
 left with hyphens: every run of characters outside `a-z` and `0-9` becomes one
 `-`. It cuts the result to `LONGEST_ADDRESS` characters and strips hyphens from
 both ends. Where nothing is left it returns `UNTITLED`.
+
+**`name_address`** applies the same rule to a category or tag, and returns
+`""` where nothing is left (PRESS-0148).
 
 **`free_address`** tries `wanted`, then `wanted-2`, `wanted-3` and so on. It
 returns the first that `store.exists` answers `False` for. A candidate
@@ -355,8 +360,12 @@ Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
 2. **Check it is the one this window saw.** A digest that differs from `base`
    raises `ChangedElsewhere`. For a published entry, so does a working copy
    that now exists.
-3. **Make the entry.** Title stripped. Categories and tags split on `,`, each
-   stripped, empties dropped. The body's `\r\n` and lone `\r` become `\n`, and
+3. **Make the entry.** Title stripped. Categories and tags split on `,`, and
+   each part becomes `name_address(part)`; a repeat is dropped, the first
+   kept. A part that is not blank but leaves `""` is dropped too, and a
+   `LeftOut` warning names it as typed, so the reply's `notices` says it was
+   left out. The page's boxes keep what he typed until he opens the entry
+   again, because a save runs while he types. The body's `\r\n` and lone `\r` become `\n`, and
    nothing else about it changes. The date and extra fields come from the
    file. **For a published entry** the address is `free_address(folder, slug +
    COPY_SUFFIX)`, and the extra fields are the published entry's, without any
@@ -575,6 +584,14 @@ made with `store.write_html`.
   *Breaks when:* the editor serves through anything but `add_page` and
   `add_files`. The last request then gets 404 and nothing is saved.
 
+- **INV-19** — A save stores each typed category and tag as an address.
+  *Test:* `test_a_save_turns_names_into_addresses`. A save with categories
+  `Poems, Short Stories, poems, !!!` and tags `Live Shows` writes categories
+  `poems` and `short-stories` and tag `live-shows`. Its `notices` names
+  `!!!`, and its preview is built rather than refused.
+  *Breaks when:* a name is stored as typed, a repeat is kept, or a part that
+  leaves nothing is stored or dropped without a notice.
+
 `ChangedElsewhere` and `TooManyCopies` each get a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` walks the package
 and finds them without a change.
@@ -588,7 +605,8 @@ and finds them without a change.
 | Two copies replace one published entry | `TooManyCopies` when it is opened | both copies |
 | Pressless is not set up | the save succeeds; `NotSetUp` in the preview's place | the save |
 | No furniture yet (PRESS-0126) | the save succeeds; `StoreError` in the preview's place | the save |
-| A category or tag that cannot be an address | the save succeeds; `BuildStopped` in the preview's place | the save |
+| A typed category or tag with no letter or number | left out, and a notice names it | the rest of the save |
+| A category or tag put in the file by hand that cannot be an address | the save succeeds; `BuildStopped` in the preview's place | the save |
 | A title or value the Store cannot carry | the Store's refusal; saving stops | the file as it was |
 | The disk is full | `StoreError`; saving stops | the file as it was (PRESS-0005 § 4.5) |
 | Pressless stops during an address change | nothing | both copies, or the new one alone |
@@ -599,7 +617,8 @@ and finds them without a change.
 ## 7. Tests
 
 `tests/test_editor.py` — new, in CI. It carries INV-1, INV-2, INV-3, INV-6,
-INV-10, INV-11, INV-12, INV-13, INV-14, INV-15, INV-16, INV-17 and INV-18.
+INV-10, INV-11, INV-12, INV-13, INV-14, INV-15, INV-16, INV-17, INV-18 and
+INV-19.
 
 `tests/test_builder.py` gains INV-4 and INV-5. `tests/test_face.py` gains
 INV-7, INV-8 and INV-9.
@@ -668,6 +687,7 @@ mutation-probed once the code lands.
 | INV-16 | `tests/test_editor.py::test_the_list_shows_copies_and_unreadable_files` |
 | INV-17 | `tests/test_editor.py::test_a_preview_photograph_is_the_original` |
 | INV-18 | `tests/test_editor.py::test_the_editor_sits_behind_the_faces_boundary` |
+| INV-19 | `tests/test_editor.py::test_a_save_turns_names_into_addresses` |
 | That the policies block Google's script, the players and a followed outside link in a browser | **nothing** in CI — by hand, in a preview of a page carrying them, in Chrome and Edge on the Windows box |
 | The script's timing, `pagehide` save and no two saves in flight (§ 4.7) | **nothing** in CI — by hand, typing and closing the tab mid-sentence |
 | That the box uses the site's font | **nothing** — read on the page |
