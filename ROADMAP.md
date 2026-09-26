@@ -7869,6 +7869,42 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
   Lanes: import.
 
+- 📋 [PRESS-0159] **On Windows a renamed entry file can be overwritten by a new entry, and the Store's name rules differ between the two systems.**
+  Confirmed on the Windows box 2026-09-26. Needs a PRESS-0005 amendment
+  and its gate, then code; recommended next, since #1 loses his words.
+
+  #1 (HIGH): exists() folds only the .txt suffix's case (PRESS-0005
+  section 4.3 says so). A file renamed to Seaside.txt leaves seaside
+  "free"; a new entry then replaces it, since NTFS matches names
+  without case (measured: the renamed file's text was replaced). Fold
+  the whole stem in exists(); the spec's "nothing writes over his
+  file" is false on Windows today.
+  #4: photograph_path_for uses the platform's basename, so on Windows
+  photo.jpg:x writes a hidden stream (measured) and nul.jpg reaches a
+  device (measured). Refuse :, a trailing dot or space and device
+  stems on every system.
+  #6: a UTF-8 byte-order mark (a Notepad option) turns the first
+  header into an unknown field, so the title silently moves to extra.
+  Drop one leading BOM on read; decide whether a write keeps it.
+  Also: settings.py has its own os.replace with the same Windows
+  refusal PRESS-0135 #2 fixed in the Store (error 5 while scanned).
+  **Layman:** On Windows, renaming an entry's file by hand and then starting a new entry can wipe out the renamed one; a few other file names behave differently on Windows too.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.
+  Lanes: store.
+
+- 📋 [PRESS-0160] **A fetch whose repository paths clash by case or are invalid on Windows is told to free disk space.**
+  publisher.fetch stages every repository path. Two differing only by
+  case land on one staged file on Windows, and a path Windows cannot
+  hold (: ? * a device name, a trailing dot) fails the write; both end
+  as FetchNotWritten, whose Face sentence says to free space. Needs a
+  type or sentence of its own in PRESS-0009, then a check of the
+  listing before staging that names the path.
+  **Layman:** Undo on Windows could fail with advice to free disk space when the real cause is two file names Windows cannot tell apart.
+  Kind: fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, #10.
+  Lanes: publisher.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
