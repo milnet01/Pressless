@@ -7715,7 +7715,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-25 making demo screenshots.
   Lanes: editor, builder.
 
-- 📋 [PRESS-0149] **SECURITY.md misses two trust boundaries and calls the project unreleased.**
+- ✅ [PRESS-0149] **SECURITY.md misses two trust boundaries and calls the project unreleased.**
   Its Trust boundaries section names four crossings. It leaves out
   the Face's own server on 127.0.0.1 (face.serve), which the browser
   drives and every other page in that browser can reach. It also
@@ -7724,10 +7724,30 @@ already-built code ships in whichever release comes next.
   names what crosses and what is checked there, per
   ~/.claude/standards/security.md section 1. "Supported versions"
   says no version is released; v0.1.0 to v0.1.2 are tagged.
+  Shipped 2026-09-26. SECURITY.md walks every row of security.md
+  section 1's table. Checked against code: the Face's checks against
+  PRESS-0011 section 4.5, the size and SHA-256 check in
+  updater._stream, and the installer's /bin/sh and PowerShell calls
+  (paths as arguments). A first draft said no shell was involved;
+  reading installer.py refuted it before commit. The draft also
+  exposed that runtime libraries carry floors only, now stated.
   **Layman:** The security page leaves out two ways data comes into Pressless, and it wrongly says no version has been released.
   Kind: doc-fix.
   Source: in-session-2026-09-26, from a peer session's security.md question.
   Lanes: docs.
+
+- 📋 [PRESS-0150] **A release bundles whatever library versions are newest, unpinned and unchecked.**
+  pyproject.toml gives keyring, Pillow, cryptography and certifi a
+  lowest version only, and the release workflow installs from that. So
+  two builds can ship different code, and nothing checks a downloaded
+  library's hash. Found walking SECURITY.md's Dependency row
+  (PRESS-0149). Needs a decision: pin with hashes for release builds
+  (a lock file the release job installs with --require-hashes), or
+  keep floors and say why.
+  **Layman:** The packaged app takes the newest version of each library it uses at build time, and nothing checks those downloads are genuine.
+  Kind: security.
+  Source: in-session-2026-09-26, PRESS-0149's boundary walk.
+  Lanes: packaging.
 
 ## Milestones
 
