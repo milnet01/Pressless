@@ -16,6 +16,25 @@ defending one requires. This file is only what an outside reader needs.
   none, in a file in Pressless's folder with owner-only permissions, which
   Pressless says plainly it fell back to
   (`docs/decisions/ADR-0003-where-the-key-lives.md`).
+- **The Face's own server on `127.0.0.1`.** The writer's browser drives
+  Pressless through it, and any page open in that browser can send it a
+  request. Each request must carry the per-run secret (as the link's query or
+  its cookie), a POST naming another origin is refused, and the `Host` header
+  must name the server exactly; `docs/specs/PRESS-0011-face.md` § 4.5.
+- **Self-update.** Pressless downloads a new release and replaces itself with
+  it. A release is trusted only through its signed list, checked against the
+  keys built into Pressless, and each download must match the size and
+  SHA-256 that list names; `docs/specs/PRESS-0023-self-update.md` § 4.3.
+- **Starting another program.** Open folder hands one path to the system's
+  own folder opener. An update runs a fixed script in `/bin/sh` or
+  PowerShell, and hands it each path as a separate argument, never as part
+  of the script's text.
+- **The libraries Pressless runs.** `keyring`, `Pillow`, `cryptography` and
+  `certifi` run inside it, and the packaged program bundles them.
+  `pyproject.toml` sets only a lowest version for each, so a build takes
+  whatever is newest above it; nothing pins them or checks their hashes.
+- **Privilege: none.** Pressless runs as the logged-on user and never asks
+  for more rights.
 - **Two third-party services over the network.** Pressless talks to GitHub
   to publish, and to Google Analytics to read visitor numbers. What comes
   back is treated as untrusted: paths taken from a GitHub reply are
@@ -31,8 +50,8 @@ defending one requires. This file is only what an outside reader needs.
 
 ## Supported versions
 
-Pressless has not reached 1.0 and has no released version yet. Until it
-does, fixes land on `main` and there is nothing older to support.
+Pressless has not reached 1.0. Only the latest release is supported, and
+fixes land on `main`.
 
 ## Reporting a vulnerability
 

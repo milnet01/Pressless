@@ -7672,7 +7672,7 @@ already-built code ships in whichever release comes next.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
   Lanes: Settings, Credentials, Insights, Store.
 
-- 📋 [PRESS-0147] **An entry's unknown publish outcome says when its working copy was left.**
+- ✅ [PRESS-0147] **An entry's unknown publish outcome says when its working copy was left.**
   The entry counterpart of PRESS-0144. publishing.publish runs step 5
   on OutcomeUnknown and drops finish()'s answer, so a working copy that
   could not be binned goes unmentioned. That matches PRESS-0013 as
@@ -7683,6 +7683,12 @@ already-built code ships in whichever release comes next.
   OutcomeUnknown carries whether the copy was kept, and the route adds
   a Notice with Site.UNKNOWN (PRESS-0145). Rare: it needs both an
   unknown outcome and a bin that cannot be written.
+  Shipped 2026-09-26. PRESS-0013 amended and re-gated: loop 3 one
+  finding fixed, loop 4 converged. publishing.publish adds
+  Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN) when finish() reports a
+  copy left. Proof: test_an_unknown_outcome_says_the_copy_was_left
+  failed on the old code with empty notices; a Site.UPDATED mutant
+  is killed; tests/test_publishing.py green.
   **Layman:** If Pressless cannot tell whether an entry went live and also cannot tidy away its saved changes, it should say so, as the page editor now does.
   Kind: fix.
   Source: in-session-2026-09-25 while scoping PRESS-0145.
