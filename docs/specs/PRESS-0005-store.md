@@ -44,6 +44,10 @@ both. PRESS-0001 §12 row 8 records it. **Amended 2026-09-11, before
 implementation**, on two decisions the user took: no message names a
 full path (PRESS-0117), and deleting moves a file into a bin through
 `move_to_bin` (PRESS-0099). Both change direction, so the gate re-armed.
+**Amended 2026-09-26, before implementation**, on two decisions the
+user took for PRESS-0159: `exists` folds the case of the whole name,
+not only the suffix's; and `read` drops a leading byte-order mark,
+which `write` never emits. Both change direction, so the gate re-armed.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -387,6 +391,14 @@ Every single newline is a line break.
 - **LF line endings, written explicitly.** Windows would otherwise
   write CRLF, and a changed line ending is a changed file to git — so
   every publish would look as though it had touched the whole site.
+- **A byte-order mark is not part of the file.** Notepad offers to
+  save UTF-8 with one: a `U+FEFF` before the first header line.
+  Kept, it becomes part of the first field's name, so `Title` routes
+  to `extra` and the entry loses its title in silence. `read` drops
+  one leading mark and reads the rest as usual. `write` never emits
+  one, so an entry saved that way loses the mark on its next save.
+  The rule is the reader's, so it reaches every file read through
+  `read`, a template included. *Agreed with the user 2026-09-26.*
 
 ### 4.3 Where the files sit
 
@@ -412,6 +424,27 @@ On Linux they were blind together — consistent, but the writer's file
 discoverable by neither. Two names differing only in the suffix's
 case — reachable on Linux only, never produced by the Store — name one
 slug, and `list_slugs` returns it once.
+
+**`exists` folds the case of the whole name, not only the suffix's.**
+Windows keeps a file's name as typed and matches it ignoring case, so
+a file hand-renamed to `Seaside.txt` is the file a write of `seaside`
+replaces there. Measured on the Windows box: the renamed file's text
+was replaced. So `exists` answers `True` for a file in either folder
+whose name, folded, is `<slug>.txt`, and a caller asking before it
+writes is told the address is taken. **Only `A`–`Z` fold.** A slug is
+all `a`–`z`, `0`–`9` and `-`, and Windows does not fold a look-alike
+such as the Kelvin sign, `U+212A`, into `k` (measured), so folding it would
+report an address taken that no write could reach. **The same answer
+on every system**: on Linux the two files could coexist, but one rule
+is what makes an entry that saves on one machine save on the other.
+
+**`list_slugs` does not fold the stem, so the two now differ in one
+direction only.** Every slug `list_slugs` returns, `exists` reports
+taken. A file whose stem folds to a slug but is not one — `Seaside` —
+is a name `path_for` refuses, so the listing passes it over and names
+it (INV-12) while `exists` still reports its address taken. That is
+the safe way round: the listing never offers a file `read` cannot
+open, and `exists` never offers an address a write would destroy.
 
 **`publish` and `unpublish` compose both paths with `path_for`, so a
 destination differing only in the suffix's case is not a collision they
@@ -863,6 +896,30 @@ is true of a template is PRESS-0006's (§9).
   bin's copy by the slug alone, so binning one slug twice overwrites the
   first.
 
+- **INV-15** — `exists(folder, slug)` answers `True` where either
+  folder holds a file whose name, with `A`–`Z` folded to `a`–`z`, is
+  `<slug>.txt`, and `False` where the only near match differs by a
+  character outside `A`–`Z`.
+  *Test:* `tests/test_store.py::test_exists_folds_the_whole_name` —
+  create `drafts/Seaside.txt` by hand and assert `exists` reports
+  `seaside` taken; the same for `published/SEASIDE.TXT`; then create
+  `drafts/` + `"Kelvin.txt"` and assert `kelvin` is not taken.
+  *Breaks when:* `exists` compares the stem exactly, which is the
+  shipped code and the Windows overwrite; or folds with `str.lower`
+  or `str.casefold`, both of which turn `U+212A` into `k`.
+
+- **INV-16** — A file that begins with one UTF-8 byte-order mark
+  reads as the same entry as the file without it, and `read` leaves
+  the file's bytes unchanged. No file `write` produces begins with
+  one.
+  *Test:* `tests/test_store.py::test_a_byte_order_mark_is_not_part_of_the_header`
+  — write an entry with a title, prefix its file with `EF BB BF`,
+  and assert `read` returns that title with `extra` empty and the
+  file's bytes as they were; then `write` the entry read and assert
+  the new file does not begin with the mark.
+  *Breaks when:* `read` decodes the mark as text, which routes
+  `Title` to `extra`; or `write` encodes with `utf-8-sig`.
+
 ## 6. Failure modes
 
 - **The handed folder does not exist.** `read` and `list_slugs` raise
@@ -917,7 +974,8 @@ is true of a template is PRESS-0006's (§9).
   which a hand-created or hand-renamed file produces. The listing passes
   it over and emits a `StoreNotice` naming it (INV-12). Nothing is
   raised and nothing is rewritten; the repair is the writer's, and it is
-  a rename.
+  a rename. Where the name folds to a slug, `exists` still reports that
+  address taken (§4.3, INV-15).
 - **A move that would leave two files naming one slug**, reachable on
   Linux where a hand-renamed `.TXT` sits at the destination. The move
   goes ahead and emits a `StoreNotice` naming both (INV-13).
@@ -1062,6 +1120,9 @@ imports.
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
 | INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
 | INV-14 | `tests/test_store.py::test_binning_keeps_the_bytes` and `::test_binning_refuses_a_path_outside_the_store` |
+| INV-15 | `tests/test_store.py::test_exists_folds_the_whole_name` |
+| INV-16 | `tests/test_store.py::test_a_byte_order_mark_is_not_part_of_the_header` |
+| That the file INV-15 reports taken is the one Windows would overwrite | **nothing** — this suite runs on Linux, where the two names are two files. Measured by hand on the Windows box for PRESS-0159; PRESS-0022's Windows run is where it could be observed |
 | §4.4's rule that no message or notice names a full path | `tests/test_failure_messages.py::test_no_store_failure_names_a_path`, which triggers each raising route and each notice under a temporary folder and asserts none names it |
 | The whole archive surviving a round trip (§7) | `tests/test_store_archive.py` — **but it skips wherever the export is absent OR no sibling generator is found at all (§7), so neither a green CI run nor a green push says anything about it. A generator that is present and will not serve — unloadable, renamed, or one of several candidates — FAILS rather than skipping (PRESS-0108)** |
 | That the slug stored here is the last segment of the address the live site serves (§3 decision 4) | **half** — the archive test proves the Store keeps whatever it was handed; nothing proves Import hands it the resolved value. PRESS-0007 is where that is decided |
