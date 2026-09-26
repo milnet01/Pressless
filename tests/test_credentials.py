@@ -873,7 +873,7 @@ def test_the_probe_is_deleted_from_the_member_that_held_it(monkeypatch):
 @pytest.mark.parametrize("content", [
     b"\xff\xfe not UTF-8",
     b"[" * 100_000 + b"]" * 100_000,
-])
+], ids=["not-utf8", "nested-too-deep"])
 def test_a_garbled_file_is_a_credential_error(tmp_path, content):
     """PRESS-0135 #21: a credentials file that is not UTF-8, or JSON nested
     deeper than the parser can follow, is refused as CredentialError like any
@@ -881,10 +881,16 @@ def test_a_garbled_file_is_a_credential_error(tmp_path, content):
 
     Breaks when the decode happens outside the guard that types the failure,
     or RecursionError is left out of it -- settings.py closed both routes.
+
+    On Windows the write is refused earlier, as NoStore: Pressless keeps no
+    secret in a file there (section 3 decision 1). Named ids, because the
+    nested case's generated id overflowed Windows' environment-variable limit
+    when pytest published it as PYTEST_CURRENT_TEST.
     """
     (tmp_path / FILE_NAME).write_bytes(content)
     with pytest.raises(CredentialError):
         read("file", tmp_path, "publishing-key")
-    with pytest.raises(CredentialError):
+    refusal = NoStore if credentials_module._is_windows() else CredentialError
+    with pytest.raises(refusal):
         write("file", tmp_path, "publishing-key", "a-secret")
     assert (tmp_path / FILE_NAME).read_bytes() == content, "a refused write replaced the file"

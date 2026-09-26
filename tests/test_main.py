@@ -205,12 +205,15 @@ def _try_lock(path) -> object | None:
     file, exclusive and non-blocking. The handle, or None where it is held."""
     handle = open(path, "a+b")  # noqa: SIM115 -- held open while the lock is
     try:
-        if sys.platform == "win32":
+        # The running system's call, as _hold chooses it: sys.platform may be
+        # a test's pretence here too.
+        try:
+            import fcntl
+        except ImportError:  # Windows
             import msvcrt
             handle.seek(0)
             msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
         else:
-            import fcntl
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         handle.close()
@@ -263,3 +266,18 @@ def test_there_is_no_other_flag(monkeypatch, tmp_path, capsys):
     with pytest.raises(SystemExit) as caught:
         main_module.main(["--something-else"])
     assert caught.value.code != 0
+
+
+@pytest.mark.parametrize("pretend", ["win32", "linux"])
+def test_the_folder_lock_is_this_systems_whatever_platform_a_test_pretends(
+        monkeypatch, tmp_path, pretend):
+    """The lock is taken with the call the RUNNING system provides. Tests set
+    sys.platform to exercise another system's paths (test_paths'
+    _frozen_linux), and a lock chosen from it imported fcntl on the Windows
+    runner, which has none -- three tests red there and on no Linux machine.
+
+    Breaks when _hold branches on sys.platform again."""
+    monkeypatch.setattr(sys, "platform", pretend)
+    held = main_module._hold(tmp_path)
+    assert held is not None, "the lock was refused in an empty folder"
+    held.close()

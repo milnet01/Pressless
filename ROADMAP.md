@@ -7997,6 +7997,25 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #4.
   Lanes: store, marks.
 
+- ✅ [PRESS-0165] **The Windows CI leg is green again, and the workflow gains a time limit and PR-only cancelling.**
+  Windows CI failed on every push from ea102f0 to 958bf81, while
+  Linux passed. Three causes, all in how tests met Windows:
+  _hold chose its lock from sys.platform, which test_paths'
+  _frozen_linux sets to linux, so it imported fcntl on the Windows
+  runner; it now uses whichever call the running system provides.
+  test_a_garbled_file_is_a_credential_error's nested case generated a
+  test id past Windows' environment-variable limit (named ids now),
+  and its write half met the file store's Windows refusal, NoStore,
+  which it now expects there.
+  ci.yml gains timeout-minutes and a concurrency group that cancels a
+  superseded pull-request run and never a run on main, after a survey
+  of the other projects' workflows. Nothing a standard requires was
+  missing.
+  **Layman:** The automatic Windows checks were failing because of how the tests pretended to be Linux; they pass again.
+  Kind: fix.
+  Source: user-request-2026-09-26.
+  Lanes: ci, main, credentials.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

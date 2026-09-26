@@ -99,18 +99,29 @@ def _unbundle_environment() -> None:
             os.environ[name] = before
 
 
+def _lock_now(handle: BinaryIO) -> None:
+    """Lock `handle` exclusively without waiting, or raise OSError.
+
+    Chosen by which call the running system provides, never by sys.platform:
+    tests set that to exercise another system's paths, and the lock must
+    still be this system's (the Windows runner has no fcntl).
+    """
+    try:
+        import fcntl
+    except ImportError:  # Windows
+        import msvcrt
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
 def _hold(folder: Path) -> BinaryIO | None:
     """The folder's lock, held for the life of the process (PRESS-0023 § 4.11),
     or None where another Pressless holds it. Never waits."""
     handle = open(folder / _LOCK_NAME, "a+b")  # noqa: SIM115 -- open while held
     try:
-        if sys.platform == "win32":
-            import msvcrt
-            handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _lock_now(handle)
     except OSError:
         handle.close()
         return None
