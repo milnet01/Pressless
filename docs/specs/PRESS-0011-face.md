@@ -1,6 +1,6 @@
 # PRESS-0011 — The Face: the local server, and the error contract every message keeps
 
-**Status:** draft (2026-09-26) — amended for PRESS-0151 (the session cookie and framing); accepted 2026-09-11 before that.
+**Status:** accepted (2026-09-26). Amended for PRESS-0151 (the session cookie and framing) and gated at one round by user decision; first accepted 2026-09-11.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -484,8 +484,10 @@ once the code lands, one mutation per *Breaks when* route.
 - PRESS-0012, PRESS-0013, PRESS-0018, PRESS-0020 and PRESS-0021 — each adds
   its pages through `add_page` and keeps § 4.4's `capture` rule.
 - PRESS-0073 — item 5 answered by § 3 decision 4.
-- PRESS-0012 § 4.3 — `FILES_POLICY` and the wrapped pages' policy gain
-  `frame-ancestors 'self'` (§ 4.5, PRESS-0151).
+- PRESS-0012 § 4.3 and its INV-8 and INV-9 — `FILES_POLICY` and the wrapped
+  pages' policy gain `frame-ancestors 'self'`, and a `Reply` and a file 404
+  are no longer sent bare: each carries `Content-Security-Policy:
+  frame-ancestors 'self'` (§ 4.5, PRESS-0151).
 - PRESS-0013 — replaces `pressless.__main__`'s body with a call to
   `face.serve`.
 - `CHANGELOG.md` — an Added entry when it ships.

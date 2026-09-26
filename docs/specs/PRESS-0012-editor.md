@@ -187,7 +187,8 @@ Locate = Callable[[str], Path]
 FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
                 "style-src 'self' 'unsafe-inline'; font-src 'self'; "
                 "script-src 'self'; connect-src 'self'; frame-src 'none'; "
-                "object-src 'none'; base-uri 'none'; form-action 'none'")
+                "object-src 'none'; base-uri 'none'; form-action 'none'; "
+                "frame-ancestors 'self'")
 
 def within(folder: Path) -> Locate: ...
 
@@ -196,10 +197,12 @@ class Face:
 ```
 
 **A page returning a `str`** is wrapped and sent as today, and now carries
-`Content-Security-Policy: frame-src 'self'`, so a frame on a Face page can only
-show an address the Face serves. **A page returning a
+`Content-Security-Policy: frame-src 'self'; frame-ancestors 'self'`, so a frame
+on a Face page can only show an address the Face serves, and no other origin
+can frame the page (PRESS-0011 § 4.5). **A page returning a
 `Reply`** is sent as it is: its status, its `Content-Type`, its `Location` when
-set, and `Cache-Control: no-store`.
+set, `Cache-Control: no-store` and `Content-Security-Policy: frame-ancestors
+'self'`.
 
 **`add_files`** answers `GET` requests whose path starts with `prefix`, which
 ends in `/`. A registered page's exact path is matched first; then the longest
@@ -510,7 +513,7 @@ made with `store.write_html`.
   from `mimetypes`.
 
 - **INV-9** — A `Reply` is sent as it is, and a `str` is still wrapped, now
-  with `Content-Security-Policy: frame-src 'self'`.
+  with `Content-Security-Policy: frame-src 'self'; frame-ancestors 'self'`.
   *Test:* `tests/test_face.py::test_a_reply_is_sent_as_given`. A 303 with a
   location, and a JSON body, arrive unwrapped with their status and type. A
   `str` page arrives wrapped and carries the header, written out in the test.
