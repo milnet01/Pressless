@@ -7785,6 +7785,8 @@ already-built code ships in whichever release comes next.
 
   Not fixed in the sweep's code pass because each changes a contract
   value the specs quote.
+  User 2026-09-26: one review-contract round each for the six owed
+  amendments (0151, 0152, 0154, 0155, 0160, 0164); this one first.
   **Layman:** Another program on the same computer could trick a click on Publish through a hidden frame, and the private link Pressless opens is also the key to the whole session.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Face, #17 and #20.
@@ -7838,6 +7840,9 @@ already-built code ships in whichever release comes next.
   GA4 documents (not set) for dimensions it cannot resolve. PRESS-0019
   never says what happens to one. Decide before PRESS-0020 draws
   flags: drop it, or keep it under a named unknown code.
+  Decided by the user 2026-09-26: keep such a value under one named
+  unknown entry with no flag, so the country figures still sum to the
+  total. One review-contract round for the PRESS-0019 amendment.
   **Layman:** The visitor map could be handed a country called (not set) and show a broken flag.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Insights, #32.
@@ -7854,6 +7859,8 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-26: decide markup the way WordPress
   did -- block content as-is, anything else through a
   wpautop-equivalent. Goes into PRESS-0125's spec.
+  Waits on PRESS-0125's spec, as decided; the current Import runs only
+  on the maintainer's machine, so nothing is built for it before then.
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
@@ -7868,6 +7875,7 @@ already-built code ships in whichever release comes next.
   report each skipped item. Mostly bites under PRESS-0125.
   Decided by the user 2026-09-26: carry pending and future posts
   as drafts, and say in the Report how each arrived.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
@@ -7881,6 +7889,7 @@ already-built code ships in whichever release comes next.
   the item and carry on.
   Decided by the user 2026-09-26: list the broken comment or
   missing original in the Report and carry on.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
@@ -7951,6 +7960,7 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-26: split at li, tr, td/th, hr and
   pre (keeping pre's newlines) in both the converter and
   visible_lines; drop script and style contents with a listing.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
   **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
