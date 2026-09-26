@@ -1607,3 +1607,29 @@ def test_a_write_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeyp
     assert handed, "mkstemp was never reached, so this test proved nothing"
     with pytest.raises(OSError):
         os.fstat(handed[0])
+
+
+def test_a_move_whose_source_cannot_be_removed_is_undone(tmp_path, monkeypatch):
+    """PRESS-0135 #3: the POSIX move links the target and then removes the
+    source. Where the removal fails, the entry sat in both folders while the
+    caller was told it had not moved -- one slug naming two files, which
+    docs/design.md rules out. The link is taken back first.
+
+    Breaks when the unlink's failure is raised with the link left in place.
+    """
+    monkeypatch.setattr(store_module, "_is_windows", lambda: False)
+    write(tmp_path, _entry("an-example"), draft=True)
+    source = path_for(tmp_path, "an-example", draft=True)
+    real = os.unlink
+
+    def refusing(path, *args, **kwargs):
+        if os.fspath(path) == os.fspath(source):
+            raise PermissionError(13, "held open")
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", refusing)
+    with pytest.raises(StoreError):
+        publish(tmp_path, "an-example")
+    monkeypatch.setattr(os, "unlink", real)
+    assert source.is_file()
+    assert not path_for(tmp_path, "an-example", draft=False).exists()

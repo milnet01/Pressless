@@ -184,7 +184,13 @@ def _move(folder: Path, entry: str | None) -> _Moved | None:
     marked = any(name == UNDONE for name, _ in draft.extra)
     dated = draft.date if marked else _now().replace(microsecond=0)
     store.write(folder, dataclasses.replace(draft, date=dated, extra=stripped), draft=True)
-    store.publish(folder, entry)
+    try:
+        store.publish(folder, entry)
+    except BaseException:
+        # Nothing is recorded to put back yet, so the rewrite is undone here; a
+        # failure writing it back is raised in its place (PRESS-0135).
+        store.write(folder, draft, draft=True)
+        raise
 
     def put_back() -> None:
         store.unpublish(folder, entry)

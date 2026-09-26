@@ -172,7 +172,8 @@ class _Changed:
 def _reconcile(folder: Path, state: _State, reversals: list[Callable[[], None]]) -> _Changed:
     """§ 4.4. Every write goes through the Store's own calls, never by copying
     bytes (§ 3 decision 11), and every removal is `store.move_to_bin` (§ 4.7).
-    Each branch records one reversal undoing everything that branch did."""
+    A reversal is recorded after each step succeeds, so a failure part-way
+    through a branch undoes exactly the steps that happened (PRESS-0135)."""
     changed = _Changed()
     published = set(store.list_slugs(folder, draft=False))
     drafts = set(store.list_slugs(folder, draft=True))
@@ -202,13 +203,9 @@ def _restore_over_published(folder: Path, slug: str, fetched: store.Entry,
     if remembered == fetched:
         return
     kept = _keep(folder, remembered, slug)
+    reversals.append(_bin_later(folder, kept, draft=True))
     store.write(folder, fetched, draft=False)
-
-    def back() -> None:
-        store.write(folder, remembered, draft=False)
-        store.move_to_bin(folder, store.path_for(folder, kept, draft=True))
-
-    reversals.append(back)
+    reversals.append(lambda: store.write(folder, remembered, draft=False))
     changed.kept.append(kept)
     changed.restored.append(slug)
 
@@ -220,18 +217,14 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
     — otherwise one slug would name two files, which docs/design.md rules out."""
     his = store.read(store.path_for(folder, slug, draft=True))
     kept = _keep(folder, his, slug)
+    reversals.append(_bin_later(folder, kept, draft=True))
     store.move_to_bin(folder, store.path_for(folder, slug, draft=True))
+    # His draft is written back rather than moved out of the bin: nothing
+    # moves a file out of the bin, and the binned copy is the spare copy of
+    # what is now back in place (§ 4.3 step 5).
+    reversals.append(lambda: store.write(folder, his, draft=True))
     store.write(folder, fetched, draft=False)
-
-    def back() -> None:
-        store.move_to_bin(folder, store.path_for(folder, slug, draft=False))
-        store.move_to_bin(folder, store.path_for(folder, kept, draft=True))
-        # His draft is written back rather than moved out of the bin: nothing
-        # moves a file out of the bin, and the binned copy is the spare copy of
-        # what is now back in place (§ 4.3 step 5).
-        store.write(folder, his, draft=True)
-
-    reversals.append(back)
+    reversals.append(_bin_later(folder, slug, draft=False))
     changed.kept.append(kept)
     changed.restored.append(slug)
 
@@ -242,16 +235,12 @@ def _demote(folder: Path, slug: str, reversals: list[Callable[[], None]],
     back into a draft carrying the mark (§ 4.4, § 4.5). It is never deleted."""
     remembered = store.read(store.path_for(folder, slug, draft=False))
     store.unpublish(folder, slug)
+    reversals.append(lambda: store.publish(folder, slug))
     marked = dataclasses.replace(
         remembered, extra=_without(remembered.extra, publishing.UNDONE)
         + ((publishing.UNDONE, publishing.undone_stamp()),))
     store.write(folder, marked, draft=True)
-
-    def back() -> None:
-        store.write(folder, remembered, draft=True)
-        store.publish(folder, slug)
-
-    reversals.append(back)
+    reversals.append(lambda: store.write(folder, remembered, draft=True))
     changed.demoted.append(slug)
 
 
@@ -274,9 +263,9 @@ def _restore_other_kinds(folder: Path, state: _State,
         if remembered is not None:
             store.move_to_bin(folder, path)
             reversals.append(lambda t=remembered: store.write_template(folder, t))
-        else:
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
         store.write_template(folder, template)
+        if remembered is None:
+            reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
     for slug, comments in sorted(state.comments.items()):
         path = store.comments_path_for(folder, slug)
@@ -287,9 +276,9 @@ def _restore_other_kinds(folder: Path, state: _State,
             store.move_to_bin(folder, path)
             reversals.append(
                 lambda s=slug, c=remembered: store.write_comments(folder, s, c))
-        else:
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
         store.write_comments(folder, slug, comments)
+        if remembered is None:
+            reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
 
 def _restore_html(folder: Path, kind: str, name: str, html: str,
@@ -301,9 +290,9 @@ def _restore_html(folder: Path, kind: str, name: str, html: str,
     if remembered is not None:
         store.move_to_bin(folder, path)
         reversals.append(lambda h=remembered: store.write_html(folder, kind, name, h))
-    else:
-        reversals.append(lambda p=path: store.move_to_bin(folder, p))
     store.write_html(folder, kind, name, html)
+    if remembered is None:
+        reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
 
 def _keep(folder: Path, entry: store.Entry, restored: str) -> str:

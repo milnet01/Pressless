@@ -14,6 +14,7 @@ look as though it had touched the whole site (§4.2).
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -459,7 +460,14 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
         os.rename(source, target)
         return
     os.link(source, target)
-    os.unlink(source)
+    try:
+        os.unlink(source)
+    except BaseException:
+        # Take the link back, so one slug never names a file in both folders
+        # while the caller reports the move as not made (PRESS-0135).
+        with contextlib.suppress(OSError):  # both stay; the failure raised says so
+            os.unlink(target)
+        raise
 
 
 def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:

@@ -427,3 +427,27 @@ def test_a_replaces_naming_a_plain_draft_is_not_a_copy(tmp_path, monkeypatch):
     assert published.body == "After."
     left = store.read(store.path_for(folder, "seaside", draft=True))
     assert left.body == "Mine." and left.date == datetime(2014, 11, 9, 21, 32)
+
+
+def test_a_move_that_cannot_publish_leaves_the_draft_as_it_was(tmp_path, monkeypatch):
+    """PRESS-0135 #26: step 1 rewrites an ordinary draft (dated, its marks
+    stripped) and then publishes it. Where that publish fails -- a slug already
+    published, a refused rename -- nothing had been recorded to put back, so
+    the draft stayed rewritten. It is written back before the failure is
+    raised.
+
+    Breaks when the draft is rewritten and not restored on a failed move.
+    """
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Mine.", extra=((publishing.UNDONE, "then"),)),
+                draft=True)
+    before = store.path_for(folder, "seaside", draft=True).read_bytes()
+
+    def refused(*args, **kwargs):
+        raise store.SlugInUse("seaside is already published")
+
+    monkeypatch.setattr(store, "publish", refused)
+    with pytest.raises(store.SlugInUse):
+        publishing.publish(folder, _settings(folder), "a-key", entry="seaside",
+                           transport=_github())
+    assert store.path_for(folder, "seaside", draft=True).read_bytes() == before

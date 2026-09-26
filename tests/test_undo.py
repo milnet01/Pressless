@@ -396,3 +396,71 @@ def test_the_key_is_never_shown(tmp_path, capfd):
         assert KEY not in logged.read_text("utf-8", errors="replace")
     printed = capfd.readouterr()
     assert KEY not in printed.out and KEY not in printed.err
+
+
+# ------------------------------------------------------------ PRESS-0135 ---
+
+
+_STORE_CALLS = ("write", "write_html", "write_template", "write_comments",
+                "move_to_bin", "unpublish", "publish")
+
+
+def test_a_failure_at_any_step_of_the_reconcile_puts_everything_back(tmp_path, monkeypatch):
+    """PRESS-0135 #23, #24: § 4.3 and § 6 -- a definite failure during the
+    reconcile runs the reversals recorded so far, so his files are as they
+    were. Every Store call the reconcile makes is failed in turn.
+
+    Breaks when a reversal is recorded before the step it undoes (it then
+    fails on a file that was never written and stops the rest), or only once
+    a whole branch has succeeded (a failure inside the branch is then never
+    reversed -- a demotion loses its Undone mark and nothing notices).
+    """
+    def stocked(where: Path) -> Path:
+        where.mkdir(parents=True, exist_ok=True)
+        folder = _folder(where)
+        store.write(folder, _entry("seaside", body="His newer words."), draft=False)
+        store.write(folder, _entry("harbour", body="Newer."), draft=False)
+        store.write(folder, _entry("tideline", body="His draft."), draft=True)
+        store.write_html(folder, store.PAGES_FOLDER, "about", "<p>His about.</p>")
+        return folder
+
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path,
+                        published=(_entry("seaside", body="The older words."),
+                                   _entry("tideline", body="The older tideline.")),
+                        pages=(("about", "<p>The older about.</p>"),
+                               ("contact", "<p>A page he no longer has.</p>")))}
+
+    real = {name: getattr(store, name) for name in _STORE_CALLS}
+    calls = []
+
+    def counting(name):
+        def call(*args, **kwargs):
+            calls.append(name)
+            if len(calls) == failing[0]:
+                raise OSError("the disk refused this one")
+            return real[name](*args, **kwargs)
+        return call
+
+    failing = [0]
+    for name in _STORE_CALLS:
+        monkeypatch.setattr(store, name, counting(name))
+    counted = stocked(tmp_path / "count")
+    calls.clear()
+    _undo(counted, _previous(files))
+    made = len(calls)
+    assert made > 5, f"the reconcile made only {made} Store calls; the fixture reaches too little"
+
+    for step in range(1, made + 1):
+        failing[0] = 0
+        folder = stocked(tmp_path / f"fail-{step}")
+        before = _files_under(folder)
+        calls.clear()
+        failing[0] = step
+        with pytest.raises(OSError):
+            _undo(folder, _previous(files))
+        after = _files_under(folder)
+        assert after == before, (
+            f"failing Store call {step} ({calls[step - 1]}) left "
+            f"{sorted(k for k in set(after) | set(before) if after.get(k) != before.get(k))}"
+        )
