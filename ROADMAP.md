@@ -7698,6 +7698,12 @@ already-built code ships in whichever release comes next.
   does on its first category. Decide between turning a typed category
   into an address and refusing it at save with a hint. That choice
   likely touches PRESS-0012 and PRESS-0008.
+  Decided by the user 2026-09-26: convert rather than refuse. The
+  editor converts each typed category and tag at save, with the rule
+  address_for applies to a title, and the box then shows the converted
+  form. Tags are included: they become folder names too. A name that
+  converts to nothing refuses the save with a message naming it. Only
+  PRESS-0012 changes; the Builder and the file format stay as they are.
   **Layman:** Typing a category the way you would write it, such as "Poems", stops Pressless building your site; it should either accept it or say so when you type it.
   Kind: ux.
   Source: in-session-2026-09-25 making demo screenshots.
