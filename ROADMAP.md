@@ -7811,7 +7811,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Builder, #12.
   Lanes: builder.
 
-- 📋 [PRESS-0153] **Setup can succeed into an endless "enter your key again" where the keyring chain reads from a different member than it wrote to.**
+- 🚫 [PRESS-0153] **Setup can succeed into an endless "enter your key again" where the keyring chain reads from a different member than it wrote to.**
   credentials.choose() names the store by walking the chain's members,
   but read() goes through the whole chain. A chain where an earlier
   member answers reads while a later one takes the write would make
@@ -7819,6 +7819,16 @@ already-built code ships in whichever release comes next.
   any real chain behave so? Measure on the development machine and
   the Windows box first; the fix, if real, is choose() reading its
   probe back through keyring.get_keyring().
+  Measured 2026-09-26: no defect. keyring's ChainerBackend writes to the
+  first member that does not raise NotImplementedError and reads from the
+  first that returns non-None, so a read can miss a write only where a
+  member ABOVE the write target refuses writes yet answers reads. On the
+  development machine a probe written through the chain landed in kwallet
+  DBusKeyring and read back through the chain; the packaged 0.1.2
+  self-check also reports kwallet DBusKeyring. Windows has the single
+  WinVaultKeyring (PRESS-0120). Side fact: openSUSE's keyring-keyutils
+  OscKernelKeyringBackend answers a read for an absent key with a callable
+  object, which _read_keyring already treats as NotStored.
   **Layman:** On some computers the saved publishing key might never be found again, and nothing tells setup so.
   Kind: investigate.
   Source: review-code 2026-09-26 PRESS-0135 lane Setup, #22.
