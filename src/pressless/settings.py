@@ -16,6 +16,7 @@ import re
 import stat
 import sys
 import tempfile
+import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -384,7 +385,7 @@ def save(folder: Path, settings: Settings) -> None:
             # and leave an empty file where §4.4 promises the previous one (PRESS-0039).
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, target)
+        _windows_patient(lambda: os.replace(temporary, target))
     except OSError as exc:
         _discard(temporary)
         raise SettingsError(
@@ -393,6 +394,27 @@ def save(folder: Path, settings: Settings) -> None:
     except BaseException:
         _discard(temporary)
         raise
+
+
+# Windows refuses to replace a file another program holds open -- its own
+# scanners open what was just written for a moment -- where Linux does not
+# (measured on the Windows box: error 5). A short wait clears that; a file
+# marked read-only is refused throughout and fails as before (PRESS-0159).
+# The Store carries the same helper; INV-1 keeps this module from importing it.
+_WINDOWS_TRIES = 10
+_WINDOWS_PAUSE = 0.1
+
+
+def _windows_patient(step) -> None:
+    """Run `step`, retrying a PermissionError for a moment on Windows only."""
+    for attempt in range(_WINDOWS_TRIES):
+        try:
+            step()
+            return
+        except PermissionError:
+            if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
+                raise
+            time.sleep(_WINDOWS_PAUSE)
 
 
 def _is_windows() -> bool:

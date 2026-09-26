@@ -1175,3 +1175,39 @@ def test_a_refusal_of_the_file_itself_names_no_key(tmp_path):
         with pytest.raises(SettingsError) as refused:
             load(tmp_path)
         assert refused.value.key is None, broken
+
+
+@pytest.mark.parametrize("refusals, written", [(2, True), (50, False)])
+def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch,
+                                                           refusals, written):
+    """PRESS-0159: on Windows, replacing a file another program holds open --
+    Defender or the search indexer scanning what was just written -- fails
+    with access denied (measured on the Windows box: error 5), where Linux
+    succeeds. The Store retries for a moment there (PRESS-0135 #2); the
+    settings save had its own os.replace and did not. One still refused
+    after the wait is a SettingsError, as before, and nothing was replaced.
+
+    Breaks when the first refusal is final on Windows.
+    """
+    monkeypatch.setattr(settings_module, "_is_windows", lambda: True)
+    monkeypatch.setattr(settings_module.time, "sleep", lambda seconds: None)
+    _write(tmp_path, _valid_mapping())
+    before = load(tmp_path)
+    real = os.replace
+    left = [refusals]
+
+    def held(source, target):
+        if left[0]:
+            left[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "replace", held)
+    after = dataclasses.replace(before, repository="someone/else.github.io")
+    if written:
+        save(tmp_path, after)
+    else:
+        with pytest.raises(SettingsError):
+            save(tmp_path, after)
+    monkeypatch.setattr(os, "replace", real)
+    assert (load(tmp_path).repository == after.repository) is written
