@@ -19,6 +19,7 @@ import re
 import threading
 import unicodedata
 import urllib.parse
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -52,6 +53,10 @@ class TooManyCopies(Exception):
     """Two drafts replace one published entry (§ 4.1)."""
 
 
+class LeftOut(store.StoreNotice):
+    """A typed category or tag with nothing an address can keep (§ 4.8)."""
+
+
 # Added here rather than in face.py, which cannot import this module back
 # (§ 4.1).
 SENTENCES[ChangedElsewhere] = Sentence(
@@ -78,10 +83,14 @@ _HTML = "text/html; charset=utf-8"
 
 def address_for(title: str) -> str:
     """A new entry's address, from its title (§ 4.1)."""
-    text = "".join(ch for ch in title if unicodedata.category(ch) not in ("Cc", "Cf"))
+    return name_address(title) or UNTITLED
+
+
+def name_address(name: str) -> str:
+    """`address_for`'s rule for a category or tag; "" where nothing is left."""
+    text = "".join(ch for ch in name if unicodedata.category(ch) not in ("Cc", "Cf"))
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = re.sub(r"[^a-z0-9]+", "-", text.lower())[:LONGEST_ADDRESS].strip("-")
-    return text or UNTITLED
+    return re.sub(r"[^a-z0-9]+", "-", text.lower())[:LONGEST_ADDRESS].strip("-")
 
 
 def free_address(folder: Path, wanted: str) -> str:
@@ -170,8 +179,33 @@ def _form(request: Request) -> dict[str, str]:
     return {name: values[0] for name, values in fields.items()}
 
 
-def _list_of(value: str) -> tuple[str, ...]:
-    return tuple(part.strip() for part in value.split(",") if part.strip())
+def _usable(folder: Path, name: str) -> bool:
+    """Whether the Store takes `name` as an address; the Builder asks the same."""
+    try:
+        store.path_for(folder, name, draft=False)
+    except store.StoreError:  # a capital, a space, or a Windows device name
+        return False
+    return True
+
+
+def _names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
+    """§ 4.8 step 3: a part the Store takes is kept, any other becomes an
+    address, and repeats are dropped. A part that leaves nothing the Store would
+    take is left out, and a notice names it."""
+    names: list[str] = []
+    for part in value.split(","):
+        typed = part.strip()
+        if not typed:
+            continue
+        name = typed if _usable(folder, typed) else name_address(typed)
+        usable = bool(name) and _usable(folder, name)
+        if not usable:
+            warnings.warn(LeftOut(
+                f"\u201c{typed}\u201d was left out of the {box}: Pressless cannot "
+                "make it part of a web address. Give it another name."), stacklevel=2)
+        elif name not in names:
+            names.append(name)
+    return tuple(names)
 
 
 def _preview(face: Face, folder: Path, entry: store.Entry, *, draft: bool
@@ -393,8 +427,8 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
     body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
     written = store.Entry(
         slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
-        categories=_list_of(form.get("categories", "")),
-        tags=_list_of(form.get("tags", "")), body=body, extra=extra)
+        categories=_names_of(folder, form.get("categories", ""), "categories"),
+        tags=_names_of(folder, form.get("tags", ""), "tags"), body=body, extra=extra)
     return written, _digest(store.write(folder, written, draft=True))
 
 

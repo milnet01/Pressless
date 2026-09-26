@@ -411,3 +411,25 @@ def test_the_editor_sits_behind_the_faces_boundary(tmp_path):
         assert store.read(store.path_for(folder, "draft", draft=True)).body == "Words."
         assert browser.request("POST", "/save", form)[0] == 200
     assert store.read(store.path_for(folder, "draft", draft=True)).body == "Saved at last."
+
+
+# ----------------------------------------------------------------- INV-19 ---
+
+
+def test_a_save_turns_names_into_addresses(tmp_path):
+    """§ 4.8 step 3: a typed category or tag is stored as an address, and a part
+    that leaves nothing usable is left out with a notice naming it (PRESS-0148)."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft"), draft=True)
+    with _editor(folder) as browser:
+        status, _, text = browser.save("draft", True, _base(folder, "draft", draft=True),
+                                       categories="Poems, Short Stories, poems, !!!, Con, a--b",
+                                       tags="Live Shows")
+    assert status == 200, text
+    reply = json.loads(text)
+    saved = store.read(store.path_for(folder, "draft", draft=True))
+    assert saved.categories == ("poems", "short-stories", "a--b")
+    assert saved.tags == ("live-shows",)
+    notices = html.unescape(reply["notices"])
+    assert "!!!" in notices and "Con" in notices, notices
+    assert reply["failure"] is None and reply["preview"], reply
