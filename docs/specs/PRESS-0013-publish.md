@@ -302,8 +302,10 @@ does.
   entry is published, the copy is binned, and the reply's fragment says the
   outcome is unknown.
   *Test:* `test_an_unknown_outcome_says_the_copy_was_left`. The same, with
-  `store.move_to_bin` made to raise. The copy stays, and the reply's
-  `notices` carries the unknown-outcome sentence and not the success one.
+  `store.move_to_bin` made to raise. The copy stays. The reply's `notices`
+  says the waiting draft was left in place, with `Site.UNKNOWN`'s words, and
+  carries neither § 4.2's note for a copy kept on success nor
+  `Site.UPDATED`'s words.
   *Breaks when:* every `PublishError` is put back, or step 5's answer is
   dropped on an unknown outcome.
 
