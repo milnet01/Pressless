@@ -294,10 +294,10 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     """
     folder = Path(folder)
     if not folder.is_dir():
-        # rglob on a missing directory yields nothing and raises nothing, so
-        # without this `local` is empty, §4.4 reads every unprotected remote
-        # path as a deletion the writer asked for, and the wipe is reported
-        # as a successful publish (PRESS-0043).
+        # Checked first and typed: a walk that read a missing folder as empty
+        # would have §4.4 read every unprotected remote path as a deletion
+        # the writer asked for, and report the wipe as a successful publish
+        # (PRESS-0043).
         raise SiteFolderMissing(
             "the site folder is not a directory, so there is nothing to publish"
         )
@@ -741,6 +741,25 @@ def _blobs_in(listing: dict) -> dict[str, str]:
     }
 
 
+def _is_link(path: Path) -> bool:
+    """A symlink, or on Windows a directory junction, which is_symlink() does
+    not see and is_dir() follows (PRESS-0135)."""
+    return path.is_symlink() or path.is_junction()
+
+
+def _entries(folder: Path) -> list[Path]:
+    """Every path under `folder`, sorted, never descending into a link: rglob
+    walks into a junction before anything could refuse it (§4.4, PRESS-0135)."""
+    found: list[Path] = []
+    pending = [folder]
+    while pending:
+        for path in pending.pop().iterdir():
+            found.append(path)
+            if not _is_link(path) and path.is_dir():
+                pending.append(path)
+    return sorted(found)
+
+
 def _refuse_if_stray(relative: str, path: Path) -> None:
     """§4.4: the site folder is Pressless's alone, so a stray refuses.
 
@@ -751,12 +770,12 @@ def _refuse_if_stray(relative: str, path: Path) -> None:
     The caller has already established this path is not under an untouchable
     first segment -- those are not Pressless's to refuse over either.
     """
-    if path.is_symlink():
+    if _is_link(path):
         # Classified BEFORE it is followed. is_dir() and is_file() both
         # follow the link, so a symlinked directory would otherwise be
         # descended into and its target published to a public site (§4.4).
         raise StrayFile(
-            f"{relative} in the site folder is a symlink, which the Builder "
+            f"{relative} in the site folder is a link, which the Builder "
             f"does not produce -- the folder is Pressless's alone, so the "
             f"publish is refused rather than sending it"
         )
@@ -786,11 +805,11 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, bytes]
     one would fail a publish on a file already decided to be left alone.
     """
     files = {}
-    for path in sorted(folder.rglob("*")):
+    for path in _entries(folder):
         relative = path.relative_to(folder).as_posix()
         if not _is_protected(relative, untouchable):
             _refuse_if_stray(relative, path)
-        if path.is_symlink() or not path.is_file():
+        if _is_link(path) or not path.is_file():
             # A protected symlink is left where it is rather than read:
             # reading follows the link (PRESS-0069). A directory carries no
             # bytes of its own.

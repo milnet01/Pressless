@@ -1633,3 +1633,37 @@ def test_a_move_whose_source_cannot_be_removed_is_undone(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "unlink", real)
     assert source.is_file()
     assert not path_for(tmp_path, "an-example", draft=False).exists()
+
+
+@pytest.mark.parametrize("refusals, written", [(2, True), (50, False)])
+def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch,
+                                                           refusals, written):
+    """PRESS-0135 #2: on Windows, replacing a file another program holds open --
+    Defender or the search indexer scanning what was just written -- fails
+    with access denied (measured on the Windows box: error 5), where Linux
+    succeeds. A save is retried for a moment there; one still refused after
+    that is a StoreError, as before, and nothing was replaced.
+
+    Breaks when the first refusal is final on Windows.
+    """
+    monkeypatch.setattr(store_module, "_is_windows", lambda: True)
+    monkeypatch.setattr(store_module.time, "sleep", lambda seconds: None)
+    write(tmp_path, _entry("an-example", body="Before."), draft=True)
+    real = os.replace
+    left = [refusals]
+
+    def held(source, target):
+        if left[0]:
+            left[0] -= 1
+            raise PermissionError(13, "Access is denied")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "replace", held)
+    after = _entry("an-example", body="After.")
+    if written:
+        write(tmp_path, after, draft=True)
+    else:
+        with pytest.raises(StoreError):
+            write(tmp_path, after, draft=True)
+    body = path_for(tmp_path, "an-example", draft=True).read_text(encoding="utf-8")
+    assert ("After." in body) is written, body

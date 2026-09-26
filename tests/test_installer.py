@@ -190,3 +190,24 @@ def test_windows_helper(tmp_path, monkeypatch):
         installer.apply_windows(program, staged, folder)
     assert not staged.exists()
     assert {p for p in tmp_path.iterdir() if p.suffix == ".ps1"} == scripts
+
+
+def test_windows_helper_starts_outside_the_folder_it_renames(tmp_path, monkeypatch):
+    """PRESS-0135 #27: Windows will not rename a folder that is any live
+    process's working folder (measured on the Windows box: error 32). The
+    helper inherited Pressless.exe's, which is the Pressless folder itself
+    when he starts the exe directly, so every rename retry failed and nothing
+    restarted. It starts in the folder above instead.
+
+    Breaks when Popen is handed no cwd, or the program's own folder.
+    """
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    staged = tmp_path / "Pressless.new-c"
+    (staged / "Pressless").mkdir(parents=True)
+    spawned = _Spawned(monkeypatch)
+    installer.apply_windows(program, staged, folder)
+    [(_, kwargs)] = spawned.calls
+    assert Path(kwargs.get("cwd") or "") == program.parent, kwargs.get("cwd")

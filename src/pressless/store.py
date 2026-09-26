@@ -21,6 +21,7 @@ import re
 import stat
 import sys
 import tempfile
+import time
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
@@ -438,6 +439,26 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
             )
 
 
+# Windows refuses to replace or rename a file another program holds open -- its
+# own scanners open what was just written for a moment -- where Linux does not
+# (measured on the Windows box: error 5). A short wait clears that; a file
+# marked read-only is refused throughout and fails as before (PRESS-0135).
+_WINDOWS_TRIES = 10
+_WINDOWS_PAUSE = 0.1
+
+
+def _windows_patient(step) -> None:
+    """Run `step`, retrying a PermissionError for a moment on Windows only."""
+    for attempt in range(_WINDOWS_TRIES):
+        try:
+            step()
+            return
+        except PermissionError:
+            if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
+                raise
+            time.sleep(_WINDOWS_PAUSE)
+
+
 def _move_without_overwriting(source: Path, target: Path) -> None:
     """Move `source` onto `target`, refusing rather than replacing it.
 
@@ -457,7 +478,7 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
     visible rather than quiet.
     """
     if _is_windows():
-        os.rename(source, target)
+        _windows_patient(lambda: os.rename(source, target))
         return
     os.link(source, target)
     try:
@@ -1273,7 +1294,7 @@ def _write_atomically(
             # and leave an empty file where §4.5 promises the previous one (PRESS-0039).
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, target)
+        _windows_patient(lambda: os.replace(temporary, target))
     # UnicodeError joins OSError because INV-9 covers it: text UTF-8 cannot
     # encode -- a lone surrogate in a body -- is a value the format cannot
     # carry, and the up-front check cannot see it, since it inspects header

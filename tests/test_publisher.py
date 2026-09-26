@@ -2315,3 +2315,39 @@ def test_a_refused_object_write_is_not_a_moved_branch(tmp_path, step):
     with pytest.raises(PublishError) as raised:
         publish(_settings(), tmp_path, "a-token", "message", transport=transport)
     assert not isinstance(raised.value, Conflict), raised.value
+
+
+def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
+    """PRESS-0135 #8: a Windows directory junction is not a symlink to
+    is_symlink(), and it answers is_dir(), so the walk descended into it and
+    published whatever it pointed at -- the thing §4.4's symlink rule exists
+    to stop. It is refused like a symlink, before anything under it is read.
+
+    Linux has no junctions, so the one here is a directory Path.is_junction
+    reports as one; the target is reachable only through it.
+
+    Breaks when the walk or the stray check asks is_symlink() alone.
+    """
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_text("not for the site", encoding="utf-8")
+    folder = tmp_path / "site"
+    folder.mkdir()
+    (folder / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    junction = folder / "joined"
+    junction.symlink_to(outside, target_is_directory=True)
+    real_is_symlink = Path.is_symlink
+    monkeypatch.setattr(Path, "is_symlink",
+                        lambda self: False if self == junction else real_is_symlink(self))
+    monkeypatch.setattr(Path, "is_junction", lambda self: self == junction, raising=False)
+    read = []
+    real_read = Path.read_bytes
+    monkeypatch.setattr(Path, "read_bytes", lambda self: (read.append(self), real_read(self))[1])
+
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+    with pytest.raises(StrayFile) as caught:
+        publish(_settings(), folder, "a-token", "message", transport=transport)
+    assert "joined" in str(caught.value), caught.value
+    assert not any(outside in p.parents for p in read), read
+    assert _no_writes(transport)

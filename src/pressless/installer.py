@@ -101,7 +101,11 @@ if (Test-Path -LiteralPath $newBatch) {
 }
 Forget $old
 Forget $Staged
-Start-Process -FilePath $batch -WorkingDirectory $home_
+# Not Start-Process: it reads -FilePath as a wildcard, so a folder name
+# holding [ ] could not be started (PRESS-0135).
+$start = New-Object Diagnostics.ProcessStartInfo
+$start.FileName = $batch; $start.WorkingDirectory = $home_; $start.UseShellExecute = $true
+[void][Diagnostics.Process]::Start($start)
 Stamp 'started'
 Forget $PSCommandPath
 """
@@ -190,6 +194,9 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
         subprocess.Popen(  # noqa: S603 -- a fixed script; every path is an argument
             [_powershell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
              "-File", str(script), str(program), str(staged), str(log)],
+            # Not the program's own folder: Windows refuses to rename a folder
+            # that is a live process's working folder (PRESS-0135).
+            cwd=str(Path(program).parent),
             creationflags=flags, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL)
     except OSError as exc:
