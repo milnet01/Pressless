@@ -22,6 +22,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from _face_session import session_cookie
 
 from pressless import builder, credentials, face, settings, setup, store
 
@@ -111,10 +112,9 @@ class _Browser:
         parts = urllib.parse.urlsplit(served.url)
         assert parts.port is not None
         self.port = parts.port
-        secret = urllib.parse.parse_qs(parts.query)["t"][0]
         self.host = f"127.0.0.1:{self.port}"
         self.origin = f"http://{self.host}"
-        self.cookie = f"pressless-{self.port}={secret}"
+        self.cookie = session_cookie(served.url)
 
     def _send(self, method: str, body: bytes, *, cookie: bool, origin: str | None
               ) -> tuple[int, str]:

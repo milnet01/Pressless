@@ -323,7 +323,8 @@ Locate = Callable[[str], Path]
 FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
                 "style-src 'self' 'unsafe-inline'; font-src 'self'; "
                 "script-src 'self'; connect-src 'self'; frame-src 'none'; "
-                "object-src 'none'; base-uri 'none'; form-action 'none'")
+                "object-src 'none'; base-uri 'none'; form-action 'none'; "
+                "frame-ancestors 'self'")
 
 
 # A fixed table rather than `mimetypes`, which reads the Windows registry and so
@@ -345,7 +346,12 @@ _FILE_TYPES = {
 
 # Every wrapped page carries this, so a frame on a Face page can only show an
 # address the Face serves: a link followed in the preview never leaves.
-_FRAMES_POLICY = "frame-src 'self'"
+_FRAMES_POLICY = "frame-src 'self'; frame-ancestors 'self'"
+
+# Every other answer carries this alone. A page on another 127.0.0.1 port is
+# the same site, so a frame of the Face would carry the cookie and its clicks
+# the Face's own Origin (PRESS-0011 § 4.5).
+_ANCESTORS_POLICY = "frame-ancestors 'self'"
 
 
 def within(folder: Path) -> Locate:
@@ -493,6 +499,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        if not any(name == "Content-Security-Policy" for name, _ in headers):
+            self.send_header("Content-Security-Policy", _ANCESTORS_POLICY)
         for name, value in headers:
             self.send_header(name, value)
         self.end_headers()
@@ -507,7 +515,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except http.cookies.CookieError:
             return False
         morsel = jar.get(face._cookie)
-        return morsel is not None and _is_secret(morsel.value, face._secret)
+        return morsel is not None and _is_secret(morsel.value, face._session)
 
     def _dispatch(self, method: str) -> None:
         face = self.server.face
@@ -517,10 +525,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         parts = urllib.parse.urlsplit(self.path)
         query = dict(urllib.parse.parse_qsl(parts.query))
         if method == "GET" and "t" in query:
-            if not _is_secret(query["t"], face._secret):
+            # The link is honoured once: it reached the browser on its command
+            # line, so it must not stay the key for the whole run (§ 4.5).
+            with face._link_lock:
+                honoured = not face._link_spent and _is_secret(query["t"], face._secret)
+                face._link_spent = face._link_spent or honoured
+            if not honoured:
                 self._refuse()
                 return
-            cookie = f"{face._cookie}={face._secret}; HttpOnly; SameSite=Strict; Path=/"
+            cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"
             self._send(
                 303,
                 "",
@@ -609,6 +622,11 @@ class Face:
         self._folder = Path(folder)
         self._log = log.open_log(self._folder)
         self._secret = secrets.token_urlsafe(32)
+        self._session = secrets.token_urlsafe(32)
+        while self._session == self._secret:
+            self._session = secrets.token_urlsafe(32)
+        self._link_spent = False
+        self._link_lock = threading.Lock()
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
         self._files: dict[str, Locate] = {}
         self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}

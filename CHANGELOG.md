@@ -95,6 +95,16 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   Now the first Publish puts one file of the site in by itself, then
   publishes the rest as usual. The writer does nothing extra.
 
+### Security
+
+- **Another program on your computer can no longer frame Pressless's pages, and the link Pressless opens works only once** (PRESS-0151)
+  A page served by another program on your own computer could show
+  Pressless inside a hidden frame and trick a click on Publish or Undo.
+  Every answer now forbids that. The private link Pressless opens in
+  your browser is also no longer the key for the whole session: it is
+  traded once for a separate key, so reading it from the list of
+  running programs gets nobody in.
+
 ## [0.1.2] - 2026-09-18
 
 ### Added

@@ -19,6 +19,7 @@ import urllib.parse
 from pathlib import Path
 
 import pytest
+from _face_session import follow_link, session_cookie
 
 import pressless
 from pressless import credentials, face, insights, publisher, store
@@ -61,14 +62,15 @@ def _log_text(folder: Path) -> str:
 class _Client:
     """Talks to a served Face with every header under the test's control."""
 
-    def __init__(self, served: face.Face) -> None:
+    def __init__(self, served: face.Face, *, follow: bool = True) -> None:
+        """`follow=False` leaves the link unspent, for a test that spends it."""
         parts = urllib.parse.urlsplit(served.url)
         assert parts.port is not None
         self.port = parts.port
         self.secret = urllib.parse.parse_qs(parts.query)["t"][0]
         self.host = f"127.0.0.1:{self.port}"
         self.origin = f"http://{self.host}"
-        self.cookie = f"pressless-{self.port}={self.secret}"
+        self.cookie = session_cookie(served.url) if follow else ""
 
     def request(
         self,
@@ -210,23 +212,34 @@ def test_the_server_answers_only_its_own_origin(
     monkeypatch.setattr(face, "_open_folder", opened.append)
     served = face.serve(tmp_path, open_browser=False)
     try:
-        client = _Client(served)
+        client = _Client(served, follow=False)
         assert urllib.parse.urlsplit(served.url).hostname == "127.0.0.1"
         # Bound to 127.0.0.1 alone, so another loopback address is refused.
         with pytest.raises(OSError):
             socket.create_connection(("127.0.0.2", client.port), timeout=2).close()
 
         assert client.request("GET", "/", cookie=False)[0] == 403
+        assert client.request("GET", "/?t=wrong", cookie=False)[0] == 403
 
-        status, headers, _ = client.request("GET", f"/?t={client.secret}", cookie=False)
+        status, headers = follow_link(served.url)
         assert status in (302, 303)
         set_cookie = headers.get("Set-Cookie", "")
-        assert set_cookie.startswith(f"pressless-{client.port}={client.secret}")
+        name, _, value = set_cookie.split(";", 1)[0].partition("=")
+        assert name == f"pressless-{client.port}"
+        # The session is not the link's secret: the link sits on the browser's
+        # command line, where another account can read it (§ 3 decision 3).
+        assert value and value != client.secret
         assert "HttpOnly" in set_cookie and "SameSite=Strict" in set_cookie
         assert headers.get("Location") == "/"
 
-        assert client.request("GET", "/?t=wrong", cookie=False)[0] == 403
+        client.cookie = f"{name}={value}"
         assert client.request("GET", "/")[0] == 200
+        # The link is spent, and its secret is never a session.
+        assert follow_link(served.url)[0] == 403
+        assert client.request("GET", f"/?t={client.secret}")[0] == 403
+        secret_as_cookie = _Client(served, follow=False)
+        secret_as_cookie.cookie = f"{name}={client.secret}"
+        assert secret_as_cookie.request("GET", "/")[0] == 403
         assert client.request("GET", "/", host="pressless.example")[0] == 403
         status = client.request("POST", "/folder/open", origin="http://127.0.0.1:1")[0]
         assert status == 403
@@ -311,8 +324,8 @@ def test_the_secret_is_never_printed_or_logged(
     capfd.readouterr()
     served = face.serve(tmp_path, open_browser=False)
     try:
-        client = _Client(served)
-        client.request("GET", f"/?t={client.secret}", cookie=False)
+        client = _Client(served, follow=False)
+        client.cookie = session_cookie(served.url)
         client.request("GET", "/")
     finally:
         served.stop()
@@ -325,9 +338,10 @@ def test_the_secret_is_never_printed_or_logged(
 FILES_POLICY_WORDS = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
     "font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'none'; "
-    "object-src 'none'; base-uri 'none'; form-action 'none'"
+    "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
 )
-FRAMES_POLICY_WORDS = "frame-src 'self'"
+FRAMES_POLICY_WORDS = "frame-src 'self'; frame-ancestors 'self'"
+ANCESTORS_WORDS = "frame-ancestors 'self'"
 
 
 def test_files_never_leave_their_folder(tmp_path: Path) -> None:
@@ -415,6 +429,50 @@ def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
         served.stop()
 
 
+def _raises(request: face.Request) -> str:
+    raise RuntimeError("a page that fails")
+
+
+def test_no_other_origin_can_frame_the_face(tmp_path: Path) -> None:
+    """PRESS-0011 INV-10. A page on another 127.0.0.1 port is the same site, so
+    a frame of a Face page carries the cookie and its clicks carry the Face's
+    own Origin (PRESS-0151). Every answer path names frame-ancestors 'self'.
+
+    Breaks when one answer path is left without the directive.
+    """
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    (mounted / "page.html").write_bytes(b"<p>x</p>")
+    served = face.serve(tmp_path / "own", open_browser=False)
+    try:
+        served.add_files("/m/", face.within(mounted))
+        served.add_page("GET", "/data", lambda request: face.Reply(
+            b"{}", "application/json"))
+        served.add_page("GET", "/fails", _raises)
+        link_status, link_headers = follow_link(served.url)
+        client = _Client(served, follow=False)
+        client.cookie = link_headers["Set-Cookie"].split(";", 1)[0]
+        answers = {
+            "the link's redirect": (link_status, link_headers),
+            "a wrapped page": client.request("GET", "/")[:2],
+            "a page that raises": client.request("GET", "/fails")[:2],
+            "a file": client.request("GET", "/m/page.html")[:2],
+            "a Reply": client.request("GET", "/data")[:2],
+            "a 403": client.request("GET", "/", cookie=False)[:2],
+            "a 404": client.request("GET", "/nowhere")[:2],
+            "a file 404": client.request("GET", "/m/absent.html")[:2],
+            "the folder's location": client.request("GET", "/folder/location")[:2],
+        }
+        for what, (status, headers) in answers.items():
+            policy = headers.get("Content-Security-Policy", "")
+            directives = [d.strip() for d in policy.split(";")]
+            assert "frame-ancestors 'self'" in directives, (what, status, policy)
+            assert [d for d in directives if d.startswith("frame-ancestors")] == [
+                "frame-ancestors 'self'"], (what, policy)
+    finally:
+        served.stop()
+
+
 def test_a_non_ascii_secret_is_refused_not_dropped(tmp_path: Path) -> None:
     """PRESS-0135 #16: § 4.5 refuses a wrong secret with 403. A link or cookie
     carrying a non-ASCII character is a wrong secret too; compare_digest raises
@@ -425,7 +483,7 @@ def test_a_non_ascii_secret_is_refused_not_dropped(tmp_path: Path) -> None:
     """
     served = face.serve(tmp_path, open_browser=False)
     try:
-        client = _Client(served)
+        client = _Client(served, follow=False)
         assert client.request("GET", "/?t=%C3%A9", cookie=False)[0] == 403
         client.cookie = f"pressless-{client.port}=é"
         assert client.request("GET", "/")[0] == 403

@@ -7765,7 +7765,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-26, PRESS-0149's boundary walk.
   Lanes: packaging.
 
-- 📋 [PRESS-0151] **The Face can be framed by another local page, and its session cookie is the reusable link secret.**
+- ✅ [PRESS-0151] **The Face can be framed by another local page, and its session cookie is the reusable link secret.**
   From the PRESS-0135 review-code sweep (lane Face, findings #17 and
   #20). Both change PRESS-0011, so they share one spec gate.
 
@@ -7787,6 +7787,12 @@ already-built code ships in whichever release comes next.
   value the specs quote.
   User 2026-09-26: one review-contract round each for the six owed
   amendments (0151, 0152, 0154, 0155, 0160, 0164); this one first.
+  Shipped 2026-09-26. PRESS-0011 amended and gated (loop-log row 4,
+  one round, two lanes, one Q2 fixed); PRESS-0012 took the write-back.
+  face.py: a session cookie of its own, the link spent on first use under
+  a lock, frame-ancestors 'self' on every answer. INV-5 widened, INV-10
+  added; six mutations, one per route, each killed. Gate 542 passed, 1
+  skipped. A real browser's refusal of the frame is unchecked (§ 10).
   **Layman:** Another program on the same computer could trick a click on Publish through a hidden frame, and the private link Pressless opens is also the key to the whole session.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Face, #17 and #20.

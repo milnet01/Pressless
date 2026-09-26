@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from _face_session import session_cookie
 
 from pressless import editor, face, settings, store
 
@@ -39,10 +40,9 @@ class _Browser:
         parts = urllib.parse.urlsplit(served.url)
         assert parts.port is not None
         self.port = parts.port
-        secret = urllib.parse.parse_qs(parts.query)["t"][0]
         self.host = f"127.0.0.1:{self.port}"
         self.origin = f"http://{self.host}"
-        self.cookie = f"pressless-{self.port}={secret}"
+        self.cookie = session_cookie(served.url)
 
     def request(self, method: str, path: str, form: dict[str, str] | None = None, *,
                 cookie: bool = True, origin: str | None = "own"

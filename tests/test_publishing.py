@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from _face_session import session_cookie
 from test_publisher import _listing, _reads, _Transport, _tree_creation_paths, _writes
 
 from pressless import builder, credentials, editor, face, publisher, publishing, settings, store
@@ -93,8 +94,7 @@ class _Browser:
         parts = urllib.parse.urlsplit(served.url)
         self.port = parts.port
         self.host = f"127.0.0.1:{self.port}"
-        secret = urllib.parse.parse_qs(parts.query)["t"][0]
-        self.cookie = f"pressless-{self.port}={secret}"
+        self.cookie = session_cookie(served.url)
 
     def publish(self, slug: str, draft: bool, base: str, *, body: str | None = None,
                 folder: Path) -> tuple[int, str]:
