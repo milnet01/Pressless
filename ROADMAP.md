@@ -7757,6 +7757,31 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-26, PRESS-0149's boundary walk.
   Lanes: packaging.
 
+- 📋 [PRESS-0151] **The Face can be framed by another local page, and its session cookie is the reusable link secret.**
+  From the PRESS-0135 review-code sweep (lane Face, findings #17 and
+  #20). Both change PRESS-0011, so they share one spec gate.
+
+  #17: no Face answer carries frame-ancestors or X-Frame-Options.
+  PRESS-0011 section 4.5 treats a page on another 127.0.0.1 port as
+  hostile but same-site; such a page can frame a Face page, cookie and
+  all, and trick a click on Publish, Undo or Update now, whose POSTs
+  then carry the Face's own Origin. Fix: frame-ancestors 'self' in
+  FILES_POLICY and the wrapped pages' policy (PRESS-0011, PRESS-0012
+  section 4.3 quote both).
+
+  #20: the link carrying the secret is passed to the browser launcher
+  as an argument (visible in another account's process list on a
+  shared Linux machine), and the cookie IS that secret, reusable for
+  the whole run. Fix (spec): honour t once and issue a separate random
+  cookie value.
+
+  Not fixed in the sweep's code pass because each changes a contract
+  value the specs quote.
+  **Layman:** Another program on the same computer could trick a click on Publish through a hidden frame, and the private link Pressless opens is also the key to the whole session.
+  Kind: security.
+  Source: review-code 2026-09-26 PRESS-0135 lane Face, #17 and #20.
+  Lanes: face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
