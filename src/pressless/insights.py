@@ -451,10 +451,14 @@ def _number(holder: dict, what: str) -> int:
 
 def _parse(data: bytes) -> dict:
     try:
-        parsed = json.loads(data or b"{}")
+        parsed = json.loads(data)
     except ValueError as exc:
         raise InsightsError(f"Google's answer is not valid JSON: {exc}") from exc
-    return parsed if isinstance(parsed, dict) else {}
+    if not isinstance(parsed, dict):
+        # Never coerced to an empty answer: that reads as nobody visiting, and
+        # is cached as fresh (INV-13, PRESS-0135).
+        raise InsightsError(f"Google's answer is a {type(parsed).__name__}, not an object")
+    return parsed
 
 
 def _windows(target: Path) -> dict:

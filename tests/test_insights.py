@@ -1694,3 +1694,19 @@ def test_a_refused_header_keeps_the_key_out_of_the_traceback(header):
 
     printed = "".join(traceback.format_exception(raised.value))
     assert "THE-PUBLISHING-KEY" not in printed, printed
+
+
+@pytest.mark.parametrize("body", [b"", b"null", b"[]", b'"a string"'])
+def test_an_answer_that_is_not_an_object_is_refused(tmp_path, body):
+    """PRESS-0135 #30: § 6 refuses an answer that is not JSON. An empty body or
+    a JSON value that is not an object read as an empty answer instead -- zero
+    people, no countries, fresh -- and was cached for the hour: the harm INV-13
+    names, a broken answer reading as a site nobody visited. INV-26's zero is
+    for an OBJECT carrying neither rows nor a total, which still reads as zero.
+
+    Breaks when a non-object answer is coerced to an empty one.
+    """
+    transport = _Transport(default=_ok(body))
+    with pytest.raises(InsightsError):
+        read(_settings(), "a-token", tmp_path, client=transport)
+    assert not cache_path(tmp_path).exists(), "a refused answer was cached"
