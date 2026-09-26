@@ -1,7 +1,6 @@
 # PRESS-0013 — Publish: one button writes, builds and publishes, and the double-click opens Pressless
 
-**Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
-verified finding fixed, none left in the tail.
+**Status:** accepted (2026-09-26). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail. Re-gated for PRESS-0147 over two more loops; converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0013 (`docs/design.md` § What may depend on what
 rules 1, 9 and 10; discovery S1, S6).
