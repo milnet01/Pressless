@@ -1443,6 +1443,28 @@ def test_a_stranded_file_is_reported(tmp_path):
     assert f"moved{_SUFFIX.upper()}" in said, "the notice did not name the stranded file"
 
 
+def test_a_stem_case_twin_is_reported(tmp_path):
+    """INV-13 with section 4.3's fold: a twin differing in the STEM's case
+    -- a published entry the writer renamed to Moved.txt -- is a second file
+    naming the slug too, and the move names it. exists() calls that address
+    taken, so a notice that stayed silent would disagree with it.
+
+    Breaks when the twin check folds only the suffix."""
+    _require_hard_links(tmp_path)
+    _require_distinct_case(tmp_path)
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    stranded = tmp_path / _PUBLISHED
+    stranded.mkdir(exist_ok=True)
+    (stranded / f"Moved{_SUFFIX}").write_text("the writer's own copy")
+
+    with pytest.warns(StoreNotice) as caught:
+        target = publish(tmp_path, "moved")
+
+    assert target.is_file(), "the publish did not go through"
+    said = " ".join(str(each.message) for each in caught)
+    assert f"Moved{_SUFFIX}" in said, "the notice did not name the stranded file"
+
+
 def test_a_wider_grant_is_reported(tmp_path, monkeypatch):
     """INV-11's notice half: where the mount granted a mode wider than
     owner-only, write says so and completes.
@@ -1667,3 +1689,81 @@ def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch
             write(tmp_path, after, draft=True)
     body = path_for(tmp_path, "an-example", draft=True).read_text(encoding="utf-8")
     assert ("After." in body) is written, body
+
+
+# The Kelvin sign, U+212A. Python's lower() and casefold() both turn it into
+# "k"; Windows keeps it a separate file name (measured, PRESS-0159). Spelled
+# as an escape so the fixture cannot be mistaken for an ASCII K.
+_KELVIN_SIGN = "\u212a"
+
+
+def test_exists_folds_the_whole_name(tmp_path):
+    """INV-15: exists() reports an address taken where either folder holds a
+    file whose name, with A-Z folded, is <slug>.txt -- and not where the only
+    near match differs by a character outside A-Z.
+
+    Windows keeps a name as typed and matches it ignoring case, so a file the
+    writer renamed to Seaside.txt is the file a write of `seaside` replaces
+    there (measured on the Windows box, PRESS-0159).
+
+    Breaks when exists compares the stem exactly, which is the Windows
+    overwrite; or folds with str.lower or str.casefold, which turn the Kelvin
+    sign into k."""
+    drafts = tmp_path / _DRAFTS
+    published = tmp_path / _PUBLISHED
+    drafts.mkdir()
+    published.mkdir()
+    (drafts / f"Seaside{_SUFFIX}").write_text("the writer's own file")
+    (published / f"HARBOUR{_SUFFIX.upper()}").write_text("the writer's own file")
+    (drafts / f"{_KELVIN_SIGN}elvin{_SUFFIX}").write_text("a look-alike")
+
+    assert exists(tmp_path, "seaside"), "a renamed draft left its address free"
+    assert exists(tmp_path, "harbour"), "a renamed published entry left its address free"
+    assert not exists(tmp_path, "kelvin"), "a look-alike outside A-Z took the address"
+
+
+def test_a_byte_order_mark_is_not_part_of_the_header(tmp_path):
+    """INV-16: a file beginning with one UTF-8 byte-order mark reads as the
+    same entry as the file without it, and reading leaves its bytes alone; no
+    file write() produces begins with one.
+
+    Notepad offers to save UTF-8 with a mark. Kept, it becomes part of the
+    first field's name, so Title routes to extra and the entry loses its title
+    in silence (PRESS-0159).
+
+    Breaks when read decodes the mark as text, or write encodes with
+    utf-8-sig."""
+    mark = b"\xef\xbb\xbf"
+    entry = _entry(slug="marked", title="A title")
+    path = write(tmp_path, entry, draft=True)
+    marked = mark + path.read_bytes()
+    path.write_bytes(marked)
+
+    back = read(path)
+    assert back.title == "A title", back
+    assert back.extra == (), back.extra
+    assert path.read_bytes() == marked, "reading changed the file"
+
+    again = write(tmp_path, back, draft=True)
+    assert not again.read_bytes().startswith(mark), "write emitted a byte-order mark"
+
+
+def test_a_look_alike_is_not_a_stranded_twin(tmp_path):
+    """INV-13 with section 4.3's fold: the twin check folds A-Z only, so a
+    move beside a file whose name differs by a look-alike outside A-Z emits no
+    notice -- that file is not the entry, which is what exists() says too.
+
+    Breaks when the twin check folds with str.lower or str.casefold, which
+    turn the Kelvin sign into k and tell the writer an unrelated file names
+    the same entry."""
+    _require_hard_links(tmp_path)
+    write(tmp_path, _entry(slug="kelvin"), draft=True)
+    beside = tmp_path / _PUBLISHED
+    beside.mkdir(exist_ok=True)
+    (beside / f"{_KELVIN_SIGN}elvin{_SUFFIX}").write_text("a look-alike")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", StoreNotice)
+        target = publish(tmp_path, "kelvin")
+
+    assert target.is_file(), "the publish did not go through"

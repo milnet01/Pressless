@@ -865,8 +865,7 @@ is true of a template is PRESS-0006's (§9).
   moves anyway.
   *Test:* `tests/test_store.py::test_a_stranded_file_is_reported` —
   write a draft, create `published/<slug>.TXT` by hand, call `publish`,
-  and again with a stem-case twin such as `Seaside.txt`; each time
-  assert it returned, that both files are present, and that a
+  and assert it returned, that both files are present, and that a
   notice naming the stranded one was emitted.
   **Asserting the notice alone is not enough:** it passes against an
   implementation that warns and then raises `SlugInUse`, which is the
@@ -1122,7 +1121,7 @@ imports.
 | INV-11 | `tests/test_store.py::test_a_written_entry_is_owner_only`, plus `::test_a_wider_grant_is_reported`, `::test_an_ordinary_write_emits_no_notice` and `::test_no_notice_where_the_platform_is_windows` for the notice half. None of the three skips — each patches what it needs. The second is what stops an inverted or over-broad condition passing; the third exercises §4.5's platform discriminator, and `::test_a_grant_wider_only_for_the_owner_is_not_reported` pins the predicate as any group or other bit. `::test_the_notice_names_no_path` holds the naming clause |
 | INV-11's owner-only outcome on Windows, and that `mkstemp` never grants `0600` there | **nothing** — neither can be observed from Linux, and PRESS-0022's Windows run is the only place they could be. The suppression BRANCH is checked by the row above; its premise is not |
 | INV-12 | `tests/test_store.py::test_a_listing_returns_only_usable_names` |
-| INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported` |
+| INV-13 | `tests/test_store.py::test_a_stranded_file_is_reported`, plus `::test_a_stem_case_twin_is_reported` for a `Moved.txt` twin and `::test_a_look_alike_is_not_a_stranded_twin` for the A–Z-only fold |
 | INV-14 | `tests/test_store.py::test_binning_keeps_the_bytes` and `::test_binning_refuses_a_path_outside_the_store` |
 | INV-15 | `tests/test_store.py::test_exists_folds_the_whole_name` |
 | INV-16 | `tests/test_store.py::test_a_byte_order_mark_is_not_part_of_the_header` |

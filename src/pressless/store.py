@@ -116,12 +116,14 @@ def exists(folder: Path, slug: str) -> bool:
     offering a new entry and PRESS-0007 before writing an imported one,
     and Import writes both folders in one pass (§4.1).
 
-    Answered from the same matcher `list_slugs` uses rather than by composing
-    the name and asking the platform: composing it made the two disagree on
-    Windows, where the filesystem resolves `<slug>.TXT` for one and the
-    listing could not see it (§4.3, PRESS-0067). The slug is still refused
-    here where it is illegal, so a caller handed a name the writer typed gets
-    a `StoreError` rather than `False`.
+    Answered from the folder's own names rather than by composing the name
+    and asking the platform, which resolves `<slug>.TXT` on Windows and not
+    on Linux (§4.3, PRESS-0067). The WHOLE name is folded, A-Z only: Windows
+    matches a hand-renamed `Seaside.txt` to `seaside` and a write of that slug
+    replaces it, while a look-alike such as the Kelvin sign stays a separate
+    file there (measured, PRESS-0159). The slug is still refused here where
+    it is illegal, so a caller handed a name the writer typed gets a
+    `StoreError` rather than `False`.
     """
     _refuse_illegal_slug(slug, "a slug")
     return any(slug in _slugs_in(folder, draft=draft) for draft in (False, True))
@@ -146,34 +148,42 @@ def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:
 
 
 def _slugs_in(handed: Path, *, draft: bool) -> set[str]:
-    """Every slug one folder holds (§4.3).
+    """Every address one folder's files take, folded A-Z (§4.3, INV-15).
 
-    Shared by `list_slugs` and `exists` so the two cannot disagree about
-    whether an address is taken -- §4.3 makes them one rule, and two copies of
-    a matcher are two matchers that will diverge. That disagreement is what
-    PRESS-0067 was: `exists` composed the name through the platform, which
-    resolves `<slug>.TXT` on Windows, while the listing compared the suffix
-    exactly and could not see it.
+    `exists`'s alone. `list_slugs` does not fold the stem -- `Seaside.txt` is
+    a name `path_for` refuses, so the listing passes it over and names it
+    (INV-12) while this still reports `seaside` taken. That is the safe way
+    round, and §4.3 states it.
 
-    A set, because two names differing only in the suffix's case name one
-    slug and §4.3 returns it once. A missing subfolder holds nothing: the
-    folders are the Store's own layout, so a fresh install needs no setup
-    step for them (§6).
+    A set, because names differing only in case take one address. A missing
+    subfolder holds nothing: the folders are the Store's own layout, so a
+    fresh install needs no setup step for them (§6).
     """
     subfolder = Path(handed) / (DRAFTS_FOLDER if draft else PUBLISHED_FOLDER)
     if not subfolder.is_dir():
         return set()
-    suffix = FILE_SUFFIX.lower()
     return {
-        path.name[: -len(FILE_SUFFIX)]
+        _folded(path.name)[: -len(FILE_SUFFIX)]
         for path in subfolder.iterdir()
         # Longer than the suffix, because a file named exactly ".txt" leaves
         # an empty slug -- which path_for refuses, so a listing carrying one
         # cannot be handed back to the Store (PRESS-0067).
         if path.is_file()
         and len(path.name) > len(FILE_SUFFIX)
-        and path.name.lower().endswith(suffix)
+        and _folded(path.name).endswith(FILE_SUFFIX)
     }
+
+
+# A-Z to a-z and nothing else (§4.3). str.lower and str.casefold also fold
+# look-alikes -- the Kelvin sign becomes "k" -- which Windows keeps as separate
+# file names (measured, PRESS-0159), so they would report an address taken
+# that no write could reach.
+_A_TO_Z = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _folded(name: str) -> str:
+    """`name` with A-Z folded to a-z, as Windows compares a file name."""
+    return name.translate(_A_TO_Z)
 
 
 def read(path: Path) -> Entry:
@@ -200,6 +210,10 @@ def read(path: Path) -> Entry:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+    # Notepad offers to save UTF-8 with a byte-order mark. Kept, it becomes
+    # part of the first field's name and the title moves to extra in silence.
+    # One is dropped; write never emits one (§4.2, INV-16).
+    text = text.removeprefix("﻿")
 
     # A blank line ends the header, and a Windows editor spells that line
     # "\r\n\r\n" -- which contains no "\n\n" at all, so looking only for the
@@ -420,7 +434,8 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
     renamed himself block a publish, with nothing to do about it but rename
     the file back.
 
-    The comparison is case-FOLDED over the destination folder's file names.
+    The comparison is §4.3's A-Z fold over the destination folder's file
+    names, the one `exists` uses, so a look-alike is not called a twin.
     `_slugs_in` is not the mechanism: it returns slugs rather than names, so it
     can say a twin exists and cannot say what it is called -- and the notice
     has to name it.
@@ -429,7 +444,7 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
     if not folder.is_dir():
         return
     for path in folder.iterdir():
-        if path.name != target.name and path.name.lower() == target.name.lower():
+        if path.name != target.name and _folded(path.name) == _folded(target.name):
             warnings.warn(
                 f"{path.name} names the same entry as {target.name} and is not the "
                 f"file Pressless reads; after this move the folder holds both, "
