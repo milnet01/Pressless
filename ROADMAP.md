@@ -7909,6 +7909,11 @@ already-built code ships in whichever release comes next.
   whatever the file held; a photograph name is refused for everything
   Windows forbids, on every system; settings.py's save takes the
   Store's Windows retry in this item.
+  Narrowed 2026-09-26 by the user's choice: #4 moved to its own item,
+  PRESS-0164. This item keeps #1, #6 and the settings retry.
+  Measured on the Windows box the same day: only a-z fold with A-Z;
+  a look-alike such as the Kelvin sign stays a separate file, so the
+  fold in exists() is ASCII-only.
   **Layman:** On Windows, renaming an entry's file by hand and then starting a new entry can wipe out the renamed one; a few other file names behave differently on Windows too.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.
@@ -7970,6 +7975,27 @@ already-built code ships in whichever release comes next.
   Kind: ux.
   Source: user-request-2026-09-26.
   Lanes: face.
+
+- 📋 [PRESS-0164] **A photograph's name is refused wherever Windows would not keep it, on every system, and Marks refuses the same names.**
+  Split from PRESS-0159 #4 on 2026-09-26 to spend one spec gate at a
+  time. The rule is PRESS-0006 INV-11's, and PRESS-0004 section 4.1
+  promises Marks is at least as strict, so marks.py's _PHOTO_ARG must
+  tighten with it. Amend PRESS-0006 and gate it; PRESS-0004 then takes
+  the reviewed decision as a write-back.
+  Decided by the user 2026-09-26: refuse everything Windows forbids --
+  colon, a trailing dot or space, the characters < > " | ? * and
+  control characters, and device names -- on every system.
+  Measured on the Windows box 2026-09-26 with CreateFileW: devices are
+  con, prn, aux, nul, com1-9, lpt1-9, conin$, conout$ and the
+  superscript com and lpt 1-3; the test is the part before the first
+  dot with trailing spaces removed, case ignored, so nul .jpg,
+  nul.tar.gz and con .x.jpg reach a device. com0, lpt0 and clock$ are
+  ordinary files. A trailing dot or space is dropped silently, so
+  dot.jpg. is saved as dot.jpg.
+  **Layman:** Some picture names that work on Linux would hide or lose the picture on Windows; those names get refused everywhere.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Store, #4.
+  Lanes: store, marks.
 
 ## Milestones
 
