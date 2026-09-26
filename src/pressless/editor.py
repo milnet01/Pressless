@@ -625,23 +625,35 @@ _EDITOR_SCRIPT = """
   });
   window.addEventListener("pagehide", () => {
     if (stopped || inFlight || !dirty) return;
-    fetch("/save", {method: "POST", body: fields(), keepalive: true});
+    fetch("/save", {method: "POST", body: fields(), keepalive: true}).catch(() => {});
+  });
+  // A keepalive request carries at most 64 KiB, so a larger unsaved change
+  // cannot be sent as the page goes; the browser asks before leaving instead
+  // (PRESS-0135).
+  window.addEventListener("beforeunload", (event) => {
+    if (!stopped && dirty && new Blob([fields().toString()]).size > 60000) {
+      event.preventDefault();
+    }
   });
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
     clearTimeout(timer);
     while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
+    // A save queued while this runs waits for it: it would post the address
+    // and base the publish is about to move (PRESS-0135).
+    inFlight = true;
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = "Publishing\u2026 this can take a few minutes the first time. " +
       "Keep this page open.";
     try {
-      const answer = await fetch("/publish", {method: "POST", body: fields()});
+      const body = fields();
+      dirty = false;
+      const answer = await fetch("/publish", {method: "POST", body: body});
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = ""; stop(text); return; }
       const reply = JSON.parse(text);
-      dirty = false;
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
@@ -650,21 +662,33 @@ _EDITOR_SCRIPT = """
       said.textContent = ""; stop("");
     } finally {
       publish.disabled = false;
+      inFlight = false;
+      if (dirty && !stopped) schedule();
     }
   });
 
   const button = document.querySelector("button[data-editor=address]");
   if (button) {
     button.addEventListener("click", async () => {
-      const data = new URLSearchParams();
-      data.set("slug", state.slug); data.set("base", state.base);
-      data.set("address", document.querySelector("input[name=address]").value);
-      const answer = await fetch("/address", {method: "POST", body: data});
-      const text = await answer.text();
-      if (answer.status !== 200) { stop(text); return; }
-      const reply = JSON.parse(text);
-      document.getElementById("address-hint").textContent = reply.hint || "";
-      if (!reply.hint) adopt(reply);
+      // Settle first: the address change reads the base a save in flight is
+      // about to replace (PRESS-0135).
+      clearTimeout(timer);
+      while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
+      if (dirty && !stopped) await save();
+      if (stopped) return;
+      try {
+        const data = new URLSearchParams();
+        data.set("slug", state.slug); data.set("base", state.base);
+        data.set("address", document.querySelector("input[name=address]").value);
+        const answer = await fetch("/address", {method: "POST", body: data});
+        const text = await answer.text();
+        if (answer.status !== 200) { stop(text); return; }
+        const reply = JSON.parse(text);
+        document.getElementById("address-hint").textContent = reply.hint || "";
+        if (!reply.hint) adopt(reply);
+      } catch (error) {
+        stop("");
+      }
     });
   }
 })();

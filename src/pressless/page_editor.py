@@ -617,7 +617,15 @@ _PAGE_SCRIPT = """
   form.addEventListener("input", () => { dirty = true; schedule(); });
   window.addEventListener("pagehide", () => {
     if (stopped || inFlight || !dirty) return;
-    fetch("/page/save", {method: "POST", body: fields(), keepalive: true});
+    fetch("/page/save", {method: "POST", body: fields(), keepalive: true}).catch(() => {});
+  });
+  // A keepalive request carries at most 64 KiB, so a larger unsaved change
+  // cannot be sent as the page goes; the browser asks before leaving instead
+  // (PRESS-0135).
+  window.addEventListener("beforeunload", (event) => {
+    if (!stopped && dirty && new Blob([fields().toString()]).size > 60000) {
+      event.preventDefault();
+    }
   });
   document.querySelectorAll("a[data-page-link]").forEach((link) => {
     link.addEventListener("click", async (event) => {
@@ -631,16 +639,21 @@ _PAGE_SCRIPT = """
   publish.addEventListener("click", async () => {
     clearTimeout(timer);
     while (inFlight) await inFlight;
+    // A save queued while this runs waits for it: it would post the waiting
+    // copy the publish is about to bin (PRESS-0135).
+    let published;
+    inFlight = new Promise((resolve) => { published = resolve; });
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = "Publishing\\u2026 this can take a few minutes the first time. " +
       "Keep this page open.";
     try {
-      const answer = await fetch("/page/publish", {method: "POST", body: fields()});
+      const body = fields();
+      dirty = false;
+      const answer = await fetch("/page/publish", {method: "POST", body: body});
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = ""; stop(text); return; }
       const reply = JSON.parse(text);
-      dirty = false;
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
@@ -649,6 +662,9 @@ _PAGE_SCRIPT = """
       said.textContent = ""; stop("");
     } finally {
       publish.disabled = false;
+      inFlight = null;
+      published();
+      if (dirty && !stopped) schedule();
     }
   });
 })();
