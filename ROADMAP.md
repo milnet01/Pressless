@@ -7986,6 +7986,11 @@ already-built code ships in whichever release comes next.
   label still says plainly what it does. First step is a proposed label
   list for the user to approve; nothing on screen changes before that.
   A renamed label is also a docs change wherever the old one is quoted.
+  Decided by the user 2026-09-26, a light touch: Publish becomes
+  "Press to site", "Undo the last publish" becomes "Undo the last
+  press", Preview becomes "Proof (preview)", and "Throw away changes"
+  becomes "Bin this proof". Drafts, New entry, Archive and Settings
+  stay plain.
   **Layman:** Buttons get playful, press-themed names that still say exactly what they do.
   Kind: ux.
   Source: user-request-2026-09-26.

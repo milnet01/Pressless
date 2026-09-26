@@ -1,6 +1,6 @@
 # PRESS-0011 — The Face: the local server, and the error contract every message keeps
 
-**Status:** accepted (2026-09-11). One cold-eyes loop by user instruction, folded in, nothing deferred; not converged, and no cold read has seen the fixes.
+**Status:** draft (2026-09-26) — amended for PRESS-0151 (the session cookie and framing); accepted 2026-09-11 before that.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -48,6 +48,13 @@ server they sit on and the error contract every page keeps.
    every launch, so nobody bookmarks the address.
 3. **(decided here) Every request carries a secret made at launch.** Without
    it, any page he visits can send requests to the server through his browser.
+   **Amended 2026-09-26 (PRESS-0151, decided by the user):** the opening link's
+   secret is honoured once and traded for a session cookie of its own. The
+   link reaches the browser on its command line, where another account on a
+   shared machine can read it, so it must not stay the key for the whole run.
+7. **(decided 2026-09-26, PRESS-0151) No other origin may frame a Face page.**
+   A page on another `127.0.0.1` port is the same site, so a frame of a Face
+   page carries the cookie and its clicks carry the Face's own `Origin`.
 4. **(decided here) The Face never formats a failure's cause, context or
    traceback.** This answers PRESS-0073 item 5.
 5. **(decided here) The folder buttons never put the path in the page.**
@@ -225,11 +232,24 @@ capture, it lands on that request's list.
 - `http.server.ThreadingHTTPServer` bound to `("127.0.0.1", 0)`, so the
   system picks the port. Run in a background thread; `stop` shuts it down.
 - **The secret** is `secrets.token_urlsafe(32)`, made by `serve`. `url` is
-  `http://127.0.0.1:<port>/?t=<secret>`. A GET carrying `t` is checked
-  against the secret: the right one gets `Set-Cookie: pressless-<port>=<secret>;
-  HttpOnly; SameSite=Strict; Path=/` and a redirect to the same path without
-  the query, and a wrong one is refused with 403 whatever cookie it carries.
-  Every other request must carry that cookie, or it is refused with 403.
+  `http://127.0.0.1:<port>/?t=<secret>`. **The session** is a second
+  `secrets.token_urlsafe(32)`, made at the same time and never equal to the
+  secret. A GET carrying `t` is checked against the secret: the right one,
+  the first time, gets `Set-Cookie: pressless-<port>=<session>; HttpOnly;
+  SameSite=Strict; Path=/` and a redirect to the same path without the query.
+  **The link is then spent**: a later GET carrying the right `t` is refused
+  with 403, as a wrong one is, whatever cookie it carries. The check and the
+  spending happen under one lock, so two racing requests cannot both win.
+  Every other request must carry the session cookie, or it is refused with
+  403. The secret itself is never accepted as a cookie.
+- **Every answer's `Content-Security-Policy` carries `frame-ancestors
+  'self'`.** `FILES_POLICY` ends with it (PRESS-0012 § 4.3), a wrapped page's
+  policy is `frame-src 'self'; frame-ancestors 'self'`, and every other
+  answer — a `Reply`, a redirect, a 403, a 404 — carries `frame-ancestors
+  'self'` alone. `'self'` is scheme, host and port, so a page on another
+  `127.0.0.1` port cannot frame the Face, while the editor's preview, a Face
+  page framing a Face file, still loads.
+  Source: https://www.w3.org/TR/CSP3/#directive-frame-ancestors
 - **The cookie's name carries the port.** Browsers do not separate cookies
   by port, so a second Pressless would otherwise overwrite the first's.
   Source: https://www.rfc-editor.org/rfc/rfc6265#section-8.5
@@ -316,13 +336,25 @@ capture, it lands on that request's list.
 - **INV-5** — The server answers only its own origin, on the loopback address.
   *Test:* `tests/test_face.py::test_the_server_answers_only_its_own_origin` —
   `serve(folder, open_browser=False)`: the bound host is `127.0.0.1`; `/`
-  without the cookie is 403; the `url` link is a redirect setting the cookie;
-  `/` with the cookie is 200; with the cookie and `Host: pressless.example`
-  it is 403; `POST /folder/open` with the cookie and
-  `Origin: http://127.0.0.1:1` is 403 and opens nothing.
+  without the cookie is 403; the `url` link is a redirect setting the cookie,
+  whose value is not the link's secret; `/` with that cookie is 200; `/` with
+  the link's secret as the cookie is 403; following `url` a second time is
+  403; with the cookie and `Host: pressless.example` it is 403;
+  `POST /folder/open` with the cookie and `Origin: http://127.0.0.1:1` is
+  403 and opens nothing.
   *Breaks when:* the server binds `0.0.0.0`, skips the `Host` or `Origin`
-  check, or takes the query secret on every request instead of trading it
-  for the cookie.
+  check, takes the query secret on every request instead of trading it for
+  the cookie, sets the secret itself as the cookie, or honours the link more
+  than once.
+
+- **INV-10** — No other origin can frame a Face answer.
+  *Test:* `tests/test_face.py::test_no_other_origin_can_frame_the_face` — on
+  `serve(tmp_path, open_browser=False)` with a page, a file prefix and a page
+  returning a `Reply`: `/`, the page, the file, the `Reply`, the link's
+  redirect, a 403 and a 404 each carry a `Content-Security-Policy` naming
+  `frame-ancestors 'self'`, and none names another source for it.
+  *Breaks when:* one answer path is left without the directive — a `Reply`,
+  the plain-text answers, or the file answer whose policy is `FILES_POLICY`.
 
 - **INV-6** — A failure's words and a notice's reach the page escaped.
   *Test:* `tests/test_face.py::test_a_failure_is_escaped_on_the_page` — a
@@ -377,14 +409,16 @@ capture, it lands on that request's list.
 | The platform opener is missing or fails | Says it could not open the folder, and leaves Copy location working |
 | The log cannot be written | Nothing on screen: the log never raises (PRESS-0003 § 4.4) |
 | A request lacks the cookie, names a foreign `Host`, or is a POST from a foreign `Origin` | 403, with a plain body |
-| He opens another page served on `127.0.0.1` | That page's server receives the cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page |
+| He opens another page served on `127.0.0.1` | That page's server receives the session cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page. It cannot frame a Face page (§ 4.5) |
+| The opening link is followed a second time | 403. Accepted: `serve` opens it once, and a new launch makes a new link |
 | Pressless is launched twice | A second server on another port and a second tab. Accepted: nothing here keeps state between requests (`docs/design.md` § State) |
 
 ## 7. Tests
 
 `tests/test_face.py`, unlabelled. It needs the loopback address and nothing
 beyond it, so it runs everywhere, CI included. INV-1, INV-2, INV-3, INV-4,
-INV-5, INV-6, INV-7, INV-8 and INV-9 each have the test their clause names.
+INV-5, INV-6, INV-7, INV-8, INV-9 and INV-10 each have the test their clause
+names.
 Each is seen failing against a stub `face.py` that
 declares the surface and raises `NotImplementedError`, then mutation-probed
 once the code lands, one mutation per *Breaks when* route.
@@ -399,6 +433,13 @@ once the code lands, one mutation per *Breaks when* route.
 - **A desktop window instead of the browser.** `docs/design.md` § The stack
   chose the standard library's web server, and a window library is a new
   runtime dependency bought to replace something already chosen.
+- **The link's secret as the cookie** (until 2026-09-26). The link is on the
+  browser's command line, so anyone who reads the process list holds the key
+  for the whole run.
+- **`X-Frame-Options` instead of `frame-ancestors`.** CSP3 names
+  `frame-ancestors` as the directive that obsoletes it, and every answer
+  already carries a policy to add it to.
+  Source: https://www.w3.org/TR/CSP3/#frame-ancestors-and-frame-options
 - **Keying sentences by class name.** Three names are shared between two
   modules, so it gives one module's sentence to the other's failure.
 - **Falling back to a base type's sentence.** A base's sentence is written for
@@ -428,6 +469,8 @@ once the code lands, one mutation per *Breaks when* route.
 | INV-7 | `tests/test_face.py::test_the_details_name_the_label_not_the_path` |
 | INV-8 | `tests/test_face.py::test_a_notice_is_shown_and_the_call_completes` |
 | INV-9 | `tests/test_face.py::test_the_secret_is_never_printed_or_logged` |
+| INV-10 | `tests/test_face.py::test_no_other_origin_can_frame_the_face` |
+| That a real browser refuses the frame | **nothing** — no test drives a browser; the header is checked, the browser's enforcement is not |
 | That each sentence reads well to him | **nothing** — a person reads them; S4's staged run is the first |
 | The Open folder button on Windows | **nothing** — Windows cannot be run here; PRESS-0022's staged box is the first place it is observed |
 | The clipboard write in a real browser | **nothing** — no test drives a browser; the route and the page script are checked, the browser's clipboard is not |
@@ -441,6 +484,8 @@ once the code lands, one mutation per *Breaks when* route.
 - PRESS-0012, PRESS-0013, PRESS-0018, PRESS-0020 and PRESS-0021 — each adds
   its pages through `add_page` and keeps § 4.4's `capture` rule.
 - PRESS-0073 — item 5 answered by § 3 decision 4.
+- PRESS-0012 § 4.3 — `FILES_POLICY` and the wrapped pages' policy gain
+  `frame-ancestors 'self'` (§ 4.5, PRESS-0151).
 - PRESS-0013 — replaces `pressless.__main__`'s body with a call to
   `face.serve`.
 - `CHANGELOG.md` — an Added entry when it ships.
