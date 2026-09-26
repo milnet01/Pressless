@@ -383,21 +383,40 @@ def _running(request: Request) -> str:
     return "<h1>Pressless is running.</h1>"
 
 
+def _is_secret(offered: str, secret: str) -> bool:
+    """Constant-time, as bytes: compare_digest raises TypeError on a str holding
+    a non-ASCII character, and a wrong secret is refused, never dropped
+    (§ 4.5, PRESS-0135)."""
+    return secrets.compare_digest(offered.encode("utf-8", "replace"), secret.encode("utf-8"))
+
+
+# How long Open folder waits for xdg-open to say whether it managed. It hands
+# the folder to the desktop's own opener and exits; one that is still running
+# after this is taken to have opened it.
+_OPENER_SECONDS = 5
+
+
 def _open_folder(folder: Path) -> None:
     """Open `folder` in the platform's file manager. Raises FolderNotOpened."""
     try:
         if sys.platform == "win32":
             os.startfile(folder)  # noqa: S606 -- a folder path, never a shell command
-        else:
-            subprocess.Popen(  # noqa: S603 -- a fixed program and one path argument
-                ["xdg-open", str(folder)],  # noqa: S607 -- xdg-open is found on PATH by design
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            return
+        opener = subprocess.Popen(  # noqa: S603 -- a fixed program and one path argument
+            ["xdg-open", str(folder)],  # noqa: S607 -- xdg-open is found on PATH by design
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except OSError as exc:
         raise FolderNotOpened(
             f"the opener could not start: {exc.strerror or type(exc).__name__}"
         ) from None
+    try:
+        code = opener.wait(timeout=_OPENER_SECONDS)
+    except subprocess.TimeoutExpired:
+        return
+    if code != 0:
+        raise FolderNotOpened(f"the opener could not open it (it answered {code})")
 
 
 # The buttons' script. It lives in the page, never in a fragment, and it asks
@@ -408,9 +427,13 @@ document.addEventListener("click", async (event) => {
   if (!button) return;
   if (button.dataset.action === "copy-location") {
     const answer = await fetch("/folder/location");
-    await navigator.clipboard.writeText(await answer.text());
+    if (answer.ok) await navigator.clipboard.writeText(await answer.text());
   } else if (button.dataset.action === "open-folder") {
-    await fetch("/folder/open", {method: "POST"});
+    const answer = await fetch("/folder/open", {method: "POST"});
+    if (!answer.ok) {
+      // The answer is a Face page saying it could not open the folder.
+      document.open(); document.write(await answer.text()); document.close();
+    }
   }
 });
 """
@@ -484,7 +507,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except http.cookies.CookieError:
             return False
         morsel = jar.get(face._cookie)
-        return morsel is not None and secrets.compare_digest(morsel.value, face._secret)
+        return morsel is not None and _is_secret(morsel.value, face._secret)
 
     def _dispatch(self, method: str) -> None:
         face = self.server.face
@@ -494,7 +517,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         parts = urllib.parse.urlsplit(self.path)
         query = dict(urllib.parse.parse_qsl(parts.query))
         if method == "GET" and "t" in query:
-            if not secrets.compare_digest(query["t"], face._secret):
+            if not _is_secret(query["t"], face._secret):
                 self._refuse()
                 return
             cookie = f"{face._cookie}={face._secret}; HttpOnly; SameSite=Strict; Path=/"

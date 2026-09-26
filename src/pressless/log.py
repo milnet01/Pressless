@@ -111,7 +111,9 @@ class Log:
         if self._handler is None:
             return
         try:
-            self._handler.emit(
+            # handle(), not emit(): it holds the handler's lock around the roll
+            # and the write, and every request thread notes here (PRESS-0135).
+            self._handler.handle(
                 logging.LogRecord(
                     name="pressless",
                     level=logging.INFO,

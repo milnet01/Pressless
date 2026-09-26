@@ -16,6 +16,7 @@ import inspect
 import io
 import os
 import re
+import threading
 from pathlib import Path
 
 import pytest
@@ -330,3 +331,34 @@ def _log_on_stream(folder: Path, monkeypatch, stream):
         "note's or close's failure path, so this test would pass vacuously."
     )
     return None
+
+
+def test_note_waits_for_the_handlers_lock(tmp_path):
+    """PRESS-0135 #18: every request thread notes into one log, and a roll is
+    two renames. The handler's lock is what keeps two notes arriving at a
+    roll from both rolling -- the second deleting the first's old copy, or a
+    handle leaked that Windows then refuses to rename (PRESS-0003 § 9).
+
+    Breaks when note calls emit directly, which skips the lock.
+    """
+    handle = log_module.open_log(tmp_path)
+    handler = next(v for v in vars(handle).values() if hasattr(v, "emit"))
+    decided = []
+    original = handler.shouldRollover
+
+    def deciding(record):
+        decided.append(record)
+        return original(record)
+
+    handler.shouldRollover = deciding
+    handler.acquire()
+    try:
+        writer = threading.Thread(target=handle.note, args=("held back",))
+        writer.start()
+        writer.join(0.5)
+        assert not decided, "note decided whether to roll while another thread held the lock"
+    finally:
+        handler.release()
+    writer.join(5)
+    handle.close()
+    assert "held back" in log_module.path_for(tmp_path).read_text(encoding="utf-8")

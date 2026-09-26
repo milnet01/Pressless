@@ -14,6 +14,7 @@ import importlib
 import inspect
 import pkgutil
 import socket
+import sys
 import urllib.parse
 from pathlib import Path
 
@@ -412,3 +413,47 @@ def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
         assert headers.get("Content-Security-Policy") == FRAMES_POLICY_WORDS
     finally:
         served.stop()
+
+
+def test_a_non_ascii_secret_is_refused_not_dropped(tmp_path: Path) -> None:
+    """PRESS-0135 #16: § 4.5 refuses a wrong secret with 403. A link or cookie
+    carrying a non-ASCII character is a wrong secret too; compare_digest raises
+    TypeError on such a str, which dropped the connection and let any page that
+    found the port write to the log without the cookie.
+
+    Breaks when the secret is compared as str.
+    """
+    served = face.serve(tmp_path, open_browser=False)
+    try:
+        client = _Client(served)
+        assert client.request("GET", "/?t=%C3%A9", cookie=False)[0] == 403
+        client.cookie = f"pressless-{client.port}=é"
+        assert client.request("GET", "/")[0] == 403
+    finally:
+        served.stop()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the xdg-open branch")
+@pytest.mark.parametrize("code, fails", [(0, False), (3, True)])
+def test_an_opener_that_fails_is_a_folder_not_opened(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int, fails: bool
+) -> None:
+    """PRESS-0135 #19: PRESS-0011 § 6 says the Face says it could not open the
+    folder. xdg-open that starts and then fails answered success, because
+    nothing waited for it.
+
+    Breaks when the opener's exit status is never read.
+    """
+    class _Opener:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def wait(self, timeout=None):
+            return code
+
+    monkeypatch.setattr(face.subprocess, "Popen", _Opener)
+    if fails:
+        with pytest.raises(face.FolderNotOpened):
+            face._open_folder(tmp_path)
+    else:
+        face._open_folder(tmp_path)
