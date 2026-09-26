@@ -362,8 +362,9 @@ Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
    that now exists.
 3. **Make the entry.** Title stripped. Categories and tags split on `,`, and
    each part becomes `name_address(part)`; a repeat is dropped, the first
-   kept. A part that is not blank but leaves `""` is dropped too, and a
-   `LeftOut` warning names it as typed, so the reply's `notices` says it was
+   kept. A part that is not blank but leaves `""`, or leaves a name
+   `store.path_for` refuses (a Windows device name such as `con`), is dropped
+   too, and a `LeftOut` warning names it as typed, so the reply's `notices` says it was
    left out. The page's boxes keep what he typed until he opens the entry
    again, because a save runs while he types. The body's `\r\n` and lone `\r` become `\n`, and
    nothing else about it changes. The date and extra fields come from the
@@ -586,9 +587,9 @@ made with `store.write_html`.
 
 - **INV-19** — A save stores each typed category and tag as an address.
   *Test:* `test_a_save_turns_names_into_addresses`. A save with categories
-  `Poems, Short Stories, poems, !!!` and tags `Live Shows` writes categories
-  `poems` and `short-stories` and tag `live-shows`. Its `notices` names
-  `!!!`, and its preview is built rather than refused.
+  `Poems, Short Stories, poems, !!!, Con` and tags `Live Shows` writes
+  categories `poems` and `short-stories` and tag `live-shows`. Its `notices`
+  names `!!!` and `Con`, and its preview is built rather than refused.
   *Breaks when:* a name is stored as typed, a repeat is kept, or a part that
   leaves nothing is stored or dropped without a notice.
 
@@ -605,7 +606,7 @@ and finds them without a change.
 | Two copies replace one published entry | `TooManyCopies` when it is opened | both copies |
 | Pressless is not set up | the save succeeds; `NotSetUp` in the preview's place | the save |
 | No furniture yet (PRESS-0126) | the save succeeds; `StoreError` in the preview's place | the save |
-| A typed category or tag with no letter or number | left out, and a notice names it | the rest of the save |
+| A typed category or tag with no letter or number, or one naming a Windows device | left out, and a notice names it | the rest of the save |
 | A category or tag put in the file by hand that cannot be an address | the save succeeds; `BuildStopped` in the preview's place | the save |
 | A title or value the Store cannot carry | the Store's refusal; saving stops | the file as it was |
 | The disk is full | `StoreError`; saving stops | the file as it was (PRESS-0005 § 4.5) |
