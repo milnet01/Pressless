@@ -7960,6 +7960,17 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135, Low and Info rungs.
 
+- 📋 [PRESS-0163] **The Face's labels lean into the Pressless name, and every one stays obvious.**
+  User request 2026-09-26: give the app some quirkiness through its
+  name -- Publish could become "Press to site" or similar -- while each
+  label still says plainly what it does. First step is a proposed label
+  list for the user to approve; nothing on screen changes before that.
+  A renamed label is also a docs change wherever the old one is quoted.
+  **Layman:** Buttons get playful, press-themed names that still say exactly what they do.
+  Kind: ux.
+  Source: user-request-2026-09-26.
+  Lanes: face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
