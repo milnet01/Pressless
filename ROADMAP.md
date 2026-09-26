@@ -7886,7 +7886,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
   Lanes: import.
 
-- 📋 [PRESS-0159] **On Windows a renamed entry file can be overwritten by a new entry, and the Store's name rules differ between the two systems.**
+- ✅ [PRESS-0159] **On Windows a renamed entry file can be overwritten by a new entry, and the Store's name rules differ between the two systems.**
   Confirmed on the Windows box 2026-09-26. Needs a PRESS-0005 amendment
   and its gate, then code; recommended next, since #1 loses his words.
 
@@ -7914,6 +7914,11 @@ already-built code ships in whichever release comes next.
   Measured on the Windows box the same day: only a-z fold with A-Z;
   a look-alike such as the Kelvin sign stays a separate file, so the
   fold in exists() is ASCII-only.
+  Resolved 2026-09-26: PRESS-0005 amended and gated (loops 13-14,
+  cap reached, five findings fixed). exists folds A-Z over the whole
+  name; the twin notice uses the same fold; read drops one leading
+  byte-order mark; settings save retries a Windows refusal as the
+  Store does. #4 moved to PRESS-0164.
   **Layman:** On Windows, renaming an entry's file by hand and then starting a new entry can wipe out the renamed one; a few other file names behave differently on Windows too.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.

@@ -49,6 +49,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **On Windows, an entry file renamed by hand can no longer be overwritten by a new entry** (PRESS-0159)
+  Pressless now treats Seaside.txt as taking the address seaside, as
+  Windows does. A file saved by Notepad with a byte-order mark keeps its
+  title. Saving settings waits out a virus scanner holding the file.
+
+- **The Windows half of the automatic checks passes again** (PRESS-0165)
+  Three tests pretended to be Linux in a way the Windows runner could
+  not follow. The checks also stop a hung run after twenty minutes.
+
 - **Typing while a publish runs is saved afterwards, instead of the editor stopping with "Not saved" beside a publish that worked.** (PRESS-0135)
   Change address now waits for a save already on its way, and a change
   too large to send as you close the page makes the browser ask first.
