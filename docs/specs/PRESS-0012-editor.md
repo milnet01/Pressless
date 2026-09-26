@@ -1,7 +1,6 @@
 # PRESS-0012 — The editor: the box, the real page beside it, and changes kept apart until he publishes
 
-**Status:** accepted (2026-09-17). Gated for two loops, the spec cap; every
-verified finding fixed, none left in the tail.
+**Status:** accepted (2026-09-26). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail. Re-gated for PRESS-0148 over two more loops, to the cap; the tail is empty.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0012 (`docs/design.md` § The parts, § State;
 discovery S2, S7, S10).
@@ -360,13 +359,16 @@ Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
 2. **Check it is the one this window saw.** A digest that differs from `base`
    raises `ChangedElsewhere`. For a published entry, so does a working copy
    that now exists.
-3. **Make the entry.** Title stripped. Categories and tags split on `,`, and
-   each part becomes `name_address(part)`; a repeat is dropped, the first
-   kept. A part that is not blank but leaves `""`, or leaves a name
-   `store.path_for` refuses (a Windows device name such as `con`), is dropped
-   too, and a `LeftOut` warning names it as typed, so the reply's `notices` says it was
-   left out. The page's boxes keep what he typed until he opens the entry
-   again, because a save runs while he types. The body's `\r\n` and lone `\r` become `\n`, and
+3. **Make the entry.** Title stripped. Categories and tags split on `,`,
+   each part stripped. A part `store.path_for` accepts is kept as it is, so
+   a name the file already holds never moves; any other part becomes
+   `name_address(part)`. A repeat is dropped, the first kept. A part that is
+   not blank but leaves `""`, or leaves a name `store.path_for` refuses (a
+   Windows device name such as `con`), is dropped too, and a `LeftOut`
+   warning names it as typed, so the reply's `notices` says it was left out.
+   That notice's own words say to give it another name; like every notice it
+   carries `NOTICE_NEXT`. The page's boxes keep what he typed until he opens
+   the entry again, because a save runs while he types. The body's `\r\n` and lone `\r` become `\n`, and
    nothing else about it changes. The date and extra fields come from the
    file. **For a published entry** the address is `free_address(folder, slug +
    COPY_SUFFIX)`, and the extra fields are the published entry's, without any
@@ -587,11 +589,13 @@ made with `store.write_html`.
 
 - **INV-19** — A save stores each typed category and tag as an address.
   *Test:* `test_a_save_turns_names_into_addresses`. A save with categories
-  `Poems, Short Stories, poems, !!!, Con` and tags `Live Shows` writes
-  categories `poems` and `short-stories` and tag `live-shows`. Its `notices`
-  names `!!!` and `Con`, and its preview is built rather than refused.
-  *Breaks when:* a name is stored as typed, a repeat is kept, or a part that
-  leaves nothing is stored or dropped without a notice.
+  `Poems, Short Stories, poems, !!!, Con, a--b` and tags `Live Shows` writes
+  categories `poems`, `short-stories` and `a--b` and tag `live-shows`. Its
+  `notices` names `!!!` and `Con`, and its preview is built rather than
+  refused.
+  *Breaks when:* a name the Store refuses is stored as typed, one it accepts
+  is changed, a repeat is kept, or a part that leaves nothing is stored or
+  dropped without a notice.
 
 `ChangedElsewhere` and `TooManyCopies` each get a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` walks the package
