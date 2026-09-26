@@ -7825,6 +7825,8 @@ already-built code ships in whichever release comes next.
   rather than left beside a copy. Needs a decision in PRESS-0015:
   compare ignoring Undone, and bin rather than keep where that is the
   only difference (recommended).
+  Decided by the user 2026-09-26: compare ignoring the Undone
+  header, and bin rather than keep where that is the only difference.
   **Layman:** Undoing, then undoing again, leaves extra draft copies the writer never made.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Undo, #25.
@@ -7849,6 +7851,9 @@ already-built code ships in whichever release comes next.
   posts, so readers saw paragraphs. Owed to PRESS-0125's spec before
   that is built: decide markup the way WordPress did (block content
   is <!-- wp:, anything else runs through a wpautop-equivalent).
+  Decided by the user 2026-09-26: decide markup the way WordPress
+  did -- block content as-is, anything else through a
+  wpautop-equivalent. Goes into PRESS-0125's spec.
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
@@ -7861,6 +7866,8 @@ already-built code ships in whichever release comes next.
   and decision 9 forbids silent loss. PRESS-0007 section 4.2 lists the
   kept statuses, so the fix is the spec's: carry them as drafts, or
   report each skipped item. Mostly bites under PRESS-0125.
+  Decided by the user 2026-09-26: carry pending and future posts
+  as drafts, and say in the Report how each arrived.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
@@ -7872,6 +7879,8 @@ already-built code ships in whichever release comes next.
   INV-8 requires. For a general user's old blog that cannot be edited,
   there is no way forward. Decide in PRESS-0125's spec whether to list
   the item and carry on.
+  Decided by the user 2026-09-26: list the broken comment or
+  missing original in the Report and carry on.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
@@ -7896,6 +7905,10 @@ already-built code ships in whichever release comes next.
   Drop one leading BOM on read; decide whether a write keeps it.
   Also: settings.py has its own os.replace with the same Windows
   refusal PRESS-0135 #2 fixed in the Store (error 5 while scanned).
+  Decided by the user 2026-09-26: a write never emits a BOM,
+  whatever the file held; a photograph name is refused for everything
+  Windows forbids, on every system; settings.py's save takes the
+  Store's Windows retry in this item.
   **Layman:** On Windows, renaming an entry's file by hand and then starting a new entry can wipe out the renamed one; a few other file names behave differently on Windows too.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.
@@ -7925,6 +7938,9 @@ already-built code ships in whichever release comes next.
   pre (keeping pre's newlines) in both the converter and
   visible_lines, and drop script and style contents with a listing.
   Belongs with PRESS-0125, where other blogs' posts reach it.
+  Decided by the user 2026-09-26: split at li, tr, td/th, hr and
+  pre (keeping pre's newlines) in both the converter and
+  visible_lines; drop script and style contents with a listing.
   **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
