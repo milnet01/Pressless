@@ -443,8 +443,8 @@ direction only.** Every slug `list_slugs` returns, `exists` reports
 taken. A file whose stem folds to a slug but is not one — `Seaside` —
 is a name `path_for` refuses, so the listing passes it over and names
 it (INV-12) while `exists` still reports its address taken. That is
-the safe way round: the listing never offers a file `read` cannot
-open, and `exists` never offers an address a write would destroy.
+the safe way round: the listing never offers a name `path_for`
+refuses, and `exists` never offers an address a write would destroy.
 
 **`publish` and `unpublish` compose both paths with `path_for`, so a
 destination differing only in the suffix's case is not a collision they
@@ -841,8 +841,7 @@ is true of a template is PRESS-0006's (§9).
   warns and hands back the unusable name anyway.
   *Breaks when:* the NOTICE is emitted from `_slugs_in`, which `exists`
   shares — `exists` would then warn on a question that is not about
-  listing, and PRESS-0067's rule that the two cannot disagree is why
-  they are on one helper. The notice belongs in the listing calls.
+  listing. The notice belongs in the listing calls.
   **The filter and the notice are judged from the folder's raw names,
   not from `_slugs_in`'s folded set**, which already drops a file named
   exactly `.txt` — built on that set alone a listing passes it over in
@@ -871,8 +870,8 @@ is true of a template is PRESS-0006's (§9).
   through.
   *Breaks when:* the check is written against `path_for`'s exact
   composition, which is what cannot see the case difference to begin
-  with. A case-folded comparison of the destination folder's file names
-  is what finds it. **`_slugs_in` is not that mechanism:** it returns
+  with. Comparing the destination folder's file names with §4.3's fold,
+  `A`–`Z` only, is what finds it. **`_slugs_in` is not that mechanism:** it returns
   slugs rather than file names, so it can say a twin exists and cannot
   say what it is called — and the notice has to name it.
   **Reachable on Linux only** and never produced by the Store: it needs
@@ -1190,6 +1189,7 @@ imports.
 | 10 | 2026-09-07 | 3, cold — genre pinned `spec`; packet carried six `store.py` windows, `tests/_mode_support.py` whole, four PRESS-0001 windows and two `design.md` sections. Windows declared an unrunnable region | 1 | 4 | 2 | 1 | **Eight verified, eight fixed, none dismissed; one filed against a neighbour (PRESS-0103). Armed by the 2026-09-07 amendment, and six of the eight landed on the text it added** — 4a-min's pattern, every one an addition. **All three lanes found the same three.** §4.5 still said the Store "does not check the grant the way Credentials does", which the amended INV-11 contradicts, so an implementer ships no notice branch and INV-11's own never-skipping test has nothing to patch. INV-12's "names their own `path_for` accepts" and §4.4's "share the name rule" are different filters — measured, `html_path_for` refuses a legal slug outside `FURNITURE_NAMES` for furniture and accepts the same name for pages — so §4.4 now states the per-listing test. And §1 and §9 both give the rest of the Store to PRESS-0006 while INV-12 binds its listings; §11 routes it. **Two lanes found two more:** INV-12's fixture was unreachable for `list_html`, which sees only `.html`; and INV-10's "a slug held in both folders" is INV-13's case verbatim under §4.3's folded view, so a check built on `_slugs_in` raises `SlugInUse` exactly where INV-13 requires success. **The sharpest was one lane's:** `_slugs_in` already drops a file named exactly `.txt` in silence — the only unusable name reaching production today, dropped where INV-12 forbade the notice from living. **One came from an open question two lanes raised and neither filed**; executing it settled it — after a publish the destination holds the moved `.txt` and `read` opens it, so this run's own rewrite had left §4.3 describing the wrong state. Also fixed: INV-11 was silent on whether Windows is inside the notice half, where `mkstemp` never grants `0600` and a grant-keyed notice would fire on every save. **1b yield: one defect, mine** — a window labelled §11 that held §10, re-cut before dispatch. |
 | 11 | 2026-09-07 | 3, cold — identical brief; packet rebuilt whole from disk and extended with PRESS-0006's listing paragraph. Windows declared an unrunnable region | 2 | 2 | 2 | 2 | **Eight verified, eight fixed, none dismissed; the tail is empty. Cap reached (2 for a spec). A VIOLENT cap — every one of the eight landed on text loop 10 wrote**, so the review ends here and the document routes to implementation. **All three lanes found the same two.** §4.5 stated the wider-grant notice with no platform condition while INV-11 and §6 both exclude Windows, so an implementer building §4.5 literally warns on every Windows save. And INV-12's test named three folders where furniture is a fourth: measured, `banner` is refused under furniture and ACCEPTED under pages, so the furniture half had no falsifier at all. **Two lanes found the test could not falsify its own central clause** — `My_Entry` survives `_slugs_in`, so an implementation filtering the folded set satisfies every assertion while the `.txt`-exact file is still dropped in silence, which is the breach INV-12 was written against. **The sharpest was one lane's:** §9 called `_list_names` "the shared listing helper" when `list_slugs` does not use it and `list_photographs` does — a filter placed there reaches a listing this rule excludes and leaves the entries listing unfiltered. The same lane found INV-13 naming `_slugs_in` as the folded view, which returns slugs and so cannot name the stranded file the notice must carry. **Also fixed:** "reads the folder's raw names" contradicted §4.3's "returns it once"; §1 and §11 both said PRESS-0006 already carried the listing rule, where PRESS-0103 is filed to add it; and whether a folded twin is a passed-over file was left to two readings that build differently. **1b yield: zero — every citation windowed, none defective.** |
 | 12 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0117's no-path messages and PRESS-0099's `move_to_bin`. Windows unrunnable | 1 | 2 | 1 | 4 | **Eight verified, eight fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** All three lanes: `move_to_bin` fails with no hard links while § 6 said only the two moves are lost; the no-path rule had no test; INV-11's naming clause had none either, and its shipped test asserts the path IS there. Also fixed: "The move is `_move`'s" was false, the bin test could not see a stamp-less bin, the accepted sub-folders were unnamed, "raised" did not reach a notice, and who bins the comments file was unsaid. All eight inside the gated span. |
+| 13 | 2026-09-26 | 3, cold, every lane holding every question — genre pinned `spec`; gating PRESS-0159's whole-name fold and byte-order mark. Packet carried `store.py` whole and the Windows measurements; Windows unrunnable. Lanes disclosed a git snapshot naming the amendment's commit | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed.** All three lanes: INV-12 still said `exists` and the listing cannot disagree and share one helper — false of shipped code, and against the new one-direction rule. Two lanes: INV-13's "case-folded" named no fold, so the twin notice could fire on a look-alike `exists` calls unrelated; it now names §4.3's A–Z fold. Two lanes: the new "listing never offers a file `read` cannot open" contradicted §4.3's listed suffix twin; narrowed to names `path_for` refuses. Three open questions resolved clean. |
 
 ## 13. Resource cost
 
