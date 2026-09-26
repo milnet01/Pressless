@@ -47,7 +47,9 @@ full path (PRESS-0117), and deleting moves a file into a bin through
 **Amended 2026-09-26, before implementation**, on two decisions the
 user took for PRESS-0159: `exists` folds the case of the whole name,
 not only the suffix's; and `read` drops a leading byte-order mark,
-which `write` never emits. Both change direction, so the gate re-armed.
+which `write` never emits. Both change direction, so the gate re-armed. It ran to
+the spec cap of 2, five verified findings, all fixed; §12 rows 13
+and 14.
 
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0005 (`docs/design.md` § Persistence,
@@ -447,9 +449,9 @@ the safe way round: the listing never offers a name `path_for`
 refuses, and `exists` never offers an address a write would destroy.
 
 **`publish` and `unpublish` compose both paths with `path_for`, so a
-destination differing only in the suffix's case is not a collision they
-can see.** The move goes ahead, and **emits a `StoreNotice` naming
-both files** (INV-13). §6's `SlugInUse` and INV-10 are about a
+destination differing only in `A`–`Z` case, stem or suffix, is not a
+collision they can see.** The move goes ahead, and **emits a
+`StoreNotice` naming both files** (INV-13). §6's `SlugInUse` and INV-10 are about a
 destination `path_for` can see; this is the case they cannot.
 
 Refusing was the alternative and was rejected: it would let a file the
@@ -466,7 +468,8 @@ about**: the destination holds the moved `.txt`, which reads, and the
 over his file, and the repair is the writer's, as §4.4 already says of
 a name that disagrees with its `Slug` header.
 
-**A folded twin is not a file INV-12 passes over, and it is listed.**
+**A twin differing only in the suffix's case is not a file INV-12
+passes over, and it is listed.**
 Its slug is legal, `path_for` accepts it, and §4.3 returns it once, so
 the listing rule has nothing to report — that rule is about a NAME the
 Store will not accept, never about a file it cannot find. What the
@@ -738,8 +741,8 @@ is true of a template is PRESS-0006's (§9).
 - **INV-10** — Neither `publish` nor `unpublish` overwrites a file at
   its destination: given a file at the destination that `path_for`
   composes exactly, each raises `SlugInUse`, moves nothing, and leaves
-  both files byte-identical. A destination differing only in the
-  suffix's case is INV-13's case, never this one — §4.3 owns the split.
+  both files byte-identical. A destination differing only in `A`–`Z`
+  case is INV-13's case, never this one — §4.3 owns the split.
   *Test:* `tests/test_store.py::test_a_move_never_overwrites` — write
   different entries at one slug as a draft and as published, call each
   direction, and compare both files' bytes before and after.
@@ -862,7 +865,8 @@ is true of a template is PRESS-0006's (§9).
   moves anyway.
   *Test:* `tests/test_store.py::test_a_stranded_file_is_reported` —
   write a draft, create `published/<slug>.TXT` by hand, call `publish`,
-  then assert it returned, that both files are present, and that a
+  and again with a stem-case twin such as `Seaside.txt`; each time
+  assert it returned, that both files are present, and that a
   notice naming the stranded one was emitted.
   **Asserting the notice alone is not enough:** it passes against an
   implementation that warns and then raises `SlugInUse`, which is the
@@ -976,7 +980,8 @@ is true of a template is PRESS-0006's (§9).
   a rename. Where the name folds to a slug, `exists` still reports that
   address taken (§4.3, INV-15).
 - **A move that would leave two files naming one slug**, reachable on
-  Linux where a hand-renamed `.TXT` sits at the destination. The move
+  Linux where a hand-renamed `.TXT` or `Seaside.txt` sits at the
+  destination. The move
   goes ahead and emits a `StoreNotice` naming both (INV-13).
   `SlugInUse` is for a destination `path_for` can see; this is the one
   it cannot.
@@ -1190,6 +1195,7 @@ imports.
 | 11 | 2026-09-07 | 3, cold — identical brief; packet rebuilt whole from disk and extended with PRESS-0006's listing paragraph. Windows declared an unrunnable region | 2 | 2 | 2 | 2 | **Eight verified, eight fixed, none dismissed; the tail is empty. Cap reached (2 for a spec). A VIOLENT cap — every one of the eight landed on text loop 10 wrote**, so the review ends here and the document routes to implementation. **All three lanes found the same two.** §4.5 stated the wider-grant notice with no platform condition while INV-11 and §6 both exclude Windows, so an implementer building §4.5 literally warns on every Windows save. And INV-12's test named three folders where furniture is a fourth: measured, `banner` is refused under furniture and ACCEPTED under pages, so the furniture half had no falsifier at all. **Two lanes found the test could not falsify its own central clause** — `My_Entry` survives `_slugs_in`, so an implementation filtering the folded set satisfies every assertion while the `.txt`-exact file is still dropped in silence, which is the breach INV-12 was written against. **The sharpest was one lane's:** §9 called `_list_names` "the shared listing helper" when `list_slugs` does not use it and `list_photographs` does — a filter placed there reaches a listing this rule excludes and leaves the entries listing unfiltered. The same lane found INV-13 naming `_slugs_in` as the folded view, which returns slugs and so cannot name the stranded file the notice must carry. **Also fixed:** "reads the folder's raw names" contradicted §4.3's "returns it once"; §1 and §11 both said PRESS-0006 already carried the listing rule, where PRESS-0103 is filed to add it; and whether a folded twin is a passed-over file was left to two readings that build differently. **1b yield: zero — every citation windowed, none defective.** |
 | 12 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0117's no-path messages and PRESS-0099's `move_to_bin`. Windows unrunnable | 1 | 2 | 1 | 4 | **Eight verified, eight fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** All three lanes: `move_to_bin` fails with no hard links while § 6 said only the two moves are lost; the no-path rule had no test; INV-11's naming clause had none either, and its shipped test asserts the path IS there. Also fixed: "The move is `_move`'s" was false, the bin test could not see a stamp-less bin, the accepted sub-folders were unnamed, "raised" did not reach a notice, and who bins the comments file was unsaid. All eight inside the gated span. |
 | 13 | 2026-09-26 | 3, cold, every lane holding every question — genre pinned `spec`; gating PRESS-0159's whole-name fold and byte-order mark. Packet carried `store.py` whole and the Windows measurements; Windows unrunnable. Lanes disclosed a git snapshot naming the amendment's commit | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed.** All three lanes: INV-12 still said `exists` and the listing cannot disagree and share one helper — false of shipped code, and against the new one-direction rule. Two lanes: INV-13's "case-folded" named no fold, so the twin notice could fire on a look-alike `exists` calls unrelated; it now names §4.3's A–Z fold. Two lanes: the new "listing never offers a file `read` cannot open" contradicted §4.3's listed suffix twin; narrowed to names `path_for` refuses. Three open questions resolved clean. |
+| 14 | 2026-09-26 | 3, cold, every lane holding every question — identical brief; packet rebuilt from disk. Windows unrunnable | 0 | 2 | 0 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the spec ships.** All three lanes: INV-13 now folds the whole name while §4.3, §6 and INV-10 still said only the suffix's case makes a twin — settled on the whole name, as `exists` does, and INV-13's test gains a `Seaside.txt` case. All three: "a folded twin is listed" predates the stem fold and now covers `Seaside`, which the listing refuses; narrowed to the suffix case. **A calm cap**: one of the two landed on text loop 13 wrote. Over the run, one of five findings fell inside the amendment's own lines; the other four were passages it made false. |
 
 ## 13. Resource cost
 
