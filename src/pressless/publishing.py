@@ -55,6 +55,11 @@ SENTENCES[NothingToPublish] = Sentence(
 
 _KEPT_COPY = ("The waiting draft of your changes was left in place after publishing. "
               "You can throw it away.")
+# After an unknown outcome the move stands, so the published entry already holds
+# the copy's changes and throwing the copy away loses nothing (§ 4.3, PRESS-0147).
+_KEPT_COPY_UNKNOWN = ("Pressless cannot tell whether your changes were published, and "
+                      "the waiting draft of your changes was left in place. "
+                      "You can throw it away.")
 
 
 @dataclass(frozen=True)
@@ -80,7 +85,7 @@ def _nothing_captured() -> Iterator[list[str]]:
 def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str | None,
             emptying: bool = False,
             capture: Callable[[], AbstractContextManager[list[str]]] = _nothing_captured,
-            notices: list[str] | None = None,
+            notices: list[str | Notice] | None = None,
             transport: publisher.Transport | None = None) -> Published:
     """§ 4.3: move the entry, guard, build, upload, finish. `capture` wraps every
     step but the upload, and what each capture gathers is added to `notices`."""
@@ -124,7 +129,8 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             raise publisher.OutcomeUnknown(
                 f"the upload stopped on {type(exc).__name__}") from None
     except publisher.OutcomeUnknown:
-        finish()
+        if finish():
+            gathered.append(Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN))
         raise
     except BaseException:
         if moved is not None:

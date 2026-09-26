@@ -250,6 +250,34 @@ def test_an_unknown_outcome_stays_published(tmp_path, monkeypatch):
     assert reply["slug"] == "seaside" and reply["draft"] is False
 
 
+def test_an_unknown_outcome_says_the_copy_was_left(tmp_path, monkeypatch):
+    """§ 4.3: a working copy that cannot be binned after an unknown outcome is
+    named in a notice whose site part is unknown (PRESS-0147)."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Before."), draft=False)
+    store.write(folder, _entry("seaside-changes", body="After.",
+                               extra=((REPLACES, "seaside"),)), draft=True)
+    _key(monkeypatch)
+
+    def cannot_bin(folder, path):
+        raise store.StoreError("the bin is not writable")
+
+    monkeypatch.setattr(store, "move_to_bin", cannot_bin)
+    with _pressless(folder, _github(fail_at="/git/refs")) as browser:
+        status, text = browser.publish("seaside-changes", True,
+                                       _base(folder, "seaside-changes", draft=True),
+                                       folder=folder)
+    assert status == 200, text
+    reply = json.loads(text)
+    assert reply["published"] is False and UNKNOWN_WORDS in reply["failure"]
+    assert store.list_slugs(folder, draft=True) == ("seaside-changes",)
+    notices = html.unescape(reply["notices"])
+    assert "waiting draft of your changes was left in place" in notices, notices
+    assert "Pressless cannot tell whether your site changed." in notices, notices
+    assert "was left in place after publishing" not in notices, notices
+    assert "Your site has been updated." not in notices, notices
+
+
 # ------------------------------------------------------------------ INV-5 ---
 
 
