@@ -607,7 +607,7 @@ and finds them without a change.
 | Pressless is not set up | the save succeeds; `NotSetUp` in the preview's place | the save |
 | No furniture yet (PRESS-0126) | the save succeeds; `StoreError` in the preview's place | the save |
 | A typed category or tag with no letter or number, or one naming a Windows device | left out, and a notice names it | the rest of the save |
-| A category or tag put in the file by hand that cannot be an address | the save succeeds; `BuildStopped` in the preview's place | the save |
+| A category or tag put in the file by hand that cannot be an address | `BuildStopped` in the preview's place on opening; the first save stores it as an address or leaves it out with a notice | the file until that save |
 | A title or value the Store cannot carry | the Store's refusal; saving stops | the file as it was |
 | The disk is full | `StoreError`; saving stops | the file as it was (PRESS-0005 § 4.5) |
 | Pressless stops during an address change | nothing | both copies, or the new one alone |
