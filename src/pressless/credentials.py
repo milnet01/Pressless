@@ -411,10 +411,14 @@ def _read_mapping(target: Path) -> dict | None:
         raise CredentialError(
             f"the credentials file could not be read: {_why(exc)}"
         ) from exc
+    except UnicodeDecodeError as exc:  # a ValueError, not an OSError (PRESS-0135)
+        raise CredentialError(
+            "the credentials file is not UTF-8 text"
+        ) from exc
 
     try:
         raw = json.loads(text)
-    except (ValueError, UnicodeDecodeError) as exc:
+    except (ValueError, RecursionError) as exc:
         raise CredentialError(
             f"the credentials file is not valid JSON: {exc}"
         ) from exc

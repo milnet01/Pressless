@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 import dataclasses
 import inspect
+import json
 import os
 import warnings
 from datetime import datetime, timezone, tzinfo
@@ -1129,3 +1130,23 @@ def test_waiting_copies_follow_the_name_rule(tmp_path):
         assert not written.exists()
         assert binned.read_text(encoding="utf-8") == "<p>Waiting</p>"
         assert binned.parent.name == written.parent.name
+
+
+@pytest.mark.parametrize("field, value", [
+    ("date", None), ("date", 5), ("parent", 0), ("body", ["a"]), ("identifier", 7),
+])
+def test_a_comment_field_of_the_wrong_type_is_refused(tmp_path, field, value):
+    """PRESS-0135 #5: every comment field is text. A hand-edited or corrupt
+    comments file holding another type is refused as StoreError naming the
+    file and the field, as §6 refuses a missing one -- never a raw TypeError,
+    and never read (an integer 0 parent would read as a top-level comment).
+
+    Breaks when the fields' presence is checked and their types are not.
+    """
+    written = Path(write_comments(tmp_path, "an-example", (_comment("1"),)))
+    record = json.loads(written.read_text(encoding="utf-8"))
+    record[0][field] = value
+    written.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(StoreError) as raised:
+        read_comments(written)
+    assert field in str(raised.value) and written.name in str(raised.value), raised.value

@@ -18,6 +18,8 @@ import inspect
 import json
 import os
 import time
+import traceback
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -2243,3 +2245,73 @@ def test_a_started_publish_reports_the_start_file(tmp_path):
                           start=_start_answer("a.html")))
     assert outcome == Outcome(commit="commit-sha",
                               uploaded=("a.html", "b.html"), removed=())
+
+
+class _BrokenBody:
+    """An error reply whose body breaks off part-way."""
+
+    def read(self, *args):
+        raise http.client.IncompleteRead(b"half an error")
+
+    def close(self):
+        pass
+
+
+def test_a_broken_error_body_reaches_the_caller_as_oserror():
+    """PRESS-0135 #31: an error STATUS whose body breaks off is still a missing
+    answer, so it arrives as the seam's OSError rather than escaping untyped.
+
+    Breaks when the error body is read outside the seam's own guard.
+    """
+    client = publisher_module._Urllib()
+    reply = urllib.error.HTTPError("https://x.invalid/x", 500, "broken", {}, _BrokenBody())
+    client._opener = _RecordingOpener(reply)
+
+    with pytest.raises(OSError):
+        client.request("GET", "https://x.invalid/x", None, {})
+
+
+@pytest.mark.parametrize("header", ["Bearer THE-PUBLISHING-KEY\n",
+                                    "Bearer THE-PUBLISHING-KEY\u201c"])
+def test_a_refused_header_keeps_the_key_out_of_the_traceback(header):
+    """PRESS-0135 #7: http.client refuses a header holding a newline or a
+    character Latin-1 cannot carry, and its error quotes the whole header. A
+    traceback prints every chained cause, so the seam cuts the chain.
+
+    Breaks when the seam raises `from error`.
+    """
+    client = publisher_module._Urllib()
+
+    class _Refusing:
+        def open(self, request, timeout=None):
+            raise (ValueError(f"Invalid header value {header!r}")
+                   if header.endswith("\n") else
+                   UnicodeEncodeError("latin-1", header, 26, 27, "not in range"))
+
+    client._opener = _Refusing()
+    with pytest.raises(OSError) as raised:
+        client.request("GET", "https://x.invalid/x", None, {"Authorization": header})
+
+    printed = "".join(traceback.format_exception(raised.value))
+    assert "THE-PUBLISHING-KEY" not in printed, printed
+
+
+@pytest.mark.parametrize("step", ["/git/blobs", "/git/trees", "/git/commits"])
+def test_a_refused_object_write_is_not_a_moved_branch(tmp_path, step):
+    """PRESS-0135 #9: §6's Conflict row is the branch moving since the listing
+    was read. A blob, tree or commit write touches no branch, so GitHub
+    refusing one (422, validation) is a status no row names: the base
+    PublishError, never "the branch moved", which would send the writer to
+    publish again into the same refusal.
+
+    Breaks when every 409 and 422 maps to Conflict whatever the request.
+    """
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=[(step, (422, {}, b'{"message": "Validation Failed"}'))] + _writes(),
+    )
+    with pytest.raises(PublishError) as raised:
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+    assert not isinstance(raised.value, Conflict), raised.value

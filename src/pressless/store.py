@@ -969,6 +969,15 @@ def _refuse_the_wrong_comment_fields(record: dict, position: int, target: Path) 
         raise StoreError(
             f"{target.name}: comment {position} is missing {missing!r}"
         )
+    for name in _COMMENT_FIELDS:
+        if not isinstance(record[name], str):
+            # Every field is text. Another type would escape as a raw
+            # TypeError, or read as something else: a 0 parent is top-level
+            # (PRESS-0135).
+            raise StoreError(
+                f"{target.name}: comment {position}'s {name} is a "
+                f"{type(record[name]).__name__}, not text"
+            )
 
 
 def _refuse_unsound_identifiers(comments: tuple[Comment, ...], target: Path) -> None:

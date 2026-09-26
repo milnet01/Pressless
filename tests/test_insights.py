@@ -40,6 +40,7 @@ import inspect
 import json
 import os
 import traceback
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -1644,3 +1645,52 @@ def test_a_transports_oserror_that_quotes_the_key_does_not_leak_it(tmp_path):
         f"diagnosability is not lost along with the chain; detail was "
         f"{raised.value.detail!r}"
     )
+
+
+class _BrokenBody:
+    """An error reply whose body breaks off part-way."""
+
+    def read(self, *args):
+        raise http.client.IncompleteRead(b"half an error")
+
+    def close(self):
+        pass
+
+
+def test_a_broken_error_body_reaches_the_caller_as_oserror():
+    """PRESS-0135 #31: an error STATUS whose body breaks off is still a missing
+    answer, so it arrives as the seam's OSError rather than escaping untyped.
+
+    Breaks when the error body is read outside the seam's own guard.
+    """
+    client = insights_module._Urllib()
+    reply = urllib.error.HTTPError("https://x.invalid/x", 500, "broken", {}, _BrokenBody())
+    client._opener = _RecordingOpener(reply)
+
+    with pytest.raises(OSError):
+        client.request("GET", "https://x.invalid/x", None, {})
+
+
+@pytest.mark.parametrize("header", ["Bearer THE-PUBLISHING-KEY\n",
+                                    "Bearer THE-PUBLISHING-KEY\u201c"])
+def test_a_refused_header_keeps_the_key_out_of_the_traceback(header):
+    """PRESS-0135 #7: http.client refuses a header holding a newline or a
+    character Latin-1 cannot carry, and its error quotes the whole header. A
+    traceback prints every chained cause, so the seam cuts the chain.
+
+    Breaks when the seam raises `from error`.
+    """
+    client = insights_module._Urllib()
+
+    class _Refusing:
+        def open(self, request, timeout=None):
+            raise (ValueError(f"Invalid header value {header!r}")
+                   if header.endswith("\n") else
+                   UnicodeEncodeError("latin-1", header, 26, 27, "not in range"))
+
+    client._opener = _Refusing()
+    with pytest.raises(OSError) as raised:
+        client.request("GET", "https://x.invalid/x", None, {"Authorization": header})
+
+    printed = "".join(traceback.format_exception(raised.value))
+    assert "THE-PUBLISHING-KEY" not in printed, printed

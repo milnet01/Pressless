@@ -243,19 +243,29 @@ class _Urllib:
         except urllib.error.HTTPError as error:
             # An error STATUS is an answer, so it is returned rather than
             # raised -- only a genuine absence of one reaches the caller as
-            # OSError, which is what the seam promises.
-            return (error.code, dict(error.headers or {}), error.read())
+            # OSError, which is what the seam promises. Its body is read under
+            # the same guard as a success's (PRESS-0135).
+            answer = error
         except (http.client.HTTPException, ValueError) as error:
-            # Neither is an OSError, and every caller of this seam catches
-            # only that (PRESS-0040) -- so a truncated body or a malformed
-            # status line would escape the typed failures the module
-            # promises. Both mean what the seam already has a word for.
-            raise OSError(
-                f"no answer from {urllib.parse.urlsplit(url).netloc}"
-            ) from error
+            raise _no_answer(url, error) from None
+        try:
+            return (answer.code, dict(answer.headers or {}), answer.read())
+        except (http.client.HTTPException, ValueError) as error:
+            raise _no_answer(url, error) from None
 
     def wait(self, seconds: float) -> None:
         time.sleep(seconds)
+
+
+def _no_answer(url: str, error: Exception) -> OSError:
+    """A missing answer as the seam's OSError (PRESS-0040), naming only the
+    host and the type. Neither http.client failure is an OSError, and every
+    caller catches only that. Raised `from None`: http.client quotes a refused
+    header whole, key included, and a traceback prints every chained cause
+    (PRESS-0135).
+    """
+    return OSError(f"no answer from {urllib.parse.urlsplit(url).netloc} "
+                   f"({type(error).__name__})")
 
 
 def blob_hash(data: bytes) -> str:
@@ -582,7 +592,8 @@ class _Session:
                 failure = OutcomeUnknown if outcome_unknown else Unreachable
                 raise failure(
                     f"no answer from GitHub for {method} {_without_account(url)}"
-                ) from exc
+                    f" ({type(exc).__name__})"
+                ) from None  # a substituted transport's error may carry the key
 
             hint = _retry_hint(status, response_headers)
             if hint is not None:
@@ -934,7 +945,10 @@ def _failure(status: int, method: str, url: str) -> PublishError:
             f"GitHub has no {where} -- the repository is there, but what was "
             f"asked for inside it is not"
         )
-    if status in (409, 422):
+    if status in (409, 422) and method != "POST":
+        # Only the reference update, the start file and a read concern the
+        # branch. A POST writes a blob, tree or commit, which touch none, so
+        # its refusal falls to the base type below (§6, PRESS-0135).
         return Conflict(
             f"the branch moved since it was read, so {where} was refused"
         )
