@@ -7972,6 +7972,10 @@ already-built code ships in whichever release comes next.
   one loop, five verified and fixed; publisher.UnfetchablePath with its
   Face sentence; the check runs on Windows only, before any blob is read.
   PRESS-0015 6 took the row as a write-back.
+  Correction to commit 06d7c56's message: its Q2 search over PRESS-0015
+  also hits step 1, step 7, 4.4's intro and INV-1, all about emptying the
+  fetch area after any failure; none needed a change. The failure table is
+  the only passage naming failure types.
   **Layman:** Undo on Windows could fail with advice to free disk space when the real cause is two file names Windows cannot tell apart.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, #10.
