@@ -8090,7 +8090,7 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-26.
   Lanes: ci, main, credentials.
 
-- 📋 [PRESS-0166] **A success GitHub answers to the site update in an unexpected shape is reported as a failure that left the site unchanged.**
+- ✅ [PRESS-0166] **A success GitHub answers to the site update in an unexpected shape is reported as a failure that left the site unchanged.**
   publisher._Session._call returns only on 200/201 and parses the body.
   On the reference update, a 2xx other than those, or a 200 whose body
   is not JSON, falls to PublishError, whose PRESS-0009 6 row says
@@ -8101,12 +8101,15 @@ already-built code ships in whichever release comes next.
   Decided 2026-09-27 (user approved amending the specs): an unreadable
   body or a 2xx other than 200/201 on the reference update is
   OutcomeUnknown, never unchanged. PRESS-0009 6 gets the row first.
+  Shipped 2026-09-27: PRESS-0009 amended and gated (loop 15, six
+  verified, fixed); odd successes and sha-less start answers raise
+  OutcomeUnknown. Five mutations caught across 0166/0167.
   **Layman:** If GitHub says yes to a publish in an unusual way, Pressless could wrongly say nothing changed.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.1).
   Lanes: publisher.
 
-- 📋 [PRESS-0167] **After the writer renames the GitHub repository, every publish fails with a generic error instead of saying the repository moved.**
+- ✅ [PRESS-0167] **After the writer renames the GitHub repository, every publish fails with a generic error instead of saying the repository moved.**
   GitHub redirects a write to a renamed repository with 307, and urllib
   raises rather than follow a 307 for POST or PATCH (read from
   urllib.request.HTTPRedirectHandler.redirect_request, 2026-09-27), so
@@ -8118,6 +8121,9 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-27: do not follow the redirect. A 307/308
   on a write is RepositoryMissing-style, with a sentence saying the
   repository seems to have moved or been renamed and to update Settings.
+  Shipped 2026-09-27: a redirected write raises RepositoryMoved, with
+  a Face sentence pointing at Settings; a loopback test shows the real
+  client follows no redirected write.
   **Layman:** Renaming the site's repository on GitHub makes publishing fail with an unclear message.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.3).
@@ -8278,7 +8284,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
 
-- 📋 [PRESS-0176] **design.md § Errors names two routes to an unknown outcome; there are now more.**
+- ✅ [PRESS-0176] **design.md § Errors names two routes to an unknown outcome; there are now more.**
   design.md § Errors says the one failure that cannot say what happened
   to the site is the reference update sent with no answer or a server
   error. PRESS-0166 added an odd success (a 2xx other than 200/201, an
@@ -8287,6 +8293,10 @@ already-built code ships in whichever release comes next.
   OutcomeUnknown sentence says Pressless "lost touch with GitHub", which
   fits none of the odd-success cases. Found by PRESS-0009 review loop 15;
   filed because design.md has its own gate (ADR genre).
+  Shipped 2026-09-27: design.md § Errors written back from PRESS-0009
+  loop 15 (rule 14 write-back, no gate); the Face's unknown-outcome
+  sentence reads "GitHub's answer did not say whether your site was
+  updated."
   **Layman:** The design notes, and one error message, describe fewer ways a publish can end in "not sure" than there now are.
   Kind: doc-fix.
   Source: review-contract 2026-09-27 PRESS-0009 loop 15 open question.
