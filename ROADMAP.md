@@ -2566,12 +2566,18 @@ that makes daily use pleasant rather than merely possible.
   Source: design-2026-08-24 § A template is an entry he never publishes.
   Lanes: Store, Face.
 
-- 📋 [PRESS-0018] **The cheat sheet is generated from the same table the app parses with.**
+- ✅ [PRESS-0018] **The cheat sheet is generated from the same table the app parses with.**
   The in-app panel and the printable page, both generated from Marks' one
   table. Neither is written by hand: a hand-written card drifts the first
   time a mark changes, and then it teaches him something that does not
   work.
   Blocked-by: PRESS-0004, PRESS-0011.
+  Resolved 2026-09-27: src/pressless/cheatsheet.py builds the panel
+  below the editor's box and the printable page at /cheat-sheet from
+  marks.MARKS. No spec (spec-format.md section 1 skip case). Tests in
+  tests/test_cheatsheet.py and test_editor.py; three headless-Chrome rows
+  in scripts/by-hand-browser-checks.py pass. Not checked: Edge, and
+  printing to paper.
   **Layman:** The card telling him how to write bold or a colour is made from the app's own rules, so it can never be out of date.
   Kind: implement.
   Source: design-2026-08-24 § Where the cheat sheet comes from.
