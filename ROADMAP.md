@@ -7641,6 +7641,11 @@ already-built code ships in whichever release comes next.
   2026-09-25: the PRESS-0142 and PRESS-0146 Linux rows passed on a
   locally built AppImage. Still owed on the release build itself, and
   nothing yet on Windows for either.
+  Added 2026-09-27, from PRESS-0169's shipped note: in Edge on the
+  Windows box, a preview keeps its stylesheet and photographs with
+  sandbox="allow-same-origin" (measured in Chrome only), and PRESS-0012
+  § 10's script row is checked by opening a /preview/... address
+  directly, since inside the frame no script runs.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
