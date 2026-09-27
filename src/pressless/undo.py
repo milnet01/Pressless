@@ -85,8 +85,10 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
 
         state = captured(lambda: _read(fetch, fetched.paths))            # step 4
         reversals: list[Callable[[], None]] = []
+        uploading = False
         try:
             changed = captured(lambda: _reconcile(folder, state, reversals))  # step 5
+            uploading = True
             published = publishing.publish(                              # step 6
                 folder, settings, key, entry=None, emptying=True,
                 capture=capture, notices=gathered, transport=transport)
@@ -95,14 +97,25 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
             # and his files must not disagree with a site that may already show
             # the older state (§ 4.3).
             raise
-        except BaseException:
+        except BaseException as stopped:
+            if uploading and not isinstance(stopped, Exception):
+                # Ctrl-C or SystemExit from step 6 on: publish passes it on as
+                # itself, not as OutcomeUnknown, and GitHub may have taken the
+                # change just the same (§ 4.3).
+                raise
             # A failure while reversing is raised in place of the original, so he
             # is told something is wrong with his files rather than only with
             # GitHub (§ 4.3).
             captured(lambda: _reverse(reversals))
             raise
     finally:
-        _empty(fetch)                                                    # step 7
+        try:
+            _empty(fetch)                                                # step 7
+        except OSError:
+            # Never raised: step 1 of the next undo empties the area again and
+            # reads nothing it finds, and a raise here would replace what the
+            # sequence did -- a publish that landed reported as failing (§ 4.3).
+            pass
 
     return Undone(published.outcome, tuple(changed.restored),
                   tuple(changed.demoted), tuple(changed.kept))
@@ -375,7 +388,10 @@ def _undo(face: Face, folder: Path, request: Request,
             result = undo(folder, saved, key, capture=face.capture,
                           notices=notices, transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
-            failure: str | None = face.fail(exc, publishing=True, secret=setup.KEY)
+            # Steps 1 to 5 change nothing on GitHub and step 6 raises OutcomeUnknown
+            # for every failure an upload can leave unknown, so an unforeseen
+            # failure here left the site unchanged (§ 4.2).
+            failure: str | None = face.fail(exc, publishing=False, secret=setup.KEY)
             summary: str | None = None
         else:
             failure = None

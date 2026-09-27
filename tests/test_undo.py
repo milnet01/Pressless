@@ -20,7 +20,7 @@ import pytest
 from test_publisher import _blob_hash, _listing, _reads, _Transport, _writes
 from test_publishing import _binned, _entry, _folder, _settings, _state
 
-from pressless import builder, log, publisher, store, undo
+from pressless import builder, face, log, publisher, store, undo
 
 KEY = "ghp_SENTINELundoKEY0123456789abcd"
 UNDONE = "Undone"
@@ -508,3 +508,115 @@ def test_a_failure_at_any_step_of_the_reconcile_puts_everything_back(tmp_path, m
             f"failing Store call {step} ({calls[step - 1]}) left "
             f"{sorted(k for k in set(after) | set(before) if after.get(k) != before.get(k))}"
         )
+
+
+class _Interrupting(_Transport):
+    """Raises KeyboardInterrupt on the reference update, as Ctrl-C mid-upload
+    does: `publishing.publish` passes it on as itself, not as OutcomeUnknown."""
+
+    def request(self, method, url, body, headers):
+        if method != "GET" and "/git/refs" in url:
+            raise KeyboardInterrupt
+        return super().request(method, url, body, headers)
+
+
+def test_an_interruption_mid_upload_leaves_the_files_undone(tmp_path, monkeypatch):
+    """INV-10 (PRESS-0015 § 4.3): an interruption from step 6 on may have left
+    GitHub holding the older state, so the Store stays as undo made it; one
+    during the reconcile left GitHub untouched, so every file goes back."""
+    def stocked(where: Path) -> Path:
+        where.mkdir(parents=True, exist_ok=True)
+        folder = _folder(where)
+        store.write(folder, _entry("seaside", body="His newer words."), draft=False)
+        store.write(folder, _entry("harbour", body="Newer."), draft=False)
+        return folder
+
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="The older words."),))}
+
+    folder = stocked(tmp_path / "upload")
+    previous = _previous(files)
+    interrupting = _Interrupting(reads=previous._reads, writes=previous._writes)
+    with pytest.raises(KeyboardInterrupt):
+        _undo(folder, interrupting)
+    assert store.read(store.path_for(folder, "seaside", draft=False)).body == (
+        "The older words.")
+    assert "harbour" in store.list_slugs(folder, draft=True)
+
+    folder = stocked(tmp_path / "reconcile")
+    before = _files_under(folder)
+    real = store.write
+    calls = []
+
+    def interrupted(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 2:
+            raise KeyboardInterrupt
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store, "write", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        _undo(folder, _previous(files))
+    monkeypatch.undo()
+    assert len(calls) == 2, "the reconcile never reached its second write"
+    after = _files_under(folder)
+    assert after == before, sorted(set(after) ^ set(before))
+
+
+# ----------------------------------------------------------------- INV-14 ---
+
+
+def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch):
+    """§ 4.2 (PRESS-0172): steps 1 to 5 change nothing on GitHub and step 6
+    turns an unforeseen upload failure into OutcomeUnknown, so an unforeseen
+    failure reaching the route left the site unchanged."""
+    from test_publishing import _key
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="Now."), draft=False)
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="Older."),))}
+    _key(monkeypatch)
+
+    def unforeseen(*args, **kwargs):
+        raise RuntimeError("nothing Pressless expected")
+
+    monkeypatch.setattr(undo, "_read", unforeseen)
+    served = face.serve(folder, open_browser=False)
+    try:
+        reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""),
+                           _previous(files))
+    finally:
+        served.stop()
+    answer = json.loads(reply.body)
+    assert answer["undone"] is False
+    assert face.Site.UNCHANGED.value in answer["failure"], answer["failure"]
+    assert face.Site.UNKNOWN.value not in answer["failure"]
+
+
+def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):
+    """§ 4.3 step 7 never raises: step 1 of the next undo empties the area
+    again, and a raise here would replace what the sequence did."""
+    real = undo._empty
+    calls = []
+
+    def second_fails(fetch: Path) -> None:
+        calls.append(fetch)
+        if len(calls) % 2 == 0:
+            raise OSError("the area could not be recreated")
+        real(fetch)
+
+    monkeypatch.setattr(undo, "_empty", second_fails)
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="Older."),))}
+
+    (tmp_path / "ok").mkdir()
+    folder = _folder(tmp_path / "ok")
+    store.write(folder, _entry("seaside", body="Now."), draft=False)
+    assert isinstance(_undo(folder, _previous(files)), undo.Undone)
+
+    (tmp_path / "fetch").mkdir()
+    folder = _folder(tmp_path / "fetch")
+    store.write(folder, _entry("seaside", body="Now."), draft=False)
+    with pytest.raises(publisher.Unreachable):
+        _undo(folder, _previous(files, fail_at="", fail_on_read=True))
+    assert len(calls) == 4, "step 7 did not run on both undos"
