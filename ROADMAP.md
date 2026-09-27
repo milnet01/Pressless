@@ -8143,7 +8143,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
   Lanes: publisher.
 
-- 📋 [PRESS-0169] **The preview frame lets the site's own scripts act with the Face's authority.**
+- ✅ [PRESS-0169] **The preview frame lets the site's own scripts act with the Face's authority.**
   editor.py and page_editor.py frame the preview with sandbox="allow-same-origin
   allow-scripts", which PRESS-0012 4.7 mandates. WHATWG warns the pair lets
   the framed document reach its parent and lift its own sandbox. The preview
@@ -8164,6 +8164,10 @@ already-built code ships in whichever release comes next.
   allow-same-origin alone the cookie is sent and neither an inline nor a
   fetched script runs. The site's one script is the home-page Spotify
   player, which frame-src already blocks in a preview.
+  Shipped 2026-09-27: PRESS-0012 amended and gated (loop 5, two
+  verified, fixed -- one was that the page editor has its own frame);
+  both preview frames carry sandbox="allow-same-origin". Tests red
+  first. Hand check still owed on Edge (Windows box unreachable today).
   **Layman:** A script inside the writer's own site could, while previewed, press Publish or Undo on his behalf.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Editors, Low (PRESS-0162 L4.6).

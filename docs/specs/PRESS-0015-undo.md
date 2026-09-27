@@ -239,9 +239,14 @@ in reverse order, then raises it** (§ 3 decision 1). Step 5 is a long run of
 Store writes and can fail part way — a full disk, a refused `move_to_bin` —
 and a reconcile abandoned where it stopped is the part-old, part-new Store
 step 4 and INV-11 exist to prevent. A definite failure is any exception but
-`publisher.OutcomeUnknown`. **An `OutcomeUnknown` leaves the Store as undo
-made it** and is raised after step 7: GitHub may have taken the change, and
-his files must not disagree with a site that may already show the older state.
+`publisher.OutcomeUnknown`, and any interruption (Ctrl-C, `SystemExit`)
+before step 6 starts. **An `OutcomeUnknown`, or an interruption from step 6
+on, leaves the Store as undo made it** and is raised after step 7: GitHub
+may have taken the change, and his files must not disagree with a site that
+may already show the older state. `publishing.publish` passes an
+interruption mid-upload on as it is, not as `OutcomeUnknown`, and puts
+nothing back (PRESS-0013 § 4.6), so undo tells the two apart by the step it
+reached.
 
 **A failure while reversing is raised in place of the original**, so he is
 told something is wrong with his files rather than only with GitHub.
@@ -464,7 +469,10 @@ does.
   `comments/` reads back equal to before the undo, **and no folder holds a
   file it did not hold before** — without that clause the test cannot see a
   file the reconcile created and the reversal left. With the transport raising
-  on the reference update, the Store holds the undone state instead.
+  on the reference update, the Store holds the undone state instead; so it
+  does with the transport raising `KeyboardInterrupt` on the reference
+  update, which reaches undo as itself. With the reconcile raising
+  `KeyboardInterrupt` part way, every file reads back equal to before.
   *Breaks when:* every failure is reversed, which contradicts a site that may
   already show the older state.
 
