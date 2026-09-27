@@ -2,6 +2,8 @@
 
 **Status:** accepted (2026-09-06); §3 decision 1 built 2026-09-07
 (PRESS-0101), so §2's single-slot cache is a record of what was.
+Amended 2026-09-27 by the user's decision: a country value that is not an
+ISO code is one `UNKNOWN_COUNTRY` entry (§4.3, INV-27).
 Written after the code shipped, which is
 not the direction a spec usually runs; §1 says why this one does, and which of
 it is a record and which is a contract for work still to come. Gated to its
@@ -81,7 +83,7 @@ does not reopen them.
 ### 4.1 The public surface
 
 `src/pressless/insights.py` exports `read`, `cache_path`, the `Report` and
-`Country` results, the `Transport` seam, and the failure types
+`Country` results, `UNKNOWN_COUNTRY`, the `Transport` seam, and the failure types
 `InsightsError`, `NotConfigured`, `Unreachable`, `Refused` and `RateLimited`.
 
 ```python
@@ -163,6 +165,14 @@ id>:runReport`, carrying the token as an `Authorization: Bearer` header, asking 
 - **A row whose dimension value STARTS WITH `RESERVED_` is dropped**, an
   aggregate marker not being a country. The test is on the start of the value,
   which is where Google puts the marker.
+- **Any other value that is not two ASCII capital letters is one entry,
+  `UNKNOWN_COUNTRY`** — GA4's `(not set)` is the documented case. Every such
+  row's people are added into that one `Country`, whose `code` is
+  `insights.UNKNOWN_COUNTRY = "unknown"`: lower case, so it can never be
+  taken for an ISO code, and a caller drawing flags draws none for it. It is
+  kept rather than dropped so the countries still account for the readers.
+  A cached reply is read through the same rule. Decided by the user
+  2026-09-26 (PRESS-0155).
 
 ### 4.4 Freshness, staleness, and the clock
 
@@ -402,6 +412,17 @@ which settled something the contract had left open.
   is still refused (INV-5), because summing those is the overstated number that
   refusal keeps out.
 
+- **INV-27** — A country value that is neither two ASCII capital letters nor
+  a `RESERVED_` marker reaches `Report.countries` only as one
+  `UNKNOWN_COUNTRY` entry, carrying the sum of those rows' people, ordered
+  like any other.
+  *Test:* `tests/test_insights.py::test_an_unknown_country_is_one_named_entry`
+  — rows `GB` 400, `(not set)` 300, `zz` 50 and `RESERVED_TOTAL` 5000; the
+  countries are `GB` 400 then `unknown` 350. A cache file holding a
+  `(not set)` code reads back as `unknown`.
+  *Breaks when:* such a value is passed through as a code, dropped, or kept
+  as several entries.
+
 ## 6. Failure modes
 
 | When | What happens |
@@ -490,6 +511,7 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-24 | `tests/test_insights.py::test_cache_reaches_the_disk_before_the_rename` + `::test_cache_names_the_line_endings` |
 | INV-25 | `tests/test_insights.py::test_googles_own_reason_is_carried_on_the_failure` |
 | INV-26 | `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero` |
+| INV-27 | `tests/test_insights.py::test_an_unknown_country_is_one_named_entry` |
 | §3 decision 2's window ending at today | **nothing** — the same question asked twice in a day gives two numbers by design, so no assertion can tell that from a fault |
 | The zero-visitor reading of GA4 | **nothing against the live API** — the test asserts what this module does with such an answer, never that Google sends one |
 | A cache written outside Pressless's own folder by a caller passing one | `read()`'s own refusal covers the site folder; anywhere else is the caller's choice and nothing here checks it |
