@@ -112,7 +112,7 @@ class Fetched:
 
 class PublishError(Exception): ...         # raised itself only where §6 names no other type
 class Unreachable(PublishError): ...       # no answer from GitHub, before the branch was touched
-class OutcomeUnknown(PublishError): ...    # the reference update was attempted and its result is unknown
+class OutcomeUnknown(PublishError): ...    # a write that can move the site was attempted and its result is unknown
 class Refused(PublishError): ...           # key rejected, or no write access
 class RepositoryMissing(PublishError): ... # the repository URL itself answers 404
 class Conflict(PublishError): ...          # the branch moved under us
@@ -566,7 +566,8 @@ behaviour.
   blob, the tree and the commit have succeeded. The reference update is
   the last write of a publish, and a transport failure raised *by that
   request* surfaces as `OutcomeUnknown`, never as the `Unreachable` any
-  earlier step raises.
+  earlier step raises — PRESS-0127's start write aside, whose own failure
+  is `OutcomeUnknown` too.
   *Test:* `tests/test_publisher.py::test_reference_update_is_last` — a
   recording transport; assert the reference update is the final entry,
   that a transport failing at the tree or commit step makes no reference
@@ -702,14 +703,20 @@ behaviour.
   file with the other in silence; or it runs everywhere, and Linux loses
   undo for a site holding such a path.
 
-- **INV-12** — A write answered with an odd success can have changed the
-  site, and a redirected write did not.
+- **INV-12** — The reference update or the start write answered with a
+  2xx other than 200 or 201, or with a body that does not parse, raises
+  `OutcomeUnknown`, and so does a start-write answer naming no commit. Any
+  write answered 307 or 308 raises `RepositoryMoved` and is not sent again.
   *Test:* `tests/test_publisher.py::test_an_odd_success_is_unknown`: the
   reference update answered 202, then answered 200 with a body that is
-  not JSON, each raises `OutcomeUnknown`; so does the start file's write
-  answered 204. `::test_a_redirected_write_names_the_move`: a blob write
-  answered 307 and the reference update answered 308 each raise
-  `RepositoryMoved`, and neither request is sent again.
+  not JSON, each raises `OutcomeUnknown`; so do the start write answered
+  204 and the start write answered 201 with `{}`.
+  `::test_a_redirected_write_names_the_move`: a blob write answered 307
+  and the reference update answered 308 each raise `RepositoryMoved`, and
+  neither request is sent again. `::test_the_client_follows_no_redirected_write`
+  drives the module's own client against a fake opener: a POST, a PATCH
+  and a PUT answered 307 and 308 each come back as that status, with one
+  request made.
   *Breaks when:* an odd 2xx falls to the base type, whose row says
   unchanged; or a redirected write is followed, publishing to a
   repository the settings do not name.
@@ -723,10 +730,10 @@ behaviour.
 | `fetch_previous`, on Windows, selects two paths equal but for case, or a path Windows cannot hold (§4.5) | `UnfetchablePath` | unchanged |
 | The handed folder holds a stray — a symlink, anything else neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `StrayFile` | unchanged |
 | The publish would remove every unprotected path and write none | `SiteWouldBeEmptied` | unchanged |
-| No answer from GitHub, before the reference update | `Unreachable` | unchanged |
-| No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
-| GitHub answers a server error **to** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
-| GitHub answers the reference update, or the start file's write, with a 2xx other than 200 or 201, or with a body that is not JSON | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| No answer from GitHub, before the reference update — PRESS-0127's start write aside | `Unreachable` | unchanged |
+| No answer from GitHub, **during** the reference update or PRESS-0127's start write | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| GitHub answers a server error **to** the reference update or PRESS-0127's start write | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| GitHub answers the reference update or PRESS-0127's start write with a 2xx other than 200 or 201, or with a body that is not JSON; or answers the start write without naming its commit | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers a write with a 307 or 308 redirect — its answer for a repository that was renamed or moved | `RepositoryMoved` | unchanged |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
@@ -736,7 +743,7 @@ behaviour.
 | Retry hints exhausted | `RateLimited` | unchanged |
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
-| GitHub answers a status no row above names — a server error before the reference update among them — or a file in the handed folder cannot be read | `PublishError` itself | unchanged |
+| GitHub answers a status no row above names — a server error before the reference update, the start write aside, among them — or a file in the handed folder cannot be read | `PublishError` itself | unchanged |
 
 **These five rows each carry their own type**, added 2026-09-08 by
 PRESS-0116. Four refuse before anything reaches GitHub;
@@ -761,12 +768,13 @@ instead, and nothing was written: GitHub redirects before it acts.
 
 **An odd success is unknown, not unchanged.** A 2xx is GitHub saying it
 acted. On the two writes that can move the site — the reference update
-and §4.3's start file — a 2xx other than 200 or 201, or a body that does
-not parse, cannot say how, so it is `OutcomeUnknown`. Reported as the
+and PRESS-0127's start write — a 2xx other than 200 or 201, a body that
+does not parse, or a start-write answer naming no commit cannot say how,
+so it is `OutcomeUnknown`. Reported as the
 base type, whose row says *unchanged*, it told the writer nothing moved
 after the update was applied (PRESS-0166).
 
-**Every row but two says *unchanged*, and those two are the ones that
+**Every row but three says *unchanged*, and those three are the ones that
 matter.** §4.3's property is that nothing a reader sees changes until the
 reference update — so a failure *during* that update is the case where the
 site's state is genuinely unknown. Reporting it as unchanged
@@ -872,7 +880,7 @@ code, so a green INV-1 says nothing about the rest.
 | What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing`, `UnfetchablePath` and `RepositoryMoved`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` and `::test_a_path_windows_cannot_hold_fetches_elsewhere` |
-| INV-12 | `tests/test_publisher.py::test_an_odd_success_is_unknown` and `::test_a_redirected_write_names_the_move` |
+| INV-12 | `tests/test_publisher.py::test_an_odd_success_is_unknown`, `::test_a_redirected_write_names_the_move` and `::test_the_client_follows_no_redirected_write` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no dot-name segment outside an untouchable first segment | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
@@ -953,3 +961,4 @@ its own type; the rows above credit them on that condition.
 | 13 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0087's INV-7 scope and § 11's two records. GitHub's live API and Windows unrunnable | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed; one surfaced in the brief. One loop only, by user instruction: not converged.** All three lanes, and the packet build before them: § 6 had no row for the base `PublishError`, which a status no type names and an unreadable local file both raise; it now reads unchanged. One lane: § 10 narrowed the Builder's dot-name rule to the root where INV-10 refuses one anywhere. Surfaced, a code fix under PRESS-0117: messages quote the URL, and with it the account. Neither finding inside the gated span. |
 | 14 | 2026-09-27 | 2, cold — amendment gate for PRESS-0160, one loop by the budget; packet windowed `fetch_previous` and carried the Windows device measurement. GitHub and Windows unrunnable | 1 | 3 | 0 | 1 | **Five verified, five fixed; not converged, one loop is the budget.** Both lanes: INV-11 forced the platform through a seam § 4.1 did not name. One: the not-Windows half could not pass on a Windows host. One: `\` was missing from the forbidden set. One: "Windows only" read against § 4.4's macOS remark; macOS is not a target, now said. From both lanes' open questions: a file clashing by case with a folder above another path. Inside the gated span: 5 of 5. Casefold against NTFS folding left as stated: slugs are `[a-z0-9-]`. |
 | 14-fix | 2026-09-27 | none — author correction after the loop; no reviewer dispatched | 1 | 0 | 0 | 0 | **One fixed, found by the author.** Loop 14's packet said `con` is a legal slug from `_LEGAL_SLUG` alone; the Store also refuses device names (PRESS-0067). § 4.5 and INV-11 claimed the check is reachable from the Store; they now say it fires on a repository something else wrote. |
+| 15 | 2026-09-27 | 2, cold — genre pinned `spec`; armed by PRESS-0166 and PRESS-0167 (`953b386`): the odd-success and `RepositoryMoved` rows, INV-12. Packet carried the executed `urllib` redirect fact; GitHub declared unrunnable. Each lane held all four questions | 0 | 3 | 1 | 2 | **Six verified, six fixed; one dismissed, one filed.** Both lanes: § 6's no-answer and server-error rows, INV-3 and the `OutcomeUnknown` comment named only the reference update, while the start write is `OutcomeUnknown` too; a start-write answer naming no commit fell to the base type. One lane: "§4.3's start file" is PRESS-0127's; INV-12 stated what GitHub did rather than what the module raises (both lanes); the redirect test used the double, which cannot see a client that follows; "every row but two" became three. Dismissed: later rows after a start write are PRESS-0127 § 6's. Filed PRESS-0176 (design.md § Errors). One round by the amendment budget; not converged. |

@@ -8245,7 +8245,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.6).
   Lanes: updater.
 
-- 📋 [PRESS-0174] **A full disk during an update download tells the writer to check his internet connection.**
+- ✅ [PRESS-0174] **A full disk during an update download tells the writer to check his internet connection.**
   updater.download maps any error but UpdateError to DownloadFailed, whose
   sentence says "Check your internet connection and click Update now
   again" -- which cannot succeed on a full disk (ENOSPC, EDQUOT).
@@ -8254,6 +8254,9 @@ already-built code ships in whichever release comes next.
   later") needs 4.6 and 4.10 amended first. Queued for that.
   Decided 2026-09-27: a full disk (ENOSPC, EDQUOT) gets its own sentence
   saying to free space; PRESS-0023 4.6 and 4.10 amended first.
+  Shipped 2026-09-27: PRESS-0023 amended and gated (loop 3, two
+  verified, fixed); DiskFull covers create, write, close and unpack,
+  by errno or winerror 39. Five mutations caught.
   **Layman:** If the computer's disk fills up while downloading an update, Pressless blames the internet instead.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.2).
@@ -8271,6 +8274,20 @@ already-built code ships in whichever release comes next.
   Kind: enhancement.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
+
+- 📋 [PRESS-0176] **design.md § Errors names two routes to an unknown outcome; there are now more.**
+  design.md § Errors says the one failure that cannot say what happened
+  to the site is the reference update sent with no answer or a server
+  error. PRESS-0166 added an odd success (a 2xx other than 200/201, an
+  unreadable body, a start-write answer naming no commit), and PRESS-0127's
+  start write reaches OutcomeUnknown the same ways. The Face's single
+  OutcomeUnknown sentence says Pressless "lost touch with GitHub", which
+  fits none of the odd-success cases. Found by PRESS-0009 review loop 15;
+  filed because design.md has its own gate (ADR genre).
+  **Layman:** The design notes, and one error message, describe fewer ways a publish can end in "not sure" than there now are.
+  Kind: doc-fix.
+  Source: review-contract 2026-09-27 PRESS-0009 loop 15 open question.
+  Lanes: docs, face.
 
 ## Milestones
 
