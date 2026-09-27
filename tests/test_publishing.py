@@ -120,7 +120,7 @@ class _Browser:
 
 @contextlib.contextmanager
 def _pressless(folder: Path, transport: _Transport) -> Iterator[_Browser]:
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         publishing.register(served, folder, transport=transport)

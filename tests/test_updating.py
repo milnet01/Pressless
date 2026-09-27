@@ -71,7 +71,7 @@ def _release(signer, version: str) -> tuple[_Release, dict[str, object]]:
 @contextlib.contextmanager
 def _pressless(folder: Path, artefact: Path, answers: dict[str, object]) -> Iterator[_Browser]:
     """One run of Pressless: a fresh Face, the editor, and updating."""
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         running = updating.register(served, folder, artefact=artefact, platform="linux",
@@ -143,7 +143,7 @@ def test_an_unpackaged_run_never_checks(tmp_path, signer):
     folder = _folder(tmp_path)
     _, answers = _release(signer, "0.1.3")
     net = _Net(answers)
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         updating.register(served, folder, transport=net).wait(10)

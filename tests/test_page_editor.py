@@ -83,7 +83,7 @@ def _folder(tmp_path: Path) -> Path:
 
 @contextlib.contextmanager
 def _pages(folder: Path, transport: _Transport | None = None) -> Iterator[_Browser]:
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         page_editor.register(served, folder, transport=transport)

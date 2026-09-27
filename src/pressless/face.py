@@ -25,7 +25,6 @@ import sys
 import threading
 import urllib.parse
 import warnings
-import webbrowser
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -730,19 +729,10 @@ class Face:
         self._log.close()
 
 
-def serve(folder: Path, *, open_browser: bool = True) -> Face:
+def serve(folder: Path) -> Face:
     """Start the Face on 127.0.0.1, on a port the system chooses.
 
-    Opens his browser at the one link carrying the secret, and prints that link
-    to the console, which is his own, where no browser opens. With
-    open_browser=False it prints nothing; that is how the tests run it.
+    Opens no browser and prints nothing: the launcher (PRESS-0013 § 4.5) owns
+    which page opens first and the link printed where no browser opens.
     """
-    face = Face(folder)
-    if open_browser:
-        try:
-            opened = webbrowser.open(face.url)
-        except Exception:  # noqa: BLE001 -- no browser is a case, not a failure
-            opened = False
-        if not opened:
-            print(f"Pressless is running. Open this link in your browser: {face.url}")
-    return face
+    return Face(folder)

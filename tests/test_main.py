@@ -62,8 +62,8 @@ class _Opened:
         self.links = []
         real_serve = main_module.face.serve
 
-        def serve(folder, *, open_browser=True):
-            served = real_serve(folder, open_browser=False)
+        def serve(folder):
+            served = real_serve(folder)
             self.faces.append(served)
             return served
 

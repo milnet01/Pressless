@@ -76,7 +76,7 @@ class _Browser:
 
 @contextlib.contextmanager
 def _editor(folder: Path) -> Iterator[_Browser]:
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         yield _Browser(served)

@@ -581,7 +581,7 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
         raise RuntimeError("nothing Pressless expected")
 
     monkeypatch.setattr(undo, "_read", unforeseen)
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""),
                            _previous(files))

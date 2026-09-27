@@ -156,7 +156,7 @@ def test_details_carry_no_cause(tmp_path: Path, capfd: pytest.CaptureFixture[str
     details = face.details_for(failure)
     assert details == "pressless.store.StoreError: a draft could not be read"
 
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         page = served.fail(failure, publishing=False)
     finally:
@@ -175,7 +175,7 @@ def test_details_carry_no_cause(tmp_path: Path, capfd: pytest.CaptureFixture[str
     def broken(request: face.Request) -> str:
         raise RuntimeError(f"{SENTINEL_WORD} {SENTINEL_PATH}")
 
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/", broken)
         client = _Client(served)
@@ -210,7 +210,7 @@ def test_the_server_answers_only_its_own_origin(
     """INV-5."""
     opened: list[Path] = []
     monkeypatch.setattr(face, "_open_folder", opened.append)
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         client = _Client(served, follow=False)
         assert urllib.parse.urlsplit(served.url).hostname == "127.0.0.1"
@@ -267,7 +267,7 @@ def test_the_details_name_the_label_not_the_path(
     """INV-7."""
     opened: list[Path] = []
     monkeypatch.setattr(face, "_open_folder", opened.append)
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         fragment = served.fail(store.StoreError("a draft could not be read"), publishing=False)
         client = _Client(served)
@@ -293,7 +293,7 @@ def test_a_notice_is_shown_and_the_call_completes(tmp_path: Path) -> None:
     home = tmp_path / "data"
     home.mkdir()
 
-    served = face.serve(home, open_browser=False)
+    served = face.serve(home)
     try:
         with served.capture() as notices:
             # One call site, twice: the default warnings filter keys on where a
@@ -322,7 +322,7 @@ def test_the_secret_is_never_printed_or_logged(
 ) -> None:
     """INV-9."""
     capfd.readouterr()
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         client = _Client(served, follow=False)
         client.cookie = session_cookie(served.url)
@@ -355,7 +355,7 @@ def test_files_never_leave_their_folder(tmp_path: Path) -> None:
         link.symlink_to(tmp_path / "outside.txt")
     except OSError:
         link = None  # a Windows account without the symlink privilege
-    served = face.serve(tmp_path / "own", open_browser=False)
+    served = face.serve(tmp_path / "own")
     try:
         served.add_files("/m/", face.within(mounted))
         served.add_files("/plain/", lambda rest: mounted / rest)
@@ -391,7 +391,7 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
              "notes.txt": "application/octet-stream"}
     for name in types:
         (mounted / name).write_bytes(b"x")
-    served = face.serve(tmp_path / "own", open_browser=False)
+    served = face.serve(tmp_path / "own")
     try:
         served.add_files("/m/", face.within(mounted))
         client = _Client(served)
@@ -408,7 +408,7 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
 
 def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
     """PRESS-0012 INV-9."""
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/moved", lambda request: face.Reply(
             b"", "text/plain", status=303, location="/elsewhere"))
@@ -443,7 +443,7 @@ def test_no_other_origin_can_frame_the_face(tmp_path: Path) -> None:
     mounted = tmp_path / "mounted"
     mounted.mkdir()
     (mounted / "page.html").write_bytes(b"<p>x</p>")
-    served = face.serve(tmp_path / "own", open_browser=False)
+    served = face.serve(tmp_path / "own")
     try:
         served.add_files("/m/", face.within(mounted))
         served.add_page("GET", "/data", lambda request: face.Reply(
@@ -481,7 +481,7 @@ def test_a_non_ascii_secret_is_refused_not_dropped(tmp_path: Path) -> None:
 
     Breaks when the secret is compared as str.
     """
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         client = _Client(served, follow=False)
         assert client.request("GET", "/?t=%C3%A9", cookie=False)[0] == 403
@@ -521,7 +521,7 @@ def test_a_body_length_that_is_not_a_count_is_refused(tmp_path) -> None:
     """PRESS-0162 (review-code L5.1): a non-numeric Content-Length raised with
     no answer, and a negative one was truthy, so read(-5) waited for the client
     to close and held the thread. Both are refused with 400, promptly."""
-    served = face.serve(tmp_path, open_browser=False)
+    served = face.serve(tmp_path)
     try:
         served.add_page("POST", "/echo", lambda request: face.Reply(b"ok", "text/plain"))
         client = _Client(served)
@@ -549,3 +549,17 @@ def test_a_credential_failure_fits_a_write_as_well_as_a_read() -> None:
                                publishing=False, secret="your GitHub key")  # noqa: S106 -- a label, not a secret
     assert "safely read" not in said
     assert "unlock" in said
+
+
+def test_serve_opens_no_browser_and_prints_nothing(tmp_path, monkeypatch, capfd):
+    """§ 4.5 (PRESS-0170): the launcher, PRESS-0013 § 4.5, owns opening the
+    browser and the line printed where none opens. A second copy here had
+    drifted from it and had no production caller."""
+    opened = []
+    import webbrowser
+    monkeypatch.setattr(webbrowser, "open", lambda *a, **k: opened.append(a) or True)
+    served = face.serve(tmp_path)
+    served.stop()
+    assert opened == []
+    printed = capfd.readouterr()
+    assert printed.out == "" and printed.err == ""

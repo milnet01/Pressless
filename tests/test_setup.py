@@ -147,7 +147,7 @@ class _Browser:
 
 @contextlib.contextmanager
 def _setup_page(folder: Path, github: _GitHub) -> Iterator[_Browser]:
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         setup.register(served, folder, transport=github)
         yield _Browser(served)

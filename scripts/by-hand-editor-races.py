@@ -83,7 +83,7 @@ def main() -> int:
     credentials.read = lambda kind, folder, account: tp.KEY
     publishing._now = lambda: tp.NOW
 
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         editor.register(served, folder)
         publishing.register(served, folder, transport=slowed(tp._github(), 0.4))

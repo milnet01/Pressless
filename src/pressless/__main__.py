@@ -160,7 +160,7 @@ def _serve(folder: Path) -> int:
 
 
 def _serve_held(folder: Path) -> int:
-    served = face.serve(folder, open_browser=False)
+    served = face.serve(folder)
     try:
         setup.register(served, folder)
         editor.register(served, folder)
