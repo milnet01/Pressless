@@ -8199,6 +8199,19 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.2).
   Lanes: updater.
 
+- 💭 [PRESS-0175] **A blog whose slugs are in Cyrillic, Greek or CJK gets every published address changed on import.**
+  pressless_import.resolve_slug folds a slug to ASCII and falls back to
+  the post id where nothing survives, as PRESS-0005 3 decision 4 and
+  PRESS-0007 4.4 require. For a non-Latin blog every address therefore
+  changes, which breaks every inbound link. It matches the spec and the
+  first writer's archive is Latin, so this matters only for general users
+  (PRESS-0125's importer). A fix is a spec decision: transliterate, or keep
+  percent-encoded addresses. Filed as considered, for PRESS-0125.
+  **Layman:** For a blog written in a non-Latin alphabet, importing would change every post's web address.
+  Kind: enhancement.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
+  Lanes: import.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

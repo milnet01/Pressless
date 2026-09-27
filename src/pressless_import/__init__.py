@@ -81,7 +81,7 @@ _UPLOADS = "/uploads/"
 _START = re.compile(r"<!--\s*(HEADER|FOOTER):START[^>]*?-->")
 _ANY_END = re.compile(r"<!--\s*(?:HEADER|FOOTER):END\s*-->")
 _STAMP = re.compile(r"""(["'](?:\.\./)*assets/[^"'\s?#]*)\?v=[0-9a-fA-F]+(?=["'])""")
-_NAV = re.compile(r'[ \t]*<nav class="primary.*?</nav>\n', re.S)
+_NAV = re.compile(r'[ \t]*<nav class="primary.*?</nav>\r?\n', re.S)
 
 
 def resolve_slug(raw: str, post_id: str) -> str:
@@ -272,9 +272,17 @@ def _photographs(channel, ns, originals: Path):
         shared.setdefault(upload_path.rsplit("/", 1)[-1].casefold(), set()).add(upload_path)
     names: dict[str, str] = {}
     by_id: dict[str, str] = {}
+    taken: dict[str, str] = {}
     for post_id, upload_path in attachments:
         own = upload_path.rsplit("/", 1)[-1]
         name = own if len(shared[own.casefold()]) == 1 else upload_path.replace("/", "-")
+        # The renamed names too, as Windows compares them: 2019/05/IMG.jpg and
+        # 2019/05/img.jpg become two names one Windows folder cannot hold
+        # (decision 6, PRESS-0162).
+        other = taken.setdefault(name.casefold(), upload_path)
+        if other != upload_path:
+            raise ImportStopped(f"{other} and {upload_path} would take names that differ "
+                                f"only in case")
         try:
             store.photograph_path_for(Path(), name)
         except store.StoreError:
@@ -420,9 +428,12 @@ def _furniture(templates: Path) -> dict[str, str]:
             f"header.html holds {'no' if not navs else 'more than one'} navigation element")
     nav = navs[0]
     header = texts["header"]
+    # The file's own line ending, so a header saved with CRLF is not refused
+    # as holding no navigation (PRESS-0162).
+    ending = "\r\n" if nav.group(0).endswith("\r\n") else "\n"
     return {
-        "header": header[:nav.start()] + "{{NAVIGATION}}\n" + header[nav.end():],
-        "navigation": nav.group(0)[:-1],
+        "header": header[:nav.start()] + "{{NAVIGATION}}" + ending + header[nav.end():],
+        "navigation": nav.group(0)[:-len(ending)],
         "footer": texts["footer"],
     }
 

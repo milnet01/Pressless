@@ -307,6 +307,10 @@ _ROWS = [
      "{photo: a.jpg}", "elsewhere.example.org"),
     (f'<figure><img src="{UPLOADS}/2012/05/a.jpg"><figcaption>Late light</figcaption></figure>',
      "{photo: a.jpg | Late light}", None),
+    # Markup in a caption is flattened, and said so (PRESS-0162).
+    (f'<figure><img src="{UPLOADS}/2012/05/a.jpg"><figcaption>'
+     '<a href="https://example.org">Late</a> light</figcaption></figure>',
+     "{photo: a.jpg | Late light}", "caption"),
     ('[gallery ids="1,2"]', "{photo: a.jpg}\n{photo: b.jpg}", None),
     ("<blockquote><p>a<br>b</p><p>c</p></blockquote>", "> a\n> b\n>\n> c", None),
     ('<figure class="wp-block-pullquote"><blockquote><p>x</p></blockquote></figure>', "> x", None),
@@ -324,6 +328,8 @@ _ROWS = [
     # The wrap-mark rules: whitespace moves outside, a run never crosses a
     # line, bold and italic together are bold, and a newline is a space.
     ("<p><strong> word</strong></p>", "**word**", None),
+    # A literal no-break space is whitespace to Marks too (PRESS-0162).
+    ("<p><strong>\u00a0word</strong></p>", "\u00a0**word**", None),
     ('<p><a href="https://example.org"> x</a></p>', "{link: https://example.org}x{/}", None),
     ("<p><strong>a<br>b</strong></p>", "**a**\n**b**", None),
     ("<p><strong><em>x</em></strong></p>", "**x**", "italic"),
@@ -387,6 +393,36 @@ def test_visible_lines_breaks_where_a_reader_sees_one():
 
 
 # ------------------------------------------------------------ INV-6 -------
+
+
+def test_a_header_saved_with_crlf_keeps_its_navigation(tmp_path):
+    """PRESS-0162 (review-code L10.9): the navigation had to end in a bare
+    newline, so a header saved with CRLF was refused as holding none. Its
+    own line ending is kept on both halves."""
+    crlf = _HEADER.replace("\n", "\r\n").encode("utf-8")
+    export, originals, into = _world(tmp_path, _export(_item(1, slug="words")),
+                                     templates={"header.html": crlf, "footer.html": _FOOTER})
+    _run(export, originals, into)
+    header = store.read_html(store.html_path_for(into, store.FURNITURE_FOLDER, "header"))
+    navigation = store.read_html(store.html_path_for(into, store.FURNITURE_FOLDER, "navigation"))
+    assert "{{NAVIGATION}}\r\n" in header
+    assert navigation.rstrip().endswith("</nav>") and "\r\n" in navigation
+
+
+def test_renamed_photographs_that_differ_only_in_case_stop_the_import(tmp_path):
+    """Decision 6 compares names as Windows compares them, and the upload-month
+    names were never compared (PRESS-0162, review-code L10.2): 2019/05/IMG.jpg
+    and 2019/05/img.jpg became 2019-05-IMG.jpg and 2019-05-img.jpg, one file
+    in a Windows folder."""
+    originals_bytes = {"2019/05/IMG.jpg": b"one", "2019/05/img.jpg": b"two"}
+    export, originals, into = _world(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2019/05/IMG.jpg"),
+        _item(21, kind="attachment", status="inherit", attachment="2019/05/img.jpg"),
+        _item(1, slug="words"),
+    ), originals_bytes)
+
+    with pytest.raises(ImportStopped, match="differ only in case"):
+        _run(export, originals, into)
 
 
 def test_photographs_arrive_under_their_names(tmp_path):

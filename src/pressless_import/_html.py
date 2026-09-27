@@ -389,6 +389,11 @@ class _Converter:
             captions = [child for child in node.children
                         if isinstance(child, _Element) and child.tag == "figcaption"]
             self._caption = _plain_text(captions[0]) if captions else None
+            # A caption is plain text in Marks, so any markup in it -- a link,
+            # a colour -- is lost here; decision 9 has that said (PRESS-0162).
+            if captions and any(isinstance(child, _Element)
+                                for child in _descendants(captions[0])):
+                self.dropped.append("markup inside a picture's caption, its words kept")
             for child in node.children:
                 if not (isinstance(child, _Element) and child.tag == "figcaption"):
                     self.walk(child, style, blocks)
@@ -472,12 +477,15 @@ def _line(segments: list[tuple[str, _Style]], dropped: list[str]) -> str:
             runs.append([text, style])
     out = []
     for text, style in runs:
-        core = text.strip(" ")
+        # Every whitespace character, not only the space: Marks reads U+00A0
+        # as whitespace at a wrap's edge, so one left inside printed the
+        # marker literally (§4.3, PRESS-0162).
+        core = text.strip()
         if style == _PLAIN or not core:
             out.append(text)
             continue
-        lead = text[: len(text) - len(text.lstrip(" "))]
-        trail = text[len(text.rstrip(" ")):]
+        lead = text[: len(text) - len(text.lstrip())]
+        trail = text[len(text.rstrip()):]
         out.append(lead + _wrapped(core, style) + trail)
     line = "".join(out).strip(" ")
     # A line beginning with > is Marks' quotation. His own > is text, so it
