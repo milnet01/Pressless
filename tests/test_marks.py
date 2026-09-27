@@ -638,6 +638,26 @@ def test_an_unclosable_line_does_not_take_quadratic_time():
     )
 
 
+def test_a_line_whose_closer_cannot_close_does_not_take_quadratic_time():
+    """PRESS-0162 (review-code L3.2): PRESS-0054's short-circuit fires only
+    where no closer occurs at all. One closer that can close nothing -- here
+    preceded by a space -- let every opener walk the rest of the line.
+
+    Measured before the fix: 18 KB took 9.7s and quadrupled as the line
+    doubled; after it, 0.03s. The bound is as loose as PRESS-0054's.
+    """
+    line = "{accent}x" * 2000 + " {/}"
+
+    started = time.monotonic()
+    _html(line)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < 3.0, (
+        f"a line of {len(line)} characters whose one closer cannot close took "
+        f"{elapsed:.1f}s; before this fix it was 9.7s and quadratic"
+    )
+
+
 # ------------------------------------------------------------ PRESS-0070 ----
 
 

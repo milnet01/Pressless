@@ -13,6 +13,7 @@ references below are to it.
 """
 from __future__ import annotations
 
+import functools
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -471,30 +472,53 @@ def _closes_at(row: Mark, text: str, start: int) -> int | None:
     closes = row.closes
     if closes is None:
         return None
-    nests = row.opens != closes
     if text.find(closes, start) < 0:
-        # Nothing further on the line can close this, so the walk below can
-        # only reach the end. Checked up front because _try_wrap asks at
-        # every position, which made an unclosable line quadratic
-        # (PRESS-0054).
+        # Nothing further on the line can close this. Checked up front
+        # because _try_wrap asks at every position (PRESS-0054).
         return None
-    depth = 0
-    i = start
-    while i < len(text):
-        if text.startswith(closes, i):
-            if depth:
-                depth -= 1
-                i += len(closes)
-                continue
-            before = text[i - 1 : i]
-            if before.isspace() or (before == _RUN_DELIMITER and row.opens[0] == _RUN_DELIMITER):
-                i += 1
-                continue
-            return i
-        if nests and _opens_at(text, i, closes):
-            depth += 1
-        i += 1
-    return None
+    return _closer_table(row.opens, closes, text)[start]
+
+
+@functools.lru_cache(maxsize=32)
+def _closer_table(opens: str, closes: str, text: str) -> tuple[int | None, ...]:
+    """_closes_at's answer for every start on the line, in one right-to-left
+    pass. The walk it replaces ran from each opener to the line's end, so a
+    long line of unclosed openers was quadratic -- 18 KB took ten seconds
+    (PRESS-0162). The rules are the walk's, unchanged:
+
+    - at depth 0 a closer returns where it stands, unless whitespace (or,
+      for the asterisk family, another asterisk) precedes it -- then the
+      walk steps one character on;
+    - at depth above 0 any closer, preceded by anything, drops the depth
+      and the walk resumes just past it;
+    - where the mark nests, an opener sharing this closer raises the depth,
+      and the walk steps one character on.
+
+    `inner[s]` is where a walk at depth 1 starting at `s` returns to depth
+    0 (just past that closer); `found[s]` is the walk at depth 0.
+    """
+    n = len(text)
+    nests = opens != closes
+    width = len(closes)
+    inner: list[int | None] = [None] * (n + 2)
+    found: list[int | None] = [None] * (n + 2)
+    for s in range(n - 1, -1, -1):
+        closer = text.startswith(closes, s)
+        opener = nests and not closer and _opens_at(text, s, closes)
+        if closer:
+            inner[s] = s + width
+            before = text[s - 1 : s]
+            skipped = before.isspace() or (before == _RUN_DELIMITER
+                                           and opens[0] == _RUN_DELIMITER)
+            found[s] = found[s + 1] if skipped else s
+        elif opener:
+            back = inner[s + 1]
+            inner[s] = inner[back] if back is not None and back <= n else None
+            found[s] = found[back] if back is not None and back <= n else None
+        else:
+            inner[s] = inner[s + 1]
+            found[s] = found[s + 1]
+    return tuple(found[: n + 1])
 
 
 def _try_wrap(text: str, i: int, depth: int) -> tuple[Span, int] | None:

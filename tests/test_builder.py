@@ -38,6 +38,7 @@ from pressless.builder import (
     Built,
     SiteFolderUnusable,
     build,
+    furniture_spans,
     web_photograph,
 )
 from pressless.settings import Credentials, Settings
@@ -973,3 +974,36 @@ def test_a_linked_site_folder_keeps_building(tmp_path):
     stray.symlink_to(tmp_path / "nowhere")
     build(folder, _settings(), link)
     assert not stray.is_symlink() and not stray.exists()
+
+
+# ------------------------------------------------------------ PRESS-0162 ----
+
+
+def test_a_marker_inside_a_pair_stops_the_build():
+    """A pair inside a pair was swallowed into the outer span and replaced
+    in silence, and a stray END inside a span was not refused -- markers that
+    do not pair, which §6 stops the build for (review-code L3.3)."""
+    nested = ("<!-- HEADER:START -->\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
+              "<!-- HEADER:END -->\n")
+    stray = "<!-- HEADER:START -->\n<!-- FOOTER:END -->\n<!-- HEADER:END -->\n"
+    for html in (nested, stray):
+        with pytest.raises(BuildStopped, match="inside its HEADER pair"):
+            furniture_spans("index", html)
+    assert furniture_spans("index", "<!-- HEADER:START -->\n<!-- HEADER:END -->\n")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="chmod cannot make a file unreadable there")
+def test_a_store_file_that_cannot_be_read_is_named_as_the_stores(tmp_path):
+    """The copy into content/ read Store bytes directly, so an unreadable
+    template was reported as the site folder failing (review-code L3.1)."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("words"), draft=False)
+    template = store.write_template(folder, _entry("a-template"))
+    template.chmod(0)
+    try:
+        if os.access(template, os.R_OK):
+            pytest.skip("running with rights that read any file")
+        with pytest.raises(store.StoreError, match="a-template"):
+            build(folder, _settings(), tmp_path / "site", photo_src=lambda name: name)
+    finally:
+        template.chmod(0o600)

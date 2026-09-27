@@ -338,6 +338,11 @@ def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]:
         end = re.compile(rf"<!--\s*{kind}:END\s*-->").search(html, start.end())
         if end is None:
             raise BuildStopped(f"the page {name} has a {kind}:START with no {kind}:END after it")
+        if (_START.search(html, start.end(), end.start())
+                or _ANY_END.search(html, start.end(), end.start())):
+            # A pair inside a pair would be swallowed into the outer span and
+            # replaced in silence -- markers that do not pair (§6, PRESS-0162).
+            raise BuildStopped(f"the page {name} has a marker inside its {kind} pair")
         spans.append((start.end(), end.start()))
         pos = end.end()
 
@@ -732,7 +737,14 @@ class _Build:
                      for name in store.list_templates(self.folder))
         for path in paths:
             relative = path.relative_to(self.folder).as_posix()
-            self.write_bytes(f"content/{relative}", path.read_bytes())
+            # Read here rather than through store.read*, so a file that cannot
+            # be read is named as the Store's -- not left to the handler that
+            # calls every OSError the site folder's (PRESS-0162).
+            try:
+                data = path.read_bytes()
+            except OSError as exc:
+                raise store.StoreError(f"{relative} could not be read: {_why(exc)}") from None
+            self.write_bytes(f"content/{relative}", data)
 
     # -- sitemap.xml and robots.txt (§4.9) --
 
