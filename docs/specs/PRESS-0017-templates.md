@@ -1,6 +1,6 @@
 # PRESS-0017 — Start something new from a template
 
-**Status:** spec draft (2026-09-27).
+**Status:** accepted (2026-09-27). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0017 (`docs/design.md` § What may depend on
 what, under *A template is a Store file*; discovery § Starting something
@@ -73,7 +73,7 @@ its `base` check; `editor` does not import it back.
 ```python
 STARTERS: tuple[store.Entry, ...]   # the four, named poem, lyric,
                                     # photograph, journal
-def seed(folder: Path) -> bool: ... # §4.2; True where it wrote the four
+def seed(folder: Path) -> bool: ... # §4.2; False where the folder existed
 def register(face: Face, folder: Path) -> None: ...
 ```
 
@@ -92,8 +92,9 @@ page:
 `register` calls `seed(folder)` once, at start. `seed` writes the four
 `STARTERS` with `store.write_template` when
 `folder / store.TEMPLATES_FOLDER` does not exist, and does nothing
-otherwise. A `StoreError` from any write is caught and `face.note`
-records `templates: starters not written`. **A failure is final**: the
+otherwise, returning `False`. A `StoreError` from a write propagates out
+of `seed`; `register` catches it and `face.note` records `templates:
+starters not written`. **A failure is final**: the
 first write creates the folder, so the starters written before it stay
 and no later start writes the rest (§3 decision 3). He can still add
 his own.
@@ -194,9 +195,11 @@ revisit it.
   `templates/<name>.txt` and the bin: both `store.list_slugs` results are
   unchanged, and a stale `base` writes nothing.
   *Test:* `tests/test_templates.py::test_a_template_save_touches_only_its_file`
-  and `::test_a_stale_template_save_writes_nothing`.
-  *Breaks when:* the save goes through `store.write`, or skips the digest
-  check.
+  and `::test_a_stale_template_save_writes_nothing`, and for binning
+  `::test_a_template_bin_touches_only_its_file` and
+  `::test_a_stale_template_bin_moves_nothing`.
+  *Breaks when:* the save goes through `store.write`, or either route skips
+  the digest check.
 - **INV-6** — A new template's name is `address_for` of what was typed,
   with `-2` onwards only where a file already sits at its template path;
   an entry of that name does not count.
@@ -254,7 +257,7 @@ box opens holding it.
 | INV-2 | `tests/test_templates.py::test_no_template_is_a_blank_entry` |
 | INV-3 | `tests/test_templates.py::test_starters_are_written_once` |
 | INV-4 | `tests/test_templates.py::test_every_starter_is_well_formed` |
-| INV-5 | `tests/test_templates.py::test_a_template_save_touches_only_its_file`, `::test_a_stale_template_save_writes_nothing` |
+| INV-5 | `tests/test_templates.py::test_a_template_save_touches_only_its_file`, `::test_a_stale_template_save_writes_nothing`, `::test_a_template_bin_touches_only_its_file`, `::test_a_stale_template_bin_moves_nothing` |
 | INV-6 | `tests/test_templates.py::test_a_new_template_takes_a_free_name` |
 | Scope decision 6, the starters name nobody | **Partial:** the gate's leak sweep reads every committed file; nothing judges whether a starter assumes too much about a stranger |
 | §4.3's option labels | **nothing** — no test reads the rendered `<select>`; the browser row sees one pick |
