@@ -2423,3 +2423,84 @@ def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
     assert "joined" in str(caught.value), caught.value
     assert not any(outside in p.parents for p in read), read
     assert _no_writes(transport)
+
+
+# ----------------------------------------------------------------- INV-12 ---
+
+
+def test_an_odd_success_is_unknown(tmp_path):
+    """INV-12 (PRESS-0166): a 2xx is GitHub saying it acted. On the two writes
+    that can move the site, one that cannot say how is OutcomeUnknown, never
+    the base type, whose § 6 row says unchanged."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    for answer in ((202, {}, b'{"object": {"sha": "commit-sha"}}'),
+                   (200, {}, b"not json")):
+        odd = _Transport(reads=_reads(listing),
+                         writes=[("/git/refs", answer)] + _writes())
+        with pytest.raises(OutcomeUnknown):
+            publish(_settings(), tmp_path, "a-token", "m", transport=odd)
+
+    only = _site(tmp_path / "empty", {"index.html": b"<html>only</html>"})
+    for answer in ((204, {}, b""), (201, {}, b"{}")):
+        with pytest.raises(OutcomeUnknown):
+            publish(_settings(), only, "a-token", "m",
+                    transport=_EmptyRepository(_listing([]), start=answer))
+
+
+def test_a_redirected_write_names_the_move(tmp_path):
+    """INV-12 (PRESS-0167): GitHub answers a write to a renamed repository with
+    a redirect urllib does not follow for a write. It is RepositoryMoved,
+    with the request sent once -- never re-sent to a repository Settings
+    does not name."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    moved = {"Location": f"{publisher_module.API}/repositories/1/x"}
+    for where, status in (("/git/blobs", 307), ("/git/refs", 308)):
+        transport = _Transport(reads=_reads(listing),
+                               writes=[(where, (status, moved, b""))] + _writes())
+        with pytest.raises(publisher_module.RepositoryMoved):
+            publish(_settings(), tmp_path, "a-token", "m", transport=transport)
+        sent = [u for m, u, _b, _h in transport.requests if m != "GET" and where in u]
+        assert len(sent) == 1, (where, sent)
+
+
+def test_the_client_follows_no_redirected_write():
+    """INV-12: the double above cannot see a client that follows, so the
+    module's own client is driven against a loopback server answering every
+    write with a redirect. Each comes back as the status, sent once."""
+    import http.server
+    import threading
+
+    seen = []
+
+    class _Moved(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _moved(self):
+            seen.append((self.command, self.path))
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            self.send_response(self.server.status)
+            self.send_header("Location", "/moved")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        do_POST = do_PATCH = do_PUT = _moved
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Moved)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        client = publisher_module._Urllib()
+        for status in (307, 308):
+            server.status = status
+            for method in ("POST", "PATCH", "PUT"):
+                seen.clear()
+                answer = client.request(
+                    method, f"http://127.0.0.1:{server.server_address[1]}/x",
+                    b"{}", {"Content-Type": "application/json"})
+                assert answer[0] == status, (method, status, answer[0])
+                assert seen == [(method, "/x")], (method, status, seen)
+    finally:
+        server.shutdown()
+        server.server_close()

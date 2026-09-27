@@ -169,6 +169,10 @@ class UnfetchablePath(PublishError):
     """A fetched path this system's disk cannot hold (§4.5)."""
 
 
+class RepositoryMoved(PublishError):
+    """A write was redirected: the repository was renamed or moved (§6)."""
+
+
 class Transport(Protocol):
     """The one seam. Tests are its only other caller (§4.1).
 
@@ -198,7 +202,7 @@ class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     origins; a same-origin redirect keeps the header, so a renamed
     repository still resolves for a read. A write is not followed: GitHub
     redirects one with 307, which urllib does not follow for POST or PATCH,
-    so it returns as status 307 (PRESS-0162 queues what that should say).
+    so it returns as status 307 and is RepositoryMoved (§6, PRESS-0167).
     """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -335,8 +339,13 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
             outcome_unknown=True,
         )
         written = answer.get("commit")
-        start_commit = _required(written if isinstance(written, dict) else {},
-                                 "sha", "the start commit")
+        start_commit = written.get("sha") if isinstance(written, dict) else None
+        if not start_commit:
+            # GitHub acted and did not say how, so the start commit may
+            # exist (§6, PRESS-0166).
+            raise OutcomeUnknown(
+                "GitHub took the start file without naming its commit, so "
+                "whether the site moved is unknown")
         head = session.read(head_url, empty_ok=True)
         if head is None:
             # The start is made once (PRESS-0127 INV-6), never retried.
@@ -631,8 +640,33 @@ class _Session:
                 )
                 continue
 
+            if status in (307, 308) and method != "GET":
+                # GitHub's answer to a write for a renamed or moved
+                # repository. urllib follows neither for a write, and
+                # following would publish where Settings does not point
+                # (§6, PRESS-0167).
+                raise RepositoryMoved(
+                    f"GitHub redirected {method} {_without_account(url)}: the "
+                    f"repository was renamed or moved"
+                )
             if status in (200, 201):
-                return _parse(data)
+                if not outcome_unknown:
+                    return _parse(data)
+                try:
+                    return _parse(data)
+                except PublishError:
+                    # GitHub acted and the answer cannot say how (§6,
+                    # PRESS-0166).
+                    raise OutcomeUnknown(
+                        f"GitHub's answer to {method} {_without_account(url)} "
+                        f"is not readable, so whether the site moved is unknown"
+                    ) from None
+            if outcome_unknown and 200 <= status < 300:
+                raise OutcomeUnknown(
+                    f"GitHub answered {status} to {method} "
+                    f"{_without_account(url)}, so whether the site moved is "
+                    f"unknown"
+                )
             if outcome_unknown and status >= 500:
                 # An answer, but not one that says whether the branch moved:
                 # a gateway can fail after the update was applied, which

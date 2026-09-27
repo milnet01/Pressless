@@ -8173,7 +8173,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Editors, Low (PRESS-0162 L4.6).
   Lanes: face, editor.
 
-- 📋 [PRESS-0170] **Two copies of "open the browser, else print the link" have diverged, and one has no production caller.**
+- ✅ [PRESS-0170] **Two copies of "open the browser, else print the link" have diverged, and one has no production caller.**
   face.serve(open_browser=True) opens / whatever setup needs and words its
   message differently from __main__._serve_held, which picks /setup and owns
   the real message. Nothing in src/ passes open_browser=True: every caller,
@@ -8182,6 +8182,9 @@ already-built code ships in whichever release comes next.
   fixed, because it moves a declared surface for code nobody calls.
   Decided 2026-09-27: remove the open_browser branch from face.serve;
   PRESS-0011 4.1 amended first.
+  Shipped 2026-09-27: PRESS-0011 amended and gated (loop 5, two
+  verified, fixed); face.serve lost open_browser; the launcher is the
+  one owner. Written back into PRESS-0012/0013/0014/0021 (f497d5a).
   **Layman:** A leftover second copy of the start-up link code says things differently and would misbehave if anything used it.
   Kind: refactor.
   Source: review-code 2026-09-26 PRESS-0135 lane Face and launch, Low (PRESS-0162 L5.5).

@@ -216,6 +216,10 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "The earlier version of your site names a file this computer cannot hold.",
         "Rename the file named below on your site, publish, then try again.",
     ),
+    publisher.RepositoryMoved: _say(
+        "GitHub says your site's repository has been renamed or moved.",
+        "Enter its new name in Settings, then click Publish again.",
+    ),
     publisher.RemoteStateMissing: _say(
         "Something Pressless needed from GitHub was not there.",
         "Try again.",
