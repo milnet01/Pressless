@@ -406,6 +406,15 @@ def _is_secret(offered: str, secret: str) -> bool:
 _OPENER_SECONDS = 5
 
 
+def _length(value: str | None) -> int | None:
+    """A request's Content-Length, or None where it is not a count."""
+    try:
+        length = int(value or 0)
+    except ValueError:
+        return None
+    return length if length >= 0 else None
+
+
 def _open_folder(folder: Path) -> None:
     """Open `folder` in the platform's file manager. Raises FolderNotOpened."""
     try:
@@ -571,7 +580,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send_file(method, parts.path, face)
             return
         page, publishing = registered
-        length = int(self.headers.get("Content-Length") or 0) if method == "POST" else 0
+        length = _length(self.headers.get("Content-Length")) if method == "POST" else 0
+        if length is None:
+            # Unparseable or negative: read(-1) would wait for the client to
+            # close, holding this thread (PRESS-0162).
+            self._send(400, "", "text/plain")
+            return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
         face._reply.after = []
         try:

@@ -515,3 +515,26 @@ def test_an_opener_that_fails_is_a_folder_not_opened(
             face._open_folder(tmp_path)
     else:
         face._open_folder(tmp_path)
+
+
+def test_a_body_length_that_is_not_a_count_is_refused(tmp_path) -> None:
+    """PRESS-0162 (review-code L5.1): a non-numeric Content-Length raised with
+    no answer, and a negative one was truthy, so read(-5) waited for the client
+    to close and held the thread. Both are refused with 400, promptly."""
+    served = face.serve(tmp_path, open_browser=False)
+    try:
+        served.add_page("POST", "/echo", lambda request: face.Reply(b"ok", "text/plain"))
+        client = _Client(served)
+        for value in ("-5", "lots"):
+            conn = http.client.HTTPConnection("127.0.0.1", client.port, timeout=5)
+            try:
+                conn.putrequest("POST", "/echo", skip_host=True, skip_accept_encoding=True)
+                conn.putheader("Host", client.host)
+                conn.putheader("Cookie", client.cookie)
+                conn.putheader("Content-Length", value)
+                conn.endheaders()
+                assert conn.getresponse().status == 400, value
+            finally:
+                conn.close()
+    finally:
+        served.stop()

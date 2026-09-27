@@ -15,6 +15,7 @@ module level, so a packaged `--self-check` proves each one loads in the bundle.
 """
 from __future__ import annotations
 
+import errno
 import os
 import sys
 import threading
@@ -76,7 +77,15 @@ def main(argv: list[str]) -> int:
 
     if argv == ["--self-check"]:
         return 0
-    return _serve(folder)
+    try:
+        return _serve(folder)
+    except Exception as exc:  # noqa: BLE001 -- the last resort at launch
+        # A traceback names full paths, which the console must not carry
+        # (PRESS-0011 § 4.5's rule, reached before handle_error exists).
+        print(f"Pressless could not start ({type(exc).__name__}). Close this "
+              f"window and start Pressless again. If it keeps happening, send "
+              f"that name to whoever helps you.")
+        return 1
 
 
 def _unbundle_environment() -> None:
@@ -122,10 +131,20 @@ def _hold(folder: Path) -> BinaryIO | None:
     handle = open(folder / _LOCK_NAME, "a+b")  # noqa: SIM115 -- open while held
     try:
         _lock_now(handle)
-    except OSError:
+    except OSError as exc:
         handle.close()
-        return None
+        # Only a lock someone else holds is "already running". Any other
+        # refusal -- a file system with no locking, say -- is a failure, or
+        # every launch there would say another copy runs (PRESS-0162).
+        if exc.errno in _HELD:
+            return None
+        raise
     return handle
+
+
+# How each system refuses a lock another process holds: flock answers
+# EWOULDBLOCK (EAGAIN), and msvcrt's non-blocking lock EACCES or EDEADLOCK.
+_HELD = frozenset({errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES, errno.EDEADLK})
 
 
 def _serve(folder: Path) -> int:

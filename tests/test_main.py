@@ -7,6 +7,7 @@
 # packaging tests.
 from __future__ import annotations
 
+import errno
 import sys
 import threading
 import urllib.parse
@@ -281,3 +282,39 @@ def test_the_folder_lock_is_this_systems_whatever_platform_a_test_pretends(
     held = main_module._hold(tmp_path)
     assert held is not None, "the lock was refused in an empty folder"
     held.close()
+
+
+def test_only_a_held_lock_reads_as_already_running(monkeypatch, tmp_path):
+    """PRESS-0162 (review-code L5.2): every OSError from the lock read as
+    "already running", so a file system that refuses locking would say so on
+    every launch. Only a held lock does; anything else is raised."""
+    def held(handle):
+        raise BlockingIOError(errno.EWOULDBLOCK, "held")
+
+    def unsupported(handle):
+        raise OSError(errno.ENOLCK, "no locks here")
+
+    monkeypatch.setattr(main_module, "_lock_now", held)
+    assert main_module._hold(tmp_path) is None
+    monkeypatch.setattr(main_module, "_lock_now", unsupported)
+    with pytest.raises(OSError):
+        main_module._hold(tmp_path)
+
+
+def test_a_failure_at_launch_names_no_path(monkeypatch, tmp_path, capsys):
+    """PRESS-0162 (review-code L5.3): a failure while starting printed a
+    standard traceback naming full paths -- the console leak PRESS-0011
+    § 4.5 closes for requests. It now prints one sentence and its type."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    secret = str(tmp_path / "a-private-path")
+
+    def broken(folder):
+        raise RuntimeError(secret)
+
+    monkeypatch.setattr(main_module, "_serve", broken)
+    assert main_module.main([]) == 1
+    out, err = capsys.readouterr()
+    assert "RuntimeError" in out
+    assert secret not in out + err and "Traceback" not in out + err

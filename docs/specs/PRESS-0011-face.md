@@ -411,7 +411,7 @@ capture, it lands on that request's list.
 | A request lacks the cookie, names a foreign `Host`, or is a POST from a foreign `Origin` | 403, with a plain body |
 | He opens another page served on `127.0.0.1` | That page's server receives the session cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page. It cannot frame a Face page (§ 4.5) |
 | The opening link is followed a second time | 403. Accepted: `serve` opens it once, and a new launch makes a new link |
-| Pressless is launched twice | A second server on another port and a second tab. Accepted: nothing here keeps state between requests (`docs/design.md` § State) |
+| Pressless is launched twice on one folder | The second start says Pressless is already running and exits; the folder's lock is PRESS-0023 § 4.11's |
 
 ## 7. Tests
 
@@ -454,7 +454,6 @@ once the code lands, one mutation per *Breaks when* route.
   which also wires the double-click to `face.serve`.
 - Setup and the publishing key — PRESS-0021.
 - Undo — PRESS-0015. The dashboard — PRESS-0020.
-- One Pressless at a time — deferred; not yet queued.
 
 ## 10. What checks this
 
