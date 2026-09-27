@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A cheat sheet below the writing box, and a page to print** (PRESS-0018)
+  It lists every mark with an example and one plain line, and is
+  made from the same table Pressless reads marks with, so it cannot
+  teach a mark that does not work.
+
 - **Pressless looks for a new version when it starts, offers Update now, Later or Skip this version, and installs only a release signed by its maintainer.** (PRESS-0023)
   The looking can be turned off from the line under the list. Only
   one Pressless can run against a folder at a time; a second start

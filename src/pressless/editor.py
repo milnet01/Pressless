@@ -23,7 +23,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, paths, settings, store
+from pressless import builder, cheatsheet, paths, settings, store
 from pressless.face import (
     SENTENCES,
     Face,
@@ -412,6 +412,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
 </form>
+{cheatsheet.panel()}
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
 <iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"

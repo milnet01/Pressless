@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 from _face_session import session_cookie
 
-from pressless import editor, face, settings, store
+from pressless import editor, face, marks, settings, store
 
 PREVIEW = "preview"
 REPLACES = "Replaces"
@@ -387,6 +387,19 @@ def test_a_published_entry_page_carries_its_working_copy_state(tmp_path):
     assert '<form data-when="1" hidden method="post" action="/discard">' in page
     assert "Bin this proof" in page
     assert "#standing input[name=slug]" in page, "the script does not name the copy"
+
+
+def test_the_editor_shows_the_cheat_sheet(tmp_path):
+    """PRESS-0018: the box he writes in carries the cheat sheet beside it,
+    generated from Marks' table, with a link to the printable page."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    with _editor(folder) as browser:
+        status, _, page = browser.request("GET", "/edit?slug=seaside")
+    assert status == 200
+    for row in marks.MARKS:
+        assert html.escape(row.explains) in page, row.name
+    assert 'href="/cheat-sheet"' in page
 
 
 def test_a_copy_of_an_unreadable_entry_is_not_listed_as_a_draft(tmp_path):

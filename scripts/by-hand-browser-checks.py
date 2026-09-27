@@ -4,6 +4,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0013 s10: the script's waiting message and page switch (s 4.4)
   PRESS-0012 s10: the script's timing, pagehide save, no two saves in flight (s 4.7)
   PRESS-0012 s10 (Chrome half only): the policies block Google's script
+  PRESS-0018: the cheat sheet folds open below the box, and prints
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -32,7 +33,16 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 import test_publishing as tp  # noqa: E402
 
-from pressless import credentials, editor, face, publishing, store, undo  # noqa: E402
+from pressless import (  # noqa: E402
+    cheatsheet,
+    credentials,
+    editor,
+    face,
+    marks,
+    publishing,
+    store,
+    undo,
+)
 
 RESULTS: list[tuple[str, bool, str]] = []
 
@@ -52,6 +62,7 @@ def main() -> int:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        cheatsheet.register(served)
         publishing.register(served, folder, transport=tp._github())
         undo.register(served, folder, transport=tp._github())
         parts = urllib.parse.urlsplit(served.url)
@@ -94,6 +105,25 @@ def run(origin: str, secret: str, folder: Path) -> None:
         sandbox = page.locator("iframe[sandbox]").first.get_attribute("sandbox") or ""
         check("PRESS-0012 s4.7: sandbox is allow-same-origin alone (PRESS-0169)",
               sandbox.split() == ["allow-same-origin"], sandbox)
+
+        # ---- PRESS-0018: the cheat sheet -------------------------------------
+        sheet = page.locator("details#cheat-sheet")
+        check("PRESS-0018: the cheat sheet starts folded",
+              sheet.count() == 1 and not sheet.evaluate("d => d.open"))
+        sheet.locator("summary").click()
+        rows = sheet.locator("tbody tr")
+        check("PRESS-0018: opened, it shows one visible row per mark",
+              rows.count() == len(marks.MARKS) and rows.first.is_visible(),
+              f"rows={rows.count()} marks={len(marks.MARKS)}")
+        with page.context.expect_page() as opened:
+            sheet.locator("a").click()
+        printable = opened.value
+        printable.wait_for_load_state("networkidle")
+        check("PRESS-0018: the print link opens the sheet in a new tab",
+              printable.locator("table.cheat-sheet tbody tr").count() == len(marks.MARKS),
+              printable.url)
+        printable.close()
+        sheet.locator("summary").click()
 
         # ---- PRESS-0012 s4.7: about a second after the last change -----------
         posts.clear()

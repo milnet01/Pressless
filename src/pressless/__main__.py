@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from pressless import (
+    cheatsheet,
     credentials,
     editor,
     face,
@@ -164,6 +165,7 @@ def _serve_held(folder: Path) -> int:
     try:
         setup.register(served, folder)
         editor.register(served, folder)
+        cheatsheet.register(served)
         publishing.register(served, folder)
         undo.register(served, folder)
         page_editor.register(served, folder)
