@@ -275,17 +275,16 @@ it — this item adds no version-bumping of its own. It requires only
 that the workflow reject a tag disagreeing with the manifest, so a
 mislabelled artefact cannot be published.
 
-**PyInstaller is declared in `pyproject.toml`.** It is named by `CLAUDE.md` § Build and test as a build-time
-packager belonging beside the gate's tools rather than in
-`dependencies`, and it appears in no manifest, no gate script and no
-workflow. It gets its own optional-dependency group, so the two
-release runners install it the same way and anyone can reproduce a
-build from the manifest. **A floor in the manifest, and a pin in the
-release build** (PRESS-0150, decided 2026-09-27).
+**PyInstaller is declared in `pyproject.toml`**, in its own
+`packaging` group beside the gate's tools rather than in
+`dependencies`. **A floor in the manifest, and a pin in the release
+build** (PRESS-0150, decided 2026-09-27).
 
-**Both release jobs install from `packaging/release-requirements.txt`
-and from nothing else**: `python -m pip install --require-hashes -r
-packaging/release-requirements.txt`. The file names an exact version and
+**Both release jobs take every Python package from
+`packaging/release-requirements.txt` and no other source**: `python -m
+pip install --require-hashes -r packaging/release-requirements.txt`.
+The Linux job's system packages and its pinned, hash-checked
+`appimagetool` and runtime are not Python packages and stay as they are. The file names an exact version and
 its SHA-256 hashes for every library the release uses — the runtime
 dependencies, the `dev` group the gate runs and the `packaging` group —
 so two builds of one commit bundle the same code, and a download that
@@ -479,12 +478,12 @@ thing nothing backs up.
   `pyproject.toml` without regenerating the file, so the release bundles
   without it or below it; or a hand edit drops a hash, which makes pip
   refuse the whole file.
-- **INV-10** — Every install step in `.github/workflows/release.yml` is
-  exactly the §4.4 command: hash-checked, from that file, with no other
-  install and no pip upgrade.
+- **INV-10** — Every `pip install` in `.github/workflows/release.yml`
+  is exactly the §4.4 command: hash-checked, from that file, and no pip
+  upgrade.
   *Test:* `tests/test_release_lock.py::test_release_installs_only_the_lock`.
   *Breaks when:* a job goes back to `pip install -e '.[dev,packaging]'`,
-  or gains a second install that bypasses the hashes.
+  or gains a second `pip install` that bypasses the hashes.
 
 
 ## 6. Failure modes
@@ -646,7 +645,8 @@ against it, and throw it away.
 - **README** — § Install gains the steps of §4.6.
 - **CHANGELOG** — an Added entry, and the first release this item makes
   possible.
-- **`pyproject.toml`** — a group pinning PyInstaller (§4.4), and a
+- **`pyproject.toml`** — a `packaging` group holding PyInstaller's
+  floor (§4.4; the pin is the release lock file's), and a
   `packaging` marker declared beside `archive` so §7's build tests skip
   cleanly without one.
 - **`scripts/local-ci.sh`** — resolves the interpreter instead of
@@ -654,7 +654,7 @@ against it, and throw it away.
   and both CI workflows share, so the change is felt on every route
   and must keep the Linux behaviour identical.
 - **`CLAUDE.md`** — § Build and test names PyInstaller as belonging
-  beside the gate's tools; once §4.4 pins it, that line describes a
+  beside the gate's tools; once §4.4 declares it, that line describes a
   file rather than an intention.
 - **PRESS-0150's amendment (2026-09-27)** — `SECURITY.md`'s paragraph
   on the libraries Pressless runs, which said nothing pins them;
@@ -679,6 +679,7 @@ against it, and throw it away.
 | 2 | 2026-09-02 | 3, cold — identical brief, packet rebuilt from disk and extended with the onefile measurement, PRESS-0002 §4.6 and ADR-0004 § Consequences | 1 | 6 | 3 | 2 | **Twelve verified, twelve fixed, none dismissed. Cap reached (2 for a spec), and it is a VIOLENT cap** — about ten of the twelve landed on text loop 1 wrote, each anchor checked against loop 1's ledger rather than recall. So the review ends here and the document is routed to implementation rather than to a third loop; nothing in the run suggests a third would stop. **The root cause of half the loop is one thing loop 1 created**: it made `--self-check` serve three consumers — the release job's exit code, the pytest tests, the Windows box — and pinned neither its output nor its exit rule, so §6 promised a metadata-less bundle never ships while §10 said the Linux arm may skip. §4.5 now fixes three machine-readable lines and says a `store: file` answer is NOT a failure, because the program cannot tell no-store from lost-metadata. **The sharpest finding is that loop 1's own fix was circular**: it let INV-6's Linux arm skip where no store is present, and a metadata-less bundle produces exactly that observation — so the skip condition WAS the failure condition and INV-6 could never go red. §7 step 3 now CREATES the session rather than hoping for one. **Two findings were loop 1 breaking its neighbours:** §8 still rejected one-file for the `sys.executable` reason loop 1 had just deleted from §4.1, and loop 1's own Windows suite step made INV-2 and INV-3 fail on `windows-latest`, because neither fixture patched `sys.platform` and the win32 row is read first. Also fixed: `env -i` named as the Windows clean room, where that runner ships Python and no clean room can be made; INV-8 false on the `PRESSLESS_FOLDER` branch; a floor pin promising byte reproducibility; and a versioned filename in a README nothing updates. **A packet defect of mine, reported by all three lanes and recorded rather than hidden:** the PRESS-0001 and PRESS-0002 §4.1 windows were empty — a `#` comment inside a python fence read as a heading — so §2's quotation went unverified by lanes in both loops. I verified it by grep; the lanes could not, and raised it as an open question rather than a finding, which is them working. Resolved clean and not counted: libfuse locates `fusermount` by absolute path, so `env -i` does not break an AppImage mount. |
 | 3 | 2026-09-11 | 3, cold — genre pinned `spec`; gating the path-free `FolderUnusable` row (PRESS-0117). Windows, PyInstaller and AppImage unrunnable | 0 | 3 | 1 | 0 | **Four verified: three fixed, one surfaced on PRESS-0011. One loop only, by user instruction: not converged.** All three lanes: INV-5 still named the tried path, and the self-check report printed an absolute path the double-click shows; the report's `folder:` is now relative and reads `Pressless-data` on a correct build. `NotPackaged` no longer names what the variable held. The design label "the Pressless folder" is confusable with `Pressless/` on Windows; the row now defers to design.md, and the label is PRESS-0011's to change. |
 | 2-post | 2026-09-02 | **No reviewer was dispatched.** Author-side, after the cap, while answering the section 15 questions | 1 | 0 | 1 | 0 | **Two findings, two fixed. Not a review loop** — the gate ended at loop 2's violent cap and is not re-run; this row exists because a row no dispatched review produced is otherwise written by nobody. **Q1: `scripts/local-ci.sh` cannot run on `windows-latest` as section 7 step 1 requires it to**, and section 7 was written without checking the script. It invokes `python3`, a spelling the Windows installer does not create, and its leak sweep walks `git rev-list --all`, which a shallow clone answers falsely — the exact failure `ci.yml`'s own `fetch-depth: 0` comment describes. Both are now named in step 1 and in section 11 as this item's to fix. Found by reading the script after lane D asked whether it was runnable there and I asserted section 7 without opening it. **Q3: section 15's two questions are decided** by the user — the folder stays `Pressless-data`, and the Windows batch file stays because section 4.5's program prints and exits, so a bare double-clicked `.exe` would close before it could be read. Both moved to section 3 as decisions 5 and 6, and section 15 is now empty. **Verified separately and NOT a finding:** `windows-latest` (Server 2025) does ship Python 3.9 to 3.13, so section 7 step 2's claim that no clean room can be made there holds. |
+| 4 | 2026-09-27 | 2, cold, run one after the other; every lane held every question. Gating the PRESS-0150 amendment (§4.4 lock file, INV-9, INV-10). Windows runner and the tag-triggered workflow unrunnable; the lock was installed, gated, frozen and tampered with locally | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed; both lanes found all three.** "No other install" forbade §7's apt keyring step; §11 still said the manifest pins PyInstaller; §4.4 kept "appears in no manifest". Loop 1 of this run at the user's one-round budget, so the cap binds: calm, no earlier loop to repair. All three inside the armed change (0fd9593). |
 
 ## 13. Resource cost
 
