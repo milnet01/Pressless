@@ -414,3 +414,25 @@ def test_the_state_file_round_trips(tmp_path):
     assert json.loads((tmp_path / "updates.json").read_text(encoding="utf-8")) == {
         "version": 1, "check": False, "skip": "0.1.3"}
     assert updater.read_state(tmp_path) == (False, "0.1.3")
+
+
+def test_an_unpack_that_zipfile_cannot_finish_leaves_nothing(tmp_path, monkeypatch):
+    """PRESS-0162 (review-code L8.1): zipfile raises RuntimeError for an
+    encrypted member and NotImplementedError for an unknown method, and
+    unpack caught only OSError and BadZipFile -- so a half-made
+    Pressless.new-* stayed beside the program and the failure escaped the
+    route untyped, against § 4.9 step 1's "changes nothing"."""
+    beside = tmp_path / "program"
+    beside.mkdir()
+    archive = _zip(beside / "update.zip", {"Pressless/": b"", "Pressless/Pressless.exe": b"exe"})
+
+    for raised in (RuntimeError("encrypted"), NotImplementedError("method 99")):
+        def failing(self, *args, error=raised, **kwargs):
+            raise error
+
+        monkeypatch.setattr(zipfile.ZipFile, "extractall", failing)
+        kept = beside / "kept.zip"
+        shutil.copy(archive, kept)
+        with pytest.raises(updater.DownloadFailed):
+            updater.unpack(kept, beside)
+        assert not [p for p in beside.iterdir() if p.name.startswith("Pressless.new-")]

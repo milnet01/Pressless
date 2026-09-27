@@ -110,28 +110,56 @@ def _list(version: str, folder: Path) -> bytes:
     return ("\n".join(lines) + "\n").encode("ascii")
 
 
+def load_keys(configured: str) -> list[Ed25519PrivateKey]:
+    """The signing keys, one path per line of `git config --get-all`.
+
+    Split on lines, not whitespace, so a path holding a space stays whole; a
+    key that will not load is a refusal, not a traceback; and no more than
+    four, because an installed copy accepts one to four signatures (§ 4.3)
+    and a fifth publishes a release every copy misses (PRESS-0162).
+    """
+    paths = [line.strip() for line in configured.splitlines() if line.strip()]
+    if not paths:
+        raise Refused("no ants.pressless.signingKey is configured")
+    if len(paths) > 4:
+        raise Refused(f"{len(paths)} signing keys are configured; a release carries at most 4")
+    keys: list[Ed25519PrivateKey] = []
+    for path in paths:
+        try:
+            loaded = load_pem_private_key(Path(path).expanduser().read_bytes(), password=None)
+        except (OSError, ValueError, TypeError) as exc:
+            raise Refused(f"a configured signing key could not be loaded: "
+                          f"{type(exc).__name__}") from None
+        if not isinstance(loaded, Ed25519PrivateKey):
+            raise Refused("a configured signing key is not an Ed25519 key")
+        keys.append(loaded)
+    return keys
+
+
+def require_local_tag(local: str, remote: str) -> None:
+    """Refuse unless the local tag is the commit GitHub's tag names."""
+    if local != remote:
+        raise Refused("the local tag is not the commit GitHub's tag names; "
+                      "fetch the tags and run this again")
+
+
 def sign(tag: str) -> None:
     matched = _TAG.fullmatch(tag)
     if matched is None:
         raise Refused("the tag must read v<X.Y.Z>")
     version = matched.group(1)
 
-    paths = _run("git", "-C", str(ROOT), "config", "--get-all",
-                 "ants.pressless.signingKey").split()
-    if not paths:
-        raise Refused("no ants.pressless.signingKey is configured")
-    keys: list[Ed25519PrivateKey] = []
-    for path in paths:
-        loaded = load_pem_private_key(Path(path).expanduser().read_bytes(), password=None)
-        if not isinstance(loaded, Ed25519PrivateKey):
-            raise Refused("a configured signing key is not an Ed25519 key")
-        keys.append(loaded)
+    keys = load_keys(_run("git", "-C", str(ROOT), "config", "--get-all",
+                          "ants.pressless.signingKey"))
 
     release = json.loads(_run("gh", "release", "view", tag, "--repo", REPOSITORY,
                               "--json", "isDraft,assets"))
     if not release["isDraft"]:
         raise Refused("the release is already published; only a draft is signed")
     tag_commit = _run("gh", "api", f"repos/{REPOSITORY}/commits/{tag}", "--jq", ".sha").strip()
+    # TRUSTED is read from the LOCAL tag below, so it must be GitHub's commit.
+    require_local_tag(_run("git", "-C", str(ROOT), "rev-parse", f"{tag}^{{commit}}").strip(),
+                      tag_commit)
     runs = json.loads(_run("gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
                            "--branch", tag, "--json", "headSha,conclusion", "--limit", "5"))
     built = [run["headSha"] for run in runs if run.get("conclusion") == "success"]

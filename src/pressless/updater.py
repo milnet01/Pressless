@@ -412,7 +412,10 @@ def unpack(archive: Path, beside: Path) -> Path:
     except UpdateError:
         shutil.rmtree(target, ignore_errors=True)
         raise
-    except (OSError, zipfile.BadZipFile) as exc:
+    except Exception as exc:  # noqa: BLE001 -- § 4.6: any other error
+        # zipfile raises RuntimeError for an encrypted member and
+        # NotImplementedError for an unknown method; either left a half-made
+        # folder and escaped the route untyped (PRESS-0162).
         shutil.rmtree(target, ignore_errors=True)
         raise DownloadFailed(f"the download could not be unpacked: "
                              f"{type(exc).__name__}") from exc

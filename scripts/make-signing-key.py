@@ -33,6 +33,14 @@ from cryptography.hazmat.primitives.serialization import (
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def kept_private(path: Path) -> bool:
+    """Whether the file really is owner-only. A drive with no POSIX modes --
+    FAT, exFAT, NTFS mounted without them -- ignores the 0o600 asked for and
+    says nothing (PRESS-0162). Windows keeps access in ACLs, not these bits,
+    so it is not judged by them."""
+    return os.name == "nt" or not os.stat(path).st_mode & 0o077
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
         print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
@@ -50,6 +58,11 @@ def main(argv: list[str]) -> int:
     handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(handle, "wb") as out:
         out.write(private)
+    if not kept_private(target):
+        target.unlink()
+        print("refused: that drive does not keep the key readable by you alone; "
+              "choose a path on one that does", file=sys.stderr)
+        return 1
     public = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
     print(base64.b64encode(public).decode("ascii"))
     return 0

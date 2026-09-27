@@ -8171,6 +8171,34 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publish and Undo, Low (PRESS-0162 L7.2).
   Lanes: undo.
 
+- 📋 [PRESS-0173] **On Windows, a batch file that cannot be read or replaced during an update stops the update script before it restarts Pressless.**
+  installer.WINDOWS_SCRIPT runs under $ErrorActionPreference = 'Stop'. After
+  the swap, Get-FileHash on the two batch files and the Move-Item replacing
+  Start Pressless.bat are not retried or caught, so a failure there ends
+  the script: no restart, no started line, and the .ps1 left behind. The
+  Start-Process half of the finding is already fixed (ProcessStartInfo).
+  The fix, drafted 2026-09-27 and reverted unverified: wrap the hash
+  comparison in try { } catch { } with $same = $false first, and replace
+  the Move-Item with Retry { ... } | Out-Null. Queued because no machine
+  could parse or run PowerShell that day (the Windows box was off); land
+  it only after a parse and one real update run there.
+  **Layman:** A rare hiccup while updating on Windows could leave Pressless closed instead of reopening it.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.6).
+  Lanes: updater.
+
+- 📋 [PRESS-0174] **A full disk during an update download tells the writer to check his internet connection.**
+  updater.download maps any error but UpdateError to DownloadFailed, whose
+  sentence says "Check your internet connection and click Update now
+  again" -- which cannot succeed on a full disk (ENOSPC, EDQUOT).
+  PRESS-0023 4.6 itself says any other error is DownloadFailed, so a
+  sentence of its own (a type, or the generic UpdateError's "try again
+  later") needs 4.6 and 4.10 amended first. Queued for that.
+  **Layman:** If the computer's disk fills up while downloading an update, Pressless blames the internet instead.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.2).
+  Lanes: updater.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
