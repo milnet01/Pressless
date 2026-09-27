@@ -2,7 +2,8 @@
 
 **Status:** accepted (2026-08-31). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A violent cap: most of loop 2's findings landed on text loop 1 wrote, and the material that caused it — a photograph naming rule this spec had no business setting — is withdrawn rather than repaired. Implementation is the third reviewer.
 Amended 2026-09-27 by the user's decision: a photograph name Windows would
-not keep as written is refused on every system (decision 10, INV-11).
+not keep as written is refused on every system (decision 10, INV-11). Gated for
+one loop: five verified, five fixed, not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0006 (`docs/design.md` § What may depend on
 what, § Where everything sits on disk).
@@ -131,8 +132,9 @@ overturn, and none of the cited ones is.
     except what a folder needs on both systems — that it is a single path
     component, so it cannot reach outside, and one Windows keeps as
     written (INV-11). **Refused on every system** (decided by the user
-    2026-09-26, PRESS-0164), so a name saved on Linux is kept on Windows:
-    a colon; the characters `< > " | ? *`; a control character; a trailing
+    2026-09-26, PRESS-0164), so each name saved on Linux is kept as written
+    on Windows: a colon; the characters `< > " | ? *`; a character below
+    U+0020; a trailing
     dot or space, which Windows drops, so `dot.jpg.` would be saved as
     `dot.jpg`; and a device name — `con`, `prn`, `aux`, `nul`,
     `com1`–`com9`, `lpt1`–`lpt9`, `conin$`, `conout$` and the superscript
@@ -216,7 +218,7 @@ template belongs in neither; it names the file from `entry.slug`, which
 is what `list_templates` returns and what PRESS-0017's picker binds to.
 
 The Store gives a photograph a place and refuses a name that could reach
-outside it. It neither copies nor opens one: putting an original there is
+outside it or that Windows would not keep as written (decision 10). It neither copies nor opens one: putting an original there is
 Import's for the archive (`docs/design.md` § What may depend on what,
 under *What Import brings across*) and PRESS-0016's afterwards.
 
@@ -349,7 +351,8 @@ pages folder and fails furniture — which is why INV-12's fixture carries
 both, and why *its own* is load-bearing rather than decorative. `list_photographs` opens nothing either, but returns
 WHOLE file names where the other three drop the suffix: decision 10
 leaves what a photograph's file is called to PRESS-0016, so there is no
-suffix the Store may assume it can strip.
+suffix the Store may assume it can strip. It passes over, and names, a
+file `photograph_path_for` refuses, on PRESS-0005 INV-12's rule.
 
 Writing takes the same route as PRESS-0005 §4.5: a temporary file in the
 destination folder, then `os.replace` over the target.
@@ -509,8 +512,9 @@ refusing at the write is where the caller still knows what it dropped.
   *Test:* `tests/test_store_extras.py::test_photographs_stay_where_they_are`
   — assert `photograph_path_for` refuses `..`, an absolute path, a name
   carrying `/` and one carrying `\`, then `C:photo.jpg`, `a?.jpg`,
-  `dot.jpg.`, `space.jpg `, `nul .jpg`, `nul.tar.gz`, `COM1.jpg` and
-  `conin$.jpg`, and accepts `com0.jpg` and a name of the SHAPE the
+  `a*.jpg`, a name holding U+0001, `dot.jpg.`, `space.jpg `, `nul .jpg`,
+  `nul.tar.gz`, `COM1.jpg`, `com¹.jpg`, `lpt9.jpg` and `conin$.jpg`, and
+  accepts `com0.jpg` and a name of the SHAPE the
   archive carries — underscores and an extension, invented rather than
   copied, because § 7 writes nothing of the archive into a fixture — and
   lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
@@ -520,6 +524,10 @@ refusing at the write is where the caller still knows what it dropped.
   with no leading underscore, read off its source**: an import binds a
   module-level name exactly as an assignment does, so `dir()` would count
   `os` and `Path` as surface and fail this against correct code.
+  Plus `::test_a_photograph_windows_would_not_keep_is_passed_over`, where
+  such a file can be made (not on Windows): `list_photographs` over a
+  folder holding `ok.jpg` and `a?.jpg` returns `ok.jpg` and a
+  `StoreNotice` naming `a?.jpg`.
   *Breaks when:* an implementer has the Store copy an original toward
   the site folder to save the Builder a step, which publishes the full
   original of every photograph he has; or a name Windows drops a character from
@@ -684,12 +692,12 @@ other way — the box edits the words in place and leaves the tags alone.
 | INV-8 comments are not entries | `test_comments_are_not_entries` |
 | INV-9 atomic writes | `test_writes_are_atomic` |
 | INV-10 encodings | `test_encodings_are_as_specified`, which watches `write_html`, `write_comments` and `write_template`. The template case reaches a call PRESS-0005 INV-6's test cannot: that one exercises `write`, which predates `write_template` |
-| INV-11 photographs stay put | `test_photographs_stay_where_they_are` |
+| INV-11 photographs stay put | `test_photographs_stay_where_they_are` and `::test_a_photograph_windows_would_not_keep_is_passed_over` |
 | INV-12 a zoned comment date refused | `test_a_comment_date_carrying_a_zone_is_refused` |
 | INV-13 unsound comment identifiers refused | `test_unsound_identifiers_are_refused` |
 | That `list_html` and `list_templates` filter and report | `tests/test_store.py::test_a_listing_returns_only_usable_names` — PRESS-0005's test, because PRESS-0005 INV-12 owns the rule for all three listings. Its pages, furniture and templates fixtures are this document's; the entries one is PRESS-0005's, as is the empty-stem `.txt`. Furniture is the case that falsifies a filter built on the shared slug rule alone, and the empty-stem `.html` is this document's |
 | That these three writers emit the wider-grant notice | `tests/test_store_extras.py::test_every_writer_here_reports_a_wider_grant` and `::test_an_ordinary_write_here_says_nothing` (PRESS-0115). PRESS-0005's falsifier exercises `write`, an entry call, and reaches none of these three, so this is their own |
-| That a photograph's file name is well formed | **nothing here** — decision 10 withdrew that rule to PRESS-0016; only reaching outside the folder is refused |
+| A photograph's file name beyond decision 10's refusals | **nothing here** — the rest is PRESS-0016's; INV-11's test checks what decision 10 refuses |
 | That the plain box leaves the tags alone | **nothing here** — the Store holds the bytes and INV-1 proves it gives them back; whether the Face's box edits only the words is PRESS-0014's |
 | That the Builder never renders a template as a page | **nothing here** — INV-7 proves the Store offers no route to publish one; what the Builder does with `templates/` is PRESS-0008's |
 | §4.4's rule that no message or notice names a full path | `tests/test_failure_messages.py::test_no_store_failure_names_a_path`, which triggers `read_html`'s, `read_comments`' and `write_comments`' failures under a temporary folder and asserts none names it |
@@ -733,6 +741,7 @@ other way — the box edits the words in place and leaves the tags alone.
 | 5 | 2026-09-08 | 3, cold — genre pinned `spec`; packet carried `store.py` whole, `test_store_extras.py` by outline, PRESS-0005's INV-12 and § 11, and `design.md` § What may depend on what. **The packet was defective in two ways and all three lanes caught it** — see the Outcome | 3 | 1 | 1 | 0 | **Five verified, five fixed, none dismissed.** Trigger: § 4.4 gaining its half of PRESS-0005 INV-12's listing filter (PRESS-0103). **Two packet defects, both mine, both disclosed by the lanes rather than found by me.** A *verified source fact* asserted the listing filter had no code; `_only_usable` ships and both listings route through it, so the before-implementation framing given to every lane was false — two lanes disputed it explicitly. And the PRESS-0005 window ran past § 11 into that document's own loop log, eight rows, several naming this spec: review history, which the withhold rule exists to keep out. All three lanes met it, said so, and discarded candidate findings rather than use it — so this loop's yield is UNDER-counted, not inflated. **One lane found PRESS-0005 § 11 routes TWO rules here and only one was recorded:** every writer this document defines shares the atomic write that reports a mount granting more than owner-only, and the words *permission*, *owner-only* and *granted* appeared nowhere — so an implementer taking INV-9's own *Breaks when* literally loses the notice with every invariant still passing. **One lane found § 4.2 claiming line endings are *normalised everywhere else*:** nothing in the Store normalises them, measured — a CRLF template body is written back CRLF — and an implementer reading it as an instruction adds a `replace` that destroys the writer's line endings, which INV-10's own byte half cannot catch. **Two lanes found a miscount in the row this trigger added, and one found its mirror in § 4.4** — both replaced by naming the folders rather than counting them, which is what this project's own rule asks for. **One lane found § 7's comment-level population undefined:** it deferred to *whatever Import would carry*, and Import does not exist, so any per-comment filter a builder invents can drop a comment another replies to and `write_comments` refuses the whole archive. **Three open questions could not be settled from the packet** — § 11's design.md and PRESS-0005 § 1 attributions, and § 7's CLAUDE.md attribution — and are not counted. |
 | 6 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk, its loop-5 leak closed and its false fact corrected | 2 | 0 | 0 | 1 | **Three verified, three fixed, none dismissed. Cap reached (2 for a spec); tail empty; routes to implementation.** Two of the three landed on text loop 5 wrote. **Two lanes: INV-6's *every field unchanged* is false for a date carrying a fraction** — measured, `…:05.123456` reads back `…:05`, and the code declines to refuse it. **One lane: INV-10's *Breaks when* said LF everywhere rewrites a page** — on write `""` and `"\n"` are byte-identical, measured, so it contradicted the §4.2 sentence loop 5 had just corrected; the real breach is naming no newline at all. **One lane: loop 5's own wider-grant row promised a rule nothing can falsify** — §10 now says so and PRESS-0115 is filed. **Corrected in the neighbour, not here:** PRESS-0005 §11 named `_list_names` where these listings share `_raw_names`, which its own §9 already says. **Also corrected: loop 5 pointed at §4.2 for `FURNITURE_NAMES`, which §4.1 states** — immaterial, and mine. |
 | 7 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0117's no-path messages and the pointer to `move_to_bin` | 0 | 3 | 0 | 1 | **Four verified, four fixed, none dismissed. One loop only, by user instruction: not converged.** All three lanes: two § 6 rows still said "naming it" of a path. Also fixed: § 6's comments rows named things differently from § 4.4, the rule had no test, and "raised" did not reach a notice. All four inside the gated span. |
+| 8 | 2026-09-27 | 2, cold — amendment gate for PRESS-0164, one loop by the budget; packet windowed `photograph_path_for`, its callers, and PRESS-0004 § 4.2 for context. Windows unrunnable; its measured device list settled | 0 | 2 | 2 | 1 | **Five verified, five fixed; not converged, one loop is the budget.** Both lanes: § 10's row and § 4.1 still said only reaching outside the folder is refused. One lane: `list_photographs` now lists names its own `path_for` refuses, so it filters and names them on PRESS-0005 INV-12's rule; "a control character" had two readings, now below U+0020; INV-11's test reached no control character, `*`, superscript port or `lpt`. Inside the gated span: 5 of 5. Open questions resolved clean: the Builder never looks up a refused name, since Marks refuses the same names (PRESS-0004 write-back); two names differing by case are each kept, the promise is per name. |
 
 ## 13. Resource cost
 

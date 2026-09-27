@@ -253,9 +253,15 @@ _HEX_COLOUR = r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$"
 # the leading \s* give a space back on backtracking, and the dot refusal --
 # anchored at the name's start -- then never sees the dots at all. Measured
 # 2026-09-06: '{photo: ..}' formed a mark whose name was ' ..'.
+# It also refuses what PRESS-0006 decision 10 refuses so Windows keeps the
+# name as written (PRESS-0164): `< > " ? *`, a trailing dot, and a device
+# name judged on the part before the first dot, spaces trimmed, case ignored.
+_PHOTO_DEVICE = (r"(?i:con|prn|aux|nul|conin\$|conout\$"
+                 r"|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])")
 _PHOTO_ARG = (
     r"^\s*(?P<name>(?!\.{1,2}(?:\s|\||$))"
-    r"[^\s|/\\:\x00-\x1f\x7f][^|/\\:\x00-\x1f\x7f]*?)"
+    rf"(?!{_PHOTO_DEVICE} *(?:\.|\s*(?:\||$)))"
+    r'[^\s|/\\:<>"?*\x00-\x1f\x7f][^|/\\:<>"?*\x00-\x1f\x7f]*?(?<!\.))'
     r"\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
 )
 

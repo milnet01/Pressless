@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A photograph name Windows would change or could not keep, such as "nul.jpg" or "photo.jpg.", is refused on every system, so a picture saved on Linux is never lost on Windows.** (PRESS-0164)
+
 - **On Windows, Undo names a file on the site that Windows cannot hold, instead of telling the writer to free disk space.** (PRESS-0160)
 
 - **Readers from a country Google cannot name, such as "(not set)", are counted under one "unknown" entry instead of passing as a country.** (PRESS-0155)

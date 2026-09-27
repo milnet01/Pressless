@@ -8032,7 +8032,7 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-26.
   Lanes: face.
 
-- 📋 [PRESS-0164] **A photograph's name is refused wherever Windows would not keep it, on every system, and Marks refuses the same names.**
+- ✅ [PRESS-0164] **A photograph's name is refused wherever Windows would not keep it, on every system, and Marks refuses the same names.**
   Split from PRESS-0159 #4 on 2026-09-26 to spend one spec gate at a
   time. The rule is PRESS-0006 INV-11's, and PRESS-0004 section 4.1
   promises Marks is at least as strict, so marks.py's _PHOTO_ARG must
@@ -8048,6 +8048,10 @@ already-built code ships in whichever release comes next.
   nul.tar.gz and con .x.jpg reach a device. com0, lpt0 and clock$ are
   ordinary files. A trailing dot or space is dropped silently, so
   dot.jpg. is saved as dot.jpg.
+  Resolved 2026-09-27: PRESS-0006 amended (decision 10, INV-11) and gated
+  one loop, five verified and fixed; photograph_path_for refuses the names,
+  list_photographs passes them over with a notice, and Marks' photo grammar
+  refuses the same (PRESS-0004 write-back). The real archive still passes.
   **Layman:** Some picture names that work on Linux would hide or lose the picture on Windows; those names get refused everywhere.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #4.

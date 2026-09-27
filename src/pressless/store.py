@@ -946,7 +946,31 @@ def photograph_path_for(folder: Path, name: str) -> Path:
             f"path component, so that it cannot reach outside the folder it "
             f"was meant for"
         )
+    if not _windows_keeps(name):
+        raise StoreError(
+            f"{name!r} is not a file name Windows keeps as written. It is "
+            f"refused everywhere so a photograph saved on one machine is kept "
+            f"on the other"
+        )
     return Path(folder) / PHOTOGRAPHS_FOLDER / name
+
+
+# §3 decision 10's refusals, measured on a Windows 10 box with CreateFileW
+# (PRESS-0164). A device is judged on the part before the first dot with
+# trailing spaces removed, case ignored, so `nul .jpg` reaches one; `com0`,
+# `lpt0` and `clock$` are ordinary files.
+_WINDOWS_DEVICES = frozenset(
+    ["con", "prn", "aux", "nul", "conin$", "conout$"]
+    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
+_WINDOWS_FORBIDDEN = frozenset('<>:"|?*') | {chr(n) for n in range(32)}
+
+
+def _windows_keeps(name: str) -> bool:
+    """Whether Windows keeps `name` as written: no forbidden character, no
+    trailing dot or space (Windows drops them), and no device name."""
+    if name[-1] in ". " or _WINDOWS_FORBIDDEN & set(name):
+        return False
+    return name.split(".")[0].rstrip(" ").casefold() not in _WINDOWS_DEVICES
 
 
 def list_photographs(folder: Path) -> tuple[str, ...]:
@@ -954,9 +978,13 @@ def list_photographs(folder: Path) -> tuple[str, ...]:
 
     Whole rather than stemmed, unlike every other listing here: what a
     photograph's file is called is PRESS-0016's, so the Store cannot assume a
-    suffix to strip.
+    suffix to strip. A file photograph_path_for refuses is passed over and
+    named, on INV-12's rule (PRESS-0164).
     """
-    return _list_names(folder, PHOTOGRAPHS_FOLDER, "")
+    names = _list_names(folder, PHOTOGRAPHS_FOLDER, "")
+    return _only_usable(tuple((name, name) for name in names),
+                        Path(folder) / PHOTOGRAPHS_FOLDER,
+                        lambda name: photograph_path_for(folder, name))
 
 
 def _html_subfolder(kind: str) -> str:

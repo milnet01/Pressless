@@ -31,6 +31,7 @@ from pressless.store import (
     StoreNotice,
     comments_path_for,
     html_path_for,
+    list_photographs,
     list_slugs,
     photograph_path_for,
     read_comments,
@@ -851,9 +852,45 @@ _NAMES_THAT_REACH_OUTSIDE = {
     # probe dropping the backslash guard survived every case above.
     "a Windows path separator": "photographs\\an-example.jpg",
 }
+# Names Windows would not keep as written, refused on every system so an
+# original saved on Linux is kept on Windows (decision 10, PRESS-0164).
+# Measured on the Windows test box with CreateFileW, 2026-09-26.
+_NAMES_WINDOWS_WOULD_NOT_KEEP = {
+    "a drive colon": "C:photo.jpg",
+    "a character Windows forbids": "a?.jpg",
+    "another character Windows forbids": "a*.jpg",
+    "a control character": "a\x01.jpg",
+    "a superscript port": "com\u00b9.jpg",
+    "the last parallel port": "lpt9.jpg",
+    "a trailing dot, which Windows drops": "dot.jpg.",
+    "a trailing space, which Windows drops": "space.jpg ",
+    "a device before a spaced extension": "nul .jpg",
+    "a device before two extensions": "nul.tar.gz",
+    "a device in capitals": "COM1.jpg",
+    "a console device": "conin$.jpg",
+    "another superscript port": "lpt\u00b2.jpg",
+}
+# com0 is an ordinary file on Windows, so refusing it is over-reach.
+_A_NAME_LIKE_A_DEVICE = "com0.jpg"
 # Not from the archive (§7 writes nothing of it into a fixture): the SHAPE the
 # archive carries -- underscores and an extension, which no slug rule admits.
 _A_PHOTOGRAPH_NAME = "An_Example_Photograph_2014.jpg"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows cannot make such a file")
+def test_a_photograph_windows_would_not_keep_is_passed_over(tmp_path):
+    """INV-11, listing half: a hand-placed file photograph_path_for refuses is
+    passed over and named, on PRESS-0005 INV-12's rule, so a caller that
+    lists and then asks for a path never meets the refusal."""
+    photographs = tmp_path / _PHOTOGRAPHS
+    photographs.mkdir()
+    (photographs / "ok.jpg").write_bytes(b"x")
+    (photographs / "a?.jpg").write_bytes(b"x")
+
+    with pytest.warns(StoreNotice, match=r"a\?\.jpg"):
+        listed = list_photographs(tmp_path)
+
+    assert listed == ("ok.jpg",)
 
 
 def test_photographs_stay_where_they_are(tmp_path):
@@ -870,7 +907,8 @@ def test_photographs_stay_where_they_are(tmp_path):
     stops the weaker rule being tightened into the slug rule §3 decision 10
     withdrew."""
     failures: list[str] = []
-    for description, name in _NAMES_THAT_REACH_OUTSIDE.items():
+    for description, name in {**_NAMES_THAT_REACH_OUTSIDE,
+                              **_NAMES_WINDOWS_WOULD_NOT_KEEP}.items():
         try:
             produced = photograph_path_for(tmp_path, name)
         except StoreError:
@@ -887,6 +925,7 @@ def test_photographs_stay_where_they_are(tmp_path):
             )
     assert not failures, "INV-11 breaches:\n" + "\n".join(failures)
 
+    assert photograph_path_for(tmp_path, _A_NAME_LIKE_A_DEVICE).name == _A_NAME_LIKE_A_DEVICE
     produced = Path(photograph_path_for(tmp_path, _A_PHOTOGRAPH_NAME))
     expected = tmp_path / _PHOTOGRAPHS / _A_PHOTOGRAPH_NAME
     assert produced == expected, (

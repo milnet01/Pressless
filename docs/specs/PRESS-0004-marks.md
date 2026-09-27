@@ -20,6 +20,8 @@ description. Both change what a conformer builds, so this one was gated,
 reaching its cap with an empty tail on 2026-09-06. Amended again
 2026-09-11 (PRESS-0007): §3 decision 4 adds the link and quote marks,
 with INV-11 and INV-12. That changes what is built, so it is gated.
+Amended 2026-09-27 (PRESS-0164): §4.2's photograph name refuses what
+PRESS-0006 decision 10 now refuses, a write-back of PRESS-0006 loop 4.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
@@ -125,9 +127,9 @@ def render(body: str, photo_src: PhotoSrc) -> str   # parse + to_html
 returns the address to put in `src`. **The name is one plain file name**
 (§4.2) — at least as strict as PRESS-0006's INV-11, which governs where the
 original is kept. So a name Marks accepts is always one the Store accepts,
-never the reverse: `photograph_path_for` takes `C:photo.jpg` and Marks
-refuses it (executed), so a name the Store stores can be one Marks will not
-display, and PRESS-0016 owns that gap rather than this document. **Marks never builds a path.** The
+never the reverse: Marks also refuses DEL, which the Store takes, so a name
+the Store stores can be one Marks will not display, and PRESS-0016 owns
+that gap rather than this document. **Marks never builds a path.** The
 Builder passes its web-copy naming rule (PRESS-0008 owns that rule); the
 Face passes an address serving the original for preview (PRESS-0012). This
 callable is how rule 3 is kept while the picture mark still works.
@@ -195,8 +197,9 @@ agreed with the user 2026-09-06.
 match (§4.5). Whitespace either side of the name, and either side of the
 caption, is stripped first, so the written form `{photo: seaside.jpg}`
 names `seaside.jpg`. What remains must be one plain file name: no `/` or
-backslash anywhere, no colon, no control character, not `.` or `..`, not
-empty. That is at least as strict as PRESS-0006's INV-11, which governs
+backslash anywhere, no colon, none of `< > " ? *`, no control character,
+not `.` or `..`, not empty, not ending in a dot, and not a device name as
+PRESS-0006 decision 10 lists and judges them. That is at least as strict as PRESS-0006's INV-11, which governs
 where the original is kept; the enumeration here is the definition. Both
 separators and the colon are refused on either platform, because the app
 runs on both and a name is carried between them. Marks
@@ -476,7 +479,10 @@ one for `alt`.
 
 - **INV-9** — A photograph's name reaches `photo_src` only after matching
   §4.2's grammar in full.
-  *Test:* `tests/test_marks.py::test_photo_name_cannot_escape_its_folder`.
+  *Test:* `tests/test_marks.py::test_photo_name_cannot_escape_its_folder`
+  — its refused names include `a?.jpg`, `a*.jpg`, `dot.jpg.`, `nul .jpg`,
+  `nul.tar.gz`, `COM1.jpg`, `com¹.jpg` and `conin$.jpg`, and it accepts
+  `com0.jpg`.
   *Breaks when:* the argument split is taken for the whole grammar, which
   is how `../../etc/passwd` reaches the caller's file world.
 

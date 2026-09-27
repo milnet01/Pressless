@@ -805,6 +805,15 @@ def test_photo_name_cannot_escape_its_folder():
         ".",
         "   ",
         "null\x00byte.jpg",
+        # PRESS-0006 decision 10's names, which the Store refuses (PRESS-0164).
+        "a?.jpg",
+        "a*.jpg",
+        "dot.jpg.",
+        "nul .jpg",
+        "nul.tar.gz",
+        "COM1.jpg",
+        "com\u00b9.jpg",
+        "conin$.jpg",
     )
     for name in refused:
         out = render(f"{{photo: {name}}}", record)
@@ -820,13 +829,13 @@ def test_photo_name_cannot_escape_its_folder():
 
     # The counter-case: the grammar must still accept what the writer
     # actually types, or it has closed the mark rather than the hole.
-    for name in ("seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png"):
+    for name in ("seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png", "com0.jpg"):
         accepted = render(f"{{photo: {name}}}", record)
         assert "<figure" in accepted, (
             f"{name!r} is an ordinary photograph name and must still form a "
             f"mark: {accepted!r}"
         )
-    assert handed == ["seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png"], (
+    assert handed == ["seaside.jpg", "a-b_c.2019.jpeg", "Photo 1.png", "com0.jpg"], (
         f"the name handed to photo_src must be the stripped file name "
         f"§4.2 describes, got {handed!r}"
     )
