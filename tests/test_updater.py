@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import base64
+import errno
 import hashlib
 import io
 import json
@@ -436,3 +437,92 @@ def test_an_unpack_that_zipfile_cannot_finish_leaves_nothing(tmp_path, monkeypat
         with pytest.raises(updater.DownloadFailed):
             updater.unpack(kept, beside)
         assert not [p for p in beside.iterdir() if p.name.startswith("Pressless.new-")]
+
+
+# ----------------------------------------------------------------- INV-21 ---
+
+
+class _WinDiskFull(OSError):
+    """ERROR_HANDLE_DISK_FULL as Windows raises it. On Linux OSError's own
+    constructor drops a winerror argument, so the attribute is declared."""
+    winerror = 39
+
+
+class _Failing:
+    """The real file, with its write or its close failing as `fails` says."""
+
+    def __init__(self, real, fails: str, error: OSError) -> None:
+        self._real, self._fails, self._error = real, fails, error
+
+    def write(self, data):
+        if self._fails == "write":
+            raise self._error
+        return self._real.write(data)
+
+    def flush(self):
+        self._real.flush()
+
+    def fileno(self):
+        return self._real.fileno()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self._real.close()
+        if self._fails == "close":
+            raise self._error
+        return False
+
+
+def test_a_full_disk_is_named(tmp_path, monkeypatch):
+    """§ 4.6 (PRESS-0174): a full disk is DiskFull, whose sentence says to free
+    space, never DownloadFailed's "check your internet connection". The close
+    is a path of its own: it sits outside _stream's mapping."""
+    beside = tmp_path / "apps"
+    beside.mkdir()
+    data = b"the new program " * 50
+    offer = _offer(data)
+    real_fdopen = updater.os.fdopen
+    real_open = updater.os.open
+
+    cases = (
+        ("create", OSError(errno.ENOSPC, "No space left on device"), updater.DiskFull),
+        ("write", OSError(errno.ENOSPC, "No space left on device"), updater.DiskFull),
+        ("close", OSError(errno.ENOSPC, "No space left on device"), updater.DiskFull),
+        ("write", OSError(errno.EDQUOT, "Disk quota exceeded"), updater.DiskFull),
+        ("write", _WinDiskFull(None, "The disk is full"), updater.DiskFull),
+        ("write", OSError(errno.EIO, "Input/output error"), updater.DownloadFailed),
+    )
+    for where, error, raised in cases:
+        monkeypatch.setattr(updater.os, "open", real_open)
+        monkeypatch.setattr(updater.os, "fdopen", real_fdopen)
+        if where == "create":
+            def refusing(*args, error=error, **kwargs):
+                raise error
+            monkeypatch.setattr(updater.os, "open", refusing)
+        else:
+            monkeypatch.setattr(
+                updater.os, "fdopen",
+                lambda *args, where=where, error=error, **kwargs:
+                    _Failing(real_fdopen(*args, **kwargs), where, error))
+        with pytest.raises(updater.UpdateError) as caught:
+            updater.download(offer, beside, _Net({offer.asset_url: data}))
+        assert type(caught.value) is raised, (where, error, caught.value)
+        assert list(beside.iterdir()) == [], (where, list(beside.iterdir()))
+
+    monkeypatch.setattr(updater.os, "open", real_open)
+    monkeypatch.setattr(updater.os, "fdopen", real_fdopen)
+    program = tmp_path / "program"
+    program.mkdir()
+    for error in (OSError(errno.ENOSPC, "No space left on device"),
+                  _WinDiskFull(None, "The disk is full")):
+        def full(self, *args, error=error, **kwargs):
+            raise error
+
+        monkeypatch.setattr(zipfile.ZipFile, "extractall", full)
+        archive = _zip(program / "update.zip",
+                       {"Pressless/": b"", "Pressless/Pressless.exe": b"exe"})
+        with pytest.raises(updater.DiskFull):
+            updater.unpack(archive, program)
+        assert list(program.iterdir()) == [], list(program.iterdir())

@@ -27,6 +27,10 @@ SENTENCES[installer.UpdateError] = Sentence(
 SENTENCES[updater.DownloadFailed] = Sentence(
     "Pressless could not download the new version.", Site.UNCHANGED,
     "Check your internet connection and click Update now again.")
+SENTENCES[updater.DiskFull] = Sentence(
+    "There is not enough room on this computer to download the new version.",
+    Site.UNCHANGED,
+    "Free some space on this computer, then click Update now again.")
 SENTENCES[updater.DownloadEndedEarly] = Sentence(
     "The download stopped before it finished.", Site.UNCHANGED,
     "Click Update now again.")

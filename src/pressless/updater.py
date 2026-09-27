@@ -15,6 +15,7 @@ the Face (§ 4.1).
 from __future__ import annotations
 
 import base64
+import errno
 import hashlib
 import json
 import os
@@ -58,6 +59,27 @@ class DownloadFailed(UpdateError):
 
 class DownloadEndedEarly(DownloadFailed):
     """The stream ended before the size the signed list names (FIBR-0327)."""
+
+
+class DiskFull(DownloadFailed):
+    """The disk filled while downloading or unpacking (§ 4.6, PRESS-0174).
+    DownloadFailed's sentence says to check the connection, which cannot help."""
+
+
+_FULL = frozenset(code for code in (errno.ENOSPC, getattr(errno, "EDQUOT", None))
+                  if code is not None)
+# ERROR_HANDLE_DISK_FULL, which CPython leaves unmapped; ERROR_DISK_FULL (112)
+# already arrives as ENOSPC.
+_HANDLE_DISK_FULL = 39
+
+
+def _failed(exc: BaseException, what: str) -> DownloadFailed:
+    """DiskFull for a full disk, else DownloadFailed, naming `what` and the
+    error's own words -- `strerror`, never the message, which quotes a path."""
+    full = isinstance(exc, OSError) and (
+        exc.errno in _FULL or getattr(exc, "winerror", None) == _HANDLE_DISK_FULL)
+    words = (exc.strerror if isinstance(exc, OSError) else None) or type(exc).__name__
+    return (DiskFull if full else DownloadFailed)(f"{what}: {words}")
 
 
 class UpdateRejected(UpdateError):
@@ -324,12 +346,15 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
         handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL
                          | getattr(os, "O_BINARY", 0), 0o600)
     except OSError as exc:
-        raise DownloadFailed(f"no room to download beside the program: "
-                             f"{exc.strerror or type(exc).__name__}") from exc
+        raise _failed(exc, "no room to download beside the program") from exc
     kept = False
     try:
-        with os.fdopen(handle, "wb") as out:
-            _stream(offer, transport, out)
+        try:
+            with os.fdopen(handle, "wb") as out:
+                _stream(offer, transport, out)
+        except OSError as exc:
+            # Closing flushes, and the close sits outside _stream's mapping.
+            raise _failed(exc, "the download could not be written") from exc
         kept = True
         return target
     finally:
@@ -372,7 +397,7 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
     except UpdateError:
         raise
     except Exception as exc:  # noqa: BLE001 -- § 4.6: any other error
-        raise DownloadFailed(f"the download failed: {type(exc).__name__}") from exc
+        raise _failed(exc, "the download failed") from exc
     finally:
         response.close()
 
@@ -417,8 +442,7 @@ def unpack(archive: Path, beside: Path) -> Path:
         # NotImplementedError for an unknown method; either left a half-made
         # folder and escaped the route untyped (PRESS-0162).
         shutil.rmtree(target, ignore_errors=True)
-        raise DownloadFailed(f"the download could not be unpacked: "
-                             f"{type(exc).__name__}") from exc
+        raise _failed(exc, "the download could not be unpacked") from exc
     finally:
         Path(archive).unlink(missing_ok=True)
     return target
