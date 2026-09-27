@@ -469,11 +469,13 @@ does.
 
 - **INV-13** — A demoted draft that a later undo publishes unchanged is
   binned, not kept; one he has edited since is kept.
-  *Test:* `test_a_second_undo_keeps_no_copy_of_the_demoted_draft`. Two
-  drafts carry `Undone`: one equals the fetched entry apart from that
-  field, the other has a different body. After undo, both slugs are
-  published, `result.kept` names only the edited one, and no draft holds
-  the unchanged one's slug or `<slug>-before-undo`.
+  *Test:* `test_a_second_undo_keeps_no_copy_of_the_demoted_draft`. Three
+  drafts the fetched state publishes: one carries `Undone` and equals the
+  fetched entry apart from that field, one carries `Undone` and has a
+  different body, and one carries no `Undone` and equals the fetched
+  entry. After undo, all three slugs are published, `result.kept` names
+  the second and third, and no draft holds the first one's slug or
+  `<slug>-before-undo`.
   *Breaks when:* `Undone` is not set aside before comparing, or an
   unmarked draft equal to the fetched entry is binned too.
 
