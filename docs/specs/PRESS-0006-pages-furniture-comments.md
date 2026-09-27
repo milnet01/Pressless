@@ -1,6 +1,8 @@
 # PRESS-0006 — The rest of the Store: fixed pages, furniture, templates and comments
 
 **Status:** accepted (2026-08-31). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. A violent cap: most of loop 2's findings landed on text loop 1 wrote, and the material that caused it — a photograph naming rule this spec had no business setting — is withdrawn rather than repaired. Implementation is the third reviewer.
+Amended 2026-09-27 by the user's decision: a photograph name Windows would
+not keep as written is refused on every system (decision 10, INV-11).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0006 (`docs/design.md` § What may depend on
 what, § Where everything sits on disk).
@@ -126,8 +128,19 @@ overturn, and none of the cited ones is.
     gives "how an entry names a photograph" to PRESS-0016, and the
     archive's own attachment names do not satisfy a slug: most carry an
     underscore. So this spec fixes the folder and nothing about the name
-    except the one thing a folder needs — that it is a single path
-    component, so it cannot reach outside (INV-11).
+    except what a folder needs on both systems — that it is a single path
+    component, so it cannot reach outside, and one Windows keeps as
+    written (INV-11). **Refused on every system** (decided by the user
+    2026-09-26, PRESS-0164), so a name saved on Linux is kept on Windows:
+    a colon; the characters `< > " | ? *`; a control character; a trailing
+    dot or space, which Windows drops, so `dot.jpg.` would be saved as
+    `dot.jpg`; and a device name — `con`, `prn`, `aux`, `nul`,
+    `com1`–`com9`, `lpt1`–`lpt9`, `conin$`, `conout$` and the superscript
+    `com¹`–`com³` and `lpt¹`–`lpt³` — judged on the part before the first
+    dot with trailing spaces removed, case ignored, so `nul .jpg`,
+    `nul.tar.gz` and `con .x.jpg` are refused. `com0`, `lpt0` and
+    `clock$` are ordinary names. Measured on a Windows 10 box with
+    `CreateFileW` on 2026-09-26.
 
 11. **PRESS-0005 decision 5's slug uniqueness covers entries only, and
     not templates or comments.** **(decided here.)** That rule exists to
@@ -491,11 +504,13 @@ refusing at the write is where the caller still knows what it dropped.
 - **INV-11** — A photograph's original has a place in Pressless's own
   folder and no route to the site folder: `photograph_path_for` refuses
   any name that is not a single path component — both separators, not
-  only the running platform's — and the Store offers no call that copies
-  one anywhere.
+  only the running platform's — or that decision 10 refuses on every
+  system, and the Store offers no call that copies one anywhere.
   *Test:* `tests/test_store_extras.py::test_photographs_stay_where_they_are`
   — assert `photograph_path_for` refuses `..`, an absolute path, a name
-  carrying `/` and one carrying `\`, accepts a name of the SHAPE the
+  carrying `/` and one carrying `\`, then `C:photo.jpg`, `a?.jpg`,
+  `dot.jpg.`, `space.jpg `, `nul .jpg`, `nul.tar.gz`, `COM1.jpg` and
+  `conin$.jpg`, and accepts `com0.jpg` and a name of the SHAPE the
   archive carries — underscores and an extension, invented rather than
   copied, because § 7 writes nothing of the archive into a fixture — and
   lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
@@ -507,7 +522,9 @@ refusing at the write is where the caller still knows what it dropped.
   `os` and `Path` as surface and fail this against correct code.
   *Breaks when:* an implementer has the Store copy an original toward
   the site folder to save the Builder a step, which publishes the full
-  original of every photograph he has.
+  original of every photograph he has; or a name Windows drops a character from
+  or reaches as a device is stored, so an original saved on Linux is lost
+  or unreachable on Windows.
 
 - **INV-12** — `write_comments` refuses a `Comment` whose `date` carries
   a zone, and writes nothing.
