@@ -587,6 +587,10 @@ def test_a_value_that_would_break_the_format_is_refused(tmp_path):
         # A comma in the two list fields, which the next read would split.
         "comma in a category": _entry(categories=("poetry, prose",)),
         "comma in a tag": _entry(tags=("one, two",)),
+        # A list value the next read changes: an empty one is dropped and a
+        # padded one is stripped (PRESS-0162, L1.2).
+        "empty category": _entry(categories=("",)),
+        "space-padded tag": _entry(tags=(" sea",)),
         # A slug outside a-z, 0-9 and -, the empty slug included. Unpinned,
         # a slug writes outside the handed folder (§4.2).
         "slug with a path separator": _entry(slug="../escape"),
@@ -1463,6 +1467,28 @@ def test_a_stem_case_twin_is_reported(tmp_path):
     assert target.is_file(), "the publish did not go through"
     said = " ".join(str(each.message) for each in caught)
     assert f"Moved{_SUFFIX}" in said, "the notice did not name the stranded file"
+
+
+def test_a_failed_move_reports_no_stranded_twin(tmp_path, monkeypatch):
+    """INV-13's notice describes the move that happened, so a move that
+    fails says nothing about a twin (PRESS-0162, L1.1): the notice came
+    before the move and described one that never took place."""
+    _require_distinct_case(tmp_path)
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    stranded = tmp_path / _PUBLISHED
+    stranded.mkdir(exist_ok=True)
+    (stranded / f"Moved{_SUFFIX}").write_text("the writer's own copy")
+
+    def refuse(source, target):
+        raise FileExistsError("raced")
+
+    monkeypatch.setattr(store_module, "_move_without_overwriting", refuse)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with pytest.raises(SlugInUse):
+            publish(tmp_path, "moved")
+
+    assert not [w for w in caught if issubclass(w.category, StoreNotice)]
 
 
 def test_a_wider_grant_is_reported(tmp_path, monkeypatch):

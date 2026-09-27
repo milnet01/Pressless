@@ -241,7 +241,8 @@ file, and any file but an entry that undo sets aside, to a bin in
 Pressless's own folder. The call moves exactly the one path it is
 handed, so binning an entry's comments file is a second call. It takes
 a file inside `published/`, `drafts/`, `pages/`, `furniture/`,
-`templates/` or `comments/`, and refuses anything else with
+`templates/`, `comments/` or a waiting folder PRESS-0014 adds, and
+refuses anything else with
 `StoreError` — a photograph, the bin itself, or a file directly in
 `folder` such as the settings file. It moves the file to
 `bin/<stamp>/<the same relative path>` under `folder` and returns the new
@@ -695,7 +696,8 @@ is true of a template is PRESS-0006's (§9).
 
 - **INV-9** — A value the format or the file system cannot carry is
   refused with `StoreError` and nothing is written: a newline in any
-  header field, `extra` included; a comma in `Categories` or `Tags`; a
+  header field, `extra` included; a comma in `Categories` or `Tags`, or
+  a value there that is empty or has space at an edge (PRESS-0162); a
   slug outside §4.2's legal set, the empty slug and a reserved device
   name included; a `Date` carrying a zone; and an unrecognised field's
   NAME that is empty, carries a colon, or strips to one of

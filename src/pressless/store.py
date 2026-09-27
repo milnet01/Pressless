@@ -407,7 +407,6 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
     )
     if target.exists():
         raise SlugInUse(occupied)
-    _report_a_stranded_twin(target, slug)
     try:
         target.parent.mkdir(exist_ok=True)
         _move_without_overwriting(source, target)
@@ -419,11 +418,13 @@ def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
         raise StoreError(
             f"{slug!r} could not be moved to {target.parent.name}: {_why(exc)}"
         ) from exc
+    # After the move, so a move that failed is never described (PRESS-0162).
+    _report_a_stranded_twin(target, slug)
     return target
 
 
 def _report_a_stranded_twin(target: Path, slug: str) -> None:
-    """Name a file the move is about to strand, and let it go ahead (INV-13).
+    """Name a file the move just stranded; the move went ahead (INV-13).
 
     `path_for` composes the suffix exactly, so a destination differing only in
     the suffix's case is not a collision the move can see. It goes ahead, and
@@ -578,6 +579,12 @@ def _refuse_what_the_format_cannot_carry(entry: Entry) -> None:
                     f"{where} value {value!r} contains a comma, which is "
                     f"{LIST_SEPARATOR!r}'s separator -- it would be silently "
                     f"split into two on the next read"
+                )
+            if not value.strip() or value != value.strip():
+                raise StoreError(
+                    f"{where} value {value!r} is empty or has space at an "
+                    f"edge, which the next read drops -- so it would not "
+                    f"read back as written"
                 )
 
 
