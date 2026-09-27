@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Readers from a country Google cannot name, such as "(not set)", are counted under one "unknown" entry instead of passing as a country.** (PRESS-0155)
+
 - **Pressing Undo a second time no longer leaves a spare "before undo" draft of every entry the first press set aside.** (PRESS-0154)
 
 - **The journal's index pages no longer describe one writer's posts, and a single entry reads "1 entry".** (PRESS-0152)

@@ -7858,7 +7858,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Undo, #25.
   Lanes: undo.
 
-- 📋 [PRESS-0155] **Insights passes a country value that is not a two-letter code, such as GA4's (not set), through as a country.**
+- ✅ [PRESS-0155] **Insights passes a country value that is not a two-letter code, such as GA4's (not set), through as a country.**
   insights.py filters only RESERVED_ values; anything else becomes a
   Country, whose code the flag lookup binds to as ISO 3166-1 alpha-2.
   GA4 documents (not set) for dimensions it cannot resolve. PRESS-0019
@@ -7867,6 +7867,10 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-26: keep such a value under one named
   unknown entry with no flag, so the country figures still sum to the
   total. One review-contract round for the PRESS-0019 amendment.
+  Resolved 2026-09-27: PRESS-0019 amended (4.3, INV-27) and gated one
+  loop, three verified and fixed; insights.UNKNOWN_COUNTRY folds every
+  non-ISO value on fetch and on cache read, then sorts;
+  test_an_unknown_country_is_one_named_entry. PRESS-0020 binds to it.
   **Layman:** The visitor map could be handed a country called (not set) and show a broken flag.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Insights, #32.

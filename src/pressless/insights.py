@@ -78,6 +78,13 @@ DEFAULT_MAX_AGE = 3600.0
 # country. Which of the two Google does is not settled here (PRESS-0074).
 AGGREGATE_PREFIX = "RESERVED_"
 
+# Every other value that is not an ISO 3166-1 alpha-2 code -- GA4's "(not set)"
+# is the documented one -- is folded into one entry under this code. Lower
+# case, so it is never taken for a country and no flag is drawn for it; kept
+# rather than dropped, so the countries still account for the readers
+# (PRESS-0019 §4.3, INV-27).
+UNKNOWN_COUNTRY = "unknown"
+
 # Every request carries this, so a black-holed connection fails instead of
 # hanging forever (PRESS-0041). It bounds each socket operation rather than
 # the whole request, so a large upload that keeps making progress is not cut
@@ -87,7 +94,7 @@ TIMEOUT_SECONDS = 30.0
 
 @dataclass(frozen=True)
 class Country:
-    code: str      # ISO 3166-1 alpha-2, which the flag pictures are keyed by
+    code: str      # ISO 3166-1 alpha-2, which flags are keyed by, or UNKNOWN_COUNTRY
     people: int
 
 
@@ -422,8 +429,22 @@ def _countries(answer: dict) -> tuple[Country, ...]:
         if code.startswith(AGGREGATE_PREFIX):
             continue
         found.append(Country(code, _number(row, f"the count for {code}")))
-    # Most-read first; ties by code, so the order is the same on every fetch.
-    return tuple(sorted(found, key=lambda country: (-country.people, country.code)))
+    return _ordered(found)
+
+
+def _ordered(countries) -> tuple[Country, ...]:
+    """Unknown values folded into one `UNKNOWN_COUNTRY` entry, then most-read
+    first; ties by code, so the order is the same on every fetch."""
+    people: dict[str, int] = {}
+    for country in countries:
+        code = country.code if _is_iso(country.code) else UNKNOWN_COUNTRY
+        people[code] = people.get(code, 0) + country.people
+    return tuple(sorted((Country(code, count) for code, count in people.items()),
+                        key=lambda country: (-country.people, country.code)))
+
+
+def _is_iso(code: str) -> bool:
+    return len(code) == 2 and code.isascii() and code.isalpha() and code.isupper()
 
 
 def _code(row: dict) -> str:
@@ -495,7 +516,7 @@ def _cached(target: Path, days: int) -> Report | None:
     if not isinstance(entry, dict):
         return None
     try:
-        countries = tuple(
+        countries = _ordered(
             Country(str(country["code"]), int(country["people"]))
             for country in entry["countries"]
         )

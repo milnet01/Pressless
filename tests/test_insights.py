@@ -998,6 +998,34 @@ def test_one_windows_reply_does_not_evict_another(tmp_path):
 # -------------------------------------------------------------- INV-18 ----
 
 
+def test_an_unknown_country_is_one_named_entry(tmp_path):
+    """INV-27: a country value that is neither an ISO code nor a RESERVED_
+    marker reaches Report.countries only as one UNKNOWN_COUNTRY entry, its
+    people summed; a cached reply is folded and sorted the same way.
+
+    Breaks when such a value is passed through as a code, dropped, or kept
+    as several entries.
+    """
+    rows = (("GB", 400), ("(not set)", 300), ("zz", 50), ("RESERVED_TOTAL", 5000))
+    transport = _Transport(default=_ok(_google(rows=rows)), clock=NOW)
+
+    report = read(_settings(), "a-token", tmp_path, client=transport)
+
+    assert insights_module.UNKNOWN_COUNTRY == "unknown"
+    assert report.countries == (Country("GB", 400), Country("unknown", 350))
+
+    # A cache written before the fold: separate entries, already in order.
+    target = tmp_path / CACHE_FILE_NAME
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["windows"][str(DEFAULT_DAYS)]["countries"] = [
+        {"code": "GB", "people": 100}, {"code": "(not set)", "people": 60},
+        {"code": "zz", "people": 60}]
+    target.write_text(json.dumps(held), encoding="utf-8")
+    cached = read(_settings(), "a-token", tmp_path,
+                  client=_Transport(clock=NOW + 10.0))
+    assert cached.countries == (Country("unknown", 120), Country("GB", 100))
+
+
 def test_another_versions_cache_reads_as_absent(tmp_path):
     """INV-18: a cache file carrying a version this build does not write
     reads as absent, and nothing is migrated.

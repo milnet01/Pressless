@@ -3,7 +3,8 @@
 **Status:** accepted (2026-09-06); §3 decision 1 built 2026-09-07
 (PRESS-0101), so §2's single-slot cache is a record of what was.
 Amended 2026-09-27 by the user's decision: a country value that is not an
-ISO code is one `UNKNOWN_COUNTRY` entry (§4.3, INV-27).
+ISO code is one `UNKNOWN_COUNTRY` entry (§4.3, INV-27). Gated for one loop:
+three verified, three fixed, not converged.
 Written after the code shipped, which is
 not the direction a spec usually runs; §1 says why this one does, and which of
 it is a record and which is a contract for work still to come. Gated to its
@@ -165,13 +166,14 @@ id>:runReport`, carrying the token as an `Authorization: Bearer` header, asking 
 - **A row whose dimension value STARTS WITH `RESERVED_` is dropped**, an
   aggregate marker not being a country. The test is on the start of the value,
   which is where Google puts the marker.
-- **Any other value that is not two ASCII capital letters is one entry,
+- **Any other non-empty value that is not two ASCII capital letters is one entry,
   `UNKNOWN_COUNTRY`** — GA4's `(not set)` is the documented case. Every such
   row's people are added into that one `Country`, whose `code` is
   `insights.UNKNOWN_COUNTRY = "unknown"`: lower case, so it can never be
   taken for an ISO code, and a caller drawing flags draws none for it. It is
   kept rather than dropped so the countries still account for the readers.
-  A cached reply is read through the same rule. Decided by the user
+  A cached reply is folded the same way and then sorted with the fetch
+  path's key, so both paths list the same data in one order. Decided by the user
   2026-09-26 (PRESS-0155).
 
 ### 4.4 Freshness, staleness, and the clock
@@ -223,10 +225,10 @@ reply cannot become the message.
 ## 5. Invariants
 
 **INV-1 to INV-16 are carried from `tests/test_insights.py`'s header unchanged
-in number**, because `insights.py` cites several of them by id. **INV-17 is
-the only one describing work still to do.** INV-18's behaviour already ships —
+in number**, because `insights.py` cites several of them by id. **INV-17 and INV-27
+are the ones describing work still to do.** INV-18's behaviour already ships —
 `_cached` refuses a version this build does not write before reading a field —
-and what the cache change alters is the version's value; its test is new. INV-19 onwards are
+and what the cache change alters is the version's value; its test is new. INV-19 to INV-26 are
 behaviours that ship and are tested and that the header's list never named —
 several of them the fixes that closed PRESS-0039 through PRESS-0056, each of
 which settled something the contract had left open.
@@ -271,7 +273,7 @@ which settled something the contract had left open.
   *Breaks when:* the aggregate marker is treated as a country, which puts a
   row with no flag at the top of the list; or the tie-break is dropped, and a
   cached reply and a fresh one for identical data list the same countries in
-  different orders, since only the fetch path sorts.
+  different orders.
 
 - **INV-7** — No failure this module raises carries the token, in its message
   or its representation.
@@ -418,8 +420,8 @@ which settled something the contract had left open.
   like any other.
   *Test:* `tests/test_insights.py::test_an_unknown_country_is_one_named_entry`
   — rows `GB` 400, `(not set)` 300, `zz` 50 and `RESERVED_TOTAL` 5000; the
-  countries are `GB` 400 then `unknown` 350. A cache file holding a
-  `(not set)` code reads back as `unknown`.
+  countries are `GB` 400 then `unknown` 350. A cache file holding `GB` 100,
+  `(not set)` 60 and `zz` 60 reads back as `unknown` 120 then `GB` 100.
   *Breaks when:* such a value is passed through as a code, dropped, or kept
   as several entries.
 
@@ -449,8 +451,9 @@ directly** — the `client` seam replaces that client, so nothing handed through
 it could observe the redirect handler, the timeout or the `OSError`
 conversion.
 
-**INV-17 and INV-18 are the two tests this document adds.** INV-17 is to be
-seen failing first, against the shipped single-slot cache. **INV-18 is not**:
+**INV-17, INV-18 and INV-27 are the tests this document adds.** INV-17 is to be
+seen failing first, against the shipped single-slot cache, and INV-27 against
+the shipped pass-through. **INV-18 is not**:
 its behaviour ships, so its test passes on the run that introduces it, and
 demanding a red run there would mean building something broken to produce
 one.
