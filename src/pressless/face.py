@@ -165,7 +165,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "Check your internet connection and try again.",
     ),
     publisher.OutcomeUnknown: _say(
-        "Pressless lost touch with GitHub while your site was being updated.",
+        "GitHub's answer did not say whether your site was updated.",
         "Check your internet connection and click Publish again. Publishing again is safe "
         "and settles it.",
         Site.UNKNOWN,

@@ -471,10 +471,12 @@ means by one store, one fallback, one rule.
 2. **What it means for his site.** *"Your site has not changed."* This
    is S6's actual requirement — he is told where his site stands — and
    it is the part a technical error message always omits. **One failure
-   cannot say that**: the reference update was sent, and either no answer
-   came back or GitHub answered it with a server error. Either way the
-   update may have been applied, so the sentence says the outcome is
-   unknown rather than guessing.
+   cannot say that**: a write that can move the site was sent — the
+   reference update, or an empty repository's start write — and GitHub's
+   answer did not say what it did: none came back, a server error, or a
+   success that does not say how (PRESS-0009 § 6). Each way the write may
+   have been applied, so the sentence says the outcome is unknown rather
+   than guessing.
 3. **What to do next.** *"Check your internet and click Publish again."*
    An error that does not say this leaves him stuck holding a fact.
 
