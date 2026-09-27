@@ -3,7 +3,9 @@
 **Status:** accepted (2026-09-02). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2 and every verified finding is fixed. **A violent cap:** about ten of loop 2's twelve findings landed on text loop 1 wrote, so a third cold read would mostly repair the second. The document is routed to implementation rather than to another gate, and implementation is the better third reviewer. **One region no cold read could judge:** Windows and AppImage behaviour is unrunnable from this machine, which the packet declared up front — §10 records what that leaves unchecked, and PRESS-0022 exists to make it observable. **Amended 2026-09-11 to
 record what was built**: the pinned AppImage runtime (§4.4) and
 `FUSERMOUNT_PROG` in the clean room (§7). Neither changes direction, so
-the gate did not re-arm.
+the gate did not re-arm. **Amended 2026-09-27 for PRESS-0150**: release
+builds install a hash-checked lock file (§4.4, INV-9, INV-10) — a change
+of direction, so it went through the gate.
 **Kind:** package.
 **Source:** ROADMAP PRESS-0022 (`docs/design.md` § The stack, and what it
 rules out; § Where everything sits on disk; ADR-0004).
@@ -273,17 +275,44 @@ it — this item adds no version-bumping of its own. It requires only
 that the workflow reject a tag disagreeing with the manifest, so a
 mislabelled artefact cannot be published.
 
-**PyInstaller is pinned in `pyproject.toml`, and nothing pins it
-today.** It is named by `CLAUDE.md` § Build and test as a build-time
+**PyInstaller is declared in `pyproject.toml`.** It is named by `CLAUDE.md` § Build and test as a build-time
 packager belonging beside the gate's tools rather than in
 `dependencies`, and it appears in no manifest, no gate script and no
 workflow. It gets its own optional-dependency group, so the two
 release runners install it the same way and anyone can reproduce a
-build from the manifest. **A floor, not a pin**, matching the reasoning
-already in that file for `keyring` and the gate's tools — so two builds
-months apart may use different PyInstaller releases, and a release that
-breaks us shows up on the next build rather than months later. Byte
-reproducibility is not claimed and is not a goal here.
+build from the manifest. **A floor in the manifest, and a pin in the
+release build** (PRESS-0150, decided 2026-09-27).
+
+**Both release jobs install from `packaging/release-requirements.txt`
+and from nothing else**: `python -m pip install --require-hashes -r
+packaging/release-requirements.txt`. The file names an exact version and
+its SHA-256 hashes for every library the release uses — the runtime
+dependencies, the `dev` group the gate runs and the `packaging` group —
+so two builds of one commit bundle the same code, and a download that
+does not match its hash stops the build. It is generated, never
+hand-edited:
+
+```
+uv pip compile pyproject.toml --extra dev --extra packaging --universal \
+  --python-version 3.13 --generate-hashes --no-header \
+  -o packaging/release-requirements.txt
+```
+
+`--universal` gives one file for both runners, with a platform marker
+on the Windows-only and Linux-only entries. It is re-run when a
+dependency or a floor changes, and before a release that should take
+newer libraries.
+
+**Pressless itself is not installed.** PyInstaller reads `src/` through
+`freeze_flags.py`'s `--paths`, and pytest through `pythonpath`, so the
+jobs install only the locked libraries. Measured 2026-09-27: from that
+set alone the gate passes and the frozen program's self-check answers
+`pressless: ok`. **Nor is pip upgraded first**: an upgrade is itself an
+unchecked download, and the runner's pip honours `--require-hashes`.
+
+The manifest keeps its floors. The gate and development still install
+the newest above them, so a release that breaks us still shows up on the
+next push rather than months later. Byte reproducibility is not claimed.
 
 **The gate workflow is untouched.** `ci.yml` runs
 `scripts/local-ci.sh` and holds no checks of its own; releasing is a
@@ -441,6 +470,21 @@ thing nothing backs up.
   forbids. Sharing the literal with the module would compare `paths`
   against itself, which is why `tests/test_settings.py` keeps its own
   copy of `FILE_NAME` and why this one does too.
+- **INV-9** — `packaging/release-requirements.txt` names every library
+  `pyproject.toml`'s `dependencies`, `dev` and `packaging` groups name,
+  at a version meeting that floor, and every requirement in it carries
+  at least one `--hash=sha256:`.
+  *Test:* `tests/test_release_lock.py::test_lock_covers_the_manifest`.
+  *Breaks when:* a dependency is added or its floor raised in
+  `pyproject.toml` without regenerating the file, so the release bundles
+  without it or below it; or a hand edit drops a hash, which makes pip
+  refuse the whole file.
+- **INV-10** — Every install step in `.github/workflows/release.yml` is
+  exactly the §4.4 command: hash-checked, from that file, with no other
+  install and no pip upgrade.
+  *Test:* `tests/test_release_lock.py::test_release_installs_only_the_lock`.
+  *Breaks when:* a job goes back to `pip install -e '.[dev,packaging]'`,
+  or gains a second install that bypasses the hashes.
 
 
 ## 6. Failure modes
@@ -460,6 +504,9 @@ thing nothing backs up.
 ordinary suite: they are all resolution rules, and patching
 `sys.frozen`, `sys.executable` and the environment exercises every
 branch without a build.
+
+`tests/test_release_lock.py` locks INV-9 and INV-10, also in the
+ordinary suite: both read files in the repository and need no network.
 
 `tests/features/packaging/` holds INV-6's test. It does not run in the
 ordinary suite — it needs a built artefact — so it is marked
@@ -554,6 +601,14 @@ against it, and throw it away.
 - **Remembering the folder's location outside the app**, and **asking
   when none is found**. Both put to the user 2026-09-02 and both
   declined in favour of scope decision 2.
+- **Floors alone for the release build**, which this spec said until
+  2026-09-27. Rejected by the user for PRESS-0150: two builds of one
+  commit could bundle different libraries, and nothing checked a
+  download was the file PyPI published.
+- **Pinning in `pyproject.toml` itself.** Rejected because the gate
+  would then test only the pinned versions, and a library release that
+  breaks us would surface at the next deliberate refresh instead of the
+  next push.
 - **Settings resolving its own folder.** Rejected by PRESS-0001 §8
   before this spec existed; repeated here because a resolver module is
   exactly the moment somebody proposes it again.
@@ -582,6 +637,8 @@ against it, and throw it away.
 | INV-7 | §7's step 2 on the Linux runner. **Nothing on the Windows runner** — `windows-latest` ships Python, so no clean room can be made there; the staged box is the Windows evidence and it is driven by hand |
 | §4.6's written steps, and therefore S4 | **nothing** — no check reads a README. `verify-instructions` executes such steps and is not scheduled anywhere in this project |
 | INV-8 | `tests/test_paths.py::test_folder_name_is_pinned` |
+| INV-9 | `tests/test_release_lock.py::test_lock_covers_the_manifest`. **Not whether the pinned versions are current** — that is `check-dependencies`' question, asked before a release |
+| INV-10 | `tests/test_release_lock.py::test_release_installs_only_the_lock`. That pip then refuses a mismatched hash is pip's behaviour, measured once by hand on 2026-09-27 (every `certifi` hash altered: exit 1, *"do not match the hashes"*) and not re-run by any check |
 | Scope decision 2's accepted risk | **nothing, and nothing can** — it fires on where the writer chose to extract, which the app never sees |
 
 ## 11. Cross-doc impact
@@ -599,6 +656,11 @@ against it, and throw it away.
 - **`CLAUDE.md`** — § Build and test names PyInstaller as belonging
   beside the gate's tools; once §4.4 pins it, that line describes a
   file rather than an intention.
+- **PRESS-0150's amendment (2026-09-27)** — `SECURITY.md`'s paragraph
+  on the libraries Pressless runs, which said nothing pins them;
+  `pyproject.toml`'s comments on the floors, which say the newest
+  release is what installs; `.claude/bump.json`, whose release steps
+  gain the lock refresh; and `packaging/release-requirements.txt`, new.
 - **`docs/design.md`** — no change. § The stack and § Where everything
   sits on disk already carry the two shapes and the beside-the-artefact
   rule; this spec implements them rather than amending them.
