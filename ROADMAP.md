@@ -8206,7 +8206,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Setup, Settings, Credentials, Low (PRESS-0162 L6.3).
   Lanes: settings.
 
-- 📋 [PRESS-0172] **Any unforeseen failure during Undo says the site may have changed, even where it failed before anything reached GitHub.**
+- ✅ [PRESS-0172] **Any unforeseen failure during Undo says the site may have changed, even where it failed before anything reached GitHub.**
   undo._undo renders every failure with face.fail(publishing=True), which says
   "Pressless cannot tell whether your site changed". An OSError in the
   reconcile is reversed and left the site untouched. publishing.publish
@@ -8220,6 +8220,10 @@ already-built code ships in whichever release comes next.
   Decided 2026-09-27: Undo reports cannot-tell only for a failure from
   the upload step on; an earlier failure is unchanged. PRESS-0015 4.2
   amended first.
+  Shipped 2026-09-27: PRESS-0015 amended and gated (loop 4, one
+  verified, fixed: a Ctrl-C mid-upload reversed his files, now left
+  undone like OutcomeUnknown). Route uses publishing=False; step 7
+  never raises. Tests red first.
   **Layman:** If Undo trips over something unexpected early on, it says the site might have changed when it certainly did not.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publish and Undo, Low (PRESS-0162 L7.2).

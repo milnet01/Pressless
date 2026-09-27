@@ -238,7 +238,8 @@ A short download is never reported as tampering (FIBR-0327).
 included, which the build's `shutil.make_archive` writes — with no absolute path, no
 `..` part and no drive letter; any other member raises `UpdateRejected` before
 anything is written, and the zip and the folder are removed. The zip is removed
-once unpacked. A full disk while unpacking, by the same `errno` test, raises
+once unpacked. A full disk while unpacking, by the same test as the download's row,
+`winerror` 39 included, raises
 `DiskFull`, with the zip and the folder removed.
 
 **A full disk is told apart because the other sentence cannot help.**
@@ -516,14 +517,17 @@ window and start it again."* and exits 3, serving nothing.
   `tests/test_face.py::test_every_failure_type_has_a_sentence`, which already
   walks every subclass. *Breaks when:* a type is added without one.
 - **INV-21** — A full disk is `DiskFull`, and the file is removed. *Test:*
-  `tests/test_updater.py::test_a_full_disk_is_named`: an `OSError(ENOSPC)`
-  from the write, and one from the close, each raise `DiskFull` and leave
-  no `.pressless-update-*` file; one from `unpack`'s extract raises
-  `DiskFull` and leaves neither the zip nor a `Pressless.new-*` folder; `OSError(EDQUOT)` from the write does the
-  same, and so does an `OSError` subclass whose `winerror` is 39 (on Linux
-  `OSError`'s own constructor drops that argument); an `OSError(EIO)` from the write stays `DownloadFailed` and is not
-  a `DiskFull`. *Breaks when:* the `errno` test is missed on one path, or
-  the close is left outside the mapping.
+  `tests/test_updater.py::test_a_full_disk_is_named`. Each double is built
+  with two arguments, `OSError(errno.ENOSPC, "...")`: the one-argument form
+  leaves `errno` as `None`. An `ENOSPC` from creating the file, from the
+  write and from the close, and an `EDQUOT` from the write, each raise
+  `DiskFull` and leave no `.pressless-update-*` file; so does an `OSError`
+  subclass whose `winerror` is 39 (on Linux `OSError`'s own constructor
+  drops that argument). An `ENOSPC` and a `winerror` 39 from `unpack`'s
+  extract each raise `DiskFull` and leave neither the zip nor a
+  `Pressless.new-*` folder. An `EIO` from the write stays `DownloadFailed`
+  and is not a `DiskFull`. *Breaks when:* either half of the full-disk test
+  is missed on one path, or the close is left outside the mapping.
 
 ## 6. Failure modes
 
