@@ -7763,7 +7763,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-26, from a peer session's security.md question.
   Lanes: docs.
 
-- 📋 [PRESS-0150] **A release bundles whatever library versions are newest, unpinned and unchecked.**
+- ✅ [PRESS-0150] **A release bundles whatever library versions are newest, unpinned and unchecked.**
   pyproject.toml gives keyring, Pillow, cryptography and certifi a
   lowest version only, and the release workflow installs from that. So
   two builds can ship different code, and nothing checks a downloaded
@@ -7783,6 +7783,13 @@ already-built code ships in whichever release comes next.
   --no-deps. dependencies.md § 2 and security.md § 8 say lockfiles are
   committed. Update SECURITY.md's Dependency row and name the lock
   refresh in the release steps.
+  Resolved 2026-09-27: PRESS-0022 amended (section 4.4, INV-9,
+  INV-10) and gated, loop 4, two lanes, three contradictions fixed. Both
+  release jobs install packaging/release-requirements.txt with
+  --require-hashes; tests/test_release_lock.py locks both invariants.
+  Verified locally: fresh-venv install, gate green, a frozen self-check,
+  a tampered hash refused. Not yet run: the release workflow itself,
+  which runs only on a tag, so the next release is its first real run.
   **Layman:** The packaged app takes the newest version of each library it uses at build time, and nothing checks those downloads are genuine.
   Kind: security.
   Source: in-session-2026-09-26, PRESS-0149's boundary walk.
