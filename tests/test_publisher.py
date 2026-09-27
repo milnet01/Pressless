@@ -1474,7 +1474,7 @@ def test_a_path_windows_cannot_hold_is_named(tmp_path, monkeypatch, paths, named
 @pytest.mark.skipif(os.name == "nt", reason="`con.txt` is a device on Windows itself")
 def test_a_path_windows_cannot_hold_fetches_elsewhere(tmp_path, monkeypatch):
     """INV-11's other half: off Windows the same listing fetches, so Linux
-    keeps undo for an entry whose slug is `con`."""
+    keeps undo for a site holding such a path."""
     monkeypatch.setattr(publisher_module, "_ON_WINDOWS", False)
     into = tmp_path / "into"
     transport = _Transport(reads=_reads(_listing([("content/published/con.txt", "sha")]),
