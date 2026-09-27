@@ -397,6 +397,26 @@ def test_an_unreadable_fetched_file_moves_nothing(tmp_path):
     assert _binned(folder) == []
 
 
+def test_a_fetched_name_the_store_refuses_moves_nothing(tmp_path):
+    """INV-11 for a NAME (PRESS-0162, review-code L7.5): a furniture file
+    outside FURNITURE_NAMES read fine and was refused only in the reconcile,
+    after entries had been written. It is refused while nothing has moved."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside", body="His newer words."), draft=False)
+    before = _state(folder)
+
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="Older."),))}
+    files[f"content/{store.FURNITURE_FOLDER}/sidebar{store.HTML_SUFFIX}"] = b"<p>x</p>\n"
+
+    with pytest.raises(store.StoreError) as raised:
+        _undo(folder, _previous(files))
+
+    assert "sidebar" in str(raised.value)
+    assert _state(folder) == before
+    assert _binned(folder) == []
+
+
 # ----------------------------------------------------------------- INV-12 ---
 
 

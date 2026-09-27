@@ -229,6 +229,25 @@ def test_a_failed_publish_puts_the_files_back(tmp_path, monkeypatch):
         assert _binned(folder) == []
 
 
+def test_a_stop_during_the_upload_puts_nothing_back(tmp_path, monkeypatch):
+    """PRESS-0162 (review-code L7.3): a KeyboardInterrupt mid-upload is not
+    an Exception, so it reached the put-back -- though GitHub may already
+    have taken the upload, and § 4.6 never puts back an entry whose
+    publish outcome is unknown. The stop still goes on up."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("harbour"), draft=True)
+    saved = _settings(folder)
+
+    def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(publisher, "publish", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        publishing.publish(folder, saved, KEY, entry="harbour", transport=_github())
+    assert store.list_slugs(folder, draft=False) == ("harbour",)
+    assert store.list_slugs(folder, draft=True) == ()
+
+
 # ------------------------------------------------------------------ INV-4 ---
 
 
@@ -272,7 +291,7 @@ def test_an_unknown_outcome_says_the_copy_was_left(tmp_path, monkeypatch):
     assert reply["published"] is False and UNKNOWN_WORDS in reply["failure"]
     assert store.list_slugs(folder, draft=True) == ("seaside-changes",)
     notices = html.unescape(reply["notices"])
-    assert "waiting draft of your changes was left in place" in notices, notices
+    assert "waiting draft from this publish was left in place" in notices, notices
     assert "Pressless cannot tell whether your site changed." in notices, notices
     assert "was left in place after publishing" not in notices, notices
     assert "Your site has been updated." not in notices, notices

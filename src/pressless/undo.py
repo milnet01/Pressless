@@ -142,16 +142,29 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             continue
         kind, name = parts[1], parts[2]
         path = fetch.joinpath(*parts)
+        # Each name is put to the Store's own path_for here, while nothing has
+        # moved: refused later, in the reconcile, it failed after entries were
+        # already written (INV-11, PRESS-0162).
         if kind == store.PUBLISHED_FOLDER and name.endswith(store.FILE_SUFFIX):
-            state.entries[_stem(name, store.FILE_SUFFIX)] = store.read(path)
+            stem = _stem(name, store.FILE_SUFFIX)
+            store.path_for(fetch, stem, draft=False)
+            state.entries[stem] = store.read(path)
         elif kind == store.COMMENTS_FOLDER and name.endswith(store.COMMENTS_SUFFIX):
-            state.comments[_stem(name, store.COMMENTS_SUFFIX)] = store.read_comments(path)
+            stem = _stem(name, store.COMMENTS_SUFFIX)
+            store.comments_path_for(fetch, stem)
+            state.comments[stem] = store.read_comments(path)
         elif kind == store.PAGES_FOLDER and name.endswith(store.HTML_SUFFIX):
-            state.pages[_stem(name, store.HTML_SUFFIX)] = store.read_html(path)
+            stem = _stem(name, store.HTML_SUFFIX)
+            store.html_path_for(fetch, store.PAGES_FOLDER, stem)
+            state.pages[stem] = store.read_html(path)
         elif kind == store.FURNITURE_FOLDER and name.endswith(store.HTML_SUFFIX):
-            state.furniture[_stem(name, store.HTML_SUFFIX)] = store.read_html(path)
+            stem = _stem(name, store.HTML_SUFFIX)
+            store.html_path_for(fetch, store.FURNITURE_FOLDER, stem)
+            state.furniture[stem] = store.read_html(path)
         elif kind == store.TEMPLATES_FOLDER and name.endswith(store.FILE_SUFFIX):
-            state.templates[_stem(name, store.FILE_SUFFIX)] = store.read(path)
+            stem = _stem(name, store.FILE_SUFFIX)
+            store.template_path_for(fetch, stem)
+            state.templates[stem] = store.read(path)
     return state
 
 

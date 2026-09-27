@@ -53,12 +53,14 @@ SENTENCES[NothingToPublish] = Sentence(
     "Send the details below to whoever helps you.",
 )
 
-_KEPT_COPY = ("The waiting draft of your changes was left in place after publishing. "
+# "A waiting draft", not "the draft of your changes": a copy of a demoted entry
+# bins two drafts, and a failure between them leaves the OLD one (PRESS-0162).
+_KEPT_COPY = ("A waiting draft from this publish was left in place after publishing. "
               "You can throw it away.")
 # After an unknown outcome the move stands, so the published entry already holds
 # the copy's changes and throwing the copy away loses nothing (§ 4.3, PRESS-0147).
 _KEPT_COPY_UNKNOWN = ("Pressless cannot tell whether your changes were published, and "
-                      "the waiting draft of your changes was left in place. "
+                      "a waiting draft from this publish was left in place. "
                       "You can throw it away.")
 
 
@@ -118,6 +120,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             return True
         return False
 
+    interrupted = False
     try:
         captured(guard_and_build)
         message = MESSAGE.format(slug=moved.published if moved else "site")
@@ -128,12 +131,17 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         except Exception as exc:  # noqa: BLE001 -- GitHub may have taken it (§ 4.3)
             raise publisher.OutcomeUnknown(
                 f"the upload stopped on {type(exc).__name__}") from None
+        except BaseException:
+            # Stopped mid-upload -- Ctrl-C, SystemExit: GitHub may have taken
+            # it, so nothing is put back (§ 4.6), and the stop goes on up.
+            interrupted = True
+            raise
     except publisher.OutcomeUnknown:
         if finish():
             gathered.append(Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN))
         raise
     except BaseException:
-        if moved is not None:
+        if moved is not None and not interrupted:
             captured(moved.put_back)   # a failure here is raised in place of the original
         raise
     return Published(outcome, finish())

@@ -8155,6 +8155,22 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Setup, Settings, Credentials, Low (PRESS-0162 L6.3).
   Lanes: settings.
 
+- 📋 [PRESS-0172] **Any unforeseen failure during Undo says the site may have changed, even where it failed before anything reached GitHub.**
+  undo._undo renders every failure with face.fail(publishing=True), which says
+  "Pressless cannot tell whether your site changed". An OSError in the
+  reconcile is reversed and left the site untouched. publishing.publish
+  already turns an unforeseen upload failure into OutcomeUnknown, which is
+  PRESS-0013 4.1's reason for publishing=False on its own route. But flipping
+  the flag is wrong too: step 7 empties the fetch area AFTER a successful
+  publish, and a failure there would then be reported as "unchanged".
+  PRESS-0015 4.2 is silent on it; decide there how the route tells the
+  steps apart (for example undo raising OutcomeUnknown itself only from
+  step 6 on). Queued because the spec is silent and both flags are wrong.
+  **Layman:** If Undo trips over something unexpected early on, it says the site might have changed when it certainly did not.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publish and Undo, Low (PRESS-0162 L7.2).
+  Lanes: undo.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
