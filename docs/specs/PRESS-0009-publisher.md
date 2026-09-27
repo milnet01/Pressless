@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -121,10 +121,11 @@ class RateLimited(PublishError): ...       # GitHub asked us to slow down, and r
 class NoPreviousState(PublishError): ...   # nothing before the current commit
 
 # Each is its own type because `docs/design.md` § Errors requires every
-# message to end with what to do next, and for these five that differs
+# message to end with what to do next, and for each of these that differs
 # (PRESS-0116). SiteFolderMissing: fix the setting. StrayFile: remove the
 # file. SiteWouldBeEmptied: rebuild the site. FetchNotWritten: free space.
-# RemoteStateMissing: retry. This pairing is the one place they are paired;
+# RemoteStateMissing: retry. UnfetchablePath (PRESS-0160): rename that file
+# on the site. This pairing is the one place they are paired;
 # §6 orders its rows differently, so nothing anywhere reads them off a list.
 # The first four refuse before anything reaches GitHub -- FetchNotWritten
 # can still have written to the folder it was handed, which is §4.5's
@@ -138,6 +139,7 @@ class StrayFile(PublishError): ...          # the folder holds what the Builder 
 class SiteWouldBeEmptied(PublishError): ... # every unprotected path removed and none written
 class FetchNotWritten(PublishError): ...    # fetch_previous could not write into the folder
 class RemoteStateMissing(PublishError): ... # something INSIDE a repository that answers is absent
+class UnfetchablePath(PublishError): ...    # a fetched path this system's disk cannot hold (§4.5)
 
 class Transport(Protocol):
     """The one seam. Tests are its only other caller."""
@@ -465,6 +467,21 @@ refuses one that does.
 Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
 
+**On Windows, the selected paths are checked before any blob is fetched.**
+Two paths equal once case is ignored would land on one file, and a
+segment Windows cannot hold fails its write — and both used to end as
+`FetchNotWritten`, whose answer is to free space. The check raises
+`UnfetchablePath` naming the first offending path, in listing order, and
+nothing is written. A segment Windows cannot hold carries `< > : " | ? *`
+or a control character, ends in a dot or a space, or is a device name:
+`con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`, `conin$`,
+`conout$` and the superscript `com¹`–`com³` and `lpt¹`–`lpt³`, judged on
+the part before the first dot with trailing spaces removed, case ignored.
+**(decided here) The check runs on Windows only**: it is about what this
+computer's disk can hold, and elsewhere those paths fetch correctly, so
+refusing there would take a working undo away. A slug such as `con`
+passes the Store's slug test, so this is reachable under `content/`.
+
 **No fetched file lands at its final path under `into` until every file
 has been fetched.** Written as they go, a failure part-way leaves a mixture
 of the previous state and whatever was already there — which the Face
@@ -639,7 +656,7 @@ behaviour.
   — a folder carrying a symlink to a FILE, one a symlink to a DIRECTORY, one
   `.git/config`, and one `content/.DS_Store`. Assert **`StrayFile`** naming
   the offending path, and that the transport recorded no write — the type
-  by name, on §10's rule for all five.
+  by name, on §10's rule.
   **The symlinked DIRECTORY and `content/.DS_Store` are what carry the
   rule.** The first is the case an *ordinary file or directory* test passes:
   it answers `is_dir()`, so such a rule descends the link and publishes what
@@ -659,12 +676,28 @@ behaviour.
   there — the silence §4.4 chose this branch to end, and the shape the
   symlink case shipped as until PRESS-0089.
 
+- **INV-11** — On Windows, `fetch_previous` refuses a listing whose selected
+  paths clash by case or name a segment Windows cannot hold, raising
+  `UnfetchablePath` naming the path, before any blob is read; elsewhere the
+  same listing fetches.
+  *Test:* `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named`
+  — with the platform test forced to Windows, one listing each holding
+  `content/A.txt` beside `content/a.txt`, `content/published/con.txt`,
+  `content/nul .jpg`, `content/x:y.txt` and `content/dot.`. Each raises
+  `UnfetchablePath` whose message names the path, the double records no
+  blob read, and `into` holds no file. Forced to not-Windows, the
+  `con.txt` listing fetches.
+  *Breaks when:* the check runs after staging, so a clash overwrites one
+  file with the other in silence; or it runs everywhere, and Linux loses
+  undo for a slug named `con`.
+
 ## 6. Failure modes
 
 | What happens | What is raised | What the writer's site is |
 |---|---|---|
 | The handed folder is not a directory | `SiteFolderMissing` | unchanged |
 | `fetch_previous` cannot write into the folder it was handed — full disk, unwritable folder | `FetchNotWritten` | unchanged |
+| `fetch_previous`, on Windows, selects two paths equal but for case, or a path Windows cannot hold (§4.5) | `UnfetchablePath` | unchanged |
 | The handed folder holds a stray — a symlink, anything else neither an ordinary file nor a directory, or a path carrying a dot-name segment, in either case under a first segment the untouchable list does not name (§4.4) | `StrayFile` | unchanged |
 | The publish would remove every unprotected path and write none | `SiteWouldBeEmptied` | unchanged |
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
@@ -690,6 +723,7 @@ its answer, and the rows below are in a different order, so neither list
 can be read off the other. A shared type left the Face inventing a discriminator or giving one
 generic answer to five different situations, which is the failure § Errors
 names. It is the same ground `OutcomeUnknown` is its own type on.
+`UnfetchablePath` joined them 2026-09-27 (PRESS-0160), on the same ground.
 
 **Every row but two says *unchanged*, and those two are the ones that
 matter.** §4.3's property is that nothing a reader sees changes until the
@@ -794,8 +828,9 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` and `::test_each_write_is_preceded_by_its_own_pace`, which asserts the wait sequence rather than a count |
-| What the Face branches on to tell §6's five own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten` and `RemoteStateMissing`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
+| What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing` and `UnfetchablePath`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
+| INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no dot-name segment outside an untouchable first segment | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
@@ -807,15 +842,16 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the pacing interval is long *enough* under real load | **nothing** — INV-9 fixes that the wait and the retry exist, which is falsifiable here. Whether the interval suffices is observable only against the real service, on a first publish |
 | That the default branch is the branch GitHub Pages serves from | **nothing** — §4.2 resolves the default branch, and a repository serving Pages from another branch would publish successfully while the live site never changed. No check here can see it; the first real publish is where it shows |
 
-**§6's five own-type rows are asserted BY TYPE NAME, never by
+**§6's own-type rows are asserted BY TYPE NAME, never by
 `PublishError`.** Every §4.1 type subclasses it, so the base name passes
 against a module raising the bare type at every site, and the mapping the
-Face branches on is then checked by nothing. The five tests that own it are
+Face branches on is then checked by nothing. The tests that own it are
 `::test_a_site_folder_that_is_not_a_directory_is_refused`,
 `::test_a_publish_that_would_empty_the_site_is_refused`,
 `::test_a_stray_file_refuses_the_publish`,
-`::test_a_fetch_that_cannot_be_written_is_a_typed_failure` and
-`::test_a_missing_blob_is_not_reported_as_a_missing_repository`. Each names
+`::test_a_fetch_that_cannot_be_written_is_a_typed_failure`,
+`::test_a_missing_blob_is_not_reported_as_a_missing_repository` and
+`::test_a_path_windows_cannot_hold_is_named`. Each names
 its own type; the rows above credit them on that condition.
 
 ## 11. Cross-doc impact
