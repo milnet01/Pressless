@@ -371,6 +371,39 @@ def test_the_list_shows_copies_and_unreadable_files(tmp_path):
     assert "broken" in page
 
 
+def test_a_published_entry_page_carries_its_working_copy_state(tmp_path):
+    """PRESS-0162 (review-code L4.3): the first save turns a published
+    entry's page into a working copy's editor without a reload, and the page
+    carried only the published wording -- no Throw away changes button until
+    he reopened it (PRESS-0012 4.7). Both states are now in the page, the
+    second hidden, and the script shows it and names the copy on a save.
+    Driven in Chrome 2026-09-27: hidden before a save, shown after, naming
+    `seaside-changes`, and the discard removed the copy."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    with _editor(folder) as browser:
+        status, _, page = browser.request("GET", "/edit?slug=seaside")
+    assert status == 200
+    assert '<form data-when="1" hidden method="post" action="/discard">' in page
+    assert "Throw away changes" in page
+    assert "#standing input[name=slug]" in page, "the script does not name the copy"
+
+
+def test_a_copy_of_an_unreadable_entry_is_not_listed_as_a_draft(tmp_path):
+    """PRESS-0162 (review-code L4.2): `published` was built from the entries
+    that READ, while working_copy and the editor ask list_slugs -- so a
+    working copy of a published entry that will not read was listed as an
+    ordinary draft, and the list and the editor disagreed about one file."""
+    folder = _folder(tmp_path)
+    store.path_for(folder, "seaside", draft=False).parent.mkdir(exist_ok=True)
+    store.path_for(folder, "seaside", draft=False).write_bytes(b"\xff\xfe not an entry")
+    store.write(folder, _entry("seaside-changes", extra=((REPLACES, "seaside"),)), draft=True)
+    with _editor(folder) as browser:
+        status, _, page = browser.request("GET", "/")
+    assert status == 200
+    assert "/edit?slug=seaside-changes" not in page, page
+
+
 # ----------------------------------------------------------------- INV-17 ---
 
 

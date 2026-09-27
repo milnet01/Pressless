@@ -259,7 +259,10 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         except store.StoreError as exc:
             first_failure = first_failure or exc
             pages = "<p>Pressless cannot open your pages folder.</p>"
-    published = {entry.slug for entry in readable[False]}
+    # Every listed slug, readable or not: _replaced and working_copy ask
+    # list_slugs, so an unreadable published entry still has its working copy
+    # (PRESS-0162).
+    published = {entry.slug for entry in readable[False]} | set(unreadable[False])
     changed = {_replaces(entry) for entry in readable[True]} & published
     drafts = [entry for entry in readable[True] if _replaces(entry) not in published]
 
@@ -365,8 +368,17 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 
     named = _replaced(folder, entry) if draft else None
     if not draft:
-        standing = ("<p>This entry is on your site. Your changes stay on this computer "
-                    "until you publish it.</p>")
+        # Both states, because the first save turns this page into a working
+        # copy's editor without reloading it; the script shows the second
+        # and names the copy (PRESS-0162).
+        standing = ('<div id="standing">'
+                    '<p data-when="0">This entry is on your site. Your changes stay on '
+                    "this computer until you publish it.</p>"
+                    '<p data-when="1" hidden>These changes are not on your site yet.</p>'
+                    '<form data-when="1" hidden method="post" action="/discard">'
+                    '<input type="hidden" name="slug" value="">'
+                    f'<input type="hidden" name="base" value="{attr(base)}">'
+                    "<button>Throw away changes</button></form></div>")
         address = ""
     elif named is not None:
         standing = ("<p>These changes are not on your site yet.</p>"
@@ -588,6 +600,12 @@ _EDITOR_SCRIPT = """
     state.slug = reply.slug; state.draft = reply.draft ? "1" : "0"; state.base = reply.base;
     document.querySelectorAll("input[name=base]").forEach((input) => { input.value = reply.base; });
     history.replaceState(null, "", "/edit?slug=" + encodeURIComponent(reply.slug));
+    document.querySelectorAll("#standing [data-when]").forEach((part) => {
+      part.hidden = part.dataset.when !== state.draft;
+    });
+    document.querySelectorAll("#standing input[name=slug]").forEach((input) => {
+      input.value = reply.slug;
+    });
     document.getElementById("notices").innerHTML = reply.notices;
   };
   const stop = (text) => {

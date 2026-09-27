@@ -229,8 +229,9 @@ editor's.
 - With a waiting copy it shows **Throw away changes** and says its changes are
   not on the site yet. Without one it says his changes stay on this computer
   until he publishes this page.
-- It shows **Publish** and, after a publish, the **Undo the last publish**
-  button PRESS-0015 § 4.6 puts beside the Published message.
+- It shows **Publish** and the **Undo the last publish** button PRESS-0015
+  § 4.6 puts beside the Published message, which always shows (PRESS-0015
+  § 3 decision 3).
 - The box's styling class is `builder.BODY_CLASS` in the words view only.
 
 **Opening builds the preview**, as PRESS-0012 § 4.7 does: § 4.6 step 5 for the

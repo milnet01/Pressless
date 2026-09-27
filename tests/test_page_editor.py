@@ -15,6 +15,7 @@ import contextlib
 import hashlib
 import html
 import json
+import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -172,6 +173,20 @@ def test_a_changed_paragraph_count_writes_nothing(tmp_path):
             assert reply["base"] == base
             assert reply["waiting"] is False
             assert not _waiting(folder, "pages", "about").exists()
+
+    # PRESS-0162 (review-code L4.1): the hint reply was built inside the
+    # capture, which fills its list only on exit, so a notice raised before
+    # the refusal never reached the reply.
+    def notice_then_refuse(folder, form):
+        warnings.warn("a notice before the refusal", store.StoreNotice, stacklevel=1)
+        raise page_editor.PiecesChanged("the paragraphs changed")
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(page_editor, "_write", notice_then_refuse)
+        with _pages(folder) as browser:
+            _, _, text = _save(browser, "pages", "about", "words", added,
+                               waiting=False, base=base)
+    assert "a notice before the refusal" in json.loads(text)["notices"], text
 
     # PRESS-0143: a run of blank lines is one gap, and an emptied paragraph is
     # refused however many blank lines it leaves behind.

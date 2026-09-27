@@ -426,13 +426,14 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
     """§ 4.6."""
     form = editor._form(request)
     kind, name = form.get("kind", ""), form.get("name", "")
+    changed: PiecesChanged | None = None
     with lock, face.capture() as notices:
         try:
             new, base = _write(folder, form)
         except PiecesChanged as exc:
-            return _json({"waiting": form.get("waiting") == "1", "base": form.get("base", ""),
-                          "preview": None, "failure": None, "hint": _hint(exc),
-                          "notices": render_notices(notices)})
+            # Answered after the block: capture fills `notices` only on exit,
+            # so a reply built in here dropped every notice (PRESS-0162).
+            changed, failure = exc, None
         except (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped) as exc:
             failure: Exception | None = exc
         else:
@@ -442,6 +443,10 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
                 notices.append(STRAY)
             preview, preview_failure = _preview(
                 face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")))
+    if changed is not None:
+        return _json({"waiting": form.get("waiting") == "1", "base": form.get("base", ""),
+                      "preview": None, "failure": None, "hint": _hint(changed),
+                      "notices": render_notices(notices)})
     if failure is not None:
         return _failed(face, notices, failure)
     return _json({"waiting": True, "base": base, "preview": preview, "failure": preview_failure,

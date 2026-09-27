@@ -8115,6 +8115,21 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
   Lanes: publisher.
 
+- 📋 [PRESS-0169] **The preview frame lets the site's own scripts act with the Face's authority.**
+  editor.py and page_editor.py frame the preview with sandbox="allow-same-origin
+  allow-scripts", which PRESS-0012 4.7 mandates. WHATWG warns the pair lets
+  the framed document reach its parent and lift its own sandbox. The preview
+  is same-origin with the Face, so any .js the site serves under
+  /preview/assets/ runs with the Face's cookie and can POST /publish or /undo
+  past the Origin check. FILES_POLICY's script-src 'self' keeps it to local
+  files, so exposure is small. The fix is PRESS-0012's: drop allow-same-origin
+  (does the site's own script still work?), or serve previews from a separate
+  origin. Queued because the code conforms and the spec must move first.
+  **Layman:** A script inside the writer's own site could, while previewed, press Publish or Undo on his behalf.
+  Kind: security.
+  Source: review-code 2026-09-26 PRESS-0135 lane Editors, Low (PRESS-0162 L4.6).
+  Lanes: face, editor.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
