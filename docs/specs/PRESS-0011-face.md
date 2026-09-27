@@ -408,14 +408,13 @@ capture, it lands on that request's list.
 | A part raises a typed failure | Shows its sentence, notes `details_for` in the log |
 | Something raises a type with no entry | The last-resort sentence, with the site part from `publishing` |
 | A notice is raised | Shows it as a line and logs it; the call completes |
-| No browser opens | Prints `url` to the console |
 | A page's work raises | `Face.fail` shows it as the first two rows say; nothing on the console |
 | A request names a method and path no `add_page` registered | 404, with a plain body |
 | The platform opener is missing or fails | Says it could not open the folder, and leaves Copy location working |
 | The log cannot be written | Nothing on screen: the log never raises (PRESS-0003 § 4.4) |
 | A request lacks the cookie, names a foreign `Host`, or is a POST from a foreign `Origin` | 403, with a plain body |
 | He opens another page served on `127.0.0.1` | That page's server receives the session cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page. It cannot frame a Face page (§ 4.5) |
-| The opening link is followed a second time | 403. Accepted: `serve` opens it once, and a new launch makes a new link |
+| The opening link is followed a second time | 403. Accepted: the launcher opens it once, and a new launch makes a new link |
 | Pressless is launched twice on one folder | The second start says Pressless is already running and exits; the folder's lock is PRESS-0023 § 4.11's |
 
 ## 7. Tests
@@ -494,6 +493,9 @@ once the code lands, one mutation per *Breaks when* route.
   frame-ancestors 'self'` (§ 4.5, PRESS-0151).
 - PRESS-0013 — replaces `pressless.__main__`'s body with a call to
   `face.serve`.
+- PRESS-0013 § 4.5 step 3, and the test start-ups PRESS-0012, PRESS-0013,
+  PRESS-0014 and PRESS-0021 quote, drop `open_browser=False` and call
+  `face.serve(folder)` (PRESS-0170).
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
@@ -504,5 +506,5 @@ Rows live in `../reviews/PRESS-0011-face-loop-log.md`.
 
 No cache and no state between requests (`docs/design.md` § State). One thread
 per request while it runs. The log is PRESS-0003's, bounded there. No new
-dependency: the server, the secret, the escaping and the browser launch are
-all standard library.
+dependency: the server, the secret, and the escaping are all standard
+library.
