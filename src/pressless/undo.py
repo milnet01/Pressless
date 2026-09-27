@@ -216,8 +216,14 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
     own fields, the old draft file is binned, and the fetched entry is published
     — otherwise one slug would name two files, which docs/design.md rules out."""
     his = store.read(store.path_for(folder, slug, draft=True))
-    kept = _keep(folder, his, slug)
-    reversals.append(_bin_later(folder, kept, draft=True))
+    # The draft a first press demoted, put back unchanged by a second: nothing
+    # of his differs, so it is binned rather than kept (§ 4.4, INV-13).
+    demoted = (any(name == publishing.UNDONE for name, _ in his.extra)
+               and dataclasses.replace(his, extra=_without(his.extra, publishing.UNDONE))
+               == fetched)
+    kept = None if demoted else _keep(folder, his, slug)
+    if kept:
+        reversals.append(_bin_later(folder, kept, draft=True))
     store.move_to_bin(folder, store.path_for(folder, slug, draft=True))
     # His draft is written back rather than moved out of the bin: nothing
     # moves a file out of the bin, and the binned copy is the spare copy of
@@ -225,7 +231,8 @@ def _restore_over_draft(folder: Path, slug: str, fetched: store.Entry,
     reversals.append(lambda: store.write(folder, his, draft=True))
     store.write(folder, fetched, draft=False)
     reversals.append(_bin_later(folder, slug, draft=False))
-    changed.kept.append(kept)
+    if kept:
+        changed.kept.append(kept)
     changed.restored.append(slug)
 
 

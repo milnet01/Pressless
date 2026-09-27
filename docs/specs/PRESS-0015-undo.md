@@ -2,7 +2,8 @@
 
 **Status:** accepted (2026-09-21). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
 Amended 2026-09-27 by the user's decision: the draft a first undo demoted is
-binned, not kept, when a second undo puts it back (§ 4.4, INV-13).
+binned, not kept, when a second undo puts it back (§ 4.4, INV-13). Gated for one
+loop: two verified, two fixed, not converged.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -20,7 +21,8 @@ After this ships, a press of **Undo the last publish** fetches the state
 before the last publish, writes its `content/` back into the Store, rebuilds
 and publishes. The site and his own files then agree. Nothing of his is
 deleted: an entry the fetched state does not hold becomes a draft, and a
-version of his that undo writes over is kept beside it. A definite failure
+version of his that undo writes over is kept beside it, unless it is a draft
+a first undo demoted, unchanged since (INV-13). A definite failure
 puts his files back as they were before the press.
 
 ## 2. Problem
@@ -404,7 +406,7 @@ does.
   one draft destroy another.
 
 - **INV-6** — A version of his that undo writes over is kept as a draft under
-  a free address, with no `Replaces`.
+  a free address, with no `Replaces` — except the draft INV-13 bins.
   *Test:* `test_his_own_version_is_kept_beside_the_one_put_back`. For a
   published entry whose Store version differs, and for a draft whose slug the
   fetched state publishes, the kept draft holds the title, date, categories,
@@ -473,9 +475,9 @@ does.
   drafts the fetched state publishes: one carries `Undone` and equals the
   fetched entry apart from that field, one carries `Undone` and has a
   different body, and one carries no `Undone` and equals the fetched
-  entry. After undo, all three slugs are published, `result.kept` names
-  the second and third, and no draft holds the first one's slug or
-  `<slug>-before-undo`.
+  entry. After undo, all three slugs are published, `result.kept` holds
+  the free addresses the second and third were kept under, and no draft
+  holds the first one's slug or `<slug>-before-undo`.
   *Breaks when:* `Undone` is not set aside before comparing, or an
   unmarked draft equal to the fetched entry is binned too.
 

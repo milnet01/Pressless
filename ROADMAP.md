@@ -7839,7 +7839,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Setup, #22.
   Lanes: credentials.
 
-- 📋 [PRESS-0154] **Pressing Undo twice keeps a spurious "your own version" copy of every entry the first press demoted.**
+- ✅ [PRESS-0154] **Pressing Undo twice keeps a spurious "your own version" copy of every entry the first press demoted.**
   The second undo fetches a state publishing entry E while the Store
   holds E as the demoted draft. That draft differs only by its Undone
   header, so _restore_over_draft keeps it as his version under
@@ -7850,6 +7850,9 @@ already-built code ships in whichever release comes next.
   only difference (recommended).
   Decided by the user 2026-09-26: compare ignoring the Undone
   header, and bin rather than keep where that is the only difference.
+  Resolved 2026-09-27: PRESS-0015 amended (4.4, INV-13) and gated one
+  loop, two verified and fixed; undo.py bins a marked draft equal to the
+  fetched entry; test_a_second_undo_keeps_no_copy_of_the_demoted_draft.
   **Layman:** Undoing, then undoing again, leaves extra draft copies the writer never made.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Undo, #25.

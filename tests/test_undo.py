@@ -224,6 +224,30 @@ def test_his_own_version_is_kept_beside_the_one_put_back(tmp_path):
         "The older harbour.")
 
 
+# ----------------------------------------------------------------- INV-13 ---
+
+
+def test_a_second_undo_keeps_no_copy_of_the_demoted_draft(tmp_path):
+    """A demoted draft that a later undo publishes unchanged is binned, not
+    kept; one he has edited since is kept, and so is an unmarked draft."""
+    folder = _folder(tmp_path)
+    mark = ((UNDONE, "2026-09-26 10:00:00"),)
+    store.write(folder, _entry("untouched", body="Same words.", extra=mark), draft=True)
+    store.write(folder, _entry("edited", body="Edited since.", extra=mark), draft=True)
+    store.write(folder, _entry("plain", body="Plain words."), draft=True)
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("untouched", body="Same words."),
+                                             _entry("edited", body="Before the edit."),
+                                             _entry("plain", body="Plain words.")))}
+
+    result = _undo(folder, _previous(files))
+
+    assert sorted(result.kept) == ["edited-before-undo", "plain-before-undo"]
+    assert sorted(store.list_slugs(folder, draft=False)) == ["edited", "plain", "untouched"]
+    drafts = store.list_slugs(folder, draft=True)
+    assert "untouched" not in drafts and "untouched-before-undo" not in drafts
+
+
 # ------------------------------------------------------------------ INV-7 ---
 
 
