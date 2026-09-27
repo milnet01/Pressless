@@ -8039,6 +8039,8 @@ already-built code ships in whichever release comes next.
   press", Preview becomes "Proof (preview)", and "Throw away changes"
   becomes "Bin this proof". Drafts, New entry, Archive and Settings
   stay plain.
+  Ordered by the user 2026-09-27: after the review fixes, before the
+  v0.6.0 items.
   **Layman:** Buttons get playful, press-themed names that still say exactly what they do.
   Kind: ux.
   Source: user-request-2026-09-26.
@@ -8096,6 +8098,9 @@ already-built code ships in whichever release comes next.
   send it (TLS is verified), hence Low. Needs a PRESS-0009 6 row first:
   under outcome_unknown an unreadable or other 2xx is OutcomeUnknown or
   success. Queued rather than fixed because it changes PRESS-0009.
+  Decided 2026-09-27 (user approved amending the specs): an unreadable
+  body or a 2xx other than 200/201 on the reference update is
+  OutcomeUnknown, never unchanged. PRESS-0009 6 gets the row first.
   **Layman:** If GitHub says yes to a publish in an unusual way, Pressless could wrongly say nothing changed.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.1).
@@ -8110,6 +8115,9 @@ already-built code ships in whichever release comes next.
   a same-origin 307/308 with the same method and body, or name it as
   RepositoryMissing with a sentence telling him to update Settings.
   The transport's comment now says writes are not followed.
+  Decided by the user 2026-09-27: do not follow the redirect. A 307/308
+  on a write is RepositoryMissing-style, with a sentence saying the
+  repository seems to have moved or been renamed and to update Settings.
   **Layman:** Renaming the site's repository on GitHub makes publishing fail with an unclear message.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.3).
@@ -8122,6 +8130,8 @@ already-built code ships in whichever release comes next.
   path -> hash and re-reading at upload needs a check that the file did
   not change between hashing and sending, which is a PRESS-0009 4.2/4.3
   design question. Queued; measure the real site folder first.
+  Decided 2026-09-27: measure the real site folder's peak memory first;
+  amend PRESS-0009 only if the number shows it matters.
   **Layman:** Publishing a very large site could use a lot of the computer's memory.
   Kind: perf.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
@@ -8137,6 +8147,9 @@ already-built code ships in whichever release comes next.
   files, so exposure is small. The fix is PRESS-0012's: drop allow-same-origin
   (does the site's own script still work?), or serve previews from a separate
   origin. Queued because the code conforms and the spec must move first.
+  Decided by the user 2026-09-27: drop allow-same-origin from the preview
+  frame (sandbox="allow-scripts"). Checked: nothing in src/ reaches into
+  the frame. PRESS-0012 4.7 amended first.
   **Layman:** A script inside the writer's own site could, while previewed, press Publish or Undo on his behalf.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Editors, Low (PRESS-0162 L4.6).
@@ -8149,6 +8162,8 @@ already-built code ships in whichever release comes next.
   tests and by-hand scripts included, passes False. PRESS-0011 4.1 declares
   the parameter, so removing the branch is a PRESS-0011 change. Queued, not
   fixed, because it moves a declared surface for code nobody calls.
+  Decided 2026-09-27: remove the open_browser branch from face.serve;
+  PRESS-0011 4.1 amended first.
   **Layman:** A leftover second copy of the start-up link code says things differently and would misbehave if anything used it.
   Kind: refactor.
   Source: review-code 2026-09-26 PRESS-0135 lane Face and launch, Low (PRESS-0162 L5.5).
@@ -8162,6 +8177,8 @@ already-built code ships in whichever release comes next.
   PRESS-0001 4.3 allows exactly these characters, so the spec moves first:
   refuse a half equal to "." or "..". Queued rather than fixed because it
   changes PRESS-0001.
+  Decided 2026-09-27: refuse an owner or name half equal to "." or
+  ".."; PRESS-0001 4.3 amended first.
   **Layman:** A mistyped repository name made only of dots is accepted and could point publishing at the wrong place on GitHub.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Setup, Settings, Credentials, Low (PRESS-0162 L6.3).
@@ -8178,6 +8195,9 @@ already-built code ships in whichever release comes next.
   PRESS-0015 4.2 is silent on it; decide there how the route tells the
   steps apart (for example undo raising OutcomeUnknown itself only from
   step 6 on). Queued because the spec is silent and both flags are wrong.
+  Decided 2026-09-27: Undo reports cannot-tell only for a failure from
+  the upload step on; an earlier failure is unchanged. PRESS-0015 4.2
+  amended first.
   **Layman:** If Undo trips over something unexpected early on, it says the site might have changed when it certainly did not.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publish and Undo, Low (PRESS-0162 L7.2).
@@ -8206,6 +8226,8 @@ already-built code ships in whichever release comes next.
   PRESS-0023 4.6 itself says any other error is DownloadFailed, so a
   sentence of its own (a type, or the generic UpdateError's "try again
   later") needs 4.6 and 4.10 amended first. Queued for that.
+  Decided 2026-09-27: a full disk (ENOSPC, EDQUOT) gets its own sentence
+  saying to free space; PRESS-0023 4.6 and 4.10 amended first.
   **Layman:** If the computer's disk fills up while downloading an update, Pressless blames the internet instead.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.2).
