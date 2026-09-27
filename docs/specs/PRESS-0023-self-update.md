@@ -300,7 +300,9 @@ script:
 3. If the second rename fails, renames `Pressless.old` back and logs
    `rolled back`. Otherwise it moves the staged `Start Pressless.bat` over the
    old one where the two differ — `cmd.exe` re-reads a running batch file
-   from its old offset — and removes `Pressless.old`.
+   from its old offset — and removes `Pressless.old`. A batch file that
+   cannot be read, or still cannot be moved after the same five tries, is
+   left as it is: the old one starts the new program, so step 4 still runs.
 4. Starts `Start Pressless.bat` with the working directory set to its folder,
    appends `started`, then removes its own script file.
 

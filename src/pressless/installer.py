@@ -95,9 +95,17 @@ Stamp 'swapped'
 $batch = Join-Path $home_ 'Start Pressless.bat'
 $newBatch = Join-Path $Staged 'Start Pressless.bat'
 if (Test-Path -LiteralPath $newBatch) {
-    $same = (Test-Path -LiteralPath $batch) -and (
-        (Get-FileHash -LiteralPath $batch).Hash -eq (Get-FileHash -LiteralPath $newBatch).Hash)
-    if (-not $same) { Move-Item -LiteralPath $newBatch -Destination $batch -Force }
+    # The swap is done, so nothing here may stop the restart (PRESS-0173):
+    # an unreadable batch file counts as changed, and one that will not be
+    # replaced leaves the old one, which still starts the new program.
+    $same = $false
+    try {
+        $same = (Test-Path -LiteralPath $batch) -and (
+            (Get-FileHash -LiteralPath $batch).Hash -eq (Get-FileHash -LiteralPath $newBatch).Hash)
+    } catch { }
+    if (-not $same) {
+        Retry { Move-Item -LiteralPath $newBatch -Destination $batch -Force } | Out-Null
+    }
 }
 Forget $old
 Forget $Staged
