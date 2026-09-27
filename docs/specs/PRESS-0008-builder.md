@@ -4,7 +4,8 @@
 the user's decision: a picture-only entry is described by its captions
 (§4.3, INV-16). Gated for one loop by the amendment budget: one verified,
 one fixed, not converged. Amended 2026-09-27 by the user's decision: a
-listing's lead is its count alone (§4.3, INV-17).
+listing's lead is its count alone (§4.3, INV-17). Gated for one loop:
+converged, no findings.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).

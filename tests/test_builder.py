@@ -782,6 +782,34 @@ def test_a_picture_only_entry_is_described_by_its_captions(tmp_path):
     assert _card_label(journal, bare) == "6 May 2020"
 
 
+def _lead(into: Path, address: str) -> str:
+    page = (into / address / "index.html").read_text(encoding="utf-8")
+    return re.search(r'<p class="lead">(.*?)</p>', page, re.S).group(1)
+
+
+def test_a_listing_lead_is_its_count_alone(tmp_path):
+    """INV-17: a listing's lead is §4.3's count sentence -- no fixed
+    description, and `1 entry` where there is one."""
+    one = tmp_path / "one"
+    folder = _store(one)
+    store.write(folder, _entry("only", "2020-05-09 00:00:00",
+                               categories=("poetry",), tags=("sea",)), draft=False)
+    build(folder, _settings(), one / "site", photo_src=lambda name: name)
+    assert _lead(one / "site", "blog") == "1 entry, from May 2020 to May 2020."
+    assert _lead(one / "site", "blog/category/poetry") == "1 entry in poetry."
+    assert _lead(one / "site", "blog/tag/sea") == "1 entry tagged “sea”."
+
+    two = tmp_path / "two"
+    folder = _store(two)
+    for slug, date in (("first", "2019-03-01 00:00:00"), ("second", "2020-05-09 00:00:00")):
+        store.write(folder, _entry(slug, date, categories=("poetry",), tags=("sea",)),
+                    draft=False)
+    build(folder, _settings(), two / "site", photo_src=lambda name: name)
+    assert _lead(two / "site", "blog") == "2 entries, from March 2019 to May 2020."
+    assert _lead(two / "site", "blog/category/poetry") == "2 entries in poetry."
+    assert _lead(two / "site", "blog/tag/sea") == "2 entries tagged “sea”."
+
+
 # ------------------------------------------- PRESS-0012 INV-4 and INV-5 ---
 
 

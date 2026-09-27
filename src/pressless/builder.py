@@ -76,7 +76,9 @@ _ANIMATION = (" reveal-load d1", " reveal-load d2", " reveal-load d3")
 # §4.6: re-encoded in their own format. Anything else Pillow opens is refused.
 _REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP"}
 
-_JOURNAL_LEAD = "poetry, lyrics, photographs and passing thoughts"
+def _entries(count: int) -> str:
+    """§4.3's count: `1 entry`, `2 entries`."""
+    return f"{count} {'entry' if count == 1 else 'entries'}"
 
 
 def web_photograph(name: str) -> str:
@@ -667,11 +669,9 @@ class _Build:
             self.page(here, here_depth, heading, intro, body)
 
     def listings(self, shown: list[store.Entry]) -> None:
-        count = len(shown)
         span = (f", from {_month_year(shown[-1].date)} to {_month_year(shown[0].date)}"
                 if shown else "")
-        self.listing("blog", 1, "The journal",
-                     f"{count} entries — {_JOURNAL_LEAD}{span}.", shown)
+        self.listing("blog", 1, "The journal", f"{_entries(len(shown))}{span}.", shown)
         by_category: dict[str, list[store.Entry]] = {}
         by_tag: dict[str, list[store.Entry]] = {}
         for entry in shown:
@@ -682,10 +682,10 @@ class _Build:
         for category, entries in sorted(by_category.items()):
             label = _label(category)
             self.listing(f"blog/category/{category}", 3, label,
-                         f"{len(entries)} entries in {label.lower()}.", entries)
+                         f"{_entries(len(entries))} in {label.lower()}.", entries)
         for tag, entries in sorted(by_tag.items()):
             self.listing(f"blog/tag/{tag}", 3, f"#{tag}",
-                         f"{len(entries)} entries tagged “{tag}”.", entries)
+                         f"{_entries(len(entries))} tagged “{tag}”.", entries)
 
     def archive(self, shown: list[store.Entry]) -> None:
         years: dict[int, list[store.Entry]] = {}

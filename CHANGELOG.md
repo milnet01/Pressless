@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **The journal's index pages no longer describe one writer's posts, and a single entry reads "1 entry".** (PRESS-0152)
+
 - **On Windows, an entry file renamed by hand can no longer be overwritten by a new entry** (PRESS-0159)
   Pressless now treats Seaside.txt as taking the address seaside, as
   Windows does. A file saved by Notepad with a byte-order mark keeps its

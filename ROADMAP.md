@@ -7798,7 +7798,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Face, #17 and #20.
   Lanes: face.
 
-- 📋 [PRESS-0152] **Every user's listing pages describe the first writer's journal, and a single entry reads "1 entries".**
+- ✅ [PRESS-0152] **Every user's listing pages describe the first writer's journal, and a single entry reads "1 entries".**
   builder.py's _JOURNAL_LEAD is fixed text ("poetry, lyrics, photographs
   and passing thoughts") written on every user's journal and listing
   pages, and the counts print "1 entries" at a count of one.
@@ -7806,6 +7806,11 @@ already-built code ships in whichever release comes next.
   fix is the spec's first: the lead from Settings or the Store, and
   pluralised counts as comments() already does. Queued, not fixed,
   because it changes PRESS-0008.
+  Decided by the user 2026-09-27: drop the lead line entirely; the
+  count and span stay, pluralised. No new setting.
+  Resolved 2026-09-27: PRESS-0008 amended (§4.3, INV-17) and gated one
+  loop, converged with no findings; builder.py drops the fixed phrase and
+  pluralises every listing count; test_a_listing_lead_is_its_count_alone.
   **Layman:** The blog's index pages say it holds poetry, lyrics and photographs whatever the writer actually posts, and say "1 entries".
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Builder, #12.
