@@ -374,7 +374,7 @@ def test_the_list_shows_copies_and_unreadable_files(tmp_path):
 def test_a_published_entry_page_carries_its_working_copy_state(tmp_path):
     """PRESS-0162 (review-code L4.3): the first save turns a published
     entry's page into a working copy's editor without a reload, and the page
-    carried only the published wording -- no Throw away changes button until
+    carried only the published wording -- no Bin this proof button until
     he reopened it (PRESS-0012 4.7). Both states are now in the page, the
     second hidden, and the script shows it and names the copy on a save.
     Driven in Chrome 2026-09-27: hidden before a save, shown after, naming
@@ -385,7 +385,7 @@ def test_a_published_entry_page_carries_its_working_copy_state(tmp_path):
         status, _, page = browser.request("GET", "/edit?slug=seaside")
     assert status == 200
     assert '<form data-when="1" hidden method="post" action="/discard">' in page
-    assert "Throw away changes" in page
+    assert "Bin this proof" in page
     assert "#standing input[name=slug]" in page, "the script does not name the copy"
 
 

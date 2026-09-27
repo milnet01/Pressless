@@ -396,7 +396,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <input type="hidden" name="kind" value="{attr(kind)}">
 <input type="hidden" name="name" value="{attr(name)}">
 <input type="hidden" name="base" value="{attr(base)}">
-<button>Throw away changes</button></form>
+<button>Bin this proof</button></form>
 <p data-when="0"{' hidden' if waiting else ''}>Your changes stay on this computer until you
  publish this page.</p>
 </div>
@@ -407,16 +407,16 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
  data-show="{attr(shown)}" data-waiting="{'1' if waiting else '0'}" data-base="{attr(base)}"
  onsubmit="return false">
-<p><button type="button" data-editor="publish">Publish</button>
+<p><button type="button" data-editor="publish">Press to site</button>
  <span id="publish-status"></span>
- <button type="button" data-undo>Undo the last publish</button>
+ <button type="button" data-undo>Undo the last press</button>
  <span id="undo-status"></span></p>
 <textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
 </form>
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
-<iframe id="preview" title="Preview" sandbox="allow-same-origin"
+<iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe>
 <script>{_PAGE_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""

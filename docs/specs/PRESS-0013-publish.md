@@ -15,7 +15,7 @@ he is told what to do. Double-clicking Pressless now opens it in his browser.
 
 ## 1. Goal
 
-After this ships, the editor page has a Publish button. One click saves the
+After this ships, the editor page has a Press to site button. One click saves the
 box, moves the entry into what is published, builds the site and sends it to
 GitHub. A failure puts his files back and says what happened. And the
 double-click starts the Face, with setup, the editor and publishing on it, and
@@ -37,7 +37,7 @@ opens his browser.
 
 ## 3. Scope decisions (agreed with the user)
 
-1. **The Publish button is on the editor page and publishes the entry open
+1. **The Press to site button is on the editor page and publishes the entry open
    there.** Decided by the user 2026-09-17. The rebuilt site carries any other
    finished change with it.
 2. **A failed publish puts the entry back as it was.** Decided by the user
@@ -222,7 +222,7 @@ told something is wrong with his files rather than only with GitHub.
 
 ### 4.4 The editor page
 
-PRESS-0012 § 4.7's page gains a **Publish** button beside the box. Its script,
+PRESS-0012 § 4.7's page gains a **Press to site** button beside the box. Its script,
 on a click:
 
 - stops the save timer and waits for a save in flight;

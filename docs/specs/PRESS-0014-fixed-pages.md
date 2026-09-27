@@ -226,10 +226,10 @@ editor's.
   the other view. The furniture shows neither.
 - The furniture shows the picker: a link per fixed page, and one for his
   newest entry where he has one. Each reloads the page with that `show`.
-- With a waiting copy it shows **Throw away changes** and says its changes are
+- With a waiting copy it shows **Bin this proof** and says its changes are
   not on the site yet. Without one it says his changes stay on this computer
   until he publishes this page.
-- It shows **Publish** and the **Undo the last publish** button PRESS-0015
+- It shows **Press to site** and the **Undo the last press** button PRESS-0015
   § 4.6 puts beside the Published message, which always shows (PRESS-0015
   § 3 decision 3).
 - The box's styling class is `builder.BODY_CLASS` in the words view only.

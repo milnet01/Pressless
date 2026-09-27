@@ -20,7 +20,7 @@ does not put the trouble straight back.
 
 ## 1. Goal
 
-After this ships, a press of **Undo the last publish** fetches the state
+After this ships, a press of **Undo the last press** fetches the state
 before the last publish, writes its `content/` back into the Store, rebuilds
 and publishes. The site and his own files then agree. Nothing of his is
 deleted: an entry the fetched state does not hold becomes a draft, and a
@@ -55,7 +55,7 @@ puts his files back as they were before the press.
    undone.** Decided by the user 2026-09-19. The same split `publishing.publish`
    already makes (PRESS-0013 § 4.3).
 2. **Undo is offered beside the Published message on the editor page, and as
-   "Undo the last publish" on the front page.** Decided by the user
+   "Undo the last press" on the front page.** Decided by the user
    2026-09-19.
 3. **The button always shows, and nothing asks GitHub before showing it.**
    Decided by the user 2026-09-19. After a first publish, pressing it changes
@@ -354,7 +354,7 @@ His two drafts are left as they were, and the bin keeps the copy undo wrote.
 
 ### 4.6 The pages
 
-**The front page** (`editor._list`) gains an **Undo the last publish** button.
+**The front page** (`editor._list`) gains an **Undo the last press** button.
 It always shows (§ 3 decision 3).
 
 **The editor page** gains the same button beside the Published message its
@@ -619,7 +619,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
   this item is `publishing.UNDONE`; the decision points here.
 - `docs/specs/PRESS-0012-editor.md` § 4.5 and § 4.7 — the list and the editor
   page each gain the Undo button (§ 4.6), as PRESS-0013 § 11 pointed them at
-  the Publish button. Nothing else on either page changes (§ 3 decision 9).
+  the Press to site button. Nothing else on either page changes (§ 3 decision 9).
 - `docs/specs/PRESS-0013-publish.md` § 4.5 step 3 — the launch registers
   `undo.register` beside the other three, and `pressless.__main__` gains that
   line. PRESS-0013's INV-8 asserts which routes are registered, so its test

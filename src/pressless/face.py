@@ -166,7 +166,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.OutcomeUnknown: _say(
         "GitHub's answer did not say whether your site was updated.",
-        "Check your internet connection and click Publish again. Publishing again is safe "
+        "Check your internet connection and click Press to site again. Publishing again is safe "
         "and settles it.",
         Site.UNKNOWN,
     ),
@@ -176,7 +176,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.RepositoryMissing: _say(
         "GitHub could not find your site's repository.",
-        "Check the repository name in Settings, then click Publish again.",
+        "Check the repository name in Settings, then click Press to site again.",
     ),
     publisher.Conflict: _say(
         "Your site on GitHub changed while Pressless was publishing.",
@@ -197,16 +197,16 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.SiteFolderMissing: _say(
         "Pressless could not find the folder your site is built into.",
-        "Build your site again, then click Publish again. If it keeps happening, send the "
+        "Build your site again, then click Press to site again. If it keeps happening, send the "
         "details below to whoever helps you.",
     ),
     publisher.StrayFile: _say(
         "Your site folder holds a file Pressless did not make.",
-        "Remove that file from your site folder, then click Publish again.",
+        "Remove that file from your site folder, then click Press to site again.",
     ),
     publisher.SiteWouldBeEmptied: _say(
         "Publishing now would empty your site, so Pressless stopped.",
-        "Build your site again, then click Publish again.",
+        "Build your site again, then click Press to site again.",
     ),
     publisher.FetchNotWritten: _say(
         "Pressless could not save the earlier version of your site to this computer.",
@@ -218,7 +218,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     ),
     publisher.RepositoryMoved: _say(
         "GitHub says your site's repository has been renamed or moved.",
-        "Enter its new name in Settings, then click Publish again.",
+        "Enter its new name in Settings, then click Press to site again.",
     ),
     publisher.RemoteStateMissing: _say(
         "Something Pressless needed from GitHub was not there.",

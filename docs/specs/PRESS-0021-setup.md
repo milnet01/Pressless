@@ -259,8 +259,8 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 - `publisher.SiteFolderMissing` and `builder.SiteFolderUnusable` stop naming
   a site-folder setting, which this page does not have.
 - **Every sentence a `root_entries` failure can reach names a next step that
-  also holds on this page.** Today several end *"then click Publish again"*,
-  and setup has no Publish button. They say *"try again"* instead.
+  also holds on this page.** Today several end *"then click Press to site again"*,
+  and setup has no Press to site button. They say *"try again"* instead.
 
 ### 4.9 What setup never does
 

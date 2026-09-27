@@ -343,7 +343,7 @@ stops the frame loading an address outside Pressless (§ 3 decision 4).
 - The page links `builder.STYLESHEETS` under `/preview/`, and the box takes the
   class `builder.BODY_CLASS`, so he types in the site's own font.
 - A draft that is not a working copy shows its address and a Change address
-  button. A working copy shows a Throw away changes button, and says its
+  button. A working copy shows a Bin this proof button, and says its
   changes are not on the site yet. A published entry says his changes stay on
   this computer until he publishes it.
 
@@ -360,7 +360,7 @@ with `html.escape(value, quote=True)`.
 
 ### 4.8 A save
 
-Steps 1 to 4 are `editor.save`, and the page gains a Publish button:
+Steps 1 to 4 are `editor.save`, and the page gains a Press to site button:
 `docs/specs/PRESS-0013-publish.md` § 4.1 and § 4.4.
 
 Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
@@ -681,7 +681,7 @@ mutation-probed once the code lands.
 
 ## 9. Out of scope
 
-- The Publish button, dating an entry at its first publish, publishing a
+- The Press to site button, dating an entry at its first publish, publishing a
   working copy over its entry, and the empty-Store guard — PRESS-0013.
 - Opening Pressless on a double-click — PRESS-0013.
 - Deleting an entry, and changing a published entry's address — PRESS-0128.

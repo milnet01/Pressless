@@ -294,7 +294,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             "<button>New entry</button></form>"
             # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
             # showing it (§ 3 decision 3).
-            '<p><button type="button" data-undo>Undo the last publish</button> '
+            '<p><button type="button" data-undo>Undo the last press</button> '
             '<span id="undo-status"></span></p>'
             f"<h2>Drafts</h2>{rows(drafts, unreadable[True])}"
             f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}"
@@ -378,14 +378,14 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
                     '<form data-when="1" hidden method="post" action="/discard">'
                     '<input type="hidden" name="slug" value="">'
                     f'<input type="hidden" name="base" value="{attr(base)}">'
-                    "<button>Throw away changes</button></form></div>")
+                    "<button>Bin this proof</button></form></div>")
         address = ""
     elif named is not None:
         standing = ("<p>These changes are not on your site yet.</p>"
                     '<form method="post" action="/discard">'
                     f'<input type="hidden" name="slug" value="{attr(entry.slug)}">'
                     f'<input type="hidden" name="base" value="{attr(base)}">'
-                    "<button>Throw away changes</button></form>")
+                    "<button>Bin this proof</button></form>")
         address = ""
     else:
         standing = "<p>A draft. It is not on your site.</p>"
@@ -405,16 +405,16 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
 <label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
 {address}
-<p><button type="button" data-editor="publish">Publish</button>
+<p><button type="button" data-editor="publish">Press to site</button>
  <span id="publish-status"></span>
- <button type="button" data-undo>Undo the last publish</button>
+ <button type="button" data-undo>Undo the last press</button>
  <span id="undo-status"></span></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
 </form>
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
-<iframe id="preview" title="Preview" sandbox="allow-same-origin"
+<iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe>
 <script>{_EDITOR_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""

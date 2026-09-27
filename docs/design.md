@@ -477,7 +477,7 @@ means by one store, one fallback, one rule.
    success that does not say how (PRESS-0009 § 6). Each way the write may
    have been applied, so the sentence says the outcome is unknown rather
    than guessing.
-3. **What to do next.** *"Check your internet and click Publish again."*
+3. **What to do next.** *"Check your internet and click Press to site again."*
    An error that does not say this leaves him stuck holding a fact.
 
 **Parts raise typed failures; only the Face turns them into sentences.**

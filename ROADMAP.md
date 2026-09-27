@@ -2612,6 +2612,9 @@ that makes daily use pleasant rather than merely possible.
   formulas likelier to be wanted. The sources are the ones PRESS-0080
   asks about and PRESS-0081 to PRESS-0084 would read, so this depends on
   what PRESS-0080 finds.
+  Decided by the user 2026-09-27: ship the mark with the date and count
+  calculations in 0.6.0; music counts join the menu once PRESS-0080 finds
+  how to read them. The writer's real example is still needed for the spec.
   **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
   Kind: feature.
   Source: user-request-2026-09-17.
@@ -2624,6 +2627,9 @@ that makes daily use pleasant rather than merely possible.
   What is not decided: what he is told before a published entry's address
   changes, since links people shared stop working.
   Blocked-by: PRESS-0012.
+  Decided by the user 2026-09-27: changing a published entry's address
+  warns first, then leaves a small page at the old address that forwards
+  readers to the new one.
   **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0012 scope.
@@ -7765,6 +7771,9 @@ already-built code ships in whichever release comes next.
   (PRESS-0149). Needs a decision: pin with hashes for release builds
   (a lock file the release job installs with --require-hashes), or
   keep floors and say why.
+  Decided by the user 2026-09-27: pin and verify. A lock file of exact
+  versions with hashes, installed by the release build with
+  --require-hashes; refreshed when a library is updated.
   **Layman:** The packaged app takes the newest version of each library it uses at build time, and nothing checks those downloads are genuine.
   Kind: security.
   Source: in-session-2026-09-26, PRESS-0149's boundary walk.
@@ -8046,6 +8055,9 @@ already-built code ships in whichever release comes next.
   stay plain.
   Ordered by the user 2026-09-27: after the review fixes, before the
   v0.6.0 items.
+  Decided by the user 2026-09-27: no review-contract gate for the specs
+  and design.md that quote the renamed labels; completeness is proved by
+  search instead. Recorded as a user instruction naming the review.
   **Layman:** Buttons get playful, press-themed names that still say exactly what they do.
   Kind: ux.
   Source: user-request-2026-09-26.

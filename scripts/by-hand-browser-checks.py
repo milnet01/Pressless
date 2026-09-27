@@ -92,8 +92,8 @@ def run(origin: str, secret: str, folder: Path) -> None:
         check("PRESS-0012 s4.7: the preview is a sandboxed iframe",
               page.locator("iframe[sandbox]").count() == 1)
         sandbox = page.locator("iframe[sandbox]").first.get_attribute("sandbox") or ""
-        check("PRESS-0012 s4.7: sandbox is allow-same-origin allow-scripts",
-              set(sandbox.split()) == {"allow-same-origin", "allow-scripts"}, sandbox)
+        check("PRESS-0012 s4.7: sandbox is allow-same-origin alone (PRESS-0169)",
+              sandbox.split() == ["allow-same-origin"], sandbox)
 
         # ---- PRESS-0012 s4.7: about a second after the last change -----------
         posts.clear()
@@ -134,12 +134,12 @@ def run(origin: str, secret: str, folder: Path) -> None:
         check("PRESS-0012 s10 (Chrome): the preview policy blocks Google's script and the player",
               csp[0], csp[1])
 
-        # ---- PRESS-0013 s4.4: the Publish button, its message and the switch --
+        # ---- PRESS-0013 s4.4: the Press to site button, its message and the switch --
         page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
-        # Exact text: "Publish" is a substring of "Undo the last publish", so a
+        # Exact text: "Press to site" and "Undo the last press" both hold "press", so a
         # has-text selector matches both and the count says nothing.
-        publish = page.get_by_role("button", name="Publish", exact=True)
-        check("PRESS-0013 s4.4: the editor page carries a Publish button",
+        publish = page.get_by_role("button", name="Press to site", exact=True)
+        check("PRESS-0013 s4.4: the editor page carries a Press to site button",
               publish.count() >= 1, f"count={publish.count()}")
 
         if publish.count() >= 1:
@@ -156,7 +156,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
                      window.__seen = [];
                      const said = document.getElementById("publish-status");
                      const b = [...document.querySelectorAll("button")]
-                       .find(x => x.textContent.trim() === "Publish");
+                       .find(x => x.textContent.trim() === "Press to site");
                      const grab = () => window.__seen.push(
                        said.textContent + "||" +
                        (b && b.disabled ? "DISABLED" : "enabled"));
@@ -186,13 +186,13 @@ def run(origin: str, secret: str, folder: Path) -> None:
                   "slug=seaside" in page.url, page.url.split("?")[-1][:60])
 
         # ---- PRESS-0015 s 4.6: the Undo button on both pages ---------------
-        undo_here = page.get_by_role("button", name="Undo the last publish",
+        undo_here = page.get_by_role("button", name="Undo the last press",
                                      exact=True)
         check("PRESS-0015 s4.6: the editor page carries an Undo button",
               undo_here.count() == 1, f"count={undo_here.count()}")
 
         page.goto(f"{origin}/", wait_until="networkidle")
-        undo_list = page.get_by_role("button", name="Undo the last publish",
+        undo_list = page.get_by_role("button", name="Undo the last press",
                                      exact=True)
         check("PRESS-0015 s4.6: the list page carries an Undo button, always shown",
               undo_list.count() == 1, f"count={undo_list.count()}")

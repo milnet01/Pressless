@@ -36,7 +36,7 @@ _PUBLISHED_OR_STOPPED = (
     "document.getElementById('publish-status').textContent.startsWith('Published')"
     " || document.getElementById('save-status').textContent === 'Not saved'")
 _CLICK_PUBLISH = ("[...document.querySelectorAll('button')]"
-                  ".find(x => x.textContent.trim() === 'Publish').click()")
+                  ".find(x => x.textContent.trim() === 'Press to site').click()")
 
 
 def check(name: str, ok: bool) -> None:
