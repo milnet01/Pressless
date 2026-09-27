@@ -15,6 +15,7 @@ import contextlib
 import hashlib
 import html
 import json
+import re
 import warnings
 from collections.abc import Iterator
 from datetime import datetime
@@ -448,3 +449,17 @@ def test_the_page_editor_sits_behind_the_faces_boundary(tmp_path):
                                 waiting=False, base=base)
     assert status == 200, text
     assert _waiting(folder, "pages", "about").exists()
+
+
+def test_the_page_preview_frame_runs_no_script(tmp_path):
+    """PRESS-0012 INV-20 (PRESS-0169): this page writes its own copy of the
+    preview frame, which PRESS-0014 § 4.4 makes the entry editor's. So it runs
+    no script either, and keeps same-origin for the stylesheet's cookie.
+    """
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=about")
+    assert status == 200, text
+    frames = re.findall(r"<iframe\b[^>]*>", text)
+    assert len(frames) == 1, frames
+    assert re.search(r'\bsandbox="allow-same-origin"', frames[0]), frames[0]

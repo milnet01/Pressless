@@ -414,7 +414,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 </form>
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
-<iframe id="preview" title="Preview" sandbox="allow-same-origin allow-scripts"
+<iframe id="preview" title="Preview" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe>
 <script>{_EDITOR_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""

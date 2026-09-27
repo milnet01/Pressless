@@ -466,3 +466,21 @@ def test_a_save_turns_names_into_addresses(tmp_path):
     notices = html.unescape(reply["notices"])
     assert "!!!" in notices and "Con" in notices, notices
     assert reply["failure"] is None and reply["preview"], reply
+
+
+# ----------------------------------------------------------------- INV-20 ---
+
+
+def test_the_preview_frame_runs_no_script(tmp_path):
+    """§ 4.7 (PRESS-0169): the frame is same-origin with the Face, so a script
+    in it could send a publish or an undo with his cookie. Scripts go, not
+    same-origin: without it the frame's stylesheet and photograph requests
+    carry no SameSite=Strict cookie and the Face refuses them.
+    """
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    with _editor(folder) as browser:
+        page = browser.request("GET", "/edit?slug=seaside")[2]
+    frames = re.findall(r"<iframe\b[^>]*>", page)
+    assert len(frames) == 1, frames
+    assert re.search(r'\bsandbox="allow-same-origin"', frames[0]), frames[0]

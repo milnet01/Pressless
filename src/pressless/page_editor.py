@@ -416,7 +416,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 </form>
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
-<iframe id="preview" title="Preview" sandbox="allow-same-origin allow-scripts"
+<iframe id="preview" title="Preview" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe>
 <script>{_PAGE_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""
