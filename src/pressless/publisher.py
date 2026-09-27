@@ -196,7 +196,9 @@ class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     would hand the Authorization header to whoever answered (PRESS-0052).
     Neither service Pressless talks to legitimately redirects across
     origins; a same-origin redirect keeps the header, so a renamed
-    repository still resolves.
+    repository still resolves for a read. A write is not followed: GitHub
+    redirects one with 307, which urllib does not follow for POST or PATCH,
+    so it returns as status 307 (PRESS-0162 queues what that should say).
     """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -976,12 +978,16 @@ def _retry_hint(status: int, headers: dict[str, str]) -> float | None:
         except (TypeError, ValueError):
             return RATE_LIMIT_SECONDS
     if spent:
-        # An absolute epoch second, so the wait is what is left of it; a reset
-        # already past means the budget is back and the retry can go now.
+        # An absolute epoch second, so the wait is what is left of it. A reset
+        # that reads as past while GitHub still says the budget is spent means
+        # the two clocks disagree, which names no usable interval -- a wait of
+        # 0 doubled stays 0, and every retry would go out against the spent
+        # budget (PRESS-0162).
         try:
-            return max(float(header["x-ratelimit-reset"]) - time.time(), 0.0)
+            left = float(header["x-ratelimit-reset"]) - time.time()
         except (KeyError, TypeError, ValueError):
             return RATE_LIMIT_SECONDS
+        return left if left > 0 else RATE_LIMIT_SECONDS
     return RATE_LIMIT_SECONDS
 
 

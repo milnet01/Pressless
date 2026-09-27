@@ -1556,6 +1556,36 @@ def test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal(tmp_path):
     )
 
 
+def test_a_spent_budget_whose_reset_has_passed_waits_the_minute(tmp_path):
+    """A spent primary budget whose reset reads as already past -- the local
+    clock ahead of GitHub's -- computed a wait of 0, and 0 doubled stays 0,
+    so every retry went back-to-back against the spent budget. That is a
+    limit naming no usable interval, which §4.3 waits out at GitHub's
+    documented minute (PRESS-0162, L2.4)."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+
+    transport = _Transport(
+        reads=_reads(listing),
+        writes=_writes(),
+        rate_limited_writes=1,
+        rate_limit_answer=(
+            403,
+            {"X-RateLimit-Remaining": "0",
+             "X-RateLimit-Reset": str(int(time.time()) - 30)},
+            b'{"message": "API rate limit exceeded"}',
+        ),
+    )
+
+    publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    assert 60.0 in transport.waits, (
+        f"a spent budget whose reset had passed waited {transport.waits!r}; "
+        f"§4.3 waits GitHub's documented minute where no usable interval is "
+        f"named"
+    )
+
+
 def test_a_rate_limit_naming_no_interval_waits_the_documented_minute(tmp_path):
     """A 429 carrying no Retry-After waited PACE_SECONDS, so the whole retry
     bound was spent in about four seconds against a limit GitHub documents as

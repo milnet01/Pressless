@@ -8076,6 +8076,45 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-26.
   Lanes: ci, main, credentials.
 
+- 📋 [PRESS-0166] **A success GitHub answers to the site update in an unexpected shape is reported as a failure that left the site unchanged.**
+  publisher._Session._call returns only on 200/201 and parses the body.
+  On the reference update, a 2xx other than those, or a 200 whose body
+  is not JSON, falls to PublishError, whose PRESS-0009 6 row says
+  unchanged -- though the update was applied. Only GitHub itself can
+  send it (TLS is verified), hence Low. Needs a PRESS-0009 6 row first:
+  under outcome_unknown an unreadable or other 2xx is OutcomeUnknown or
+  success. Queued rather than fixed because it changes PRESS-0009.
+  **Layman:** If GitHub says yes to a publish in an unusual way, Pressless could wrongly say nothing changed.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.1).
+  Lanes: publisher.
+
+- 📋 [PRESS-0167] **After the writer renames the GitHub repository, every publish fails with a generic error instead of saying the repository moved.**
+  GitHub redirects a write to a renamed repository with 307, and urllib
+  raises rather than follow a 307 for POST or PATCH (read from
+  urllib.request.HTTPRedirectHandler.redirect_request, 2026-09-27), so
+  it returns as status 307 and _failure gives a generic PublishError.
+  Reads still follow the redirect. Needs a PRESS-0009 decision: follow
+  a same-origin 307/308 with the same method and body, or name it as
+  RepositoryMissing with a sentence telling him to update Settings.
+  The transport's comment now says writes are not followed.
+  **Layman:** Renaming the site's repository on GitHub makes publishing fail with an unclear message.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.3).
+  Lanes: publisher.
+
+- 📋 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
+  publisher._local_files keeps path -> bytes for the whole folder, and
+  base64 plus json.dumps add copies of each blob as it is sent, so peak
+  memory scales with the site (Pages allows up to 1 GB). Keeping only
+  path -> hash and re-reading at upload needs a check that the file did
+  not change between hashing and sending, which is a PRESS-0009 4.2/4.3
+  design question. Queued; measure the real site folder first.
+  **Layman:** Publishing a very large site could use a lot of the computer's memory.
+  Kind: perf.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
+  Lanes: publisher.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
