@@ -7774,6 +7774,15 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-27: pin and verify. A lock file of exact
   versions with hashes, installed by the release build with
   --require-hashes; refreshed when a library is updated.
+  Plan, 2026-09-27 (not started): no spec governs the release installs.
+  release.yml's Linux and Windows jobs both run pip install -e
+  '.[dev,packaging]'. uv is on the maintainer's machine: `uv pip compile
+  pyproject.toml --extra dev --extra packaging --universal
+  --python-version 3.13 --generate-hashes`, committed as a lock file.
+  Both jobs then install it with --require-hashes, then the project with
+  --no-deps. dependencies.md § 2 and security.md § 8 say lockfiles are
+  committed. Update SECURITY.md's Dependency row and name the lock
+  refresh in the release steps.
   **Layman:** The packaged app takes the newest version of each library it uses at build time, and nothing checks those downloads are genuine.
   Kind: security.
   Source: in-session-2026-09-26, PRESS-0149's boundary walk.
@@ -8042,7 +8051,7 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135, Low and Info rungs.
 
-- 📋 [PRESS-0163] **The Face's labels lean into the Pressless name, and every one stays obvious.**
+- ✅ [PRESS-0163] **The Face's labels lean into the Pressless name, and every one stays obvious.**
   User request 2026-09-26: give the app some quirkiness through its
   name -- Publish could become "Press to site" or similar -- while each
   label still says plainly what it does. First step is a proposed label
@@ -8058,6 +8067,10 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-27: no review-contract gate for the specs
   and design.md that quote the renamed labels; completeness is proved by
   search instead. Recorded as a user instruction naming the review.
+  Shipped 2026-09-27: all four labels renamed in code, tests, by-hand
+  scripts, design.md and five specs; sentences naming a button follow.
+  Browser scripts pass in headless Chrome. The hub website's screenshots
+  and wording will need the new names when it next updates.
   **Layman:** Buttons get playful, press-themed names that still say exactly what they do.
   Kind: ux.
   Source: user-request-2026-09-26.
