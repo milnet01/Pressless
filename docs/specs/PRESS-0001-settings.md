@@ -13,6 +13,9 @@ there carries the mirror; several fixes landed in both.
 **Amended 2026-09-13, before implementation**: `site_name` and
 `site_address` join the field set, for PRESS-0008. That changes direction,
 so the gate re-armed.
+**Amended 2026-09-27, before implementation** (PRESS-0171): a
+`repository` half equal to `.` or `..` is refused. That changes
+direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -243,7 +246,7 @@ live repository root.
 | File present, not valid JSON or not decodable as UTF-8 | `SettingsError`, naming the settings file by what it is |
 | Valid JSON, a required key missing or the wrong type | `SettingsError`, naming the key |
 | Valid JSON, `version` absent or not `1` | `SettingsError`, naming the value |
-| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as, `site_name` empty after stripping or holding a line break, `site_address` not `http://` or `https://` followed by a host of ASCII letters, digits, `.` and `-`, an optional port, and `/`-separated path segments of ASCII letters, digits, `.`, `_`, `~` and `-`, with an optional trailing `/` (a query, fragment, `%` or whitespace would change the addresses `sitemap.xml` and `robots.txt` carry) | `SettingsError`, naming the key |
+| Valid JSON, a value whose *shape* is wrong — `repository` not `owner/name` with each half holding only letters, digits, `.`, `_` and `-` and neither half being `.` or `..` (the value reaches an API URL, where `?`, `#`, `%` and whitespace change what is asked for, and a dot segment can resolve to a different path than the one typed), `credentials.store` outside `"keyring"` and `"file"`, `site_folder` not absolute, an `untouchable` entry empty or naming a path inside a directory (a trailing `/` is permitted and names that same root entry; the Publisher ignores the SLASH and never the entry — PRESS-0009 §4.4 carries that tolerance and §10 there names its test), `analytics_property_id` present and not the numeric id §4.2 fixes it as, `site_name` empty after stripping or holding a line break, `site_address` not `http://` or `https://` followed by a host of ASCII letters, digits, `.` and `-`, an optional port, and `/`-separated path segments of ASCII letters, digits, `.`, `_`, `~` and `-`, with an optional trailing `/` (a query, fragment, `%` or whitespace would change the addresses `sitemap.xml` and `robots.txt` carry) | `SettingsError`, naming the key |
 | Valid | `Settings` |
 
 **The shape row is why this is a list rather than four cases.** `repository`
@@ -628,7 +631,7 @@ loading or saving does anything.
 | §4.3's `site_folder` shape row | `tests/test_settings.py::test_relative_site_folder_is_rejected` |
 | §4.3's `untouchable` entry shape | `tests/test_settings.py::test_a_nested_untouchable_entry_is_rejected` |
 | §4.3's `version` row | `tests/test_settings.py::test_a_version_that_is_not_the_number_one_is_refused`. Added after both slipped: comparing with `!=` alone accepted `true` and `1.0`, because a bool is an int in Python and a float compares equal (PRESS-0066) |
-| §4.3's `repository` shape | `tests/test_settings.py::test_a_repository_carrying_url_punctuation_is_refused` and `::test_a_repository_with_the_punctuation_github_allows_still_loads`. The second is the half that matters: the value reaches an API URL, so the rule has to reject punctuation without rejecting the writer's own site |
+| §4.3's `repository` shape | `tests/test_settings.py::test_a_repository_carrying_url_punctuation_is_refused` and `::test_a_repository_with_the_punctuation_github_allows_still_loads`. The second is the half that matters: the value reaches an API URL, so the rule has to reject punctuation without rejecting the writer's own site. `::test_a_repository_half_of_only_dots_is_refused` covers `.` and `..` in either half (PRESS-0171) |
 | §4.3's `store` shape | **nothing** — no invariant locks it, so an implementer could drop the row and this suite stays green. Its absence is silent: a malformed `store` reaches PRESS-0002 as a value it did not expect. Worth an invariant if it is ever seen to slip |
 | §4.3's not-decodable-as-UTF-8 row | `tests/test_settings.py::test_an_undecodable_settings_file_is_a_typed_failure` and `::test_saving_over_an_undecodable_file_is_a_typed_failure` |
 | §4.2's `\n` line endings | `tests/test_settings.py::test_save_names_the_line_endings` |

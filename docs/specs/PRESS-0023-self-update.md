@@ -1,6 +1,9 @@
 # PRESS-0023 — Pressless updates itself, and installs nothing it cannot prove we signed
 
 **Status:** accepted (2026-09-25). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
+**Amended 2026-09-27, before implementation** (PRESS-0174): a full disk
+during the download or the unpack is `DiskFull`, with its own sentence.
+That changes direction, so the gate re-armed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0023 (user-request-2026-08-25; finbreak's
 updater lessons, FIBR-*).
@@ -222,6 +225,7 @@ chunk is written; nothing is read back.
 | The stream ends before `offer.size` bytes | `DownloadEndedEarly` (a `DownloadFailed`) | removed |
 | More than `offer.size` bytes arrive | `UpdateRejected` | removed |
 | The hash is not `offer.sha256` | `UpdateRejected` | removed |
+| The disk is full: an `OSError` whose `errno` is `ENOSPC` or `EDQUOT`, or whose `winerror` is 39, creating, writing, flushing or closing the file | `DiskFull` (a `DownloadFailed`) | removed |
 | Any other error | `DownloadFailed` | removed |
 | All checks pass | — | returned |
 
@@ -234,7 +238,14 @@ A short download is never reported as tampering (FIBR-0327).
 included, which the build's `shutil.make_archive` writes — with no absolute path, no
 `..` part and no drive letter; any other member raises `UpdateRejected` before
 anything is written, and the zip and the folder are removed. The zip is removed
-once unpacked.
+once unpacked. A full disk while unpacking, by the same `errno` test, raises
+`DiskFull`, with the zip and the folder removed.
+
+**A full disk is told apart because the other sentence cannot help.**
+`DownloadFailed` tells him to check his connection and try again, which
+fails the same way on a full disk (PRESS-0174). Python maps Windows'
+`ERROR_DISK_FULL` (112) to `ENOSPC` and leaves `ERROR_HANDLE_DISK_FULL`
+(39) unmapped (CPython `PC/errmap.h`), so the test names 39 itself.
 
 ### 4.7 Putting it in place
 
@@ -383,11 +394,12 @@ Each is a typed failure with a three-part sentence in `face.SENTENCES`:
 |---|---|---|---|
 | `DownloadFailed` | Pressless could not download the new version. | not changed | Check your internet connection and click Update now again. |
 | `DownloadEndedEarly` | The download stopped before it finished. | not changed | Click Update now again. |
+| `DiskFull` | There is not enough room on this computer to download the new version. | not changed | Free some space on this computer, then click Update now again. |
 | `UpdateRejected` | The download did not prove it came from Pressless, so nothing was installed. | not changed | Keep using this version, and send the details below to whoever helps you. |
 | `InstallFailed` | Pressless could not put the new version in place. This version is still installed. | not changed | Try again later. If it keeps happening, send the details below to whoever helps you. |
 
-`installer.UpdateError` is the base of all four and carries the generic
-sentence. `updater.py` defines the first three as its subclasses.
+`installer.UpdateError` is the base of all five and carries the generic
+sentence. `updater.py` defines the first four as its subclasses.
 
 ### 4.11 One Pressless per folder
 
@@ -500,9 +512,18 @@ window and start it again."* and exits 3, serving nothing.
   tag's. *Test:* `tests/test_sign_release.py` drives its two refusal functions
   with a mismatched key and a mismatched commit. *Breaks when:* it verifies
   against the key it just signed with.
-- **INV-20** — The four failure types each have a three-part sentence. *Test:*
+- **INV-20** — The five failure types each have a three-part sentence. *Test:*
   `tests/test_face.py::test_every_failure_type_has_a_sentence`, which already
   walks every subclass. *Breaks when:* a type is added without one.
+- **INV-21** — A full disk is `DiskFull`, and the file is removed. *Test:*
+  `tests/test_updater.py::test_a_full_disk_is_named`: an `OSError(ENOSPC)`
+  from the write, and one from the close, each raise `DiskFull` and leave
+  no `.pressless-update-*` file; one from `unpack`'s extract raises
+  `DiskFull` and leaves neither the zip nor a `Pressless.new-*` folder; `OSError(EDQUOT)` from the write does the
+  same, and so does an `OSError` subclass whose `winerror` is 39 (on Linux
+  `OSError`'s own constructor drops that argument); an `OSError(EIO)` from the write stays `DownloadFailed` and is not
+  a `DiskFull`. *Breaks when:* the `errno` test is missed on one path, or
+  the close is left outside the mapping.
 
 ## 6. Failure modes
 
@@ -612,6 +633,7 @@ over SSH cannot reach the credential vault).
 | INV-18 | `tests/test_no_private_key.py` |
 | INV-19 | `tests/test_sign_release.py` |
 | INV-20 | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
+| INV-21 | `tests/test_updater.py::test_a_full_disk_is_named` |
 | § 4.7 the helpers restart the new version | **nothing** automated — § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
 

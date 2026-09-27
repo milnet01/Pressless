@@ -4,6 +4,9 @@
 Amended 2026-09-27 by the user's decision: the draft a first undo demoted is
 binned, not kept, when a second undo puts it back (§ 4.4, INV-13). Gated for one
 loop: two verified, two fixed, not converged.
+**Amended 2026-09-27, before implementation** (PRESS-0172): an unforeseen
+failure says the site is unchanged, and emptying the fetch area at the end
+never fails an undo. That changes direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -173,6 +176,14 @@ the failure beside what it already shows:
 Success answers `"undone": true`, `"failure": null`, and a `summary` fragment
 naming what changed: `restored`, `demoted` and `kept`, one clause each.
 
+The failure fragment is `face.fail(failure, publishing=False,
+secret=setup.KEY)`, as on the Publish route (PRESS-0013 § 4.2). **An
+unforeseen failure left the site unchanged**: steps 1 to 5 of § 4.3 change
+nothing on GitHub, and step 6 raises `publisher.OutcomeUnknown` for every
+failure an upload can leave unknown (PRESS-0013 § 4.3). `publishing=True`
+told him the site might have changed after a failure that certainly left
+it alone (PRESS-0172).
+
 **Neither page reloads itself, on success or on failure.** Both may now be
 showing an entry whose state changed, so a reload is tempting — but the reply
 is the only place the summary and the gathered `notices` exist, and a reload
@@ -237,7 +248,10 @@ told something is wrong with his files rather than only with GitHub.
 
 **Step 7 runs however the sequence ends** — success, definite failure, or
 unknown outcome. The fetch area is the Publisher's scratch space, never a
-record.
+record. **Step 7 never raises.** A failure to empty the area is dropped:
+step 1 of the next undo empties it again and reads nothing it finds.
+Raised, it would replace the sequence's own outcome — after a successful
+publish, a failure reported as leaving the site unchanged.
 
 ### 4.4 Reconciling the Store
 
@@ -481,6 +495,17 @@ does.
   *Breaks when:* `Undone` is not set aside before comparing, or an
   unmarked draft equal to the fetched entry is binned too.
 
+- **INV-14** — An unforeseen failure says the site is unchanged, and a
+  failure emptying the fetch area at the end changes no outcome.
+  *Test:* `test_an_unforeseen_failure_says_the_site_is_unchanged`: with the
+  Store's reader raising `RuntimeError` at step 4, `POST /undo`'s `failure`
+  fragment carries the unchanged wording and not the unknown one.
+  `::test_a_failed_final_empty_keeps_the_outcome`: with step 7's emptying
+  raising `OSError`, a successful undo still returns its `Undone`, and one
+  failing at step 2 still raises that step's failure.
+  *Breaks when:* the route passes `publishing=True`, or step 7's failure
+  escapes and replaces what the sequence did.
+
 `NothingToUndo` gets a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` finds it.
 
@@ -500,6 +525,8 @@ does.
 | A Store write fails during the reconcile | the Store's failure | the reversals recorded so far are run, so his files are as they were |
 | Putting back fails | the Store's failure | whatever the failure left; nothing deleted |
 | The fetch area cannot be written | `FetchNotWritten` | nothing moved; the area is emptied |
+| The fetch area cannot be emptied at the end (step 7) | the undo's own outcome, unchanged | the area as step 7 left it; the next undo empties it |
+| Anything unforeseen, before the upload | the unforeseen sentence, saying the site is unchanged | as the rows above: nothing moved, or his files put back |
 | On Windows, the earlier state names a file this computer cannot hold (PRESS-0009 § 4.5) | `UnfetchablePath` | nothing moved; the area is emptied |
 | A copy of a demoted entry is published and the drafts cannot be binned — **the Publish route's, not undo's** (§ 4.5) | success, and a note that the waiting drafts can be thrown away | the entry published, both drafts still in `drafts/` |
 | He closes the console mid-undo | nothing | as far as it got; pressing Undo again settles it |
@@ -511,7 +538,7 @@ nothing catches a reader who expects a history.
 ## 7. Tests
 
 `tests/test_undo.py` — new, in CI. It carries INV-1, INV-2, INV-6, INV-7,
-INV-8, INV-9, INV-10, INV-11, INV-12 and INV-13.
+INV-8, INV-9, INV-10, INV-11, INV-12, INV-13 and INV-14.
 
 `tests/test_publishing.py` gains INV-3, INV-4 and INV-5.
 
@@ -568,6 +595,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-11 | `tests/test_undo.py::test_an_unreadable_fetched_file_moves_nothing` |
 | INV-12 | `tests/test_undo.py::test_the_key_is_never_shown` |
 | INV-13 | `tests/test_undo.py::test_a_second_undo_keeps_no_copy_of_the_demoted_draft` |
+| INV-14 | `tests/test_undo.py::test_an_unforeseen_failure_says_the_site_is_unchanged` and `::test_a_failed_final_empty_keeps_the_outcome` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
 | A real undo against GitHub | **nothing** in CI — by hand, against the maintainer's test repository |

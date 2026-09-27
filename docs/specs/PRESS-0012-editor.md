@@ -1,6 +1,8 @@
 # PRESS-0012 — The editor: the box, the real page beside it, and changes kept apart until he publishes
 
 **Status:** accepted (2026-09-26). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail. Re-gated for PRESS-0148 over two more loops, to the cap; the tail is empty.
+**Amended 2026-09-27, before implementation** (PRESS-0169): the preview
+frame runs no script. That changes direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0012 (`docs/design.md` § The parts, § State;
 discovery S2, S7, S10).
@@ -312,14 +314,21 @@ written with `store.write(..., draft=True)`.
 
 The page carries the file's address, whether it is a draft, and `base`: the
 SHA-256 hex digest of the file's bytes as read. It holds the title, categories
-and tags fields, the box, and the preview in an `<iframe sandbox="allow-same-origin
-allow-scripts">`. Categories and tags are shown joined by
+and tags fields, the box, and the preview in an `<iframe sandbox="allow-same-origin">`. Categories and tags are shown joined by
 `store.LIST_SEPARATOR`.
 
 **Opening builds the preview.** Under the lock, `GET /edit` runs § 4.8 step 5
 for the file it opens, so the frame starts at that page, or holds the failure
 in its place. A published entry previews as itself. It writes nothing but the
 preview folder.
+
+**The preview runs no script.** The frame is same-origin with the Face,
+so a script in it could reach the editor's page and send a publish or an
+undo with his cookie. Dropping `allow-same-origin` instead makes the
+frame's origin opaque, and a browser then sends no `SameSite=Strict`
+cookie with the frame's own requests, so the Face refuses its stylesheets
+and photographs (measured in Chrome, PRESS-0169). A site's script
+therefore works on the live site and not in a preview.
 
 **A link followed in the preview stays out of the web.** The sandbox stops it
 opening a new tab or replacing the editor, and the page's `frame-src 'self'`
@@ -600,6 +609,13 @@ made with `store.write_html`.
   is changed, a repeat is kept, or a part that leaves nothing is stored or
   dropped without a notice.
 
+- **INV-20** — The preview frame runs no script.
+  *Test:* `test_the_preview_frame_runs_no_script`. The editor page's
+  preview `<iframe>` carries `sandbox="allow-same-origin"` and nothing else.
+  *Breaks when:* `allow-scripts` comes back, which lets a script in the
+  preview act with his cookie, or `allow-same-origin` goes, which costs
+  the preview its stylesheets and photographs.
+
 `ChangedElsewhere` and `TooManyCopies` each get a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` walks the package
 and finds them without a change.
@@ -625,8 +641,8 @@ and finds them without a change.
 ## 7. Tests
 
 `tests/test_editor.py` — new, in CI. It carries INV-1, INV-2, INV-3, INV-6,
-INV-10, INV-11, INV-12, INV-13, INV-14, INV-15, INV-16, INV-17, INV-18 and
-INV-19.
+INV-10, INV-11, INV-12, INV-13, INV-14, INV-15, INV-16, INV-17, INV-18,
+INV-19 and INV-20.
 
 `tests/test_builder.py` gains INV-4 and INV-5. `tests/test_face.py` gains
 INV-7, INV-8 and INV-9.
@@ -696,6 +712,7 @@ mutation-probed once the code lands.
 | INV-17 | `tests/test_editor.py::test_a_preview_photograph_is_the_original` |
 | INV-18 | `tests/test_editor.py::test_the_editor_sits_behind_the_faces_boundary` |
 | INV-19 | `tests/test_editor.py::test_a_save_turns_names_into_addresses` |
+| INV-20 | `tests/test_editor.py::test_the_preview_frame_runs_no_script` |
 | That the policies block Google's script, the players and a followed outside link in a browser | **nothing** in CI — by hand, in a preview of a page carrying them, in Chrome and Edge on the Windows box |
 | The script's timing, `pagehide` save and no two saves in flight (§ 4.7) | **nothing** in CI — by hand, typing and closing the tab mid-sentence |
 | That the box uses the site's font | **nothing** — read on the page |

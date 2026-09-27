@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Gated for one loop: five verified, five fixed, not converged. Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Gated for one loop: five verified, five fixed, not converged. **Amended 2026-09-27, before implementation**: an unexpected success or an unreadable answer to a write that can change the site is `OutcomeUnknown` (PRESS-0166), and a write answered with a redirect is `RepositoryMoved` (PRESS-0167). That changes direction, so the gate re-armed. Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -125,7 +125,8 @@ class NoPreviousState(PublishError): ...   # nothing before the current commit
 # (PRESS-0116). SiteFolderMissing: fix the setting. StrayFile: remove the
 # file. SiteWouldBeEmptied: rebuild the site. FetchNotWritten: free space.
 # RemoteStateMissing: retry. UnfetchablePath (PRESS-0160): rename that file
-# on the site. This pairing is the one place they are paired;
+# on the site. RepositoryMoved (PRESS-0167): enter the repository's new name
+# in Settings. This pairing is the one place they are paired;
 # §6 orders its rows differently, so nothing anywhere reads them off a list.
 # The first four refuse before anything reaches GitHub -- FetchNotWritten
 # can still have written to the folder it was handed, which is §4.5's
@@ -140,6 +141,7 @@ class SiteWouldBeEmptied(PublishError): ... # every unprotected path removed and
 class FetchNotWritten(PublishError): ...    # fetch_previous could not write into the folder
 class RemoteStateMissing(PublishError): ... # something INSIDE a repository that answers is absent
 class UnfetchablePath(PublishError): ...    # a fetched path this system's disk cannot hold (§4.5)
+class RepositoryMoved(PublishError): ...    # a write was redirected: the repository was renamed or moved
 
 class Transport(Protocol):
     """The one seam. Tests are its only other caller."""
@@ -700,6 +702,18 @@ behaviour.
   file with the other in silence; or it runs everywhere, and Linux loses
   undo for a site holding such a path.
 
+- **INV-12** — A write answered with an odd success can have changed the
+  site, and a redirected write did not.
+  *Test:* `tests/test_publisher.py::test_an_odd_success_is_unknown`: the
+  reference update answered 202, then answered 200 with a body that is
+  not JSON, each raises `OutcomeUnknown`; so does the start file's write
+  answered 204. `::test_a_redirected_write_names_the_move`: a blob write
+  answered 307 and the reference update answered 308 each raise
+  `RepositoryMoved`, and neither request is sent again.
+  *Breaks when:* an odd 2xx falls to the base type, whose row says
+  unchanged; or a redirected write is followed, publishing to a
+  repository the settings do not name.
+
 ## 6. Failure modes
 
 | What happens | What is raised | What the writer's site is |
@@ -712,6 +726,8 @@ behaviour.
 | No answer from GitHub, before the reference update | `Unreachable` | unchanged |
 | No answer from GitHub, **during** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers a server error **to** the reference update | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| GitHub answers the reference update, or the start file's write, with a 2xx other than 200 or 201, or with a body that is not JSON | `OutcomeUnknown` | **unknown — may or may not have changed** |
+| GitHub answers a write with a 307 or 308 redirect — its answer for a repository that was renamed or moved | `RepositoryMoved` | unchanged |
 | Key rejected, or no write access | `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
 | Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `RemoteStateMissing` | unchanged |
@@ -732,7 +748,23 @@ its answer, and the rows below are in a different order, so neither list
 can be read off the other. A shared type left the Face inventing a discriminator or giving one
 generic answer to five different situations, which is the failure § Errors
 names. It is the same ground `OutcomeUnknown` is its own type on.
-`UnfetchablePath` joined them 2026-09-27 (PRESS-0160), on the same ground.
+`UnfetchablePath` joined them 2026-09-27 (PRESS-0160), on the same ground,
+and `RepositoryMoved` the same day (PRESS-0167): his next step is to enter
+the repository's new name, which `RepositoryMissing`'s *check the name*
+does not tell him.
+
+**A redirect on a write is never followed.** A read follows GitHub's
+redirect to the new name; a write comes back as the 307 or 308 itself,
+because `urllib` follows neither for POST or PATCH. Following it would
+publish to a repository Settings does not name, so the writer is told
+instead, and nothing was written: GitHub redirects before it acts.
+
+**An odd success is unknown, not unchanged.** A 2xx is GitHub saying it
+acted. On the two writes that can move the site — the reference update
+and §4.3's start file — a 2xx other than 200 or 201, or a body that does
+not parse, cannot say how, so it is `OutcomeUnknown`. Reported as the
+base type, whose row says *unchanged*, it told the writer nothing moved
+after the update was applied (PRESS-0166).
 
 **Every row but two says *unchanged*, and those two are the ones that
 matter.** §4.3's property is that nothing a reader sees changes until the
@@ -837,9 +869,10 @@ code, so a green INV-1 says nothing about the rest.
 | Whether the stored untouchable list is still correct | **nothing** — a file added to the repository root outside Pressless is unprotected until `root_entries` is run again. `docs/design.md` names this and gives the Face a re-derive action; no check here can see it |
 | The documented GitHub limits being the real ones | **nothing** — INV-6 refuses a listing GitHub itself flags, which needs no number. The limits in §4.3's reasoning are not asserted anywhere and would go stale silently if they were |
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` and `::test_each_write_is_preceded_by_its_own_pace`, which asserts the wait sequence rather than a count |
-| What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing` and `UnfetchablePath`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
+| What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing`, `UnfetchablePath` and `RepositoryMoved`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` and `::test_a_path_windows_cannot_hold_fetches_elsewhere` |
+| INV-12 | `tests/test_publisher.py::test_an_odd_success_is_unknown` and `::test_a_redirected_write_names_the_move` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no dot-name segment outside an untouchable first segment | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |

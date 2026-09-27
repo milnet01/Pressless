@@ -1,6 +1,10 @@
 # PRESS-0011 — The Face: the local server, and the error contract every message keeps
 
 **Status:** accepted (2026-09-26). Amended for PRESS-0151 (the session cookie and framing) and gated at one round by user decision; first accepted 2026-09-11.
+**Amended 2026-09-27, before implementation** (PRESS-0170): `serve`
+no longer opens a browser and loses its `open_browser` parameter; the
+launcher, PRESS-0013 § 4.5, is the one place that opens it. That
+changes a declared surface, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -109,7 +113,7 @@ class Request:
 
 Page = Callable[[Request], str]      # returns the page's HTML body
 
-def serve(folder: Path, *, open_browser: bool = True) -> Face: ...
+def serve(folder: Path) -> Face: ...
 
 class Face:
     url: str                                  # the one link carrying the secret
@@ -262,9 +266,10 @@ capture, it lands on that request's list.
 - **The request line is never printed or logged.** The handler's
   `log_message` is overridden to write nothing, because the standard one
   writes the request line — the secret included — to the console.
-- `serve` opens the browser at `url` with `webbrowser.open`. Where no browser
-  opens, it prints `url` to the console, which is his own. With
-  `open_browser=False` it prints nothing; that is how the tests run it.
+- **`serve` opens no browser and prints nothing.** Which page to open
+  first, and the console line where no browser opens, are the launcher's:
+  PRESS-0013 § 4.5 owns them, so there is one copy of each. A second copy
+  here had drifted from it and had no production caller (PRESS-0170).
 - **`handle_error` is overridden too**, to note the exception's type in the
   log and print nothing. The standard one prints a traceback naming the full
   path of every file in it to the console — measured.
@@ -335,7 +340,7 @@ capture, it lands on that request's list.
 
 - **INV-5** — The server answers only its own origin, on the loopback address.
   *Test:* `tests/test_face.py::test_the_server_answers_only_its_own_origin` —
-  `serve(folder, open_browser=False)`: the bound host is `127.0.0.1`; `/`
+  `serve(folder)`: the bound host is `127.0.0.1`; `/`
   without the cookie is 403; the `url` link is a redirect setting the cookie,
   whose value is not the link's secret; `/` with that cookie is 200; `/` with
   the link's secret as the cookie is 403; following `url` a second time is
@@ -349,7 +354,7 @@ capture, it lands on that request's list.
 
 - **INV-10** — No other origin can frame a Face answer.
   *Test:* `tests/test_face.py::test_no_other_origin_can_frame_the_face` — on
-  `serve(tmp_path, open_browser=False)` with a page, a file prefix and a page
+  `serve(tmp_path)` with a page, a file prefix and a page
   returning a `Reply`: `/`, the page, the file, the `Reply`, the link's
   redirect, a 403 and a 404 each carry a `Content-Security-Policy` naming
   `frame-ancestors 'self'`, and none names another source for it.
@@ -366,7 +371,7 @@ capture, it lands on that request's list.
 - **INV-7** — The page names the log by its file name and its folder by
   `LABEL`, and never by its path.
   *Test:* `tests/test_face.py::test_the_details_name_the_label_not_the_path`
-  — on `serve(tmp_path, open_browser=False)`, `fail` a typed failure: the
+  — on `serve(tmp_path)`, `fail` a typed failure: the
   fragment holds the label's words and `pressless.log`, each written out in
   the test, and not `str(tmp_path)`; `GET /folder/location` with the cookie
   returns the path.
@@ -390,7 +395,7 @@ capture, it lands on that request's list.
 
 - **INV-9** — The secret is never printed or logged after the opening link.
   *Test:* `tests/test_face.py::test_the_secret_is_never_printed_or_logged` —
-  capture the console from before `serve(tmp_path, open_browser=False)`, make
+  capture the console from before `serve(tmp_path)`, make
   the opening request and one more: the console output and the log hold no
   copy of the secret.
   *Breaks when:* the handler keeps the standard `log_message`, which prints

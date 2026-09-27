@@ -8123,7 +8123,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.3).
   Lanes: publisher.
 
-- 📋 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
+- 💭 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
   publisher._local_files keeps path -> bytes for the whole folder, and
   base64 plus json.dumps add copies of each blob as it is sent, so peak
   memory scales with the site (Pages allows up to 1 GB). Keeping only
@@ -8132,6 +8132,12 @@ already-built code ships in whichever release comes next.
   design question. Queued; measure the real site folder first.
   Decided 2026-09-27: measure the real site folder's peak memory first;
   amend PRESS-0009 only if the number shows it matters.
+  Measured 2026-09-27 under tracemalloc on the live site folder (1266
+  files): _local_files holds 36.7 MB, peaks at 39.9 MB, and encoding the
+  largest file for sending adds nothing measurable. `uploaded` holds
+  references and each blob is encoded one at a time, so peak memory is
+  the site's size, not several copies of it. Not worth a PRESS-0009
+  change; revisit if a site nears Pages' 1 GB cap.
   **Layman:** Publishing a very large site could use a lot of the computer's memory.
   Kind: perf.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
@@ -8150,6 +8156,14 @@ already-built code ships in whichever release comes next.
   Decided by the user 2026-09-27: drop allow-same-origin from the preview
   frame (sandbox="allow-scripts"). Checked: nothing in src/ reaches into
   the frame. PRESS-0012 4.7 amended first.
+  Superseded 2026-09-27, by the user: sandbox="allow-same-origin" instead,
+  scripts off. Measured in headless Chrome with a SameSite=Strict cookie:
+  without allow-same-origin the frame's stylesheet, image and script
+  requests carry no cookie, and the Face refuses every cookieless request,
+  so the preview would lose its styling and photographs. With
+  allow-same-origin alone the cookie is sent and neither an inline nor a
+  fetched script runs. The site's one script is the home-page Spotify
+  player, which frame-src already blocks in a preview.
   **Layman:** A script inside the writer's own site could, while previewed, press Publish or Undo on his behalf.
   Kind: security.
   Source: review-code 2026-09-26 PRESS-0135 lane Editors, Low (PRESS-0162 L4.6).
