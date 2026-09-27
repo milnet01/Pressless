@@ -612,6 +612,9 @@ made with `store.write_html`.
 - **INV-20** — The preview frame runs no script.
   *Test:* `test_the_preview_frame_runs_no_script`. The editor page's
   preview `<iframe>` carries `sandbox="allow-same-origin"` and nothing else.
+  `tests/test_page_editor.py::test_the_page_preview_frame_runs_no_script`
+  asserts the same of PRESS-0014's page editor, which writes its own copy
+  of the tag.
   *Breaks when:* `allow-scripts` comes back, which lets a script in the
   preview act with his cookie, or `allow-same-origin` goes, which costs
   the preview its stylesheets and photographs.
@@ -712,8 +715,8 @@ mutation-probed once the code lands.
 | INV-17 | `tests/test_editor.py::test_a_preview_photograph_is_the_original` |
 | INV-18 | `tests/test_editor.py::test_the_editor_sits_behind_the_faces_boundary` |
 | INV-19 | `tests/test_editor.py::test_a_save_turns_names_into_addresses` |
-| INV-20 | `tests/test_editor.py::test_the_preview_frame_runs_no_script` |
-| That the policies block Google's script, the players and a followed outside link in a browser | **nothing** in CI — by hand, in a preview of a page carrying them, in Chrome and Edge on the Windows box |
+| INV-20 | `tests/test_editor.py::test_the_preview_frame_runs_no_script` and `tests/test_page_editor.py::test_the_page_preview_frame_runs_no_script` |
+| That the policies block Google's script, the players and a followed outside link in a browser | **nothing** in CI — by hand, in Chrome and Edge on the Windows box. The players and the outside link in a preview of a page carrying them; Google's script by opening that page's `/preview/…` address directly, since inside the frame the sandbox stops every script whatever `script-src` says |
 | The script's timing, `pagehide` save and no two saves in flight (§ 4.7) | **nothing** in CI — by hand, typing and closing the tab mid-sentence |
 | That the box uses the site's font | **nothing** — read on the page |
 | That the one-page preview keeps up on Windows | **nothing** in CI — the Windows box, by hand, once PRESS-0013 wires the launch |
@@ -736,6 +739,8 @@ mutation-probed once the code lands.
 - PRESS-0013 — calls `editor.register`; publishes a working copy over the
   entry `Replaces` names, without that field, and bins the copy; dates every
   other draft at its first publish (§ 3 decision 6).
+- `docs/specs/PRESS-0014-fixed-pages.md` § 4.4 — the page editor's preview
+  frame takes the same `sandbox="allow-same-origin"` (PRESS-0169).
 - PRESS-0015 — a working copy is a draft, so undo leaves it alone. An entry
   undo turns back into a draft needs a mark, or PRESS-0013 dates it again.
 - `CHANGELOG.md` — an Added entry when it ships.
