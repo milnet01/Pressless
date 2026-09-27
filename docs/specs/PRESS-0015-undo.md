@@ -1,6 +1,8 @@
 # PRESS-0015 — Undo: one step back, ending with the site and his files agreeing
 
 **Status:** accepted (2026-09-21). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail.
+Amended 2026-09-27 by the user's decision: the draft a first undo demoted is
+binned, not kept, when a second undo puts it back (§ 4.4, INV-13).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -264,6 +266,11 @@ dataclasses, so each compares by value.
   — so a draft that was a working copy of some other entry stays one — and the
   old draft file is binned. Then the fetched entry is written as published.
   Otherwise one slug would name two files, which `docs/design.md` rules out.
+  **Except where that draft carries `publishing.UNDONE` and equals the
+  fetched entry once that field is set aside** — the draft a first press
+  demoted, which a second press puts back (§ 3 decision 6). It is binned
+  and not kept, since nothing of his differs from what is published
+  (INV-13). Decided by the user 2026-09-26 (PRESS-0154).
 - **The Store holds neither.** The fetched entry is written as published.
 
 **An entry the Store publishes and the fetched state does not hold** is
@@ -460,6 +467,16 @@ does.
   it.
   *Breaks when:* a failure is formatted with its arguments.
 
+- **INV-13** — A demoted draft that a later undo publishes unchanged is
+  binned, not kept; one he has edited since is kept.
+  *Test:* `test_a_second_undo_keeps_no_copy_of_the_demoted_draft`. Two
+  drafts carry `Undone`: one equals the fetched entry apart from that
+  field, the other has a different body. After undo, both slugs are
+  published, `result.kept` names only the edited one, and no draft holds
+  the unchanged one's slug or `<slug>-before-undo`.
+  *Breaks when:* `Undone` is not set aside before comparing, or an
+  unmarked draft equal to the fetched entry is binned too.
+
 `NothingToUndo` gets a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` finds it.
 
@@ -489,7 +506,7 @@ nothing catches a reader who expects a history.
 ## 7. Tests
 
 `tests/test_undo.py` — new, in CI. It carries INV-1, INV-2, INV-6, INV-7,
-INV-8, INV-9, INV-10, INV-11 and INV-12.
+INV-8, INV-9, INV-10, INV-11, INV-12 and INV-13.
 
 `tests/test_publishing.py` gains INV-3, INV-4 and INV-5.
 
@@ -545,6 +562,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-10 | `tests/test_undo.py::test_a_definite_failure_puts_the_files_back` |
 | INV-11 | `tests/test_undo.py::test_an_unreadable_fetched_file_moves_nothing` |
 | INV-12 | `tests/test_undo.py::test_the_key_is_never_shown` |
+| INV-13 | `tests/test_undo.py::test_a_second_undo_keeps_no_copy_of_the_demoted_draft` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
 | A real undo against GitHub | **nothing** in CI — by hand, against the maintainer's test repository |
