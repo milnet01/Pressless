@@ -3,7 +3,8 @@
 **Status:** accepted (2026-09-13). Built 2026-09-17. Amended 2026-09-17 by
 the user's decision: a picture-only entry is described by its captions
 (§4.3, INV-16). Gated for one loop by the amendment budget: one verified,
-one fixed, not converged.
+one fixed, not converged. Amended 2026-09-27 by the user's decision: a
+listing's lead is its count alone (§4.3, INV-17).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).
@@ -189,10 +190,19 @@ these differences: the body is `marks.render(entry.body, photo_src)`; a
 listing's excerpt, and an untitled entry's teaser, are cut from the
 entry's text and written through `marks.to_html` as one `Text`; the site's
 name comes from
-`settings.site_name`; and decision 8's stamps are gone. INV-15's run
+`settings.site_name`; decision 8's stamps are gone; and a listing's lead
+describes no one's journal (INV-17). INV-15's run
 compares the elements it names. The generator's own code names the writer,
 so it is ported, never copied: no string from it enters this repository
 unread.
+
+**A listing's lead is a count and nothing else.** The journal page reads
+`<n> entries, from <month year> to <month year>.`, a category page
+`<n> entries in <label, lower case>.` and a tag page `<n> entries tagged “<tag>”.`,
+with `entry` in place of `entries` where `n` is one. Today's generator
+adds a phrase naming what one writer posts; it is not ported, because
+every user's site would carry it. Decided by the user 2026-09-27
+(PRESS-0152).
 
 **An entry's text** is the `Text` nodes of `marks.parse(entry.body)`, lines
 joined by a space. Where those hold nothing but whitespace, it is the
@@ -543,6 +553,14 @@ Sitemap: <the address>/sitemap.xml
   *Breaks when:* captions are ignored, so the card shows a date, or captions
   are added to an entry that has words.
 
+- **INV-17** — A listing's lead is §4.3's count sentence: it holds no fixed
+  description, and says `1 entry` where there is one.
+  *Test:* `tests/test_builder.py::test_a_listing_lead_is_its_count_alone`
+  — a Store of one entry in one category with one tag, and a Store of two.
+  Each listing's lead is exactly §4.3's sentence for its count.
+  *Breaks when:* a fixed phrase is added to a lead, or the count is not
+  pluralised by `n`.
+
 ## 6. Failure modes
 
 | What happens | What the Builder does |
@@ -567,7 +585,7 @@ Sitemap: <the address>/sitemap.xml
 
 `tests/test_builder.py` — in CI, over Stores built in a temporary folder with
 small generated images. It carries INV-1, INV-2, INV-3, INV-4, INV-5, INV-6,
-INV-7, INV-8, INV-9, INV-10, INV-11, INV-12, INV-13 and INV-16.
+INV-7, INV-8, INV-9, INV-10, INV-11, INV-12, INV-13, INV-16 and INV-17.
 
 `tests/test_failure_messages.py` gains INV-14's test.
 
@@ -640,6 +658,7 @@ mutation-probed once it lands.
 | INV-14 | `tests/test_failure_messages.py::test_no_builder_failure_names_a_path` |
 | INV-15 | `tests/test_builder_archive.py::test_the_first_publish_moves_no_page` — **skipped in CI**; it runs where the archive, the originals and the live site are |
 | INV-16 | `tests/test_builder.py::test_a_picture_only_entry_is_described_by_its_captions` |
+| INV-17 | `tests/test_builder.py::test_a_listing_lead_is_its_count_alone` |
 | That a publish build never passes `change` | **nothing here** — the Face's call; PRESS-0012 |
 | That the Face never hands the preview folder to the Publisher | **nothing here** — the Face's sequence (`docs/design.md` rule 1) |
 | That an ordinary non-dot stray in the site folder is refused | **nothing** — `Built.files` declares the output, and the Publisher does not read it yet (§9) |
