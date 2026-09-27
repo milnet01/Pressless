@@ -8142,6 +8142,19 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Face and launch, Low (PRESS-0162 L5.5).
   Lanes: face.
 
+- 📋 [PRESS-0171] **A repository setting whose owner or name half is "." or ".." is accepted.**
+  settings.py checks each half of owner/name against _NAME_CHARS, which
+  includes the dot, so owner/.. and ../x pass. The value goes straight into
+  /repos/{repository}/..., where a dot segment can resolve to a different
+  path than the one typed -- the class PRESS-0066 closed for ?, # and %.
+  PRESS-0001 4.3 allows exactly these characters, so the spec moves first:
+  refuse a half equal to "." or "..". Queued rather than fixed because it
+  changes PRESS-0001.
+  **Layman:** A mistyped repository name made only of dots is accepted and could point publishing at the wrong place on GitHub.
+  Kind: security.
+  Source: review-code 2026-09-26 PRESS-0135 lane Setup, Settings, Credentials, Low (PRESS-0162 L6.3).
+  Lanes: settings.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

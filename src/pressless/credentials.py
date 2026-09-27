@@ -348,7 +348,15 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
     try:
         # newline is named rather than left to the platform, so the file is
         # the same bytes on both systems (PRESS-0039).
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
+        try:
+            stream = os.fdopen(handle, "w", encoding="utf-8", newline="\n")
+        except BaseException:
+            # Only fdopen takes ownership of the raw descriptor, so a failure
+            # here would leak it; settings.save closes it the same way
+            # (PRESS-0066, PRESS-0162).
+            os.close(handle)
+            raise
+        with stream:
             json.dump(data, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
             # rename(2) orders the namespace, not the data, so without
@@ -381,8 +389,16 @@ def _read_ours(target: Path) -> str:
     ownership became the writer's on the copy that carried it -- so a mode
     check reads as stricter and rejects exactly that file.
     """
-    handle = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    # O_NONBLOCK so a FIFO planted at that name cannot hold the open forever;
+    # it is then refused as not a regular file (PRESS-0162).
+    handle = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                     | getattr(os, "O_NONBLOCK", 0))
     try:
+        if not stat.S_ISREG(os.fstat(handle).st_mode):
+            raise CredentialError(
+                "the credentials file is not an ordinary file, so it is not "
+                "the file Pressless wrote"
+            )
         owner = getattr(os, "getuid", None)
         if owner is not None and os.fstat(handle).st_uid != owner():
             raise CredentialError(

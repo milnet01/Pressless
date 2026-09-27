@@ -538,3 +538,14 @@ def test_a_body_length_that_is_not_a_count_is_refused(tmp_path) -> None:
                 conn.close()
     finally:
         served.stop()
+
+
+def test_a_credential_failure_fits_a_write_as_well_as_a_read() -> None:
+    """PRESS-0162 (review-code L6.4): setup's store step raises
+    CredentialError where nothing was read, and the sentence said "could
+    not safely read" and sent him to re-enter a key -- which a locked
+    keyring, or a Windows program started remotely, does not fix."""
+    said = face.render_failure(credentials.CredentialError("locked"),
+                               publishing=False, secret="your GitHub key")  # noqa: S106 -- a label, not a secret
+    assert "safely read" not in said
+    assert "unlock" in said

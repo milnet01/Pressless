@@ -140,10 +140,14 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "Pressless does not have {secret} yet.",
         "Enter it again in Settings.",
     ),
+    # Setup's store step and first save raise this too, where nothing was
+    # read and re-entering fixes nothing -- a locked keyring, or on Windows a
+    # program started over a remote connection, which the vault refuses
+    # (PRESS-0120, PRESS-0162). So it names reaching, and the unlock first.
     credentials.CredentialError: _say(
-        "Pressless could not safely read {secret}.",
-        "Enter it again in Settings. If this keeps happening, send the details below to "
-        "whoever helps you.",
+        "Pressless could not safely reach {secret} in this computer's keyring.",
+        "If your keyring is locked, unlock it and try again; otherwise enter it again in "
+        "Settings. If this keeps happening, send the details below to whoever helps you.",
     ),
     settings.NotSetUp: _say(
         "Pressless is not set up yet.",

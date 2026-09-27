@@ -16,6 +16,7 @@ import json
 import os
 import stat
 import sys
+import threading
 import traceback
 from pathlib import Path
 
@@ -894,3 +895,55 @@ def test_a_garbled_file_is_a_credential_error(tmp_path, content):
     with pytest.raises(refusal):
         write("file", tmp_path, "publishing-key", "a-secret")
     assert (tmp_path / FILE_NAME).read_bytes() == content, "a refused write replaced the file"
+
+
+def test_a_fifo_at_the_file_is_refused_without_waiting(tmp_path, monkeypatch):
+    """PRESS-0162 (review-code L6.1): the open blocked on a FIFO before the
+    owner check ran, so another user on a shared drive could mkfifo there
+    and hang every read of the key. It is refused as not an ordinary file.
+
+    Run in a thread with a bound, so the old behaviour fails rather than
+    hanging the suite."""
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("this platform has no FIFO")
+    _not_windows(monkeypatch)
+    os.mkfifo(tmp_path / FILE_NAME)
+    raised: list[BaseException] = []
+
+    def attempt():
+        try:
+            read("file", tmp_path, "publishing-key")
+        except BaseException as exc:  # noqa: BLE001 -- inspected below
+            raised.append(exc)
+
+    worker = threading.Thread(target=attempt, daemon=True)
+    worker.start()
+    worker.join(5)
+    if worker.is_alive():
+        # Release the blocked open so the daemon thread can end.
+        os.close(os.open(tmp_path / FILE_NAME, os.O_WRONLY | os.O_NONBLOCK))
+        pytest.fail("the read waited on the FIFO")
+    assert raised and isinstance(raised[0], CredentialError), raised
+
+
+def test_a_failed_fdopen_closes_the_descriptor(tmp_path, monkeypatch):
+    """PRESS-0162 (review-code L6.2): mkstemp hands back a raw descriptor
+    and only fdopen takes ownership, so a failure there leaked it --
+    settings.save closed that leak (PRESS-0066) and this writer had not."""
+    _require_posix_modes(tmp_path)
+    _not_windows(monkeypatch)
+    closed: list[int] = []
+    real_close = os.close
+
+    def failing_fdopen(handle, *args, **kwargs):
+        raise OSError("fdopen refused")
+
+    def watching_close(handle):
+        closed.append(handle)
+        real_close(handle)
+
+    monkeypatch.setattr(credentials_module.os, "fdopen", failing_fdopen)
+    monkeypatch.setattr(credentials_module.os, "close", watching_close)
+    with pytest.raises(CredentialError):
+        write("file", tmp_path, "publishing-key", SENTINEL)
+    assert closed, "the raw descriptor was never closed"
