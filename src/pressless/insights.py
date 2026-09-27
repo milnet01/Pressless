@@ -232,6 +232,34 @@ class _Urllib:
         return time.time()
 
 
+def _own_client() -> Transport:
+    """The module's client, or one whose every request is "no answer".
+
+    Built where a fresh cache may answer too, since the transport supplies
+    the clock; a packaged program missing its CA file made that raise
+    untyped, and even a fresh cache failed (PRESS-0162).
+    """
+    try:
+        return _Urllib()
+    except OSError as exc:
+        return _Unbuilt(type(exc).__name__)
+
+
+class _Unbuilt:
+    """A client that could not be prepared: the clock still runs, and every
+    request is the seam's OSError, which read() reports as Unreachable."""
+
+    def __init__(self, why: str) -> None:
+        self._why = why
+
+    def request(self, method: str, url: str, body: bytes | None,
+                headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+        raise OSError(f"the connection could not be prepared ({self._why})")
+
+    def now(self) -> float:
+        return time.time()
+
+
 def _no_answer(url: str, error: Exception) -> OSError:
     """A missing answer as the seam's OSError (PRESS-0040), naming only the
     host and the type. Neither http.client failure is an OSError, and every
@@ -256,7 +284,9 @@ def _within(target: Path, folder: Path) -> bool:
     try:
         return target.resolve().is_relative_to(folder.resolve())
     except OSError:
-        return False
+        # Refused where it cannot be told: the guard keeps readership off a
+        # public site, so an unresolvable path fails closed (PRESS-0162).
+        return True
 
 
 def read(settings: Settings, token: str, folder: Path, *,
@@ -291,7 +321,11 @@ def read(settings: Settings, token: str, folder: Path, *,
             "in full, so the cache may not be kept there"
         )
 
-    transport = client if client is not None else _Urllib()
+    if "\r" in token or "\n" in token:
+        # http.client refuses a header value with a line break by raising
+        # ValueError, which reached him as "no answer" (PRESS-0162).
+        raise Refused("the saved Google sign-in cannot be sent as it is")
+    transport = client if client is not None else _own_client()
     target = cache_path(folder)
     cached = _cached(target, days)
 
@@ -466,7 +500,7 @@ def _number(holder: dict, what: str) -> int:
         # Google sends integer metrics as strings; float() first accepts the
         # decimal form its schema also permits.
         return int(float(raw))
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:  # "1e999" overflows
         raise InsightsError(f"Google's answer does not give {what}") from exc
 
 
@@ -522,7 +556,7 @@ def _cached(target: Path, days: int) -> Report | None:
         )
         return Report(int(entry["people"]), countries, days,
                       float(entry["fetched_at"]), False)
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, OverflowError):
         return None
 
 
@@ -581,4 +615,6 @@ def _discard(temporary: str) -> None:
     try:
         os.unlink(temporary)
     except OSError:
+        # Best effort: the write has already failed and is being reported,
+        # and a stray temporary costs a few bytes and nothing else.
         pass

@@ -1738,3 +1738,57 @@ def test_an_answer_that_is_not_an_object_is_refused(tmp_path, body):
     with pytest.raises(InsightsError):
         read(_settings(), "a-token", tmp_path, client=transport)
     assert not cache_path(tmp_path).exists(), "a refused answer was cached"
+
+
+# ------------------------------------------------------------ PRESS-0162 ----
+
+
+def test_an_overflowing_count_is_refused_as_a_bad_answer(tmp_path):
+    """Review-code L9.2: int(float("1e999")) raises OverflowError, which the
+    number parse did not catch, so it escaped read() untyped. A cache file
+    holding one reads as absent, per INV-14."""
+    transport = _Transport(default=_ok(_google(rows=(("GB", "1e999"),), total=5)))
+    with pytest.raises(InsightsError):
+        read(_settings(), "a-token", tmp_path, client=transport)
+
+    _seed(tmp_path, _Transport(default=_ok(_google()), clock=NOW))
+    target = tmp_path / CACHE_FILE_NAME
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["windows"][str(DEFAULT_DAYS)]["people"] = 1e999
+    target.write_text(json.dumps(held), encoding="utf-8")
+    fresh = _Transport(default=_ok(_google()), clock=NOW + 10.0)
+    read(_settings(), "a-token", tmp_path, client=fresh)
+    assert fresh.requests, "a cache holding an overflowing count answered"
+
+
+def test_a_token_with_a_line_break_is_refused_before_any_request(tmp_path):
+    """Review-code L9.4: http.client refuses a header value holding CR or LF
+    by raising ValueError, which read() reported as no connection."""
+    transport = _Transport(default=_ok(_google()))
+    with pytest.raises(Refused):
+        read(_settings(), "a-token\r\nX-Other: 1", tmp_path, client=transport)
+    assert transport.requests == []
+
+
+def test_a_client_that_cannot_be_built_is_unreachable(tmp_path, monkeypatch):
+    """Review-code L9.1: the module's client was built outside every try, so
+    a packaged program missing its CA file raised FileNotFoundError out of
+    read() untyped, before even a fresh cache could answer."""
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("cacert.pem")
+
+    monkeypatch.setattr(insights_module, "_Urllib", missing)
+    with pytest.raises(Unreachable):
+        read(_settings(), "a-token", tmp_path)
+
+
+def test_an_unresolvable_cache_folder_is_refused(tmp_path, monkeypatch):
+    """Review-code L9.3: the site-folder guard answered "not inside" when a
+    path could not be resolved, so INV-23 failed open."""
+    def unresolvable(self, *args, **kwargs):
+        raise OSError("a loop of links")
+
+    monkeypatch.setattr(Path, "resolve", unresolvable)
+    with pytest.raises(InsightsError):
+        read(_settings(site_folder=tmp_path / "site"), "a-token", tmp_path,
+             client=_Transport(default=_ok(_google())))
