@@ -8002,7 +8002,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
   Lanes: import.
 
-- 📋 [PRESS-0162] **The PRESS-0135 sweep's Low findings still need triage.**
+- ✅ [PRESS-0162] **The PRESS-0135 sweep's Low findings still need triage.**
   The sweep's High and Medium findings were closed on 2026-09-26: 25
   fixed, 15 queued as PRESS-0151 to PRESS-0161. The Low rung was not
   worked. Every lane's full return is kept verbatim, outside the
@@ -8012,6 +8012,18 @@ already-built code ships in whichever release comes next.
   Update), __main__.py's stale usage line (lane Import), and the
   release pin line lengths. Close the rest with close-findings, by
   subject, the way the Mediums went.
+  Resolved 2026-09-27 with close-findings, one commit per review lane
+  (f6574a7 to dd2bd72). Every Low and Info finding has a disposition; the
+  ledger is Pressless-reviews/press-0162-ledger.md, outside the repository
+  beside the review it closes. Queued: PRESS-0166, 0167, 0168, 0169, 0170,
+  0171, 0172, 0173, 0174, 0175. Dismissed, with why: L1.3 comments format is
+  PRESS-0006 6's choice; L1.4, L2.2, L5.4, L10.7 already fixed; L3.4 fixed by
+  PRESS-0164; L4.4 the preview already says there is no entry to show; L7.4
+  the type alone is logged so a quoted key cannot reach the log; L8.7 disk
+  space only; L9.6 one Pressless per folder since PRESS-0023 4.11; L10.3
+  rename replaces only an empty directory; L10.4 measured all 149 upload
+  addresses on the site's host, and a host check drops CDN images; L10.6
+  expat 2.8.4; the INFO notes, nothing to fix.
   **Layman:** The code review also listed many small issues; they are written down and still need sorting into fix or leave.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135, Low and Info rungs.

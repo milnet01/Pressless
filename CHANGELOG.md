@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Many small fixes from the September code review: a long line of unclosed marks no longer takes seconds to show, the editor offers "Throw away changes" right after the first save, and several failures now say what actually went wrong.** (PRESS-0162)
+
 - **A photograph name Windows would change or could not keep, such as "nul.jpg" or "photo.jpg.", is refused on every system, so a picture saved on Linux is never lost on Windows.** (PRESS-0164)
 
 - **On Windows, Undo names a file on the site that Windows cannot hold, instead of telling the writer to free disk space.** (PRESS-0160)
