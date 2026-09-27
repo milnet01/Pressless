@@ -2546,6 +2546,15 @@ that makes daily use pleasant rather than merely possible.
   what S10 asks for.
   Pillow is already proven by resize.py in the sibling workspace.
   Blocked-by: PRESS-0004, PRESS-0008, PRESS-0012.
+  Decided by the user 2026-09-27: an Add a photograph button in the
+  editor opens the file picker; Pressless keeps the original and puts the
+  picture mark in the box where he was typing. A name already taken by a
+  different photograph keeps both, the new one as name-2. A photograph an
+  entry names that Pressless does not have is flagged in the editor as he
+  writes; a press still stops on it. Already built before this item:
+  the mark, the Store's place for originals, the Builder's web copy and
+  the preview's /originals/ address. What is left is adding one, its
+  name rule, and the missing-photograph note.
   **Layman:** He can put a photograph in an entry, and it is shrunk for the web without his originals ever being touched.
   Kind: feature.
   Source: design-2026-08-24 § Where photographs live.
@@ -2642,6 +2651,9 @@ that makes daily use pleasant rather than merely possible.
   Decided by the user 2026-09-27: changing a published entry's address
   warns first, then leaves a small page at the old address that forwards
   readers to the new one.
+  Decided by the user 2026-09-27: binning a published entry moves it to
+  the bin at once, and it leaves the site at the next press, like any
+  other change; undo can bring it back.
   **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0012 scope.
