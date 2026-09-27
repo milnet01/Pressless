@@ -92,9 +92,11 @@ page:
 `register` calls `seed(folder)` once, at start. `seed` writes the four
 `STARTERS` with `store.write_template` when
 `folder / store.TEMPLATES_FOLDER` does not exist, and does nothing
-otherwise. A `StoreError` from any write is caught; `face.note` records
-`templates: starters not written`, and the list offers only a blank
-entry until a later start succeeds.
+otherwise. A `StoreError` from any write is caught and `face.note`
+records `templates: starters not written`. **A failure is final**: the
+first write creates the folder, so the starters written before it stay
+and no later start writes the rest (§3 decision 3). He can still add
+his own.
 
 Each starter is an `Entry` with an empty `extra`, empty categories and
 tags, and a body written in marks: lines of a poem; verses separated by
@@ -127,14 +129,20 @@ file's digest as read.
 
 `POST /template/save` refuses with `editor.ChangedElsewhere` where the
 file's digest is not `base`. Otherwise it writes an `Entry` with slug
-`N`, the posted fields, the date the file already holds, and its
-`extra`, through `store.write_template`, and answers with the page again.
-Line endings in the body are normalised as `editor.save` does.
+`N`, the posted title and body, the date the file already holds, and
+its `extra`, through `store.write_template`, and answers with the page
+again. Categories and tags are read as `editor.save` reads them, through
+`editor._names_of`, notices included, because a draft picked from the
+template carries them to the site unchanged. Line endings in the body
+are normalised as `editor.save` does.
 
 ### 4.5 Adding and binning
 
 `POST /template/new` takes `name`, turns it into a name with
-`editor.address_for`, and adds `-2`, `-3` … until no template holds it.
+`editor.address_for`, and adds `-2`, `-3` … until no file exists at
+`store.template_path_for(folder, name)`. A file check rather than
+`list_templates`, which leaves out a name it cannot use: on Windows a
+hand-named `Poem.txt` answers for `poem`, so it is not overwritten.
 Only the templates folder is asked: PRESS-0006 § 3 decision 11 lets a
 template share an entry's name. It writes an empty template, titled with
 the name as typed, and answers 303 to its page.
@@ -190,8 +198,8 @@ revisit it.
   *Breaks when:* the save goes through `store.write`, or skips the digest
   check.
 - **INV-6** — A new template's name is `address_for` of what was typed,
-  with `-2` onwards only where a template already holds it; an entry of
-  that name does not count.
+  with `-2` onwards only where a file already sits at its template path;
+  an entry of that name does not count.
   *Test:* `tests/test_templates.py::test_a_new_template_takes_a_free_name`.
   *Breaks when:* the check uses `store.exists`, which asks the entry
   folders.
@@ -200,7 +208,7 @@ revisit it.
 
 | When | What happens |
 |---|---|
-| The starters cannot be written | the log says so (§4.2); the picker offers a blank entry; the next start tries again, the folder still being absent |
+| The starters cannot be written | the log says so (§4.2); the picker offers whatever was written before the failure, and a blank entry; no later start retries |
 | A template file does not read | it is left out of the picker; its page shows the Store's sentence for the failure, as the entry editor does |
 | He posts a template name that no longer exists | `store.EntryNotFound`, shown with its existing sentence |
 | The template changed in another window | `editor.ChangedElsewhere`, whose sentence already tells him what to do |
