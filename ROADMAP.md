@@ -2551,7 +2551,7 @@ that makes daily use pleasant rather than merely possible.
   Source: design-2026-08-24 § Where photographs live.
   Lanes: Marks, Store, Builder, Face.
 
-- 📋 [PRESS-0017] **Starting something new picks from a list of templates.**
+- ✅ [PRESS-0017] **Starting something new picks from a list of templates.**
   A poem, a lyric with verses, an entry built around one photograph, a
   plain journal entry. Picking one copies its text into a new draft.
   Templates are Store files in the same marks as everything else, so he
@@ -2561,6 +2561,12 @@ that makes daily use pleasant rather than merely possible.
   They retire COPY-ME-new-page.html as a way of working. The file itself
   stays on the site: it is untouchable, so the Publisher never removes it.
   Blocked-by: PRESS-0006, PRESS-0012.
+  Resolved 2026-09-27: docs/specs/PRESS-0017-templates.md accepted
+  after two review loops (five findings, all fixed), then built in
+  src/pressless/templates.py and the editor's New form. Tests lock INV-1
+  to INV-6; a headless-Chrome row picks the poem. Not yet usable: the
+  photograph starter, until PRESS-0016 can put an original in the Store.
+  Not checked: Edge.
   **Layman:** New entries start from a shape he chooses -- a poem, a lyric, an entry around a photograph -- rather than an empty box.
   Kind: feature.
   Source: design-2026-08-24 § A template is an entry he never publishes.
