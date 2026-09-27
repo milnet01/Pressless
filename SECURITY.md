@@ -31,8 +31,11 @@ defending one requires. This file is only what an outside reader needs.
   of the script's text.
 - **The libraries Pressless runs.** `keyring`, `Pillow`, `cryptography` and
   `certifi` run inside it, and the packaged program bundles them.
-  `pyproject.toml` sets only a lowest version for each, so a build takes
-  whatever is newest above it; nothing pins them or checks their hashes.
+  A release build installs them, and its build tools, from
+  `packaging/release-requirements.txt`: exact versions, each download
+  checked against its SHA-256 hash, so a tampered file stops the build.
+  `pyproject.toml` sets only a lowest version, which development and
+  the tests use; `docs/specs/PRESS-0022-packaging.md` § 4.4.
 - **Privilege: none.** Pressless runs as the logged-on user and never asks
   for more rights.
 - **Two third-party services over the network.** Pressless talks to GitHub

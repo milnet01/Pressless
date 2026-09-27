@@ -22,7 +22,7 @@ license = { file = "LICENSE" }
 # src/pressless/credentials.py (PRESS-0002, ADR-0003). A FLOOR, not a hold
 # (dependencies.md §4): 25 is the oldest release where .backends on a chain
 # and errors.NoKeyringError behave as §4.6 records. Nothing caps it, so the
-# newest release is what installs.
+# gate installs the newest release.
 #
 # Pillow re-encodes every published photograph, reached only by
 # src/pressless/builder.py (PRESS-0008 § 4.6). A floor at the release the
@@ -38,6 +38,9 @@ license = { file = "LICENSE" }
 # because the AppImage's OpenSSL looks where openSUSE keeps nothing (PRESS-0142,
 # measured with the v0.1.2 AppImage). A floor at the set measured; a newer set
 # only ever adds and retires roots, so nothing caps it.
+# Every floor here is a floor for development and the gate. A release build
+# installs packaging/release-requirements.txt instead: exact versions with
+# their hashes, regenerated from this file (PRESS-0022 § 4.4, PRESS-0150).
 dependencies = ["keyring>=25", "Pillow>=12", "cryptography>=47", "certifi>=2026.4.22"]
 
 # The gate's tools (scripts/local-ci.sh). Floors record what was measured, not
@@ -52,8 +55,7 @@ dependencies = ["keyring>=25", "Pillow>=12", "cryptography>=47", "certifi>=2026.
 dev = ["pytest>=9", "pytest-randomly>=4", "ruff>=0.16"]
 # The packager (PRESS-0022 § 4.4). Build-time only, so beside the gate's
 # tools rather than in `dependencies`. A floor at the version the spec's
-# measurements were taken with, not a pin: two builds months apart may use
-# different releases, and byte-reproducible builds are not claimed.
+# measurements were taken with.
 packaging = ["pyinstaller>=6.20"]
 
 [tool.setuptools.packages.find]

@@ -109,6 +109,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Security
 
+- **A release is built from exact, hash-checked library versions** (PRESS-0150)
+  Both release builds install every Python library from
+  packaging/release-requirements.txt, with each download checked against
+  its SHA-256 hash, so two builds of one version bundle the same code and
+  a tampered download stops the build.
+
 - **Another program on your computer can no longer frame Pressless's pages, and the link Pressless opens works only once** (PRESS-0151)
   A page served by another program on your own computer could show
   Pressless inside a hidden frame and trick a click on Publish or Undo.
