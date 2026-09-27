@@ -695,6 +695,29 @@ def test_a_repository_with_the_punctuation_github_allows_still_loads(tmp_path):
     assert load(tmp_path).repository == "the-owner_1/owner.github.io"
 
 
+@pytest.mark.parametrize("repository", ["owner/..", "../name", "owner/.", "./name"])
+def test_a_repository_half_of_dot_or_dotdot_is_refused(tmp_path, repository):
+    """§4.3 (PRESS-0171): a half that is "." or ".." is a dot segment in the
+    API URL, which can resolve to a different path than the one typed. Every
+    character is a name character, so the character check alone passed them.
+    """
+    _write(tmp_path, _valid_mapping(repository=repository))
+
+    with pytest.raises(SettingsError):
+        load(tmp_path)
+
+
+@pytest.mark.parametrize("repository", ["owner/.github", "a..b/c", ".../x"])
+def test_a_repository_half_with_dots_that_is_not_a_dot_segment_loads(tmp_path, repository):
+    """The other side of the rule above: only "." and ".." are dot segments, so
+    a rule refusing more -- any leading dot, any "..", any all-dot half --
+    would reject names that are not. `.github` is a real repository name.
+    """
+    _write(tmp_path, _valid_mapping(repository=repository))
+
+    assert load(tmp_path).repository == repository
+
+
 @pytest.mark.parametrize("site_name", ["", "   ", "A\nJournal", "A\rJournal"])
 def test_a_site_name_that_is_empty_or_breaks_a_line_is_refused(tmp_path, site_name):
     """§4.3's site_name row. The Builder writes the name into every page's

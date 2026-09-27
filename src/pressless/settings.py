@@ -237,7 +237,11 @@ def check(settings: Settings) -> None:
     owner, _, name = settings.repository.partition("/")
     # The character check subsumes the second-slash one that stood here: "/"
     # is not a name character either (PRESS-0066).
-    if not owner or not name or not _NAME_CHARS.issuperset(owner + name):
+    # "." and ".." are made of name characters, but in the API URL they are dot
+    # segments, which resolve to a different path than the one typed
+    # (PRESS-0171).
+    if (not owner or not name or not _NAME_CHARS.issuperset(owner + name)
+            or {owner, name} & {".", ".."}):
         raise SettingsError(
             "repository is not \"owner/name\"", "repository"
         )
