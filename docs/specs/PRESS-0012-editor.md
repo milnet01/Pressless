@@ -299,6 +299,8 @@ row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
 address_for(title)), title=title.strip(), date=datetime.now()` with its
 microseconds dropped, empty categories, tags and body, no extra fields)`,
 written with `store.write(..., draft=True)`.
+A template picked in the same form fills the body, categories and tags
+(`docs/specs/PRESS-0017-templates.md` § 4.3).
 
 ### 4.7 The editor page
 

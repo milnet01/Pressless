@@ -5,6 +5,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0012 s10: the script's timing, pagehide save, no two saves in flight (s 4.7)
   PRESS-0012 s10 (Chrome half only): the policies block Google's script
   PRESS-0018: the cheat sheet folds open below the box, and prints
+  PRESS-0017 s7: picking the poem opens a draft holding it
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -41,6 +42,7 @@ from pressless import (  # noqa: E402
     marks,
     publishing,
     store,
+    templates,
     undo,
 )
 
@@ -63,6 +65,7 @@ def main() -> int:
     try:
         editor.register(served, folder)
         cheatsheet.register(served)
+        templates.register(served, folder)
         publishing.register(served, folder, transport=tp._github())
         undo.register(served, folder, transport=tp._github())
         parts = urllib.parse.urlsplit(served.url)
@@ -124,6 +127,18 @@ def run(origin: str, secret: str, folder: Path) -> None:
               printable.url)
         printable.close()
         sheet.locator("summary").click()
+
+        # ---- PRESS-0017 s7: a template picked from the New form ---------------
+        page.goto(f"{origin}/", wait_until="networkidle")
+        page.fill("input[name=title]", "Rain")
+        page.select_option("select[name=template]", "poem")
+        page.click("text=New entry")
+        page.wait_for_load_state("networkidle")
+        poem = next(s for s in templates.STARTERS if s.slug == "poem").body
+        typed = page.locator("textarea").input_value()
+        check("PRESS-0017 s7: picking the poem opens a draft holding it",
+              typed == poem and "/edit?slug=rain" in page.url, page.url)
+        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
 
         # ---- PRESS-0012 s4.7: about a second after the last change -----------
         posts.clear()

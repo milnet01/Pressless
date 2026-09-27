@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Start something new from a template** (PRESS-0017)
+  The New entry form offers a list of templates, and picking one opens
+  a draft already holding its words. Four come ready -- a poem, a lyric
+  with verses, an entry around one photograph, a plain journal entry --
+  and each can be changed, binned, or joined by new ones.
+
 - **A cheat sheet below the writing box, and a page to print** (PRESS-0018)
   It lists every mark with an example and one plain line, and is
   made from the same table Pressless reads marks with, so it cannot

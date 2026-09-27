@@ -291,6 +291,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             '<div id="listing">'
             '<form method="post" action="/new"><label>Title '
             '<input name="title" autocomplete="off"></label> '
+            f"{_template_choice(folder)}"
             "<button>New entry</button></form>"
             # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
             # showing it (§ 3 decision 3).
@@ -302,6 +303,24 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             "</div>"
             + "".join(face.list_pieces(above=False)) +
             f"<script>{_UNDO_SCRIPT}</script>")
+
+
+def _template_choice(folder: Path) -> str:
+    """PRESS-0017 § 4.3: a blank entry first, then each template that reads,
+    labelled with its title or, where that is empty, its name."""
+    options = ['<option value="">A blank entry</option>']
+    try:
+        names = store.list_templates(folder)
+    except store.StoreError:
+        names = ()
+    for name in names:
+        try:
+            label = store.read(store.template_path_for(folder, name)).title or name
+        except store.StoreError:
+            continue
+        options.append(f'<option value="{html.escape(name, quote=True)}">'
+                       f"{html.escape(label)}</option>")
+    return f'<label>Start from <select name="template">{"".join(options)}</select></label> '
 
 
 def _pages(folder: Path) -> str:
@@ -324,12 +343,22 @@ def _pages(folder: Path) -> str:
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
-    title = _form(request).get("title", "")
-    with lock, face.capture():
+    form = _form(request)
+    title, chosen = form.get("title", ""), form.get("template", "")
+    with lock, face.capture() as notices:
+        try:
+            # PRESS-0017 § 4.3: the template's words, categories and tags;
+            # never its title, and the template file is only read.
+            shape = (store.read(store.template_path_for(folder, chosen)) if chosen
+                     else store.Entry(slug="", title="", date=datetime.now(),
+                                      categories=(), tags=(), body="", extra=()))
+        except store.StoreError as exc:
+            return _failed(face, notices, exc)
         slug = free_address(folder, address_for(title))
         store.write(folder, store.Entry(
             slug=slug, title=title.strip(), date=datetime.now().replace(microsecond=0),
-            categories=(), tags=(), body="", extra=()), draft=True)
+            categories=shape.categories, tags=shape.tags, body=shape.body, extra=()),
+            draft=True)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(slug))
 
 

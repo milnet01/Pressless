@@ -34,6 +34,7 @@ from pressless import (
     publishing,
     settings,
     setup,
+    templates,
     undo,
     updating,
 )
@@ -166,6 +167,7 @@ def _serve_held(folder: Path) -> int:
         setup.register(served, folder)
         editor.register(served, folder)
         cheatsheet.register(served)
+        templates.register(served, folder)
         publishing.register(served, folder)
         undo.register(served, folder)
         page_editor.register(served, folder)
