@@ -8268,7 +8268,7 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publish and Undo, Low (PRESS-0162 L7.2).
   Lanes: undo.
 
-- 📋 [PRESS-0173] **On Windows, a batch file that cannot be read or replaced during an update stops the update script before it restarts Pressless.**
+- ✅ [PRESS-0173] **On Windows, a batch file that cannot be read or replaced during an update stops the update script before it restarts Pressless.**
   installer.WINDOWS_SCRIPT runs under $ErrorActionPreference = 'Stop'. After
   the swap, Get-FileHash on the two batch files and the Move-Item replacing
   Start Pressless.bat are not retried or caught, so a failure there ends
@@ -8279,6 +8279,13 @@ already-built code ships in whichever release comes next.
   the Move-Item with Retry { ... } | Out-Null. Queued because no machine
   could parse or run PowerShell that day (the Windows box was off); land
   it only after a parse and one real update run there.
+  Resolved 2026-09-27 (bb9cc3c): the drafted fix landed. Verified on
+  the Windows box against a throwaway install, old script beside new:
+  normal, a batch file locked against reading, and one locked against
+  replacing. The old script stopped after "swapped" in both locked cases;
+  the new one started Pressless in all three. The user accepted this
+  throwaway run in place of a real update run; a real update is still
+  among PRESS-0133's checks before tagging.
   **Layman:** A rare hiccup while updating on Windows could leave Pressless closed instead of reopening it.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.6).
