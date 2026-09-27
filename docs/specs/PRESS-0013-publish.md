@@ -241,7 +241,7 @@ on a click:
 1. **The report**, PRESS-0022 § 4.5's three lines, unchanged. A non-zero exit
    there ends the run with that code, whatever the flag.
 2. **`--self-check` stops here** and returns 0.
-3. **Serve.** `face.serve(folder, open_browser=False)`, then
+3. **Serve.** `face.serve(folder)`, then
    `setup.register`, `editor.register` and `publishing.register` on it.
 4. **Choose the first page.** `settings.load(folder)` inside
    `face.capture()`. `NotSetUp`, or a `SettingsError` whose `key` is

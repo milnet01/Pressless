@@ -324,7 +324,7 @@ failures are. Then `store.move_to_bin` on it. The live file is not touched.
 ## 5. Invariants
 
 The tests below are in `tests/test_page_editor.py` unless named otherwise. The
-route tests run through `face.serve(tmp_path, open_browser=False)`, as
+route tests run through `face.serve(tmp_path)`, as
 `tests/test_editor.py` does, over furniture and pages made with
 `store.write_html`.
 

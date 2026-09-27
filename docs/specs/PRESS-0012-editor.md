@@ -447,7 +447,7 @@ Then `store.move_to_bin` on it. The published entry is not touched.
 ## 5. Invariants
 
 The tests below are in `tests/test_editor.py` unless named otherwise. Each runs
-the routes through `face.serve(tmp_path, open_browser=False)`, as
+the routes through `face.serve(tmp_path)`, as
 `tests/test_setup.py` does, over a Store made with `store.write` and furniture
 made with `store.write_html`.
 

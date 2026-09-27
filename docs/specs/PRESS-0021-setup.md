@@ -277,7 +277,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 ## 5. Invariants
 
 The tests below are in `tests/test_setup.py` unless named otherwise. Each
-runs the page through `face.serve(tmp_path, open_browser=False)` with a fake
+runs the page through `face.serve(tmp_path)` with a fake
 Publisher transport, as `tests/test_publisher.py` does, and recording doubles
 for `credentials.choose`, `read` and `write`. The doubles keep every test off
 the machine's real store, which matters on Windows CI: there
