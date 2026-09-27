@@ -43,6 +43,7 @@ from pressless.publisher import (
     SiteWouldBeEmptied,
     StrayFile,
     TooLarge,
+    UnfetchablePath,
     Unreachable,
     fetch_previous,
     publish,
@@ -1441,6 +1442,47 @@ def test_a_fetch_that_cannot_be_written_is_a_typed_failure(tmp_path):
 
     with pytest.raises(FetchNotWritten):
         fetch_previous(_settings(), "a-token", into, transport=transport)
+
+
+@pytest.mark.parametrize("paths, named", [
+    (["content/A.txt", "content/a.txt"], "content/a.txt"),
+    (["content/Post", "content/post/x.txt"], "content/post/x.txt"),
+    (["content/a\\b.txt"], "content/a\\b.txt"),
+    (["content/published/con.txt"], "content/published/con.txt"),
+    (["content/nul .jpg"], "content/nul .jpg"),
+    (["content/x:y.txt"], "content/x:y.txt"),
+    (["content/dot."], "content/dot."),
+])
+def test_a_path_windows_cannot_hold_is_named(tmp_path, monkeypatch, paths, named):
+    """INV-11: on Windows, a listing whose selected paths clash by case or
+    name a segment Windows cannot hold raises UnfetchablePath naming the
+    path, before any blob is read. Those used to end as FetchNotWritten,
+    whose answer -- free space -- is wrong for them (PRESS-0160)."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", True)
+    into = tmp_path / "into"
+    transport = _Transport(reads=_reads(_listing([(p, f"sha-{i}") for i, p in enumerate(paths)]),
+                                        blob=b"x"))
+
+    with pytest.raises(UnfetchablePath) as raised:
+        fetch_previous(_settings(), "a-token", into, "content", transport=transport)
+
+    assert repr(named) in str(raised.value)
+    assert not any("/git/blobs/" in request[1] for request in transport.requests)
+    assert not [p for p in into.rglob("*") if p.is_file()]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="`con.txt` is a device on Windows itself")
+def test_a_path_windows_cannot_hold_fetches_elsewhere(tmp_path, monkeypatch):
+    """INV-11's other half: off Windows the same listing fetches, so Linux
+    keeps undo for an entry whose slug is `con`."""
+    monkeypatch.setattr(publisher_module, "_ON_WINDOWS", False)
+    into = tmp_path / "into"
+    transport = _Transport(reads=_reads(_listing([("content/published/con.txt", "sha")]),
+                                        blob=b"x"))
+
+    fetched = fetch_previous(_settings(), "a-token", into, "content", transport=transport)
+
+    assert fetched.paths == ("content/published/con.txt",)
 
 
 # ------------------------------------------------------------ PRESS-0046 ----

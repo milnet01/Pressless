@@ -49,6 +49,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **On Windows, Undo names a file on the site that Windows cannot hold, instead of telling the writer to free disk space.** (PRESS-0160)
+
 - **Readers from a country Google cannot name, such as "(not set)", are counted under one "unknown" entry instead of passing as a country.** (PRESS-0155)
 
 - **Pressing Undo a second time no longer leaves a spare "before undo" draft of every entry the first press set aside.** (PRESS-0154)

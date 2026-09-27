@@ -500,6 +500,7 @@ does.
 | A Store write fails during the reconcile | the Store's failure | the reversals recorded so far are run, so his files are as they were |
 | Putting back fails | the Store's failure | whatever the failure left; nothing deleted |
 | The fetch area cannot be written | `FetchNotWritten` | nothing moved; the area is emptied |
+| On Windows, the earlier state names a file this computer cannot hold (PRESS-0009 § 4.5) | `UnfetchablePath` | nothing moved; the area is emptied |
 | A copy of a demoted entry is published and the drafts cannot be binned — **the Publish route's, not undo's** (§ 4.5) | success, and a note that the waiting drafts can be thrown away | the entry published, both drafts still in `drafts/` |
 | He closes the console mid-undo | nothing | as far as it got; pressing Undo again settles it |
 

@@ -141,7 +141,8 @@ class NoPreviousState(PublishError):
 # requires every message to end with what to do next, and for these five
 # that differs (§4.1, PRESS-0116). SiteFolderMissing: fix the setting.
 # StrayFile: remove the file. SiteWouldBeEmptied: rebuild the site.
-# FetchNotWritten: free space. RemoteStateMissing: retry.
+# FetchNotWritten: free space. RemoteStateMissing: retry. UnfetchablePath:
+# rename that file on the site (PRESS-0160).
 
 
 class SiteFolderMissing(PublishError):
@@ -162,6 +163,10 @@ class FetchNotWritten(PublishError):
 
 class RemoteStateMissing(PublishError):
     """Something INSIDE a repository that answers is absent."""
+
+
+class UnfetchablePath(PublishError):
+    """A fetched path this system's disk cannot hold (§4.5)."""
 
 
 class Transport(Protocol):
@@ -474,6 +479,8 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     parent = _required(parents[0], "sha", "the first parent")
 
     listing = _tree(session, settings.repository, parent)
+    if _ON_WINDOWS:
+        _refuse_what_windows_cannot_hold(listing, prefix)
     into = Path(into)
     try:
         # Staged inside `into` rather than beside it, so the move at the end
@@ -857,6 +864,46 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
     """
     first = path.split("/", 1)[0].casefold()
     return any(first == entry.rstrip("/").casefold() for entry in untouchable)
+
+
+# §4.5's Windows check, measured on a Windows 10 box with CreateFileW
+# (PRESS-0164). A device is judged on the part before the first dot with
+# trailing spaces removed, case ignored, so `nul .jpg` reaches one.
+_ON_WINDOWS = os.name == "nt"
+_WINDOWS_DEVICES = frozenset(
+    ["con", "prn", "aux", "nul", "conin$", "conout$"]
+    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789¹²³"])
+_WINDOWS_FORBIDDEN = set('<>:"|?*\\') | {chr(n) for n in range(32)}
+
+
+def _refuse_what_windows_cannot_hold(listing: dict, prefix: str) -> None:
+    """Refuse, before any blob is read, a selected path equal once case is
+    ignored to another or to a folder above one, or naming a segment Windows
+    cannot hold -- all used to end as FetchNotWritten, whose answer is to
+    free space (PRESS-0160)."""
+    files: set[str] = set()
+    folders: set[str] = set()
+    for entry in listing.get("tree", []):
+        path = entry.get("path")
+        if not path or entry.get("type") != "blob" or not _within_prefix(path, prefix):
+            continue
+        folded = path.casefold().split("/")
+        above = {"/".join(folded[:n]) for n in range(1, len(folded))}
+        whole = "/".join(folded)
+        if (whole in files or whole in folders or above & files
+                or not all(map(_windows_can_hold, path.split("/")))):
+            raise UnfetchablePath(
+                f"the previous state names {path!r}, which this computer "
+                f"cannot hold"
+            )
+        files.add(whole)
+        folders |= above
+
+
+def _windows_can_hold(segment: str) -> bool:
+    if not segment or segment[-1] in ". " or _WINDOWS_FORBIDDEN & set(segment):
+        return False
+    return segment.split(".")[0].rstrip(" ").casefold() not in _WINDOWS_DEVICES
 
 
 def _within_prefix(path: str, prefix: str) -> bool:

@@ -7961,13 +7961,17 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Store, #1 #4 #6.
   Lanes: store.
 
-- 📋 [PRESS-0160] **A fetch whose repository paths clash by case or are invalid on Windows is told to free disk space.**
+- ✅ [PRESS-0160] **A fetch whose repository paths clash by case or are invalid on Windows is told to free disk space.**
   publisher.fetch stages every repository path. Two differing only by
   case land on one staged file on Windows, and a path Windows cannot
   hold (: ? * a device name, a trailing dot) fails the write; both end
   as FetchNotWritten, whose Face sentence says to free space. Needs a
   type or sentence of its own in PRESS-0009, then a check of the
   listing before staging that names the path.
+  Resolved 2026-09-27: PRESS-0009 amended (4.1, 4.5, 6, INV-11) and gated
+  one loop, five verified and fixed; publisher.UnfetchablePath with its
+  Face sentence; the check runs on Windows only, before any blob is read.
+  PRESS-0015 6 took the row as a write-back.
   **Layman:** Undo on Windows could fail with advice to free disk space when the real cause is two file names Windows cannot tell apart.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, #10.

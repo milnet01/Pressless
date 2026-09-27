@@ -209,6 +209,10 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "Pressless could not save the earlier version of your site to this computer.",
         "Free some space on this computer's drive, then try again.",
     ),
+    publisher.UnfetchablePath: _say(
+        "The earlier version of your site names a file this computer cannot hold.",
+        "Rename the file named below on your site, publish, then try again.",
+    ),
     publisher.RemoteStateMissing: _say(
         "Something Pressless needed from GitHub was not there.",
         "Try again.",

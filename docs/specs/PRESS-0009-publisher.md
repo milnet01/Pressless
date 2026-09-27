@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Gated for one loop: five verified, five fixed, not converged. Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -163,13 +163,15 @@ Every failure this module **raises** is one of the types above. A crash
 raises nothing and is §6's own row. None of them carries a sentence for
 the writer — `docs/design.md` § Errors gives that job to the Face alone.
 
-**`transport` is the whole test seam, and it is stated here because §7
-depends on it.** `None` means the module's own `urllib.request` client.
+**`transport` is the test seam for every request, and it is stated here
+because §7 depends on it.** `None` means the module's own `urllib.request` client.
 Nothing in Pressless passes it; tests hand in a double that answers with
 prepared responses and records every request. A module-private global
 patched by name would work equally well for tests and would leave the
 surface silent about it, which is what an implementer would otherwise
-have to invent.
+have to invent. **The one other seam is the platform test for §4.5's
+Windows check**: the module attribute `_ON_WINDOWS`, read on each call,
+which INV-11's test sets.
 
 **Three things about the seam are part of the contract, because a test
 double must supply all three.** It returns the response **headers**, which
@@ -468,18 +470,22 @@ Where the current commit has no parent there is nothing before it, and
 that raises `NoPreviousState`.
 
 **On Windows, the selected paths are checked before any blob is fetched.**
-Two paths equal once case is ignored would land on one file, and a
-segment Windows cannot hold fails its write — and both used to end as
-`FetchNotWritten`, whose answer is to free space. The check raises
-`UnfetchablePath` naming the first offending path, in listing order, and
-nothing is written. A segment Windows cannot hold carries `< > : " | ? *`
-or a control character, ends in a dot or a space, or is a device name:
+A path equal, once case is ignored (`str.casefold`), to another selected
+path or to a folder above one would land on one file, and a segment
+Windows cannot hold fails its write or lands elsewhere — and all of these
+used to end as `FetchNotWritten`, whose answer is to free space. The
+check raises `UnfetchablePath` naming the first path, in listing order,
+that clashes with one before it or holds such a segment, and nothing is
+written. A segment Windows cannot hold carries `< > : " | ? * \` or a
+control character, ends in a dot or a space, or is a device name:
 `con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`, `conin$`,
 `conout$` and the superscript `com¹`–`com³` and `lpt¹`–`lpt³`, judged on
 the part before the first dot with trailing spaces removed, case ignored.
 **(decided here) The check runs on Windows only**: it is about what this
 computer's disk can hold, and elsewhere those paths fetch correctly, so
-refusing there would take a working undo away. A slug such as `con`
+refusing there would take a working undo away. Pressless ships for Linux
+and Windows only (`docs/design.md` § The stack, and what it rules out), so Windows is the one
+case-insensitive disk it writes to. A slug such as `con`
 passes the Store's slug test, so this is reachable under `content/`.
 
 **No fetched file lands at its final path under `into` until every file
@@ -681,12 +687,14 @@ behaviour.
   `UnfetchablePath` naming the path, before any blob is read; elsewhere the
   same listing fetches.
   *Test:* `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named`
-  — with the platform test forced to Windows, one listing each holding
-  `content/A.txt` beside `content/a.txt`, `content/published/con.txt`,
-  `content/nul .jpg`, `content/x:y.txt` and `content/dot.`. Each raises
-  `UnfetchablePath` whose message names the path, the double records no
-  blob read, and `into` holds no file. Forced to not-Windows, the
-  `con.txt` listing fetches.
+  — with `_ON_WINDOWS` set, one listing each holding `content/A.txt`
+  beside `content/a.txt`, `content/Post` beside `content/post/x.txt`,
+  `content/published/con.txt`, `content/nul .jpg`, `content/x:y.txt`,
+  `content/a\b.txt` and `content/dot.`. Each raises `UnfetchablePath`
+  whose message names the later path, the double records no blob read,
+  and `into` holds no file. Plus
+  `::test_a_path_windows_cannot_hold_fetches_elsewhere`: with it cleared,
+  on a host that is not Windows, the `con.txt` listing fetches.
   *Breaks when:* the check runs after staging, so a clash overwrites one
   file with the other in silence; or it runs everywhere, and Linux loses
   undo for a slug named `con`.
@@ -830,7 +838,7 @@ code, so a green INV-1 says nothing about the rest.
 | INV-9 | `tests/test_publisher.py::test_writes_are_paced_and_hints_retried` and `::test_each_write_is_preceded_by_its_own_pace`, which asserts the wait sequence rather than a count |
 | What the Face branches on to tell §6's own-type rows apart | **the type itself** — §4.1 declares `SiteFolderMissing`, `StrayFile`, `SiteWouldBeEmptied`, `FetchNotWritten`, `RemoteStateMissing` and `UnfetchablePath`, and pairs each with the answer its message ends on. PRESS-0116 settled it; PRESS-0011 branches on type rather than on a discriminator of its own |
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
-| INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` |
+| INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` and `::test_a_path_windows_cannot_hold_fetches_elsewhere` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no dot-name segment outside an untouchable first segment | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
@@ -909,3 +917,4 @@ its own type; the rows above credit them on that condition.
 | 11 | 2026-09-08 | 3, cold — genre pinned `spec`; packet rebuilt from disk, § 4.1's five new types declared unbuilt | 1 | 2 | 0 | 1 | **Five verified, five fixed. First loop of a new run**, armed by PRESS-0116's amendment; the loop-10 cap lapsed with it. **Every finding landed on text that amendment wrote.** **All three lanes: § 10 still called PRESS-0116 an open decision** where § 4.1 and § 6 had just settled it, so the Face's builder and the Publisher's would read opposite answers. **All three: § 4.2 said *Both raise `PublishError`*** for the two conditions it owns, which § 6 had just given their own types — the section an implementer actually builds those two from. **Two: the Status line said *Implemented*** with the five types unbuilt; third time today, and each time the amendment moved and the line did not. **One, and the one that mattered: nothing could falsify the mapping** — INV-10 asserted `PublishError`, which every new type subclasses, so a module raising the bare type everywhere passed. Each condition's existing test now asserts its type by name. **From a lane's open question: `RemoteStateMissing` was grouped as refuse-before-any-write**, and `_failure` maps a status on any request, so it can arrive after blobs are sent; its row is *unchanged* on § 4.3's property, not on timing. |
 | 12 | 2026-09-08 | 3, cold — identical brief; packet rebuilt whole from disk and extended with the five condition tests windowed. GitHub's live API and Windows unrunnable; the five types still unbuilt, and the brief said so | 1 | 3 | 1 | 1 | **Six verified, six fixed; one dismissed. Cap reached (2 for a spec); tail empty, and the document routes to implementation.** **A CORRECTION TO ROW 11, which cannot be edited: it records five fixed and the commit carries two.** Three edits it claims never landed — §10's open-decision row, §4.2's *Both raise `PublishError`*, and the Status line — each confirmed by `git blame` against an older commit, not by recall. All three were re-found cold here, two of them by all three lanes, so the loop caught what the row asserted. **All three lanes: §4.2 gave its two folder conditions the base type** where §6 had just given them their own — the section an implementer builds those two from, and the one passage that agreed with the code. **All three: §10 still called PRESS-0116 open.** **One lane, and the one that reaches the writer: §10 credited four rows to tests asserting `PublishError`**, which every new type subclasses — so §6's mapping was checked by nothing while §10 read green. The rule INV-10 held for itself now sits once under §10's table and names all five tests; INV-10's copy became a pointer. **One lane: the five *what to do next* phrases were mapped by POSITION** and §4.1's order differs from §6's, so a Face built off §6's rows gets three of five wrong; each type now carries its answer beside it and both loose lists are gone. **From a lane's open question: *the first four refuse BEFORE any write* is false of the disk** — `FetchNotWritten` is raised after files have landed at their final paths, which is §4.5's own residual window; scoped to GitHub. **Dismissed as immaterial:** §6 credited itself with the end-with-what-to-do-next requirement `docs/design.md` § Errors owns; a second lane reasoned to the same dismissal, and the rewrite above corrected it in passing rather than restating it. **Self-caught at the re-read:** my own §6 fix claimed a row ordering nothing backs. **A CALM cap — one of the six landed on text this run wrote**, anchors checked by `git blame`; four predate the amendment entirely. **Seven of the run's eleven verified findings fall inside the gated span**, so this was mostly gate. Two open questions resolved clean. |
 | 13 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0087's INV-7 scope and § 11's two records. GitHub's live API and Windows unrunnable | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed; one surfaced in the brief. One loop only, by user instruction: not converged.** All three lanes, and the packet build before them: § 6 had no row for the base `PublishError`, which a status no type names and an unreadable local file both raise; it now reads unchanged. One lane: § 10 narrowed the Builder's dot-name rule to the root where INV-10 refuses one anywhere. Surfaced, a code fix under PRESS-0117: messages quote the URL, and with it the account. Neither finding inside the gated span. |
+| 14 | 2026-09-27 | 2, cold — amendment gate for PRESS-0160, one loop by the budget; packet windowed `fetch_previous` and carried the Windows device measurement. GitHub and Windows unrunnable | 1 | 3 | 0 | 1 | **Five verified, five fixed; not converged, one loop is the budget.** Both lanes: INV-11 forced the platform through a seam § 4.1 did not name. One: the not-Windows half could not pass on a Windows host. One: `\` was missing from the forbidden set. One: "Windows only" read against § 4.4's macOS remark; macOS is not a target, now said. From both lanes' open questions: a file clashing by case with a folder above another path. Inside the gated span: 5 of 5. Casefold against NTFS folding left as stated: slugs are `[a-z0-9-]`. |
