@@ -8386,6 +8386,24 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: in-session-2026-09-28 rule 18a.
 
+- 📋 [PRESS-0178] **The app's screens get a designed look, with a light and a dark theme.**
+  Today the Face ships no stylesheet, so every screen is the browser's
+  plain white default. The Hub screenshots show exactly that.
+
+  - One designed look across every screen: editor, list, setup,
+    published, errors.
+  - A light and a dark theme. The default follows the system setting
+    (prefers-color-scheme); Settings can pin either one.
+  - Works in Chrome and Edge on Windows as well as on Linux.
+  - Covers the app's own screens only. The published site's look is the
+    writer's templates, not this item.
+
+  Retake the Hub screenshots once it lands.
+  **Layman:** The app stops looking like a bare white page, and you can choose a light or dark look.
+  Kind: feature.
+  Source: user-request-2026-09-28.
+  Lanes: face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
