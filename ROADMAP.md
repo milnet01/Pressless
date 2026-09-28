@@ -7682,6 +7682,9 @@ already-built code ships in whichever release comes next.
   Chrome, the console window, the keyring prompt in the desktop session,
   one real Publish. Then the user runs scripts/sign-release.py v0.5.0.
   by-hand-browser-checks.py passed 23/23 the same day.
+  Added (2026-09-28, PRESS-0178): look at the new styling in Chrome and
+  Edge on the Windows box, light and dark (Windows Settings, Colours).
+  Check the editor's box and proof sit side by side on a wide window.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8386,7 +8389,7 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: in-session-2026-09-28 rule 18a.
 
-- 📋 [PRESS-0178] **The app's screens get a designed look, with a light and a dark theme.**
+- ✅ [PRESS-0178] **The app's screens get a designed look, with a light and a dark theme.**
   Today the Face ships no stylesheet, so every screen is the browser's
   plain white default. The Hub screenshots show exactly that.
 
@@ -8399,6 +8402,16 @@ already-built code ships in whichever release comes next.
     writer's templates, not this item.
 
   Retake the Hub screenshots once it lands.
+  Shipped (2026-09-28): the look follows the computer's light/dark
+  setting; the Settings pin moved to PRESS-0180 by the user's choice.
+  One stylesheet in the Face's page wrapper reaches every screen, every
+  rule scoped under `.face` so his site's stylesheet cannot restyle
+  the Face, and the box reached only through `:where()` so his site's
+  font wins. Tests: test_face.py test_every_page_carries_a_light_and_a_dark_look
+  and test_the_look_is_scoped_and_leaves_the_box_to_his_site, each seen
+  red by a hand mutation. Checked in headless Chrome on Linux, both
+  themes, every screen. Windows Chrome and Edge are owed by hand
+  (PRESS-0133).
   **Layman:** The app stops looking like a bare white page, and you can choose a light or dark look.
   Kind: feature.
   Source: user-request-2026-09-28.
@@ -8434,6 +8447,20 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-09-28.
   Lanes: face.
+
+- 📋 [PRESS-0180] **Settings can pin Pressless to light or dark, whatever the computer is set to.**
+  Split from PRESS-0178, which shipped the look following the system
+  setting only (user choice, 2026-09-28).
+
+  A Light / Dark / Match computer choice. It needs a new saved setting,
+  so it changes the settings file's format (PRESS-0001) and the Face
+  must read it on every page. The stylesheet already keys every colour
+  off custom properties, so the pin is a class on the page that selects
+  one set.
+  **Layman:** You can choose light or dark for Pressless yourself, instead of it copying your computer.
+  Kind: feature.
+  Source: user-request-2026-09-28.
+  Lanes: face, settings.
 
 ## Milestones
 

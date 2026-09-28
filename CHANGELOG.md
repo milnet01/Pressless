@@ -12,6 +12,16 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pressless has a look of its own, light or dark to match your computer** (PRESS-0178)
+  Every screen now wears the logo's colours, cream paper, dark ink and
+  amber, instead of the browser's plain white. When your computer is
+  set to dark, so is Pressless. The editor puts the box and the proof
+  side by side on a wide window, and a problem now shows at the top of
+  the page rather than below the box. The box still uses your site's
+  own font.
+
 ## [0.5.0] - 2026-09-28
 
 **Theme:** undo, your other pages, templates, and it updates itself

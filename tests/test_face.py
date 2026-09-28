@@ -13,6 +13,7 @@ import http.client
 import importlib
 import inspect
 import pkgutil
+import re
 import socket
 import sys
 import urllib.parse
@@ -427,6 +428,47 @@ def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
         assert headers.get("Content-Security-Policy") == FRAMES_POLICY_WORDS
     finally:
         served.stop()
+
+
+def _served_style(tmp_path: Path) -> tuple[str, str]:
+    """The page the Face serves for a bare body, and the stylesheet inside it."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        status, _, body = _Client(served).request("GET", "/words")
+    finally:
+        served.stop()
+    assert status == 200
+    style = re.search(r"<style>(.*?)</style>", body, re.S)
+    assert style, "the page carries no stylesheet"
+    return body, style.group(1)
+
+
+def test_every_page_carries_a_light_and_a_dark_look(tmp_path: Path) -> None:
+    """PRESS-0178: the look follows the system, and every screen has it."""
+    body, style = _served_style(tmp_path)
+    assert '<body class="face">' in body
+    assert "color-scheme: light dark" in style
+    assert "@media (prefers-color-scheme: dark)" in style
+
+
+def test_the_look_is_scoped_and_leaves_the_box_to_his_site(tmp_path: Path) -> None:
+    """PRESS-0178: the editor links his site's stylesheets into the same page.
+
+    Every rule sits under `.face`, so a bare `body` or `a` rule of his cannot
+    restyle the Face. And the box is only ever reached through `:where()`, so
+    his `.post-body` rule outranks it and he types in his site's own font
+    (PRESS-0012: the box takes builder.BODY_CLASS).
+    """
+    _, style = _served_style(tmp_path)
+    selectors = [group for group in re.findall(r"([^{}]+)\{", style)
+                 if not group.strip().startswith("@")]
+    assert selectors, "no rules were read"
+    for group in selectors:
+        for selector in group.split(","):
+            selector = selector.strip()
+            assert selector.startswith((".face", "body.face", ":root")), selector
+            assert "textarea" not in re.sub(r":where\([^)]*\)", "", selector), selector
 
 
 def _raises(request: face.Request) -> str:

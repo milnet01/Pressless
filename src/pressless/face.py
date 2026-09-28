@@ -465,11 +465,102 @@ document.addEventListener("click", async (event) => {
 """
 
 
+# The Face's look, in the logo's colours: cream paper, dark ink, one amber
+# (PRESS-0178). Dark follows the system. Every rule sits under `.face`, because
+# the editor links his site's stylesheets into this same document and a bare
+# `body` or `a` rule of his would otherwise restyle the Face. The box keeps his
+# site's font, and takes its colours only where his stylesheet sets none.
+_STYLE = """
+:root { color-scheme: light dark;
+  --paper: #f4efe6; --sheet: #fffdf8; --ink: #2b2620; --soft: #6b6255;
+  --line: #d9cfbf; --amber: #e9a23b; --amber-ink: #8a5a12; --press: #2b2620;
+  --on-press: #f4efe6; --alert: #b3412c; }
+@media (prefers-color-scheme: dark) { :root {
+  --paper: #1d1a16; --sheet: #28241f; --ink: #f4efe6; --soft: #b5aa99;
+  --line: #3e382f; --amber: #e9a23b; --amber-ink: #f0b95e; --press: #e9a23b;
+  --on-press: #1d1a16; --alert: #e27a62; } }
+body.face { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.5 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+.face .bar { display: flex; align-items: center; gap: .6rem; padding: .7rem 1.5rem;
+  border-bottom: 1px solid var(--line); }
+.face .bar svg { width: 1.3rem; height: auto; }
+.face .bar b { font: 600 1.2rem/1 Georgia, "Iowan Old Style", "Times New Roman", serif; }
+.face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
+.face main { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
+.face h1, .face h2 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-weight: 600; line-height: 1.2; }
+.face h1 { font-size: 2rem; margin: .5rem 0 1.25rem; }
+.face h2 { font-size: 1.3rem; margin: 2rem 0 .5rem; padding-bottom: .3rem;
+  border-bottom: 1px solid var(--line); }
+.face a { color: var(--amber-ink); text-underline-offset: .15em; }
+.face ul { padding-left: 1.2rem; }
+.face li { margin: .25rem 0; }
+.face small, .face .hint, .face [id$="-hint"], .face [id$="-status"] { color: var(--soft); }
+.face label { display: inline-flex; flex-direction: column; gap: .2rem;
+  margin: 0 1rem .75rem 0; font-size: .9rem; color: var(--soft); vertical-align: bottom; }
+.face input, .face select, .face :where(textarea) { font: inherit; color: var(--ink);
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+  padding: .45rem .6rem; }
+.face input:focus, .face select:focus, .face :where(textarea:focus), .face button:focus-visible {
+  outline: 2px solid var(--amber); outline-offset: 1px; }
+.face button { font: inherit; font-weight: 600; cursor: pointer; color: var(--ink);
+  background: transparent; border: 1px solid var(--line); border-radius: 6px;
+  padding: .45rem .9rem; vertical-align: bottom; }
+.face label + button, .face label ~ button { margin-bottom: .75rem; }
+.face button:hover { border-color: var(--amber); }
+.face [data-editor="publish"] { background: var(--press); color: var(--on-press);
+  border-color: var(--press); }
+.face #editor { display: flex; flex-wrap: wrap; align-items: flex-end; }
+.face #editor > p { flex-basis: 100%; margin: .25rem 0 .75rem; }
+.face :where(textarea) { box-sizing: border-box; width: 100%; }
+.face :where(#editor textarea) { flex-basis: 100%; min-height: 60vh; resize: vertical;
+  padding: 1rem 1.2rem; }
+.face details { margin: 1rem 0; }
+.face summary { cursor: pointer; color: var(--soft); }
+.face table { border-collapse: collapse; margin: .5rem 0; }
+.face th, .face td { text-align: left; padding: .35rem .8rem .35rem 0;
+  border-bottom: 1px solid var(--line); vertical-align: top; }
+.face code, .face pre { font: .9em/1.4 ui-monospace, Consolas, "DejaVu Sans Mono", monospace; }
+.face pre { white-space: pre-wrap; background: var(--sheet); padding: .6rem;
+  border-radius: 6px; }
+.face .failure, .face .notices > li { list-style: none; margin: 1rem 0;
+  padding: .8rem 1rem; background: var(--sheet); border: 1px solid var(--line);
+  border-left: 4px solid var(--alert); border-radius: 6px; }
+.face .notices { padding: 0; }
+.face .notices > li { border-left-color: var(--amber); }
+.face .failure p, .face .notices p { margin: .2rem 0; }
+.face .failure .what, .face .notices .what { font-weight: 600; }
+.face iframe { width: 100%; min-height: 70vh; border: 1px solid var(--line);
+  border-radius: 6px; background: #fff; }
+.face main:has(> #editor) { display: flex; flex-direction: column; }
+.face main > #failure, .face main > #undo-result { order: -1; }
+@media (min-width: 70rem) {
+  .face main:has(> #editor) { max-width: none; display: grid; column-gap: 2rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .face main:has(> #editor) > * { grid-column: 1; }
+  .face main > #preview { grid-column: 2; grid-row: 1 / span 12; align-self: start;
+    position: sticky; top: 1rem; height: calc(100vh - 2rem); }
+}
+@media print { .face .bar { display: none; } body.face { background: #fff; color: #000; } }
+"""
+
+# The logo's mark, drawn inline so the bar needs no file (PRESS-0178).
+_MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
+         '<path d="M16 34 H62 L86 58 V146 a6 6 0 0 1 -6 6 H22 a6 6 0 0 1 -6 -6 V40 '
+         'a6 6 0 0 1 6 -6 Z" fill="none" stroke="currentColor" stroke-width="6" '
+         'stroke-linejoin="round"/><path d="M62 34 V52 a6 6 0 0 0 6 6 H86 Z" '
+         'fill="#e9a23b"/><g fill="#e9a23b"><rect x="28" y="80" width="44" height="7" '
+         'rx="3.5"/><rect x="28" y="98" width="44" height="7" rx="3.5"/>'
+         '<rect x="28" y="116" width="30" height="7" rx="3.5"/></g></svg>')
+
+
 def _page(body: str) -> str:
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        f"<title>Pressless</title></head><body>{body}<script>{_SCRIPT}</script>"
-        "</body></html>"
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>Pressless</title><style>{_STYLE}</style></head>"
+        f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
+        f"</header><main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 
 
