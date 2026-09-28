@@ -120,6 +120,14 @@ explains what it carries across.
 An import anyone can run is planned (PRESS-0125 on the
 [roadmap](ROADMAP.md)).
 
+## Getting help
+
+If something goes wrong or does not make sense, open an issue on
+[GitHub Issues](https://github.com/milnet01/Pressless/issues). Say what
+you pressed, what you expected, and what Pressless showed you. A security
+problem is different: report it privately, as [SECURITY.md](SECURITY.md)
+explains.
+
 ## For the curious
 
 | Document | What it tells you |
