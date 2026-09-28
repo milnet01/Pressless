@@ -1,10 +1,10 @@
 # Versioning overrides — Pressless
 
-**Pressless follows the global standards unmodified.** This is not a
-delta. It holds the two answers `~/.claude/standards/versioning.md`
+This file holds the two answers `~/.claude/standards/versioning.md`
 refuses to supply — § 3's breaking surfaces and § 4's `1.0` exit
 condition — which `~/.claude/standards/README.md` § The three cases pins
-to this path.
+to this path. **It also carries one delta**: § The MINOR follows the
+milestones, which departs from § 4.
 
 ## What would make this 1.0
 
@@ -16,18 +16,30 @@ deliberate: `ROADMAP.md` § Milestones states the same condition and
 carries which item belongs to which milestone. Change them together —
 nothing checks that they agree.
 
-**The version numbers in `ROADMAP.md` § Milestones name goalposts, not
-cut releases.** Decided by the user 2026-08-27; that section's opening
-line already says a number there records which signs of success hold. A
-release takes the level § 4 gives it, so a goalpost is reached at
-whatever number the ladder has produced by then — which will not be the
-number the goalpost is written as.
+## The MINOR follows the milestones
+
+**A departure from `versioning.md` § 4**, decided by the user
+2026-09-28. It replaces the 2026-08-27 decision that the milestone
+numbers were goalposts only. Under § 4 every release since 0.1.0 is a
+PATCH, so the history would run 0.1.x straight to 1.0.0 and say nothing
+about progress a user can see.
+
+- **A release takes the number of the highest milestone in `ROADMAP.md`
+  § Milestones whose section has every item shipped**, where that is
+  higher than the last release. `roadmap_query` with `status:
+  ["planned","in-progress"]` answers it: the lowest section still listed
+  is the first milestone not reached.
+- **Any other release bumps the PATCH.**
+- **A breaking change waits for the next milestone release.** It is
+  never shipped in a PATCH, and it never takes a MINOR of its own, so the
+  MINOR always names a milestone. Its changelog entry says what the
+  writer must do.
 
 ## The breaking surfaces
 
 A change to anything below is breaking however small the diff: someone
-who upgrades has something that used to work stop working. Inside `0.x`
-that bumps the MINOR and resets the PATCH (`versioning.md` § 4).
+who upgrades has something that used to work stop working. It ships
+only in a milestone release (§ The MINOR follows the milestones).
 
 ### The writer's own files
 
@@ -104,7 +116,8 @@ whether or not this file mentions it.
 
 | Claim | What checks it |
 |---|---|
-| A release's level matches what it changed | Nothing. `cut-release` does not choose the level, and its `Added`-forbids-a-PATCH floor is skipped while MAJOR is `0`. |
+| A release's number matches the milestones reached | Nothing automatic. The `roadmap_query` call in § The MINOR follows the milestones answers it, and `cut-release` does not run it. |
+| A breaking change waited for a milestone release | Nothing. `cut-release` does not choose the level, and its `Added`-forbids-a-PATCH floor is skipped while MAJOR is `0`. |
 | A surface here still has the shape described | Partly. `tests/test_settings.py::test_field_names_are_the_documented_set` pins the Settings field-name set. Nothing pins the version refusal this file names as a breach, and most other surfaces are not built. |
 | This file and `ROADMAP.md` § Milestones agree on 1.0 | Nothing. § 4 requires the condition stated here, so the copy is deliberate and both have to be changed together. |
 

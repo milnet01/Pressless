@@ -350,10 +350,10 @@ This file is read in full by every session on every turn, so its
 
 Any place this project deliberately departs from a global standard goes
 in `docs/standards/`, with the reason. **`versioning-overrides.md` is
-not one of those** — it holds the answers `versioning.md` §§ 3 and 4 ask
-every project for, which is why a project following the global set
-unmodified still writes it. That directory's own `README.md` sorts the
-two: a departure is its kind 1, a deltas-only file.
+mostly not one of those** — it holds the answers `versioning.md` §§ 3
+and 4 ask every project for. It also carries one departure: a release
+takes the number of the milestone it completes, not § 4's PATCH. That
+directory's own `README.md` sorts the kinds.
 
 ---
 

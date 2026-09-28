@@ -23,10 +23,11 @@ Three things belong here, and nothing else:
 3. **Standards this project owns outright** — a rule that is genuinely
    about this project and has no global equivalent.
 
-**Pressless follows the global set unmodified**, and the file named
-above does not change that. Nothing else here departs from a global
-standard; if anything ever does, it goes in a file of kind 1 with its
-reason.
+**Pressless follows the global set with one departure**:
+`versioning-overrides.md` § The MINOR follows the milestones departs
+from `versioning.md` § 4. That file is kind 2 and holds this one delta
+beside its answers. Any other departure goes in a file of kind 1 with
+its reason.
 
 **A copy of a global standard does not belong here.** Two copies are two
 standards that will disagree, and the one nobody is looking at will be
