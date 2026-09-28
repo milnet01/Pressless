@@ -7676,6 +7676,12 @@ already-built code ships in whichever release comes next.
   sandbox="allow-same-origin" (measured in Chrome only), and PRESS-0012
   § 10's script row is checked by opening a /preview/... address
   directly, since inside the frame no script runs.
+  Progress (2026-09-28): v0.5.0 is tagged and GitHub holds it as a
+  DRAFT (both artefacts built, notes match CHANGELOG). The user chose to
+  run the Windows rows on the draft's own zip before signing: Edge and
+  Chrome, the console window, the keyring prompt in the desktop session,
+  one real Publish. Then the user runs scripts/sign-release.py v0.5.0.
+  by-hand-browser-checks.py passed 23/23 the same day.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
