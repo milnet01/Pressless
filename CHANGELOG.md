@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-28
+
+**Theme:** undo, your other pages, templates, and it updates itself
+
+The number jumps from 0.1.2 because release numbers now follow the
+roadmap's milestones, and every item up to the 0.5.0 milestone is done.
+
 ### Added
 
 - **Start something new from a template** (PRESS-0017)
