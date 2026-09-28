@@ -8404,6 +8404,37 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-28.
   Lanes: face.
 
+- 📋 [PRESS-0179] **A "Suggest or report a problem" button opens a ready-filled issue on GitHub.**
+  Today the only route is the README's Getting help section, which a
+  user of the downloaded app never sees.
+
+  - A button on every screen opens the browser at the repository's
+    new-issue page, with the title and a short form already filled in:
+    the Pressless version and the operating system, then blanks for what
+    they pressed, what they expected and what they saw.
+  - Nothing else is sent. No site address, no entry text, no settings,
+    no log. The user reads and edits it before submitting.
+  - Say before it opens that the issue is public, and point a security
+    problem at SECURITY.md's private route instead.
+  - Every Pressless user already has a GitHub account, because publishing
+    goes through one, so this needs nothing new from them.
+
+  Ruled out, and why:
+  - Filing the issue with the user's own publishing key: it is scoped to
+    their site, and widening it to file issues asks for more power than
+    publishing needs.
+  - A form posting to a server of ours: a server to run, spam to
+    handle, and no secret can ship inside a public app.
+  - Email: it needs a public address, and gives no shared place for
+    answers.
+
+  GitHub Discussions is off on the repository. Turning it on would give
+  questions and ideas their own place, and the button could offer both.
+  **Layman:** A button in the app lets people send a suggestion or report a problem, without leaving anything private behind.
+  Kind: feature.
+  Source: user-request-2026-09-28.
+  Lanes: face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
