@@ -10,8 +10,8 @@ Pressless is a program for writers who keep a website on GitHub Pages
 (GitHub's free web hosting). It runs on your own computer and opens in
 your normal web browser.
 
-When it is finished, you will write an entry, see exactly how it will
-look, and click once to put it on your site.
+You write an entry, see exactly how it will look, and click once to put
+it on your site.
 
 Two things it is deliberately **not**:
 
@@ -23,35 +23,42 @@ Two things it is deliberately **not**:
 
 ## Where it stands
 
-**Not ready to use yet.** The parts that work behind the scenes are
-built and tested. Those parts:
+**An early version you can use day to day, on Linux and Windows.** It
+does:
 
-- turn your writing into web pages
-- build the whole site
-- keep your GitHub key safe
-- publish to GitHub
+- write with a few simple marks, with a cheat sheet below the box;
+- show the real finished page beside the words as you type;
+- save as you go, keeping changes to a live entry apart until you
+  publish them;
+- publish with one button, and put your files back if that fails;
+- undo the last publish in one step;
+- edit your other pages, and the header, footer and navigation;
+- start a new entry from a template;
+- update itself when a new version is out.
 
-What is missing is the part you would see and click.
-
-What comes next, in order:
-
-1. **Setup** — you paste in your GitHub key once and type a few facts
-   about your site. Built; you will reach it once the next step arrives.
-2. **Writing and publishing** — the editor, the preview and the Publish
-   button. This is the first version you could actually use.
-3. **Undo**, then **editing your other pages**, then **photographs and
-   templates**, then **a visitor dashboard**.
+Still to come: **photographs** in the editor, **a dashboard** showing who
+reads your site, and **bringing in a WordPress blog** yourself.
 
 [ROADMAP.md](ROADMAP.md) has the detail. [CHANGELOG.md](CHANGELOG.md)
 lists what each release added.
 
-## Trying the download today
+## Before you start
+
+You need two things from GitHub (the site where your website's files
+are kept):
+
+1. **A GitHub account, and a repository for your site** — a repository
+   is GitHub's name for a project folder. It can be empty. Turn on GitHub
+   Pages (GitHub's free web hosting) for it in the repository's
+   **Settings → Pages**.
+2. **A publishing key.** On GitHub, open **Settings → Developer settings →
+   Personal access tokens** and make a token that may change the contents
+   of your site's repository. Pressless calls this your key. It asks for
+   it once and keeps it where only your computer account can read it.
+
+## Getting started
 
 Download from the [latest release](https://github.com/milnet01/Pressless/releases/latest).
-
-**Today the program only checks itself.** It finds its folder, finds a
-safe place on your computer to keep a key, prints what it found, and
-stops. Nothing is written except that folder.
 
 ### Where your writing will live
 
@@ -65,19 +72,33 @@ live** before you first start it.
 2. Save it in the folder where you want your writing kept.
 3. Allow it to run as a program. In most file managers that is
    right-click → **Properties** → **Permissions**.
-4. Start it. To see what it printed, start it from a terminal.
+4. Double-click it. Pressless opens in your web browser.
 
 ### Windows
 
 1. Download `Pressless-<version>-windows.zip`.
 2. Extract it into the folder where you want your writing kept. You get a
    `Pressless` folder and a file called `Start Pressless.bat`.
-3. Double-click `Start Pressless.bat`. A window shows what it found and
-   waits for a key press.
+3. Double-click `Start Pressless.bat`. Pressless opens in your web
+   browser, with a plain text window beside it. Leave that window open
+   while you work: closing it stops Pressless.
+
+### The first time
+
+Pressless asks for your site's repository (written as `owner/name`), your
+site's name and address, and your key. It checks them with GitHub before
+saving anything. Then it shows the list of your writing, where **New
+entry** starts one.
 
 ### Upgrading without losing anything
 
-**Put the new version in the same place as the old one.**
+**From 0.5.0 on, Pressless updates itself.** When a new version is out,
+the list of your writing says so. **Update now** installs it in place and
+opens Pressless again; **Later** and **Skip this version** leave it. It
+installs only a version signed by its maintainer. The line under the list
+turns this checking off.
+
+**Coming from an older version, put the new one in the same place.**
 
 - On Linux, save the new AppImage in the same folder.
 - On Windows, extract the new zip over the old copy.
@@ -86,15 +107,10 @@ Put it anywhere else and it starts with an empty `Pressless-data`
 folder. Your writing stays beside the old copy, and that folder is the
 only place it is kept.
 
-**From 0.1.3 on, Pressless updates itself.** When a new version is
-out, the list of your writing says so, and **Update now** installs it
-in place and opens Pressless again. It installs only a version signed
-by its maintainer. The line under the list turns the looking off.
-
 ## Moving an existing blog in
 
-**You cannot bring your own blog in yet.** Once Pressless is ready, you
-will be able to start with an empty one and write from there.
+**You cannot bring your own blog in yet.** You start with an empty site
+and write from there.
 
 An import from WordPress exists, but it was built for one site. It needs
 that site's own files, so it only runs on the maintainer's computer.
