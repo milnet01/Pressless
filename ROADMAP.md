@@ -7762,6 +7762,10 @@ already-built code ships in whichever release comes next.
   Decision (user, 2026-09-29, later that day): 0.6.0 replaces 0.5.1 as the
   next public release. The Windows hand checks and signing run once, on
   0.6.0. 0.5.0 stays an unpublished draft.
+  Progress (2026-09-29): v0.6.0 is tagged and GitHub holds it as a
+  DRAFT, both artefacts built, notes match CHANGELOG. Next: the Windows
+  rows above, run on the draft's own zip; then the user runs
+  scripts/sign-release.py v0.6.0.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
