@@ -1,6 +1,6 @@
 # PRESS-0182 — Changing a published entry's address, and forwarding the old one
 
-**Status:** spec draft (2026-09-29).
+**Status:** accepted (2026-09-29). Gated for one loop, the user's round budget; every verified finding fixed, none left in the tail.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0182 (split from PRESS-0128 by the user
 2026-09-29; the forwarding decision 2026-09-27; the scope decisions
@@ -30,8 +30,8 @@ the new one, through every later press, rename and undo.
    `blog/YYYY/MM/DD/<slug>/index.html` (`builder._entry_path`). A new slug
    is a new page, and the old page leaves the site at the next press
    because the Publisher removes what the Builder no longer produces.
-3. **Nothing lasting records an old address.** `docs/design.md` § Where
-   everything sits on disk says a rename bins the old file. The bin is not
+3. **Nothing lasting records an old address.** `docs/design.md` § What may
+   depend on what says a rename bins the old file. The bin is not
    read by the Builder (PRESS-0008 §4.2), so nothing remembers the old
    address after one press.
 4. **The site cannot redirect at the server.** It is a GitHub Pages site
@@ -59,7 +59,8 @@ the new one, through every later press, rename and undo.
 ```python
 # src/pressless/store.py — added
 
-FORWARDS_FILE = "forwards.json"     # in Pressless's own folder, beside published/
+FORWARDS_FOLDER = "forwards"         # in Pressless's own folder, beside published/
+FORWARDS_FILE = "forwards.json"     # the one file in it
 
 def forwards_path_for(folder: Path) -> Path: ...
 def read_forwards(folder: Path) -> dict[str, str]: ...
@@ -86,14 +87,17 @@ checks one.
 indent, UTF-8, LF and a final newline, through the Store's atomic write.
 An empty mapping is written as `{}`.
 
-**The file is not an entry.** `exists`, `list_slugs` and the bin's
-entry rules do not see it. Keeping a forwarded address reserved is a rule
+**The file is not an entry.** `exists` and `list_slugs` do not see it.
+`FORWARDS_FOLDER` joins `_BINNABLE`, so `move_to_bin` takes the file, as
+undo needs (§4.4). Keeping a forwarded address reserved is a rule
 the editor keeps (§4.2), as Store-wide uniqueness already is.
 
 ### 4.2 The editor
 
 **`free_address`** also skips a candidate that is a key of
-`read_forwards(folder)`. This reaches every caller: a new entry, a
+`read_forwards(folder)`, read once before the first candidate, so its
+`StoreError` stops the search rather than being skipped as a refused
+name. This reaches every caller: a new entry, a
 working copy's address, and undo's kept draft.
 
 **`POST /address`** keeps PRESS-0012 §4.9's fields and adds `draft`
@@ -112,10 +116,11 @@ working copy's address, and undo's kept draft.
 2. A digest that differs from `base` raises `ChangedElsewhere`, answered
    as PRESS-0012 §4.8's failures are.
 3. **Write the entry at the new address**, in the folder it came from.
-4. **For a published entry, rewrite the forwards:** remove the key equal
-   to the new address; change every value equal to `slug` to the new
-   address; add `slug` → the new address. So a chain always points at the
-   newest address, and moving back leaves no loop.
+4. **Rewrite the forwards:** remove the key equal to the new address,
+   and change every value equal to `slug` to the new address. For a
+   published entry, also add `slug` → the new address. So a chain always
+   points at the newest address, moving back leaves no loop, and a draft
+   an undo demoted takes its forwards with it.
 5. **Move its comments file**, as PRESS-0012 §4.9 step 4 does.
 6. **Bin the old entry file.**
 
@@ -137,17 +142,24 @@ first, through `window.confirm`:
 
 A draft is not asked.
 
-**Throw this entry away** (PRESS-0128) gains one step for a published
-entry. After the entry file is binned, every forwards pair whose value is
-the entry's slug is removed. A draft's throw does not touch the forwards.
+**Throw this entry away** (PRESS-0128) gains one step whenever it bins a
+published entry — `named` in `editor._throw`, which a working copy's
+page reaches too. After that file is binned, every forwards pair whose
+value is `named` is removed. A throw that bins only an ordinary draft
+does not touch the forwards.
 
 ### 4.3 The Builder
 
 `build` reads `store.read_forwards(folder)` once. For each pair, sorted
 by key, it writes a forwarding page, except where:
 
-- the value is not a published entry, or is filtered (PRESS-0008 §4.2);
-- the key is a published entry's slug. The entry's own page wins.
+- the value is not an entry `build` writes a page for, or is filtered
+  (PRESS-0008 §4.2);
+- the key is the slug of an entry `build` writes a page for. The entry's
+  own page wins.
+
+"An entry `build` writes a page for" is `read_entries`' map, `change`
+included.
 
 The page goes at `_entry_path` of the target with the key in place of its
 slug: `blog/YYYY/MM/DD/<old>/index.html`, dated by the target. The target
@@ -172,17 +184,17 @@ is the sibling folder `../<new>/index.html`.
 or _long_date(entry.date)`, through `html.escape`. `{site_address}` is `settings.site_address` without a
 trailing `/`, as the sitemap joins it.
 
-A forwarding page is in no listing, no sitemap line and no `Built` count.
+A forwarding page is in no listing and no sitemap line.
 It is under `blog/`, so it stays inside `ROOT_OUTPUT`.
 
-**`content/forwards.json`** is written byte for byte whenever the Store
+**`content/forwards/forwards.json`** is written byte for byte whenever the Store
 holds the file, beside the other `content/` files (PRESS-0008 §4.7).
 
 ### 4.4 Undo
 
-`undo._read` also recognises `content/forwards.json`. It reads it with
-`store.read_forwards(fetch / "content")`, whose layout matches the
-Store's.
+`undo._read` also recognises `content/forwards/forwards.json`. It reads
+it with `store.read_forwards(fetch / "content")`, whose layout matches
+the Store's.
 
 Reconciling (PRESS-0015 §4.4): where the fetched state holds the file and
 it differs from the Store's, the Store's goes to the bin and the fetched
@@ -210,10 +222,10 @@ A forward left pointing at an entry the undo demoted is not built
   *Breaks when:* step 4 is skipped, or the entry is written as a draft.
 
 - **INV-3** — Moving `a` to `b` and then `b` to `c` gives forwards
-  `{a: c, b: c}`.
+  `{a: c, b: c}`. Where `b` is a draft, the second move gives `{a: c}`.
   *Test:* `tests/test_editor.py::test_a_second_move_retargets_the_first_forward`.
   *Breaks when:* step 4 adds the new pair without retargeting, leaving
-  `{a: b, b: c}`.
+  `{a: b, b: c}`, or skips drafts, leaving `a` aimed at a free `b`.
 
 - **INV-4** — Moving `a` to `b` and back to `a` gives forwards `{b: a}`.
   *Test:* `tests/test_editor.py::test_moving_back_drops_the_forward_it_lands_on`.
@@ -239,8 +251,10 @@ A forward left pointing at an entry the undo demoted is not built
 - **INV-7** — Throwing away a published entry `b` removes every forwards
   pair whose value is `b`, and keeps the rest.
   *Test:* `tests/test_editor.py::test_throwing_an_entry_away_removes_its_forwards`,
-  with forwards `{a: b, x: y}` giving `{x: y}`.
-  *Breaks when:* the throw bins the entry and leaves `a` reserved.
+  with forwards `{a: b, x: y}` giving `{x: y}`, once from `b`'s page and
+  once from its working copy's.
+  *Breaks when:* the step keys on the `draft` field, so a throw from the
+  proof's page bins `b` and leaves `a` reserved.
 
 - **INV-8** — `build` writes a forwarding page at the old address, dated by
   the target, whose refresh and link reach the target's page, and adds it
@@ -257,18 +271,19 @@ A forward left pointing at an entry the undo demoted is not built
   *Breaks when:* a forward overwrites a published entry's page, or links
   to a page that was never built.
 
-- **INV-10** — `content/forwards.json` holds the Store's file byte for
+- **INV-10** — `content/forwards/forwards.json` holds the Store's file byte for
   byte, and is absent where the Store has none.
   *Test:* `tests/test_builder.py::test_content_carries_the_forwards`.
   *Breaks when:* the Builder re-serialises the mapping.
 
-- **INV-11** — An undo whose fetched state holds `content/forwards.json`
+- **INV-11** — An undo whose fetched state holds
+  `content/forwards/forwards.json`
   leaves the Store's forwards equal to it, with the replaced file in the
   bin. One whose fetched state has none keeps the Store's.
   *Test:* `tests/test_undo.py::test_undo_restores_the_forwards` and
   `test_undo_keeps_forwards_the_fetched_state_lacks`.
-  *Breaks when:* `_read` ignores the two-part path, as it ignores every
-  path that is not `content/<kind>/<name>` today.
+  *Breaks when:* `_read` skips the `forwards` kind, as it skips every
+  kind it does not name today.
 
 - **INV-12** — The Address field shows on a published entry with no
   proof, hides once a save makes a proof, and a change on a published
@@ -350,13 +365,13 @@ it.
   *"except PRESS-0182's address change"*.
 - **PRESS-0008** — §4.2's *"Nothing else is read"* names
   `store.read_forwards`. §4.3's table gains the forwarding page row.
-  §4.7's list gains `content/forwards.json`. §4.9 says forwarding pages
+  §4.7's list gains `content/forwards/forwards.json`. §4.9 says forwarding pages
   are not listed. Each points at PRESS-0182 §4.3.
-- **PRESS-0005** — §4.3's layout gains `forwards.json`, pointing at
+- **PRESS-0005** — §4.3's layout gains `forwards/forwards.json`, pointing at
   PRESS-0182 §4.1.
 - **PRESS-0015** — §4.4 gains one sentence: the forwards file is
   reconciled like the other kinds, PRESS-0182 §4.4.
-- **`docs/design.md`** — § Where everything sits on disk: *"Renaming an
+- **`docs/design.md`** — § What may depend on what: *"Renaming an
   entry's slug writes the new file and moves the old one to the bin"*
   gains *"and, for a published entry, leaves a page at the old address
   that forwards to the new one (PRESS-0182)"*.

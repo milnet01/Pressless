@@ -2704,6 +2704,8 @@ that makes daily use pleasant rather than merely possible.
   forwarded address, binning an entry that has forwards. Amends
   docs/design.md, which says a rename bins the old file.
   Review budget: one round (user, 2026-09-29).
+  Spec accepted 2026-09-29: docs/specs/PRESS-0182-published-address.md.
+  One review round (the user's budget): seven verified findings, all fixed.
   **Layman:** He can change the web address of an entry already on his site, and links people shared still reach it.
   Kind: feature.
   Source: user-decision-2026-09-29 PRESS-0128 split.
