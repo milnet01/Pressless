@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-29
+
+**Theme:** photographs, a new look, and tidier entries
+
+0.5.0 was never published, so updating from 0.1.2 also brings everything
+listed under 0.5.0 below.
+
 ### Added
 
 - **An entry can show the whole years since a date, worked out when you publish** (PRESS-0123)
