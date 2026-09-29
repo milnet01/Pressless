@@ -87,12 +87,11 @@ green baseline, so it cannot run while the tests are red. Where a stub is
 the only thing that exists, the probe needs a throwaway reference
 implementation outside the tree.
 
-**A `killed` verdict can be a false kill — read the run's exit code, not
-the verdict word.** A mutation that leaves the file unparseable exits 2,
-having run no test, and the envelope still reports `killed`. Exit 1 is not
-proof either: a mutation naming something undefined fails every test on a
-`NameError`, which says nothing about the rule it meant to break. Mutate
-with values that run. **And a batch of kills does not mean the suite is
+**A `killed` verdict can still be a false kill.** A mutation that leaves
+the file unparseable now reads `broken`, not `killed` (ANTS-5360,
+checked here 2026-09-29). But a mutation naming something undefined
+fails every test on a `NameError` and reads `killed`, which says nothing
+about the rule it meant to break. Mutate with values that run. **And a batch of kills does not mean the suite is
 sound** — the survivors are where the evidence is.
 
 **A test double written before the implementation encodes a guess about
