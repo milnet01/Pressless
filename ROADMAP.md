@@ -7798,6 +7798,15 @@ already-built code ships in whichever release comes next.
   the DRAFT to check. Run the Windows rows on 0.6.1's zip, then
   python3 scripts/sign-release.py v0.6.1. The v0.6.0 draft is never
   published.
+  Progress (2026-09-29, evening): the user signed v0.6.1, and it is
+  public and Latest, before the Windows rows ran. Those rows are still
+  owed, now against the public 0.6.1. Run on the box's desktop the same
+  day: the self-check reaches the keyring (WinVaultKeyring); double-
+  clicking Start Pressless.bat opens Edge on /setup, dark, with the
+  console window alongside; a second browser reaching the page through
+  an SSH tunnel is refused 403 (the one-time link, PRESS-0151). Waiting on
+  the user to finish Setup in Edge on the box, against the throwaway
+  repository milnet01/pressless-publish-test.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
