@@ -2555,6 +2555,8 @@ that makes daily use pleasant rather than merely possible.
   the mark, the Store's place for originals, the Builder's web copy and
   the preview's /originals/ address. What is left is adding one, its
   name rule, and the missing-photograph note.
+  Decision (user, 2026-09-29): no spec and no review rounds. Most of it is built; the naming rule
+  and keep-both (name-2) go in this bullet and are locked by tests.
   **Layman:** He can put a photograph in an entry, and it is shrunk for the web without his originals ever being touched.
   Kind: feature.
   Source: design-2026-08-24 § Where photographs live.
@@ -7685,6 +7687,8 @@ already-built code ships in whichever release comes next.
   Added (2026-09-28, PRESS-0178): look at the new styling in Chrome and
   Edge on the Windows box, light and dark (Windows Settings, Colours).
   Check the editor's box and proof sit side by side on a wide window.
+  Decision (user, 2026-09-29): 0.5.0 stays an unpublished draft. The next public release
+  is 0.5.1, carrying PRESS-0178's look; the Windows hand checks and signing run once, on 0.5.1.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8443,6 +8447,8 @@ already-built code ships in whichever release comes next.
 
   GitHub Discussions is off on the repository. Turning it on would give
   questions and ideas their own place, and the button could offer both.
+  Decision (user, 2026-09-29): issues only; GitHub Discussions stays
+  off.
   **Layman:** A button in the app lets people send a suggestion or report a problem, without leaving anything private behind.
   Kind: feature.
   Source: user-request-2026-09-28.
@@ -8462,12 +8468,15 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-28.
   Lanes: face, settings.
 
-- 🚧 [PRESS-0181] **Take the CI speed-ups local-gate.md § 9 lists that apply here.**
+- ✅ [PRESS-0181] **Take the CI speed-ups local-gate.md § 9 lists that apply here.**
   The suite waited on the Face's half-second stop check. Tests now
   shorten it: gate 87 s -> 44 s locally. Then: timeout-minutes on the
   release jobs, a pip cache in CI, and a concurrency group that stops a
   queued main run being replaced. Not taken: paths-ignore (it would drop
   GitHub's leak sweep on doc pushes) and parallel tests (RAM, small gain).
+  Resolved (2026-09-29): 075b534, c10989e, 2e8456b. CI run 36551557325:
+  gate step Linux ~70 s -> 15 s, Windows ~105 s -> 46 s. The pip cache
+  was declined: install is 9 s / 20 s, mostly resolving and building.
   **Layman:** The checks that run before every upload finish in half the time.
   Kind: perf.
   Source: claude-config message 155, 2026-09-28.
