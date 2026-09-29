@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-29
+
+**Theme:** photographs, a new look, and tidier entries
+
+Neither 0.6.0 nor 0.5.0 was published, so updating from 0.1.2 also
+brings everything listed under both below.
+
 ### Fixed
 
 - **Pressless can now update itself**
