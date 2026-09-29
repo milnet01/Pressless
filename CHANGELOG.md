@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Pressless can now update itself**
+  0.6.0 was built before the key that signs releases existed, so a copy
+  of it could never check an update and would never offer one. 0.6.0 was
+  never published; this release replaces it.
+
 ## [0.6.0] - 2026-09-29
 
 **Theme:** photographs, a new look, and tidier entries
