@@ -12,6 +12,16 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Add a photograph: a button in the editor keeps your photograph and puts it where you were typing.** (PRESS-0016)
+  Pressless keeps the original untouched and gives it a plain name
+  (Sea Front.JPG becomes sea-front.jpg). A different photograph with a name
+  already taken is kept too, as name-2. A file that is not a JPEG, PNG,
+  WebP or GIF picture, or one cut short, is refused when you add it rather
+  than when you press. While you write, the editor names any photograph an
+  entry mentions that Pressless does not have.
+
 ### Changed
 
 - **Pressless has a look of its own, light or dark to match your computer** (PRESS-0178)

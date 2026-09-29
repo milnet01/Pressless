@@ -2533,7 +2533,7 @@ templates to start something new from, and a cheat sheet generated from the same
 table the app parses with. This version adds no sign of success. It is the one
 that makes daily use pleasant rather than merely possible.
 
-- 📋 [PRESS-0016] **Photographs, from the picture mark to the web-sized copy.**
+- ✅ [PRESS-0016] **Photographs, from the picture mark to the web-sized copy.**
   A picture mark naming the file, with an optional caption, so the cheat
   sheet generates it like every other mark.
   The Store keeps the original in Pressless's own folder, never in the
@@ -2557,6 +2557,21 @@ that makes daily use pleasant rather than merely possible.
   name rule, and the missing-photograph note.
   Decision (user, 2026-09-29): no spec and no review rounds. Most of it is built; the naming rule
   and keep-both (name-2) go in this bullet and are locked by tests.
+  Resolved (2026-09-29): src/pressless/photographs.py, the editor's Add a
+  photograph button, builder.photograph_format.
+  The naming rule, held by tests/test_photographs.py in place of a spec:
+  the chosen file's name, lower-cased, ASCII-folded, reduced to a-z, 0-9,
+  `_` and `-`, at most 60 characters, "photograph" where nothing is left;
+  the ending is the one its format is served under (.jpg/.jpeg, .png,
+  .webp, .gif), replaced where it lies. A name holding a different
+  photograph gives name-2, name-3; a device name (con.jpg) skips to
+  con-2.jpg; the same bytes added twice keep one file. Refused on adding:
+  anything web_copy would refuse, and a file whose frames do not all
+  decode. Checked: tests/test_photographs.py, a mutant per rule all killed (a
+  survivor showed a cut-off GIF passing; every frame is now decoded),
+  headless-Chrome rows
+  in scripts/by-hand-browser-checks.py. Linux only; Windows and Edge are
+  PRESS-0133's hand checks.
   **Layman:** He can put a photograph in an entry, and it is shrunk for the web without his originals ever being touched.
   Kind: feature.
   Source: design-2026-08-24 § Where photographs live.

@@ -33,6 +33,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import test_publishing as tp  # noqa: E402
+from PIL import Image  # noqa: E402
 
 from pressless import (  # noqa: E402
     cheatsheet,
@@ -127,6 +128,37 @@ def run(origin: str, secret: str, folder: Path) -> None:
               printable.url)
         printable.close()
         sheet.locator("summary").click()
+
+        # ---- PRESS-0016: Add a photograph, and the missing-photograph note ----
+        chosen = folder.parent / "Sea Front.JPG"
+        Image.new("RGB", (8, 8), (200, 30, 30)).save(chosen, "JPEG")
+        box.click()
+        box.evaluate("b => b.setSelectionRange(3, 3)")       # Wor|ds.
+        with page.expect_file_chooser() as picker:
+            page.get_by_role("button", name="Add a photograph", exact=True).click()
+        picker.value.set_files(str(chosen))
+        page.wait_for_timeout(2500)
+        typed = box.input_value()
+        check("PRESS-0016: the mark goes on its own line where he was typing",
+              typed == "Wor\n{photo: sea-front.jpg}\nds.", repr(typed))
+        check("PRESS-0016: the original is kept under its plain name",
+              (folder / "photographs" / "sea-front.jpg").read_bytes()
+              == chosen.read_bytes())
+        check("PRESS-0016: it says what was added",
+              page.inner_text("#photograph-status") == "Added sea-front.jpg.",
+              repr(page.inner_text("#photograph-status")))
+        note = page.locator("#photograph-missing")
+        check("PRESS-0016: no note while every photograph is there", note.is_hidden())
+        box.evaluate("b => { b.value += '\\n{photo: gone.jpg}';"
+                     " b.dispatchEvent(new Event('input', {bubbles: true})); }")
+        page.wait_for_timeout(2500)
+        check("PRESS-0016: a photograph Pressless lacks is named as he writes",
+              note.is_visible() and "gone.jpg" in note.inner_text()
+              and "sea-front.jpg" not in note.inner_text(), repr(note.inner_text()))
+        box.evaluate("b => { b.value = 'Words.';"
+                     " b.dispatchEvent(new Event('input', {bubbles: true})); }")
+        page.wait_for_timeout(2500)
+        check("PRESS-0016: the note goes when the name does", note.is_hidden())
 
         # ---- PRESS-0017 s7: a template picked from the New form ---------------
         page.goto(f"{origin}/", wait_until="networkidle")

@@ -23,7 +23,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, paths, settings, store
+from pressless import builder, cheatsheet, paths, photographs, settings, store
 from pressless.face import (
     SENTENCES,
     Face,
@@ -71,6 +71,11 @@ SENTENCES[TooManyCopies] = Sentence(
     Site.UNCHANGED,
     "Open your Pressless-data folder, keep one of those drafts, and move the others "
     "out of the drafts folder.",
+)
+SENTENCES[photographs.NotAPhotograph] = Sentence(
+    "That file is not a picture Pressless can put on your site, so it was not added.",
+    Site.UNCHANGED,
+    "Choose a JPEG, PNG, WebP or GIF photograph.",
 )
 
 # Every write, preview and publish runs under it; a threading.Lock cannot be
@@ -138,6 +143,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/save", route(_save))
     face.add_page("POST", "/address", route(_address))
     face.add_page("POST", "/discard", route(_discard))
+    face.add_page("POST", "/photograph", route(_photograph))
     face.add_files(ASSETS_ADDRESS, within(folder / paths.PREVIEW_ASSETS))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
     face.add_files(ORIGINALS_ADDRESS, lambda name: store.photograph_path_for(folder, name))
@@ -385,13 +391,15 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
             preview, preview_failure = _preview(face, folder, entry, draft=draft)
+            missing = photographs.missing(folder, entry.body)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
-    return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure)
+    return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure,
+                                           missing)
 
 
 def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
-          preview: str | None, failure: str | None) -> str:
+          preview: str | None, failure: str | None, missing: list[str]) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -428,7 +436,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {standing}
 <div id="notices"></div>
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
- data-base="{attr(base)}" onsubmit="return false">
+ data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}" onsubmit="return false">
 <label>Title <input name="title" value="{attr(entry.title)}"></label>
 <label>Categories <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
@@ -438,6 +446,11 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  <span id="publish-status"></span>
  <button type="button" data-undo>Undo the last press</button>
  <span id="undo-status"></span></p>
+<p><button type="button" data-editor="photograph">Add a photograph</button>
+ <input type="file" id="photograph-file" hidden
+ accept="image/jpeg,image/png,image/webp,image/gif">
+ <span id="photograph-status"></span></p>
+<p id="photograph-missing" hidden></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
 </form>
@@ -485,10 +498,27 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
         else:
             failure = None
             preview, preview_failure = _preview(face, folder, written, draft=True)
+            missing = photographs.missing(folder, written.body)
     if failure is not None:
         return _failed(face, notices, failure)
     return _json({"slug": written.slug, "draft": True, "base": new_base, "preview": preview,
-                  "failure": preview_failure, "notices": render_notices(notices)})
+                  "failure": preview_failure, "notices": render_notices(notices),
+                  "missing": missing})
+
+
+def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """PRESS-0016: keep the posted file as an original and name it. The body is
+    the file itself, and its chosen name comes in the query."""
+    with lock, face.capture() as notices:
+        try:
+            name = photographs.add(folder, request.query.get("name", ""), request.body)
+        except (store.StoreError, photographs.NotAPhotograph, OSError) as exc:
+            failure: Exception | None = exc
+        else:
+            failure = None
+    if failure is not None:
+        return _failed(face, notices, failure)
+    return _json({"name": name, "notices": render_notices(notices)})
 
 
 def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -637,12 +667,26 @@ _EDITOR_SCRIPT = """
       input.value = reply.slug;
     });
     document.getElementById("notices").innerHTML = reply.notices;
+    if ("missing" in reply) showMissing(reply.missing);
   };
   const stop = (text) => {
     stopped = true;
     status.textContent = "Not saved";
     document.getElementById("failure").innerHTML = text;
   };
+
+  // PRESS-0016: a photograph this entry names that Pressless does not have.
+  // A press still stops on it; this says so while he writes.
+  const missingLine = document.getElementById("photograph-missing");
+  function showMissing(names) {
+    missingLine.hidden = names.length === 0;
+    missingLine.textContent = names.length === 0 ? "" :
+      "Pressless does not have " + (names.length === 1 ? "this photograph: " :
+      "these photographs: ") + names.join(", ") + ". Add " +
+      (names.length === 1 ? "it" : "each") + " with Add a photograph, or correct " +
+      "the name, before you press this entry to your site.";
+  }
+  showMissing(JSON.parse(form.dataset.missing));
 
   async function save() {
     if (stopped || inFlight || !dirty) return;
@@ -712,6 +756,47 @@ _EDITOR_SCRIPT = """
       publish.disabled = false;
       inFlight = false;
       if (dirty && !stopped) schedule();
+    }
+  });
+
+  // PRESS-0016: the chosen file is kept as an original, and its picture mark
+  // goes on a line of its own where he was typing.
+  const box = form.elements["body"];
+  const picker = document.getElementById("photograph-file");
+  const photoSaid = document.getElementById("photograph-status");
+  let caret = null;
+  document.querySelector("button[data-editor=photograph]").addEventListener("click", () => {
+    caret = [box.selectionStart, box.selectionEnd];
+    picker.value = "";
+    picker.click();
+  });
+  picker.addEventListener("change", async () => {
+    const file = picker.files[0];
+    if (!file) return;
+    photoSaid.textContent = "Adding the photograph\u2026";
+    try {
+      const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
+                                 {method: "POST", body: file});
+      const text = await answer.text();
+      photoSaid.textContent = "";
+      if (answer.status !== 200) {
+        document.getElementById("failure").innerHTML = text;
+        return;
+      }
+      const reply = JSON.parse(text);
+      document.getElementById("notices").innerHTML = reply.notices;
+      const [start, end] = caret || [box.value.length, box.value.length];
+      const before = box.value.slice(0, start), after = box.value.slice(end);
+      const lead = before === "" || before.endsWith("\\n") ? "" : "\\n";
+      const mark = lead + "{photo: " + reply.name + "}" + (after.startsWith("\\n") ? "" : "\\n");
+      box.value = before + mark + after;
+      box.focus();
+      box.setSelectionRange(before.length + mark.length, before.length + mark.length);
+      photoSaid.textContent = "Added " + reply.name + ".";
+      dirty = true; schedule();
+    } catch (error) {
+      photoSaid.textContent = "";
+      stop("");
     }
   });
 

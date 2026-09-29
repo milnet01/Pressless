@@ -87,6 +87,21 @@ def web_photograph(name: str) -> str:
     return f"{store.PHOTOGRAPHS_FOLDER}/{quote(name, safe='')}"
 
 
+def photograph_format(path: Path) -> str | None:
+    """The picture format of the file at `path`, where `web_copy` publishes
+    that format; None for anything else, so a photograph is refused when it is
+    added rather than at the press (PRESS-0016)."""
+    try:
+        with Image.open(path) as picture:
+            fmt = picture.format
+            # Every frame decoded, as web_copy will: a file cut short opens.
+            for frame in ImageSequence.Iterator(picture):
+                frame.load()
+    except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
+        return None
+    return fmt if fmt in _REENCODED or fmt == "GIF" else None
+
+
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: marks.PhotoSrc | None = None,
           change: store.Entry | Html | None = None) -> Built:
