@@ -12,10 +12,11 @@ on:
 permissions:
   contents: read
 
-# A newer push to a pull request supersedes the run in flight; a push to main
-# never cancels one, so every commit on main keeps its own result.
+# A newer push to a pull request supersedes the run in flight. Anything else
+# gets a group of its own commit: GitHub drops a queued run when a newer one
+# joins its group, so a shared group on main would leave a commit unchecked.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
