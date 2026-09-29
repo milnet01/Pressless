@@ -143,6 +143,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/save", route(_save))
     face.add_page("POST", "/address", route(_address))
     face.add_page("POST", "/discard", route(_discard))
+    face.add_page("POST", "/throw", route(_throw))
     face.add_page("POST", "/photograph", route(_photograph))
     face.add_files(ASSETS_ADDRESS, within(folder / paths.PREVIEW_ASSETS))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
@@ -404,6 +405,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
         return html.escape(value, quote=True)
 
     named = _replaced(folder, entry) if draft else None
+    on_site = not draft or named is not None
     if not draft:
         # Both states, because the first save turns this page into a working
         # copy's editor without reloading it; the script shows the second
@@ -436,7 +438,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {standing}
 <div id="notices"></div>
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
- data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}" onsubmit="return false">
+ data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}"
+ data-on-site="{'1' if on_site else '0'}" onsubmit="return false">
 <label>Title <input name="title" value="{attr(entry.title)}"></label>
 <label>Categories <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
@@ -453,6 +456,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <p id="photograph-missing" hidden></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
+<p><button type="button" data-editor="throw">Throw this {'entry' if on_site else 'draft'}
+ away</button></p>
 </form>
 {cheatsheet.panel()}
 <div id="failure">{failure or ""}</div>
@@ -586,6 +591,43 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(named))
 
 
+def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """PRESS-0128: bin the entry this window shows -- a draft, or a published
+    entry and any working copy of it -- with its comments file. A published
+    one leaves the site at the next press, and undoing that press brings it
+    back. The entry goes first, so an interruption leaves at most a draft or a
+    comments file behind, never an entry half thrown away."""
+    form = _form(request)
+    slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
+    with lock, face.capture() as notices:
+        try:
+            if slug not in store.list_slugs(folder, draft=draft):
+                raise ChangedElsewhere(f"the entry {slug} is not there")
+            path = store.path_for(folder, slug, draft=draft)
+            if _digest(path) != base:
+                raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
+            if draft:
+                named = _replaced(folder, store.read(path))
+            elif working_copy(folder, slug) is not None:
+                raise ChangedElsewhere(f"the entry {slug} gained a working copy")
+            else:
+                named = slug
+            if named is not None:
+                store.move_to_bin(folder, store.path_for(folder, named, draft=False))
+            comments = store.comments_path_for(folder, named or slug)
+            if comments.is_file():
+                store.move_to_bin(folder, comments)
+            if draft:
+                store.move_to_bin(folder, path)
+        except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
+            failure: Exception | None = exc
+        else:
+            failure = None
+    if failure is not None:
+        return _failed(face, notices, failure)
+    return _json({"thrown": True, "notices": render_notices(notices)})
+
+
 # The page's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved.
 # PRESS-0015 s 4.6. Both pages carry this. Neither reloads itself (s 4.2):
@@ -668,6 +710,12 @@ _EDITOR_SCRIPT = """
     });
     document.getElementById("notices").innerHTML = reply.notices;
     if ("missing" in reply) showMissing(reply.missing);
+    // PRESS-0128: a press puts a draft on his site without reloading the page.
+    if (state.draft === "0") {
+      form.dataset.onSite = "1";
+      document.querySelector("button[data-editor=throw]").textContent =
+        "Throw this entry away";
+    }
   };
   const stop = (text) => {
     stopped = true;
@@ -824,5 +872,35 @@ _EDITOR_SCRIPT = """
       }
     });
   }
+
+  // PRESS-0128: asked first, since a published entry leaves his site. Saves
+  // settle before, and none follows: the file it would write is in the bin.
+  const throwAway = document.querySelector("button[data-editor=throw]");
+  throwAway.addEventListener("click", async () => {
+    const question = form.dataset.onSite === "1"
+      ? "Throw this entry away? It moves to the bin in your Pressless-data folder " +
+        "now, and leaves your site the next time you press to site. Undo the last " +
+        "press can bring it back after that."
+      : "Throw this draft away? It moves to the bin in your Pressless-data folder.";
+    if (!window.confirm(question)) return;
+    clearTimeout(timer);
+    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
+    if (dirty && !stopped) await save();
+    if (stopped) return;
+    inFlight = true;
+    try {
+      const data = new URLSearchParams();
+      data.set("slug", state.slug); data.set("draft", state.draft); data.set("base", state.base);
+      const answer = await fetch("/throw", {method: "POST", body: data});
+      const text = await answer.text();
+      if (answer.status !== 200) { stop(text); return; }
+      stopped = true;
+      window.location.assign("/");
+    } catch (error) {
+      stop("");
+    } finally {
+      inFlight = false;
+    }
+  });
 })();
 """

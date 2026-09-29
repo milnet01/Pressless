@@ -2658,7 +2658,7 @@ that makes daily use pleasant rather than merely possible.
   Source: user-request-2026-09-17.
   Lanes: Marks, Builder, Store, Face.
 
-- 📋 [PRESS-0128] **Deleting an entry, and changing a published entry's address.**
+- ✅ [PRESS-0128] **Throwing away an entry.**
   Split off PRESS-0012 by the user's scope decision (2026-09-17). The
   Store already moves anything it deletes to the bin (PRESS-0099), and
   docs/design.md says renaming writes the new file and bins the old one.
@@ -2671,10 +2671,43 @@ that makes daily use pleasant rather than merely possible.
   Decided by the user 2026-09-27: binning a published entry moves it to
   the bin at once, and it leaves the site at the next press, like any
   other change; undo can bring it back.
-  **Layman:** He can throw away an entry he no longer wants, and change the web address of one already on his site.
+  Split (user, 2026-09-29): changing a published entry's address,
+  with the forwarding page, is now PRESS-0182, which gets a spec. This
+  item keeps throwing an entry away, built with no spec: the bin, the
+  next press and undo already exist, so it is one button on them.
+  Shipped (2026-09-29), no spec, as the user chose. POST /throw in
+  editor.py bins the entry the window shows. That is a draft, or a
+  published entry and any working copy of it, with its comments file.
+  The published file goes first. A stale window, or a published page
+  whose entry has gained a working copy, throws nothing away. The button
+  asks first, and says so when the entry is on the site. Held by three
+  tests in tests/test_editor.py and one in tests/test_undo.py, which
+  proves undo brings a thrown entry back with its comments. A mutant per
+  guard and per bin step was killed. Four rows in
+  scripts/by-hand-browser-checks.py; one of them caught the button still
+  saying "draft" after a press without a reload, since fixed. Gate: 660
+  passed, 1 skipped. Linux only: Edge and the Windows box are
+  PRESS-0133's.
+  **Layman:** He can throw away an entry he no longer wants; it goes to the bin and undo can bring it back.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0012 scope.
   Lanes: Face.
+
+- 📋 [PRESS-0182] **Changing a published entry's address warns, then forwards the old one.**
+  Split from PRESS-0128 by the user 2026-09-29. The user's 2026-09-27
+  decision: warn first, then leave a small page at the old address that
+  forwards readers to the new one.
+  Needs a spec (user, 2026-09-29): the old address must keep forwarding
+  after every later press, so a lasting old-to-new record is a new
+  on-disk shape, and it reaches the Store, the Builder, undo and the
+  editor. Open cases: renaming twice, renaming back, a new entry taking a
+  forwarded address, binning an entry that has forwards. Amends
+  docs/design.md, which says a rename bins the old file.
+  Review budget: one round (user, 2026-09-29).
+  **Layman:** He can change the web address of an entry already on his site, and links people shared still reach it.
+  Kind: feature.
+  Source: user-decision-2026-09-29 PRESS-0128 split.
+  Lanes: Face, Store, Builder, Undo.
 
 ## 0.7.0 — he can see who is reading
 

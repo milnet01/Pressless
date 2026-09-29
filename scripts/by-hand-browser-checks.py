@@ -262,6 +262,24 @@ def run(origin: str, secret: str, folder: Path) -> None:
             check("PRESS-0013 s4.4: the address bar carries the slug",
                   "slug=seaside" in page.url, page.url.split("?")[-1][:60])
 
+        # ---- PRESS-0128: throwing away a published entry asks first ----------
+        check("PRESS-0128: pressed without a reload, the button says entry, not draft",
+              page.get_by_role("button", name="Throw this entry away", exact=True).count() == 1)
+        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+        asked: list[str] = []
+
+        def say_no(dialog) -> None:
+            asked.append(dialog.message)
+            dialog.dismiss()
+
+        page.once("dialog", say_no)
+        page.get_by_role("button", name="Throw this entry away", exact=True).click()
+        page.wait_for_timeout(500)
+        check("PRESS-0128: a published entry's question says it leaves the site",
+              len(asked) == 1 and "leaves your site" in asked[0], repr(asked))
+        check("PRESS-0128: saying no throws nothing away",
+              "seaside" in store.list_slugs(folder, draft=False) and "/edit" in page.url)
+
         # ---- PRESS-0015 s 4.6: the Undo button on both pages ---------------
         undo_here = page.get_by_role("button", name="Undo the last press",
                                      exact=True)
@@ -298,6 +316,20 @@ def run(origin: str, secret: str, folder: Path) -> None:
                   repr(result[:140]))
             check("PRESS-0015 s4.6: the page did not reload itself",
                   page.evaluate("() => window.__undo !== undefined"))
+
+        # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
+        page.goto(f"{origin}/", wait_until="networkidle")
+        page.fill("input[name=title]", "Gull")
+        page.click("text=New entry")
+        page.wait_for_load_state("networkidle")
+        page.locator("textarea").type("Unsaved", delay=10)
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.get_by_role("button", name="Throw this draft away", exact=True).click()
+        page.wait_for_url(f"{origin}/", timeout=5000)
+        binned = sorted(p.name for p in (folder / "bin").rglob("gull*.txt"))
+        check("PRESS-0128: saying yes bins the draft and goes back to the list",
+              "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
+              f"{binned!r} {page.url}")
 
         print("\n  console during the run:")
         for line in console[-12:]:

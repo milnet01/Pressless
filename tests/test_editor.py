@@ -354,6 +354,77 @@ def test_throwing_away_changes_bins_the_copy(tmp_path):
     assert store.path_for(folder, "seaside", draft=False).read_bytes() == published
 
 
+# -------------------------------------------------------------- PRESS-0128 ---
+
+
+def _comments(folder: Path, slug: str) -> None:
+    store.write_comments(folder, slug, (store.Comment(
+        identifier="1", author="A reader", author_url="", date=datetime(2020, 1, 3),
+        body="Lovely.", parent=""),))
+
+
+def test_throwing_an_entry_away_bins_it_with_its_comments(tmp_path):
+    """PRESS-0128: the entry the window shows goes to the bin -- a draft, a
+    published entry, or a published entry seen through its working copy, which
+    takes the copy with it. Its comments file follows it (docs/design.md)."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("plain"), draft=True)
+    _comments(folder, "plain")
+    store.write(folder, _entry("seaside"), draft=False)
+    _comments(folder, "seaside")
+    store.write(folder, _entry("seaside-changes", extra=((REPLACES, "seaside"),)), draft=True)
+    store.write(folder, _entry("harbour"), draft=False)
+    store.write(folder, _entry("kept"), draft=False)
+    with _editor(folder) as browser:
+        for slug, draft in (("plain", True), ("seaside-changes", True), ("harbour", False)):
+            status, _, text = browser.request("POST", "/throw", {
+                "slug": slug, "draft": "1" if draft else "0",
+                "base": _base(folder, slug, draft=draft)})
+            assert status == 200, (slug, text)
+            assert json.loads(text)["thrown"] is True, slug
+    assert store.list_slugs(folder, draft=True) == ()
+    assert store.list_slugs(folder, draft=False) == ("kept",)
+    assert not store.comments_path_for(folder, "plain").exists()
+    assert not store.comments_path_for(folder, "seaside").exists()
+    assert _binned(folder) == ["harbour.txt", "plain.json", "plain.txt", "seaside-changes.txt",
+                               "seaside.json", "seaside.txt"]
+
+
+def test_throwing_away_a_stale_window_moves_nothing(tmp_path):
+    """PRESS-0128: a window that has not seen the file, or shows a published
+    entry that has since gained a working copy, throws nothing away."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("plain"), draft=True)
+    store.write(folder, _entry("seaside"), draft=False)
+    stale = _base(folder, "seaside", draft=False)
+    store.write(folder, _entry("seaside-changes", extra=((REPLACES, "seaside"),)), draft=True)
+    with _editor(folder) as browser:
+        for form in ({"slug": "plain", "draft": "1", "base": "0" * 64},
+                     {"slug": "seaside", "draft": "0", "base": stale},
+                     {"slug": "gone", "draft": "1", "base": "0" * 64}):
+            status, _, text = browser.request("POST", "/throw", form)
+            assert status == 409 and _said(editor.ChangedElsewhere) in text, form
+    assert _binned(folder) == []
+    assert store.list_slugs(folder, draft=True) == ("plain", "seaside-changes")
+    assert store.list_slugs(folder, draft=False) == ("seaside",)
+
+
+def test_the_editor_offers_to_throw_the_entry_away(tmp_path):
+    """PRESS-0128: every editor page carries the button, and says whether the
+    entry is on his site, which decides what he is told before it goes."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("plain"), draft=True)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write(folder, _entry("harbour"), draft=False)
+    store.write(folder, _entry("harbour-changes", extra=((REPLACES, "harbour"),)), draft=True)
+    with _editor(folder) as browser:
+        for slug, on_site in (("plain", "0"), ("seaside", "1"), ("harbour-changes", "1")):
+            status, _, page = browser.request("GET", f"/edit?slug={slug}")
+            assert status == 200, slug
+            assert 'data-editor="throw"' in page, slug
+            assert f'data-on-site="{on_site}"' in page, slug
+
+
 # ----------------------------------------------------------------- INV-16 ---
 
 

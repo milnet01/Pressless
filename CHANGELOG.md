@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Throw an entry away from the editor** (PRESS-0128)
+  A button at the foot of every entry asks first, then moves the entry
+  and its comments to the bin in the Pressless-data folder. One already
+  on the site leaves it at the next press, and Undo the last press
+  brings it back.
+
 - **Add a photograph: a button in the editor keeps your photograph and puts it where you were typing.** (PRESS-0016)
   Pressless keeps the original untouched and gives it a plain name
   (Sea Front.JPG becomes sea-front.jpg). A different photograph with a name

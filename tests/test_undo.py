@@ -184,6 +184,23 @@ def test_an_entry_the_previous_state_lacks_becomes_a_draft(tmp_path):
     assert _binned(folder) == []
 
 
+def test_an_entry_thrown_away_comes_back(tmp_path):
+    """PRESS-0128: an entry he threw away and pressed off his site comes back,
+    comments and all, when he undoes that press."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("harbour"), draft=False)
+    files = {**_furnished(tmp_path),
+             **_content(tmp_path, published=(_entry("seaside", body="Thrown."),
+                                             _entry("harbour")),
+                        comments=(("seaside", (_comment("1"),)),))}
+
+    _undo(folder, _previous(files))
+
+    assert store.read(store.path_for(folder, "seaside", draft=False)).body == "Thrown."
+    assert [c.identifier for c in store.read_comments(
+        store.comments_path_for(folder, "seaside"))] == ["1"]
+
+
 # ------------------------------------------------------------------ INV-6 ---
 
 
