@@ -7753,6 +7753,12 @@ already-built code ships in whichever release comes next.
   Added 2026-09-29 (PRESS-0182): on the Windows box, change a published
   entry's address, press, and open the old address in Edge and Chrome;
   it should land on the entry.
+  Open (2026-09-29): every 0.6.0 item is shipped (PRESS-0123 last). The
+  user is asked whether 0.6.0 replaces 0.5.1 as the next public release,
+  so these hand checks run once, on whichever it is. Ask before tagging.
+  Added the same day (PRESS-0123): on the Windows box, an entry holding
+  {years_since: 2010-01-01} shows the number in the preview and on the
+  published page.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
