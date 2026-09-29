@@ -2693,7 +2693,7 @@ that makes daily use pleasant rather than merely possible.
   Source: user-decision-2026-09-17 PRESS-0012 scope.
   Lanes: Face.
 
-- 📋 [PRESS-0182] **Changing a published entry's address warns, then forwards the old one.**
+- ✅ [PRESS-0182] **Changing a published entry's address warns, then forwards the old one.**
   Split from PRESS-0128 by the user 2026-09-29. The user's 2026-09-27
   decision: warn first, then leave a small page at the old address that
   forwards readers to the new one.
@@ -2706,6 +2706,10 @@ that makes daily use pleasant rather than merely possible.
   Review budget: one round (user, 2026-09-29).
   Spec accepted 2026-09-29: docs/specs/PRESS-0182-published-address.md.
   One review round (the user's budget): seven verified findings, all fixed.
+  Shipped 2026-09-29 (b3961a2): the address change, forwarding pages,
+  reserved addresses, throw and undo. 19 new tests, one mutant per guard
+  all killed; gate 679 passed, 1 skipped; browser checks 39/39. Linux
+  only: the Windows row is on PRESS-0133.
   **Layman:** He can change the web address of an entry already on his site, and links people shared still reach it.
   Kind: feature.
   Source: user-decision-2026-09-29 PRESS-0128 split.
@@ -7739,6 +7743,9 @@ already-built code ships in whichever release comes next.
   Check the editor's box and proof sit side by side on a wide window.
   Decision (user, 2026-09-29): 0.5.0 stays an unpublished draft. The next public release
   is 0.5.1, carrying PRESS-0178's look; the Windows hand checks and signing run once, on 0.5.1.
+  Added 2026-09-29 (PRESS-0182): on the Windows box, change a published
+  entry's address, press, and open the old address in Edge and Chrome;
+  it should land on the entry.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
