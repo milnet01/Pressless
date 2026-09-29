@@ -8616,6 +8616,11 @@ already-built code ships in whichever release comes next.
     the tag said so; sign-release.py found it only after the build. A
     release recipe todo or a pre-tag check should refuse an empty
     TRUSTED.
+  Decision (user, 2026-09-29): signing is Claude's to run, as FinBreak's is.
+  The user made the key once; a session may run python3
+  scripts/sign-release.py v<X.Y.Z> itself, since the script reads the key
+  file and never prints it. It also PUBLISHES, so it runs after the by-hand
+  checks. Add it to .claude/bump.json's todos as that step.
   **Layman:** The tools for signing a release gave confusing errors, and nothing warned that the signing key had never been set up until after a release was built.
   Kind: fix.
   Source: in-session-2026-09-29, signing 0.6.0.
