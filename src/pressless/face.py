@@ -731,6 +731,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         ))
 
 
+# How often the server's loop checks whether it has been asked to stop, in
+# seconds; `stop` waits up to this long. The standard library's own default.
+# tests/conftest.py shortens it: the suite starts and stops hundreds of servers.
+_POLL_SECONDS = 0.5
+
+
 class Face:
     """The running server. Made by `serve`; one per launch."""
 
@@ -757,7 +763,8 @@ class Face:
         self.url = f"http://{self._host}/?t={self._secret}"
         self.add_page("GET", "/", _running)
         self._thread = threading.Thread(
-            target=self._server.serve_forever, name="pressless-face", daemon=True
+            target=self._server.serve_forever, args=(_POLL_SECONDS,),
+            name="pressless-face", daemon=True,
         )
         self._thread.start()
 

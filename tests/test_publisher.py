@@ -2489,7 +2489,7 @@ def test_the_client_follows_no_redirected_write():
         do_POST = do_PATCH = do_PUT = _moved
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Moved)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    threading.Thread(target=server.serve_forever, args=(0.02,), daemon=True).start()
     try:
         client = publisher_module._Urllib()
         for status in (307, 308):

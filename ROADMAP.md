@@ -8462,6 +8462,16 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-28.
   Lanes: face, settings.
 
+- 🚧 [PRESS-0181] **Take the CI speed-ups local-gate.md § 9 lists that apply here.**
+  The suite waited on the Face's half-second stop check. Tests now
+  shorten it: gate 87 s -> 44 s locally. Then: timeout-minutes on the
+  release jobs, a pip cache in CI, and a concurrency group that stops a
+  queued main run being replaced. Not taken: paths-ignore (it would drop
+  GitHub's leak sweep on doc pushes) and parallel tests (RAM, small gain).
+  **Layman:** The checks that run before every upload finish in half the time.
+  Kind: perf.
+  Source: claude-config message 155, 2026-09-28.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
