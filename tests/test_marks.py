@@ -12,6 +12,7 @@ import ast
 import html.parser
 import inspect
 import time
+from datetime import date
 
 import pressless.marks as marks_module
 from pressless.marks import (
@@ -22,8 +23,11 @@ from pressless.marks import (
     Quote,
     Span,
     Text,
+    Value,
     parse,
     render,
+    to_html,
+    value_text,
 )
 
 
@@ -55,7 +59,7 @@ def _iter_nodes(obj):
     elif isinstance(obj, Span):
         yield obj
         yield from _iter_nodes(obj.children)
-    elif isinstance(obj, (Text, Photo)):
+    elif isinstance(obj, (Text, Photo, Value)):
         yield obj
 
 
@@ -302,7 +306,7 @@ def test_every_table_row_parses():
         doc = parse(row.example)
         found = [
             n for n in _iter_nodes(doc)
-            if isinstance(n, (Span, Photo, Quote)) and n.mark == row.name
+            if isinstance(n, (Span, Photo, Quote, Value)) and n.mark == row.name
         ]
         assert found, (
             f"row {row.name!r}'s own example {row.example!r} did not parse "
@@ -383,6 +387,7 @@ _ALLOWED_TOP_LEVEL_IMPORTS = {
     "unicodedata",  # character properties, for the rainbow row
     "html",         # html.escape -- §4.6's escaping rule
     "math",         # pure arithmetic
+    "datetime",     # the date type and date.fromisoformat, for a value row's sum
 }
 
 # `open` needs no import, so the import rule alone cannot catch INV-7's own
@@ -392,7 +397,11 @@ _ALLOWED_TOP_LEVEL_IMPORTS = {
 # an attribute reaches this by its final component.
 # By ANY spelling: these do the same thing however they are reached, and
 # `builtins.open(...)` is the case the old bare-name walk let through.
-_FORBIDDEN_BY_ANY_SPELLING = {"open", "__import__", "import_module"}
+_FORBIDDEN_BY_ANY_SPELLING = {"open", "__import__", "import_module",
+                              # PRESS-0123 INV-3: Marks reads no clock; the
+                              # Builder hands `today` in. By any spelling,
+                              # so `date.today()` is caught.
+                              "today", "now", "utcnow"}
 
 # By bare name ONLY. These are builtins, and the same word is a perfectly
 # innocent method elsewhere -- `re.compile` is the reason this split exists,
@@ -999,3 +1008,52 @@ def test_a_quote_keeps_its_lines():
     assert "<figure" not in photo_in_quote and "{photo: a.jpg}" in photo_in_quote, (
         f"a block mark inside a quotation stays literal: {photo_in_quote!r}"
     )
+
+
+# -------------------------------------------------- PRESS-0123 INV-1, INV-2 --
+
+
+def _years_since(written: str, today: date | None) -> str:
+    return to_html(parse(f"x {{years_since: {written}}} y"), _no_photos, today)
+
+
+def test_years_since_counts_whole_years():
+    """PRESS-0123 INV-1: whole years from the mark's date to `today`.
+
+    Breaks when the sum subtracts years alone, which shows 16 the day
+    before the anniversary."""
+    for written, today, expected in (
+            ("2010-06-15", date(2026, 6, 14), "15"),
+            ("2010-06-15", date(2026, 6, 15), "16"),
+            ("2020-02-29", date(2021, 2, 28), "0"),
+            ("2020-02-29", date(2021, 3, 1), "1")):
+        out = _years_since(written, today)
+        assert out == f"<p>x {expected} y</p>", (
+            f"{written} on {today}: expected {expected}, got {out!r}")
+    [value] = [n for n in _iter_nodes(parse("{years_since:  2010-06-15 }"))
+               if isinstance(n, Value)]
+    assert value_text(value, date(2026, 6, 15)) == "16", (
+        "value_text gives the same text, for the Builder's excerpts")
+
+
+def test_a_value_that_cannot_be_worked_out_stays_as_written():
+    """PRESS-0123 INV-2: a value mark that cannot be worked out renders
+    exactly as written, escaped -- not a calendar date, a date after
+    `today`, or no `today` at all."""
+    today = date(2026, 9, 29)
+    for written, when in (("2023-02-30", today), ("2026-09-30", today),
+                          ("2010-01-01", None)):
+        out = _years_since(written, when)
+        assert out == f"<p>x {{years_since: {written}}} y</p>", (
+            f"{written} with today={when} should stay as written: {out!r}")
+    [value] = [n for n in _iter_nodes(parse("{years_since: 2023-02-30}"))
+               if isinstance(n, Value)]
+    assert value_text(value, today) == "{years_since: 2023-02-30}"
+    # Only ASCII digits: \d would also take another script's digits.
+    arabic = "{years_since: \u0662\u0660\u0661\u0660-01-01}"
+    assert not [n for n in _iter_nodes(parse(arabic)) if isinstance(n, Value)], (
+        "a date written in another script's digits forms no mark")
+    # A value mark inside a colour keeps the colour's closer.
+    coloured = to_html(parse("{accent}since {years_since: 2010-01-01}{/}"), _no_photos,
+                       date(2026, 1, 1))
+    assert coloured == '<p><span style="color:var(--accent)">since 16</span></p>', coloured

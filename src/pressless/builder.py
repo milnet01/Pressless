@@ -23,7 +23,7 @@ import os
 import re
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -104,23 +104,27 @@ def photograph_format(path: Path) -> str | None:
 
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: marks.PhotoSrc | None = None,
-          change: store.Entry | Html | None = None) -> Built:
+          change: store.Entry | Html | None = None,
+          today: date | None = None) -> Built:
     """§4.8, in order: settle what an interrupted build left, refuse a folder
     the Builder did not make, build everything into `<into>.pressless-new`, and
-    swap it in only once it is whole."""
+    swap it in only once it is whole. `today` is what value marks and the
+    footer's year are worked out against; None is the local date, read once
+    (PRESS-0123 §4.2)."""
     folder = Path(folder)
+    today = today or date.today()
     return _replace(Path(into), photo_src is None,
-                    lambda new: _Build(folder, settings, new, photo_src, change).run())
+                    lambda new: _Build(folder, settings, new, photo_src, change, today).run())
 
 
 def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
-            photo_src: marks.PhotoSrc) -> str:
+            photo_src: marks.PhotoSrc, today: date | None = None) -> str:
     """PRESS-0012 §4.2: the one page `build` would write for `entry` published,
     into `into` by §4.8's order. Returns its path relative to `into`."""
     folder = Path(folder)
 
     def write(new: Path) -> str:
-        page = _Build(folder, settings, new, photo_src, entry)
+        page = _Build(folder, settings, new, photo_src, entry, today or date.today())
         page.read_furniture()
         for name in (*entry.categories, *entry.tags):
             page.refuse_an_unusable_name(entry, name)
@@ -131,7 +135,8 @@ def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
 
 
 def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
-                 show: str | None, photo_src: marks.PhotoSrc) -> str:
+                 show: str | None, photo_src: marks.PhotoSrc,
+                 today: date | None = None) -> str:
     """PRESS-0014 § 4.1: the one page `build` would write for `show` with
     `change` in place, into `into` by §4.8's order. `show` names a fixed page;
     None names his newest entry the Daily Prompt filter keeps. Returns its path
@@ -139,7 +144,7 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
     folder = Path(folder)
 
     def write(new: Path) -> str:
-        page = _Build(folder, settings, new, photo_src, change)
+        page = _Build(folder, settings, new, photo_src, change, today or date.today())
         pages = page.read_html()
         if show is None:
             shown = page.shown(page.read_entries())
@@ -269,7 +274,7 @@ def _no_photographs(name: str) -> str:
     raise AssertionError(f"plain text holds no picture, yet one was named: {name}")
 
 
-def _entry_text(doc: marks.Document) -> str:
+def _entry_text(doc: marks.Document, today: date) -> str:
     """§4.3, an entry's text: the body's Text nodes, lines joined by a space --
     or, where those hold nothing but whitespace, its top-level pictures'
     captions, so a picture-only entry reads as it does today (INV-16)."""
@@ -279,6 +284,7 @@ def _entry_text(doc: marks.Document) -> str:
         return "".join(
             node.value if isinstance(node, marks.Text)
             else text_of(node.children) if isinstance(node, marks.Span)
+            else marks.value_text(node, today) if isinstance(node, marks.Value)
             else ""
             for node in nodes)
 
@@ -386,12 +392,14 @@ def _fill_fixed_page(name: str, text: str, depth: int, furniture: _Furniture) ->
 
 class _Build:
     def __init__(self, folder: Path, settings: Settings, root: Path,
-                 photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None):
+                 photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None,
+                 today: date):
         self.folder = folder
         self.settings = settings
         self.root = root
         self.photo_src = photo_src
         self.change = change
+        self.today = today
         self.files: list[str] = []
         self.copied: set[str] = set()
 
@@ -419,7 +427,7 @@ class _Build:
                          store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
                      for name in ("header", "navigation", "footer")}
         self.furniture = _Furniture(furniture["header"], furniture["navigation"],
-                                    furniture["footer"], datetime.now().year)
+                                    furniture["footer"], self.today.year)
 
     def read_entries(self) -> dict[str, store.Entry]:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))
@@ -446,7 +454,7 @@ class _Build:
             (pages if self.change.kind == store.PAGES_FOLDER else furniture)[
                 self.change.name] = self.change.html
         self.furniture = _Furniture(furniture["header"], furniture["navigation"],
-                                    furniture["footer"], datetime.now().year)
+                                    furniture["footer"], self.today.year)
         return pages
 
     def filtered(self, entries: dict[str, store.Entry]) -> list[str]:
@@ -563,13 +571,13 @@ class _Build:
       <p class="post-meta">{self.meta(entry, up)}</p>
       <h1>{html.escape(heading)}</h1>
       <div class="{BODY_CLASS}">
-{marks.render(entry.body, src)}
+{marks.render(entry.body, src, self.today)}
       </div>
       <p class="post-tags">{tags}</p>
     </article>
 {comments}
     <p class="back"><a href="{up}blog/index.html">← All journal entries</a></p>"""
-        description = _excerpt(_entry_text(doc), 150) or heading
+        description = _excerpt(_entry_text(doc, self.today), 150) or heading
         self.page(relative, depth, heading, description, body)
 
     def comments(self, entry: store.Entry) -> str:
@@ -641,11 +649,11 @@ class _Build:
         up = "../" * depth
         if entry.title:
             label = html.escape(entry.title)
-            excerpt = _excerpt(_entry_text(marks.parse(entry.body)), 180)
+            excerpt = _excerpt(_entry_text(marks.parse(entry.body), self.today), 180)
             excerpt_row = f'\n        <p class="post-excerpt">{_as_text_html(excerpt)}</p>'
             untitled = ""
         else:
-            teaser = _excerpt(_entry_text(marks.parse(entry.body)), 48) \
+            teaser = _excerpt(_entry_text(marks.parse(entry.body), self.today), 48) \
                 or _long_date(entry.date)
             label, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">

@@ -363,12 +363,14 @@ sys.path.insert(0, sys.argv[1])
 sys.path.insert(0, sys.argv[2])
 from test_builder import _settings
 from pressless.builder import build
-build(Path(sys.argv[3]), _settings(), Path(sys.argv[4]))
+from test_builder import REPRODUCIBLE_TODAY
+build(Path(sys.argv[3]), _settings(), Path(sys.argv[4]), today=REPRODUCIBLE_TODAY)
 """
+REPRODUCIBLE_TODAY = datetime(2026, 3, 4).date()
 
 
 def test_a_build_is_reproducible(tmp_path):
-    """INV-6: two builds of an unchanged Store in the same year write
+    """INV-6: two builds of an unchanged Store given the same `today` write
     byte-identical folders -- across hash seeds and file-creation order."""
     folder = _store(tmp_path, pages={"index": "<p>home</p>\n", "about": "<p>a</p>\n",
                                      "music": "<p>m</p>\n"})
@@ -383,7 +385,7 @@ def test_a_build_is_reproducible(tmp_path):
     _photograph(folder, "p1.jpg", _image("PNG", (300, 200)))
 
     first = tmp_path / "first"
-    build(folder, _settings(), first)
+    build(folder, _settings(), first, today=REPRODUCIBLE_TODAY)
 
     copy = tmp_path / "copy"
     for name in reversed(_files(folder)):
@@ -636,7 +638,7 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
     store.write(folder, entry, draft=False)
     store.write_comments(folder, entry.slug, (_comment(body="*one* <b>\nline two\n\nnext"),))
 
-    monkeypatch.setattr(marks, "render", lambda body, photo_src: SENTINEL)
+    monkeypatch.setattr(marks, "render", lambda body, photo_src, today=None: SENTINEL)
     into = tmp_path / "site"
     build(folder, _settings(), into)
     page = _entry_page(into, entry).read_text(encoding="utf-8")
@@ -1092,3 +1094,51 @@ def test_content_carries_the_forwards(tmp_path):
     target.write_bytes(b'{"a":   "b"}\n')
     build(folder, _settings(), into)
     assert (into / "content/forwards/forwards.json").read_bytes() == b'{"a":   "b"}\n'
+
+
+# ------------------------------------------------ PRESS-0123 INV-4, INV-5 ---
+
+
+def test_a_value_mark_is_worked_out_once_per_build(tmp_path):
+    """PRESS-0123 INV-4: one build shows one number. The entry page, its
+    description, its card and a preview of it, given one `today`, all carry
+    the worked-out text and none carries the mark. `today` is chosen so the
+    real date gives a different count, so a path reading the clock fails."""
+    folder = _store(tmp_path)
+    entry = _entry("since", title="Since",
+                   body="Going for {years_since: 2000-01-01} years.")
+    store.write(folder, entry, draft=False)
+    today = datetime(2001, 6, 1).date()
+
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=today)
+    page = _entry_page(into, entry).read_text(encoding="utf-8")
+    assert page.count("Going for 1 years.") >= 2, (
+        f"the body and the page description both show the number: {page}")
+    assert "&copy; 2001" in page, "the footer's year is today's year"
+    card = (into / "blog" / "index.html").read_text(encoding="utf-8")
+    assert "Going for 1 years." in card, f"the card's excerpt shows the number: {card}"
+    for path in _html_files(into):
+        assert "years_since" not in path.read_text(encoding="utf-8"), path
+
+    one = tmp_path / "one"
+    relative = builder.preview(folder, _settings(), one, entry,
+                               photo_src=lambda name: name, today=today)
+    shown = (one / relative).read_text(encoding="utf-8")
+    assert "Going for 1 years." in shown and "&copy; 2001" in shown, shown
+
+
+def test_a_value_mark_outside_an_entry_is_left_alone(tmp_path):
+    """PRESS-0123 INV-5: a value mark in a fixed page or a furniture file
+    stays as written."""
+    folder = _store(tmp_path, pages={"index": "<p>{years_since: 2000-01-01}</p>\n"})
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer",
+                     "<footer>{years_since: 2000-02-02}</footer>\n")
+    entry = _entry("plain")
+    store.write(folder, entry, draft=False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=datetime(2001, 6, 1).date())
+    index = (into / "index.html").read_text(encoding="utf-8")
+    assert "{years_since: 2000-01-01}" in index, index
+    page = _entry_page(into, entry).read_text(encoding="utf-8")
+    assert "{years_since: 2000-02-02}" in page, page

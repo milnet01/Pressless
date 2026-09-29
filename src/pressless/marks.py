@@ -17,6 +17,7 @@ import functools
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from itertools import groupby
 
 __all__ = [
@@ -33,9 +34,11 @@ __all__ = [
     "Renderer",
     "Span",
     "Text",
+    "Value",
     "parse",
     "render",
     "to_html",
+    "value_text",
 ]
 
 
@@ -90,7 +93,17 @@ class Quote:
     paragraphs: tuple[Paragraph, ...]
 
 
-Node = Text | Span | Photo
+@dataclass(frozen=True)
+class Value:
+    """A value mark (PRESS-0123 §4.1): `arg` stripped, `written` exactly as
+    typed, which is what shows where the value cannot be worked out."""
+
+    mark: str
+    arg: str
+    written: str
+
+
+Node = Text | Span | Photo | Value
 Block = Paragraph | Photo | Quote
 Document = tuple[Block, ...]
 
@@ -100,7 +113,7 @@ PhotoSrc = Callable[[str], str]
 
 #: A mark's own HTML: its node, its already-rendered children, `photo_src`.
 #: A Quote's children are its rendered paragraphs, joined by '\n'.
-Renderer = Callable[[Span | Photo | Quote, str, PhotoSrc], str]
+Renderer = Callable[[Span | Photo | Quote | Value, str, PhotoSrc], str]
 
 
 # ----------------------------------------------------------------- escaping --
@@ -146,7 +159,8 @@ def _escape_attr(value: str) -> str:
 
 
 def _wrap_in(tag: str) -> Renderer:
-    def render_wrapped(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+    def render_wrapped(node: Span | Photo | Quote | Value, children: str,
+                       photo_src: PhotoSrc) -> str:
         return f"<{tag}>{children}</{tag}>"
 
     return render_wrapped
@@ -156,19 +170,19 @@ def _named_colour(css: str) -> Renderer:
     """§3.2: a named colour renders as the CSS variable, never as a hex
     value, so repainting the site repaints twelve years of entries."""
 
-    def render_named(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+    def render_named(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
         return f'<span style="color:{_escape_attr(css)}">{children}</span>'
 
     return render_named
 
 
-def _picked_colour(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+def _picked_colour(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
     # INV-8: this argument reached here only by matching the hex pattern in
     # full. Escaped as well, because the style attribute is a trust boundary.
     return f'<span style="color:{_escape_attr(node.arg or "")}">{children}</span>'
 
 
-def _rainbow(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+def _rainbow(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
     """One span per unit carrying an index, so the site's stylesheet owns the
     palette and Marks owns no colour decision (§4.2). A unit is a whole
     character reference where the text carries one, and a single character
@@ -194,7 +208,7 @@ def _rainbow(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> 
     return "".join(out)
 
 
-def _figure(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+def _figure(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
     """The caller owns the file world: if `photo_src` raises, Marks does not
     catch it (§6)."""
     src = _escape_attr(photo_src(node.name))
@@ -212,12 +226,31 @@ def _figure(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> s
     return f'<figure><img src="{src}" alt="{alt}">{caption}</figure>'
 
 
-def _link(node: Span | Photo | Quote, children: str, photo_src: PhotoSrc) -> str:
+def _link(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
     # INV-11: this argument reached here only by matching the address grammar
     # in full, so once the whitespace it allows either side is stripped it is
     # one http or https address. Escaped as well, because href is a trust
     # boundary (§4.6).
     return f'<a href="{_escape_attr((node.arg or "").strip())}">{children}</a>'
+
+
+def _as_given(node: Span | Photo | Quote | Value, children: str, photo_src: PhotoSrc) -> str:
+    """A value row's HTML: `to_html` has already worked the value out and
+    escaped it, so the row adds nothing (PRESS-0123 §4.1)."""
+    return children
+
+
+def _years_since(arg: str, today: date) -> str | None:
+    """Whole years from the date to `today`, or None where the argument is
+    not a calendar date or falls after `today` (PRESS-0123 §4.1)."""
+    try:
+        since = date.fromisoformat(arg)
+    except ValueError:
+        return None
+    if since > today:
+        return None
+    before_anniversary = (today.month, today.day) < (since.month, since.day)
+    return str(today.year - since.year - before_anniversary)
 
 
 # --------------------------------------------------------------- the table --
@@ -228,7 +261,7 @@ class Mark:
     """One mark. MARKS is the only route to any of them (§4.2)."""
 
     name: str  # Span.mark / Photo.mark / Quote.mark
-    kind: str  # "wrap" | "block" | "prefix"
+    kind: str  # "wrap" | "block" | "prefix" | "value"
     opens: str  # literal prefix; longest is tried first
     closes: str | None  # None for a block or prefix mark
     arg: str | None  # regex the argument must match IN FULL
@@ -236,6 +269,9 @@ class Mark:
     render: Renderer  # this mark's HTML, built here and nowhere else
     example: str  # what the cheat sheet shows, and a fixture
     explains: str  # one plain-English line
+    # A value row's sum: the argument and `today` in, the text to show out,
+    # or None where it cannot be worked out (PRESS-0123 §4.1).
+    value: Callable[[str, date], str | None] | None = None
 
 
 _HEX_COLOUR = r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$"
@@ -271,6 +307,10 @@ _PHOTO_ARG = (
 # refuses javascript: and every other scheme, which is what defends the href
 # (INV-11) -- compared with re.fullmatch, like every row's `arg`.
 _LINK_ADDRESS = r"^\s*https?://[^\s\"'<>{}\\]+\s*$"
+
+# PRESS-0123 §4.1: a date as ASCII digits, whitespace either side. [0-9],
+# never \d, which also takes another script's digits.
+_DATE_ARG = r"^\s*[0-9]{4}-[0-9]{2}-[0-9]{2}\s*$"
 
 
 MARKS: tuple[Mark, ...] = (
@@ -373,6 +413,18 @@ MARKS: tuple[Mark, ...] = (
         example="> a line someone else wrote",
         explains="A quotation: begin each of its lines with >. A blank line ends it.",
     ),
+    Mark(
+        name="years_since",
+        kind="value",
+        opens="{years_since:",
+        closes=None,
+        arg=_DATE_ARG,
+        content="text",
+        render=_as_given,
+        example="{years_since: 2010-01-01}",
+        explains="How many whole years since a date, worked out each time you publish.",
+        value=_years_since,
+    ),
 )
 
 
@@ -385,6 +437,11 @@ _WRAP_MARKS: tuple[Mark, ...] = tuple(
 )
 _BLOCK_MARKS: tuple[Mark, ...] = tuple(
     sorted((row for row in MARKS if row.kind == "block"),
+           key=lambda row: len(row.opens), reverse=True)
+)
+# PRESS-0123 §4.1: value rows are tried with the wrap rows, longest first.
+_INLINE_MARKS: tuple[Mark, ...] = tuple(
+    sorted((row for row in MARKS if row.kind in ("wrap", "value")),
            key=lambda row: len(row.opens), reverse=True)
 )
 # §4.5: the line scanner never tries a prefix row. §4.4 step 4 matches it at
@@ -521,16 +578,19 @@ def _closer_table(opens: str, closes: str, text: str) -> tuple[int | None, ...]:
     return tuple(found[: n + 1])
 
 
-def _try_wrap(text: str, i: int, depth: int) -> tuple[Span, int] | None:
-    """The first wrap row that forms a complete mark at `i`, with the index
-    just past it."""
-    for row in _WRAP_MARKS:
+def _try_wrap(text: str, i: int, depth: int) -> tuple[Span | Value, int] | None:
+    """The first wrap or value row that forms a complete mark at `i`, with
+    the index just past it."""
+    for row in _INLINE_MARKS:
         start = _content_starts(row, text, i)
         if start is None:
             continue
         arg = text[i + len(row.opens) : start - 1] if row.arg is not None else None
         if arg is not None and not re.fullmatch(row.arg, arg):
             continue
+        if row.kind == "value":
+            # PRESS-0123 §4.1: no closer and no adjacency clause.
+            return Value(mark=row.name, arg=(arg or "").strip(), written=text[i:start]), start
         after_opener = text[start : start + 1]
         if after_opener.isspace() or (
             after_opener == _RUN_DELIMITER and row.opens[0] == _RUN_DELIMITER
@@ -676,7 +736,15 @@ def parse(body: str) -> Document:
 # ---------------------------------------------------------------- rendering --
 
 
-def to_html(doc: Document, photo_src: PhotoSrc) -> str:
+def value_text(node: Value, today: date | None) -> str:
+    """A value mark's text, unescaped: its row's sum against `today`, or the
+    mark as written where that cannot be worked out (PRESS-0123 §4.1)."""
+    row = _ROW_BY_NAME[node.mark]
+    worked_out = row.value(node.arg, today) if row.value and today is not None else None
+    return node.written if worked_out is None else worked_out
+
+
+def to_html(doc: Document, photo_src: PhotoSrc, today: date | None = None) -> str:
     """Structure to HTML (§4.4).
 
     INV-6: this function holds no delimiter literal and branches on no mark
@@ -698,6 +766,8 @@ def to_html(doc: Document, photo_src: PhotoSrc) -> str:
         elif isinstance(node, Quote):
             # §4.4: a Quote's paragraphs render as any other, joined by '\n'.
             children = "\n".join(paragraph_html(p) for p in node.paragraphs)
+        elif isinstance(node, Value):
+            children = _escape_text(value_text(node, today))
         else:
             children = ""
         return row.render(node, children, photo_src)
@@ -710,6 +780,6 @@ def to_html(doc: Document, photo_src: PhotoSrc) -> str:
     return "\n".join(block_html(block) for block in doc)
 
 
-def render(body: str, photo_src: PhotoSrc) -> str:
+def render(body: str, photo_src: PhotoSrc, today: date | None = None) -> str:
     """parse + to_html."""
-    return to_html(parse(body), photo_src)
+    return to_html(parse(body), photo_src, today)
