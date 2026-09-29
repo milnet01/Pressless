@@ -14,6 +14,9 @@ permissions:
 jobs:
   linux:
     runs-on: ubuntu-latest
+    # About three minutes when last run; the limit allows for a cold runner.
+    # Without one, a hung step holds the runner for the six-hour default.
+    timeout-minutes: 30
     steps:
       # fetch-depth: 0 is load-bearing, as in ci.yml: the gate's leak sweep
       # walks every commit, and a shallow clone reports a clean history it
@@ -102,6 +105,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -149,6 +153,7 @@ jobs:
   publish:
     needs: [linux, windows]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
