@@ -90,7 +90,8 @@ only.
 
 def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]: ...
 def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
-                 show: str | None, photo_src: PhotoSrc) -> str: ...
+                 show: str | None, photo_src: PhotoSrc,
+                 today: date | None = None) -> str: ...  # today: PRESS-0123 §4.2
 ```
 
 `furniture_spans` returns the offsets of the text inside each marker block:

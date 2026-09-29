@@ -1,11 +1,8 @@
 # PRESS-0008 — The Builder: the Store and Settings become the site folder
 
-**Status:** accepted (2026-09-13). Built 2026-09-17. Amended 2026-09-17 by
-the user's decision: a picture-only entry is described by its captions
-(§4.3, INV-16). Gated for one loop by the amendment budget: one verified,
-one fixed, not converged. Amended 2026-09-27 by the user's decision: a
-listing's lead is its count alone (§4.3, INV-17). Gated for one loop:
-converged, no findings.
+**Status:** accepted (2026-09-13), built 2026-09-17, amended since; each
+amendment is recorded in `../history/PRESS-0008-builder.md`. PRESS-0123
+amends §4.1, §4.3 and INV-6 (draft, 2026-09-29).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).
@@ -112,8 +109,12 @@ class SiteFolderUnusable(Exception): ...  # `into` could not be replaced
 def web_photograph(name: str) -> str: ...   # "photographs/" + the name, percent-encoded
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: PhotoSrc | None = None,
-          change: Entry | Html | None = None) -> Built: ...
+          change: Entry | Html | None = None,
+          today: date | None = None) -> Built: ...
 ```
+
+`today` is the date a value mark is worked out against, and the footer's
+year; PRESS-0123 §4.2 owns it, for `preview` and `preview_html` too.
 
 `folder` is Pressless's own folder, which holds the Store. `into` is
 `settings.site_folder` for a publish and the preview folder for a preview;
@@ -189,7 +190,8 @@ Builder turns that into `BuildStopped` naming the entry and the name.
 **The page itself is today's.** Its shell, heading, date line, category and
 tag chips, excerpt, pagination links and comment list are what
 `tools/build_blog.py` in the sibling workspace writes at that address, with
-these differences: the body is `marks.render(entry.body, photo_src)`; a
+these differences: the body is `marks.render(entry.body, photo_src,
+today)` (PRESS-0123 §4.2); a
 listing's excerpt, and an untitled entry's teaser, are cut from the
 entry's text and written through `marks.to_html` as one `Text`; the site's
 name comes from
@@ -441,14 +443,14 @@ Sitemap: <the address>/sitemap.xml
   survives the failure, or a folder Settings was pointed at by mistake is
   replaced.
 
-- **INV-6** — Two builds of an unchanged Store in the same year write
-  byte-identical folders.
+- **INV-6** — Two builds of an unchanged Store given the same `today`
+  (PRESS-0123 §4.2) write byte-identical folders.
   *Test:* `tests/test_builder.py::test_a_build_is_reproducible` — a Store
   with a JPEG, a PNG, tags and comments is built; a copy of it, its files
   written in reverse order, is built in a subprocess under a different
   `PYTHONHASHSEED`; the two folders are compared file by file.
-  *Breaks when:* output depends on listing order, a set's order, the clock
-  below the year, or an encoder setting that varies; each makes every
+  *Breaks when:* output depends on listing order, a set's order, a clock
+  read other than `today`, or an encoder setting that varies; each makes every
   publish upload unchanged files.
 
 - **INV-7** — Every file in `content/` is byte-identical to the Store file at

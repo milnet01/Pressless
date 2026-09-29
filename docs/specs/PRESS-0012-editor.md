@@ -149,7 +149,7 @@ STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these,
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 
 def preview(folder: Path, settings: Settings, into: Path, entry: Entry, *,
-            photo_src: PhotoSrc) -> str: ...
+            photo_src: PhotoSrc, today: date | None = None) -> str: ...  # today: PRESS-0123 §4.2
 ```
 
 `preview` writes the one page `build` would write for `entry` published, and
