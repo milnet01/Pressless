@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **An entry can show the whole years since a date, worked out when you publish** (PRESS-0123)
+  Type `{years_since: 2010-01-01}` and the page shows the number. It
+  updates each time you publish, and the preview shows the same number.
+  A date that is not real, or is still to come, shows as you typed it.
+
 - **An entry already on the site can change its web address** (PRESS-0182)
   Pressless asks first. The old address then holds a small page that
   sends readers to the new one, so links people shared keep working

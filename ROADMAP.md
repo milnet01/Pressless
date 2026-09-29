@@ -2615,7 +2615,7 @@ that makes daily use pleasant rather than merely possible.
   Source: design-2026-08-24 § Where the cheat sheet comes from.
   Lanes: Marks, Face.
 
-- 📋 [PRESS-0123] **A mark carries a value Pressless works out when he publishes.**
+- ✅ [PRESS-0123] **A mark carries a value Pressless works out when he publishes.**
   Asked for by the user 2026-09-17: some values on the site are
   calculated from a formula, so he needs a way to define them.
 
@@ -2653,6 +2653,13 @@ that makes daily use pleasant rather than merely possible.
   Decided by the user 2026-09-27: ship the mark with the date and count
   calculations in 0.6.0; music counts join the menu once PRESS-0080 finds
   how to read them. The writer's real example is still needed for the spec.
+  Resolved (2026-09-29): user decisions that day -- years since a date
+  is the first calculation, and the date is typed in the mark:
+  {years_since: 2010-01-01}. Spec docs/specs/PRESS-0123-worked-out-values.md,
+  gated for one loop (six verified, six fixed); it amends PRESS-0004,
+  0008, 0012 and 0014 by pointer. Built with every part mutation-checked;
+  gate green and the archive tests pass. Music counts still join the menu
+  once PRESS-0080 finds how to read them.
   **Layman:** He can write something like "years since" into an entry, and the published page shows the number worked out for him.
   Kind: feature.
   Source: user-request-2026-09-17.
