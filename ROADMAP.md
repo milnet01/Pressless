@@ -8383,12 +8383,15 @@ already-built code ships in whichever release comes next.
   Source: review-contract 2026-09-27 PRESS-0009 loop 15 open question.
   Lanes: docs, face.
 
-- 📋 [PRESS-0177] **CLAUDE.md is read on every turn and by every review lane, and much of it is needed only for one task.**
+- ✅ [PRESS-0177] **CLAUDE.md is read on every turn and by every review lane, and much of it is needed only for one task.**
   Measured 2026-09-28 with wc -c: CLAUDE.md is 17,507 bytes, loaded
   into every session turn and every dispatched lane. Candidates to move
   to a document read only when the task comes up: the archive-test key
   setup, the Windows box notes, and the mutation-probe notes. Which
   lines stay is the user's choice, so ask before cutting.
+  Resolved (2026-09-29, 5fecc75): 17,507 -> 8,800 bytes. Task notes moved
+  word for word to docs/working-here.md, each named in CLAUDE.md by the
+  task that needs it; the user approved the split.
   **Layman:** The instruction file every Claude session here reads on every turn is long, so each session and each helper pays for it even when most of it is irrelevant.
   Kind: chore.
   Source: in-session-2026-09-28 rule 18a.
