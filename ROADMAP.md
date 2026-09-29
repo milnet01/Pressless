@@ -7759,6 +7759,9 @@ already-built code ships in whichever release comes next.
   Added the same day (PRESS-0123): on the Windows box, an entry holding
   {years_since: 2010-01-01} shows the number in the preview and on the
   published page.
+  Decision (user, 2026-09-29, later that day): 0.6.0 replaces 0.5.1 as the
+  next public release. The Windows hand checks and signing run once, on
+  0.6.0. 0.5.0 stays an unpublished draft.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
