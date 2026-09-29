@@ -7792,6 +7792,12 @@ already-built code ships in whichever release comes next.
   DRAFT, both artefacts built, notes match CHANGELOG. Next: the Windows
   rows above, run on the draft's own zip; then the user runs
   scripts/sign-release.py v0.6.0.
+  Superseded (2026-09-29, later): 0.6.0 cannot be signed. It was built
+  with update_key.TRUSTED empty, because the signing key had never been
+  made. The user made the key the same day; 0.6.1 carries it and is now
+  the DRAFT to check. Run the Windows rows on 0.6.1's zip, then
+  python3 scripts/sign-release.py v0.6.1. The v0.6.0 draft is never
+  published.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8586,6 +8592,25 @@ already-built code ships in whichever release comes next.
   **Layman:** The checks that run before every upload finish in half the time.
   Kind: perf.
   Source: claude-config message 155, 2026-09-28.
+
+- 📋 [PRESS-0184] **The release-signing scripts fail unclearly, and nothing caught an empty TRUSTED before tagging.**
+  Found signing 0.6.0 on 2026-09-29:
+  - sign-release.py with no ants.pressless.signingKey prints
+    "refused: git -C failed:" with nothing after it. `git config
+    --get-all` exits 1 silently, so _run refuses before load_keys can
+    give its own "no ants.pressless.signingKey is configured".
+  - make-signing-key.py into a folder that does not exist yet ends in a
+    FileNotFoundError traceback rather than a refusal.
+  - scripts/sign-release.py is not executable (mode 100644), so the
+    command working-here.md gives is refused by the shell.
+  - 0.6.0 was tagged with update_key.TRUSTED empty, and nothing before
+    the tag said so; sign-release.py found it only after the build. A
+    release recipe todo or a pre-tag check should refuse an empty
+    TRUSTED.
+  **Layman:** The tools for signing a release gave confusing errors, and nothing warned that the signing key had never been set up until after a release was built.
+  Kind: fix.
+  Source: in-session-2026-09-29, signing 0.6.0.
+  Lanes: release.
 
 ## Milestones
 
