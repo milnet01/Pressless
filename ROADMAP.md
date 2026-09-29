@@ -2882,6 +2882,32 @@ success.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
   Lanes: Store, Face.
 
+- 📋 [PRESS-0183] **First launch offers a Start Menu entry and a desktop icon.**
+  Two tick boxes on the first-launch page, on Windows and Linux: a
+  Start Menu / app-menu entry, and a desktop icon. Settings offers the
+  same later, and can take them away again.
+
+  Decided with the user 2026-09-29:
+  - No automatic taskbar or panel pinning. Windows lets only the person
+    pin (to confirm before building); Linux panels differ per desktop.
+    Instead, after adding the menu entry, one line says how to pin it:
+    right-click, then Pin to taskbar / Add to panel.
+  - The desktop icon is its own tick box, not bundled with the menu.
+
+  To settle while building:
+  - Linux: a .desktop file under ~/.local/share/applications, with the
+    icon copied out of the AppImage, since the menu cannot read inside it.
+  - Windows: a .lnk in the user's Start Menu Programs folder.
+  - The shortcut names the program's current path. The Updater replaces
+    the program in place, so a shortcut should survive an update; test
+    it. If the person moves the file and said yes, refresh the path on
+    the next launch rather than leave a dead shortcut.
+  - Hand checks on both systems, from a released build.
+  **Layman:** The first time Pressless opens, it offers to put itself in the Start Menu and on the desktop, so nobody has to hunt for the downloaded file again.
+  Kind: feature.
+  Source: user-request-2026-09-29.
+  Lanes: setup, packaging.
+
 ## 0.9.0 — the figures from everywhere else
 
 - 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
