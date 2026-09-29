@@ -142,6 +142,9 @@ class _State:
     pages: dict[str, str] = field(default_factory=dict)
     furniture: dict[str, str] = field(default_factory=dict)
     templates: dict[str, store.Entry] = field(default_factory=dict)
+    # PRESS-0182: the fetched forwards file, keyed by its name like the other
+    # kinds; empty where the fetched state has none.
+    forwards: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
@@ -178,6 +181,9 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             stem = _stem(name, store.FILE_SUFFIX)
             store.template_path_for(fetch, stem)
             state.templates[stem] = store.read(path)
+        elif kind == store.FORWARDS_FOLDER and name == store.FORWARDS_FILE:
+            # The fetch area's content/ is laid out as the Store is (PRESS-0182 § 4.4).
+            state.forwards[name] = store.read_forwards(fetch / prefix)
     return state
 
 
@@ -299,6 +305,17 @@ def _restore_other_kinds(folder: Path, state: _State,
         store.write_template(folder, template)
         if remembered is None:
             reversals.append(lambda p=path: store.move_to_bin(folder, p))
+
+    for forwards in state.forwards.values():
+        path = store.forwards_path_for(folder)
+        remembered = store.read_forwards(folder) if path.is_file() else None
+        if remembered != forwards:
+            if remembered is not None:
+                store.move_to_bin(folder, path)
+                reversals.append(lambda f=remembered: store.write_forwards(folder, f))
+            store.write_forwards(folder, forwards)
+            if remembered is None:
+                reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
     for slug, comments in sorted(state.comments.items()):
         path = store.comments_path_for(folder, slug)

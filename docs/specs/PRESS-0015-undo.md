@@ -270,6 +270,7 @@ paths. Each kind is read and written through the Store's own calls:
 | `content/pages/<name>.html` | `store.read_html` | `store.write_html(…, "pages", …)` |
 | `content/furniture/<name>.html` | `store.read_html` | `store.write_html(…, "furniture", …)` |
 | `content/templates/<name>.txt` | `store.read` | `store.write_template` |
+| `content/forwards/forwards.json` | `store.read_forwards` | `store.write_forwards` (PRESS-0182 § 4.4) |
 
 **Differs** means differs as the Store holds it — the value its reader
 returns, not the bytes. `store.Entry` and `store.Comment` are frozen
@@ -578,7 +579,8 @@ mutation-probed once the code lands, one mutation per route each invariant's
 
 ## 9. Out of scope
 
-- Deleting an entry, and changing a published entry's address — PRESS-0128.
+- Deleting an entry — PRESS-0128. Changing a published entry's address —
+  PRESS-0182.
 - Publishing a fixed page or the furniture — PRESS-0014.
 - A publish that reads the whole site into memory — PRESS-0088.
 - Reaching back more than one publish — declined by the user 2026-08-26; not

@@ -473,6 +473,7 @@ class _Build:
 
         for entry in shown:
             self.entry_page(entry)
+        self.forwards(entries, filtered)
         self.listings(shown)
         self.archive(shown)
         for name, text in pages.items():
@@ -735,6 +736,33 @@ class _Build:
 {joined}
     </div>""")
 
+    # -- forwarding pages (PRESS-0182 § 4.3) --
+
+    def forwards(self, entries: dict[str, store.Entry], filtered: list[str]) -> None:
+        """A page at each old address, sending readers to where the entry is
+        now. None where the target has no page, or where an entry holds the
+        old address itself: its own page wins."""
+        address = self.settings.site_address.rstrip("/")
+        for old, new in sorted(store.read_forwards(self.folder).items()):
+            if new not in entries or new in filtered or old in entries:
+                continue
+            target = entries[new]
+            relative = _entry_path(target)
+            title = html.escape(target.title or _long_date(target.date))
+            self.write_text(f"{relative.rsplit('/', 1)[0]}/{old}/index.html", f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="canonical" href="{html.escape(address)}/{relative}/index.html">
+<meta http-equiv="refresh" content="0; url=../{new}/index.html">
+</head>
+<body>
+<p>This entry has moved to <a href="../{new}/index.html">{title}</a>.</p>
+</body>
+</html>
+""")
+
     # -- content/ (§4.7) --
 
     def content(self) -> None:
@@ -750,6 +778,8 @@ class _Build:
                          for name in store.list_html(self.folder, kind))
         paths.extend(store.template_path_for(self.folder, name)
                      for name in store.list_templates(self.folder))
+        if store.forwards_path_for(self.folder).is_file():
+            paths.append(store.forwards_path_for(self.folder))   # PRESS-0182, for undo
         for path in paths:
             relative = path.relative_to(self.folder).as_posix()
             # Read here rather than through store.read*, so a file that cannot

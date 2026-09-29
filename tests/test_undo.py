@@ -637,3 +637,46 @@ def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):
     with pytest.raises(publisher.Unreachable):
         _undo(folder, _previous(files, fail_at="", fail_on_read=True))
     assert len(calls) == 4, "step 7 did not run on both undos"
+
+
+# -------------------------------------------------------------- PRESS-0182 ---
+# docs/specs/PRESS-0182-published-address.md § 4.4: the forwards file comes
+# back with the entries it forwards to.
+
+
+def test_undo_restores_the_forwards(tmp_path):
+    """INV-11: a fetched state holding the forwards file leaves the Store's
+    forwards equal to it, the replaced file in the bin.
+
+    Breaks when _read skips the forwards kind, as it skips every kind it
+    does not name."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_forwards(folder, {"x": "seaside"})
+    scratch = tmp_path / "previous-forwards"
+    scratch.mkdir()
+    fetched = store.write_forwards(scratch, {"a": "seaside"}).read_bytes()
+    files = {**_furnished(tmp_path), **_content(tmp_path, published=(_entry("seaside"),)),
+             "content/forwards/forwards.json": fetched}
+
+    _undo(folder, _previous(files))
+
+    assert store.read_forwards(folder) == {"a": "seaside"}
+    assert "forwards.json" in _binned(folder)
+
+
+def test_undo_keeps_forwards_the_fetched_state_lacks(tmp_path):
+    """INV-11: a fetched state with no forwards file keeps the Store's, as for
+    every other kind.
+
+    Breaks when a missing fetched file is read as an empty mapping and
+    written over his."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_forwards(folder, {"a": "seaside"})
+    files = {**_furnished(tmp_path), **_content(tmp_path, published=(_entry("seaside"),))}
+
+    _undo(folder, _previous(files))
+
+    assert store.read_forwards(folder) == {"a": "seaside"}
+    assert "forwards.json" not in _binned(folder)

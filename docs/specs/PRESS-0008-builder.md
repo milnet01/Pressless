@@ -154,8 +154,9 @@ raises passes through unchanged, so the Face's sentences for them apply.
   page, listing or sitemap line.
 - **Order.** Newest first by `date`, then by slug ascending where two dates
   are equal. Every listing takes this order.
-- **Nothing else is read**: not the drafts folder, not the bin, not the
-  site folder's previous contents.
+- **Nothing else is read**, beyond `store.read_forwards` (PRESS-0182
+  § 4.3): not the drafts folder, not the bin, not the site folder's
+  previous contents.
 
 ### 4.3 Where each page goes
 
@@ -172,6 +173,7 @@ blog/category/<category>/index.html      plus page/<n>/index.html
 blog/tag/<tag>/index.html                plus page/<n>/index.html
 blog/archive/index.html                  one page, a section per year, newest year first
 photographs/<name>                       a web copy (§4.6)
+blog/YYYY/MM/DD/<old>/index.html         a forwarding page (PRESS-0182 § 4.3)
 content/...                              §4.7
 sitemap.xml, robots.txt                  §4.9
 ```
@@ -316,6 +318,7 @@ content/comments/<slug>.json     for every published entry that has one
 content/pages/<name>.html
 content/furniture/<name>.html
 content/templates/<name>.txt
+content/forwards/forwards.json   where the Store holds one (PRESS-0182 § 4.3)
 ```
 
 The bytes are read from the paths the Store's own calls return. Nothing is
@@ -363,7 +366,8 @@ address joined to: `/` for the page `index`,
 `/blog/index.html`, `/blog/archive/index.html`, then
 `/blog/YYYY/MM/DD/<slug>/index.html` for each unfiltered entry in §4.2's
 order, with a `lastmod` of its date as `YYYY-MM-DD`. No
-category, tag or listing page is listed.
+category, tag or listing page is listed, and no forwarding page
+(PRESS-0182 § 4.3).
 
 `robots.txt` is exactly:
 

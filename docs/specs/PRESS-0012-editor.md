@@ -264,7 +264,7 @@ registered with `publishing=False`.
 | `POST /new` | makes a draft (§ 4.6), then 303 to `/edit?slug=<its address>` |
 | `GET /edit?slug=` | the editor, and a preview of what it opens (§ 4.7) |
 | `POST /save` | saves and previews (§ 4.8) |
-| `POST /address` | changes a draft's address (§ 4.9) |
+| `POST /address` | changes an entry's address (§ 4.9; PRESS-0182) |
 | `POST /discard` | bins a working copy (§ 4.10), then 303 to `/edit?slug=<the published entry>` |
 | `GET /preview/assets/…` | `within(folder / paths.PREVIEW_ASSETS)` |
 | `GET /preview/…` | `within(folder / PREVIEW_FOLDER)` |
@@ -411,11 +411,14 @@ A successful save answers status 200, `application/json`:
 
 ### 4.9 Changing a draft's address
 
+A published entry's change is `docs/specs/PRESS-0182-published-address.md`
+§ 4.2.
+
 Fields: `slug`, `base`, `address`. `address` is stripped. Under the lock:
 
 1. **Refused, writing nothing**, with a hint beside the field: an address
    `store.exists` refuses with `StoreError`; an address another entry holds; a
-   `slug` that is not a draft, or is a working copy. The same address as
+   `slug` that is a working copy. The same address as
    `slug` writes nothing and gives no hint.
 2. A digest that differs from `base` raises `ChangedElsewhere`, answered as
    § 4.8's failures are.
@@ -436,11 +439,13 @@ Then `store.move_to_bin` on it. The published entry is not touched.
 
 ### 4.11 What the editor never does
 
-- It never writes into `published/`, and never writes a published file.
+- It never writes into `published/`, and never writes a published file,
+  except PRESS-0182's address change.
 - It never builds into `settings.site_folder`, and never hands a folder to the
   Publisher.
 - It never unlinks a file; the bin is how anything goes (`docs/design.md`).
-- It never changes a published entry's address.
+- It never changes a published entry's address, except PRESS-0182's
+  address change.
 - It never keeps an entry in memory between requests (`docs/design.md`
   § State).
 - It never rewrites a built page before serving it.
@@ -686,7 +691,8 @@ mutation-probed once the code lands.
 - The Press to site button, dating an entry at its first publish, publishing a
   working copy over its entry, and the empty-Store guard — PRESS-0013.
 - Opening Pressless on a double-click — PRESS-0013.
-- Deleting an entry, and changing a published entry's address — PRESS-0128.
+- Deleting an entry — PRESS-0128. Changing a published entry's address —
+  PRESS-0182.
 - Fixed pages, the page furniture and the code view — PRESS-0014.
 - Choosing a template for a new entry — PRESS-0017.
 - Adding a photograph — PRESS-0016.

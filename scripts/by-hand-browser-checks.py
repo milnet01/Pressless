@@ -317,6 +317,45 @@ def run(origin: str, secret: str, folder: Path) -> None:
             check("PRESS-0015 s4.6: the page did not reload itself",
                   page.evaluate("() => window.__undo !== undefined"))
 
+        # ---- PRESS-0182: a published entry changes address, asked first ------
+        # A fresh entry, so the seaside rows above keep their state.
+        store.write(folder, tp._entry("harbour", body="Words."), draft=False)
+        page.goto(f"{origin}/edit?slug=harbour", wait_until="networkidle")
+        check("PRESS-0182: a published entry's page offers Change address",
+              page.locator("#address").is_visible())
+        page.fill("input[name=address]", "harbour-moved")
+        moved_asked: list[str] = []
+
+        def refuse_move(dialog) -> None:
+            moved_asked.append(dialog.message)
+            dialog.dismiss()
+
+        page.once("dialog", refuse_move)
+        page.get_by_role("button", name="Change address", exact=True).click()
+        page.wait_for_timeout(500)
+        check("PRESS-0182: it asks first, and says old links still reach it",
+              len(moved_asked) == 1 and "Links to the old address" in moved_asked[0],
+              repr(moved_asked))
+        check("PRESS-0182: saying no moves nothing",
+              "harbour" in store.list_slugs(folder, draft=False)
+              and store.read_forwards(folder) == {})
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.get_by_role("button", name="Change address", exact=True).click()
+        page.wait_for_timeout(1000)
+        check("PRESS-0182: saying yes moves it and forwards the old address",
+              store.list_slugs(folder, draft=False).count("harbour-moved") == 1
+              and store.read_forwards(folder) == {"harbour": "harbour-moved"}
+              and "slug=harbour-moved" in page.url,
+              f"{store.read_forwards(folder)!r} {page.url.split('?')[-1]}")
+        page.locator("textarea").type(" More.", delay=10)
+        page.wait_for_timeout(2500)
+        check("PRESS-0182: once a save makes a proof, the address is hidden",
+              editor.working_copy(folder, "harbour-moved") is not None
+              and page.locator("#address").is_hidden())
+        page.goto(f"{origin}/edit?slug=harbour-moved", wait_until="networkidle")
+        check("PRESS-0182: a proof's own page offers no address",
+              page.locator("#address").count() == 0, page.url.split("?")[-1])
+
         # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
         page.goto(f"{origin}/", wait_until="networkidle")
         page.fill("input[name=title]", "Gull")

@@ -1793,3 +1793,52 @@ def test_a_look_alike_is_not_a_stranded_twin(tmp_path):
         target = publish(tmp_path, "kelvin")
 
     assert target.is_file(), "the publish did not go through"
+
+
+# PRESS-0182 INV-1: the forwards file (docs/specs/PRESS-0182-published-address.md
+# § 4.1). Its keys become folder names on his site, so a hand edit is refused
+# here rather than reaching the Builder.
+
+def test_forwards_round_trip(tmp_path):
+    """INV-1: read_forwards returns what write_forwards wrote, {} before any
+    write, and the file is sorted JSON with LF and a final newline -- and the
+    bin takes it, which undo needs.
+
+    Breaks when the file sits loose in the folder, where move_to_bin refuses
+    it, or when write re-orders nothing and the bytes depend on insertion."""
+    assert store_module.read_forwards(tmp_path) == {}
+    store_module.write_forwards(tmp_path, {"old-seaside": "seaside", "a": "b"})
+    path = store_module.forwards_path_for(tmp_path)
+    assert path == tmp_path / "forwards" / "forwards.json"
+    assert store_module.read_forwards(tmp_path) == {"a": "b", "old-seaside": "seaside"}
+    assert path.read_bytes() == b'{\n  "a": "b",\n  "old-seaside": "seaside"\n}\n'
+
+    store_module.write_forwards(tmp_path, {})
+    assert path.read_bytes() == b"{}\n"
+    assert store_module.read_forwards(tmp_path) == {}
+
+    binned = move_to_bin(tmp_path, path)
+    assert binned.parts[-2:] == ("forwards", "forwards.json")
+    assert store_module.read_forwards(tmp_path) == {}
+
+
+@pytest.mark.parametrize("text", [
+    '{"../x": "seaside"}',
+    '{"seaside": "Con"}',
+    '{"a": "a"}',
+    '["a", "b"]',
+    '{"a": 1}',
+    "not json",
+])
+def test_forwards_refuse_an_illegal_slug(tmp_path, text):
+    """INV-1's refusal: a key or value path_for refuses, a pair mapping a slug
+    to itself, a non-object, a non-string value and bad JSON each raise
+    StoreError naming the file.
+
+    Breaks when a hand-edited key such as ../x is read and reaches the
+    Builder as a folder name."""
+    path = store_module.forwards_path_for(tmp_path)
+    path.parent.mkdir()
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(StoreError, match="forwards.json"):
+        store_module.read_forwards(tmp_path)

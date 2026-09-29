@@ -838,6 +838,8 @@ _PRESS_0006_SURFACE = {
     "photograph_path_for", "list_photographs",
 }
 _PRESS_0014_SURFACE = {"WAITING_FOLDERS"}
+_PRESS_0182_SURFACE = {"FORWARDS_FOLDER", "FORWARDS_FILE", "forwards_path_for",
+                       "read_forwards", "write_forwards"}
 
 # §3 decision 10 leaves a photograph's file name to PRESS-0016 -- the archive's
 # own attachment names carry underscores and would not pass the slug rule -- so
@@ -936,10 +938,11 @@ def test_photographs_stay_where_they_are(tmp_path):
     )
 
     surface = _public_names(store_module)
-    expected_surface = _PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
+    expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
+                        | _PRESS_0182_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
-        f"with PRESS-0006 §4.1's and PRESS-0014 §4.1's. "
+        f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's and PRESS-0182 §4.1's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"

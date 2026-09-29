@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import hashlib
 import html
 import http.client
@@ -568,3 +569,141 @@ def test_the_preview_frame_runs_no_script(tmp_path):
     frames = re.findall(r"<iframe\b[^>]*>", page)
     assert len(frames) == 1, frames
     assert re.search(r'\bsandbox="allow-same-origin"', frames[0]), frames[0]
+
+
+# -------------------------------------------------------------- PRESS-0182 ---
+# docs/specs/PRESS-0182-published-address.md: a published entry changes its
+# address and the old one forwards to it.
+
+
+def _move(browser: _Browser, folder: Path, slug: str, address: str, *, draft: bool
+          ) -> dict:
+    status, _, text = browser.request("POST", "/address", {
+        "slug": slug, "draft": "1" if draft else "0",
+        "base": _base(folder, slug, draft=draft), "address": address})
+    assert status == 200, text
+    return json.loads(text)
+
+
+def test_a_published_address_change_forwards_the_old_one(tmp_path):
+    """INV-2: the entry moves within published/, its old file and comments go
+    to the bin, the comments follow it, and the old address forwards.
+
+    Breaks when step 4 is skipped, or the entry is written as a draft."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("a", title="Seaside", body="The sea."), draft=False)
+    _comments(folder, "a")
+    before = store.read(store.path_for(folder, "a", draft=False))
+    comments = store.read_comments(store.comments_path_for(folder, "a"))
+    with _editor(folder) as browser:
+        reply = _move(browser, folder, "a", "b", draft=False)
+    assert reply["slug"] == "b" and reply["draft"] is False and reply["hint"] is None
+    assert reply["base"] == _base(folder, "b", draft=False)
+    assert store.list_slugs(folder, draft=False) == ("b",)
+    assert store.list_slugs(folder, draft=True) == ()
+    moved = store.read(store.path_for(folder, "b", draft=False))
+    assert moved == dataclasses.replace(before, slug="b")
+    assert store.read_comments(store.comments_path_for(folder, "b")) == comments
+    assert not store.comments_path_for(folder, "a").exists()
+    assert _binned(folder) == ["a.json", "a.txt"]
+    assert store.read_forwards(folder) == {"a": "b"}
+
+
+def test_a_second_move_retargets_the_first_forward(tmp_path):
+    """INV-3: a chain points at the newest address, and a draft an undo
+    demoted takes its forwards with it.
+
+    Breaks when step 4 adds the new pair without retargeting, or skips
+    drafts, leaving `a` aimed at a free `b`."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("a"), draft=False)
+    with _editor(folder) as browser:
+        _move(browser, folder, "a", "b", draft=False)
+        _move(browser, folder, "b", "c", draft=False)
+    assert store.read_forwards(folder) == {"a": "c", "b": "c"}
+
+    (tmp_path / "demoted").mkdir()
+    demoted = _folder(tmp_path / "demoted")
+    store.write(demoted, _entry("b"), draft=True)
+    store.write_forwards(demoted, {"a": "b"})
+    with _editor(demoted) as browser:
+        _move(browser, demoted, "b", "c", draft=True)
+    assert store.read_forwards(demoted) == {"a": "c"}
+
+
+def test_moving_back_drops_the_forward_it_lands_on(tmp_path):
+    """INV-4: a to b and back to a leaves {b: a} and no loop.
+
+    Breaks when step 4 keeps the key equal to the new address."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("a"), draft=False)
+    with _editor(folder) as browser:
+        _move(browser, folder, "a", "b", draft=False)
+        reply = _move(browser, folder, "b", "a", draft=False)
+    assert reply["hint"] is None and reply["slug"] == "a"
+    assert store.read_forwards(folder) == {"b": "a"}
+
+
+def test_a_forwarded_address_stays_reserved(tmp_path):
+    """INV-5: a forwarded address is refused to every entry but the one it
+    forwards to. With no entry at `a`, only the forward can make free_address
+    skip it.
+
+    Breaks when free_address or /address consults store.exists alone."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("b"), draft=False)
+    store.write(folder, _entry("c"), draft=True)
+    store.write_forwards(folder, {"a": "b"})
+    assert editor.free_address(folder, "a") == "a-2"
+    with _editor(folder) as browser:
+        before = sorted(p.as_posix() for p in folder.rglob("*"))
+        reply = _move(browser, folder, "c", "a", draft=True)
+        assert reply["hint"] == "Another entry's old address forwards from there."
+        assert sorted(p.as_posix() for p in folder.rglob("*")) == before
+        reply = _move(browser, folder, "b", "a", draft=False)
+    assert reply["hint"] is None
+    assert store.list_slugs(folder, draft=False) == ("a",)
+    assert store.read_forwards(folder) == {"b": "a"}
+
+
+def test_an_address_change_waits_for_the_proof(tmp_path):
+    """INV-6: a published entry with a working copy, and the working copy
+    itself, are refused with their hints and nothing is written.
+
+    Breaks when the published entry is moved and its copy's Replaces then
+    names nothing."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write(folder, _entry("seaside-changes", extra=((REPLACES, "seaside"),)), draft=True)
+    with _editor(folder) as browser:
+        before = sorted(p.as_posix() for p in folder.rglob("*"))
+        published = _move(browser, folder, "seaside", "harbour", draft=False)
+        proof = _move(browser, folder, "seaside-changes", "harbour", draft=True)
+        assert sorted(p.as_posix() for p in folder.rglob("*")) == before
+    assert published["hint"] == ("Press your changes to your site, or bin this proof, "
+                                 "then change the address.")
+    assert proof["hint"] == "A proof's address cannot be changed."
+
+
+def test_throwing_an_entry_away_removes_its_forwards(tmp_path):
+    """INV-7: throwing away a published entry removes every pair aimed at it,
+    from its own page and from its working copy's.
+
+    Breaks when the step keys on the draft field, so a throw from the proof's
+    page bins the entry and leaves its old address reserved."""
+    for route in ("own page", "proof"):
+        (tmp_path / route.replace(" ", "-")).mkdir()
+        folder = _folder(tmp_path / route.replace(" ", "-"))
+        store.write(folder, _entry("b"), draft=False)
+        store.write(folder, _entry("y"), draft=False)
+        store.write_forwards(folder, {"a": "b", "x": "y"})
+        slug, draft = "b", False
+        if route == "proof":
+            store.write(folder, _entry("b-changes", extra=((REPLACES, "b"),)), draft=True)
+            slug, draft = "b-changes", True
+        with _editor(folder) as browser:
+            status, _, text = browser.request("POST", "/throw", {
+                "slug": slug, "draft": "1" if draft else "0",
+                "base": _base(folder, slug, draft=draft)})
+        assert status == 200, (route, text)
+        assert store.read_forwards(folder) == {"x": "y"}, route

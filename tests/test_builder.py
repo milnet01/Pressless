@@ -1007,3 +1007,88 @@ def test_a_store_file_that_cannot_be_read_is_named_as_the_stores(tmp_path):
             build(folder, _settings(), tmp_path / "site", photo_src=lambda name: name)
     finally:
         template.chmod(0o600)
+
+
+# -------------------------------------------------------------- PRESS-0182 ---
+# docs/specs/PRESS-0182-published-address.md § 4.3: an old address holds a page
+# that forwards to where the entry is now.
+
+
+def test_a_forward_is_built_beside_its_entry(tmp_path):
+    """INV-8: the forwarding page sits at the old address under the TARGET's
+    date, refreshes at once to the sibling folder, links there by the page's
+    own heading, and is in no listing or sitemap line.
+
+    Breaks when the page goes under the build's date, or the sitemap lists
+    the old address."""
+    folder = _store(tmp_path)
+    entry = _entry("seaside", "2019-05-06 07:08:09", title="By the <sea>")
+    store.write(folder, entry, draft=False)
+    store.write(folder, _entry("untitled-one", "2018-01-02 03:04:05"), draft=False)
+    store.write_forwards(folder, {"old-seaside": "seaside", "gone-quiet": "untitled-one"})
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+
+    page = into / "blog/2019/05/06/old-seaside/index.html"
+    text = page.read_text(encoding="utf-8")
+    assert '<meta http-equiv="refresh" content="0; url=../seaside/index.html">' in text
+    assert ('<link rel="canonical" '
+            'href="https://example.org/blog/2019/05/06/seaside/index.html">') in text
+    assert '<a href="../seaside/index.html">By the &lt;sea&gt;</a>' in text
+    assert "blog/2019/05/06/old-seaside/index.html" in built.files
+    untitled = (into / "blog/2018/01/02/gone-quiet/index.html").read_text(encoding="utf-8")
+    assert ">2 January 2018</a>" in untitled, untitled
+
+    assert "old-seaside" not in (into / "sitemap.xml").read_text(encoding="utf-8")
+    for listing in ("blog/index.html", "blog/archive/index.html"):
+        assert "old-seaside" not in (into / listing).read_text(encoding="utf-8"), listing
+
+
+def test_a_forward_to_nothing_is_not_built(tmp_path):
+    """INV-9: no page for a forward whose target is a draft, missing, or
+    filtered.
+
+    Breaks when a forward links to a page that was never built."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("a-draft"), draft=True)
+    store.write(folder, _entry("hidden", tags=("dailyprompt-1",)), draft=False)
+    store.write(folder, _entry("kept"), draft=False)
+    store.write_forwards(folder, {"to-draft": "a-draft", "to-nothing": "missing",
+                                  "to-hidden": "hidden", "to-kept": "kept"})
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    forwards = {p.parent.name for p in (into / "blog/2020/01/02").glob("to-*/index.html")}
+    assert forwards == {"to-kept"}
+
+
+def test_an_entry_wins_over_a_forward_at_its_address(tmp_path):
+    """INV-9: where the old address is itself a published entry, the entry's
+    own page is built there and no forward overwrites it.
+
+    Breaks when forwards are written after entry pages without the check."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("a", body="The real a."), draft=False)
+    store.write(folder, _entry("b"), draft=False)
+    store.write_forwards(folder, {"a": "b"})
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    text = (into / "blog/2020/01/02/a/index.html").read_text(encoding="utf-8")
+    assert "The real a." in text and "http-equiv" not in text
+
+
+def test_content_carries_the_forwards(tmp_path):
+    """INV-10: content/forwards/forwards.json is the Store's file byte for
+    byte, and absent where the Store has none.
+
+    Breaks when the Builder re-serialises the mapping."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("b"), draft=False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert not (into / "content/forwards").exists()
+
+    target = store.forwards_path_for(folder)
+    target.parent.mkdir()
+    target.write_bytes(b'{"a":   "b"}\n')
+    build(folder, _settings(), into)
+    assert (into / "content/forwards/forwards.json").read_bytes() == b'{"a":   "b"}\n'

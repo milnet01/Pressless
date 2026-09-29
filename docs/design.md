@@ -269,7 +269,8 @@ published entry go there alike, and he can move either back; nothing
 Pressless does empties it. A deleted published entry leaves the site on
 the next publish, because the Builder no longer copies it into
 `content/`. Renaming an entry's slug writes the new file and moves the
-old one to the bin.
+old one to the bin, and, for a published entry, leaves a page at the old
+address that forwards to the new one (PRESS-0182).
 
 **`COPY-ME-new-page.html` stays on the site.** Templates retire it as a
 *way of working* — he is no longer expected to find, copy and rename a

@@ -519,7 +519,8 @@ refusing at the write is where the caller still knows what it dropped.
   copied, because § 7 writes nothing of the archive into a fixture — and
   lands under `PHOTOGRAPHS_FOLDER`; then assert the module's
   public names are exactly PRESS-0005 § 4.1's list together with this
-  spec's § 4.1, so a copy-a-photograph call cannot be added without this
+  spec's § 4.1 and the § 4.1 names PRESS-0014 and PRESS-0182 add, so a
+  copy-a-photograph call cannot be added without this
   test failing. **Public names are the module's own top-level definitions
   with no leading underscore, read off its source**: an import binds a
   module-level name exactly as an assignment does, so `dir()` would count

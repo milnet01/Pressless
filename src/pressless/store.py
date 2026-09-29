@@ -662,6 +662,8 @@ FURNITURE_FOLDER = "furniture"
 TEMPLATES_FOLDER = "templates"
 COMMENTS_FOLDER = "comments"
 PHOTOGRAPHS_FOLDER = "photographs"
+FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it forwards to
+FORWARDS_FILE = "forwards.json"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -673,7 +675,7 @@ WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-w
 # writing the Store holds, and nothing else.
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
-    TEMPLATES_FOLDER, COMMENTS_FOLDER, *WAITING_FOLDERS.values(),
+    TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -921,6 +923,52 @@ def write_comments(folder: Path, slug: str, comments: tuple[Comment, ...]) -> Pa
     ]
     text = json.dumps(records, indent=2, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".comments-", newline="\n")
+    return target
+
+
+def forwards_path_for(folder: Path) -> Path:
+    """Where the forwards file sits (PRESS-0182 § 4.1). In a folder of its own,
+    because move_to_bin refuses a file loose in `folder` and undo bins it."""
+    return Path(folder) / FORWARDS_FOLDER / FORWARDS_FILE
+
+
+def read_forwards(folder: Path) -> dict[str, str]:
+    """Each old address mapped to the address it forwards to; {} where there
+    is no file (PRESS-0182 § 4.1).
+
+    Every key becomes a folder name on his site and he may open the file, so
+    each slug is put to the same rule path_for uses.
+    """
+    target = forwards_path_for(folder)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
+    try:
+        carried = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
+    if not isinstance(carried, dict) or not all(
+            isinstance(value, str) for value in carried.values()):
+        raise StoreError(f"{target.name} is not an object of addresses")
+    for old, new in carried.items():
+        try:
+            _refuse_illegal_slug(old, "an address")
+            _refuse_illegal_slug(new, "an address")
+        except StoreError as exc:
+            raise StoreError(f"{target.name}: {exc}") from None
+        if old == new:
+            raise StoreError(f"{target.name} forwards {old!r} to itself")
+    return carried
+
+
+def write_forwards(folder: Path, forwards: dict[str, str]) -> Path:
+    """Replace the forwards file whole, keys sorted (PRESS-0182 § 4.1)."""
+    target = forwards_path_for(folder)
+    text = json.dumps(forwards, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    _write_atomically(folder, target, text, prefix=".forwards-", newline="\n")
     return target
 
 

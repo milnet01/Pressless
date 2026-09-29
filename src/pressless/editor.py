@@ -99,13 +99,16 @@ def name_address(name: str) -> str:
 
 
 def free_address(folder: Path, wanted: str) -> str:
-    """`wanted`, or the first of `wanted-2`, `wanted-3` … no entry holds and the
-    Store accepts (§ 4.1)."""
+    """`wanted`, or the first of `wanted-2`, `wanted-3` … no entry holds, no old
+    address forwards from, and the Store accepts (§ 4.1; PRESS-0182)."""
+    # Read once, outside the loop: its StoreError must stop the search, not be
+    # skipped as a refused name (PRESS-0182 § 4.2).
+    forwarded = store.read_forwards(folder)
     number = 1
     while True:
         candidate = wanted if number == 1 else f"{wanted}-{number}"
         try:
-            if not store.exists(folder, candidate):
+            if candidate not in forwarded and not store.exists(folder, candidate):
                 return candidate
         except store.StoreError:
             pass  # a name the Store refuses, such as a Windows device name
@@ -418,7 +421,9 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
                     '<input type="hidden" name="slug" value="">'
                     f'<input type="hidden" name="base" value="{attr(base)}">'
                     "<button>Bin this proof</button></form></div>")
-        address = ""
+        # PRESS-0182: a published entry moves too; the script hides this once a
+        # save makes a proof, whose address cannot change.
+        address = _address_field(entry.slug)
     elif named is not None:
         standing = ("<p>These changes are not on your site yet.</p>"
                     '<form method="post" action="/discard">'
@@ -428,9 +433,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
         address = ""
     else:
         standing = "<p>A draft. It is not on your site.</p>"
-        address = (f'<label>Address <input name="address" value="{attr(entry.slug)}">'
-                   '</label> <button type="button" data-editor="address">'
-                   'Change address</button> <span id="address-hint"></span>')
+        address = _address_field(entry.slug)
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.STYLESHEETS)
     return f"""{stylesheets}
@@ -466,6 +469,13 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  src="{attr(preview or 'about:blank')}"></iframe>
 <script>{_EDITOR_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""
+
+
+def _address_field(slug: str) -> str:
+    value = html.escape(slug, quote=True)
+    return (f'<span id="address"><label>Address <input name="address" value="{value}">'
+            '</label> <button type="button" data-editor="address">'
+            'Change address</button> <span id="address-hint"></span></span>')
 
 
 def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
@@ -527,44 +537,65 @@ def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request
 
 
 def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """§ 4.9."""
+    """§ 4.9, and PRESS-0182 § 4.2 for a published entry: its old address
+    forwards to the new one."""
     form = _form(request)
     slug, base, address = form.get("slug", ""), form.get("base", ""), form.get(
         "address", "").strip()
+    draft = form.get("draft", "1") == "1"
     hint = None
     with lock, face.capture() as notices:
         try:
-            entry = (store.read(store.path_for(folder, slug, draft=True))
-                     if slug in store.list_slugs(folder, draft=True) else None)
-            if entry is None or _replaced(folder, entry) is not None:
-                hint = "Only a draft's address can be changed here."
+            entry = (store.read(store.path_for(folder, slug, draft=draft))
+                     if slug in store.list_slugs(folder, draft=draft) else None)
+            if entry is None:
+                hint = "This entry is not there any more."
+            elif draft and _replaced(folder, entry) is not None:
+                hint = "A proof's address cannot be changed."
+            elif not draft and working_copy(folder, slug) is not None:
+                hint = ("Press your changes to your site, or bin this proof, "
+                        "then change the address.")
             elif address != slug:
                 try:
                     taken = store.exists(folder, address)
                 except store.StoreError:
                     hint = "An address uses only the letters a to z, the digits 0 to 9 and -."
                 else:
+                    forwards = store.read_forwards(folder)
                     if taken:
                         hint = "Another entry already uses that address."
+                    elif forwards.get(address, slug) != slug:
+                        hint = "Another entry's old address forwards from there."
             if hint is None and entry is not None and address != slug:
-                path = store.path_for(folder, slug, draft=True)
+                path = store.path_for(folder, slug, draft=draft)
                 if _digest(path) != base:
                     raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
-                store.write(folder, dataclasses.replace(entry, slug=address), draft=True)
+                # The order leaves two copies, never none (§ 4.2).
+                store.write(folder, dataclasses.replace(entry, slug=address), draft=draft)
+                # Retarget every pair aimed here. A pair FROM the new address can
+                # only be aimed here (the hint above refuses any other), so it
+                # becomes a loop and the last line drops it: moving back.
+                forwards = {old: (address if new == slug else new)
+                            for old, new in store.read_forwards(folder).items()}
+                if not draft:
+                    forwards[slug] = address
+                forwards = {old: new for old, new in forwards.items() if old != new}
+                if forwards != store.read_forwards(folder):
+                    store.write_forwards(folder, forwards)
                 comments = store.comments_path_for(folder, slug)
                 if comments.is_file():
                     store.write_comments(folder, address, store.read_comments(comments))
                     store.move_to_bin(folder, comments)
                 store.move_to_bin(folder, path)
                 slug = address
-                base = _digest(store.path_for(folder, slug, draft=True))
-        except (store.StoreError, ChangedElsewhere) as exc:
+                base = _digest(store.path_for(folder, slug, draft=draft))
+        except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
             failure = None
     if failure is not None:
         return _failed(face, notices, failure)
-    return _json({"slug": slug, "draft": True, "base": base, "preview": None,
+    return _json({"slug": slug, "draft": draft, "base": base, "preview": None,
                   "failure": None, "notices": render_notices(notices), "hint": hint})
 
 
@@ -614,6 +645,11 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
                 named = slug
             if named is not None:
                 store.move_to_bin(folder, store.path_for(folder, named, draft=False))
+                # PRESS-0182 § 4.2: its old addresses go with it.
+                forwards = store.read_forwards(folder)
+                kept = {old: new for old, new in forwards.items() if new != named}
+                if kept != forwards:
+                    store.write_forwards(folder, kept)
             comments = store.comments_path_for(folder, named or slug)
             if comments.is_file():
                 store.move_to_bin(folder, comments)
@@ -710,6 +746,11 @@ _EDITOR_SCRIPT = """
     });
     document.getElementById("notices").innerHTML = reply.notices;
     if ("missing" in reply) showMissing(reply.missing);
+    // PRESS-0182: a proof's address cannot change, so its page offers none.
+    const addressField = document.getElementById("address");
+    if (addressField && state.draft === "1" && form.dataset.draft === "0") {
+      addressField.hidden = true;
+    }
     // PRESS-0128: a press puts a draft on his site without reloading the page.
     if (state.draft === "0") {
       form.dataset.onSite = "1";
@@ -857,9 +898,15 @@ _EDITOR_SCRIPT = """
       while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
       if (dirty && !stopped) await save();
       if (stopped) return;
+      // PRESS-0182: asked first, since links to it are out in the world.
+      if (state.draft === "0" && !window.confirm(
+          "Change this entry's address? It moves now in your Pressless-data folder, " +
+          "and on your site the next time you press to site. Links to the old " +
+          "address will still reach it.")) return;
       try {
         const data = new URLSearchParams();
-        data.set("slug", state.slug); data.set("base", state.base);
+        data.set("slug", state.slug); data.set("draft", state.draft);
+        data.set("base", state.base);
         data.set("address", document.querySelector("input[name=address]").value);
         const answer = await fetch("/address", {method: "POST", body: data});
         const text = await answer.text();
