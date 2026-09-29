@@ -2,7 +2,7 @@
 
 **Status:** accepted (2026-09-13), built 2026-09-17, amended since; each
 amendment is recorded in `../history/PRESS-0008-builder.md`. PRESS-0123
-amends §4.1, §4.3 and INV-6 (draft, 2026-09-29).
+amends §4.1, §4.3 and INV-6 (accepted 2026-09-29).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0008 (`docs/design.md` § The parts, § What may
 depend on what).
@@ -446,7 +446,8 @@ Sitemap: <the address>/sitemap.xml
 - **INV-6** — Two builds of an unchanged Store given the same `today`
   (PRESS-0123 §4.2) write byte-identical folders.
   *Test:* `tests/test_builder.py::test_a_build_is_reproducible` — a Store
-  with a JPEG, a PNG, tags and comments is built; a copy of it, its files
+  with a JPEG, a PNG, tags and comments is built, both builds given one
+  fixed `today`; a copy of it, its files
   written in reverse order, is built in a subprocess under a different
   `PYTHONHASHSEED`; the two folders are compared file by file.
   *Breaks when:* output depends on listing order, a set's order, a clock

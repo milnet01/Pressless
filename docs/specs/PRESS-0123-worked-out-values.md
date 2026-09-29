@@ -1,6 +1,6 @@
 # PRESS-0123 — A mark carrying a value worked out when he publishes
 
-**Status:** draft (2026-09-29).
+**Status:** accepted (2026-09-29). Gated for one loop; every verified finding fixed, none left in the tail.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0123 (asked for 2026-09-17; the calculation
 menu and the publish-time rule decided 2026-09-17 and 2026-09-27; the
@@ -24,9 +24,10 @@ Some numbers on the site move with time, such as how long something has
 been going. Today he edits each one by hand when it changes, and a
 missed edit leaves a wrong figure on a public page.
 
-Marks renders an entry and reads no clock: it takes text and returns
-HTML (`docs/design.md` § What may depend on what, rule 3, and PRESS-0004
-§1). The Builder already reads one, for the footer's year
+Marks takes text and returns HTML, and touches no disk and no network
+(`docs/design.md` § What may depend on what, rule 3). It reads no clock
+either, and INV-3 keeps it so. The Builder already reads one, for the
+footer's year
 (`src/pressless/builder.py`, `datetime.now().year`). So the date has to
 come from the Builder, and Marks does the sum.
 
@@ -100,9 +101,9 @@ the `date` type and `date.fromisoformat`; nothing in it reads the time.
 One build uses that one date everywhere:
 
 - an entry page's body is `marks.render(entry.body, src, today)`;
-- a listing's excerpt and an untitled entry's teaser take a `Value`'s
-  text from `marks.value_text`, so a card shows the number, not the
-  mark;
+- `_entry_text` takes a `Value`'s text from `marks.value_text`, so a
+  listing's excerpt, an untitled entry's teaser and an entry page's
+  description all show the number, not the mark;
 - the footer's year is `today.year`, replacing its own clock reads.
 
 A fixed page, furniture, a comment and every plain-text `to_html` call
@@ -130,18 +131,21 @@ calls `build`, so on the same day both show the same number.
 
 - **INV-3** — Marks reads no clock.
   *Test:* `tests/test_marks.py::test_marks_is_pure` — its call walk also
-  refuses `today`, `now`, `utcnow` and any call into `time`.
+  refuses `today`, `now` and `utcnow` **by any spelling**, the class that
+  already holds `open`, so `date.today()` is caught.
   *Breaks when:* the row's sum calls `date.today()` rather than using
   the `today` it is given.
 
-- **INV-4** — One build shows one number: an entry page, its card in a
-  listing and a preview of it, given the same `today`, all carry the
-  same worked-out text, and none carries the mark.
+- **INV-4** — One build shows one number: an entry page, its
+  description, its card in a listing and a preview of it, given the same
+  `today`, all carry the same worked-out text, and none carries the
+  mark.
   *Test:* `tests/test_builder.py::test_a_value_mark_is_worked_out_once_per_build`
-  — a titled entry holding the mark, built and previewed with one
-  `today`.
-  *Breaks when:* `preview` or the card's excerpt is not handed `today`,
-  and shows the mark as written.
+  — a titled entry holding `{years_since: 2000-01-01}`, built and
+  previewed with `today` 2001-06-01, so every place must show `1`; the
+  real date gives a different count.
+  *Breaks when:* any of those paths reads the clock instead of the
+  `today` it was handed.
 
 - **INV-5** — A value mark in a fixed page or furniture file stays as
   written.
@@ -199,14 +203,16 @@ it.
 
 - **PRESS-0004** — §4.1's signatures gain `today`, and its export list
   gains `Value` and `value_text`. §4.2's `Mark` gains `value`, `kind`
-  gains `"value"`, and the table gains the `years_since` row. §4.3's
+  gains `"value"`, `Renderer` admits a `Value`, and the table gains the
+  `years_since` row. §4.3's
   `Node` gains `Value`. §4.5 says `value` rows are tried with `wrap`
   rows. Each points at PRESS-0123 §4.1.
 - **PRESS-0008** — §4.1's `build` gains `today`. §4.3's *"the body is
   `marks.render(entry.body, photo_src)`"* gains `today`. INV-6's *"in the
   same year"* becomes *"given the same `today`"*, and its *"the clock
-  below the year"* becomes *"a clock read other than `today`"*. Each
-  points at PRESS-0123 §4.2.
+  below the year"* becomes *"a clock read other than `today`"*; its test
+  passes one fixed `today` to both builds. Each points at PRESS-0123
+  §4.2.
 - **PRESS-0012** — §4.2's `preview` gains `today`, pointing at PRESS-0123
   §4.2.
 - **PRESS-0014** — §4.1's `preview_html` gains `today`, pointing at

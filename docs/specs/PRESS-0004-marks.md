@@ -2,7 +2,7 @@
 
 **Status:** accepted (2026-08-25), amended since; each amendment was
 gated or exempt as recorded in `../history/PRESS-0004-marks.md`.
-PRESS-0123 amends §4.1, §4.2, §4.3 and §4.5 (draft, 2026-09-29).
+PRESS-0123 amends §4.1, §4.2, §4.3 and §4.5 (accepted 2026-09-29).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0004 (`docs/design.md` § The parts; ADR-0001).
 
@@ -135,7 +135,7 @@ class Mark:
     explains: str            # one plain-English line, his words not ours
     value: Callable[[str, date], str | None] | None = None   # a value row's sum (PRESS-0123 §4.1)
 
-Renderer = Callable[[Span | Photo | Quote, str, PhotoSrc], str]
+Renderer = Callable[[Span | Photo | Quote | Value, str, PhotoSrc], str]
 ```
 
 A `Renderer` receives its node, its already-rendered children, and
