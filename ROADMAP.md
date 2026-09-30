@@ -2869,6 +2869,22 @@ success.
   client) and fills CLIENT_ID; then one real sign-in proves Google
   exchanges without a secret, plus spec section 7's browser checks on
   Linux and the Windows box.
+  Progress (2026-10-01, later): client registered by the user in
+  Google Cloud (project Pressless, consent screen In production, Desktop
+  client); CLIENT_ID filled. First real sign-in failed: Google answers
+  "client_secret is missing." The user chose to add the secret at
+  packaging; the spec amendment (§3 decision 3, §4.7, INV-16, INV-17) was
+  re-gated and accepted. Still to build: scripts/write_google_secret.py,
+  the .gitignore line, both release.yml steps, CLIENT_SECRET in
+  google_signin (sent on exchange and refresh), INV-4/7/15/16/17 tests,
+  and no refresh on a failed or empty return. Owed by the user: add the
+  secret as the repository's GitHub Actions secret GOOGLE_CLIENT_SECRET,
+  and run scripts/write_google_secret.py locally (it prompts, no echo).
+  Then retry the real sign-in with the throwaway folder
+  /mnt/Games/Scripts/Linux/pressless-signin-check (settings store "file";
+  delete it once the sign-in works). Open question for the user: the
+  white panel at the right of their screenshot of /setup/google, is it
+  Pressless or the browser?
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -8756,6 +8772,15 @@ already-built code ships in whichever release comes next.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
+  Lanes: Face.
+
+- ✅ [PRESS-0188] **Pressless's own headings and name use a plain sans font, not a Times-like one.**
+  The user asked for Arial or Calibri. face.py's h1, h2 and the name in
+  the bar now use Arial, Calibri, Liberation Sans, Helvetica, sans-serif;
+  the body text was already sans. The preview keeps the site's own fonts.
+  **Layman:** Pressless's headings are now in a plain font like Arial instead of one like Times New Roman.
+  Kind: ux.
+  Source: user-request-2026-10-01.
   Lanes: Face.
 
 ## Milestones

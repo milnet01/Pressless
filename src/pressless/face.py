@@ -502,10 +502,10 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .bar { display: flex; align-items: center; gap: .6rem; padding: .7rem 1.5rem;
   border-bottom: 1px solid var(--line); }
 .face .bar svg { width: 1.3rem; height: auto; }
-.face .bar b { font: 600 1.2rem/1 Georgia, "Iowan Old Style", "Times New Roman", serif; }
+.face .bar b { font: 700 1.2rem/1 Arial, Calibri, "Liberation Sans", Helvetica, sans-serif; }
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
 .face main { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
-.face h1, .face h2 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+.face h1, .face h2 { font-family: Arial, Calibri, "Liberation Sans", Helvetica, sans-serif;
   font-weight: 600; line-height: 1.2; }
 .face h1 { font-size: 2rem; margin: .5rem 0 1.25rem; }
 .face h2 { font-size: 1.3rem; margin: 2rem 0 .5rem; padding-bottom: .3rem;

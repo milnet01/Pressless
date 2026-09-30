@@ -19,6 +19,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   account can see, and you can turn it off again. It stays hidden until
   this copy of Pressless is registered with Google.
 
+### Changed
+
+- **Pressless's own headings and name use a plain font (Arial, or Calibri) instead of a Times-like one.**
+  Asked for by the user. Your site's preview keeps your site's own fonts.
+
 ### Fixed
 
 - **After pressing changes to an entry, Change address is offered again without a reload.** (PRESS-0186)
