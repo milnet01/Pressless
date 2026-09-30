@@ -2823,6 +2823,42 @@ success.
   library. Neither is chosen.
 
   Blocker for: PRESS-0020.
+  Research (2026-09-30), read from Google's pages that day. Waiting on
+  the user's choice of route; nothing is built.
+  Route A, sign in with Google (installed-app OAuth, one client shipped
+  with Pressless):
+  - Desktop apps on Windows and Linux use the loopback redirect, which
+    Google recommends for them; PKCE is supported; copy-and-paste codes
+    are no longer supported.
+  - The client secret ships in the app and "is obviously not treated as a
+    secret".
+  - Left in Testing, a refresh token expires in 7 days and only listed
+    test users may sign in. So the project must be In production.
+  - In production and unverified, a sensitive or restricted scope shows
+    an unverified-app warning people can click through, and a user cap
+    applies over the project's whole life and cannot be reset. Google's
+    help puts personal use at fewer than 100 users.
+  - A refresh token also dies after six months unused, or when revoked.
+  - It is about 100 to 200 characters, so it fits the Windows vault.
+  Route B, a service account each person makes in their own Google Cloud
+  project:
+  - No consent screen, no verification, no expiry, no user cap. Google's
+    help names service accounts as needing no verification.
+  - The token request is a JWT signed RS256, posted to
+    oauth2.googleapis.com/token. cryptography is already a dependency
+    (PRESS-0023), so this adds no library; the item's earlier note that
+    it would is out of date.
+  - Each person must make a Cloud project, enable the API, make the
+    account, download its key and add it to their Analytics property.
+  - Windows Credential Manager caps a secret at 2560 bytes, which keyring
+    stores as UTF-16, so about 1280 characters. An RSA-2048 key is longer
+    and would have to be split across entries. From keyring issues 355
+    and 540; not tried on the box.
+  Not confirmed: that analytics.readonly is classed sensitive (the list
+  is shown only in the Cloud console), and what verification asks for.
+  Read: developers.google.com/identity/protocols/oauth2 and its
+  native-app and service-account pages; support.google.com/cloud answers
+  13464323 and 15549945.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -7835,6 +7871,10 @@ already-built code ships in whichever release comes next.
   The throwaway repository still exists.
   Later (2026-09-30): the throwaway repository is deleted, on the user's
   word. A later Windows row that needs a publish makes a new one.
+  Added (2026-09-30): PRESS-0185 and PRESS-0186 are fixed on main and
+  seen in headless Chrome on Linux only. The next Windows run presses a
+  draft and a proof in Edge and Chrome and reads the line above the form
+  and the Address field, without a reload.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
