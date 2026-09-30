@@ -33,3 +33,13 @@ def test_a_file_others_can_read_is_not_private(tmp_path):
     assert maker.kept_private(target)
     target.chmod(0o644)
     assert not maker.kept_private(target)
+
+
+def test_a_folder_that_is_not_there_is_refused_in_words(tmp_path, capsys):
+    """PRESS-0184: a path in a folder not yet made ended in a
+    FileNotFoundError traceback."""
+    maker = _maker()
+    target = tmp_path / "not-made" / "key.pem"
+    assert maker.main([str(target)]) == 1
+    assert "does not exist" in capsys.readouterr().err
+    assert not target.parent.exists()

@@ -8,11 +8,16 @@ from __future__ import annotations
 
 import base64
 import importlib.util
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from pressless import update_key
 
 _SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "sign-release.py"
 
@@ -87,3 +92,33 @@ def test_a_local_tag_on_another_commit_signs_nothing():
     signer.require_local_tag("a" * 40, "a" * 40)
     with pytest.raises(signer.Refused):
         signer.require_local_tag("a" * 40, "b" * 40)
+
+
+def test_no_configured_key_is_refused_in_words(tmp_path, monkeypatch):
+    """PRESS-0184: `git config --get-all` exits 1 and prints nothing for a key
+    that is not set, and the signer reported that as "git -C failed:" with
+    nothing after it. Breaks when an unset key stops reaching load_keys."""
+    signer = _signer()
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("no git, so there is no configuration to read")
+    subprocess.run((git, "init", "-q", str(tmp_path)), check=True)  # noqa: S603
+    monkeypatch.setattr(signer, "ROOT", tmp_path)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
+    with pytest.raises(signer.Refused, match="no ants.pressless.signingKey is configured"):
+        signer.sign("v0.0.0")
+
+
+def test_the_committed_trusted_holds_a_key():
+    """PRESS-0184: 0.6.0 was tagged with TRUSTED empty, and the signer found
+    it only after the build. The gate runs this before any tag exists."""
+    assert update_key.TRUSTED, "a release tagged now could never be signed"
+    for key in update_key.TRUSTED:
+        assert len(base64.b64decode(key, validate=True)) == 32
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Windows has no executable bit")
+def test_the_signer_runs_by_its_own_name():
+    """PRESS-0184: working-here.md gives the command without `python3`."""
+    assert os.access(_SCRIPT, os.X_OK)

@@ -91,6 +91,17 @@ def _run(*args: str) -> str:
     return done.stdout
 
 
+def _configured() -> str:
+    """What `git config --get-all` holds for the signing keys. It exits 1 and
+    prints nothing for a key that is not set; that is load_keys' refusal to
+    word, not _run's (PRESS-0184)."""
+    args = ("git", "-C", str(ROOT), "config", "--get-all", "ants.pressless.signingKey")
+    done = subprocess.run(args, check=False, capture_output=True, text=True)  # noqa: S603
+    if done.returncode not in (0, 1):
+        raise Refused(f"git config failed: {done.stderr.strip()}")
+    return done.stdout
+
+
 def _trusted_at(tag: str) -> tuple[str, ...]:
     source = _run("git", "-C", str(ROOT), "show", f"{tag}:src/pressless/update_key.py")
     for node in ast.walk(ast.parse(source)):
@@ -149,8 +160,7 @@ def sign(tag: str) -> None:
         raise Refused("the tag must read v<X.Y.Z>")
     version = matched.group(1)
 
-    keys = load_keys(_run("git", "-C", str(ROOT), "config", "--get-all",
-                          "ants.pressless.signingKey"))
+    keys = load_keys(_configured())
 
     release = json.loads(_run("gh", "release", "view", tag, "--repo", REPOSITORY,
                               "--json", "isDraft,assets"))

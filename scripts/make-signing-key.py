@@ -12,8 +12,9 @@ scripts/sign-release.py can find it:
 
 Refuses a path that exists or lies inside this repository: the private key
 must never be committed (INV-18), and nothing here overwrites a key a
-release may already depend on. Keep a copy on a second drive. A lost key
-cannot be recovered from (scope decision 4).
+release may already depend on. Refuses a folder that does not exist, too.
+Keep a copy on a second drive. A lost key cannot be recovered from (scope
+decision 4).
 """
 from __future__ import annotations
 
@@ -51,6 +52,10 @@ def main(argv: list[str]) -> int:
         return 1
     if target.exists():
         print("refused: that path already exists", file=sys.stderr)
+        return 1
+    if not target.parent.is_dir():
+        print("refused: the folder for the key does not exist; make it first",
+              file=sys.stderr)
         return 1
 
     key = Ed25519PrivateKey.generate()

@@ -124,6 +124,14 @@ enters a session:
 git config --add ants.pressless.signingKey <path to the key>
 ```
 
+**A session may run the script** (user decision 2026-09-29): it reads the
+key file and never prints it. It also publishes, so it runs last, after
+the by-hand checks; `.claude/bump.json` lists it as the final step.
+
+**The gate refuses an empty `update_key.TRUSTED`**
+(`tests/test_sign_release.py`), so a tag nobody could sign is caught
+before it exists.
+
 ## Windows and browser checks
 
 **Windows is testable, and that is not obvious from anything else here.**

@@ -8630,7 +8630,7 @@ already-built code ships in whichever release comes next.
   Kind: perf.
   Source: claude-config message 155, 2026-09-28.
 
-- 📋 [PRESS-0184] **The release-signing scripts fail unclearly, and nothing caught an empty TRUSTED before tagging.**
+- ✅ [PRESS-0184] **The release-signing scripts fail unclearly, and nothing caught an empty TRUSTED before tagging.**
   Found signing 0.6.0 on 2026-09-29:
   - sign-release.py with no ants.pressless.signingKey prints
     "refused: git -C failed:" with nothing after it. `git config
@@ -8649,6 +8649,13 @@ already-built code ships in whichever release comes next.
   scripts/sign-release.py v<X.Y.Z> itself, since the script reads the key
   file and never prints it. It also PUBLISHES, so it runs after the by-hand
   checks. Add it to .claude/bump.json's todos as that step.
+  Resolved (2026-09-30): all four, each with a test seen red first.
+  An unset signing key now reaches load_keys' own sentence; a key path in
+  a folder not yet made is refused in words; sign-release.py is
+  executable; and the gate fails on an empty update_key.TRUSTED, so no
+  tag can be cut that way again. The signing step is the last todo in
+  .claude/bump.json, and working-here.md says a session may run it.
+  No changelog entry: nothing here reaches a person using Pressless.
   **Layman:** The tools for signing a release gave confusing errors, and nothing warned that the signing key had never been set up until after a release was built.
   Kind: fix.
   Source: in-session-2026-09-29, signing 0.6.0.
