@@ -2804,7 +2804,7 @@ success.
   Source: design-2026-08-24 § The dashboard.
   Lanes: Face.
 
-- 📋 [PRESS-0122] **Setup's second step: the Google sign-in the dashboard reads with.**
+- 🚧 [PRESS-0122] **Setup's second step: the Google sign-in the dashboard reads with.**
   Split from PRESS-0021 by the user on 2026-09-17. PRESS-0021 builds
   the publishing half of setup and records the dashboard as not set up,
   which PRESS-0001 already allows: google_account and
@@ -2862,6 +2862,13 @@ success.
   Decided (2026-10-01): route A, sign in with Google, one installed-app
   OAuth client shipped with Pressless. The user registers it in their
   own Google Cloud account. Route B is not built.
+  Progress (2026-10-01): spec docs/specs/PRESS-0122-google-signin.md
+  accepted after one review loop; built in 763b336, gate green, every
+  part mutation-checked. Still owed before it ships: the user registers
+  the Google client (docs/working-here.md, Registering the Google
+  client) and fills CLIENT_ID; then one real sign-in proves Google
+  exchanges without a secret, plus spec section 7's browser checks on
+  Linux and the Windows box.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
