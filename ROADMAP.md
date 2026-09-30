@@ -2877,6 +2877,11 @@ success.
   and copies it into an empty install. Which part copies it, and when,
   is this item's to design. docs/design.md rule 9 points here.
   Needs a spec: it touches the Store, the Face and the package.
+  Seen (2026-09-30) on a real empty install of 0.6.1 on Windows: the
+  editor answers every save with "Pressless could not use one of your
+  files" and an empty proof, and the list's Header, Footer and Navigation
+  links each open "Pressless could not find that entry". Both are what a
+  stranger meets first; the starter set should leave neither.
   **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
@@ -7807,6 +7812,27 @@ already-built code ships in whichever release comes next.
   an SSH tunnel is refused 403 (the one-time link, PRESS-0151). Waiting on
   the user to finish Setup in Edge on the box, against the throwaway
   repository milnet01/pressless-publish-test.
+  Progress (2026-09-30): Windows rows run on the public 0.6.1, on the box,
+  driven from Linux over the browser's debugging port (BROWSER set to a
+  wrapper, so the admitted browser is the driven one). Passed in Edge:
+  Setup against the throwaway repository, key kept in WinVaultKeyring;
+  light and dark on Setup, the list and the editor; box and proof side
+  by side at the box's full window width; the preview keeps its
+  stylesheets under sandbox=allow-same-origin (PRESS-0169); years_since
+  shows 16 in the preview and on the published page (PRESS-0123); one
+  real Press to site; Change address, press, and the old address lands
+  on the entry (PRESS-0182); throwing away a draft and a published entry
+  (PRESS-0128). Passed in Chrome after a relaunch: light and dark, the
+  preview and its stylesheets, years_since, the old address, throwing a
+  draft away. Dark was the browser's emulated preference, not the
+  Windows Colours setting.
+  Not run, still owed on Windows: PRESS-0142's fake-key sentence,
+  PRESS-0146's Open folder, PRESS-0169's direct /preview script row,
+  PRESS-0023's two-cycle update check, PRESS-0173's installer batch fix.
+  Still owed anywhere: the save timing, and the words view read against
+  the live site.
+  The box is cleaned: key deleted from the vault, folder and task gone.
+  The throwaway repository still exists.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8625,6 +8651,17 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: in-session-2026-09-29, signing 0.6.0.
   Lanes: release.
+
+- 📋 [PRESS-0185] **After a first press the editor still says "A draft. It is not on your site." beside "Published."**
+  Seen in Edge on the Windows box: pressing a draft to site shows
+  "Published." and the throw-away button changes to "entry" (PRESS-0128),
+  but the standing line above the form keeps the draft sentence. A reload
+  removes it. The page script runs the same on every system; not yet
+  confirmed on Linux.
+  **Layman:** Right after publishing a new entry, the page still says it is a draft that is not on the site, until the page is reloaded.
+  Kind: fix.
+  Source: in-session-2026-09-30, Windows hand checks on 0.6.1.
+  Lanes: Face.
 
 ## Milestones
 
