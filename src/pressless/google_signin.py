@@ -24,7 +24,9 @@ from dataclasses import dataclass
 from pressless import insights
 from pressless.insights import InsightsError, Transport
 
-CLIENT_ID = ""          # filled when the client is registered (§ 4.6)
+# The registered Desktop client (§ 4.6). An id, not a secret: it ships in the
+# program by design, and there is no client secret anywhere.
+CLIENT_ID = "407838712240-ioic610gg2obnav839qe4pdk07ar1gki.apps.googleusercontent.com"
 SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 -- an address, not a secret

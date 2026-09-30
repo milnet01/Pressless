@@ -1,6 +1,9 @@
 # PRESS-0122 — Setup's second step: signing in with Google for the dashboard
 
 **Status:** accepted (2026-10-01). Gated for one loop, the user's round budget; every verified finding fixed, none left in the tail.
+Amended 2026-10-01 after registration measured Google requiring the client
+secret: §3 decision 3, §4.7 and INV-16 by the user's decision, and INV-17
+from the first real sign-in.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0122 (split from PRESS-0021 by the user
 2026-09-17; the route and the property list chosen by the user
@@ -39,9 +42,12 @@ turn it off again, and Google is told.
    Google's site, so the Face answers 403. Source:
    <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie>.
    Unmeasured here; §7's hand check is where it is seen.
-3. **A Google client secret cannot sit in this repository.** The repository
-   is public. GitHub push-protects Google secrets by default and tells
-   Google, which may revoke them. Source:
+3. **Google requires a client secret, and it cannot sit in this
+   repository.** Measured 2026-10-01 against the registered client: an
+   exchange without one answers `400` with *"client_secret is missing."*,
+   though Google's desktop-app page lists the field as optional. The
+   repository is public, and GitHub push-protects Google secrets by default
+   and tells Google, which may revoke them. Source:
    <https://github.blog/changelog/2026-03-31-github-secret-scanning-nine-new-types-and-more/>
 4. **The numeric property id is hard to find.** `settings.check` refuses
    the `G-…` tag people paste instead (PRESS-0056), which says the mistake
@@ -56,13 +62,13 @@ turn it off again, and Google is told.
 2. **The property is picked from a list.** Decided by the user
    2026-10-01. Pressless asks Google's Admin API which properties the
    account can see.
-3. **(decided here) Only the client id ships; there is no client secret
-   anywhere.** Google's desktop-app page lists `client_secret` as optional
-   in both the exchange and the refresh, and PKCE stands in for it.
-   Source: <https://developers.google.com/identity/protocols/oauth2/native-app>.
-   **If registration shows Google refusing an exchange without a secret,
-   this spec is wrong and is amended (`write-spec` Step 8)** — no secret is
-   added to the code as a workaround.
+3. **The client secret is added when a release is packaged, and never
+   committed.** Decided by the user 2026-10-01, after §2 item 3's
+   measurement. The secret is a GitHub Actions secret; the release build
+   writes it into the packaged program (§4.7). Google's own page says an
+   installed app's secret is not treated as a secret, so shipping it inside
+   the program is its intended use; keeping it out of the repository is
+   what GitHub's push protection requires. PKCE is kept.
 4. **(decided here) The Face's own server is the loopback redirect.**
    Google accepts `http://127.0.0.1:<port>/<path>` with any port for a
    desktop client (same source), and the Face already listens there.
@@ -83,10 +89,11 @@ Every "(decided here)" is open to the maintainer to overturn.
 ### 4.1 Talking to Google: `src/pressless/google_signin.py`
 
 Part: Insights. It imports `insights` for `Transport`, the failure types
-and its client, and no other Pressless module.
+and its client, and `_google_secret` (§4.7), and no other Pressless module.
 
 ```python
-CLIENT_ID = ""          # filled when the client is registered (§4.6)
+CLIENT_ID = "…"         # the registered Desktop client's id (§4.6)
+CLIENT_SECRET = …       # _google_secret.CLIENT_SECRET, or "" where that module is absent
 SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -130,7 +137,8 @@ def revoke(refresh_token: str, client: Transport | None = None) -> None
 certificates, its timeout, `_NoCrossOriginAuth`). Same part, so this is
 not one part reaching inside another.
 
-- **`available()`** is `CLIENT_ID != ""`.
+- **`available()`** is true where `CLIENT_ID` and `CLIENT_SECRET` are both
+  non-empty.
 - **`begin`** makes `state = secrets.token_urlsafe(32)` and
   `verifier = secrets.token_urlsafe(64)`, which is 86 characters, inside
   PKCE's 43 to 128. It returns the attempt and the address of Google's
@@ -145,11 +153,11 @@ not one part reaching inside another.
   `Expired`; the attempt is younger than `ATTEMPT_SECONDS`, else
   `Expired`; the query carries no `error`, else `Declined` when it is
   `access_denied` and `InsightsError` otherwise. Then one `POST` to
-  `TOKEN_URL`, form-encoded: `code`, `client_id`, `code_verifier`,
-  `redirect_uri`, `grant_type=authorization_code`. It returns the answer's
+  `TOKEN_URL`, form-encoded: `code`, `client_id`, `client_secret`,
+  `code_verifier`, `redirect_uri`, `grant_type=authorization_code`. It returns the answer's
   `refresh_token`. An answer without one is an `InsightsError`.
-- **`access_token`** posts `client_id`, `refresh_token` and
-  `grant_type=refresh_token` to `TOKEN_URL`. `expires_at` is the clock
+- **`access_token`** posts `client_id`, `client_secret`, `refresh_token`
+  and `grant_type=refresh_token` to `TOKEN_URL`. `expires_at` is the clock
   when the request was made, plus the answer's `expires_in`.
 - **`properties`** sends `GET ACCOUNTS_URL?pageSize=200` with the token as
   a bearer header, and follows `nextPageToken` for at most `PAGE_LIMIT`
@@ -159,9 +167,6 @@ not one part reaching inside another.
   answer with no `accountSummaries`, or a summary with no
   `propertySummaries`, is no properties, not a missing field.
 - **`revoke`** posts `token=<refresh_token>` to `REVOKE_URL`.
-
-**No request carries a client secret**, because there is none (§3
-decision 3).
 
 **What each answer means**, for every request above:
 
@@ -176,7 +181,7 @@ decision 3).
 Google's error code rides on `detail` — the sign-in endpoints' `error`,
 the Admin API's `error.status` — and never its free-text description,
 which can quote what was sent. **No message or detail ever carries a
-token, the code or the verifier.**
+token, the code, the verifier or the client secret.**
 
 ### 4.2 The pages: `src/pressless/google_setup.py`
 
@@ -246,8 +251,9 @@ It carries no Face cookie (§2 item 2). So:
    and carries one link to `/setup/google`, plus
    `<meta http-equiv="refresh" content="0; url=/setup/google">`. Following
    either is a navigation this page starts, so the browser sends the
-   cookie. A failure is shown through `Face.fail` on this same page, with
-   the same link.
+   cookie. **A failure is shown through `Face.fail` on this same page, with
+   the link and no refresh**, so the failure stays on screen until he
+   follows it.
 5. **An empty list is not a failure.** The page says his Google account can
    see no Analytics property, and to sign in with the account that can.
 
@@ -283,23 +289,49 @@ Done once, by the user, in their own Google Cloud account, before
    to In production**. Left in Testing, refresh tokens die after seven days
    and only listed testers may sign in (the roadmap item's research).
 3. An OAuth client of type Desktop app. Its id goes into `CLIENT_ID`.
-   Its secret is not copied anywhere.
-4. **The check that decides §3 decision 3:** one real sign-in, exchange
-   and refresh through Pressless with no secret. The dashboard's first
-   live read is PRESS-0020's and PRESS-0132's.
+   Its secret goes, by the user's own hand, into the repository's GitHub
+   Actions secret `GOOGLE_CLIENT_SECRET`, and on a development machine
+   through §4.7's script. It is copied nowhere else.
+4. One real sign-in, exchange and refresh through Pressless. The
+   dashboard's first live read is PRESS-0020's and PRESS-0132's.
 
-The steps go in `docs/working-here.md` (§11). Until the id is filled,
-`available()` is false and nothing in this section is reachable.
+The steps go in `docs/working-here.md` (§11). Where either value is
+missing, `available()` is false and nothing in this section is reachable.
+
+### 4.7 Where the secret comes from
+
+```python
+# src/pressless/_google_secret.py -- generated, never committed
+CLIENT_SECRET = "…"
+```
+
+`scripts/write_google_secret.py [path]` writes that file, `path`
+defaulting to `src/pressless/_google_secret.py`. It takes the value from
+the environment variable `GOOGLE_CLIENT_SECRET`, or, where that is unset
+and it runs in a terminal, asks for it without echoing it
+(`getpass`). It refuses, exiting non-zero and writing nothing, a value
+that is empty or holds anything but ASCII letters, digits, `-` and `_`.
+It writes the value with `repr`, and prints nothing that carries it.
+
+- **`.gitignore` names the file**, so `git add -A` cannot commit it.
+- **Both release jobs in `.github/workflows/release.yml` run the script
+  before their Build step**, with `GOOGLE_CLIENT_SECRET` set from
+  `${{ secrets.GOOGLE_CLIENT_SECRET }}`. A release whose secret is missing
+  fails there, before anything is built or signed.
+- **PyInstaller finds the module by its import in `google_signin`**, so no
+  build flag changes. The import is inside `try`/`except ImportError`,
+  which a development checkout without the file needs.
 
 ## 5. Invariants
 
 `tests/test_google_signin.py` holds INV-1 to INV-8, driving a
 `Transport` double that records each request and answers from a script.
-`tests/test_google_setup.py` holds INV-10 to INV-15, through `face.serve(tmp_path)`
+`tests/test_google_setup.py` holds INV-10 to INV-15 and INV-17, through `face.serve(tmp_path)`
 with that double, a `credentials` double, and a real settings file.
 
-- **INV-1** — `google_signin` imports no Pressless module but `insights`.
-  *Test:* `test_signin_imports_only_insights`, reading the module's
+- **INV-1** — `google_signin` imports no Pressless module but `insights`
+  and `_google_secret`.
+  *Test:* `test_signin_imports_only_insights_and_its_secret`, reading the module's
   imports as `test_insights_imports_no_forbidden_sibling` does.
   *Breaks when:* it imports `credentials` or `settings` to fetch the token
   or the property id itself, which `docs/design.md` rule 10 gives to the
@@ -322,11 +354,13 @@ with that double, a `credentials` double, and a real settings file.
   *Breaks when:* the exchange runs first and the state is compared after.
 
 - **INV-4** — The exchange and the refresh send exactly the fields §4.1
-  names, and neither sends `client_secret`.
-  *Test:* `test_exchange_and_refresh_send_no_secret`, reading each
-  recorded body with `urllib.parse.parse_qs`.
-  *Breaks when:* a secret is added to make Google answer, which is §3
-  decision 3's amendment case, not a fix.
+  names, `client_secret` included; `revoke` and `properties` send no
+  secret.
+  *Test:* `test_the_secret_goes_only_to_the_token_endpoint`, reading each
+  recorded body with `urllib.parse.parse_qs` and each header.
+  *Breaks when:* the secret is dropped from the refresh, after which every
+  dashboard read after the first hour fails; or it is sent to the Admin
+  API.
 
 - **INV-5** — An exchange answered without a `refresh_token` raises; it is
   never stored as an empty string.
@@ -342,9 +376,9 @@ with that double, a `credentials` double, and a real settings file.
   again.
 
 - **INV-7** — No failure's message or detail carries the refresh token,
-  the access token, the code or the verifier.
+  the access token, the code, the verifier or the client secret.
   *Test:* `test_no_failure_names_a_token`, with a sentinel in each, and a
-  Google answer that quotes all four back.
+  Google answer that quotes all five back.
   *Breaks when:* Google's `error_description` is copied into `detail`
   unfiltered while it quotes the token.
 
@@ -406,13 +440,32 @@ with that double, a `credentials` double, and a real settings file.
   *Breaks when:* every dashboard view refreshes, or a token from before
   Turn off is still handed out.
 
-- **INV-15** — With an empty `CLIENT_ID`, nothing reaches Google.
+- **INV-15** — With an empty `CLIENT_ID` or `CLIENT_SECRET`, nothing
+  reaches Google.
   *Test:* `test_an_unregistered_copy_offers_no_sign_in` — `/setup/google`
   has no Sign in button, `POST /setup/google/start` answers without a
   redirect, setup's done page has no link, and the double records no
-  request.
+  request; once with each value empty.
   *Breaks when:* the button is shown and Google answers him with an error
   page about a missing client.
+
+- **INV-16** — The secret file is never committed, and a release cannot
+  be built without it.
+  *Test:* `tests/test_write_google_secret.py` — `git check-ignore` names
+  `src/pressless/_google_secret.py`; the script with the variable empty,
+  or holding a quote, exits non-zero and writes nothing; with a valid
+  value it writes a file whose `CLIENT_SECRET` imports back equal, and
+  its output does not carry the value.
+  *Breaks when:* the `.gitignore` line is dropped, or the script writes an
+  empty secret, so a release ships with the step silently unavailable.
+
+- **INV-17** — A failed return keeps its failure on screen.
+  *Test:* `test_a_failed_return_stays_on_screen`, where the exchange
+  answers `400`: the page carries the failure, the link, and no
+  `http-equiv="refresh"`; a successful return carries the refresh.
+  *Breaks when:* the refresh is added to every return, and the failure
+  flashes past before it can be read — which the first real sign-in
+  measured.
 
 ## 6. Failure modes
 
@@ -437,15 +490,16 @@ with that double, a `credentials` double, and a real settings file.
 `tests/test_google_signin.py` covers INV-1, INV-2, INV-3, INV-4, INV-5,
 INV-6, INV-7 and INV-8; `tests/test_face.py` covers INV-9;
 `tests/test_google_setup.py` covers INV-10, INV-11, INV-12, INV-13,
-INV-14 and INV-15. Each is seen failing against a stub before the code it
+INV-14, INV-15 and INV-17; `tests/test_write_google_secret.py` covers
+INV-16. Each is seen failing against a stub before the code it
 locks is written. INV-1's pattern already exists in
 `tests/test_insights.py`.
 
 **By hand, once the client is registered** (`docs/working-here.md`
 § Windows and browser checks): a real sign-in in Firefox, Chrome and Edge,
 on Linux and on the Windows box, confirming that the continue navigation
-carries the cookie (§4.3 step 4) and that Google exchanges without a
-secret (§4.6 step 4).
+carries the cookie (§4.3 step 4), and a packaged release's sign-in
+(§4.7).
 
 ## 8. Alternatives considered (and rejected)
 
@@ -454,7 +508,8 @@ secret (§4.6 step 4).
 | **Route B, a service account per person** | Six steps in Google's console for each person, and a key too long for Windows' credential store without splitting it. The user chose route A. |
 | **A typed property id** | The user chose the list; the typed id is the mistake `settings.check` already has to catch. |
 | **Shipping the client secret in the source** | GitHub blocks the push and Google may revoke the secret (§2 item 3). |
-| **Adding the secret at build time in CI** | Kept for the case §3 decision 3 names, as an amendment. Unneeded while Google treats the secret as optional, and it adds a CI secret and a generated file. |
+| **Disguising the secret in the source** so the scanner misses it | Rejected by the user 2026-10-01: it defeats a safety check, and Google could still find and revoke it. |
+| **No secret, PKCE alone** | Google refuses the exchange (§2 item 3). |
 | **A second listener for the redirect** | The Face already listens on `127.0.0.1`; a second server is a second boundary to defend. |
 | **Relaxing the cookie to `SameSite=Lax`** | Every GET on the Face would then carry the cookie from any site's link, for the sake of one path. |
 | **Saving the first property automatically** | Most people have one, but one account can see many, and a wrong property shows someone else's numbers without saying so. |
@@ -479,10 +534,10 @@ secret (§4.6 step 4).
 
 | Rule | What catches a breach |
 |------|----------------------|
-| INV-1 | `tests/test_google_signin.py::test_signin_imports_only_insights` |
+| INV-1 | `tests/test_google_signin.py::test_signin_imports_only_insights_and_its_secret` |
 | INV-2 | `tests/test_google_signin.py::test_begin_builds_a_pkce_address` |
 | INV-3 | `tests/test_google_signin.py::test_finish_refuses_before_any_request` |
-| INV-4 | `tests/test_google_signin.py::test_exchange_and_refresh_send_no_secret` |
+| INV-4 | `tests/test_google_signin.py::test_the_secret_goes_only_to_the_token_endpoint` |
 | INV-5 | `tests/test_google_signin.py::test_an_exchange_without_a_refresh_token_is_refused` |
 | INV-6 | `tests/test_google_signin.py::test_each_answer_maps_to_its_failure` |
 | INV-7 | `tests/test_google_signin.py::test_no_failure_names_a_token` |
@@ -494,9 +549,11 @@ secret (§4.6 step 4).
 | INV-13 | `tests/test_google_setup.py::test_turning_off_clears_both_fields` |
 | INV-14 | `tests/test_google_setup.py::test_the_token_is_reused_until_it_nearly_expires` |
 | INV-15 | `tests/test_google_setup.py::test_an_unregistered_copy_offers_no_sign_in` |
+| INV-16 | `tests/test_write_google_secret.py` |
+| INV-17 | `tests/test_google_setup.py::test_a_failed_return_stays_on_screen` |
 | §4.4's two new sentences | `tests/test_face.py`'s PRESS-0011 INV-1 test, which fails on a failure type with no entry |
 | §4.3 step 4, the cookie arriving on the continue navigation | **nothing automatic** — browser behaviour; the hand check in §7 |
-| §3 decision 3, Google exchanging without a secret | **nothing automatic** — Google's behaviour; §4.6 step 4 |
+| §4.7, a packaged release carrying the secret | **nothing automatic** — the release job fails without it (INV-16), but that the frozen program imported it is seen only by §7's hand check on a release |
 | §4.6 step 2, the consent screen published to In production | **nothing** — a setting in the user's Google Cloud account; a Testing screen shows as sign-ins failing after seven days |
 
 ## 11. Cross-doc impact
@@ -518,8 +575,10 @@ it.
 - **`docs/working-here.md`** — a section *Registering the Google client*,
   carrying §4.6's steps.
 - **`CHANGELOG.md`** — an entry when this ships.
-- **The leak sweep** — nothing: `CLIENT_ID` is not a secret, and no secret
-  enters the repository.
+- **`.github/workflows/release.yml`** — both jobs gain §4.7's step.
+- **PRESS-0022** — its release steps gain a pointer to §4.7.
+- **The leak sweep** — nothing: `CLIENT_ID` is not a secret, and the
+  secret never enters the repository.
 
 ## 12. Cold-eyes loop log
 
