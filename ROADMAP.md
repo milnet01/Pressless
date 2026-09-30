@@ -8682,12 +8682,17 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-30, Windows hand checks on 0.6.1.
   Lanes: Face.
 
-- 📋 [PRESS-0186] **A proof pressed from its own page offers no Change address until the page is reloaded.**
+- ✅ [PRESS-0186] **A proof pressed from its own page offers no Change address until the page is reloaded.**
   A proof's page is served without the Address field, since a proof's
   address cannot change. A press turns it into a published entry's page
   without a reload (PRESS-0185), and PRESS-0182 says that page shows the
   field. Seen 2026-09-30 in headless Chrome, in the PRESS-0185 row of
   scripts/by-hand-browser-checks.py.
+  Resolved (2026-09-30): a proof's page now carries the field hidden,
+  holding the address of the entry it replaces, and a press shows it. The
+  same press shows it again on a published entry's page whose save had
+  hidden it. Two rows in scripts/by-hand-browser-checks.py red then green
+  (45 of 45); tests/test_editor.py pins the markup. Not seen on Windows.
   **Layman:** After publishing changes to an entry, the box for changing its address is missing until the page is reloaded.
   Kind: fix.
   Source: in-session-2026-09-30, found while fixing PRESS-0185.

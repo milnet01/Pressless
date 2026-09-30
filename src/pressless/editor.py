@@ -426,8 +426,9 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     if not on_site:
         standing = '<p id="draft-standing">A draft. It is not on your site.</p>' + standing
     # PRESS-0182: a published entry moves too; the script hides this once a
-    # save makes a proof, whose address cannot change.
-    address = "" if proof else _address_field(entry.slug)
+    # save makes a proof, whose address cannot change, and shows it again
+    # once that proof is pressed (PRESS-0186).
+    address = _address_field(named if proof else entry.slug, hidden=proof)
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.STYLESHEETS)
     return f"""{stylesheets}
@@ -465,9 +466,10 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <script>{_UNDO_SCRIPT}</script>"""
 
 
-def _address_field(slug: str) -> str:
+def _address_field(slug: str, *, hidden: bool) -> str:
     value = html.escape(slug, quote=True)
-    return (f'<span id="address"><label>Address <input name="address" value="{value}">'
+    return (f'<span id="address"{" hidden" if hidden else ""}><label>Address '
+            f'<input name="address" value="{value}">'
             '</label> <button type="button" data-editor="address">'
             'Change address</button> <span id="address-hint"></span></span>')
 
@@ -753,6 +755,8 @@ _EDITOR_SCRIPT = """
       const draftLine = document.getElementById("draft-standing");
       if (draftLine) draftLine.remove();
       document.getElementById("standing").hidden = false;
+      // PRESS-0186: and its address can change again.
+      addressField.hidden = false;
       document.querySelector("button[data-editor=throw]").textContent =
         "Throw this entry away";
     }

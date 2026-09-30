@@ -376,7 +376,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
               and page.locator("#address").is_hidden())
         page.goto(f"{origin}/edit?slug=harbour-moved", wait_until="networkidle")
         check("PRESS-0182: a proof's own page offers no address",
-              page.locator("#address").count() == 0, page.url.split("?")[-1])
+              not page.locator("#address").is_visible(), page.url.split("?")[-1])
         # ---- PRESS-0185: pressing a proof from its own page ------------------
         page.get_by_role("button", name="Press to site", exact=True).click()
         page.wait_for_timeout(3000)
@@ -387,6 +387,21 @@ def run(origin: str, secret: str, folder: Path) -> None:
               and "This entry is on your site." in pressed
               and page.get_by_role("button", name="Bin this proof", exact=True).count() == 0,
               repr(_snip(pressed, "on your site")))
+        # ---- PRESS-0186: the address comes back once the proof is pressed ----
+        address = page.locator("input[name=address]")
+        check("PRESS-0186: a proof pressed from its own page offers Change address",
+              page.locator("#address").is_visible()
+              and address.input_value() == "harbour-moved",
+              address.input_value() if address.count() else "no field")
+        page.locator("textarea").type(" Again.", delay=10)
+        page.wait_for_timeout(2500)
+        hidden = page.locator("#address").is_hidden()
+        page.get_by_role("button", name="Press to site", exact=True).click()
+        page.wait_for_timeout(3000)
+        check("PRESS-0186: hidden for the next proof, and back when that is pressed",
+              hidden and page.locator("#address").is_visible()
+              and editor.working_copy(folder, "harbour-moved") is None,
+              f"hidden for the proof={hidden}")
 
         # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
         page.goto(f"{origin}/", wait_until="networkidle")

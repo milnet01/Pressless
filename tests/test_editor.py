@@ -480,6 +480,11 @@ def test_every_editor_page_carries_the_line_a_press_moves_it_to(tmp_path):
     assert '<div id="standing">' in proof and on_site.format(" hidden") in proof
     assert '<p data-when="1">These changes are not on your site yet.</p>' in proof
     assert 'getElementById("draft-standing")' in draft, "the script keeps the draft line"
+    # PRESS-0186: a proof's page holds the address of the entry it replaces,
+    # hidden, for the press that makes this a published entry's page.
+    field = '<span id="address"{}><label>Address <input name="address" value="{}">'
+    assert field.format(" hidden", "harbour") in proof
+    assert field.format("", "plain") in draft
 
 
 def test_the_editor_shows_the_cheat_sheet(tmp_path):
