@@ -18,7 +18,7 @@ import urllib.parse
 from collections.abc import Iterable
 from pathlib import Path
 
-from pressless import builder, credentials, publisher, settings
+from pressless import builder, credentials, google_signin, publisher, settings
 from pressless.face import Face, Request, render_notices
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
@@ -243,6 +243,7 @@ def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str]) ->
           'autocomplete="off"></label></p>'
         + (f'<p class="hint" id="key-hint">{e(key_hint)}</p>' if key_hint else "")
         + f'<p><button type="submit">{e(button)}</button></p></form>'
+        + (_google_link() if settings_page else "")
     )
 
 
@@ -261,4 +262,12 @@ def _done(final: settings.Settings, choice: credentials.Choice | None) -> str:
                 "<p>No keyring was found on this computer, so the key is kept in a "
                 "file only your account can read, in the Pressless-data folder.</p>"
             )
-    return "<h1>Setup is done.</h1>" + left_alone + stored
+    return "<h1>Setup is done.</h1>" + left_alone + stored + _google_link()
+
+
+def _google_link() -> str:
+    """The optional second step (PRESS-0122 § 4.5), where this copy can offer it."""
+    if not google_signin.available():
+        return ""
+    return ('<p>Optional: <a href="/setup/google">see how many people read your '
+            "site</a>, from Google Analytics.</p>")

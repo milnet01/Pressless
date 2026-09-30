@@ -96,6 +96,8 @@ a time (`read_region` with `section=`). A comment or spec saying
 - *Writing or changing tests* — before writing, changing or
   mutation-probing a test.
 - *Releasing* — before signing or publishing a release.
+- *Registering the Google client* — before filling
+  `google_signin.CLIENT_ID` or touching the Google sign-in's setup.
 - *Windows and browser checks* — before checking anything on the Windows
   box or in a browser.
 - *Editing the roadmap* — before changing a `Layman:` line or a section

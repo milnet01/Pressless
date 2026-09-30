@@ -29,6 +29,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    google_setup,
     page_editor,
     paths,
     publishing,
@@ -165,6 +166,7 @@ def _serve_held(folder: Path) -> int:
     served = face.serve(folder)
     try:
         setup.register(served, folder)
+        google_setup.register(served, folder)
         editor.register(served, folder)
         cheatsheet.register(served)
         templates.register(served, folder)

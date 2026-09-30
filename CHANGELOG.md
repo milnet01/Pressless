@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Settings can sign in to Google, so Pressless can read your visitor numbers.** (PRESS-0122)
+  You pick your site from a list of the Analytics sites your Google
+  account can see, and you can turn it off again. It stays hidden until
+  this copy of Pressless is registered with Google.
+
 ### Fixed
 
 - **After pressing changes to an entry, Change address is offered again without a reload.** (PRESS-0186)

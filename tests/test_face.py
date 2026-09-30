@@ -205,6 +205,25 @@ def test_a_credential_failure_names_the_secret() -> None:
         assert noun in sentence.what, kind
 
 
+def test_a_return_page_is_the_only_door_without_the_cookie(tmp_path: Path) -> None:
+    """PRESS-0122 INV-9. Breaks when add_return_page switches the cookie check
+    off for the whole Face, or for every method."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_return_page("/back", lambda request: "came back")
+        served.add_page("POST", "/back", lambda request: "posted")
+        served.add_page("GET", "/other", lambda request: "other")
+        client = _Client(served)
+        status, _, body = client.request("GET", "/back?state=x", cookie=False)
+        assert (status, "came back" in body) == (200, True)
+        assert client.request("POST", "/back", cookie=False)[0] == 403
+        assert client.request("GET", "/other", cookie=False)[0] == 403
+        assert client.request("GET", "/back", cookie=False, host="pressless.example")[0] == 403
+        assert client.request("GET", "/other")[0] == 200
+    finally:
+        served.stop()
+
+
 def test_the_server_answers_only_its_own_origin(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

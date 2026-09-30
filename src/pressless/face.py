@@ -29,7 +29,17 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless import builder, credentials, insights, log, paths, publisher, settings, store
+from pressless import (
+    builder,
+    credentials,
+    google_signin,
+    insights,
+    log,
+    paths,
+    publisher,
+    settings,
+    store,
+)
 
 LABEL = "the Pressless-data folder, beside the program"
 
@@ -130,6 +140,14 @@ SENTENCES: dict[type[Exception], Sentence] = {
     insights.RateLimited: _say(
         "Google asked Pressless to wait before asking again.",
         "Try again later.",
+    ),
+    google_signin.Declined: _say(
+        "You chose not to let Pressless read your visitor numbers.",
+        "Sign in with Google from Settings whenever you like.",
+    ),
+    google_signin.Expired: _say(
+        "The sign-in with Google took too long.",
+        "Sign in with Google again from Settings.",
     ),
     credentials.NoStore: _say(
         "Pressless found nowhere safe on this computer to keep {secret}.",
@@ -652,7 +670,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 (("Set-Cookie", cookie), ("Location", parts.path or "/")),
             )
             return
-        if not self._has_cookie(face):
+        if not self._has_cookie(face) and not (method == "GET" and parts.path in face._returns):
+            # The one door without the cookie: a page Google's redirect lands on,
+            # which authenticates the request itself (PRESS-0122 § 4.3).
             self._refuse()
             return
         if method == "POST":
@@ -750,6 +770,7 @@ class Face:
         self._link_spent = False
         self._link_lock = threading.Lock()
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
+        self._returns: set[str] = set()
         self._files: dict[str, Locate] = {}
         self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
         self._reply = threading.local()
@@ -771,6 +792,21 @@ class Face:
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
         """Register `page` for `method` and `path`, replacing any before it."""
         self._pages[(method.upper(), path)] = (page, publishing)
+
+    def add_return_page(self, path: str, page: Page) -> None:
+        """Register `page` for GET `path`, reached WITHOUT the session cookie.
+
+        For the page another site's redirect lands on, which a SameSite=Strict
+        cookie never reaches. Every other check still runs; the page must
+        authenticate the request itself (PRESS-0122 § 4.3).
+        """
+        self.add_page("GET", path, page)
+        self._returns.add(path)
+
+    @property
+    def origin(self) -> str:
+        """`http://127.0.0.1:<port>`, the Face's own origin."""
+        return self._origin
 
     def add_files(self, prefix: str, locate: Locate) -> None:
         """Answer GETs under `prefix`, which ends in "/", with the file `locate`

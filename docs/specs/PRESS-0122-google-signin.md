@@ -173,8 +173,9 @@ decision 3).
 | Anything else that is not 200 | `insights.InsightsError` |
 | 200 that is not JSON, or lacks the field this call reads — except `revoke`, which reads no body | `insights.InsightsError` |
 
-Google's own `error` and `error_description` ride on `detail`, as
-Insights does (PRESS-0019 §4.5). **No message or detail ever carries a
+Google's error code rides on `detail` — the sign-in endpoints' `error`,
+the Admin API's `error.status` — and never its free-text description,
+which can quote what was sent. **No message or detail ever carries a
 token, the code or the verifier.**
 
 ### 4.2 The pages: `src/pressless/google_setup.py`

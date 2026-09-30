@@ -132,6 +132,25 @@ the by-hand checks; `.claude/bump.json` lists it as the final step.
 (`tests/test_sign_release.py`), so a tag nobody could sign is caught
 before it exists.
 
+## Registering the Google client
+
+Sign in with Google (PRESS-0122) needs one OAuth client, registered once
+by the user in their own Google Cloud account. Until
+`google_signin.CLIENT_ID` holds its id, Pressless offers no Google step.
+PRESS-0122 § 4.6 owns the steps; in brief:
+
+1. A project with the Google Analytics Data API and the Google Analytics
+   Admin API enabled.
+2. An OAuth consent screen, External, with the scope
+   `https://www.googleapis.com/auth/analytics.readonly`, published to
+   **In production**. Left in Testing, a sign-in dies after seven days.
+3. An OAuth client of type Desktop app. Its id goes into `CLIENT_ID`.
+   **Its secret is copied nowhere**: the repository is public, and GitHub
+   blocks a push carrying one.
+4. One real sign-in through Pressless. It proves Google exchanges and
+   refreshes without the secret. If Google refuses, the spec is amended,
+   and no secret is added to the code.
+
 ## Windows and browser checks
 
 **Windows is testable, and that is not obvious from anything else here.**
