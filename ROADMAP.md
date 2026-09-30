@@ -7833,6 +7833,8 @@ already-built code ships in whichever release comes next.
   the live site.
   The box is cleaned: key deleted from the vault, folder and task gone.
   The throwaway repository still exists.
+  Later (2026-09-30): the throwaway repository is deleted, on the user's
+  word. A later Windows row that needs a publish makes a new one.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
