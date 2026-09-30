@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **After pressing to site, the editor says the entry is on your site without a reload.** (PRESS-0185)
+  It went on saying "A draft. It is not on your site." (or, for a proof,
+  "These changes are not on your site yet.") beside "Published." until
+  the page was reloaded.
+
 ## [0.6.1] - 2026-09-29
 
 **Theme:** photographs, a new look, and tidier entries

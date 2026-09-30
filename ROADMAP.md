@@ -8654,15 +8654,36 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-29, signing 0.6.0.
   Lanes: release.
 
-- 📋 [PRESS-0185] **After a first press the editor still says "A draft. It is not on your site." beside "Published."**
+- ✅ [PRESS-0185] **After a first press the editor still says "A draft. It is not on your site." beside "Published."**
   Seen in Edge on the Windows box: pressing a draft to site shows
   "Published." and the throw-away button changes to "entry" (PRESS-0128),
   but the standing line above the form keeps the draft sentence. A reload
   removes it. The page script runs the same on every system; not yet
   confirmed on Linux.
+  Resolved (2026-09-30): confirmed on Linux in headless Chrome, so it was
+  never Windows-only. One cause, three symptoms: a pressed draft kept the
+  draft line; its next save showed no proof line or Bin this proof and
+  kept the address box; a pressed proof kept saying its changes were not
+  on the site. Every editor page now carries both lines and the script
+  shows the one that holds. Four rows in
+  scripts/by-hand-browser-checks.py went red then green (43 of 43), and
+  tests/test_editor.py pins the markup.
+  Not done: a proof pressed from its own page offers no Change address
+  until reloaded, and the fix has not been seen on the Windows box.
   **Layman:** Right after publishing a new entry, the page still says it is a draft that is not on the site, until the page is reloaded.
   Kind: fix.
   Source: in-session-2026-09-30, Windows hand checks on 0.6.1.
+  Lanes: Face.
+
+- 📋 [PRESS-0186] **A proof pressed from its own page offers no Change address until the page is reloaded.**
+  A proof's page is served without the Address field, since a proof's
+  address cannot change. A press turns it into a published entry's page
+  without a reload (PRESS-0185), and PRESS-0182 says that page shows the
+  field. Seen 2026-09-30 in headless Chrome, in the PRESS-0185 row of
+  scripts/by-hand-browser-checks.py.
+  **Layman:** After publishing changes to an entry, the box for changing its address is missing until the page is reloaded.
+  Kind: fix.
+  Source: in-session-2026-09-30, found while fixing PRESS-0185.
   Lanes: Face.
 
 ## Milestones

@@ -409,31 +409,25 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 
     named = _replaced(folder, entry) if draft else None
     on_site = not draft or named is not None
-    if not draft:
-        # Both states, because the first save turns this page into a working
-        # copy's editor without reloading it; the script shows the second
-        # and names the copy (PRESS-0162).
-        standing = ('<div id="standing">'
-                    '<p data-when="0">This entry is on your site. Your changes stay on '
-                    "this computer until you publish it.</p>"
-                    '<p data-when="1" hidden>These changes are not on your site yet.</p>'
-                    '<form data-when="1" hidden method="post" action="/discard">'
-                    '<input type="hidden" name="slug" value="">'
-                    f'<input type="hidden" name="base" value="{attr(base)}">'
-                    "<button>Bin this proof</button></form></div>")
-        # PRESS-0182: a published entry moves too; the script hides this once a
-        # save makes a proof, whose address cannot change.
-        address = _address_field(entry.slug)
-    elif named is not None:
-        standing = ("<p>These changes are not on your site yet.</p>"
-                    '<form method="post" action="/discard">'
-                    f'<input type="hidden" name="slug" value="{attr(entry.slug)}">'
-                    f'<input type="hidden" name="base" value="{attr(base)}">'
-                    "<button>Bin this proof</button></form>")
-        address = ""
-    else:
-        standing = "<p>A draft. It is not on your site.</p>"
-        address = _address_field(entry.slug)
+    proof = named is not None
+    published, waiting = (" hidden", "") if proof else ("", " hidden")
+    # Both states on every page, because a save turns a published entry's page
+    # into a working copy's editor, and a press turns a draft's or a proof's
+    # into a published entry's, without reloading it; the script shows the one
+    # that holds and names the copy (PRESS-0162, PRESS-0185).
+    standing = (f'<div id="standing"{"" if on_site else " hidden"}>'
+                f'<p data-when="0"{published}>This entry is on your site. Your changes stay on '
+                "this computer until you publish it.</p>"
+                f'<p data-when="1"{waiting}>These changes are not on your site yet.</p>'
+                f'<form data-when="1"{waiting} method="post" action="/discard">'
+                f'<input type="hidden" name="slug" value="{attr(entry.slug) if proof else ""}">'
+                f'<input type="hidden" name="base" value="{attr(base)}">'
+                "<button>Bin this proof</button></form></div>")
+    if not on_site:
+        standing = '<p id="draft-standing">A draft. It is not on your site.</p>' + standing
+    # PRESS-0182: a published entry moves too; the script hides this once a
+    # save makes a proof, whose address cannot change.
+    address = "" if proof else _address_field(entry.slug)
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.STYLESHEETS)
     return f"""{stylesheets}
@@ -752,8 +746,13 @@ _EDITOR_SCRIPT = """
       addressField.hidden = true;
     }
     // PRESS-0128: a press puts a draft on his site without reloading the page.
+    // PRESS-0185: from then on this is a published entry's page.
     if (state.draft === "0") {
       form.dataset.onSite = "1";
+      form.dataset.draft = "0";
+      const draftLine = document.getElementById("draft-standing");
+      if (draftLine) draftLine.remove();
+      document.getElementById("standing").hidden = false;
       document.querySelector("button[data-editor=throw]").textContent =
         "Throw this entry away";
     }

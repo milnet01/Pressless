@@ -461,6 +461,27 @@ def test_a_published_entry_page_carries_its_working_copy_state(tmp_path):
     assert "#standing input[name=slug]" in page, "the script does not name the copy"
 
 
+def test_every_editor_page_carries_the_line_a_press_moves_it_to(tmp_path):
+    """PRESS-0185: a press puts a draft, or a proof, on his site without
+    reloading the page, and the line above the form went on saying it was
+    not there. Both pages now carry the published wording, hidden until the
+    script shows it. Driven in Chrome by scripts/by-hand-browser-checks.py."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("plain"), draft=True)
+    store.write(folder, _entry("harbour"), draft=False)
+    store.write(folder, _entry("harbour-changes", extra=((REPLACES, "harbour"),)), draft=True)
+    on_site = '<p data-when="0"{}>This entry is on your site.'
+    with _editor(folder) as browser:
+        draft_status, _, draft = browser.request("GET", "/edit?slug=plain")
+        proof_status, _, proof = browser.request("GET", "/edit?slug=harbour-changes")
+    assert (draft_status, proof_status) == (200, 200)
+    assert '<p id="draft-standing">A draft. It is not on your site.</p>' in draft
+    assert '<div id="standing" hidden>' in draft and on_site.format("") in draft
+    assert '<div id="standing">' in proof and on_site.format(" hidden") in proof
+    assert '<p data-when="1">These changes are not on your site yet.</p>' in proof
+    assert 'getElementById("draft-standing")' in draft, "the script keeps the draft line"
+
+
 def test_the_editor_shows_the_cheat_sheet(tmp_path):
     """PRESS-0018: the box he writes in carries the cheat sheet beside it,
     generated from Marks' table, with a link to the printable page."""

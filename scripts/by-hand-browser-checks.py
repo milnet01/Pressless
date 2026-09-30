@@ -265,6 +265,28 @@ def run(origin: str, secret: str, folder: Path) -> None:
         # ---- PRESS-0128: throwing away a published entry asks first ----------
         check("PRESS-0128: pressed without a reload, the button says entry, not draft",
               page.get_by_role("button", name="Throw this entry away", exact=True).count() == 1)
+        # ---- PRESS-0185: and the line above the form stops calling it a draft --
+        pressed = page.inner_text("body")
+        check("PRESS-0185: pressed without a reload, the page no longer says a draft",
+              "A draft. It is not on your site." not in pressed
+              and "This entry is on your site." in pressed,
+              repr(_snip(pressed, "on your site")))
+        # The page is a published entry's from here: its next save makes a proof.
+        page.locator("textarea").type(" More.", delay=10)
+        page.wait_for_timeout(2500)
+        proofed = page.inner_text("body")
+        check("PRESS-0185: the next save on that page shows a proof's line and no address",
+              editor.working_copy(folder, "seaside") is not None
+              and "These changes are not on your site yet." in proofed
+              and "A draft. It is not on your site." not in proofed
+              and page.locator("#address").is_hidden(),
+              repr(_snip(proofed, "on your site")))
+        bin_proof = page.get_by_role("button", name="Bin this proof", exact=True)
+        if bin_proof.count() == 1:
+            bin_proof.click()
+            page.wait_for_load_state("networkidle")
+        check("PRESS-0185: Bin this proof on that page bins the proof",
+              editor.working_copy(folder, "seaside") is None)
         page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
         asked: list[str] = []
 
@@ -355,6 +377,16 @@ def run(origin: str, secret: str, folder: Path) -> None:
         page.goto(f"{origin}/edit?slug=harbour-moved", wait_until="networkidle")
         check("PRESS-0182: a proof's own page offers no address",
               page.locator("#address").count() == 0, page.url.split("?")[-1])
+        # ---- PRESS-0185: pressing a proof from its own page ------------------
+        page.get_by_role("button", name="Press to site", exact=True).click()
+        page.wait_for_timeout(3000)
+        pressed = page.inner_text("body")
+        check("PRESS-0185: a pressed proof's page stops saying it is not on the site",
+              "Published." in pressed
+              and "These changes are not on your site yet." not in pressed
+              and "This entry is on your site." in pressed
+              and page.get_by_role("button", name="Bin this proof", exact=True).count() == 0,
+              repr(_snip(pressed, "on your site")))
 
         # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
         page.goto(f"{origin}/", wait_until="networkidle")
