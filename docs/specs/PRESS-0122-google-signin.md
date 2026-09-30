@@ -3,7 +3,7 @@
 **Status:** accepted (2026-10-01). Gated for one loop, the user's round budget; every verified finding fixed, none left in the tail.
 Amended 2026-10-01 after registration measured Google requiring the client
 secret: §3 decision 3, §4.7 and INV-16 by the user's decision, and INV-17
-from the first real sign-in.
+from the first real sign-in. Re-gated for one loop the same day; every verified finding fixed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0122 (split from PRESS-0021 by the user
 2026-09-17; the route and the property list chosen by the user
@@ -203,17 +203,19 @@ The module holds, in memory and under one lock: **the pending attempt**
 its refresh and access tokens; at most one), and **the held token** (an `AccessToken` or nothing).
 None of these is ever written to disk.
 
-Every page first runs `settings.load(folder)` inside `face.capture()`.
-Anything but a `Settings` shows a sentence sending him to `/setup` and
-does nothing else.
+Every page but the return (§4.3) first runs `settings.load(folder)`
+inside `face.capture()`. Anything but a `Settings` shows a sentence
+sending him to `/setup` and does nothing else. The return loads no
+Settings: it is reached only through an attempt, which start made after
+its own load.
 
 | Request | What it does |
 |---|---|
 | `GET /setup/google` | Where `available()` is false: says this copy of Pressless cannot connect to Google, and offers nothing. Where a pending list exists: the list, as one choice per property (its name and account), and a Use this site button. Otherwise, where `google_account` is set: the property id in use, a Sign in again button, which posts to `/setup/google/start` like first sign-in and is the route after a `Refused`, and a Turn off button. Otherwise: what the dashboard is, a warning about Google's unverified-app screen, and a Sign in with Google button. |
 | `POST /setup/google/start` | Where `available()` is false, the same page as above and no redirect. Otherwise `begin(redirect_uri)` with `redirect_uri = face origin + RETURN_PATH`; the attempt replaces any pending one; the answer is `303` to Google's page. |
 | `GET RETURN_PATH` | §4.3. |
-| `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`, and the pending access token becomes the held token. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. The pending list is cleared. The page says the dashboard is ready. |
-| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. Whatever `revoke` does, save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`, and drop the held token and the pending list. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. |
+| `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. Only then does the pending access token become the held token, and the pending list is cleared. The page says the dashboard is ready. |
+| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Whatever `revoke` does, save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`, and drop the held token and the pending list. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. |
 
 **`token(folder)`** uses the `client` `register` was given, and its
 clock; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
@@ -254,10 +256,11 @@ It carries no Face cookie (§2 item 2). So:
    cookie. **A failure is shown through `Face.fail` on this same page, with
    the link and no refresh**, so the failure stays on screen until he
    follows it.
-5. **An empty list is not a failure.** The page says his Google account can
-   see no Analytics property, and to sign in with the account that can.
+5. **An empty list is not a failure, and is shown like one:** the link and
+   no refresh. The page says his Google account can see no Analytics
+   property, and to sign in with the account that can.
 
-A credential failure, at choose or at off, passes `secret=SIGN_IN`. The code and the
+A credential failure at choose passes `secret=SIGN_IN`. The code and the
 state are in the address bar and the browser's history; both are useless
 once the attempt is spent, and the code is useless without the verifier,
 which never leaves memory.
@@ -309,13 +312,13 @@ CLIENT_SECRET = "…"
 defaulting to `src/pressless/_google_secret.py`. It takes the value from
 the environment variable `GOOGLE_CLIENT_SECRET`, or, where that is unset
 and it runs in a terminal, asks for it without echoing it
-(`getpass`). It refuses, exiting non-zero and writing nothing, a value
+(`getpass`). Unset and no terminal is an empty value. It refuses, exiting non-zero and writing nothing, a value
 that is empty or holds anything but ASCII letters, digits, `-` and `_`.
 It writes the value with `repr`, and prints nothing that carries it.
 
 - **`.gitignore` names the file**, so `git add -A` cannot commit it.
 - **Both release jobs in `.github/workflows/release.yml` run the script
-  before their Build step**, with `GOOGLE_CLIENT_SECRET` set from
+  after the suite and before their Build step**, with `GOOGLE_CLIENT_SECRET` set from
   `${{ secrets.GOOGLE_CLIENT_SECRET }}`. A release whose secret is missing
   fails there, before anything is built or signed.
 - **PyInstaller finds the module by its import in `google_signin`**, so no
@@ -455,14 +458,18 @@ with that double, a `credentials` double, and a real settings file.
   `src/pressless/_google_secret.py`; the script with the variable empty,
   or holding a quote, exits non-zero and writes nothing; with a valid
   value it writes a file whose `CLIENT_SECRET` imports back equal, and
-  its output does not carry the value.
-  *Breaks when:* the `.gitignore` line is dropped, or the script writes an
-  empty secret, so a release ships with the step silently unavailable.
+  its output does not carry the value; and each job in `release.yml`
+  runs the script, with `GOOGLE_CLIENT_SECRET` set from the Actions
+  secret, after its suite step and before its Build step.
+  *Breaks when:* the `.gitignore` line is dropped, the script writes an
+  empty secret, or a job loses the step — each ships a release with the
+  Google step silently unavailable.
 
 - **INV-17** — A failed return keeps its failure on screen.
   *Test:* `test_a_failed_return_stays_on_screen`, where the exchange
-  answers `400`: the page carries the failure, the link, and no
-  `http-equiv="refresh"`; a successful return carries the refresh.
+  answers `400`, and one whose account sees no property: each page
+  carries its message, the link, and no `http-equiv="refresh"`; a
+  successful return carries the refresh.
   *Breaks when:* the refresh is added to every return, and the failure
   flashes past before it can be read — which the first real sign-in
   measured.
@@ -553,7 +560,7 @@ carries the cookie (§4.3 step 4), and a packaged release's sign-in
 | INV-17 | `tests/test_google_setup.py::test_a_failed_return_stays_on_screen` |
 | §4.4's two new sentences | `tests/test_face.py`'s PRESS-0011 INV-1 test, which fails on a failure type with no entry |
 | §4.3 step 4, the cookie arriving on the continue navigation | **nothing automatic** — browser behaviour; the hand check in §7 |
-| §4.7, a packaged release carrying the secret | **nothing automatic** — the release job fails without it (INV-16), but that the frozen program imported it is seen only by §7's hand check on a release |
+| §4.7, a packaged release carrying the secret | **Partial:** INV-16 holds the step and the script; that the frozen program imported the module is seen only by §7's hand check on a release |
 | §4.6 step 2, the consent screen published to In production | **nothing** — a setting in the user's Google Cloud account; a Testing screen shows as sign-ins failing after seven days |
 
 ## 11. Cross-doc impact
