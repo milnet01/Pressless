@@ -2859,6 +2859,9 @@ success.
   Read: developers.google.com/identity/protocols/oauth2 and its
   native-app and service-account pages; support.google.com/cloud answers
   13464323 and 15549945.
+  Decided (2026-10-01): route A, sign in with Google, one installed-app
+  OAuth client shipped with Pressless. The user registers it in their
+  own Google Cloud account. Route B is not built.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -8736,6 +8739,16 @@ already-built code ships in whichever release comes next.
   **Layman:** After publishing changes to an entry, the box for changing its address is missing until the page is reloaded.
   Kind: fix.
   Source: in-session-2026-09-30, found while fixing PRESS-0185.
+  Lanes: Face.
+
+- 📋 [PRESS-0187] **In dark mode the editor's preview is a large bright white panel.**
+  The preview shows the site's own colours, and `.face iframe` has a
+  white background, so a dark editor surrounds a glaring white pane.
+  Seen on the Windows box in Edge and Chrome. Filed as a low-vision
+  item at the user's request; the fix is not chosen.
+  **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
+  Kind: accessibility.
+  Source: user-decision-2026-10-01.
   Lanes: Face.
 
 ## Milestones
