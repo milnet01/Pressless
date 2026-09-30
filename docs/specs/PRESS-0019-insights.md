@@ -473,8 +473,8 @@ when none is handed in. Proving it would mean letting a test reach Google.
 
 ## 9. Out of scope
 
-- **Obtaining and refreshing the Google token** — setup's, not this module's.
-  It is handed in as an argument.
+- **Obtaining and refreshing the Google token** — PRESS-0122's, not this
+  module's. It is handed in as an argument.
 - **The dashboard itself, and which windows it offers** — PRESS-0020's.
 - **OPEN: the zero-visitor answer is unverified against the live API.** A
   window with no rows and no total reads as zero rather than raising, which

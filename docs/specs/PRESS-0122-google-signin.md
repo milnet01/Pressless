@@ -1,6 +1,6 @@
 # PRESS-0122 — Setup's second step: signing in with Google for the dashboard
 
-**Status:** spec draft (2026-10-01).
+**Status:** accepted (2026-10-01). Gated for one loop, the user's round budget; every verified finding fixed, none left in the tail.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0122 (split from PRESS-0021 by the user
 2026-09-17; the route and the property list chosen by the user
@@ -155,7 +155,9 @@ not one part reaching inside another.
   a bearer header, and follows `nextPageToken` for at most `PAGE_LIMIT`
   pages. Each `propertySummaries` entry's `property` is
   `properties/<digits>`; the digits become `id`. An entry whose id is not
-  ASCII digits after that prefix is dropped. Google's order is kept.
+  ASCII digits after that prefix is dropped. Google's order is kept. An
+  answer with no `accountSummaries`, or a summary with no
+  `propertySummaries`, is no properties, not a missing field.
 - **`revoke`** posts `token=<refresh_token>` to `REVOKE_URL`.
 
 **No request carries a client secret**, because there is none (§3
@@ -169,7 +171,7 @@ decision 3).
 | 400 whose `error` is `invalid_grant`, or 401, or 403 | `insights.Refused` |
 | 429 | `insights.RateLimited` |
 | Anything else that is not 200 | `insights.InsightsError` |
-| 200 that is not JSON, or lacks the field this call reads | `insights.InsightsError` |
+| 200 that is not JSON, or lacks the field this call reads — except `revoke`, which reads no body | `insights.InsightsError` |
 
 Google's own `error` and `error_description` ride on `detail`, as
 Insights does (PRESS-0019 §4.5). **No message or detail ever carries a
@@ -191,8 +193,8 @@ def token(folder: Path) -> str: ...       # for PRESS-0020's dashboard
 ```
 
 The module holds, in memory and under one lock: **the pending attempt**
-(at most one), **the pending list** (the properties from the last return,
-at most one list), and **the held token** (an `AccessToken` or nothing).
+(at most one), **the pending list** (the last return's properties, with
+its refresh and access tokens; at most one), and **the held token** (an `AccessToken` or nothing).
 None of these is ever written to disk.
 
 Every page first runs `settings.load(folder)` inside `face.capture()`.
@@ -201,18 +203,19 @@ does nothing else.
 
 | Request | What it does |
 |---|---|
-| `GET /setup/google` | Where `available()` is false: says this copy of Pressless cannot connect to Google, and offers nothing. Where a pending list exists: the list, as one choice per property (its name and account), and a Use this site button. Otherwise, where `google_account` is set: the property id in use, a Choose again button and a Turn off button. Otherwise: what the dashboard is, a warning about Google's unverified-app screen, and a Sign in with Google button. |
+| `GET /setup/google` | Where `available()` is false: says this copy of Pressless cannot connect to Google, and offers nothing. Where a pending list exists: the list, as one choice per property (its name and account), and a Use this site button. Otherwise, where `google_account` is set: the property id in use, a Sign in again button, which posts to `/setup/google/start` like first sign-in and is the route after a `Refused`, and a Turn off button. Otherwise: what the dashboard is, a warning about Google's unverified-app screen, and a Sign in with Google button. |
 | `POST /setup/google/start` | Where `available()` is false, the same page as above and no redirect. Otherwise `begin(redirect_uri)` with `redirect_uri = face origin + RETURN_PATH`; the attempt replaces any pending one; the answer is `303` to Google's page. |
 | `GET RETURN_PATH` | §4.3. |
-| `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. The pending list is cleared. The page says the dashboard is ready. |
+| `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`, and the pending access token becomes the held token. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. The pending list is cleared. The page says the dashboard is ready. |
 | `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. Whatever `revoke` does, save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`, and drop the held token and the pending list. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. |
 
-**`token(folder)`** loads Settings, raises `insights.NotConfigured` where
+**`token(folder)`** uses the `client` `register` was given, and its
+clock; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
 `google_account` is `None`, and otherwise returns the held token's value
 while it is more than 60 seconds from `expires_at`. Past that, it
 `credentials.read`s the refresh token, calls `access_token`, holds the
-answer and returns its value. It raises what those raise. A choose or an
-off drops the held token.
+answer and returns its value. It raises what those raise. A choose
+replaces the held token and an off drops it.
 
 The warning before sign-in says, in his words: Google will say it has not
 verified this app; Pressless only reads visitor numbers; to carry on, click
@@ -233,10 +236,10 @@ It carries no Face cookie (§2 item 2). So:
    exactly as a missing cookie does, and leaves any pending attempt
    pending. A matching `state` **spends the attempt**, whatever follows,
    so the same address a second time is 403.
-3. Then `finish`. On success, `credentials.write(saved store, folder,
-   GOOGLE_ACCOUNT, refresh_token)`, then `access_token`, then
-   `properties`. The access token becomes the held token and the result
-   becomes the pending list. **Settings is not written here**: a sign-in
+3. Then `finish`, then `access_token`, then `properties`. The refresh
+   token, the access token and the list are held **with the pending list**,
+   in memory. **Nothing is written here, and the held token is not
+   replaced**: the store and Settings change only at choose, so a sign-in
    left before choosing leaves the dashboard as it was.
 4. **The answer does not depend on the cookie.** It says he is signed in
    and carries one link to `/setup/google`, plus
@@ -247,7 +250,7 @@ It carries no Face cookie (§2 item 2). So:
 5. **An empty list is not a failure.** The page says his Google account can
    see no Analytics property, and to sign in with the account that can.
 
-A credential failure at step 3 passes `secret=SIGN_IN`. The code and the
+A credential failure, at choose or at off, passes `secret=SIGN_IN`. The code and the
 state are in the address bar and the browser's history; both are useless
 once the attempt is spent, and the code is useless without the verifier,
 which never leaves memory.
@@ -256,8 +259,8 @@ which never leaves memory.
 
 `Declined`: he chose not to let Pressless read his visitor numbers; the
 site is unchanged; sign in again from Settings whenever he likes.
-`Expired`: the sign-in took too long or was started again elsewhere;
-sign in again. Both are entries in the Face's failure table, which
+`Expired`: the sign-in took too long; sign in again. A return whose
+attempt was replaced by a later sign-in gets §4.3's bare 403. Both are entries in the Face's failure table, which
 PRESS-0011 INV-1 already requires of every failure type. The existing
 `insights.Refused` sentence already says to sign in to Google again from
 Settings.
@@ -291,7 +294,7 @@ The steps go in `docs/working-here.md` (§11). Until the id is filled,
 
 `tests/test_google_signin.py` holds INV-1 to INV-8, driving a
 `Transport` double that records each request and answers from a script.
-`tests/test_google_setup.py` holds the rest, through `face.serve(tmp_path)`
+`tests/test_google_setup.py` holds INV-10 to INV-15, through `face.serve(tmp_path)`
 with that double, a `credentials` double, and a real settings file.
 
 - **INV-1** — `google_signin` imports no Pressless module but `insights`.
@@ -346,10 +349,10 @@ with that double, a `credentials` double, and a real settings file.
 
 - **INV-8** — `properties` follows pages to `PAGE_LIMIT` and no further,
   strips `properties/`, drops an id that is not ASCII digits, and keeps
-  Google's order.
+  Google's order; an answer with no `accountSummaries` is no properties.
   *Test:* `test_properties_are_listed_across_pages` — two pages, one entry
   named `properties/12x`; then a double that always names a next page,
-  which stops at `PAGE_LIMIT` requests.
+  which stops at `PAGE_LIMIT` requests; then `{}`, which returns `()`.
   *Breaks when:* the loop follows `nextPageToken` without a cap, or keeps
   an id `settings.check` would then refuse.
 
@@ -377,14 +380,15 @@ with that double, a `credentials` double, and a real settings file.
   *Breaks when:* the return page echoes Google's answer, or a failure's
   detail carries it.
 
-- **INV-12** — Settings is written only by a choose, and only with an id
-  from the pending list.
+- **INV-12** — Settings and the store are written only by a choose, and
+  only with an id from the pending list.
   *Test:* `test_only_a_listed_property_is_saved` — after a return the
-  settings file is unchanged; a choose naming an id not in the list
+  settings file is unchanged, `credentials.write` was not called, and
+  `token` still returns the earlier sign-in's token; a choose naming an id not in the list
   re-shows the list and leaves the file unchanged; a listed id saves
   `google_account` and the id, and the file loads.
-  *Breaks when:* the return page saves the first property, or choose
-  trusts the posted id.
+  *Breaks when:* the return page saves the first property or stores the
+  new sign-in, or choose trusts the posted id.
 
 - **INV-13** — Turning off clears both fields whether or not Google
   answered the revoke, and says so when it did not.
@@ -395,7 +399,7 @@ with that double, a `credentials` double, and a real settings file.
   the dashboard off.
 
 - **INV-14** — `token` reuses the held token until 60 seconds before it
-  expires, refreshes after, and a choose or an off drops it.
+  expires, refreshes after; a choose replaces it and an off drops it.
   *Test:* `test_the_token_is_reused_until_it_nearly_expires`, moving the
   double's clock.
   *Breaks when:* every dashboard view refreshes, or a token from before
@@ -522,6 +526,6 @@ Rows live in `../reviews/PRESS-0122-google-signin-loop-log.md`.
 
 ## 13. Resource cost
 
-Three small values in memory, each bounded at one: an attempt, a list
-capped by `PAGE_LIMIT`, and a token. No new dependency: `hashlib`,
+Three small values in memory, each bounded at one: an attempt, a
+pending list capped by `PAGE_LIMIT` with its two tokens, and a held token. No new dependency: `hashlib`,
 `hmac`, `base64` and `secrets` are the standard library.

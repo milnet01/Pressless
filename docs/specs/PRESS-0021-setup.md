@@ -226,7 +226,8 @@ through `Face.fail` and ends the request.
 
 Then the page says setup is done. It names the files it will leave alone. On
 first run it names the store that answered, `Choice.name`, and where that is
-`"file"` it says plainly that no keyring was found (ADR-0003).
+`"file"` it says plainly that no keyring was found (ADR-0003). It ends
+with PRESS-0122's optional link to `/setup/google` (PRESS-0122 §4.5).
 
 **Why this order.** A wrong key or a missing repository is found at step 2,
 before anything is written. The settings file is what makes a machine set up,
@@ -272,7 +273,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 - It never runs Import (`docs/design.md` rule 9).
 - It never reads the Store.
 - It never touches `google_account` or `analytics_property_id` in a settings
-  file that loads.
+  file that loads. PRESS-0122's pages do (PRESS-0122 §4.2).
 
 ## 5. Invariants
 

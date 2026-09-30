@@ -245,7 +245,8 @@ capture, it lands on that request's list.
   with 403, as a wrong one is, whatever cookie it carries. The check and the
   spending happen under one lock, so two racing requests cannot both win.
   Every other request must carry the session cookie, or it is refused with
-  403. The secret itself is never accepted as a cookie.
+  403, except a GET to a path registered with `add_return_page`
+  (PRESS-0122 §4.3). The secret itself is never accepted as a cookie.
 - **Every answer's `Content-Security-Policy` carries `frame-ancestors
   'self'`.** `FILES_POLICY` ends with it (PRESS-0012 § 4.3), a wrapped page's
   policy is `frame-src 'self'; frame-ancestors 'self'`, and every other
