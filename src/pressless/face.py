@@ -516,6 +516,7 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
 .face .bar .theme { margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: .5rem; }
 .face .bar .theme select { padding: .3rem .5rem; }
+.face .bar > a { margin-left: .6rem; font-weight: 600; }
 .face main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .face h1, .face h2 { font-family: Arial, Calibri, "Liberation Sans", Helvetica, sans-serif;
   font-weight: 600; line-height: 1.2; }
@@ -618,7 +619,8 @@ def _page(body: str, theme: str = themes.FOLLOW) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>Pressless</title><style>{_STYLE}</style></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f"{themes.picker(theme)}</header><main>{body}</main><script>{_SCRIPT}</script></body></html>"
+        f'{themes.picker(theme)}<a href="/setup">Settings</a></header>'
+        f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 
 

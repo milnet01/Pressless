@@ -2954,7 +2954,7 @@ success.
   Kind: investigate.
   Source: review residue 2026-09-21, from PRESS-0063's own note.
 
-- 📋 [PRESS-0193] **No page links to Settings, so the Google step cannot be found after setup.**
+- ✅ [PRESS-0193] **No page links to Settings, so the Google step cannot be found after setup.**
   Found 2026-10-01 during the 0.6.2 Windows sign-in check: the user
   looked for Settings on the list page and there is none. The Face's
   top bar holds only the name and the theme picker, and no page links
@@ -2966,6 +2966,12 @@ success.
   Widened (2026-10-01, PRESS-0194): the user wants to change site
   settings from a Settings page he can find, so the fix is the link plus
   checking that every setup answer can be changed there afterwards.
+  Resolved (2026-10-01): the Face's top bar carries a Settings link
+  on every page, failure pages included (test_every_page_links_to_settings,
+  red before the fix). Every setup answer was already changeable
+  afterwards: name, address, repository, tag filter and key on /setup;
+  Google sign-in, property and Turn off on /setup/google, linked from
+  /setup. The key's store is chosen automatically, not asked.
   **Layman:** Pressless has no Settings button, so after the first setup there is no way to find the Google sign-in or change settings.
   Kind: fix.
   Source: in-session-2026-10-01, Windows sign-in check.

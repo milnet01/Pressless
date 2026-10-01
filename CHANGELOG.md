@@ -20,6 +20,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   show on Windows too. If Google cannot be reached, it shows the last
   numbers it had and says how old they are.
 
+### Fixed
+
+- **A Settings link on every page** (PRESS-0193)
+  After first setup no page led back to Settings, so the Google
+  sign-in and the site's details could not be found. The top bar now
+  carries the link.
+
 ## [0.6.2] - 2026-10-01
 
 **Theme:** pictures and helpers

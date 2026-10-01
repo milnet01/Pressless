@@ -426,6 +426,26 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
         served.stop()
 
 
+def test_every_page_links_to_settings(tmp_path: Path) -> None:
+    """PRESS-0193. Breaks when the top bar loses the Settings link, on an
+    ordinary page or on a failure page."""
+    def broken(request: face.Request) -> str:
+        raise ValueError("x")
+
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/broken", broken)
+        client = _Client(served)
+        for path, expected in (("/words", 200), ("/broken", 500)):
+            status, _, body = client.request("GET", path)
+            bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
+            assert status == expected, path
+            assert '<a href="/setup">Settings</a>' in bar, path
+    finally:
+        served.stop()
+
+
 def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
     """PRESS-0012 INV-9."""
     served = face.serve(tmp_path)
