@@ -35,6 +35,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A refused request now gets a clear answer on Windows instead of a dropped connection** (PRESS-0191)
+  Also, the release step that writes the Google secret no longer waits
+  for ever on Windows when nobody is there to type it.
+
 - **After pressing changes to an entry, Change address is offered again without a reload.** (PRESS-0186)
 
 - **After pressing to site, the editor says the entry is on your site without a reload.** (PRESS-0185)

@@ -624,3 +624,32 @@ def test_serve_opens_no_browser_and_prints_nothing(tmp_path, monkeypatch, capfd)
     assert opened == []
     printed = capfd.readouterr()
     assert printed.out == "" and printed.err == ""
+
+
+@pytest.mark.parametrize(("signed_in", "expected"), [(False, 403), (True, 404)])
+def test_a_refused_post_is_answered_not_reset(
+    tmp_path: Path, signed_in: bool, expected: int,
+) -> None:
+    """A POST refused before its body is read must still get its 403.
+
+    Closing a socket with unread bytes resets it, and the sender sees a
+    dropped connection instead of the answer; Windows CI showed it as
+    WinError 10053 on a refused save. A body larger than the socket
+    buffers makes Linux show it too.
+    """
+    served = face.serve(tmp_path)
+    try:
+        client = _Client(served)
+        body = b"x" * (16 * 1024 * 1024)
+        conn = http.client.HTTPConnection("127.0.0.1", client.port, timeout=10)
+        try:
+            headers = {"Host": client.host, "Content-Length": str(len(body))}
+            if signed_in:
+                headers["Cookie"] = client.cookie
+            conn.request("POST", "/anything", body=body, headers=headers)
+            status = conn.getresponse().status
+        finally:
+            conn.close()
+    finally:
+        served.stop()
+    assert status == expected

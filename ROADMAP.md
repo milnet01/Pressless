@@ -8835,6 +8835,21 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-10-01.
   Lanes: Face.
 
+- ✅ [PRESS-0191] **Windows CI: the secret writer waited for ever on NUL, and a refused POST reset its connection.**
+  1. scripts/write_google_secret.py asked for the secret when stdin
+  was NUL: on Windows isatty is true of NUL, and getpass then reads the
+  console for ever. Now it asks only where GetConsoleMode succeeds;
+  checked on the Windows box (NUL: False, CONIN$: True). Red on Windows
+  CI 49819c1 and 7db51d3.
+  2. The Face answered a refused POST without reading its body, so the
+  socket was reset and the sender saw WinError 10053 (3e1e791) instead
+  of 403. Now it drains the body first, for 403, 404 and the theme 400.
+  A 16 MB body reproduces it on Linux: red without the fix.
+  **Layman:** Two faults that only showed on Windows made the automatic checks fail; both are fixed.
+  Kind: fix.
+  Source: user-request-2026-10-01.
+  Lanes: Face, release.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

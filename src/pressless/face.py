@@ -659,7 +659,22 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _refuse(self) -> None:
+        self._drain()
         self._send(403, "Forbidden", "text/plain")
+
+    def _drain(self) -> None:
+        """Read and drop a body that will not be used, so the answer arrives.
+
+        Closing a socket with unread bytes resets it, and the sender sees a
+        dropped connection rather than the answer: WinError 10053 on Windows
+        CI, a broken pipe on Linux for a body past the socket buffers.
+        """
+        left = _length(self.headers.get("Content-Length")) or 0
+        while left > 0:
+            chunk = self.rfile.read(min(left, 64 * 1024))
+            if not chunk:
+                return
+            left -= len(chunk)
 
     def _has_cookie(self, face: Face) -> bool:
         try:
@@ -721,6 +736,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
         registered = face._pages.get((method, parts.path))
         if registered is None:
+            self._drain()
             self._send_file(method, parts.path, face)
             return
         page, publishing = registered
@@ -746,6 +762,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         """PRESS-0190: remember the theme the picker has already applied."""
         length = _length(self.headers.get("Content-Length"))
         if length is None or length > _THEME_LIMIT:
+            self._drain()
             self._send(400, "", "text/plain")
             return
         key = self.rfile.read(length).decode("utf-8", "replace")

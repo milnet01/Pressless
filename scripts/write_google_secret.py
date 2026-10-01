@@ -24,11 +24,30 @@ DEFAULT = ROOT / "src" / "pressless" / "_google_secret.py"
 _SHAPE = re.compile(r"[A-Za-z0-9_-]+")
 
 
+def _asks() -> bool:
+    """Whether someone is at a terminal to type the secret.
+
+    On Windows `isatty` is also true of NUL, a character device like the
+    console, and getpass then waits on the console for ever (it reads the
+    console, not stdin). Only a real console input has a console mode;
+    checked on the Windows box 2026-10-01.
+    """
+    if not sys.stdin.isatty():
+        return False
+    if sys.platform != "win32":
+        return True
+    import ctypes
+    import msvcrt
+    mode = ctypes.c_uint32()
+    handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
+
+
 def main(argv: list[str]) -> int:
     target = Path(argv[0]) if argv else DEFAULT
     value = os.environ.get("GOOGLE_CLIENT_SECRET")
     if value is None:
-        value = getpass.getpass("Google client secret: ") if sys.stdin.isatty() else ""
+        value = getpass.getpass("Google client secret: ") if _asks() else ""
     if not _SHAPE.fullmatch(value):
         print("No usable client secret: it must be non-empty and hold only letters, "
               "digits, '-' and '_'. Nothing was written.", file=sys.stderr)
