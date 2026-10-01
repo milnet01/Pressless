@@ -193,11 +193,20 @@ step "pytest"
 # push from the maintainer's machine runs Windows too, before GitHub does:
 #   git config ants.pressless.windowsHost <ssh-host>
 # Unset on GitHub and on any other clone, which says so and goes on.
+# The box is not always on, so an UNREACHABLE box (exit 2) is a loud warning
+# and GitHub's Windows job remains the check; a failing suite still fails.
+# The user ruled this on 2026-10-01.
 windows=$(git config --get ants.pressless.windowsHost || true)
 if [[ -n $windows ]]; then
     step "pytest on Windows ($windows)"
-    ./scripts/windows-gate.sh "$windows" \
-        || fail "tests on Windows -- if the machine is off, turn it on; to push without it, ask the user"
+    status=0
+    ./scripts/windows-gate.sh "$windows" || status=$?
+    if ((status == 2)); then
+        printf '\nWARNING: %s is not reachable -- the Windows tests DID NOT RUN.\n' "$windows" >&2
+        printf 'Only GitHub'"'"'s Windows job will check this push.\n' >&2
+    elif ((status != 0)); then
+        fail "tests on Windows"
+    fi
 else
     printf '\nnote: ants.pressless.windowsHost is not set -- the suite ran on this system only\n'
 fi

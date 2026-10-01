@@ -65,7 +65,10 @@ git config ants.pressless.siteAddress '<the address sitemap.xml lists>'
 **The suite also runs on the Windows box before a push** (PRESS-0192),
 where a key names it as an ssh host. `scripts/windows-gate.sh` sends HEAD
 as a git bundle plus the working tree's not-ignored files, runs pytest
-there, and deletes its copy. An unreachable box fails the gate.
+there, and deletes its copy. A failing suite there fails the gate. The
+box is not always on, so an unreachable box only warns, loudly, and
+GitHub's Windows job is then the only Windows check (the user's ruling,
+2026-10-01).
 
 ```bash
 git config ants.pressless.windowsHost wintest
