@@ -2808,7 +2808,7 @@ success.
   Source: design-2026-08-24 § The dashboard.
   Lanes: Face.
 
-- 🚧 [PRESS-0122] **Setup's second step: the Google sign-in the dashboard reads with.**
+- ✅ [PRESS-0122] **Setup's second step: the Google sign-in the dashboard reads with.**
   Split from PRESS-0021 by the user on 2026-09-17. PRESS-0021 builds
   the publishing half of setup and records the dashboard as not set up,
   which PRESS-0001 already allows: google_account and
@@ -2914,6 +2914,11 @@ success.
   Progress (2026-10-01): the Actions secret GOOGLE_CLIENT_SECRET is set,
   piped from the local file with the user's consent and never shown;
   publish_precheck now exits 0.
+  Shipped (2026-10-01, user decision): built, gate green, real sign-in
+  passed on Linux, Actions secret set. Spec section 7's remaining
+  by-hand rows (sign-in in Firefox, Chrome and Edge on the Windows box,
+  from the packaged release) move to PRESS-0133 and are run on the 0.6.2
+  draft before it is signed.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -7930,6 +7935,10 @@ already-built code ships in whichever release comes next.
   seen in headless Chrome on Linux only. The next Windows run presses a
   draft and a proof in Edge and Chrome and reads the line above the form
   and the Address field, without a reload.
+  Owed on the 0.6.2 draft (2026-10-01), from PRESS-0122 spec section 7:
+  a real Google sign-in from the packaged release in Firefox, Chrome and
+  Edge on the Windows box, confirming the continue step keeps the
+  cookie. Needs the user at the box to enter the Google password.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
