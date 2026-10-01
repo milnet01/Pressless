@@ -33,11 +33,23 @@ does:
 - publish with one button, and put your files back if that fails;
 - undo the last publish in one step;
 - edit your other pages, and the header, footer and navigation;
+- add photographs to your entries;
 - start a new entry from a template;
+- let you pick how Pressless itself looks: light, dark, high contrast,
+  and more;
 - update itself when a new version is out.
 
-Still to come: **photographs** in the editor, **a dashboard** showing who
-reads your site, and **bringing in a WordPress blog** yourself.
+Still to come:
+
+- **a dashboard** showing how many people read your site, and from which
+  countries;
+- **bringing in a WordPress blog** yourself;
+- **running your whole site**: building your own homepage, adding and
+  removing pages, changing the site's look, and putting music,
+  downloads and documents on it.
+
+The aim is for Pressless to replace WordPress entirely, and that comes
+before version 1.0.
 
 [ROADMAP.md](ROADMAP.md) has the detail. [CHANGELOG.md](CHANGELOG.md)
 lists what each release added.
@@ -89,6 +101,10 @@ Pressless asks for your site's repository (written as `owner/name`), your
 site's name and address, and your key. It checks them with GitHub before
 saving anything. Then it shows the list of your writing, where **New
 entry** starts one.
+
+When setup is done, Pressless offers one optional step: signing in with
+Google, so it can show who reads your site once the dashboard arrives.
+You can skip it and lose nothing else.
 
 ### Upgrading without losing anything
 
