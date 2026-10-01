@@ -3202,6 +3202,9 @@ this milestone, and its frozen formats include every surface this one adds.
   the purpose, the signs of success and the parts, with the user, then
   gate design.md (CLAUDE.md rule 14). PRESS-0195 to PRESS-0197 are
   designed after this.
+  Order (user decision 2026-10-01): finish 0.7.0 (PRESS-0193's Settings
+  link, PRESS-0020's live read), then this item straight away, before any
+  0.8.0 or 0.9.0 work, since the new plan may reshape those milestones.
   **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
   Kind: doc.
   Source: user-decision-2026-10-01.
