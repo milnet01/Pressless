@@ -8815,6 +8815,11 @@ already-built code ships in whichever release comes next.
   test_the_look_reaches_only_the_faces_own_frame. Reproduced and
   cleared in headless Firefox with a fake injected frame. The preview's
   own white background (this item's headline) is still open.
+  Progress (2026-10-01): the user chose dimming with a switch (25%,
+  not remembered). Built in 68b50dd: every dark look dims the preview
+  to brightness .75; a "Show the preview in its true colours" tick box
+  above it, shown only on a dark look, undims it. Checked in headless
+  Chrome; waiting on the user's own look before closing.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
