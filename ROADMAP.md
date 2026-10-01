@@ -7972,6 +7972,13 @@ already-built code ships in whichever release comes next.
   Progress (2026-10-01): the Windows box has no Firefox, so the PRESS-0122
   sign-in row runs in Edge and Chrome only there. Edge round launched on
   the 0.6.2 zip; Chrome round next. Which browser the Linux sign-in used is not recorded.
+  0.6.2 draft (2026-10-01): PRESS-0122's real Google sign-in PASSED on
+  the Windows box from the packaged zip, in the user's own Chrome and
+  then own Edge: each saved credentials.google_account "google" and a
+  property id, the refresh token going to the real Windows keyring in
+  the desktop session, launched through Start Pressless.bat. Firefox is
+  not installed there. Still not run: a real publish through the
+  button.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -8976,6 +8983,8 @@ already-built code ships in whichever release comes next.
   docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
   designed; the homepage itself becomes something he builds, not only a
   fixed page he edits.
+  The user adds (2026-10-01) that this was always the aim: a WordPress
+  replacement for the first writer and for anyone else who needs one.
   **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
   Kind: feature.
   Source: user-request-2026-10-01.
