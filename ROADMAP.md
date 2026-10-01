@@ -2954,6 +2954,20 @@ success.
   Kind: investigate.
   Source: review residue 2026-09-21, from PRESS-0063's own note.
 
+- 📋 [PRESS-0193] **No page links to Settings, so the Google step cannot be found after setup.**
+  Found 2026-10-01 during the 0.6.2 Windows sign-in check: the user
+  looked for Settings on the list page and there is none. The Face's
+  top bar holds only the name and the theme picker, and no page links
+  to /setup except the dashboard's own "Set up Pressless first" line.
+  So /setup/google is reachable only from the end of first setup, or by
+  typing the address. A writer who skipped the Google step, or anyone
+  needing Sign in again or Turn off, has no route. Needs a Settings link
+  reachable from every page (the top bar is the obvious place).
+  **Layman:** Pressless has no Settings button, so after the first setup there is no way to find the Google sign-in or change settings.
+  Kind: fix.
+  Source: in-session-2026-10-01, Windows sign-in check.
+  Lanes: Face.
+
 ## 0.8.0 — a stranger can start from nothing
 
 - 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress blog in.**
