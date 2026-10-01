@@ -8808,6 +8808,13 @@ already-built code ships in whichever release comes next.
   page; Dark Reader recolours it, which a browser panel would not take.
   On a dark page Firefox paints the add-on's frame opaque white. Not
   Pressless's to fix; it also hid the theme picker beneath it.
+  Fixed (2026-10-01), the right-hand panel: it WAS Pressless's after
+  all. The rule `.face iframe` reached every iframe on the page, so the
+  add-on's empty frame took the preview's white background, rounded
+  corners and 70vh height. Now `.face iframe#preview`; test
+  test_the_look_reaches_only_the_faces_own_frame. Reproduced and
+  cleared in headless Firefox with a fake injected frame. The preview's
+  own white background (this item's headline) is still open.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
@@ -8828,6 +8835,8 @@ already-built code ships in whichever release comes next.
   every rule under `.face`, as `_STYLE` already does.
   Shipped 2026-10-01: cards (`section.card`) on the list and
   templates, pill buttons, sticky bar. Seen in headless Chrome.
+  User check (2026-10-01): seen in the real app in Brave; approved for
+  the next release.
   **Layman:** Pressless's own pages look more modern, with each section in a rounded card.
   Kind: ux.
   Source: user-request-2026-10-01.
@@ -8844,6 +8853,9 @@ already-built code ships in whichever release comes next.
   Shipped 2026-10-01: themes.py (27 themes plus Follow),
   theme.json, POST /theme, picker in the bar. tests/test_themes.py;
   two deliberate breaks each turned their test red.
+  User check (2026-10-01): picker tried in the real app in Brave;
+  approved for the next release. In Firefox an add-on's frame hid it
+  until PRESS-0187's fix.
   **Layman:** Pick a colour theme from the top bar; it changes instantly and stays picked next time.
   Kind: feature.
   Source: user-request-2026-10-01.

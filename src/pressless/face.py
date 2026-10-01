@@ -559,7 +559,7 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .notices > li { border-left-color: var(--amber); }
 .face .failure p, .face .notices p { margin: .2rem 0; }
 .face .failure .what, .face .notices .what { font-weight: 600; }
-.face iframe { width: 100%; min-height: 70vh; border: 1px solid var(--line);
+.face iframe#preview { width: 100%; min-height: 70vh; border: 1px solid var(--line);
   border-radius: 12px; background: #fff; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #failure, .face main > #undo-result { order: -1; }

@@ -490,6 +490,20 @@ def test_the_look_is_scoped_and_leaves_the_box_to_his_site(tmp_path: Path) -> No
             assert "textarea" not in re.sub(r":where\([^)]*\)", "", selector), selector
 
 
+def test_the_look_reaches_only_the_faces_own_frame(tmp_path: Path) -> None:
+    """PRESS-0187: a browser add-on injects its own iframe into every page.
+
+    A rule reaching any iframe gave that empty frame a white card most of the
+    screen tall, over the top bar's theme picker. Only the proof frame, which
+    the editors mark `#preview`, takes the Face's frame look.
+    """
+    _, style = _served_style(tmp_path)
+    for group in re.findall(r"([^{}]+)\{", style):
+        for selector in group.split(","):
+            if re.search(r"\biframe\b", selector):
+                assert "#preview" in selector, selector.strip()
+
+
 def _raises(request: face.Request) -> str:
     raise RuntimeError("a page that fails")
 

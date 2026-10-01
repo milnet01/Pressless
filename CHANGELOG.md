@@ -35,6 +35,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A browser add-on's hidden panel no longer shows as a large white box over the top bar** (PRESS-0187)
+  Pressless styled every frame on its pages like its own preview, so
+  an add-on's empty frame (Firefox's Multi Find, for one) became a
+  white card that hid the theme picker. Only the preview is styled now.
+
 - **A refused request now gets a clear answer on Windows instead of a dropped connection** (PRESS-0191)
   Also, the release step that writes the Google secret no longer waits
   for ever on Windows when nobody is there to type it.
