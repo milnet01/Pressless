@@ -3131,6 +3131,81 @@ success.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
+## 0.10.0 — the whole site is his
+
+User decision, 2026-10-01: Pressless replaces WordPress entirely, for the first
+writer and for anyone else, and that must be true before 1.0.0. So 1.0.0 follows
+this milestone, and its frozen formats include every surface this one adds.
+
+- 💭 [PRESS-0194] **Pressless manages the whole site, not only the writing.**
+  User, 2026-10-01: "Pressless should be allowing full management of
+  his site, not just the blogs / poems, etc." Today he can write and
+  publish entries, edit the existing fixed pages (PRESS-0014), add
+  photographs and use templates. PRESS-0014 section 9 left adding,
+  removing and renaming pages unqueued, and nothing manages the site's
+  look or files other than photographs. Which of these "full
+  management" means is being asked; this item is split into real items
+  once answered. A change to what Pressless is for, so discovery and
+  design are updated with it.
+  Answered (2026-10-01): all four. Adding, removing and renaming pages;
+  the site's look; files other than photographs (each filed as its own
+  item, same day); and site settings, which is PRESS-0193 widened: a
+  Settings page he can find and change his setup answers on. Which
+  milestone each joins is not decided yet.
+  Widened by the user (2026-10-01): "he should be able to create an
+  entirely new homepage with different pictures / links / footers /
+  headers / navigation bars. This needs to be a full website
+  administration tool for him to replace WordPress entirely." This
+  changes what Pressless is for, so docs/discovery.md and
+  docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
+  designed; the homepage itself becomes something he builds, not only a
+  fixed page he edits.
+  The user adds (2026-10-01) that this was always the aim: a WordPress
+  replacement for the first writer and for anyone else who needs one.
+  **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
+  Kind: feature.
+  Source: user-request-2026-10-01.
+
+- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only the existing
+  fixed pages can be edited; PRESS-0014 section 9 left adding, removing
+  and renaming unqueued. Touches the Store's page set, the menu, the
+  builder and what a publish deletes, so it likely needs a spec
+  (spec-format.md section 1: a contract other parts bind to).
+  **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
+  Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
+  its own screens; the live site's stylesheet is not editable in the
+  app. What 'look' covers, and whether it is a set of choices or the
+  stylesheet itself, is still to be decided with the user.
+  **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
+  handled (PRESS-0016). Which file kinds, size limits for the GitHub
+  API, and how a page links to a file are still to be decided.
+  **Layman:** He can put music, downloads and documents on his site, not only photographs.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0198] **Rewrite discovery and design for a full WordPress replacement.**
+  First item of this milestone (user decision 2026-10-01, PRESS-0194).
+  docs/discovery.md and docs/design.md describe a writing app that edits
+  a fixed set of pages; the aim is now a full website administration
+  tool: he builds a new homepage, adds and removes pages, changes the
+  site's look, menus, headers and footers, and uploads any file. Update
+  the purpose, the signs of success and the parts, with the user, then
+  gate design.md (CLAUDE.md rule 14). PRESS-0195 to PRESS-0197 are
+  designed after this.
+  **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
+  Kind: doc.
+  Source: user-decision-2026-10-01.
+
 ## 1.0.0 — all eleven, and the format is frozen
 
 No new capability. What makes this 1.0 rather than 0.9 is the promise attached
@@ -3158,6 +3233,9 @@ the breaking surfaces are owned by docs/standards/versioning-overrides.md.
   PRESS-0014 (2026-09-25) adds two folders to the writer's own files:
   pages-waiting/ and furniture-waiting/, each holding a copy under the
   live file's name. They are a surface this item's check must cover.
+  2026-10-01: 1.0.0 now follows 0.10.0 (whole-site management, user
+  decision). The freeze must cover every surface that milestone adds:
+  new pages, the site's look, and uploaded files.
   **Layman:** Before version 1.0, the shapes of his files, his setup and his site are promised not to change without warning — and a test proves each promise, so nothing can break it quietly.
   Kind: implement.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
@@ -8959,62 +9037,6 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: user-request-2026-10-01.
   Lanes: gate.
-
-- 💭 [PRESS-0194] **Pressless manages the whole site, not only the writing.**
-  User, 2026-10-01: "Pressless should be allowing full management of
-  his site, not just the blogs / poems, etc." Today he can write and
-  publish entries, edit the existing fixed pages (PRESS-0014), add
-  photographs and use templates. PRESS-0014 section 9 left adding,
-  removing and renaming pages unqueued, and nothing manages the site's
-  look or files other than photographs. Which of these "full
-  management" means is being asked; this item is split into real items
-  once answered. A change to what Pressless is for, so discovery and
-  design are updated with it.
-  Answered (2026-10-01): all four. Adding, removing and renaming pages;
-  the site's look; files other than photographs (each filed as its own
-  item, same day); and site settings, which is PRESS-0193 widened: a
-  Settings page he can find and change his setup answers on. Which
-  milestone each joins is not decided yet.
-  Widened by the user (2026-10-01): "he should be able to create an
-  entirely new homepage with different pictures / links / footers /
-  headers / navigation bars. This needs to be a full website
-  administration tool for him to replace WordPress entirely." This
-  changes what Pressless is for, so docs/discovery.md and
-  docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
-  designed; the homepage itself becomes something he builds, not only a
-  fixed page he edits.
-  The user adds (2026-10-01) that this was always the aim: a WordPress
-  replacement for the first writer and for anyone else who needs one.
-  **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
-  Kind: feature.
-  Source: user-request-2026-10-01.
-
-- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
-  Part of PRESS-0194 (user, 2026-10-01). Today only the existing
-  fixed pages can be edited; PRESS-0014 section 9 left adding, removing
-  and renaming unqueued. Touches the Store's page set, the menu, the
-  builder and what a publish deletes, so it likely needs a spec
-  (spec-format.md section 1: a contract other parts bind to).
-  **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
-
-- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
-  Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
-  its own screens; the live site's stylesheet is not editable in the
-  app. What 'look' covers, and whether it is a set of choices or the
-  stylesheet itself, is still to be decided with the user.
-  **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
-
-- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
-  Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
-  handled (PRESS-0016). Which file kinds, size limits for the GitHub
-  API, and how a page links to a file are still to be decided.
-  **Layman:** He can put music, downloads and documents on his site, not only photographs.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
 
 ## Milestones
 
