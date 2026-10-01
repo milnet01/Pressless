@@ -8794,6 +8794,14 @@ already-built code ships in whichever release comes next.
   Face's top bar, directly under the browser's add-on icons, on every
   page. Asked the user to check in a private window. The preview
   iframe's white background (the first half of this item) stands.
+  Progress (2026-10-01): the panel is still there in a private window,
+  in Firefox. A fresh instance of the Face rendered in headless Chrome
+  AND in headless Firefox with an empty profile shows no panel, and the
+  theme picker sits exactly where the panel covers it. In a private
+  window the user's Firefox runs only Mozilla's built-in add-ons plus
+  one that acts on YouTube alone. So the panel is drawn by the user's
+  Firefox itself (a stuck popup or panel), not by Pressless. Nothing in
+  Pressless to change for it.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
