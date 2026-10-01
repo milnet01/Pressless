@@ -14,12 +14,21 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A theme picker in the top bar** (PRESS-0190)
+  Light, dark, two high-contrast themes, and themes inspired by games,
+  films and TV. A pick changes the look at once and is remembered
+  between runs. Every theme is tested for readable contrast.
+
 - **Settings can sign in to Google, so Pressless can read your visitor numbers.** (PRESS-0122)
   You pick your site from a list of the Analytics sites your Google
   account can see, and you can turn it off again. It stays hidden until
   this copy of Pressless is registered with Google.
 
 ### Changed
+
+- **Pressless's screens have a more modern look** (PRESS-0189)
+  Each list sits in a rounded card, buttons are rounder, and the top
+  bar stays in view while you scroll.
 
 - **Pressless's own headings and name use a plain font (Arial, or Calibri) instead of a Times-like one.**
   Asked for by the user. Your site's preview keeps your site's own fonts.

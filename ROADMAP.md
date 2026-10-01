@@ -2894,6 +2894,13 @@ success.
   Actions secret GOOGLE_CLIENT_SECRET before the next release; the real
   sign-in retry; and the white panel on /setup/google, which the user
   says is Pressless's, goes to PRESS-0187.
+  Real sign-in retry (2026-10-01): PASSED. Built from source with the
+  client secret present, against a throwaway folder (store "file").
+  Google granted access; /setup/google/choose said "Visitor numbers
+  are ready."; settings.json got credentials.google_account "google"
+  and an analytics_property_id. Folder deleted afterwards. Still owed:
+  the GitHub Actions secret GOOGLE_CLIENT_SECRET before the next
+  release.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -8781,6 +8788,12 @@ already-built code ships in whichever release comes next.
   Also (2026-10-01): /setup/google showed a white panel at the right
   of the page; the user confirmed it is Pressless's, not the browser's.
   Check it with the dark-mode glare.
+  Correction (2026-10-01): the right-hand white panel is probably NOT
+  Pressless's. A headless Chrome render of the Face shell in dark mode
+  shows no panel, and in the user's screenshots the panel overlaps the
+  Face's top bar, directly under the browser's add-on icons, on every
+  page. Asked the user to check in a private window. The preview
+  iframe's white background (the first half of this item) stands.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
@@ -8792,6 +8805,33 @@ already-built code ships in whichever release comes next.
   the body text was already sans. The preview keeps the site's own fonts.
   **Layman:** Pressless's headings are now in a plain font like Arial instead of one like Times New Roman.
   Kind: ux.
+  Source: user-request-2026-10-01.
+  Lanes: Face.
+
+- ✅ [PRESS-0189] **Pressless's screens get a modern look: cards, softer shapes, roomier spacing.**
+  User chose cards and softer shapes over flat or sidebar layouts.
+  Scope is the Face only; the published site is untouched. Keep
+  every rule under `.face`, as `_STYLE` already does.
+  Shipped 2026-10-01: cards (`section.card`) on the list and
+  templates, pill buttons, sticky bar. Seen in headless Chrome.
+  **Layman:** Pressless's own pages look more modern, with each section in a rounded card.
+  Kind: ux.
+  Source: user-request-2026-10-01.
+  Lanes: Face.
+
+- ✅ [PRESS-0190] **A theme picker in the top bar that changes the look at once and is remembered.**
+  Themes: Light, Dark, Follow computer, high contrast, and many
+  themes inspired by games, films and TV under original names (the
+  repo is public; no trademarked titles). Applied without a reload.
+  Saved in settings, not localStorage: the Face's port changes each
+  run, so a browser-stored choice would be lost. A test checks every
+  theme's text contrast reaches WCAG AA, since the user is partially
+  sighted.
+  Shipped 2026-10-01: themes.py (27 themes plus Follow),
+  theme.json, POST /theme, picker in the bar. tests/test_themes.py;
+  two deliberate breaks each turned their test red.
+  **Layman:** Pick a colour theme from the top bar; it changes instantly and stays picked next time.
+  Kind: feature.
   Source: user-request-2026-10-01.
   Lanes: Face.
 

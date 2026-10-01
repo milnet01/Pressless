@@ -307,9 +307,11 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             # showing it (§ 3 decision 3).
             '<p><button type="button" data-undo>Undo the last press</button> '
             '<span id="undo-status"></span></p>'
-            f"<h2>Drafts</h2>{rows(drafts, unreadable[True])}"
-            f"<h2>On your site</h2>{rows(readable[False], unreadable[False])}"
-            f"<h2>Your pages</h2>{pages}"
+            # PRESS-0189: each list is a card.
+            f'<section class="card"><h2>Drafts</h2>{rows(drafts, unreadable[True])}</section>'
+            '<section class="card"><h2>On your site</h2>'
+            f"{rows(readable[False], unreadable[False])}</section>"
+            f'<section class="card"><h2>Your pages</h2>{pages}</section>'
             "</div>"
             + "".join(face.list_pieces(above=False)) +
             f"<script>{_UNDO_SCRIPT}</script>")

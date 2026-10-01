@@ -86,10 +86,10 @@ def _listed(folder: Path) -> str:
         items = "<ul>" + "".join(
             f'<li><a href="{html.escape(_address(name), quote=True)}">'
             f"{html.escape(name)}</a></li>" for name in names) + "</ul>"
-    return ("<h2>Your templates</h2>" + items +
+    return ('<section class="card"><h2>Your templates</h2>' + items +
             '<form method="post" action="/template/new"><label>Name '
             '<input name="name" autocomplete="off"></label> '
-            "<button>New template</button></form>")
+            "<button>New template</button></form></section>")
 
 
 def _open(face: Face, folder: Path, request: Request) -> str:

@@ -39,6 +39,7 @@ from pressless import (
     publisher,
     settings,
     store,
+    themes,
 )
 
 LABEL = "the Pressless-data folder, beside the program"
@@ -480,54 +481,64 @@ document.addEventListener("click", async (event) => {
     }
   }
 });
+// PRESS-0190: a theme is applied the moment it is picked, then remembered.
+document.addEventListener("change", (event) => {
+  const picker = event.target.closest("select[data-theme-picker]");
+  if (!picker) return;
+  if (picker.value === "follow") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = picker.value;
+  fetch("/theme", {method: "POST", body: picker.value});
+});
 """
 
 
-# The Face's look, in the logo's colours: cream paper, dark ink, one amber
-# (PRESS-0178). Dark follows the system. Every rule sits under `.face`, because
-# the editor links his site's stylesheets into this same document and a bare
-# `body` or `a` rule of his would otherwise restyle the Face. The box keeps his
-# site's font, and takes its colours only where his stylesheet sets none.
-_STYLE = """
-:root { color-scheme: light dark;
-  --paper: #f4efe6; --sheet: #fffdf8; --ink: #2b2620; --soft: #6b6255;
-  --line: #d9cfbf; --amber: #e9a23b; --amber-ink: #8a5a12; --press: #2b2620;
-  --on-press: #f4efe6; --alert: #b3412c; }
-@media (prefers-color-scheme: dark) { :root {
-  --paper: #1d1a16; --sheet: #28241f; --ink: #f4efe6; --soft: #b5aa99;
-  --line: #3e382f; --amber: #e9a23b; --amber-ink: #f0b95e; --press: #e9a23b;
-  --on-press: #1d1a16; --alert: #e27a62; } }
+# The Face's look (PRESS-0178, PRESS-0189). The colours are a theme's
+# (themes.py, PRESS-0190); with none chosen they follow the computer, light or
+# dark. Every rule sits under `.face`, because the editor links his site's
+# stylesheets into this same document and a bare `body` or `a` rule of his
+# would otherwise restyle the Face. The box keeps his site's font, and takes its
+# colours only where his stylesheet sets none.
+_SHAPES = """
 body.face { margin: 0; background: var(--paper); color: var(--ink);
-  font: 16px/1.5 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
-.face .bar { display: flex; align-items: center; gap: .6rem; padding: .7rem 1.5rem;
-  border-bottom: 1px solid var(--line); }
+  font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+.face .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center;
+  gap: .6rem; padding: .6rem 1.5rem; background: var(--sheet);
+  border-bottom: 1px solid var(--line); box-shadow: 0 2px 10px var(--shadow); }
 .face .bar svg { width: 1.3rem; height: auto; }
+.face .bar svg [fill]:not([fill="none"]), .face .bar svg g { fill: var(--amber); }
 .face .bar b { font: 700 1.2rem/1 Arial, Calibri, "Liberation Sans", Helvetica, sans-serif; }
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
-.face main { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
+.face .bar .theme { margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: .5rem; }
+.face .bar .theme select { padding: .3rem .5rem; }
+.face main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .face h1, .face h2 { font-family: Arial, Calibri, "Liberation Sans", Helvetica, sans-serif;
   font-weight: 600; line-height: 1.2; }
-.face h1 { font-size: 2rem; margin: .5rem 0 1.25rem; }
-.face h2 { font-size: 1.3rem; margin: 2rem 0 .5rem; padding-bottom: .3rem;
-  border-bottom: 1px solid var(--line); }
+.face h1 { font-size: 2.1rem; margin: .25rem 0 1.5rem; letter-spacing: -.01em; }
+.face h2 { font-size: 1.3rem; margin: 2rem 0 .75rem; }
+.face .card { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.1rem 1.4rem; margin: 1.25rem 0; box-shadow: 0 4px 18px var(--shadow); }
+.face .card > h2:first-child { margin-top: 0; }
+.face .card > :last-child { margin-bottom: 0; }
 .face a { color: var(--amber-ink); text-underline-offset: .15em; }
 .face ul { padding-left: 1.2rem; }
-.face li { margin: .25rem 0; }
+.face li { margin: .3rem 0; }
 .face small, .face .hint, .face [id$="-hint"], .face [id$="-status"] { color: var(--soft); }
-.face label { display: inline-flex; flex-direction: column; gap: .2rem;
+.face label { display: inline-flex; flex-direction: column; gap: .25rem;
   margin: 0 1rem .75rem 0; font-size: .9rem; color: var(--soft); vertical-align: bottom; }
 .face input, .face select, .face :where(textarea) { font: inherit; color: var(--ink);
-  background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
-  padding: .45rem .6rem; }
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  padding: .5rem .7rem; }
 .face input:focus, .face select:focus, .face :where(textarea:focus), .face button:focus-visible {
-  outline: 2px solid var(--amber); outline-offset: 1px; }
+  outline: 2px solid var(--amber); outline-offset: 2px; }
 .face button { font: inherit; font-weight: 600; cursor: pointer; color: var(--ink);
-  background: transparent; border: 1px solid var(--line); border-radius: 6px;
-  padding: .45rem .9rem; vertical-align: bottom; }
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 999px;
+  padding: .5rem 1.1rem; vertical-align: bottom; box-shadow: 0 1px 3px var(--shadow);
+  transition: border-color .15s, transform .15s, box-shadow .15s; }
 .face label + button, .face label ~ button { margin-bottom: .75rem; }
-.face button:hover { border-color: var(--amber); }
-.face [data-editor="publish"] { background: var(--press); color: var(--on-press);
-  border-color: var(--press); }
+.face button:hover { border-color: var(--amber); transform: translateY(-1px);
+  box-shadow: 0 3px 10px var(--shadow); }
+.face [data-editor="publish"], .face form > button:only-of-type { background: var(--press);
+  color: var(--on-press); border-color: var(--press); }
 .face #editor { display: flex; flex-wrap: wrap; align-items: flex-end; }
 .face #editor > p { flex-basis: 100%; margin: .25rem 0 .75rem; }
 .face :where(textarea) { box-sizing: border-box; width: 100%; }
@@ -536,20 +547,20 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face details { margin: 1rem 0; }
 .face summary { cursor: pointer; color: var(--soft); }
 .face table { border-collapse: collapse; margin: .5rem 0; }
-.face th, .face td { text-align: left; padding: .35rem .8rem .35rem 0;
+.face th, .face td { text-align: left; padding: .4rem .8rem .4rem 0;
   border-bottom: 1px solid var(--line); vertical-align: top; }
 .face code, .face pre { font: .9em/1.4 ui-monospace, Consolas, "DejaVu Sans Mono", monospace; }
-.face pre { white-space: pre-wrap; background: var(--sheet); padding: .6rem;
-  border-radius: 6px; }
+.face pre { white-space: pre-wrap; background: var(--paper); padding: .7rem;
+  border-radius: 10px; }
 .face .failure, .face .notices > li { list-style: none; margin: 1rem 0;
-  padding: .8rem 1rem; background: var(--sheet); border: 1px solid var(--line);
-  border-left: 4px solid var(--alert); border-radius: 6px; }
+  padding: .9rem 1.1rem; background: var(--sheet); border: 1px solid var(--line);
+  border-left: 5px solid var(--alert); border-radius: 12px; box-shadow: 0 4px 18px var(--shadow); }
 .face .notices { padding: 0; }
 .face .notices > li { border-left-color: var(--amber); }
 .face .failure p, .face .notices p { margin: .2rem 0; }
 .face .failure .what, .face .notices .what { font-weight: 600; }
 .face iframe { width: 100%; min-height: 70vh; border: 1px solid var(--line);
-  border-radius: 6px; background: #fff; }
+  border-radius: 12px; background: #fff; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #failure, .face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {
@@ -557,10 +568,21 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .face main:has(> #editor) > * { grid-column: 1; }
   .face main > #preview { grid-column: 2; grid-row: 1 / span 12; align-self: start;
-    position: sticky; top: 1rem; height: calc(100vh - 2rem); }
+    position: sticky; top: 4.5rem; height: calc(100vh - 6rem); }
 }
-@media print { .face .bar { display: none; } body.face { background: #fff; color: #000; } }
+@media (prefers-reduced-motion: reduce) { .face button { transition: none; }
+  .face button:hover { transform: none; } }
+@media print { .face .bar { display: none; } body.face { background: #fff; color: #000; }
+  .face .card { box-shadow: none; } }
 """
+
+_STYLE = (
+    f":root {{ color-scheme: light dark; {themes.declarations(themes.find('light'))}"
+    " --shadow: rgba(60, 40, 10, .10); }\n"
+    f"@media (prefers-color-scheme: dark) {{ :root {{ {themes.declarations(themes.find('dark'))}"
+    " --shadow: rgba(0, 0, 0, .45); } }\n"
+    + themes.css() + _SHAPES
+)
 
 # The logo's mark, drawn inline so the bar needs no file (PRESS-0178).
 _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
@@ -572,13 +594,14 @@ _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
          '<rect x="28" y="116" width="30" height="7" rx="3.5"/></g></svg>')
 
 
-def _page(body: str) -> str:
+def _page(body: str, theme: str = themes.FOLLOW) -> str:
+    chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
     return (
-        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>Pressless</title><style>{_STYLE}</style></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f"</header><main>{body}</main><script>{_SCRIPT}</script></body></html>"
+        f"{themes.picker(theme)}</header><main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 
 
@@ -688,9 +711,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             try:
                 _open_folder(face._folder)
             except FolderNotOpened as exc:
-                self._send(500, _page(face.fail(exc, publishing=False)), "text/html")
+                self._send(500, _page(face.fail(exc, publishing=False), face._theme), "text/html")
                 return
             self._send(204, "", "text/plain")
+            return
+        if method == "POST" and parts.path == "/theme":
+            self._choose_theme(face)
             return
 
         registered = face._pages.get((method, parts.path))
@@ -716,18 +742,38 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 for action in actions:
                     action()
 
+    def _choose_theme(self, face: Face) -> None:
+        """PRESS-0190: remember the theme the picker has already applied."""
+        length = _length(self.headers.get("Content-Length"))
+        if length is None or length > _THEME_LIMIT:
+            self._send(400, "", "text/plain")
+            return
+        key = self.rfile.read(length).decode("utf-8", "replace")
+        if not themes.known(key):
+            self._send(400, "", "text/plain")
+            return
+        try:
+            themes.write_choice(face._folder, key)
+        except OSError:
+            # The page has the theme already; only the next start forgets it.
+            face._log.note("the theme could not be saved")
+            self._send(500, "", "text/plain")
+            return
+        face._theme = key
+        self._send(204, "", "text/plain")
+
     def _answer(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
         try:
             body = page(request)
         except Exception as exc:  # noqa: BLE001 -- § Errors' last-resort catch
-            self._send(500, _page(face.fail(exc, publishing=publishing)), "text/html",
+            self._send(500, _page(face.fail(exc, publishing=publishing), face._theme), "text/html",
                        (("Content-Security-Policy", _FRAMES_POLICY),))
             return
         if isinstance(body, Reply):
             location = (("Location", body.location),) if body.location is not None else ()
             self._send_bytes(body.status, body.body, body.content_type, location)
             return
-        self._send(200, _page(body), "text/html",
+        self._send(200, _page(body, face._theme), "text/html",
                    (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _send_file(self, method: str, path: str, face: Face) -> None:
@@ -756,6 +802,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 # tests/conftest.py shortens it: the suite starts and stops hundreds of servers.
 _POLL_SECONDS = 0.5
 
+# The longest theme key with room to spare; a longer body is not a key.
+_THEME_LIMIT = 64
+
 
 class Face:
     """The running server. Made by `serve`; one per launch."""
@@ -763,6 +812,7 @@ class Face:
     def __init__(self, folder: Path) -> None:
         self._folder = Path(folder)
         self._log = log.open_log(self._folder)
+        self._theme = themes.read_choice(self._folder)
         self._secret = secrets.token_urlsafe(32)
         self._session = secrets.token_urlsafe(32)
         while self._session == self._secret:
