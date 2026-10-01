@@ -7952,6 +7952,9 @@ already-built code ships in whichever release comes next.
   a real Google sign-in from the packaged release in Firefox, Chrome and
   Edge on the Windows box, confirming the continue step keeps the
   cookie. Needs the user at the box to enter the Google password.
+  Progress (2026-10-01): the Windows box has no Firefox, so the PRESS-0122
+  sign-in row runs in Edge and Chrome only there. Edge round launched on
+  the 0.6.2 zip; Chrome round next. Which browser the Linux sign-in used is not recorded.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
