@@ -9,6 +9,7 @@ import contextlib
 import dataclasses
 import http.client
 import json
+import re
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
@@ -42,13 +43,15 @@ class _Google:
         if url.startswith("https://oauth2.googleapis.com/token"):
             return 200, {}, json.dumps({"access_token": "access-token",
                                         "expires_in": 3600}).encode()
-        if url.endswith(":runReport"):
-            self.reports.append(json.loads(body))
+        if url.endswith(":batchRunReports"):
+            self.reports.append(json.loads(body)["requests"][0])
             if self.report_status != 200:
                 return self.report_status, {}, b"{}"
             rows = [{"dimensionValues": [{"value": code}], "metricValues": [{"value": str(n)}]}
                     for code, n in self.rows]
-            answer = {"rows": rows, "totals": [{"metricValues": [{"value": str(self.total)}]}]}
+            countries = {"rows": rows,
+                         "totals": [{"metricValues": [{"value": str(self.total)}]}]}
+            answer = {"reports": [countries, {}, {}, {}]}
             return 200, {}, json.dumps(answer).encode()
         return 404, {}, b""
 
@@ -80,6 +83,11 @@ class _Browser:
 
     def card(self) -> str:
         return "".join(self.served.list_pieces(above=True))
+
+
+def _seen(page: str) -> str:
+    """The words a reader sees: tags dropped, spaces closed up."""
+    return " ".join(re.sub(r"<[^>]+>", " ", page).split()).replace(" .", ".")
 
 
 @contextlib.contextmanager
@@ -134,7 +142,7 @@ def test_flags_are_pictures_and_countries_have_names(tmp_path: Path) -> None:
     _saved(tmp_path)
     with _served(tmp_path, _Google()) as browser:
         page = browser.get("/visitors")
-    assert "10 people read your site in the last 4 weeks." in page
+    assert "10 people read your site in the last 4 weeks." in _seen(page)
     assert '<a href="/">Back to your writing</a>' in page
     assert page.count('src="data:image/svg+xml;base64,') == 2
     assert "South Africa" in page and "United States of America" in page
@@ -160,7 +168,7 @@ def test_one_reader_and_none(tmp_path: Path, total: int, rows, words: str) -> No
     _saved(tmp_path)
     with _served(tmp_path, _Google(total=total, rows=rows)) as browser:
         page = browser.get("/visitors")
-    assert words in page
+    assert words in _seen(page)
     assert ("Where they are" in page) == bool(rows)
 
 
@@ -187,7 +195,7 @@ def test_unreachable_google_shows_the_numbers_kept(tmp_path: Path) -> None:
         google.down = True
         page = browser.get("/visitors")
     assert "could not reach Google just now" in page
-    assert "10 people read your site" in page
+    assert "10 people read your site" in _seen(page)
     assert "South Africa" in page
 
 

@@ -35,6 +35,7 @@
 from __future__ import annotations
 
 import ast
+import datetime
 import http.client
 import inspect
 import json
@@ -54,9 +55,11 @@ from pressless.insights import (
     Country,
     InsightsError,
     NotConfigured,
+    Page,
     RateLimited,
     Refused,
     Report,
+    Source,
     Unreachable,
     cache_path,
     read,
@@ -120,22 +123,40 @@ def _settings(**overrides) -> Settings:
     return Settings(**values)
 
 
-def _google(rows=ROWS, total: int | None = TOTAL) -> bytes:
-    """An answer shaped like Google's runReport reply. `total=None` omits
-    the "totals" block entirely -- INV-5's refusal case."""
-    payload: dict = {
+def _countries_report(rows=ROWS, total: int | None = TOTAL) -> dict:
+    """The first report of the batch, shaped like Google's runReport reply.
+    `total=None` omits the "totals" block entirely -- INV-5's refusal case."""
+    payload = _table([((code,), (people,)) for code, people in rows])
+    if total is not None:
+        payload["totals"] = [{"metricValues": [{"value": str(total)}]}]
+    return payload
+
+
+def _table(rows) -> dict:
+    """One report: each row is (dimension values, metric values)."""
+    return {
         "rows": [
             {
-                "dimensionValues": [{"value": code}],
-                "metricValues": [{"value": str(people)}],
+                "dimensionValues": [{"value": value} for value in dims],
+                "metricValues": [{"value": str(metric)} for metric in metrics],
             }
-            for code, people in rows
+            for dims, metrics in rows
         ],
         "rowCount": len(rows),
     }
-    if total is not None:
-        payload["totals"] = [{"metricValues": [{"value": str(total)}]}]
-    return json.dumps(payload).encode("utf-8")
+
+
+def _batch(*reports: dict) -> bytes:
+    return json.dumps({"reports": list(reports)}).encode("utf-8")
+
+
+def _google(rows=ROWS, total: int | None = TOTAL, *, daily=(), pages=(),
+            sources=()) -> bytes:
+    """An answer shaped like Google's batchRunReports reply: the countries
+    report, then readers over time, top pages and how visitors arrived, each
+    a list of (dimension values, metric values)."""
+    return _batch(_countries_report(rows, total), _table(daily), _table(pages),
+                  _table(sources))
 
 
 def _ok(body: bytes) -> tuple[int, dict[str, str], bytes]:
@@ -318,8 +339,9 @@ def test_declined_dashboard_raises_and_asks_nothing(tmp_path):
 
 
 def test_one_request_names_the_property_and_carries_the_token(tmp_path):
-    """INV-3: read() sends one request, a POST to the property's :runReport
-    endpoint on Google's analytics-data host, with the token as a bearer
+    """INV-3: read() sends one request, a POST to the property's
+    :batchRunReports endpoint on Google's analytics-data host, with the token
+    as a bearer
     credential.
 
     The host and the path shape are pinned; the API version segment between
@@ -343,8 +365,8 @@ def test_one_request_names_the_property_and_carries_the_token(tmp_path):
     assert url.startswith("https://analyticsdata.googleapis.com/"), (
         f"expected an https request to Google's analytics-data host; got {url!r}"
     )
-    assert url.endswith(f"/properties/{PROPERTY}:runReport"), (
-        f"expected a URL ending /properties/{PROPERTY}:runReport, naming the "
+    assert url.endswith(f"/properties/{PROPERTY}:batchRunReports"), (
+        f"expected a URL ending /properties/{PROPERTY}:batchRunReports, naming the "
         f"property id from Settings; got {url!r}"
     )
     assert _authorization(headers) == f"Bearer {SENTINEL}", (
@@ -358,8 +380,9 @@ def test_one_request_names_the_property_and_carries_the_token(tmp_path):
 
 
 def test_request_body_asks_for_country_codes(tmp_path):
-    """INV-4: the body asks for the last `days` days, dimension
-    "countryId", metric "activeUsers", and metricAggregations ["TOTAL"].
+    """INV-4: every report in the batch asks for the last `days` days, and the
+    first asks for dimension "countryId", metric "activeUsers", and
+    metricAggregations ["TOTAL"].
 
     countryId, never country: countryId is ISO 3166-1 alpha-2, and the
     dashboard's flag pictures are keyed by those two-letter codes. "country"
@@ -381,7 +404,13 @@ def test_request_body_asks_for_country_codes(tmp_path):
     assert transport.requests, "no request was made at all"
     _, _, body, _ = transport.requests[0]
     assert body, "the request carried no body"
-    payload = json.loads(body)
+    requests = json.loads(body)["requests"]
+    assert len(requests) == 4, f"expected a batch of four reports; got {requests!r}"
+    for each in requests:
+        assert each.get("dateRanges") == [
+            {"startDate": "7daysAgo", "endDate": "today"}
+        ], f"a report asks for another window: {each!r}"
+    payload = requests[0]
 
     assert payload.get("dateRanges") == [
         {"startDate": "7daysAgo", "endDate": "today"}
@@ -1375,7 +1404,7 @@ def test_a_window_with_no_visitors_reads_as_zero(tmp_path):
     overstated number that refusal exists to keep out -- which is what
     test_answer_without_totals_is_refused holds.
     """
-    transport = _Transport(default=_ok(json.dumps({"rowCount": 0}).encode("utf-8")))
+    transport = _Transport(default=_ok(_batch({"rowCount": 0}, {}, {}, {})))
 
     report = read(_settings(), "a-token", tmp_path, client=transport)
 
@@ -1395,13 +1424,13 @@ def test_an_empty_total_with_no_rows_reads_as_zero(tmp_path):
     value. The same empty entry beside rows is still refused (INV-5).
     """
     quiet = {"kind": "analyticsData#runReport", "totals": [{}]}
-    transport = _Transport(default=_ok(json.dumps(quiet).encode("utf-8")))
+    transport = _Transport(default=_ok(_batch(quiet, {}, {}, {})))
     report = read(_settings(), "a-token", tmp_path, client=transport)
     assert (report.people, report.countries) == (0, ())
 
-    with_rows = json.loads(_google(total=None))
+    with_rows = _countries_report(total=None)
     with_rows["totals"] = [{}]
-    transport = _Transport(default=_ok(json.dumps(with_rows).encode("utf-8")))
+    transport = _Transport(default=_ok(_batch(with_rows, {}, {}, {})))
     with pytest.raises(InsightsError):
         read(_settings(), "a-token", tmp_path / "other", client=transport)
 
@@ -1813,3 +1842,161 @@ def test_an_unresolvable_cache_folder_is_refused(tmp_path, monkeypatch):
     with pytest.raises(InsightsError):
         read(_settings(site_folder=tmp_path / "site"), "a-token", tmp_path,
              client=_Transport(default=_ok(_google())))
+
+
+# ----------------------------------------------------- INV-28 to INV-32 ----
+# PRESS-0020's visitor page: readers over time, top pages, and how visitors
+# arrived, fetched in the same one request as the countries.
+
+def _day(offset: int) -> datetime.date:
+    """A calendar day on the double's clock, in local time as the module
+    reckons it. Read off NOW, never off the wall clock."""
+    return datetime.date.fromtimestamp(NOW) - datetime.timedelta(days=offset)
+
+
+@pytest.mark.parametrize(("days", "period"), [
+    (28, "date"), (90, "date"), (91, "yearMonth"), (365, "yearMonth")])
+def test_the_batch_asks_for_days_pages_and_sources(tmp_path, days, period):
+    """INV-28: the second to fourth reports ask for readers over time (by
+    month above 90 days), the top ten pages and the top ten sources.
+
+    Breaks when a report is dropped or reordered, so one table reads
+    another's rows; or a year is asked by day and draws 366 bars.
+    """
+    transport = _Transport()
+    read(_settings(), "a-token", tmp_path, days=days, client=transport)
+
+    _, over_time, pages, sources = json.loads(transport.requests[0][2])["requests"]
+    assert over_time["dimensions"] == [{"name": period}], over_time
+    assert over_time["metrics"] == [{"name": "activeUsers"}], over_time
+    assert over_time["orderBys"] == [{"dimension": {"dimensionName": period}}]
+    assert pages["dimensions"] == [{"name": "pagePath"}], pages
+    assert [m["name"] for m in pages["metrics"]] == [
+        "screenPageViews", "activeUsers", "userEngagementDuration"], pages
+    assert pages["orderBys"] == [{"metric": {"metricName": "screenPageViews"},
+                                  "desc": True}], pages
+    assert pages["limit"] == 10, pages
+    assert [d["name"] for d in sources["dimensions"]] == [
+        "sessionDefaultChannelGroup", "sessionSource"], sources
+    assert [m["name"] for m in sources["metrics"]] == [
+        "sessions", "activeUsers"], sources
+    assert sources["orderBys"] == [{"metric": {"metricName": "sessions"},
+                                    "desc": True}], sources
+    assert sources["limit"] == 10, sources
+
+
+def test_the_daily_strip_has_every_day_of_the_window(tmp_path):
+    """INV-29: one entry per day from the window's first to today, a day
+    Google left out reading as zero, and a day Google sent from outside that
+    range kept in order rather than dropped.
+
+    Breaks when the rows are passed through, and the strip closes up a quiet
+    day so the busiest days look consecutive.
+    """
+    daily = [((_day(5).strftime("%Y%m%d"),), (3,)),
+             ((_day(0).strftime("%Y%m%d"),), (4,))]
+    report = read(_settings(), "a-token", tmp_path, days=7,
+                  client=_Transport(default=_ok(_google(daily=daily))))
+
+    expected = [_day(offset).isoformat() for offset in range(7, -1, -1)]
+    assert [day.label for day in report.daily] == expected, report.daily
+    people = {day.label: day.people for day in report.daily}
+    assert people[_day(5).isoformat()] == 3 and people[_day(0).isoformat()] == 4
+    assert sum(1 for day in report.daily if day.people == 0) == 6, report.daily
+
+    # A time zone ahead of the machine's can send a day the local range does
+    # not hold; it is kept, in order, so no number Google sent is lost.
+    outside = [((_day(8).strftime("%Y%m%d"),), (2,))] + daily
+    report = read(_settings(), "a-token", tmp_path / "zone", days=7,
+                  client=_Transport(default=_ok(_google(daily=outside))))
+    assert report.daily[0].label == _day(8).isoformat(), report.daily
+    assert report.daily[0].people == 2 and len(report.daily) == 9
+
+
+def test_a_year_is_read_by_month(tmp_path):
+    """INV-29, by month: every month from the window's first to this one,
+    labelled YYYY-MM, a month Google left out reading as zero."""
+    this_month = _day(0).strftime("%Y-%m")
+    daily = [((_day(0).strftime("%Y%m"),), (40,))]
+    report = read(_settings(), "a-token", tmp_path, days=365,
+                  client=_Transport(default=_ok(_google(daily=daily))))
+
+    labels = [day.label for day in report.daily]
+    assert labels[0] == _day(365).strftime("%Y-%m") and labels[-1] == this_month
+    assert all(len(label) == 7 for label in labels), labels
+    assert len(labels) == len(set(labels)) and labels == sorted(labels)
+    assert {day.label: day.people for day in report.daily}[this_month] == 40
+    assert sum(day.people for day in report.daily) == 40
+
+
+def test_pages_and_sources_are_read_in_order(tmp_path):
+    """INV-30: pages most-viewed first and ties by path, seconds per view
+    from the engaged duration (zero with no views); sources most visits
+    first and ties by channel, then source. An empty source is kept: only a
+    row's first dimension value must be non-empty (§4.3).
+
+    Breaks when the total duration is shown as time per view, or Google's
+    order is trusted and a cached reply lists differently from a fresh one.
+    """
+    pages = [(("/b/",), (5, 4, 50)), (("/z/",), (0, 1, 30)),
+             (("/a/",), (9, 7, 45)), (("/c/",), (5, 5, 0))]
+    sources = [(("Direct", "(direct)"), (3, 3)),
+               (("Referral", "a.example"), (3, 2)),
+               (("Organic Search", "google"), (7, 6)),
+               (("Unassigned", ""), (1, 1))]
+    report = read(_settings(), "a-token", tmp_path, client=_Transport(
+        default=_ok(_google(pages=pages, sources=sources))))
+
+    assert report.pages == (Page("/a/", 9, 7, 5.0), Page("/b/", 5, 4, 10.0),
+                            Page("/c/", 5, 5, 0.0), Page("/z/", 0, 1, 0.0))
+    assert report.sources == (Source("Organic Search", "google", 7, 6),
+                              Source("Direct", "(direct)", 3, 3),
+                              Source("Referral", "a.example", 3, 2),
+                              Source("Unassigned", "", 1, 1))
+
+
+def test_every_table_survives_the_cache_and_a_stale_answer(tmp_path):
+    """INV-31: a reply answered from the cache, fresh or stale, carries the
+    tables the fetch returned.
+
+    Breaks when the cache keeps only people and countries, or the stale
+    fallback rebuilds the report from them, and the page loses its strip and
+    cards whenever it is not fetching.
+    """
+    answer = _google(daily=[((_day(0).strftime("%Y%m%d"),), (4,))],
+                     pages=[(("/a/",), (9, 7, 45))],
+                     sources=[(("Direct", "(direct)"), (3, 3))])
+    fetched = _seed(tmp_path, _Transport(default=_ok(answer)))
+    tables = (fetched.daily, fetched.pages, fetched.sources)
+    assert all(tables), tables
+
+    fresh = _Transport()
+    cached = _seed(tmp_path, fresh)
+    assert fresh.requests == [] and (cached.daily, cached.pages, cached.sources) == tables
+
+    # The dashboard reads the cache itself where no token can be had.
+    kept = insights_module._cached(cache_path(tmp_path), DEFAULT_DAYS)
+    assert (kept.daily, kept.pages, kept.sources) == tables
+
+    gone = _Transport(unreachable=True, clock=NOW + 7200)
+    stale = _seed(tmp_path, gone)
+    assert stale.stale and (stale.daily, stale.pages, stale.sources) == tables
+
+
+@pytest.mark.parametrize("body", [
+    {},
+    {"reports": [_countries_report()]},
+    {"reports": [_countries_report(), {}, {}, {}, {}]},
+    {"reports": [_countries_report(), {}, [], {}]},
+], ids=["none", "one", "five", "not-an-object"])
+def test_an_answer_without_four_reports_is_refused(tmp_path, body):
+    """INV-32: a batch answer that is not four report objects is refused,
+    and nothing is cached.
+
+    Breaks when a short answer is read by position and a table's rows are
+    shown under another's heading, or a missing table is cached as empty.
+    """
+    transport = _Transport(default=_ok(json.dumps(body).encode("utf-8")))
+    with pytest.raises(InsightsError):
+        read(_settings(), "a-token", tmp_path, client=transport)
+    assert not cache_path(tmp_path).exists()

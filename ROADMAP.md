@@ -2816,6 +2816,21 @@ success.
   mutants all killed; gate green on Linux and the Windows box.
   Still owed before shipping: one live read against Google, which also
   answers PRESS-0132.
+  Progress (2026-10-01): live read done on Linux, 6 people / 4
+  countries, matching the Website session's own GA dashboard.
+  User decision same day: the visitor page matches the Website's
+  tables (lib/ga.mjs in the Hub repo) and must look good: flags, top
+  pages, how visitors found the site, a per-day strip, bars that grow
+  in once. Plan: (1) look approved on a made-up-data preview; (2) fetch
+  daily (by month for 365 days), pages and sources in ONE Google
+  request (batchRunReports, up to 5 reports); (3) amend
+  docs/specs/PRESS-0019-insights.md (one request, Report shape, cache
+  version) with one review-contract loop; (4) check against the
+  writer's real numbers from the signed-in scratch folder, then
+  delete it. Step 1's renderer and Report fields (Day, Page, Source,
+  default empty) are written, uncommitted, 62 tests green.
+  Step 1 done (2026-10-01): the user approved the look on the made-up
+  preview as it stands, with no changes asked for.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.

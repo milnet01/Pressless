@@ -25,8 +25,11 @@ docs/design.md § Errors requires; this module writes none of them.
 """
 from __future__ import annotations
 
+import dataclasses
+import datetime
 import http.client
 import json
+import math
 import os
 import ssl
 import tempfile
@@ -51,7 +54,15 @@ CACHE_NAME = "insights.json"
 # copy of something Google can be asked for again, so a bump costs one request
 # per window and no migration code that must then be kept correct forever
 # (PRESS-0019 § 4.2).
-CACHE_VERSION = 2
+CACHE_VERSION = 3
+
+# How many pages and how many sources the dashboard lists. Google is asked
+# for this many, most-read first, so the rest never cross the wire.
+TABLE_LIMIT = 10
+
+# A window longer than this is read by month: a year is then a bar a month
+# rather than a bar a day (PRESS-0019 § 4.3).
+MONTHLY_ABOVE = 90
 
 # How much of Google's own error body to carry on a failure. Enough for the
 # field name its 400 names; short enough that a long reply cannot become the
@@ -99,6 +110,28 @@ class Country:
 
 
 @dataclass(frozen=True)
+class Day:
+    label: str     # "YYYY-MM-DD", or "YYYY-MM" where the window is read by month
+    people: int
+
+
+@dataclass(frozen=True)
+class Page:
+    path: str      # as Google saw it, such as "/blog/a-post/"
+    views: int
+    people: int
+    seconds: float  # engaged time per view; Google counts only a tab in front
+
+
+@dataclass(frozen=True)
+class Source:
+    channel: str   # Google's default channel group, such as "Organic Search"
+    source: str    # the engine or site, or "(direct)" / "(not set)"
+    visits: int    # sessions
+    people: int
+
+
+@dataclass(frozen=True)
 class Report:
     people: int                     # Google's own total, never the rows summed
     countries: tuple[Country, ...]  # most-read first
@@ -106,6 +139,9 @@ class Report:
     fetched_at: float               # when Google answered, not when this was read
     stale: bool                     # True where Google could not be reached and
                                     # this is the last answer we kept
+    daily: tuple[Day, ...] = ()     # oldest first, one per day or per month
+    pages: tuple[Page, ...] = ()    # most-viewed first
+    sources: tuple[Source, ...] = ()  # most visits first
 
 
 class InsightsError(Exception):
@@ -342,8 +378,9 @@ def read(settings: Settings, token: str, folder: Path, *,
         report = _fetch(transport, property_id, token, days)
     except InsightsError:
         if cached is not None:
-            return Report(cached.people, cached.countries, cached.days,
-                          cached.fetched_at, True)
+            # Whole, tables included: the page keeps its strip and cards
+            # while Google is away (INV-31).
+            return dataclasses.replace(cached, stale=True)
         raise
 
     _store(target, report)
@@ -357,22 +394,52 @@ def _fetch(transport: Transport, property_id: str, token: str,
     A rate limit is what the cache exists for, so answering it with more
     requests is the opposite of the design.
     """
-    url = f"{API}/properties/{property_id}:runReport"
-    body = json.dumps({
-        # "today", not "yesterday", is a decided behaviour and not an
-        # oversight: the window carries one more calendar day than `days` and
-        # its last day is incomplete, so the same question asked twice in a
-        # day gives two numbers. The writer wants today's readers included,
-        # and that was chosen over a figure that holds still (PRESS-0070).
-        "dateRanges": [{"startDate": f"{days}daysAgo", "endDate": "today"}],
-        # countryId, never country: the first is the ISO alpha-2 code the flag
-        # pictures are keyed by, the second is a localised display name.
-        "dimensions": [{"name": "countryId"}],
-        "metrics": [{"name": "activeUsers"}],
-        # Without this Google's answer carries no total, and summing the rows
-        # counts a visitor seen in two countries twice.
-        "metricAggregations": ["TOTAL"],
-    }).encode("utf-8")
+    # One batch rather than a request per table: the request count is what
+    # the cache and its hour exist to bound (PRESS-0019 § 4.3).
+    url = f"{API}/properties/{property_id}:batchRunReports"
+    # "today", not "yesterday", is a decided behaviour and not an oversight:
+    # the window carries one more calendar day than `days` and its last day
+    # is incomplete, so the same question asked twice in a day gives two
+    # numbers. The writer wants today's readers included, and that was chosen
+    # over a figure that holds still (PRESS-0070).
+    window = [{"startDate": f"{days}daysAgo", "endDate": "today"}]
+    period = "yearMonth" if days > MONTHLY_ABOVE else "date"
+    body = json.dumps({"requests": [
+        {
+            "dateRanges": window,
+            # countryId, never country: the first is the ISO alpha-2 code the
+            # flag pictures are keyed by, the second a localised display name.
+            "dimensions": [{"name": "countryId"}],
+            "metrics": [{"name": "activeUsers"}],
+            # Without this Google's answer carries no total, and summing the
+            # rows counts a visitor seen in two countries twice.
+            "metricAggregations": ["TOTAL"],
+        },
+        {
+            "dateRanges": window,
+            "dimensions": [{"name": period}],
+            "metrics": [{"name": "activeUsers"}],
+            "orderBys": [{"dimension": {"dimensionName": period}}],
+        },
+        {
+            "dateRanges": window,
+            "dimensions": [{"name": "pagePath"}],
+            "metrics": [{"name": "screenPageViews"}, {"name": "activeUsers"},
+                        {"name": "userEngagementDuration"}],
+            # Asked for in order, or Google picks which rows the limit keeps.
+            "orderBys": [{"metric": {"metricName": "screenPageViews"},
+                          "desc": True}],
+            "limit": TABLE_LIMIT,
+        },
+        {
+            "dateRanges": window,
+            "dimensions": [{"name": "sessionDefaultChannelGroup"},
+                           {"name": "sessionSource"}],
+            "metrics": [{"name": "sessions"}, {"name": "activeUsers"}],
+            "orderBys": [{"metric": {"metricName": "sessions"}, "desc": True}],
+            "limit": TABLE_LIMIT,
+        },
+    ]}).encode("utf-8")
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -402,8 +469,17 @@ def _fetch(transport: Transport, property_id: str, token: str,
     if status != 200:
         raise _failure(status, data)
 
-    answer = _parse(data)
-    return Report(_total(answer), _countries(answer), days, when, False)
+    reports = _parse(data).get("reports")
+    if (not isinstance(reports, list) or len(reports) != 4
+            or not all(isinstance(each, dict) for each in reports)):
+        # Never read by position from a short answer: a table would show
+        # another's rows, or a missing one be cached as empty (INV-32).
+        raise InsightsError("Google's answer does not carry the four reports "
+                            "asked for")
+    countries, over_time, pages, sources = reports
+    return Report(_total(countries), _countries(countries), days, when, False,
+                  _daily(over_time, days, when), _pages(pages),
+                  _sources(sources))
 
 
 def _failure(status: int, data: bytes = b"") -> InsightsError:
@@ -454,13 +530,16 @@ def _total(answer: dict) -> int:
     return _number(totals[0], "the total")
 
 
-def _countries(answer: dict) -> tuple[Country, ...]:
+def _rows(answer: dict, what: str) -> list:
     rows = answer.get("rows") or []
     if not isinstance(rows, list):
-        raise InsightsError("Google's answer does not list countries")
+        raise InsightsError(f"Google's answer does not list {what}")
+    return rows
 
+
+def _countries(answer: dict) -> tuple[Country, ...]:
     found = []
-    for row in rows:
+    for row in _rows(answer, "countries"):
         code = _code(row)
         if code.startswith(AGGREGATE_PREFIX):
             continue
@@ -479,6 +558,90 @@ def _ordered(countries) -> tuple[Country, ...]:
                         key=lambda country: (-country.people, country.code)))
 
 
+def _daily(answer: dict, days: int, now: float) -> tuple[Day, ...]:
+    """Readers per day, or per month, oldest first, with no gaps.
+
+    Google leaves out a day nobody read, and the strip draws one bar per
+    entry, so a quiet day would vanish. Every day of the window is filled in
+    on this clock's local calendar; a day Google sent from outside it, which
+    a time zone ahead of this machine's can, is kept, so nothing Google
+    counted is lost (INV-29).
+    """
+    monthly = days > MONTHLY_ABOVE
+    people: dict[str, int] = {}
+    for row in _rows(answer, "readers over time"):
+        raw = _values(row, 1, "day")[0]
+        label = _label(raw, monthly)
+        people[label] = people.get(label, 0) + _number(row, f"the count for {raw}")
+    for label in _window(days, now, monthly):
+        people.setdefault(label, 0)
+    return tuple(Day(label, count) for label, count in sorted(people.items()))
+
+
+def _label(raw: str, monthly: bool) -> str:
+    """Google's 20261001 or 202610 as 2026-10-01 or 2026-10."""
+    if len(raw) != (6 if monthly else 8) or not (raw.isascii() and raw.isdigit()):
+        raise InsightsError(f"Google's answer names a day it cannot be: {raw[:20]}")
+    return f"{raw[:4]}-{raw[4:6]}" + ("" if monthly else f"-{raw[6:]}")
+
+
+def _window(days: int, now: float, monthly: bool) -> list[str]:
+    """Every label from the window's first day to today, on local time."""
+    today = datetime.date.fromtimestamp(now)
+    first = today - datetime.timedelta(days=days)
+    if not monthly:
+        return [(first + datetime.timedelta(days=step)).isoformat()
+                for step in range(days + 1)]
+    labels = []
+    year, month = first.year, first.month
+    while (year, month) <= (today.year, today.month):
+        labels.append(f"{year:04d}-{month:02d}")
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return labels
+
+
+def _pages(answer: dict) -> tuple[Page, ...]:
+    """Most-viewed first, ties by path, so a cached reply and a fresh one
+    list the same data the same way (INV-30)."""
+    found = []
+    for row in _rows(answer, "pages"):
+        path = _values(row, 1, "page")[0]
+        views = _number(row, f"the views of {path}")
+        engaged = _metric(row, f"the time on {path}", 2)
+        # Time per view, not the total: a popular page must not read as one
+        # that holds each reader for hours.
+        found.append(Page(path, views, _number(row, f"the readers of {path}", 1),
+                          engaged / views if views else 0.0))
+    return tuple(sorted(found, key=lambda page: (-page.views, page.path)))
+
+
+def _sources(answer: dict) -> tuple[Source, ...]:
+    """Most visits first, ties by channel then source (INV-30)."""
+    found = []
+    for row in _rows(answer, "sources"):
+        channel, source = _values(row, 2, "channel")
+        found.append(Source(channel, source,
+                            _number(row, f"the visits from {channel}"),
+                            _number(row, f"the readers from {channel}", 1)))
+    return tuple(sorted(found, key=lambda each: (-each.visits, each.channel,
+                                                 each.source)))
+
+
+def _values(row: dict, count: int, what: str) -> list[str]:
+    """A row's first `count` dimension values. Only the first must name
+    something; a later one Google left empty, or left out as it does a
+    default value, reads as "" (§ 4.3)."""
+    values = row.get("dimensionValues") if isinstance(row, dict) else None
+    if not isinstance(values, list) or not values:
+        raise InsightsError(f"Google's answer has a row naming no {what}")
+    found = [each.get("value", "") if isinstance(each, dict) else None
+             for each in values[:count]]
+    found += [""] * (count - len(found))
+    if not all(isinstance(each, str) for each in found) or not found[0]:
+        raise InsightsError(f"Google's answer has a row naming no {what}")
+    return found
+
+
 def _is_iso(code: str) -> bool:
     return len(code) == 2 and code.isascii() and code.isalpha() and code.isupper()
 
@@ -493,17 +656,23 @@ def _code(row: dict) -> str:
     return value
 
 
-def _number(holder: dict, what: str) -> int:
+def _number(holder: dict, what: str, index: int = 0) -> int:
+    return int(_metric(holder, what, index))
+
+
+def _metric(holder: dict, what: str, index: int = 0) -> float:
     values = holder.get("metricValues") if isinstance(holder, dict) else None
-    if not isinstance(values, list) or not values:
+    if not isinstance(values, list) or len(values) <= index:
         raise InsightsError(f"Google's answer does not give {what}")
-    raw = values[0].get("value") if isinstance(values[0], dict) else None
+    raw = values[index].get("value") if isinstance(values[index], dict) else None
     try:
-        # Google sends integer metrics as strings; float() first accepts the
-        # decimal form its schema also permits.
-        return int(float(raw))
-    except (TypeError, ValueError, OverflowError) as exc:  # "1e999" overflows
+        # Google sends metrics as strings, integers and decimals alike.
+        number = float(raw)
+    except (TypeError, ValueError) as exc:
         raise InsightsError(f"Google's answer does not give {what}") from exc
+    if not math.isfinite(number):  # "1e999" overflows to infinity
+        raise InsightsError(f"Google's answer does not give {what}")
+    return number
 
 
 def _parse(data: bytes) -> dict:
@@ -556,8 +725,18 @@ def _cached(target: Path, days: int) -> Report | None:
             Country(str(country["code"]), int(country["people"]))
             for country in entry["countries"]
         )
+        # Every table, so a reply from the cache is the reply that was
+        # fetched; the dashboard calls this directly too (INV-31).
+        daily = tuple(Day(str(day["label"]), int(day["people"]))
+                      for day in entry["daily"])
+        pages = tuple(Page(str(page["path"]), int(page["views"]),
+                           int(page["people"]), float(page["seconds"]))
+                      for page in entry["pages"])
+        sources = tuple(Source(str(each["channel"]), str(each["source"]),
+                               int(each["visits"]), int(each["people"]))
+                        for each in entry["sources"])
         return Report(int(entry["people"]), countries, days,
-                      float(entry["fetched_at"]), False)
+                      float(entry["fetched_at"]), False, daily, pages, sources)
     except (KeyError, TypeError, ValueError, OverflowError):
         return None
 
@@ -583,6 +762,9 @@ def _store(target: Path, report: Report) -> None:
             {"code": country.code, "people": country.people}
             for country in report.countries
         ],
+        "daily": [dataclasses.asdict(day) for day in report.daily],
+        "pages": [dataclasses.asdict(page) for page in report.pages],
+        "sources": [dataclasses.asdict(each) for each in report.sources],
     }
     data = {
         "version": CACHE_VERSION,

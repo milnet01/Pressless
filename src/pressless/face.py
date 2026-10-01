@@ -508,6 +508,7 @@ _SHAPES = """
 body.face { margin: 0; background: var(--paper); color: var(--ink);
   font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
 .face .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center;
+  flex-wrap: wrap;
   gap: .6rem; padding: .6rem 1.5rem; background: var(--sheet);
   border-bottom: 1px solid var(--line); box-shadow: 0 2px 10px var(--shadow); }
 .face .bar svg { width: 1.3rem; height: auto; }
