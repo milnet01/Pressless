@@ -3205,8 +3205,40 @@ this milestone, and its frozen formats include every surface this one adds.
   Order (user decision 2026-10-01): finish 0.7.0 (PRESS-0193's Settings
   link, PRESS-0020's live read), then this item straight away, before any
   0.8.0 or 0.9.0 work, since the new plan may reshape those milestones.
+  Principle for the rewrite (user, 2026-10-01): automate as much as can
+  be automated; whatever cannot be must come with detailed step-by-step
+  instructions for the user. First applied to Google Analytics
+  (PRESS-0199) and Google's review (PRESS-0200).
   **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
   Kind: doc.
+  Source: user-decision-2026-10-01.
+
+- 📋 [PRESS-0199] **Pressless puts the Google Analytics tracking code on the site, with step-by-step help for the rest.**
+  User decision 2026-10-01: automate as much as can be automated, and
+  give detailed instructions for what cannot. Overturns design.md's
+  2026-08-26 settlement that Pressless never writes the footer tag and
+  Settings holds no measurement id; PRESS-0198's design rewrite carries
+  that change. Automate: asking for the G- measurement id and writing
+  the tag into every page it builds. Instructions: making a Google
+  Analytics account and property for the site, and finding the two ids.
+  Without it a new user's dashboard reads nothing, because Google
+  counts only pages that carry the tag.
+  **Layman:** Pressless switches on Google's visitor counting for the site itself, and walks him through the parts it cannot do for him.
+  Kind: feature.
+  Source: user-decision-2026-10-01.
+
+- 📋 [PRESS-0200] **Get the Google sign-in verified, and say in the app while it is pending.**
+  User decision 2026-10-01: releases do not wait for Google's review.
+  Until Pressless's OAuth client is verified, the Google step tells the
+  user plainly that Google's review is still pending, and what the
+  unverified-app warning means (google_setup already explains the
+  Advanced / Go to Pressless clicks). Verification needs at least a
+  privacy-policy page; the project website could host it. Research of
+  2026-09-30 (PRESS-0122 body) found unverified apps capped at about
+  100 users over the project's life; that cap is why it is started
+  before 1.0 rather than when needed.
+  **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
+  Kind: chore.
   Source: user-decision-2026-10-01.
 
 ## 1.0.0 — all eleven, and the format is frozen
