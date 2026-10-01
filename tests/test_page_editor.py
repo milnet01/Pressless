@@ -463,3 +463,12 @@ def test_the_page_preview_frame_runs_no_script(tmp_path):
     frames = re.findall(r"<iframe\b[^>]*>", text)
     assert len(frames) == 1, frames
     assert re.search(r'\bsandbox="allow-same-origin"', frames[0]), frames[0]
+
+
+def test_the_page_editor_offers_the_previews_true_colours(tmp_path):
+    """PRESS-0187: a dark look dims the preview; the switch undoes it."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=about")
+    assert status == 200, text
+    assert '<input type="checkbox" data-true-colours>' in text, text

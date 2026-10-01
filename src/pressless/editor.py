@@ -26,6 +26,7 @@ from pathlib import Path
 from pressless import builder, cheatsheet, paths, photographs, settings, store
 from pressless.face import (
     SENTENCES,
+    TRUE_COLOURS,
     Face,
     Reply,
     Request,
@@ -462,8 +463,9 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {cheatsheet.panel()}
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
+<div id="proof">{TRUE_COLOURS}
 <iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
- src="{attr(preview or 'about:blank')}"></iframe>
+ src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_EDITOR_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""
 

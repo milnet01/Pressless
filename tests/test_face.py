@@ -23,7 +23,7 @@ import pytest
 from _face_session import follow_link, session_cookie
 
 import pressless
-from pressless import credentials, face, insights, publisher, store
+from pressless import credentials, face, insights, publisher, store, themes
 
 LABEL_WORDS = "the Pressless-data folder, beside the program"
 LOG_NAME = "pressless.log"
@@ -502,6 +502,32 @@ def test_the_look_reaches_only_the_faces_own_frame(tmp_path: Path) -> None:
         for selector in group.split(","):
             if re.search(r"\biframe\b", selector):
                 assert "#preview" in selector, selector.strip()
+
+
+def _rule(style: str, selector: str) -> str:
+    found = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", style)
+    assert found, f"no rule for {selector}"
+    return found.group(1)
+
+
+def test_a_dark_look_dims_the_preview_until_he_asks_for_true_colours(
+        tmp_path: Path) -> None:
+    """PRESS-0187: the preview shows his site's own colours, so on a dark look
+    a light site glares. Every dark look dims it, no light look does, and the
+    switch that undoes the dimming shows only where there is dimming."""
+    _, style = _served_style(tmp_path)
+    for theme in themes.THEMES:
+        rule = _rule(style, f':root[data-theme="{theme.key}"]')
+        dimmed = "--preview-dim: brightness(" in rule
+        switch = "--preview-switch: block" in rule
+        assert dimmed == switch == theme.dark, theme.key
+    assert "--preview-dim: none" in _rule(style, ":root")
+    dark = style[style.index("@media (prefers-color-scheme: dark)"):]
+    assert "--preview-dim: brightness(" in _rule(dark, ":root")
+    assert "filter: var(--preview-dim)" in _rule(style, ".face iframe#preview")
+    assert "filter: none" in _rule(style, ".face iframe#preview.undimmed")
+    assert "display: var(--preview-switch)" in _rule(style, ".face .true-colours")
+    assert "data-true-colours" in face._SCRIPT
 
 
 def _raises(request: face.Request) -> str:

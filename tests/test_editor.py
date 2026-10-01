@@ -500,6 +500,16 @@ def test_the_editor_shows_the_cheat_sheet(tmp_path):
     assert 'href="/cheat-sheet"' in page
 
 
+def test_the_editor_offers_the_previews_true_colours(tmp_path):
+    """PRESS-0187: a dark look dims the preview; the switch undoes it."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    with _editor(folder) as browser:
+        status, _, page = browser.request("GET", "/edit?slug=seaside")
+    assert status == 200
+    assert re.search(r'<input type="checkbox" data-true-colours>', page), page
+
+
 def test_a_copy_of_an_unreadable_entry_is_not_listed_as_a_draft(tmp_path):
     """PRESS-0162 (review-code L4.2): `published` was built from the entries
     that READ, while working_copy and the editor ask list_slugs -- so a

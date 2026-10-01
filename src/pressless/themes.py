@@ -155,6 +155,15 @@ def declarations(theme: Theme) -> str:
     return " ".join(f"--{name}: {colour};" for name, colour in pairs)
 
 
+def preview(dark: bool) -> str:
+    """PRESS-0187: the preview shows his site's own colours, so a dark look
+    dims it rather than let a light site glare. The switch that brings the
+    true colours back shows only where there is dimming."""
+    if dark:
+        return "--preview-dim: brightness(.75); --preview-switch: block;"
+    return "--preview-dim: none; --preview-switch: none;"
+
+
 def css() -> str:
     """One rule per theme, keyed on the page's data-theme. `:root[...]`
     outranks the plain `:root` and its dark media query, so a chosen theme
@@ -165,7 +174,7 @@ def css() -> str:
         shadow = "rgba(0, 0, 0, .45)" if theme.dark else "rgba(60, 40, 10, .10)"
         scheme = "dark" if theme.dark else "light"
         rules.append(f':root[data-theme="{theme.key}"] {{ color-scheme: {scheme}; '
-                     f"{values} --shadow: {shadow}; }}")
+                     f"{values} --shadow: {shadow}; {preview(theme.dark)} }}")
     return "\n".join(rules)
 
 

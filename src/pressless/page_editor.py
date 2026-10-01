@@ -26,6 +26,7 @@ from pathlib import Path
 from pressless import builder, credentials, editor, publisher, publishing, settings, setup, store
 from pressless.face import (
     SENTENCES,
+    TRUE_COLOURS,
     Face,
     Notice,
     Reply,
@@ -416,8 +417,9 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 </form>
 <div id="failure">{failure or ""}</div>
 <div id="undo-result"></div>
+<div id="proof">{TRUE_COLOURS}
 <iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
- src="{attr(preview or 'about:blank')}"></iframe>
+ src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""
 

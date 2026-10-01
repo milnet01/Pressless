@@ -489,6 +489,12 @@ document.addEventListener("change", (event) => {
   else document.documentElement.dataset.theme = picker.value;
   fetch("/theme", {method: "POST", body: picker.value});
 });
+// PRESS-0187: a dark look dims the preview; this switch shows its true colours.
+document.addEventListener("change", (event) => {
+  const box = event.target.closest("input[data-true-colours]");
+  if (!box) return;
+  document.getElementById("preview").classList.toggle("undimmed", box.checked);
+});
 """
 
 
@@ -560,15 +566,22 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .failure p, .face .notices p { margin: .2rem 0; }
 .face .failure .what, .face .notices .what { font-weight: 600; }
 .face iframe#preview { width: 100%; min-height: 70vh; border: 1px solid var(--line);
-  border-radius: 12px; background: #fff; }
+  border-radius: 12px; background: #fff; filter: var(--preview-dim); }
+.face iframe#preview.undimmed { filter: none; }
+.face .true-colours { display: var(--preview-switch); margin: 0 0 .5rem; }
+.face .true-colours label { flex-direction: row; align-items: center; gap: .5rem;
+  margin: 0; font-size: 1rem; cursor: pointer; }
+.face .true-colours input { width: 1.25rem; height: 1.25rem; accent-color: var(--amber); }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #failure, .face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {
   .face main:has(> #editor) { max-width: none; display: grid; column-gap: 2rem;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .face main:has(> #editor) > * { grid-column: 1; }
-  .face main > #preview { grid-column: 2; grid-row: 1 / span 12; align-self: start;
-    position: sticky; top: 4.5rem; height: calc(100vh - 6rem); }
+  .face main > #proof { grid-column: 2; grid-row: 1 / span 12; align-self: start;
+    position: sticky; top: 4.5rem; height: calc(100vh - 6rem);
+    display: flex; flex-direction: column; }
+  .face #proof > #preview { flex: 1; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .face button { transition: none; }
   .face button:hover { transform: none; } }
@@ -578,11 +591,15 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 
 _STYLE = (
     f":root {{ color-scheme: light dark; {themes.declarations(themes.find('light'))}"
-    " --shadow: rgba(60, 40, 10, .10); }\n"
+    f" --shadow: rgba(60, 40, 10, .10); {themes.preview(False)} }}\n"
     f"@media (prefers-color-scheme: dark) {{ :root {{ {themes.declarations(themes.find('dark'))}"
-    " --shadow: rgba(0, 0, 0, .45); } }\n"
+    f" --shadow: rgba(0, 0, 0, .45); {themes.preview(True)} }} }}\n"
     + themes.css() + _SHAPES
 )
+
+# Sits above each editor's preview; shown only on a dark look (PRESS-0187).
+TRUE_COLOURS = ('<p class="true-colours"><label><input type="checkbox" data-true-colours>'
+                " Show the preview in its true colours</label></p>")
 
 # The logo's mark, drawn inline so the bar needs no file (PRESS-0178).
 _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
