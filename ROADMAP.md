@@ -2963,6 +2963,9 @@ success.
   typing the address. A writer who skipped the Google step, or anyone
   needing Sign in again or Turn off, has no route. Needs a Settings link
   reachable from every page (the top bar is the obvious place).
+  Widened (2026-10-01, PRESS-0194): the user wants to change site
+  settings from a Settings page he can find, so the fix is the link plus
+  checking that every setup answer can be changed there afterwards.
   **Layman:** Pressless has no Settings button, so after the first setup there is no way to find the Google sign-in or change settings.
   Kind: fix.
   Source: in-session-2026-10-01, Windows sign-in check.
@@ -8949,6 +8952,52 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: user-request-2026-10-01.
   Lanes: gate.
+
+- 💭 [PRESS-0194] **Pressless manages the whole site, not only the writing.**
+  User, 2026-10-01: "Pressless should be allowing full management of
+  his site, not just the blogs / poems, etc." Today he can write and
+  publish entries, edit the existing fixed pages (PRESS-0014), add
+  photographs and use templates. PRESS-0014 section 9 left adding,
+  removing and renaming pages unqueued, and nothing manages the site's
+  look or files other than photographs. Which of these "full
+  management" means is being asked; this item is split into real items
+  once answered. A change to what Pressless is for, so discovery and
+  design are updated with it.
+  Answered (2026-10-01): all four. Adding, removing and renaming pages;
+  the site's look; files other than photographs (each filed as its own
+  item, same day); and site settings, which is PRESS-0193 widened: a
+  Settings page he can find and change his setup answers on. Which
+  milestone each joins is not decided yet.
+  **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
+  Kind: feature.
+  Source: user-request-2026-10-01.
+
+- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only the existing
+  fixed pages can be edited; PRESS-0014 section 9 left adding, removing
+  and renaming unqueued. Touches the Store's page set, the menu, the
+  builder and what a publish deletes, so it likely needs a spec
+  (spec-format.md section 1: a contract other parts bind to).
+  **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
+  Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
+  its own screens; the live site's stylesheet is not editable in the
+  app. What 'look' covers, and whether it is a set of choices or the
+  stylesheet itself, is still to be decided with the user.
+  **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
+  handled (PRESS-0016). Which file kinds, size limits for the GitHub
+  API, and how a page links to a file are still to be decided.
+  **Layman:** He can put music, downloads and documents on his site, not only photographs.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
 
 ## Milestones
 
