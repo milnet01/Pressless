@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-01
+
+**Theme:** pictures and helpers
+
 ### Added
 
 - **A theme picker in the top bar** (PRESS-0190)
