@@ -2781,7 +2781,7 @@ success.
   Source: design-2026-08-24 § The dashboard, ADR-0005.
   Lanes: Insights.
 
-- 🚧 [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
+- ✅ [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
   He opens Pressless and sees how many people read his site and which
   countries they came from, each country shown with its flag, without
   logging in to anything and without leaving the app. Claims S11. The
@@ -2831,6 +2831,15 @@ success.
   default empty) are written, uncommitted, 62 tests green.
   Step 1 done (2026-10-01): the user approved the look on the made-up
   preview as it stands, with no changes asked for.
+  Steps 2 to 4 done (2026-10-01). docs/specs/PRESS-0019-insights.md
+  amended (one batchRunReports request of four reports, Report tables,
+  cache version 3, INV-28 to INV-32) and gated for one loop: five
+  verified, five fixed. Built in 02d1438; gate green on Linux and the
+  Windows box; five hand mutants killed. Live read on both properties
+  the signed-in account sees, at 7, 28 and 365 days: Google answered
+  the reports in request order, days as YYYYMMDD and months as YYYYMM,
+  and left quiet days out, which the page now fills as zero. The
+  scratch sign-in folder is deleted.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.

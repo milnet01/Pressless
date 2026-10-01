@@ -14,11 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
-- **See who is reading your site: how many people, and which countries, with their flags** (PRESS-0020)
+- **See who is reading your site: how many people, where from, and what they read** (PRESS-0020)
   A "Who is reading" card at the top of your writing, and a page with
-  the last 7 days, 4 weeks or 12 months. Flags are pictures, so they
-  show on Windows too. If Google cannot be reached, it shows the last
-  numbers it had and says how old they are.
+  the last 7 days, 4 weeks or 12 months: readers each day (each month
+  for a year), their countries with flags, how they found you, and
+  your most-read pages. Flags are pictures, so they show on Windows
+  too. If Google cannot be reached, it shows the last numbers it had
+  and says how old they are.
 
 ### Fixed
 
