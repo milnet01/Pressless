@@ -8802,6 +8802,12 @@ already-built code ships in whichever release comes next.
   one that acts on YouTube alone. So the panel is drawn by the user's
   Firefox itself (a stuck popup or panel), not by Pressless. Nothing in
   Pressless to change for it.
+  Correction (2026-10-01): the panel is the "Multi Find" Firefox
+  add-on's, not Firefox's own. The user's inspector shows it as a
+  fixed `div.multi-find-menu-container` the add-on injects into every
+  page; Dark Reader recolours it, which a browser panel would not take.
+  On a dark page Firefox paints the add-on's frame opaque white. Not
+  Pressless's to fix; it also hid the theme picker beneath it.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
