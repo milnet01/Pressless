@@ -5,6 +5,10 @@
 Amended 2026-09-27 by the user's decision: a country value that is not an
 ISO code is one `UNKNOWN_COUNTRY` entry (§4.3, INV-27). Gated for one loop:
 three verified, three fixed, not converged.
+Amended 2026-10-01 for PRESS-0020, whose visitor page also shows readers per
+day, top pages and how visitors arrived: the one request becomes a batch of
+four reports, `Report` carries the three new tables, and the cache goes to
+version 3 (§4.1 to §4.3, INV-3, INV-4, INV-28 to INV-32).
 Written after the code shipped, which is
 not the direction a spec usually runs; §1 says why this one does, and which of
 it is a record and which is a contract for work still to come. Gated to its
@@ -83,8 +87,9 @@ does not reopen them.
 
 ### 4.1 The public surface
 
-`src/pressless/insights.py` exports `read`, `cache_path`, the `Report` and
-`Country` results, `UNKNOWN_COUNTRY`, the `Transport` seam, and the failure types
+`src/pressless/insights.py` exports `read`, `cache_path`, the `Report`,
+`Country`, `Day`, `Page` and `Source` results, `UNKNOWN_COUNTRY`, the
+`Transport` seam, and the failure types
 `InsightsError`, `NotConfigured`, `Unreachable`, `Refused` and `RateLimited`.
 
 ```python
@@ -98,6 +103,12 @@ def cache_path(folder: Path) -> Path
 `DEFAULT_DAYS` is 28 and `DEFAULT_MAX_AGE` is 3600.0 — four weeks of
 readership, and an hour between fetches. §4.4 says why the second is the
 figure it is.
+
+`Report` carries `people` and `countries` as before, and three tables:
+`daily` (a `Day` of `label` and `people` each, oldest first), `pages` (a
+`Page` of `path`, `views`, `people` and `seconds`, most-viewed first) and
+`sources` (a `Source` of `channel`, `source`, `visits` and `people`, most
+visits first). §4.3 says what fills each.
 
 **The token is an argument and never fetched here.** Only the Face reaches
 Credentials (`docs/design.md` rule 10), and INV-1 is what keeps that true.
@@ -117,13 +128,21 @@ is a leak rather than an untidiness.
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "windows": {
     "28": { "fetched_at": 0.0, "people": 0,
-            "countries": [ { "code": "GB", "people": 0 } ] }
+            "countries": [ { "code": "GB", "people": 0 } ],
+            "daily": [ { "label": "2026-10-01", "people": 0 } ],
+            "pages": [ { "path": "/", "views": 0, "people": 0,
+                         "seconds": 0.0 } ],
+            "sources": [ { "channel": "Direct", "source": "(direct)",
+                           "visits": 0, "people": 0 } ] }
   }
 }
 ```
+
+**An entry holds every table the fetch returned**, so a reply answered from
+the cache, fresh or stale, is the reply that was fetched (INV-31).
 
 **Keyed by the window**, so a reply for one window neither answers nor evicts
 another's (INV-17). The key is the day count as a string, JSON having no other
@@ -156,8 +175,38 @@ is what the cache exists for, so answering it with more requests is the
 opposite of the design.
 
 A `POST` to `https://analyticsdata.googleapis.com/v1beta/properties/<property
-id>:runReport`, carrying the token as an `Authorization: Bearer` header, asking for the last `days` days with dimension
-`countryId`, metric `activeUsers`, and `metricAggregations` of `TOTAL`.
+id>:batchRunReports`, carrying the token as an `Authorization: Bearer` header.
+Its `requests` are four reports, in this order, each over the same last `days`
+days. Google answers a batch with `reports` in the order asked; an answer that
+does not carry exactly four is refused (INV-32).
+
+1. **Countries and the total** — dimension `countryId`, metric
+   `activeUsers`, and `metricAggregations` of `TOTAL`. The rules below this
+   list are about this report.
+2. **Readers over time** — dimension `date`, or `yearMonth` for a window of
+   more than 90 days, so a year is twelve bars rather than 366; metric
+   `activeUsers`; ordered by the dimension. Google writes `20261001` and
+   `202610`; `Day.label` is `2026-10-01` and `2026-10`. **Google omits a day
+   nobody read**, so every day (or month) from the window's first to today
+   appears once, a missing one as zero people. The range is reckoned on the
+   transport's clock in local time. Google reckons its own in the property's
+   time zone, so a label Google returned outside the range is kept as well:
+   where the two zones differ, an end can gain a zero but no number is lost.
+3. **Top pages** — dimension `pagePath`; metrics `screenPageViews`,
+   `activeUsers` and `userEngagementDuration`; most views first; `limit` 10.
+   `Page.seconds` is engaged time per view, the duration divided by the views,
+   and zero for a page with no views.
+4. **How visitors arrived** — dimensions `sessionDefaultChannelGroup` and
+   `sessionSource`; metrics `sessions` and `activeUsers`; most sessions first;
+   `limit` 10.
+
+Pages and sources are put in order here as well as asked for in order —
+pages by views, sources by visits, ties by path or by channel then source —
+so a cached reply and a fresh one list the same data the same way. A row in
+any report naming no dimension value is refused, as a country row is.
+
+**One batch, not four requests**, because the request count is what the
+cache and §4.4's hour exist to bound.
 
 - **`countryId`, never `country`** — the first is the ISO alpha-2 code the flag
   pictures are keyed by, the second a localised display name.
@@ -185,7 +234,7 @@ forever and showed old numbers labelled current, which is worse than showing
 them stale.
 
 **Any typed failure of the fetch falls back to a cached reply for this
-window**, returned with `stale` set rather than raised — a refusal and a rate
+window**, returned whole with `stale` set rather than raised — a refusal and a rate
 limit as much as an unreachable host, since a dashboard showing yesterday's
 numbers, labelled, beats one showing an error. With nothing cached for the
 window, the failure is raised. §4.5's table is therefore what a caller sees
@@ -215,7 +264,7 @@ cached for this window §4.4's fallback answers instead of raising them.
 | Google answers 401 or 403 | `Refused` |
 | Google answers 429 | `RateLimited` |
 | Google answers anything else that is not 200 | `InsightsError` |
-| Google's answer is not JSON, or names no total where it carried rows, or has a row naming no country | `InsightsError` |
+| Google's answer is not JSON, does not carry four reports, names no total where the countries report carried rows, or has a row naming no dimension value | `InsightsError` |
 
 **Google's own words ride on the failure and never in its message.** The
 message is the writer-facing sentence `docs/design.md` § Errors requires; the
@@ -231,7 +280,8 @@ are the ones describing work still to do.** INV-18's behaviour already ships —
 and what the cache change alters is the version's value; its test is new. INV-19 to INV-26 are
 behaviours that ship and are tested and that the header's list never named —
 several of them the fixes that closed PRESS-0039 through PRESS-0056, each of
-which settled something the contract had left open.
+which settled something the contract had left open. **INV-28 to INV-32 are
+PRESS-0020's amendment**, with INV-3 and INV-4 changed to the batch.
 
 - **INV-1** — `insights.py` imports no `pressless` module other than
   `pressless.settings`. The token is an argument.
@@ -248,13 +298,14 @@ which settled something the contract had left open.
   declined the dashboard is told his connection is down.
 
 - **INV-3** — `read()` sends one request: a `POST` to the property's
-  `:runReport` endpoint, carrying the token as an `Authorization: Bearer`
+  `:batchRunReports` endpoint, carrying the token as an `Authorization: Bearer`
   header.
   *Test:* `tests/test_insights.py::test_one_request_names_the_property_and_carries_the_token`.
   *Breaks when:* a retry is added, which spends the quota the cache protects.
 
-- **INV-4** — The body asks for the last `days` days, dimension `countryId`,
-  metric `activeUsers`, and `metricAggregations` of `TOTAL`.
+- **INV-4** — Every report in the body asks for the last `days` days, and the
+  first asks for dimension `countryId`, metric `activeUsers`, and
+  `metricAggregations` of `TOTAL`.
   *Test:* `tests/test_insights.py::test_request_body_asks_for_country_codes`.
   *Breaks when:* `country` replaces `countryId` and the flag pictures stop
   resolving, or `TOTAL` is dropped and §4.3's summing hazard returns.
@@ -427,6 +478,47 @@ which settled something the contract had left open.
   *Breaks when:* such a value is passed through as a code, dropped, or kept
   as several entries.
 
+- **INV-28** — The second, third and fourth reports ask what §4.3 lists:
+  `date` (or `yearMonth` above 90 days) with `activeUsers`; `pagePath` with
+  `screenPageViews`, `activeUsers` and `userEngagementDuration`, limit 10;
+  `sessionDefaultChannelGroup` and `sessionSource` with `sessions` and
+  `activeUsers`, limit 10.
+  *Test:* `tests/test_insights.py::test_the_batch_asks_for_days_pages_and_sources`
+  — reads the body for 28 and for 365 days.
+  *Breaks when:* a report is dropped or reordered, so a table reads another
+  report's rows; or a year is asked by day and draws 366 bars.
+
+- **INV-29** — `Report.daily` holds one entry per day (or month) from the
+  window's first to today on the transport's clock, oldest first, labelled
+  `YYYY-MM-DD` (or `YYYY-MM`); a day Google did not return is zero people, and
+  a label Google returned outside that range is kept in order.
+  *Test:* `tests/test_insights.py::test_the_daily_strip_has_every_day_of_the_window`
+  — 7 days, Google returning two of them: eight entries, six of them zero —
+  and `::test_a_year_is_read_by_month`.
+  *Breaks when:* the rows are passed through, and the strip closes up a quiet
+  day so the writer's busiest days look consecutive.
+
+- **INV-30** — `Report.pages` and `Report.sources` are the third and fourth
+  reports' rows, ordered as §4.3 says, and `Page.seconds` is the engaged
+  duration divided by the views, zero where there are none.
+  *Test:* `tests/test_insights.py::test_pages_and_sources_are_read_in_order`.
+  *Breaks when:* the total duration is shown as time per view, so a popular
+  page reads as one that holds readers for hours; or Google's order is
+  trusted and a cached reply lists differently from a fresh one.
+
+- **INV-31** — A reply answered from the cache, fresh or stale, carries the
+  `daily`, `pages` and `sources` the fetch returned.
+  *Test:* `tests/test_insights.py::test_every_table_survives_the_cache_and_a_stale_answer`.
+  *Breaks when:* the cache stores only the people and countries, or the stale
+  fallback rebuilds the report from them, and the page loses its strip and
+  cards whenever it is not fetching.
+
+- **INV-32** — An answer whose `reports` is not a list of exactly four
+  objects raises `InsightsError`.
+  *Test:* `tests/test_insights.py::test_an_answer_without_four_reports_is_refused`.
+  *Breaks when:* a short answer is read by position and one table's rows are
+  shown under another's heading, or a missing table is cached as empty.
+
 ## 6. Failure modes
 
 | When | What happens |
@@ -460,6 +552,12 @@ its behaviour ships, so its test passes on the run that introduces it, and
 demanding a red run there would mean building something broken to produce
 one.
 
+**INV-28 to INV-32 are PRESS-0020's tests**, each to be seen failing first
+against the single-report fetch — INV-31 against a stale fallback that
+rebuilds the report from people and countries alone. INV-3's and INV-4's
+tests change with the endpoint and the body, and every fixture answers in
+the batch's shape.
+
 **Not asserted, deliberately:** that `read()` builds the module's own client
 when none is handed in. Proving it would mean letting a test reach Google.
 
@@ -471,6 +569,9 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | **One file per window** | A second thing to delete, a second thing to leave behind, and INV-8 exists to stop exactly that. The window is a key inside one file instead. |
 | **Migrating a version-1 cache to version 2** | Migration code for a file whose entire content can be fetched again. A bump costs one request per window, once. |
 | **Capping how many windows are kept** | A cap needs a number nobody has a reason for, and §4.2 says why the file cannot grow without bound as things stand. The cap becomes necessary if a caller ever passes an arbitrary window. |
+| **Four `runReport` requests, one per table** | What the Website's own dashboard does. Four times the requests per refresh, for nothing a batch does not give. |
+| **Google's `country` names for the countries report** | The Website uses them; the flag pictures need the ISO code, so `countryId` stays. |
+| **Leaving quiet days out of `daily`** | The page draws one bar per entry, so a gap would vanish and the strip would misstate when people came. |
 | **Retrying a rate limit** | The cache is the answer to a rate limit; more requests is the opposite of the design. |
 
 ## 9. Out of scope
@@ -516,6 +617,12 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-25 | `tests/test_insights.py::test_googles_own_reason_is_carried_on_the_failure` |
 | INV-26 | `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero` + `::test_an_empty_total_with_no_rows_reads_as_zero` |
 | INV-27 | `tests/test_insights.py::test_an_unknown_country_is_one_named_entry` |
+| INV-28 | `tests/test_insights.py::test_the_batch_asks_for_days_pages_and_sources` |
+| INV-29 | `tests/test_insights.py::test_the_daily_strip_has_every_day_of_the_window` + `::test_a_year_is_read_by_month` |
+| INV-30 | `tests/test_insights.py::test_pages_and_sources_are_read_in_order` |
+| INV-31 | `tests/test_insights.py::test_every_table_survives_the_cache_and_a_stale_answer` |
+| INV-32 | `tests/test_insights.py::test_an_answer_without_four_reports_is_refused` |
+| §4.3's claim that Google answers a batch in the order asked | **nothing that runs** — the live read in PRESS-0020's step 4 checks it once; no test asks Google |
 | §3 decision 2's window ending at today | **nothing** — the same question asked twice in a day gives two numbers by design, so no assertion can tell that from a fault |
 | The zero-visitor reading of GA4 | **nothing that runs** — one live read on 2026-10-01 saw the shape INV-26's second test uses; no test asks Google |
 | A cache written outside Pressless's own folder by a caller passing one | `read()`'s own refusal covers the site folder; anywhere else is the caller's choice and nothing here checks it |
@@ -524,7 +631,9 @@ when none is handed in. Proving it would mean letting a test reach Google.
 ## 11. Cross-doc impact
 
 - `CHANGELOG.md` — an entry when the cache change ships, not for this
-  document.
+  document. PRESS-0020's tables ride that item's own entry.
+- `src/pressless/dashboard.py` — draws the three tables; it reads `Report`
+  only and needs no change from the batch.
 - `insights.py`'s docstring — it says the invariants live in the test header
   and that there is no specs file. Both stop being true when this is accepted.
 - `tests/test_insights.py`'s header — same sentence, same fix: it becomes a
