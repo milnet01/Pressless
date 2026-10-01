@@ -188,4 +188,18 @@ done
 step "pytest"
 "$PY" -m pytest -ra || fail "tests"
 
+# The same suite on real Windows, where a machine-local key names one
+# (PRESS-0192). Windows CI found two faults the Linux run could not show, so a
+# push from the maintainer's machine runs Windows too, before GitHub does:
+#   git config ants.pressless.windowsHost <ssh-host>
+# Unset on GitHub and on any other clone, which says so and goes on.
+windows=$(git config --get ants.pressless.windowsHost || true)
+if [[ -n $windows ]]; then
+    step "pytest on Windows ($windows)"
+    ./scripts/windows-gate.sh "$windows" \
+        || fail "tests on Windows -- if the machine is off, turn it on; to push without it, ask the user"
+else
+    printf '\nnote: ants.pressless.windowsHost is not set -- the suite ran on this system only\n'
+fi
+
 printf '\nall checks passed\n'

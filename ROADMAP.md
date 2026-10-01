@@ -8850,6 +8850,19 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-10-01.
   Lanes: Face, release.
 
+- ✅ [PRESS-0192] **The local gate runs the suite on the Windows box before a push.**
+  scripts/windows-gate.sh sends HEAD as a git bundle plus the working
+  tree's not-ignored files to the ssh host in ants.pressless.windowsHost,
+  runs pytest with a portable Python (NuGet `python`, not on PATH), and
+  deletes its copy. local-ci.sh calls it where the key is set; GitHub
+  never does. The user chose this over a trial branch. Proved on
+  7db51d3: fails the [None] secret test as Windows CI did; passes on
+  2d9b950.
+  **Layman:** Before code reaches GitHub, its tests now also run on the real Windows machine, so Windows-only faults are caught first.
+  Kind: chore.
+  Source: user-request-2026-10-01.
+  Lanes: gate.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

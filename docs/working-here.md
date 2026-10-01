@@ -62,6 +62,22 @@ git config ants.pressless.siteName '<the name after the dash in a page title>'
 git config ants.pressless.siteAddress '<the address sitemap.xml lists>'
 ```
 
+**The suite also runs on the Windows box before a push** (PRESS-0192),
+where a key names it as an ssh host. `scripts/windows-gate.sh` sends HEAD
+as a git bundle plus the working tree's not-ignored files, runs pytest
+there, and deletes its copy. An unreachable box fails the gate.
+
+```bash
+git config ants.pressless.windowsHost wintest
+```
+
+The box needs a portable Python at `%USERPROFILE%\pressless-gate\python`:
+the `tools` folder of the NuGet `python` package for the version CI uses,
+unpacked and never installed, so it is not on PATH. Run `python.exe -m
+ensurepip` in it once. The script installs the dependencies on each run.
+The box also has an installed Python, put there on 2026-08-05; the gate
+does not use it.
+
 ## Writing or changing tests
 
 **Two test results mean less than they look.** `test_marks_is_pure`
