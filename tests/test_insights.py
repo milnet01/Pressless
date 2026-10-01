@@ -1385,6 +1385,27 @@ def test_a_window_with_no_visitors_reads_as_zero(tmp_path):
     )
 
 
+def test_an_empty_total_with_no_rows_reads_as_zero(tmp_path):
+    """INV-26, as Google really sends it. Seen live on 2026-10-01: a window
+    nobody read comes back with no rows and a totals entry that is EMPTY,
+    `"totals": [{}]`, not with the totals block left out. That raised, so a
+    new site's quiet first week showed an error (PRESS-0132).
+
+    Breaks when an empty totals entry is read as a total that must carry a
+    value. The same empty entry beside rows is still refused (INV-5).
+    """
+    quiet = {"kind": "analyticsData#runReport", "totals": [{}]}
+    transport = _Transport(default=_ok(json.dumps(quiet).encode("utf-8")))
+    report = read(_settings(), "a-token", tmp_path, client=transport)
+    assert (report.people, report.countries) == (0, ())
+
+    with_rows = json.loads(_google(total=None))
+    with_rows["totals"] = [{}]
+    transport = _Transport(default=_ok(json.dumps(with_rows).encode("utf-8")))
+    with pytest.raises(InsightsError):
+        read(_settings(), "a-token", tmp_path / "other", client=transport)
+
+
 def test_googles_own_reason_is_carried_on_the_failure(tmp_path):
     """PRESS-0070: the HTTP error body was read and then discarded. Google's
     400 body names the field it rejected, so design.md's "Show details"

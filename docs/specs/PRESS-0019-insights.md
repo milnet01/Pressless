@@ -407,8 +407,10 @@ which settled something the contract had left open.
   message, and a long reply becomes the sentence the writer reads.
 
 - **INV-26** — A window Google reports with neither rows nor a total reads as
-  zero people rather than raising.
-  *Test:* `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero`.
+  zero people rather than raising. An empty totals entry, `"totals": [{}]`, is
+  no total: it is what Google sends for a quiet window (seen live 2026-10-01).
+  *Test:* `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero`
+  + `::test_an_empty_total_with_no_rows_reads_as_zero`.
   *Breaks when:* an absent total is refused unconditionally, and a quiet week
   becomes an error. Deliberately narrow: an answer carrying rows and no total
   is still refused (INV-5), because summing those is the overstated number that
@@ -476,13 +478,12 @@ when none is handed in. Proving it would mean letting a test reach Google.
 - **Obtaining and refreshing the Google token** — PRESS-0122's, not this
   module's. It is handed in as an argument.
 - **The dashboard itself, and which windows it offers** — PRESS-0020's.
-- **OPEN: the zero-visitor answer is unverified against the live API.** A
-  window with no rows and no total reads as zero rather than raising, which
-  PRESS-0056 item 5 settled by reasoning about GA4 omitting default-valued
-  fields. Nobody has seen Google do it.
-- **OPEN: whether Google's aggregate row can appear among the country rows.**
-  The prefix filter is the guard for that reading of Google's wording; which
-  of the two readings is right is PRESS-0074's, and unsettled.
+- **Settled live, 2026-10-01 (PRESS-0132): the zero-visitor answer.** Google
+  answers a window nobody read with no rows and `"totals": [{}]`. INV-26
+  covers it.
+- **Settled live, 2026-10-01 (PRESS-0132): the aggregate row.** It came back
+  in `totals` as `RESERVED_TOTAL`, never among the country rows. The prefix
+  filter stays as a guard that costs nothing.
 
 ## 10. What checks this
 
@@ -513,10 +514,10 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-23 | `tests/test_insights.py::test_a_cache_folder_inside_the_site_folder_is_refused` |
 | INV-24 | `tests/test_insights.py::test_cache_reaches_the_disk_before_the_rename` + `::test_cache_names_the_line_endings` |
 | INV-25 | `tests/test_insights.py::test_googles_own_reason_is_carried_on_the_failure` |
-| INV-26 | `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero` |
+| INV-26 | `tests/test_insights.py::test_a_window_with_no_visitors_reads_as_zero` + `::test_an_empty_total_with_no_rows_reads_as_zero` |
 | INV-27 | `tests/test_insights.py::test_an_unknown_country_is_one_named_entry` |
 | §3 decision 2's window ending at today | **nothing** — the same question asked twice in a day gives two numbers by design, so no assertion can tell that from a fault |
-| The zero-visitor reading of GA4 | **nothing against the live API** — the test asserts what this module does with such an answer, never that Google sends one |
+| The zero-visitor reading of GA4 | **nothing that runs** — one live read on 2026-10-01 saw the shape INV-26's second test uses; no test asks Google |
 | A cache written outside Pressless's own folder by a caller passing one | `read()`'s own refusal covers the site folder; anywhere else is the caller's choice and nothing here checks it |
 | §4.2's requirement that the dashboard offer a fixed, small set of windows | **nothing** — the module cannot see how many distinct windows a caller will ask for, and a cap here would need a number nobody has a reason for. PRESS-0020 is where the set gets fixed |
 

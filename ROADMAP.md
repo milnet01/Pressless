@@ -2937,7 +2937,7 @@ success.
   Source: user-decision-2026-09-17, split from PRESS-0021.
   Lanes: Face, Credentials, Insights.
 
-- 📋 [PRESS-0132] **Two Insights questions are marked open and owned by no item.**
+- ✅ [PRESS-0132] **Two Insights questions are marked open and owned by no item.**
   PRESS-0063 marked both open rather than answered, and closed without
   routing either.
 
@@ -2950,6 +2950,12 @@ success.
   Neither can be settled from the tests -- both need the live Google
   Analytics API. Route: answer them while building PRESS-0020, which is
   the first work that reads the real service.
+  Resolved (2026-10-01), by a live read against the writer's own
+  property. 1: a window nobody read comes back with no rows and
+  "totals": [{}], which raised; fixed in insights._total, held by
+  test_an_empty_total_with_no_rows_reads_as_zero. 2: the aggregate
+  row came back in totals as RESERVED_TOTAL, never among the country
+  rows. PRESS-0019 spec's two OPEN items now record both.
   **Layman:** Two questions about the visitor figures still need checking against Google's real service.
   Kind: investigate.
   Source: review residue 2026-09-21, from PRESS-0063's own note.

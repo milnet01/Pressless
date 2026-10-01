@@ -439,7 +439,9 @@ def _total(answer: dict) -> int:
     countries once each, so they add up to more than the number of people.
     """
     totals = answer.get("totals")
-    if not isinstance(totals, list) or not totals:
+    if not isinstance(totals, list) or not totals or totals[0] == {}:
+        # Google sends a quiet window's total as an empty entry, `[{}]`, not
+        # as no entry (seen live 2026-10-01, PRESS-0132).
         if not answer.get("rows"):
             # GA4 omits default-valued fields, so a window nobody read comes
             # back with neither rows nor a total, and refusing that turned a
