@@ -2799,6 +2799,10 @@ success.
   item must record the set of time spans the dashboard offers, and its
   section 4.2 requires it. Its section 10 says nothing else can enforce
   that, so this item's spec states the set.
+  Decided by the user (2026-10-01): the dashboard offers three time
+  spans, 7 days, 4 weeks and 12 months, with 4 weeks shown first. Flags
+  come from a free open flag set copied into the app (flag-icons, MIT,
+  or an equal), not from flag characters.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.
@@ -2907,6 +2911,9 @@ success.
   into `gh secret set GOOGLE_CLIENT_SECRET --repo milnet01/Pressless`,
   so the value is never shown. Not yet confirmed done; re-run the
   precheck to check.
+  Progress (2026-10-01): the Actions secret GOOGLE_CLIENT_SECRET is set,
+  piped from the local file with the user's consent and never shown;
+  publish_precheck now exits 0.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
