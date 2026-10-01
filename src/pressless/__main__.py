@@ -27,6 +27,7 @@ from typing import BinaryIO
 from pressless import (
     cheatsheet,
     credentials,
+    dashboard,
     editor,
     face,
     google_setup,
@@ -167,6 +168,7 @@ def _serve_held(folder: Path) -> int:
     try:
         setup.register(served, folder)
         google_setup.register(served, folder)
+        dashboard.register(served, folder)
         editor.register(served, folder)
         cheatsheet.register(served)
         templates.register(served, folder)

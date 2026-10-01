@@ -2781,7 +2781,7 @@ success.
   Source: design-2026-08-24 § The dashboard, ADR-0005.
   Lanes: Insights.
 
-- 📋 [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
+- 🚧 [PRESS-0020] **The dashboard, with flags as bundled pictures rather than flag characters.**
   He opens Pressless and sees how many people read his site and which
   countries they came from, each country shown with its flag, without
   logging in to anything and without leaving the app. Claims S11. The
@@ -2803,6 +2803,19 @@ success.
   spans, 7 days, 4 weeks and 12 months, with 4 weeks shown first. Flags
   come from a free open flag set copied into the app (flag-icons, MIT,
   or an equal), not from flag characters.
+  Built (2026-10-01) with no spec: the user's two decisions settled the
+  only design choices, so the roadmap item plus tests is the contract.
+  src/pressless/dashboard.py: GET /visitors offers 7, 28 and 365 days
+  and answers any other days value as 28, which is the fixed set
+  PRESS-0019 section 4.2 requires (dashboard.WINDOWS, locked by
+  test_only_the_three_windows_are_ever_asked_for). A card above the list
+  reads only the cache. When no token can be had because Google is
+  unreachable, the page shows the kept numbers marked stale. Flags are
+  flag-icons 7.5.0 (MIT), packed into src/pressless/_flag_data.py by
+  scripts/make_flags.py, so no packaging flag changed. 11 tests, 9 hand
+  mutants all killed; gate green on Linux and the Windows box.
+  Still owed before shipping: one live read against Google, which also
+  answers PRESS-0132.
   **Layman:** He opens Pressless and sees how many people read his site and which countries they came from, each with its flag.
   Kind: feature.
   Source: design-2026-08-24 § The dashboard.
