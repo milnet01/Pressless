@@ -26,6 +26,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **In a dark look the editor's preview is dimmed, so a light site no longer glares; a tick box above it shows the true colours** (PRESS-0187)
+
 - **Pressless's screens have a more modern look** (PRESS-0189)
   Each list sits in a rounded card, buttons are rounder, and the top
   bar stays in view while you scroll.

@@ -2901,6 +2901,12 @@ success.
   and an analytics_property_id. Folder deleted afterwards. Still owed:
   the GitHub Actions secret GOOGLE_CLIENT_SECRET before the next
   release.
+  Progress (2026-10-01): .claude/bump.json's publish_precheck now
+  fails while the Actions secret is missing (9178e6a). The user was given
+  a one-line route that pipes the local src/pressless/_google_secret.py
+  into `gh secret set GOOGLE_CLIENT_SECRET --repo milnet01/Pressless`,
+  so the value is never shown. Not yet confirmed done; re-run the
+  precheck to check.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -8780,7 +8786,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-09-30, found while fixing PRESS-0185.
   Lanes: Face.
 
-- 📋 [PRESS-0187] **In dark mode the editor's preview is a large bright white panel.**
+- ✅ [PRESS-0187] **In dark mode the editor's preview is a large bright white panel.**
   The preview shows the site's own colours, and `.face iframe` has a
   white background, so a dark editor surrounds a glaring white pane.
   Seen on the Windows box in Edge and Chrome. Filed as a low-vision
@@ -8820,6 +8826,10 @@ already-built code ships in whichever release comes next.
   to brightness .75; a "Show the preview in its true colours" tick box
   above it, shown only on a dark look, undims it. Checked in headless
   Chrome; waiting on the user's own look before closing.
+  Resolved (2026-10-01): the user tried the dimmed preview in a throwaway
+  instance and said "Nice, I like the live preview." Both halves are
+  done: the add-on panel (a29e1ae) and the dimming (68b50dd, pushed;
+  Linux 767 passed, Windows box 723 passed).
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.
