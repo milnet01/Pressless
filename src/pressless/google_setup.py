@@ -188,21 +188,22 @@ def _back(state: _State, request: Request) -> str | Reply:
         access = google_signin.access_token(refresh, transport)
         found = google_signin.properties(access.value, transport)
     except insights.InsightsError as exc:
-        return state.face.fail(exc, publishing=False, secret=SIGN_IN) + _continue()
+        return state.face.fail(exc, publishing=False, secret=SIGN_IN) + _continue(moving=False)
     if not found:
         return ("<h1>No Analytics site found</h1><p>This Google account can see no "
                 "Google Analytics property. Sign in with the account that can.</p>"
-                + _continue())
+                + _continue(moving=False))
     with state.lock:
         state.pending = _Pending(found, refresh, access)
-    return "<h1>You are signed in to Google.</h1>" + _continue()
+    return "<h1>You are signed in to Google.</h1>" + _continue(moving=True)
 
 
-def _continue() -> str:
+def _continue(*, moving: bool) -> str:
     # A navigation this page starts is same-site, so the browser sends the
-    # cookie the redirect from Google could not carry (§ 4.3 step 4).
-    return (f'<meta http-equiv="refresh" content="0; url={PAGE}">'
-            f'<p><a href="{PAGE}">Continue</a></p>')
+    # cookie the redirect from Google could not carry (§ 4.3 step 4). Only a
+    # success moves on by itself: a failure stays until he has read it (INV-17).
+    refresh = f'<meta http-equiv="refresh" content="0; url={PAGE}">' if moving else ""
+    return refresh + f'<p><a href="{PAGE}">Continue</a></p>'
 
 
 def _choose(state: _State, request: Request) -> str:

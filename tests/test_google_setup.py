@@ -21,6 +21,7 @@ from _face_session import session_cookie
 from pressless import credentials, face, google_setup, google_signin, insights, settings, setup
 
 CLIENT = "client.apps.googleusercontent.com"
+SECRET = "sentinel-client-secret"  # noqa: S105 -- a sentinel, not a secret
 RETURN = "/setup/google/back"
 PERMISSIONS = "https://myaccount.google.com/permissions"
 LOG_NAME = "pressless.log"
@@ -35,23 +36,28 @@ class _Google:
     token is its own text with `access-` in front, so a test can tell which
     sign-in a token came from."""
 
-    def __init__(self, *, revoke: BaseException | int = 200) -> None:
+    def __init__(self, *, revoke: BaseException | int = 200, exchange: int = 200,
+                 listed: tuple[str, ...] = LISTED) -> None:
         self.clock = 1000.0
         self.calls: list[tuple[str, str, dict[str, list[str]]]] = []
         self.revoke = revoke
+        self.exchange = exchange
+        self.listed = listed
 
     def request(self, method, url, body, headers):
         form = urllib.parse.parse_qs((body or b"").decode())
         self.calls.append((method, url, form))
         if url.startswith("https://oauth2.googleapis.com/token"):
             if form["grant_type"] == ["authorization_code"]:
+                if self.exchange != 200:
+                    return self.exchange, {}, json.dumps({"error": "invalid_request"}).encode()
                 return 200, {}, json.dumps({"refresh_token": NEW_REFRESH}).encode()
             refresh = form["refresh_token"][0]
             return 200, {}, json.dumps({"access_token": f"access-{refresh}",
                                         "expires_in": 3600}).encode()
         if url.startswith("https://analyticsadmin.googleapis.com/"):
             summaries = [{"property": f"properties/{p}", "displayName": f"Site {p}"}
-                         for p in LISTED]
+                         for p in self.listed]
             return 200, {}, json.dumps({"accountSummaries": [
                 {"displayName": "Mine", "propertySummaries": summaries}]}).encode()
         if url.startswith("https://oauth2.googleapis.com/revoke"):
@@ -167,6 +173,7 @@ def _signed_in(folder: Path) -> settings.Settings:
 @pytest.fixture
 def registered(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(google_signin, "CLIENT_ID", CLIENT)
+    monkeypatch.setattr(google_signin, "CLIENT_SECRET", SECRET)
 
 
 # -------------------------------------------------------------- INV-10 ----
@@ -295,12 +302,13 @@ def test_the_token_is_reused_until_it_nearly_expires(
 # -------------------------------------------------------------- INV-15 ----
 
 
+@pytest.mark.parametrize("empty", ["CLIENT_ID", "CLIENT_SECRET"])
 def test_an_unregistered_copy_offers_no_sign_in(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, empty: str
 ) -> None:
     """INV-15. Breaks when the button is shown and Google answers him with an
-    error page about a missing client."""
-    monkeypatch.setattr(google_signin, "CLIENT_ID", "")
+    error page about a missing client, or a missing secret."""
+    monkeypatch.setattr(google_signin, empty, "")
     _Store(monkeypatch)
     _saved(tmp_path)
     google = _Google()
@@ -311,8 +319,36 @@ def test_an_unregistered_copy_offers_no_sign_in(
         assert status == 200 and "Location" not in headers
         assert 'href="/setup/google"' not in browser.send("GET", "/setup")[2]
 
-        monkeypatch.setattr(google_signin, "CLIENT_ID", CLIENT)
+        monkeypatch.setattr(google_signin, empty, {"CLIENT_ID": CLIENT,
+                                                    "CLIENT_SECRET": SECRET}[empty])
         # The control: with a client, the same pages offer it.
         assert "Sign in with Google" in browser.send("GET", "/setup/google")[2]
         assert 'href="/setup/google"' in browser.send("GET", "/setup")[2]
     assert [url for _m, url, _f in google.calls] == []
+
+
+# -------------------------------------------------------------- INV-17 ----
+
+
+@pytest.mark.parametrize("google", [
+    pytest.param(lambda: _Google(exchange=400), id="exchange-fails"),
+    pytest.param(lambda: _Google(listed=()), id="no-property"),
+])
+def test_a_failed_return_stays_on_screen(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                         registered: None, google) -> None:
+    """INV-17. Breaks when the refresh is added to every return, and the
+    failure flashes past before it can be read -- which the first real
+    sign-in measured."""
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _served(tmp_path, google()) as browser:
+        status, page = browser.come_back(browser.start())
+    assert status == 200
+    assert 'href="/setup/google"' in page
+    assert 'http-equiv="refresh"' not in page
+    assert "You are signed in" not in page
+    assert ('class="failure"' in page) or ("No Analytics site found" in page)
+
+    # The control: a return that worked moves on by itself.
+    with _served(tmp_path, _Google()) as browser:
+        assert 'http-equiv="refresh"' in browser.come_back(browser.start())[1]

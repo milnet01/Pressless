@@ -26,6 +26,8 @@ REDIRECT = "http://127.0.0.1:5555/setup/google/back"
 REFRESH = "1//SENTINELrefresh0123456789"
 ACCESS = "ya29.SENTINELaccess0123456789"
 CODE = "4/SENTINELcode0123456789"
+SECRET = "sentinel-client-secret"  # noqa: S105 -- a sentinel, not a secret
+CLIENT = "client.apps.googleusercontent.com"
 
 
 class _Google:
@@ -63,7 +65,7 @@ def _form(body: bytes | None) -> dict[str, list[str]]:
 # --------------------------------------------------------------- INV-1 ----
 
 
-def test_signin_imports_only_insights():
+def test_signin_imports_only_insights_and_its_secret():
     """INV-1. Breaks when it imports credentials or settings to fetch the
     token or the property id itself (docs/design.md rule 10)."""
     tree = ast.parse(inspect.getsource(google_signin))
@@ -78,7 +80,7 @@ def test_signin_imports_only_insights():
         elif isinstance(node, ast.Import):
             imported.update(alias.name.split(".")[1] for alias in node.names
                             if alias.name.startswith("pressless."))
-    assert imported == {"insights"}, imported
+    assert imported == {"insights", "_google_secret"}, imported
 
 
 # --------------------------------------------------------------- INV-2 ----
@@ -142,28 +144,37 @@ def test_finish_refuses_before_any_request():
 # --------------------------------------------------------------- INV-4 ----
 
 
-def test_exchange_and_refresh_send_no_secret(monkeypatch: pytest.MonkeyPatch):
-    """INV-4. Breaks when a client secret is added to make Google answer."""
-    monkeypatch.setattr(google_signin, "CLIENT_ID", "client.apps.googleusercontent.com")
+def test_the_secret_goes_only_to_the_token_endpoint(monkeypatch: pytest.MonkeyPatch):
+    """INV-4. Breaks when the secret is dropped from the refresh, after which
+    every dashboard read after the first hour fails; or it is sent to the
+    Admin API."""
+    monkeypatch.setattr(google_signin, "CLIENT_ID", CLIENT)
+    monkeypatch.setattr(google_signin, "CLIENT_SECRET", SECRET)
     client = _Google((200, {"refresh_token": REFRESH}),
-                     (200, {"access_token": ACCESS, "expires_in": 3599}))
+                     (200, {"access_token": ACCESS, "expires_in": 3599}),
+                     (200, {}), (200, b""))
     attempt = _attempt(client)
     assert google_signin.finish(attempt, {"state": attempt.state, "code": CODE},
                                 client) == REFRESH
     token = google_signin.access_token(REFRESH, client)
+    google_signin.properties(ACCESS, client)
+    google_signin.revoke(REFRESH, client)
 
-    (m1, url1, body1, _), (m2, url2, body2, _) = client.calls
+    (m1, url1, body1, _), (m2, url2, body2, _), *others = client.calls
     assert (m1, url1, m2, url2) == ("POST", TOKEN_URL, "POST", TOKEN_URL)
     assert _form(body1) == {
-        "code": [CODE], "client_id": ["client.apps.googleusercontent.com"],
+        "code": [CODE], "client_id": [CLIENT], "client_secret": [SECRET],
         "code_verifier": [attempt.verifier], "redirect_uri": [REDIRECT],
         "grant_type": ["authorization_code"],
     }
     assert _form(body2) == {
-        "client_id": ["client.apps.googleusercontent.com"],
+        "client_id": [CLIENT], "client_secret": [SECRET],
         "refresh_token": [REFRESH], "grant_type": ["refresh_token"],
     }
     assert token == google_signin.AccessToken(ACCESS, client.clock + 3599)
+    assert len(others) == 2
+    for _method, url, body, headers in others:
+        assert SECRET not in f"{url} {body!r} {headers!r}", url
 
 
 # --------------------------------------------------------------- INV-5 ----
@@ -226,14 +237,15 @@ def test_each_answer_maps_to_its_failure(call: str):
 # --------------------------------------------------------------- INV-7 ----
 
 
-def test_no_failure_names_a_token():
+def test_no_failure_names_a_token(monkeypatch: pytest.MonkeyPatch):
     """INV-7. Breaks when Google's error_description is copied into detail
-    unfiltered while it quotes the token."""
-    quoted = {"error": "invalid_grant",
-              "error_description": f"{REFRESH} {ACCESS} {CODE}"}
-    failures = []
-    client = _Google((400, quoted))
+    unfiltered while it quotes the token or the client secret."""
+    monkeypatch.setattr(google_signin, "CLIENT_SECRET", SECRET)
+    client = _Google()
     attempt = _attempt(client)
+    quoted = {"error": f"invalid_grant {SECRET}",
+              "error_description": f"{REFRESH} {ACCESS} {CODE} {SECRET} {attempt.verifier}"}
+    failures = []
     for call in (
         lambda: google_signin.finish(attempt, {"state": attempt.state, "code": CODE}, client),
         lambda: google_signin.access_token(REFRESH, client),
@@ -244,14 +256,19 @@ def test_no_failure_names_a_token():
         with pytest.raises(insights.InsightsError) as caught:
             call()
         failures.append(caught.value)
-    client.answers = [OSError(f"refused {REFRESH}")]
-    with pytest.raises(insights.Unreachable) as caught:
-        google_signin.revoke(REFRESH, client)
-    failures.append(caught.value)
+    for call in (
+        lambda: google_signin.finish(attempt, {"state": attempt.state, "code": CODE}, client),
+        lambda: google_signin.access_token(REFRESH, client),
+        lambda: google_signin.revoke(REFRESH, client),
+    ):
+        client.answers = [OSError(f"refused {REFRESH} {SECRET} {CODE} {attempt.verifier}")]
+        with pytest.raises(insights.Unreachable) as caught:
+            call()
+        failures.append(caught.value)
 
     for failure in failures:
         words = f"{failure} {failure.detail or ''} {failure!r}"
-        for secret in (REFRESH, ACCESS, CODE, attempt.verifier):
+        for secret in (REFRESH, ACCESS, CODE, attempt.verifier, SECRET):
             assert secret not in words, (type(failure), words)
 
 

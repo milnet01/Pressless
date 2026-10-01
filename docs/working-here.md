@@ -128,6 +128,10 @@ git config --add ants.pressless.signingKey <path to the key>
 key file and never prints it. It also publishes, so it runs last, after
 the by-hand checks; `.claude/bump.json` lists it as the final step.
 
+**A release needs the Actions secret `GOOGLE_CLIENT_SECRET`.** Both
+release jobs write it into the program before building, and fail there
+without it (PRESS-0122 § 4.7).
+
 **The gate refuses an empty `update_key.TRUSTED`**
 (`tests/test_sign_release.py`), so a tag nobody could sign is caught
 before it exists.
@@ -145,11 +149,11 @@ PRESS-0122 § 4.6 owns the steps; in brief:
    `https://www.googleapis.com/auth/analytics.readonly`, published to
    **In production**. Left in Testing, a sign-in dies after seven days.
 3. An OAuth client of type Desktop app. Its id goes into `CLIENT_ID`.
-   **Its secret is copied nowhere**: the repository is public, and GitHub
-   blocks a push carrying one.
-4. One real sign-in through Pressless. It proves Google exchanges and
-   refreshes without the secret. If Google refuses, the spec is amended,
-   and no secret is added to the code.
+   **Its secret is never committed** (§ 4.7): the user puts it in the
+   repository's Actions secret `GOOGLE_CLIENT_SECRET`, and on a
+   development machine runs `python3 scripts/write_google_secret.py`,
+   which asks for it without showing it. Never paste it into a session.
+4. One real sign-in, exchange and refresh through Pressless.
 
 ## Windows and browser checks
 

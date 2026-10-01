@@ -2885,6 +2885,15 @@ success.
   delete it once the sign-in works). Open question for the user: the
   white panel at the right of their screenshot of /setup/google, is it
   Pressless or the browser?
+  Progress (2026-10-01): the client-secret amendment is built.
+  scripts/write_google_secret.py, the .gitignore line, both release
+  jobs' step, the secret on exchange and refresh only and scrubbed
+  everywhere, available() needing both values, and a failed or empty
+  return that stays on screen. INV-4, INV-7, INV-15, INV-16 and INV-17
+  each seen red with its part broken. Still owed: the user adds the
+  Actions secret GOOGLE_CLIENT_SECRET before the next release; the real
+  sign-in retry; and the white panel on /setup/google, which the user
+  says is Pressless's, goes to PRESS-0187.
   **Layman:** He can let Pressless read his visitor numbers from Google, or say no and lose only the dashboard.
   Kind: implement.
   Source: user-decision-2026-09-17, split from PRESS-0021.
@@ -8769,6 +8778,9 @@ already-built code ships in whichever release comes next.
   white background, so a dark editor surrounds a glaring white pane.
   Seen on the Windows box in Edge and Chrome. Filed as a low-vision
   item at the user's request; the fix is not chosen.
+  Also (2026-10-01): /setup/google showed a white panel at the right
+  of the page; the user confirmed it is Pressless's, not the browser's.
+  Check it with the dark-mode glare.
   **Layman:** In dark mode the preview is a bright white block that glares against the dark editor.
   Kind: accessibility.
   Source: user-decision-2026-10-01.

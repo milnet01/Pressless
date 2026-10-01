@@ -44,6 +44,13 @@ jobs:
       - name: The suite (step 1)
         run: ./scripts/local-ci.sh
 
+      # Before Build, so PyInstaller packs it; a missing secret fails the
+      # release here, before anything is built or signed (PRESS-0122 § 4.7).
+      - name: The Google client secret
+        env:
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: python scripts/write_google_secret.py
+
       - name: Tools for the AppImage and the session
         run: |
           sudo apt-get update
@@ -133,6 +140,13 @@ jobs:
       # build. This is the first place any of it runs on Windows.
       - name: The suite (step 1)
         run: ./scripts/local-ci.sh
+
+      # Before Build, so PyInstaller packs it; a missing secret fails the
+      # release here, before anything is built or signed (PRESS-0122 § 4.7).
+      - name: The Google client secret
+        env:
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: python scripts/write_google_secret.py
 
       - name: Build
         run: ./scripts/build-windows.sh

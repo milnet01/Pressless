@@ -7,8 +7,10 @@ Insights, the one part allowed to talk to Google (`docs/design.md` rule 8), so
 it imports `insights` and nothing else of Pressless. The secret it produces is
 handed back to the Face, which alone reaches Credentials (rule 10).
 
-There is no client secret: Pressless is public, and PKCE stands in for one
-(§ 3 decision 3). Nothing here writes to disk or keeps state between calls.
+Google requires the Desktop client's secret despite its docs. It is never
+committed: a release build writes it into `_google_secret` (§ 3 decision 3,
+§ 4.7), and a checkout without that file cannot sign in. PKCE is kept.
+Nothing here writes to disk or keeps state between calls.
 """
 
 from __future__ import annotations
@@ -24,8 +26,13 @@ from dataclasses import dataclass
 from pressless import insights
 from pressless.insights import InsightsError, Transport
 
+try:
+    from pressless._google_secret import CLIENT_SECRET
+except ImportError:  # a development checkout, before write_google_secret.py runs
+    CLIENT_SECRET = ""
+
 # The registered Desktop client (§ 4.6). An id, not a secret: it ships in the
-# program by design, and there is no client secret anywhere.
+# program by design. Its secret comes from `_google_secret`, above.
 CLIENT_ID = "407838712240-ioic610gg2obnav839qe4pdk07ar1gki.apps.googleusercontent.com"
 SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -69,7 +76,7 @@ class Expired(InsightsError):
 
 def available() -> bool:
     """Whether this copy of Pressless carries a registered client (§ 4.6)."""
-    return CLIENT_ID != ""
+    return CLIENT_ID != "" and CLIENT_SECRET != ""
 
 
 def begin(redirect_uri: str, client: Transport | None = None) -> tuple[Attempt, str]:
@@ -114,6 +121,7 @@ def finish(attempt: Attempt, query: dict[str, str],
     answer = _post(transport, TOKEN_URL, {
         "code": query.get("code", ""),
         "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
         "code_verifier": attempt.verifier,
         "redirect_uri": attempt.redirect_uri,
         "grant_type": "authorization_code",
@@ -127,6 +135,7 @@ def access_token(refresh_token: str, client: Transport | None = None) -> AccessT
     asked = transport.now()
     answer = _post(transport, TOKEN_URL, {
         "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
         "refresh_token": refresh_token,
         "grant_type": "refresh_token",
     }, (refresh_token,))
@@ -252,7 +261,8 @@ def _field(answer: dict, name: str) -> str:
 
 
 def _scrub(text: str, secret: tuple[str, ...]) -> str:
-    for value in secret:
+    # The client secret is withheld everywhere, sent or not (INV-7).
+    for value in (*secret, CLIENT_SECRET):
         if value:
             text = text.replace(value, "[withheld]")
     return text

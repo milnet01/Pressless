@@ -101,6 +101,9 @@ token.txt
 # carved out by name. Without this the module is silently absent from
 # every commit while its tests are committed (found 2026-08-25).
 !src/pressless/credentials.py
+# The Google client secret, written at packaging by
+# scripts/write_google_secret.py (PRESS-0122 § 4.7). Never committed.
+src/pressless/_google_secret.py
 
 # Generated site output. The built site is published to the writer's OWN repo, not
 # committed here, or the two copies drift.
