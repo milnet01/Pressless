@@ -8968,6 +8968,14 @@ already-built code ships in whichever release comes next.
   item, same day); and site settings, which is PRESS-0193 widened: a
   Settings page he can find and change his setup answers on. Which
   milestone each joins is not decided yet.
+  Widened by the user (2026-10-01): "he should be able to create an
+  entirely new homepage with different pictures / links / footers /
+  headers / navigation bars. This needs to be a full website
+  administration tool for him to replace WordPress entirely." This
+  changes what Pressless is for, so docs/discovery.md and
+  docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
+  designed; the homepage itself becomes something he builds, not only a
+  fixed page he edits.
   **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
   Kind: feature.
   Source: user-request-2026-10-01.
