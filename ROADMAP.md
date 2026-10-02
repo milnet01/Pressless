@@ -3173,6 +3173,277 @@ it decides how pages, the menu and the look are held.
   Kind: chore.
   Source: user-decision-2026-10-01.
 
+- 📋 [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
+  Each is a section 10 row in its own spec reading "nothing in CI -- by
+  hand", and each item's shipped note says it was not run. PRESS-0120
+  delivered the packaging and self-check evidence on the Windows box and
+  not these.
+
+  - PRESS-0012: Edge and Chrome on the Windows box, and a page carrying
+    Google's script.
+  - PRESS-0013: a real publish to GitHub through the Publish button; the
+    console window on the Windows box; the page's publish script in a
+    browser.
+  - PRESS-0021: the real keyring prompt on the Windows box, which needed
+    the page wired to a launch -- PRESS-0013 wired it and did not run the
+    check.
+
+  The browser half is reachable here through Playwright and the system
+  Chrome; the Windows half is the Windows box's, in the logged-on session.
+  Progress (2026-09-21): the browser half is run and now repeatable.
+  `scripts/by-hand-browser-checks.py` drives a throwaway instance --
+  temp folder, the Publisher tests' recording transport double -- with
+  Playwright and the system Chrome. Fourteen checks, all passing. It is
+  deliberately outside the gate and outside CI, so each spec's § 10 row
+  stays true.
+
+  Run by hand: `python3 scripts/by-hand-browser-checks.py`.
+
+  Proved, against a real browser rather than read:
+  - PRESS-0012 § 4.7 script row, whole: the save waits about a second
+    after the change (measured 1.18-1.22s across runs); four changes
+    inside the window coalesce to one POST, so no two saves are in
+    flight; `pagehide` saves an unsaved change. The box is a `textarea`
+    and the preview an iframe sandboxed `allow-same-origin
+    allow-scripts`.
+  - PRESS-0012 § 10 policy row, the Chrome half only: a preview page
+    carrying Google's tag script and a YouTube embed reports
+    `script-src-elem <- googletagmanager.com` and `frame-src <-
+    youtube.com` as violations, while a same-origin script file on the
+    same page still runs. `FILES_POLICY` is the policy that does it; the
+    editor page's `frame-src 'self'` is a different one and blocks no
+    script, which is correct.
+  - PRESS-0013 § 4.4 script row: the Publish button shows "Publishing…
+    this can take a few minutes the first time. Keep this page open.",
+    the Publish button is disabled while that shows, the message is then
+    replaced by "Published. Your site shows it within a few minutes.",
+    and the address bar carries the slug.
+
+  Two probe defects found and fixed before believing a result, both of
+  which had read as code defects: the first sample targeted the page's
+  first `button`, which is Change address rather than Publish; and the
+  first policy probe tested the editor page and used an inline marker
+  script, which `script-src 'self'` correctly blocks.
+
+  Still owed, and still this item: Edge; the Windows box's console
+  window; the real keyring prompt in the desktop session; and a real
+  publish to GitHub through the button. The last is additionally blocked
+  on the GitHub account problem recorded 2026-09-07.
+  No version (2026-09-21): an obligation owed before every release is not
+  a milestone item. Pinned to one version it becomes false the moment that
+  version ships without it, which is how three shipped items each came to
+  record "by hand, not run". The obligation is recorded in
+  `.claude/bump.json` under the release recipe's own steps, where
+  `cut-release` reads it; this item stays open for the checks still owed.
+  PRESS-0014 rows (2026-09-25), from its spec's section 10. A one-off
+  headless Chrome run proved: the list's pages section; the words view;
+  an edit auto-saving into the waiting copy and the preview showing it;
+  Show me the code saving an unsaved change before it switches; the
+  paragraph-count hint; no view switch on the furniture; the picker's
+  newest-entry link. Not yet in scripts/by-hand-browser-checks.py.
+  Still owed: the save timing measured as PRESS-0012's was; Edge on the
+  Windows box; a real page publish through the button; and the words
+  view read against the live site's About, Music and Privacy.
+  Rows added 2026-09-25, all on the next built AppImage, on openSUSE:
+  the double-click opens a browser tab, and Open folder opens the
+  folder (PRESS-0146); Setup with a fake key answers "would not accept
+  your publishing key", not "could not reach GitHub" (PRESS-0142, once
+  fixed). And PRESS-0023's two-cycle update check on each system.
+  2026-09-25: the PRESS-0142 and PRESS-0146 Linux rows passed on a
+  locally built AppImage. Still owed on the release build itself, and
+  nothing yet on Windows for either.
+  Added 2026-09-27, from PRESS-0169's shipped note: in Edge on the
+  Windows box, a preview keeps its stylesheet and photographs with
+  sandbox="allow-same-origin" (measured in Chrome only), and PRESS-0012
+  § 10's script row is checked by opening a /preview/... address
+  directly, since inside the frame no script runs.
+  Progress (2026-09-28): v0.5.0 is tagged and GitHub holds it as a
+  DRAFT (both artefacts built, notes match CHANGELOG). The user chose to
+  run the Windows rows on the draft's own zip before signing: Edge and
+  Chrome, the console window, the keyring prompt in the desktop session,
+  one real Publish. Then the user runs scripts/sign-release.py v0.5.0.
+  by-hand-browser-checks.py passed 23/23 the same day.
+  Added (2026-09-28, PRESS-0178): look at the new styling in Chrome and
+  Edge on the Windows box, light and dark (Windows Settings, Colours).
+  Check the editor's box and proof sit side by side on a wide window.
+  Decision (user, 2026-09-29): 0.5.0 stays an unpublished draft. The next public release
+  is 0.5.1, carrying PRESS-0178's look; the Windows hand checks and signing run once, on 0.5.1.
+  Added 2026-09-29 (PRESS-0182): on the Windows box, change a published
+  entry's address, press, and open the old address in Edge and Chrome;
+  it should land on the entry.
+  Open (2026-09-29): every 0.6.0 item is shipped (PRESS-0123 last). The
+  user is asked whether 0.6.0 replaces 0.5.1 as the next public release,
+  so these hand checks run once, on whichever it is. Ask before tagging.
+  Added the same day (PRESS-0123): on the Windows box, an entry holding
+  {years_since: 2010-01-01} shows the number in the preview and on the
+  published page.
+  Decision (user, 2026-09-29, later that day): 0.6.0 replaces 0.5.1 as the
+  next public release. The Windows hand checks and signing run once, on
+  0.6.0. 0.5.0 stays an unpublished draft.
+  Progress (2026-09-29): v0.6.0 is tagged and GitHub holds it as a
+  DRAFT, both artefacts built, notes match CHANGELOG. Next: the Windows
+  rows above, run on the draft's own zip; then the user runs
+  scripts/sign-release.py v0.6.0.
+  Superseded (2026-09-29, later): 0.6.0 cannot be signed. It was built
+  with update_key.TRUSTED empty, because the signing key had never been
+  made. The user made the key the same day; 0.6.1 carries it and is now
+  the DRAFT to check. Run the Windows rows on 0.6.1's zip, then
+  python3 scripts/sign-release.py v0.6.1. The v0.6.0 draft is never
+  published.
+  Progress (2026-09-29, evening): the user signed v0.6.1, and it is
+  public and Latest, before the Windows rows ran. Those rows are still
+  owed, now against the public 0.6.1. Run on the box's desktop the same
+  day: the self-check reaches the keyring (WinVaultKeyring); double-
+  clicking Start Pressless.bat opens Edge on /setup, dark, with the
+  console window alongside; a second browser reaching the page through
+  an SSH tunnel is refused 403 (the one-time link, PRESS-0151). Waiting on
+  the user to finish Setup in Edge on the box, against the throwaway
+  repository milnet01/pressless-publish-test.
+  Progress (2026-09-30): Windows rows run on the public 0.6.1, on the box,
+  driven from Linux over the browser's debugging port (BROWSER set to a
+  wrapper, so the admitted browser is the driven one). Passed in Edge:
+  Setup against the throwaway repository, key kept in WinVaultKeyring;
+  light and dark on Setup, the list and the editor; box and proof side
+  by side at the box's full window width; the preview keeps its
+  stylesheets under sandbox=allow-same-origin (PRESS-0169); years_since
+  shows 16 in the preview and on the published page (PRESS-0123); one
+  real Press to site; Change address, press, and the old address lands
+  on the entry (PRESS-0182); throwing away a draft and a published entry
+  (PRESS-0128). Passed in Chrome after a relaunch: light and dark, the
+  preview and its stylesheets, years_since, the old address, throwing a
+  draft away. Dark was the browser's emulated preference, not the
+  Windows Colours setting.
+  Not run, still owed on Windows: PRESS-0142's fake-key sentence,
+  PRESS-0146's Open folder, PRESS-0169's direct /preview script row,
+  PRESS-0023's two-cycle update check, PRESS-0173's installer batch fix.
+  Still owed anywhere: the save timing, and the words view read against
+  the live site.
+  The box is cleaned: key deleted from the vault, folder and task gone.
+  The throwaway repository still exists.
+  Later (2026-09-30): the throwaway repository is deleted, on the user's
+  word. A later Windows row that needs a publish makes a new one.
+  Added (2026-09-30): PRESS-0185 and PRESS-0186 are fixed on main and
+  seen in headless Chrome on Linux only. The next Windows run presses a
+  draft and a proof in Edge and Chrome and reads the line above the form
+  and the Address field, without a reload.
+  Owed on the 0.6.2 draft (2026-10-01), from PRESS-0122 spec section 7:
+  a real Google sign-in from the packaged release in Firefox, Chrome and
+  Edge on the Windows box, confirming the continue step keeps the
+  cookie. Needs the user at the box to enter the Google password.
+  Progress (2026-10-01): the Windows box has no Firefox, so the PRESS-0122
+  sign-in row runs in Edge and Chrome only there. Edge round launched on
+  the 0.6.2 zip; Chrome round next. Which browser the Linux sign-in used is not recorded.
+  0.6.2 draft (2026-10-01): PRESS-0122's real Google sign-in PASSED on
+  the Windows box from the packaged zip, in the user's own Chrome and
+  then own Edge: each saved credentials.google_account "google" and a
+  property id, the refresh token going to the real Windows keyring in
+  the desktop session, launched through Start Pressless.bat. Firefox is
+  not installed there. Still not run: a real publish through the
+  button.
+  0.7.0 (2026-10-02), on the draft's own Windows zip, fresh install on
+  the box, then published with sign-release.py. Passed: the self-check
+  reaches WinVaultKeyring in the desktop session; Setup against a new
+  private throwaway repository, key kept in WinVaultKeyring; a real
+  Press to site through the button, commit landed (first time this row
+  ran); the console window owns Pressless; the Settings link; Google
+  sign-in and the visitor page with picture flags and all three periods
+  in the user's own Edge, Chrome and Firefox (Firefox installed that
+  day; its sign-in re-saved settings, so the continue step kept the
+  cookie). The press needed the starter files seeded first: an empty
+  install still cannot press (PRESS-0126). Found: the site picker's
+  radios sat centred above their names (PRESS-0201, fixed for 0.7.1).
+  Box cleaned: keys, tasks and helpers gone, throwaway repository
+  deleted; an empty pressless-check folder stays until the browsers
+  started from it close. Still never run: PRESS-0142's fake-key
+  sentence, PRESS-0146's Open folder, PRESS-0169's direct /preview
+  script row, PRESS-0023's two-cycle update check, PRESS-0173.
+  0.7.1 (2026-10-02): PASSED on the draft's zip. Self-check ok
+  (store line fails over SSH by design). Setup in the desktop session,
+  key in the keyring. Google sign-in by the user in Edge; Choose a
+  different site then listed both properties with the radios beside
+  their names, and switching saved, in Edge (driven), Chrome (driven)
+  and the user's own Firefox (settings.json read back the chosen property's id).
+  Signed and published. Box cleaned: no Pressless lines in cmdkey,
+  task deleted; %TEMP%\pressless-check is empty but held by the
+  user's Firefox, delete next visit. Publish was not re-run: nothing
+  in 0.7.1 touches it.
+  Placed in 0.8.0 on 2026-10-02: the rows still never run are owed
+  before 0.8.0's release.
+  **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
+  Kind: test.
+  Source: review residue 2026-09-21, from the three items' own shipped notes.
+
+- 📋 [PRESS-0179] **A "Suggest or report a problem" button opens a ready-filled issue on GitHub.**
+  Today the only route is the README's Getting help section, which a
+  user of the downloaded app never sees.
+
+  - A button on every screen opens the browser at the repository's
+    new-issue page, with the title and a short form already filled in:
+    the Pressless version and the operating system, then blanks for what
+    they pressed, what they expected and what they saw.
+  - Nothing else is sent. No site address, no entry text, no settings,
+    no log. The user reads and edits it before submitting.
+  - Say before it opens that the issue is public, and point a security
+    problem at SECURITY.md's private route instead.
+  - Every Pressless user already has a GitHub account, because publishing
+    goes through one, so this needs nothing new from them.
+
+  Ruled out, and why:
+  - Filing the issue with the user's own publishing key: it is scoped to
+    their site, and widening it to file issues asks for more power than
+    publishing needs.
+  - A form posting to a server of ours: a server to run, spam to
+    handle, and no secret can ship inside a public app.
+  - Email: it needs a public address, and gives no shared place for
+    answers.
+
+  GitHub Discussions is off on the repository. Turning it on would give
+  questions and ideas their own place, and the button could offer both.
+  Decision (user, 2026-09-29): issues only; GitHub Discussions stays
+  off.
+  **Layman:** A button in the app lets people send a suggestion or report a problem, without leaving anything private behind.
+  Kind: feature.
+  Source: user-request-2026-09-28.
+  Lanes: face.
+
+- 📋 [PRESS-0203] **Restart Pressless from inside the app.**
+  Asked for by the user 2026-10-02. Where the button lives is open
+  (Settings was the user's suggestion). Today a restart means closing
+  the console window and starting Pressless again. A restart drops the
+  opening link's session (PRESS-0151), so the page has to reach the new
+  server somehow: the new launch opens a fresh tab, and the old one
+  should say so rather than going dead. Read with PRESS-0204, which
+  would be the other way to restart.
+  **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Face, Launcher.
+
+- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
+  browser is closed the only way back is the console window, and the
+  opening link is spent, so reopening means a restart. A tray icon would
+  offer open, restart and quit. Must work on Windows and Linux (Windows
+  parity is the priority), and adds a dependency and packaging work.
+  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher, Package.
+
+- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+  Asked for by the user 2026-10-02. LWSM (the user's local web-server
+  manager) manages every app that runs a web server: start, stop,
+  restart, and open the page in the browser of choice. Where LWSM runs
+  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
+  open: LWSM sets PORT in the environment it starts Pressless with
+  (PRESS-0202 records its contract), which is one candidate signal.
+  Depends on PRESS-0204.
+  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -3277,6 +3548,20 @@ documents go on the site beside the photographs.
   **Layman:** He can put music, downloads and documents on his site, not only photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0180] **Settings can pin Pressless to light or dark, whatever the computer is set to.**
+  Split from PRESS-0178, which shipped the look following the system
+  setting only (user choice, 2026-09-28).
+
+  A Light / Dark / Match computer choice. It needs a new saved setting,
+  so it changes the settings file's format (PRESS-0001) and the Face
+  must read it on every page. The stylesheet already keys every colour
+  off custom properties, so the pin is a class on the page that selects
+  one set.
+  **Layman:** You can choose light or dark for Pressless yourself, instead of it copying your computer.
+  Kind: feature.
+  Source: user-request-2026-09-28.
+  Lanes: face, settings.
 
 ## 0.11.0 — anyone can bring their site in
 
@@ -3397,10 +3682,11 @@ it can then be changed.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Import, Face.
 
-## 0.12.0 — the figures from everywhere else
+## 0.12.0 — more figures, and likes
 
-No new sign. It widens S11: provinces or states within each country, and sources
-past Google.
+No new sign. It widens S11 — provinces or states within each country, and
+sources past Google where they publish figures at all — and adds likes and
+dislikes on entries, as decided in docs/discovery.md.
 
 - 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
   docs/design.md § What may depend on what, rule 8: "Insights may read
@@ -3502,6 +3788,98 @@ past Google.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Insights, Face.
 
+- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
+  What this fetches, and whether it can fetch anything, is PRESS-0080's
+  to answer first. The doubt is specific: Spotify's public API is a
+  catalogue API, and the stream and listener figures an artist actually
+  wants live in Spotify for Artists behind a sign-in.
+
+  So there are two shapes this could take and PRESS-0080 picks one. If
+  an API reaches the figures, this is PRESS-0019's shape again. If it
+  does not, the honest version reads an export he downloads himself,
+  shows the figures dated, and says on the dashboard when they were last
+  refreshed -- which is worth building and is not what was asked for, so
+  it goes back to him before it is built.
+
+  What is reachable without a sign-in either way, and may be enough:
+  follower count and Spotify's own popularity score for each release.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): whether this is buildable as asked is
+  PRESS-0080's to answer, and this item's own doubt is that the figures
+  live behind a sign-in with no public API. Placing it under a version
+  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
+  and goes back to the user if the honest version reads an export
+  instead.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  **Layman:** The dashboard also shows how his music is doing on Spotify.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
+  Same shape as the Spotify item and the same doubt, one step worse:
+  Apple's Music API is a catalogue API, and Apple Music for Artists --
+  where the play figures are -- is believed to publish no API at all.
+  PRESS-0080 confirms or refutes that.
+
+  If it publishes none, the export route is the only one, and this item
+  becomes reading a file he downloads rather than talking to Apple.
+  That is a different feature from the one asked for, so it goes back to
+  him rather than being substituted quietly.
+
+  Apple's catalogue API also needs a developer token signed with a
+  private key from a paid developer account, which is a cost the other
+  three do not carry. Price that before committing to it.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
+  for Artists publishes anything is PRESS-0080's to answer, and the paid
+  developer account is a cost to price before committing. It joins 0.9.0
+  only if a route exists.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  **Layman:** The dashboard also shows how his music is doing on Apple Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
+  The least likely of the four to be buildable as asked. Amazon Music
+  for Artists is believed to publish no public API whatever, so unlike
+  Spotify and Apple there may be no catalogue surface to fall back on
+  either. PRESS-0080 settles it.
+
+  If that holds, the only routes are an export he downloads, or nothing
+  -- and "nothing" is a real outcome to report rather than a failure to
+  work around. Do not reach for scraping the artist dashboard: it needs
+  his sign-in, it breaks whenever the page changes, and it is the kind
+  of thing that gets an account suspended.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082, and this is the
+  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
+  real outcome to report rather than work to schedule.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
+  Decided by the user 2026-10-02, after the whole-site work: both
+  buttons, public counts in each site's own free Firebase database,
+  anonymous sign-in so one vote per person per entry, billing kept
+  switched off, a line on the privacy page, optional per site, and
+  step-by-step help to set the database up. docs/discovery.md
+  "Decided, not yet scheduled" holds the anti-spam design.
+  **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Builder, Face.
+
 ## 1.0.0 — every sign holds, and the format is frozen
 
 No new sign. What makes this 1.0 is the promise attached to it: every file
@@ -3580,6 +3958,24 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
+
+- 📋 [PRESS-0141] **The safe-write steps are written out in four modules.**
+  PRESS-0039 said the helper question was filed separately and that it
+  did not close it. Nothing carried it. Write a temporary file, flush,
+  fsync, then replace: credentials.py, insights.py, settings.py and
+  store.py each spell those steps out.
+
+  Decided by the user 2026-09-25: file it, do not do it now. Each copy
+  works and is tested, and a shared helper rewrites INV-1 in PRESS-0001
+  and PRESS-0002, which costs a review gate on each. Do it when a fifth
+  copy would otherwise appear.
+  Placed in 1.0.0 on 2026-10-02. The 2026-09-25 condition stands: do
+  it when a fifth copy would appear, which the work before 1.0.0 may
+  bring; otherwise it is done before the format freezes.
+  **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
+  Kind: refactor.
+  Source: review residue 2026-09-25, from PRESS-0039's own note.
+  Lanes: Settings, Credentials, Insights, Store.
 
 ## Backlog — no version yet
 
@@ -6578,80 +6974,6 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: check-code --tree 2026-08-31 -- config recommendations.
 
-- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
-  What this fetches, and whether it can fetch anything, is PRESS-0080's
-  to answer first. The doubt is specific: Spotify's public API is a
-  catalogue API, and the stream and listener figures an artist actually
-  wants live in Spotify for Artists behind a sign-in.
-
-  So there are two shapes this could take and PRESS-0080 picks one. If
-  an API reaches the figures, this is PRESS-0019's shape again. If it
-  does not, the honest version reads an export he downloads himself,
-  shows the figures dated, and says on the dashboard when they were last
-  refreshed -- which is worth building and is not what was asked for, so
-  it goes back to him before it is built.
-
-  What is reachable without a sign-in either way, and may be enough:
-  follower count and Spotify's own popularity score for each release.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): whether this is buildable as asked is
-  PRESS-0080's to answer, and this item's own doubt is that the figures
-  live behind a sign-in with no public API. Placing it under a version
-  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
-  and goes back to the user if the honest version reads an export
-  instead.
-  **Layman:** The dashboard also shows how his music is doing on Spotify.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
-  Same shape as the Spotify item and the same doubt, one step worse:
-  Apple's Music API is a catalogue API, and Apple Music for Artists --
-  where the play figures are -- is believed to publish no API at all.
-  PRESS-0080 confirms or refutes that.
-
-  If it publishes none, the export route is the only one, and this item
-  becomes reading a file he downloads rather than talking to Apple.
-  That is a different feature from the one asked for, so it goes back to
-  him rather than being substituted quietly.
-
-  Apple's catalogue API also needs a developer token signed with a
-  private key from a paid developer account, which is a cost the other
-  three do not carry. Price that before committing to it.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
-  for Artists publishes anything is PRESS-0080's to answer, and the paid
-  developer account is a cost to price before committing. It joins 0.9.0
-  only if a route exists.
-  **Layman:** The dashboard also shows how his music is doing on Apple Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
-  The least likely of the four to be buildable as asked. Amazon Music
-  for Artists is believed to publish no public API whatever, so unlike
-  Spotify and Apple there may be no catalogue surface to fall back on
-  either. PRESS-0080 settles it.
-
-  If that holds, the only routes are an export he downloads, or nothing
-  -- and "nothing" is a real outcome to report rather than a failure to
-  work around. Do not reach for scraping the artist dashboard: it needs
-  his sign-in, it breaks whenever the page changes, and it is the kind
-  of thing that gets an account suspended.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082, and this is the
-  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
-  real outcome to report rather than work to schedule.
-  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
 - ✅ [PRESS-0085] **The fallback credentials file is read through a symlink, with neither owner nor mode checked.**
   Split out of PRESS-0042 rather than folded into it, because the
   write side was mandated by ADR-0003 and this side is not: it needs a
@@ -8199,204 +8521,6 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: review residue 2026-09-21, from PRESS-0075's recorded probe.
 
-- 📋 [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
-  Each is a section 10 row in its own spec reading "nothing in CI -- by
-  hand", and each item's shipped note says it was not run. PRESS-0120
-  delivered the packaging and self-check evidence on the Windows box and
-  not these.
-
-  - PRESS-0012: Edge and Chrome on the Windows box, and a page carrying
-    Google's script.
-  - PRESS-0013: a real publish to GitHub through the Publish button; the
-    console window on the Windows box; the page's publish script in a
-    browser.
-  - PRESS-0021: the real keyring prompt on the Windows box, which needed
-    the page wired to a launch -- PRESS-0013 wired it and did not run the
-    check.
-
-  The browser half is reachable here through Playwright and the system
-  Chrome; the Windows half is the Windows box's, in the logged-on session.
-  Progress (2026-09-21): the browser half is run and now repeatable.
-  `scripts/by-hand-browser-checks.py` drives a throwaway instance --
-  temp folder, the Publisher tests' recording transport double -- with
-  Playwright and the system Chrome. Fourteen checks, all passing. It is
-  deliberately outside the gate and outside CI, so each spec's § 10 row
-  stays true.
-
-  Run by hand: `python3 scripts/by-hand-browser-checks.py`.
-
-  Proved, against a real browser rather than read:
-  - PRESS-0012 § 4.7 script row, whole: the save waits about a second
-    after the change (measured 1.18-1.22s across runs); four changes
-    inside the window coalesce to one POST, so no two saves are in
-    flight; `pagehide` saves an unsaved change. The box is a `textarea`
-    and the preview an iframe sandboxed `allow-same-origin
-    allow-scripts`.
-  - PRESS-0012 § 10 policy row, the Chrome half only: a preview page
-    carrying Google's tag script and a YouTube embed reports
-    `script-src-elem <- googletagmanager.com` and `frame-src <-
-    youtube.com` as violations, while a same-origin script file on the
-    same page still runs. `FILES_POLICY` is the policy that does it; the
-    editor page's `frame-src 'self'` is a different one and blocks no
-    script, which is correct.
-  - PRESS-0013 § 4.4 script row: the Publish button shows "Publishing…
-    this can take a few minutes the first time. Keep this page open.",
-    the Publish button is disabled while that shows, the message is then
-    replaced by "Published. Your site shows it within a few minutes.",
-    and the address bar carries the slug.
-
-  Two probe defects found and fixed before believing a result, both of
-  which had read as code defects: the first sample targeted the page's
-  first `button`, which is Change address rather than Publish; and the
-  first policy probe tested the editor page and used an inline marker
-  script, which `script-src 'self'` correctly blocks.
-
-  Still owed, and still this item: Edge; the Windows box's console
-  window; the real keyring prompt in the desktop session; and a real
-  publish to GitHub through the button. The last is additionally blocked
-  on the GitHub account problem recorded 2026-09-07.
-  No version (2026-09-21): an obligation owed before every release is not
-  a milestone item. Pinned to one version it becomes false the moment that
-  version ships without it, which is how three shipped items each came to
-  record "by hand, not run". The obligation is recorded in
-  `.claude/bump.json` under the release recipe's own steps, where
-  `cut-release` reads it; this item stays open for the checks still owed.
-  PRESS-0014 rows (2026-09-25), from its spec's section 10. A one-off
-  headless Chrome run proved: the list's pages section; the words view;
-  an edit auto-saving into the waiting copy and the preview showing it;
-  Show me the code saving an unsaved change before it switches; the
-  paragraph-count hint; no view switch on the furniture; the picker's
-  newest-entry link. Not yet in scripts/by-hand-browser-checks.py.
-  Still owed: the save timing measured as PRESS-0012's was; Edge on the
-  Windows box; a real page publish through the button; and the words
-  view read against the live site's About, Music and Privacy.
-  Rows added 2026-09-25, all on the next built AppImage, on openSUSE:
-  the double-click opens a browser tab, and Open folder opens the
-  folder (PRESS-0146); Setup with a fake key answers "would not accept
-  your publishing key", not "could not reach GitHub" (PRESS-0142, once
-  fixed). And PRESS-0023's two-cycle update check on each system.
-  2026-09-25: the PRESS-0142 and PRESS-0146 Linux rows passed on a
-  locally built AppImage. Still owed on the release build itself, and
-  nothing yet on Windows for either.
-  Added 2026-09-27, from PRESS-0169's shipped note: in Edge on the
-  Windows box, a preview keeps its stylesheet and photographs with
-  sandbox="allow-same-origin" (measured in Chrome only), and PRESS-0012
-  § 10's script row is checked by opening a /preview/... address
-  directly, since inside the frame no script runs.
-  Progress (2026-09-28): v0.5.0 is tagged and GitHub holds it as a
-  DRAFT (both artefacts built, notes match CHANGELOG). The user chose to
-  run the Windows rows on the draft's own zip before signing: Edge and
-  Chrome, the console window, the keyring prompt in the desktop session,
-  one real Publish. Then the user runs scripts/sign-release.py v0.5.0.
-  by-hand-browser-checks.py passed 23/23 the same day.
-  Added (2026-09-28, PRESS-0178): look at the new styling in Chrome and
-  Edge on the Windows box, light and dark (Windows Settings, Colours).
-  Check the editor's box and proof sit side by side on a wide window.
-  Decision (user, 2026-09-29): 0.5.0 stays an unpublished draft. The next public release
-  is 0.5.1, carrying PRESS-0178's look; the Windows hand checks and signing run once, on 0.5.1.
-  Added 2026-09-29 (PRESS-0182): on the Windows box, change a published
-  entry's address, press, and open the old address in Edge and Chrome;
-  it should land on the entry.
-  Open (2026-09-29): every 0.6.0 item is shipped (PRESS-0123 last). The
-  user is asked whether 0.6.0 replaces 0.5.1 as the next public release,
-  so these hand checks run once, on whichever it is. Ask before tagging.
-  Added the same day (PRESS-0123): on the Windows box, an entry holding
-  {years_since: 2010-01-01} shows the number in the preview and on the
-  published page.
-  Decision (user, 2026-09-29, later that day): 0.6.0 replaces 0.5.1 as the
-  next public release. The Windows hand checks and signing run once, on
-  0.6.0. 0.5.0 stays an unpublished draft.
-  Progress (2026-09-29): v0.6.0 is tagged and GitHub holds it as a
-  DRAFT, both artefacts built, notes match CHANGELOG. Next: the Windows
-  rows above, run on the draft's own zip; then the user runs
-  scripts/sign-release.py v0.6.0.
-  Superseded (2026-09-29, later): 0.6.0 cannot be signed. It was built
-  with update_key.TRUSTED empty, because the signing key had never been
-  made. The user made the key the same day; 0.6.1 carries it and is now
-  the DRAFT to check. Run the Windows rows on 0.6.1's zip, then
-  python3 scripts/sign-release.py v0.6.1. The v0.6.0 draft is never
-  published.
-  Progress (2026-09-29, evening): the user signed v0.6.1, and it is
-  public and Latest, before the Windows rows ran. Those rows are still
-  owed, now against the public 0.6.1. Run on the box's desktop the same
-  day: the self-check reaches the keyring (WinVaultKeyring); double-
-  clicking Start Pressless.bat opens Edge on /setup, dark, with the
-  console window alongside; a second browser reaching the page through
-  an SSH tunnel is refused 403 (the one-time link, PRESS-0151). Waiting on
-  the user to finish Setup in Edge on the box, against the throwaway
-  repository milnet01/pressless-publish-test.
-  Progress (2026-09-30): Windows rows run on the public 0.6.1, on the box,
-  driven from Linux over the browser's debugging port (BROWSER set to a
-  wrapper, so the admitted browser is the driven one). Passed in Edge:
-  Setup against the throwaway repository, key kept in WinVaultKeyring;
-  light and dark on Setup, the list and the editor; box and proof side
-  by side at the box's full window width; the preview keeps its
-  stylesheets under sandbox=allow-same-origin (PRESS-0169); years_since
-  shows 16 in the preview and on the published page (PRESS-0123); one
-  real Press to site; Change address, press, and the old address lands
-  on the entry (PRESS-0182); throwing away a draft and a published entry
-  (PRESS-0128). Passed in Chrome after a relaunch: light and dark, the
-  preview and its stylesheets, years_since, the old address, throwing a
-  draft away. Dark was the browser's emulated preference, not the
-  Windows Colours setting.
-  Not run, still owed on Windows: PRESS-0142's fake-key sentence,
-  PRESS-0146's Open folder, PRESS-0169's direct /preview script row,
-  PRESS-0023's two-cycle update check, PRESS-0173's installer batch fix.
-  Still owed anywhere: the save timing, and the words view read against
-  the live site.
-  The box is cleaned: key deleted from the vault, folder and task gone.
-  The throwaway repository still exists.
-  Later (2026-09-30): the throwaway repository is deleted, on the user's
-  word. A later Windows row that needs a publish makes a new one.
-  Added (2026-09-30): PRESS-0185 and PRESS-0186 are fixed on main and
-  seen in headless Chrome on Linux only. The next Windows run presses a
-  draft and a proof in Edge and Chrome and reads the line above the form
-  and the Address field, without a reload.
-  Owed on the 0.6.2 draft (2026-10-01), from PRESS-0122 spec section 7:
-  a real Google sign-in from the packaged release in Firefox, Chrome and
-  Edge on the Windows box, confirming the continue step keeps the
-  cookie. Needs the user at the box to enter the Google password.
-  Progress (2026-10-01): the Windows box has no Firefox, so the PRESS-0122
-  sign-in row runs in Edge and Chrome only there. Edge round launched on
-  the 0.6.2 zip; Chrome round next. Which browser the Linux sign-in used is not recorded.
-  0.6.2 draft (2026-10-01): PRESS-0122's real Google sign-in PASSED on
-  the Windows box from the packaged zip, in the user's own Chrome and
-  then own Edge: each saved credentials.google_account "google" and a
-  property id, the refresh token going to the real Windows keyring in
-  the desktop session, launched through Start Pressless.bat. Firefox is
-  not installed there. Still not run: a real publish through the
-  button.
-  0.7.0 (2026-10-02), on the draft's own Windows zip, fresh install on
-  the box, then published with sign-release.py. Passed: the self-check
-  reaches WinVaultKeyring in the desktop session; Setup against a new
-  private throwaway repository, key kept in WinVaultKeyring; a real
-  Press to site through the button, commit landed (first time this row
-  ran); the console window owns Pressless; the Settings link; Google
-  sign-in and the visitor page with picture flags and all three periods
-  in the user's own Edge, Chrome and Firefox (Firefox installed that
-  day; its sign-in re-saved settings, so the continue step kept the
-  cookie). The press needed the starter files seeded first: an empty
-  install still cannot press (PRESS-0126). Found: the site picker's
-  radios sat centred above their names (PRESS-0201, fixed for 0.7.1).
-  Box cleaned: keys, tasks and helpers gone, throwaway repository
-  deleted; an empty pressless-check folder stays until the browsers
-  started from it close. Still never run: PRESS-0142's fake-key
-  sentence, PRESS-0146's Open folder, PRESS-0169's direct /preview
-  script row, PRESS-0023's two-cycle update check, PRESS-0173.
-  0.7.1 (2026-10-02): PASSED on the draft's zip. Self-check ok
-  (store line fails over SSH by design). Setup in the desktop session,
-  key in the keyring. Google sign-in by the user in Edge; Choose a
-  different site then listed both properties with the radios beside
-  their names, and switching saved, in Edge (driven), Chrome (driven)
-  and the user's own Firefox (settings.json read back the chosen property's id).
-  Signed and published. Box cleaned: no Pressless lines in cmdkey,
-  task deleted; %TEMP%\pressless-check is empty but held by the
-  user's Firefox, delete next visit. Publish was not re-run: nothing
-  in 0.7.1 touches it.
-  **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
-  Kind: test.
-  Source: review residue 2026-09-21, from the three items' own shipped notes.
-
 - ✅ [PRESS-0137] **CLAUDE.md states what is true now; its history moves to its own file.**
   Every live rule keeps its wording. What moves is dated provenance,
   superseded wording and the argument that settled a rule. A pointer at
@@ -8416,21 +8540,6 @@ already-built code ships in whichever release comes next.
   **Layman:** The project's instruction file gets shorter, so a session reaches the instruction without reading how it came to say that. Nothing is thrown away — the dated corrections and the arguments move to a history file the instruction file points at.
   Kind: doc.
   Source: user-request-2026-09-21 (CFG-0492).
-
-- 📋 [PRESS-0141] **The safe-write steps are written out in four modules.**
-  PRESS-0039 said the helper question was filed separately and that it
-  did not close it. Nothing carried it. Write a temporary file, flush,
-  fsync, then replace: credentials.py, insights.py, settings.py and
-  store.py each spell those steps out.
-
-  Decided by the user 2026-09-25: file it, do not do it now. Each copy
-  works and is tested, and a shared helper rewrites INV-1 in PRESS-0001
-  and PRESS-0002, which costs a review gate on each. Do it when a fifth
-  copy would otherwise appear.
-  **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
-  Kind: refactor.
-  Source: review residue 2026-09-25, from PRESS-0039's own note.
-  Lanes: Settings, Credentials, Insights, Store.
 
 - ✅ [PRESS-0147] **An entry's unknown publish outcome says when its working copy was left.**
   The entry counterpart of PRESS-0144. publishing.publish runs step 5
@@ -9060,53 +9169,6 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-09-28.
   Lanes: face.
 
-- 📋 [PRESS-0179] **A "Suggest or report a problem" button opens a ready-filled issue on GitHub.**
-  Today the only route is the README's Getting help section, which a
-  user of the downloaded app never sees.
-
-  - A button on every screen opens the browser at the repository's
-    new-issue page, with the title and a short form already filled in:
-    the Pressless version and the operating system, then blanks for what
-    they pressed, what they expected and what they saw.
-  - Nothing else is sent. No site address, no entry text, no settings,
-    no log. The user reads and edits it before submitting.
-  - Say before it opens that the issue is public, and point a security
-    problem at SECURITY.md's private route instead.
-  - Every Pressless user already has a GitHub account, because publishing
-    goes through one, so this needs nothing new from them.
-
-  Ruled out, and why:
-  - Filing the issue with the user's own publishing key: it is scoped to
-    their site, and widening it to file issues asks for more power than
-    publishing needs.
-  - A form posting to a server of ours: a server to run, spam to
-    handle, and no secret can ship inside a public app.
-  - Email: it needs a public address, and gives no shared place for
-    answers.
-
-  GitHub Discussions is off on the repository. Turning it on would give
-  questions and ideas their own place, and the button could offer both.
-  Decision (user, 2026-09-29): issues only; GitHub Discussions stays
-  off.
-  **Layman:** A button in the app lets people send a suggestion or report a problem, without leaving anything private behind.
-  Kind: feature.
-  Source: user-request-2026-09-28.
-  Lanes: face.
-
-- 📋 [PRESS-0180] **Settings can pin Pressless to light or dark, whatever the computer is set to.**
-  Split from PRESS-0178, which shipped the look following the system
-  setting only (user choice, 2026-09-28).
-
-  A Light / Dark / Match computer choice. It needs a new saved setting,
-  so it changes the settings file's format (PRESS-0001) and the Face
-  must read it on every page. The stylesheet already keys every colour
-  off custom properties, so the pin is a class on the page that selects
-  one set.
-  **Layman:** You can choose light or dark for Pressless yourself, instead of it copying your computer.
-  Kind: feature.
-  Source: user-request-2026-09-28.
-  Lanes: face, settings.
-
 - ✅ [PRESS-0181] **Take the CI speed-ups local-gate.md § 9 lists that apply here.**
   The suite waited on the Face's half-second stop check. Tests now
   shorten it: gate 87 s -> 44 s locally. Then: timeout-minutes on the
@@ -9377,44 +9439,6 @@ already-built code ships in whichever release comes next.
   Source: LocalWebServerManager session request 2026-10-02; user chose the practice copy the same day.
   Lanes: Launcher, Face.
 
-- 📋 [PRESS-0203] **Restart Pressless from inside the app.**
-  Asked for by the user 2026-10-02. Where the button lives is open
-  (Settings was the user's suggestion). Today a restart means closing
-  the console window and starting Pressless again. A restart drops the
-  opening link's session (PRESS-0151), so the page has to reach the new
-  server somehow: the new launch opens a fresh tab, and the old one
-  should say so rather than going dead. Read with PRESS-0204, which
-  would be the other way to restart.
-  **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Face, Launcher.
-
-- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
-  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
-  browser is closed the only way back is the console window, and the
-  opening link is spent, so reopening means a restart. A tray icon would
-  offer open, restart and quit. Must work on Windows and Linux (Windows
-  parity is the priority), and adds a dependency and packaging work.
-  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
-  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher, Package.
-
-- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
-  Asked for by the user 2026-10-02. LWSM (the user's local web-server
-  manager) manages every app that runs a web server: start, stop,
-  restart, and open the page in the browser of choice. Where LWSM runs
-  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
-  open: LWSM sets PORT in the environment it starts Pressless with
-  (PRESS-0202 records its contract), which is one candidate signal.
-  Depends on PRESS-0204.
-  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher.
-
 - ✅ [PRESS-0206] **Choose a different Google site without signing in again.**
   Today, once visitor numbers are set up, google_setup._show offers only
   "Sign in again" and "Turn off visitor numbers", so changing site means
@@ -9469,18 +9493,6 @@ already-built code ships in whichever release comes next.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
-  Decided by the user 2026-10-02, after the whole-site work: both
-  buttons, public counts in each site's own free Firebase database,
-  anonymous sign-in so one vote per person per entry, billing kept
-  switched off, a line on the privacy page, optional per site, and
-  step-by-step help to set the database up. docs/discovery.md
-  "Decided, not yet scheduled" holds the anti-spam design.
-  **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
-  Kind: feature.
-  Source: user-decision-2026-10-02 PRESS-0198.
-  Lanes: Builder, Face.
-
 ## Milestones
 
 A version number here says WHICH SIGNS OF SUCCESS HOLD, not how many items
@@ -9493,4 +9505,5 @@ undo, edit the existing pages, photographs and visitor numbers. From 0.8.0
 it becomes a full website creator and editor for anyone: start from
 nothing (0.8.0), build every page and the menu (0.9.0), change the look and
 add any file (0.10.0), bring an existing site in (0.11.0), and widen the
-visitor figures (0.12.0). 1.0.0 freezes the format.
+visitor figures and add likes (0.12.0). The backlog holds only what
+no version needs yet. 1.0.0 freezes the format.
