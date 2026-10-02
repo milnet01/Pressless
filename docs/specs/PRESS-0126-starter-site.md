@@ -134,6 +134,8 @@ site on its own.
 
 ### 4.3 The starter set
 
+*PRESS-0199 § 4.5 adds `privacy_page` to the starter set; `fill` does not write it.*
+
 `fill(folder, site_name)`, in this order:
 
 1. Write `MARKER`.

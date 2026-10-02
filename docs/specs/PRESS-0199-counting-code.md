@@ -1,14 +1,15 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0199 — Pressless puts Google's counting code on the site
 
-**Status:** spec draft (2026-10-02).
+**Status:** accepted (2026-10-02).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0199 (user decision 2026-10-01; `docs/design.md`
 § What may depend on what, "Pressless writes the counting code itself" and
 "Privacy is the one page Pressless keeps").
 
 **Amends:** PRESS-0001 (§ 4.1, § 4.2, INV-6), PRESS-0008 (§ 4.3, § 4.4),
-PRESS-0021 (§ 4.3, § 4.9), PRESS-0122 (§ 4.2). § 11 lists each edit.
+PRESS-0021 (§§ 4.3 to 4.6, § 4.9), PRESS-0122 (§ 4.2), PRESS-0126
+(§ 4.3). § 11 lists each edit.
 
 Layman: once you have a Google Analytics property, Pressless finds its
 counting code and puts it on every page of your site, adds a Privacy page
@@ -21,8 +22,8 @@ After this ships, Settings holds the site's Google measurement id
 (`G-…`). Where it holds one, every page the Builder publishes carries
 Google's tag with that id; where it holds none, no page does. Pressless
 finds the id itself after the Google step's property is chosen, and the
-Settings page takes one typed in. The first time counting is switched on,
-the Store gains a Privacy page disclosing it, and the footer a link to it.
+Settings page takes one typed in. While counting is on, a Store holding a
+site also holds a Privacy page disclosing it, and the footer a link to it.
 
 ## 2. Problem
 
@@ -59,7 +60,7 @@ the Store gains a Privacy page disclosing it, and the footer a link to it.
 6. **A page already holding Google's tag is left alone.** *(decided here)*
    An imported page may carry one by hand, and two tags count each visit
    twice.
-7. **Switching counting on adds a Privacy link to the footer, once.**
+7. **Counting on adds a Privacy link to the footer, where it has none.**
    *(decided here)* A disclosure nobody can reach does not disclose. The
    footer is the one place every page shares.
 8. **Clearing the id switches counting off and leaves the Privacy page.**
@@ -105,12 +106,18 @@ The id has passed `check`'s pattern, so it needs no escaping.
 **`build` alone writes it** — the build `publishing.publish` makes, whose
 `photo_src` is `None`. `preview` and `preview_html` never do.
 
-- **A page the Builder writes whole** (`_Build.page`, the forwards) carries
-  it inside `<head>`.
+- **A page the Builder writes whole** (`_Build.page`) carries it inside
+  `<head>`.
 - **A fixed page** carries it immediately before its first `</head>`,
   matched ignoring case; where there is none, immediately after its first
-  `<body…>` tag; where there is neither, at its end. A fixed page already
-  containing `googletagmanager.com/gtag/js` is written as it is.
+  `<body…>` tag; where there is neither, at its end.
+- **A forward** carries none: it sends the reader on at once, and the page
+  it sends them to counts the visit.
+- **A page whose finished text already holds `googletagmanager.com/gtag/js`**
+  — its own, or a header or footer filled into it — gets no second tag.
+  Its markers are filled as usual.
+- **`content/` holds the Store's bytes unchanged** (PRESS-0008 § 4.7), so
+  no tag is added there.
 
 ### 4.3 Finding the id
 
@@ -149,20 +156,29 @@ with the access token already in hand:
 The form (PRESS-0021 § 4.3) gains an optional box,
 `measurement_id`, filled from Settings and empty on first run. An empty
 box saves `None`. A value failing § 4.1's pattern is a refused answer
-with a hint beside the box, as the other answers are.
+with a hint beside the box: `measurement_id` joins `repository`,
+`site_name` and `site_address` among PRESS-0021 § 4.4's refused answers,
+and § 4.5's candidate takes the answer on both paths.
 
 ### 4.5 Switching counting on
 
-**Switching on** is a save, from § 4.3 or § 4.4, that leaves Settings
-holding an id where the saved file held none. It is done after
-`settings.save` succeeds:
+**Every save, from § 4.3 or § 4.4, that leaves Settings holding an id**
+runs these after `settings.save` succeeds, **and only where the Store holds
+a site** (`store.holds_a_site`): an empty copy stays empty for Import
+(`docs/design.md` rule 9). On first run with the starter box ticked the
+fill has already run, so the Store holds one.
 
-1. Where the Store holds no `pages/privacy.html`, write the starter set's
-   Privacy page there (`starter.privacy_page(site_name)`), published.
-2. Where the footer furniture file holds no `pages/privacy.html`, insert
+1. Where the Store holds no `pages/privacy.html`, write
+   `starter.privacy_page(site_name, builder.stylesheets(folder))` there,
+   published.
+2. Where the footer furniture file exists and holds no
+   `pages/privacy.html`, insert
    `<a href="{{UP}}pages/privacy.html">Privacy</a>` immediately before its
    first `</footer>`, matched ignoring case, or at its end where it has
-   none.
+   none. Pressless never creates a footer file.
+
+Each step checks before it writes, so a later save adds nothing twice and
+retries what an earlier one could not add.
 
 A failure in either is shown through `Face.fail` after the save, so the
 id is kept and counting is on; the page says the Privacy page or link
@@ -170,14 +186,16 @@ could not be added. The done page names both, and says the Privacy page
 needs the user's contact details added.
 
 **The Privacy page** is a whole HTML document in the shape of the starter
-pages (PRESS-0126 § 4.3): it links `../look/style.css`, its header pair
-carries `page="privacy"`, and it says, in words the implementer chooses:
+pages (PRESS-0126 § 4.3): it links each stylesheet it is handed from depth
+1 (`../` before each), its header pair carries `page="privacy"`, and it
+says, in words the implementer chooses:
 the site counts visits with Google Analytics, which uses cookies; what is
 counted (pages read, the visitor's country and region, the kind of device
 and browser); that the counts are used only to see how the site is read;
 a link to Google's own privacy policy and to Google's opt-out browser
 add-on; and a sentence the user replaces with how to reach them. It names
-nobody.
+nobody. `starter.fill` does not write it: the starter set holds it only as
+the text `privacy_page` returns.
 
 ### 4.6 What this never does
 
@@ -193,14 +211,18 @@ nobody.
   `tests/test_settings.py::test_the_measurement_id_is_optional_and_shaped`.
   *Breaks when:* an older file fails to load, or a malformed id is saved.
 - **INV-2** — With an id in Settings, every HTML page a `build` writes
-  carries `googletagmanager.com/gtag/js?id=<id>` exactly once; with none,
-  no page carries `googletagmanager`. *Test:*
-  `tests/test_builder.py::test_every_built_page_carries_the_counting_code`.
-  *Breaks when:* an entry page, a listing, a forward or a fixed page lacks
-  it, or a page carries it twice.
+  outside `content/`, a forward excepted, carries
+  `googletagmanager.com/gtag/js` exactly once, with `?id=<id>` where its
+  text held no tag of its own; with none, no page carries
+  `googletagmanager`. *Test:*
+  `tests/test_builder.py::test_every_built_page_carries_the_counting_code`,
+  with a header furniture file holding a tag in a second build.
+  *Breaks when:* an entry page, a listing or a fixed page lacks it, a
+  forward or a `content/` copy carries it, or a page whose header holds a
+  tag gets a second.
 - **INV-3** — A fixed page holding `</HEAD>` gets the tag just before it; one
   with no head gets it just after `<body class="x">`; one already holding
-  a gtag.js script is written byte for byte as stored. *Test:*
+  a gtag.js script gets no added tag and has its markers filled. *Test:*
   `tests/test_builder.py::test_the_counting_code_finds_its_place`.
   *Breaks when:* the match is case-sensitive, or a hand-written tag is
   doubled.
@@ -222,12 +244,13 @@ nobody.
   `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on`.
   *Breaks when:* the found id is not saved, overwrites a typed one, or the
   Privacy page is not added.
-- **INV-7** — Saving the Settings page with an id where there was none adds
-  the Privacy page and footer link once; saving again adds neither twice;
-  a Store already holding `pages/privacy.html` keeps its own. *Test:*
+- **INV-7** — Saving the Settings page with an id adds the Privacy page
+  and footer link where absent; saving again adds neither twice; a Store
+  already holding `pages/privacy.html` keeps its own; a Store holding no
+  site gains nothing. *Test:*
   `tests/test_setup.py::test_switching_counting_on_adds_privacy_once`.
-  *Breaks when:* the link is inserted on every save, or the user's Privacy
-  page is replaced.
+  *Breaks when:* the link is inserted on every save, the user's Privacy
+  page is replaced, or an empty Store is written to.
 - **INV-8** — A refused `measurement_id` answer writes nothing and shows a
   hint beside the box. *Test:*
   `tests/test_setup.py::test_a_malformed_measurement_id_is_a_refused_answer`.
@@ -239,9 +262,11 @@ nobody.
   saved as today, counting stays off, and the page says so; the id can be
   typed on the Settings page.
 - **The Privacy page or link cannot be written**: the id is kept and
-  counting is on; the page says what could not be added. The next save
-  that switches counting on finds the id already held and adds nothing, so
-  the user adds them by hand. *(decided here)*
+  counting is on; the page says what could not be added, and the next
+  save retries it.
+- **Counting switched on over a Store holding no site**: nothing is added;
+  the next save after the site exists adds both, and Import owes the same
+  (PRESS-0125).
 - **A fixed page with a hand-written tag for an older id** keeps counting
   under that id; Pressless does not rewrite a tag it did not write.
 - **A footer with no `</footer>`** gets the link at its end, which the
@@ -306,8 +331,11 @@ Each edit below is a pointer to this spec beside the clause it changes.
   is overturned.
 - `docs/specs/PRESS-0008-builder.md` §§ 4.3 and 4.4 — published pages
   carry the counting code.
-- `docs/specs/PRESS-0021-setup.md` §§ 4.3 and 4.9 — the form gains a box,
-  and switching counting on writes the Privacy page and footer link.
+- `docs/specs/PRESS-0021-setup.md` §§ 4.3 to 4.6 and 4.9 — the form gains
+  a box, `measurement_id` is a refused answer and a candidate field, and a
+  save holding an id writes the Privacy page and footer link.
+- `docs/specs/PRESS-0126-starter-site.md` § 4.3 — the starter set gains
+  `privacy_page`, which `fill` does not write.
 - `docs/specs/PRESS-0122-google-signin.md` § 4.2 — choosing a property
   also reads its web streams.
 - `CHANGELOG.md` — an Added entry when it ships.

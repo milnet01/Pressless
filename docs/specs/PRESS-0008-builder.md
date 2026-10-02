@@ -165,6 +165,8 @@ raises passes through unchanged, so the Face's sentences for them apply.
 
 ### 4.3 Where each page goes
 
+*PRESS-0199 § 4.2: a published page carries Google's counting code where Settings holds an id.*
+
 Every page is a folder holding `index.html`, as today, except the fixed
 pages, which keep today's file names. All links are relative.
 

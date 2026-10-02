@@ -185,6 +185,8 @@ token, the code, the verifier or the client secret.**
 
 ### 4.2 The pages: `src/pressless/google_setup.py`
 
+*PRESS-0199 § 4.3: choosing a property also reads its web streams for the measurement id.*
+
 Part: the Face. Registered by `google_setup.register(face, folder, *,
 client=None)`, called wherever `setup.register` is.
 

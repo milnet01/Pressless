@@ -156,6 +156,8 @@ The words on the page, and how to make a key, are the implementer's.
 
 ### 4.4 Checking the answers
 
+*PRESS-0199 § 4.4 adds `measurement_id` to the refused answers and the candidate; § 4.5 there adds the Privacy steps after the save.*
+
 The body is read with `urllib.parse.parse_qs`. Each answer is stripped of
 surrounding whitespace.
 

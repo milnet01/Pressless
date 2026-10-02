@@ -101,6 +101,8 @@ session.** §8 carries what each beat.
 
 ### 4.1 The public surface
 
+*PRESS-0199 § 4.1 adds the optional `measurement_id`, and overturns § 4.2's "Pressless never writes that tag".*
+
 ```python
 # src/pressless/settings.py
 
