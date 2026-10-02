@@ -3141,6 +3141,17 @@ it decides how pages, the menu and the look are held.
      hide a page, or add a link to another site.
   The user asked the same day for the roadmap to hold every item needed
   to reach 1.0.0 as a full website creator and editor.
+  Progress (2026-10-02): docs/design.md rewritten (9ac2354) and gated,
+  one cold loop by the user's budget (bb0df99): fifteen findings, all
+  fixed, not converged. New part Blocks; pages, header, footer, menu,
+  look, identity and site-wide script have drafts; the menu is a list;
+  Import runs into an empty Store as one of setup's three starts. User
+  decisions the same day: page drafts; Import and take-in only into an
+  empty copy; site identity in the Store; Privacy added and kept while
+  counting is on. Left for later items: the copied preview assets/ in
+  today's code is replaced by the Builder's preview stylesheet
+  (PRESS-0196); site_name moves from Settings to the Store (PRESS-0213).
+  Next: the user agrees the design, then this item ships.
   **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
   Kind: doc.
   Source: user-decision-2026-10-01.
