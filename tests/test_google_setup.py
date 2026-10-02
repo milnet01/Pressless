@@ -404,3 +404,22 @@ def test_a_failed_listing_stays_on_screen(
     assert ('class="failure"' in page) or ("No Analytics site found" in page)
     assert 'href="/setup/google"' in page and 'http-equiv="refresh"' not in page
     assert settings.path_for(tmp_path).read_bytes() == before
+
+
+# ------------------------------------------------------------ PRESS-0207 ----
+
+
+@pytest.mark.parametrize("signed_in", [False, True])
+def test_settings_names_visitor_numbers_once_they_are_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, signed_in: bool
+) -> None:
+    """PRESS-0207. Breaks when Settings still offers visitor numbers as a
+    first-time option after they are set up, which is where the user looked
+    for them and did not find them."""
+    _Store(monkeypatch)
+    (_signed_in if signed_in else _saved)(tmp_path)
+    with _served(tmp_path, _Google(), with_setup=True) as browser:
+        page = browser.send("GET", "/setup")[2]
+    assert 'href="/setup/google"' in page
+    assert ("Visitor numbers are on" in page) is signed_in
+    assert ("Optional: " in page) is not signed_in

@@ -84,7 +84,8 @@ def _setup(face: Face, folder: Path, request: Request,
         return render_notices(notices) + face.fail(refused, publishing=False)
     if request.method != "POST":
         values = _values_from(saved)
-        return render_notices(notices) + _form(saved is not None, values, {})
+        return render_notices(notices) + _form(saved is not None, values, {},
+                                               google_on=_google_on(saved))
 
     answers = _read_answers(request.body)
     return render_notices(notices) + _submit(face, folder, saved, answers, transport)
@@ -114,7 +115,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
             return face.fail(exc, publishing=False)
         hints[exc.key] = _HINTS[exc.key]
     if hints:
-        return _form(not first_run, values, hints)
+        return _form(not first_run, values, hints, google_on=_google_on(saved))
 
     # § 4.6 step 1: the key in hand.
     key = typed_key
@@ -131,7 +132,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
     except publisher.RemoteStateMissing:
         # root_entries reads commits/HEAD first, and a 404 there is this type,
         # never RepositoryMissing (§ 4.6 step 2).
-        return _form(not first_run, values, {"repository": _NO_SUCH_REPOSITORY})
+        return _form(not first_run, values, {"repository": _NO_SUCH_REPOSITORY},
+                     google_on=_google_on(saved))
     except publisher.PublishError as exc:
         return face.fail(exc, publishing=False)
 
@@ -210,7 +212,8 @@ def _credential_failure(face: Face, failure: Exception) -> str:
     return fragment
 
 
-def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str]) -> str:
+def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str], *,
+          google_on: bool = False) -> str:
     e = html.escape
 
     def field(name: str, label: str) -> str:
@@ -243,7 +246,7 @@ def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str]) ->
           'autocomplete="off"></label></p>'
         + (f'<p class="hint" id="key-hint">{e(key_hint)}</p>' if key_hint else "")
         + f'<p><button type="submit">{e(button)}</button></p></form>'
-        + (_google_link() if settings_page else "")
+        + (_google_link(google_on) if settings_page else "")
     )
 
 
@@ -262,12 +265,24 @@ def _done(final: settings.Settings, choice: credentials.Choice | None) -> str:
                 "<p>No keyring was found on this computer, so the key is kept in a "
                 "file only your account can read, in the Pressless-data folder.</p>"
             )
-    return "<h1>Setup is done.</h1>" + left_alone + stored + _google_link()
+    return ("<h1>Setup is done.</h1>" + left_alone + stored
+            + _google_link(_google_on(final)))
 
 
-def _google_link() -> str:
-    """The optional second step (PRESS-0122 § 4.5), where this copy can offer it."""
+def _google_on(saved: settings.Settings | None) -> bool:
+    return saved is not None and saved.credentials.google_account is not None
+
+
+def _google_link(on: bool) -> str:
+    """The optional second step (PRESS-0122 § 4.5), where this copy can offer it.
+
+    Once it is set up, the link names the current state rather than offering
+    it again (PRESS-0207).
+    """
     if not google_signin.available():
         return ""
+    if on:
+        return ('<p>Visitor numbers are on: <a href="/setup/google">change the site '
+                "or turn them off</a>.</p>")
     return ('<p>Optional: <a href="/setup/google">see how many people read your '
             "site</a>, from Google Analytics.</p>")

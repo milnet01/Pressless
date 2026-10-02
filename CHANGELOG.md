@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings says when visitor numbers are on** (PRESS-0207)
+  Once visitor numbers are set up, the end of Settings reads "Visitor
+  numbers are on: change the site or turn them off", instead of
+  offering them as if for the first time.
+
 ### Fixed
 
 - **The practice copy stops tidily when it is told to stop twice** (PRESS-0208)
