@@ -3682,6 +3682,21 @@ it can then be changed.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Import, Face.
 
+- 💭 [PRESS-0175] **A blog whose slugs are in Cyrillic, Greek or CJK gets every published address changed on import.**
+  pressless_import.resolve_slug folds a slug to ASCII and falls back to
+  the post id where nothing survives, as PRESS-0005 3 decision 4 and
+  PRESS-0007 4.4 require. For a non-Latin blog every address therefore
+  changes, which breaks every inbound link. It matches the spec and the
+  first writer's archive is Latin, so this matters only for general users
+  (PRESS-0125's importer). A fix is a spec decision: transliterate, or keep
+  percent-encoded addresses. Filed as considered, for PRESS-0125.
+  Placed in 0.11.0 on 2026-10-02: a decision PRESS-0125's spec makes
+  for general users.
+  **Layman:** For a blog written in a non-Latin alphabet, importing would change every post's web address.
+  Kind: enhancement.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
+  Lanes: import.
+
 ## 0.12.0 — more figures, and likes
 
 No new sign. It widens S11 — provinces or states within each country, and
@@ -3955,6 +3970,11 @@ owned by docs/standards/versioning-overrides.md.
   fix that follows alters INV-4, a settled contract. Which version carries
   the fix depends on a number nobody has taken, so it takes neither until
   then. It must land before 1.0.0 freezes the format.
+  Placed in 1.0.0 on 2026-10-02 with PRESS-0168, which asks the same
+  question: PRESS-0168's 2026-09-27 measurement found peak memory equal
+  to the site's size, not several copies. Re-measure once 0.10.0's
+  music and downloads make sites larger, and decide from that number
+  before the format freezes.
   **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
@@ -3976,6 +3996,29 @@ owned by docs/standards/versioning-overrides.md.
   Kind: refactor.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
   Lanes: Settings, Credentials, Insights, Store.
+
+- 💭 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
+  publisher._local_files keeps path -> bytes for the whole folder, and
+  base64 plus json.dumps add copies of each blob as it is sent, so peak
+  memory scales with the site (Pages allows up to 1 GB). Keeping only
+  path -> hash and re-reading at upload needs a check that the file did
+  not change between hashing and sending, which is a PRESS-0009 4.2/4.3
+  design question. Queued; measure the real site folder first.
+  Decided 2026-09-27: measure the real site folder's peak memory first;
+  amend PRESS-0009 only if the number shows it matters.
+  Measured 2026-09-27 under tracemalloc on the live site folder (1266
+  files): _local_files holds 36.7 MB, peaks at 39.9 MB, and encoding the
+  largest file for sending adds nothing measurable. `uploaded` holds
+  references and each blob is encoded one at a time, so peak memory is
+  the site's size, not several copies of it. Not worth a PRESS-0009
+  change; revisit if a site nears Pages' 1 GB cap.
+  Placed in 1.0.0 on 2026-10-02 beside PRESS-0088. Files other than
+  photographs (0.10.0) make sites larger, so the measurement is taken
+  again then.
+  **Layman:** Publishing a very large site could use a lot of the computer's memory.
+  Kind: perf.
+  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
+  Lanes: publisher.
 
 ## Backlog — no version yet
 
@@ -8948,26 +8991,6 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.3).
   Lanes: publisher.
 
-- 💭 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
-  publisher._local_files keeps path -> bytes for the whole folder, and
-  base64 plus json.dumps add copies of each blob as it is sent, so peak
-  memory scales with the site (Pages allows up to 1 GB). Keeping only
-  path -> hash and re-reading at upload needs a check that the file did
-  not change between hashing and sending, which is a PRESS-0009 4.2/4.3
-  design question. Queued; measure the real site folder first.
-  Decided 2026-09-27: measure the real site folder's peak memory first;
-  amend PRESS-0009 only if the number shows it matters.
-  Measured 2026-09-27 under tracemalloc on the live site folder (1266
-  files): _local_files holds 36.7 MB, peaks at 39.9 MB, and encoding the
-  largest file for sending adds nothing measurable. `uploaded` holds
-  references and each blob is encoded one at a time, so peak memory is
-  the site's size, not several copies of it. Not worth a PRESS-0009
-  change; revisit if a site nears Pages' 1 GB cap.
-  **Layman:** Publishing a very large site could use a lot of the computer's memory.
-  Kind: perf.
-  Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
-  Lanes: publisher.
-
 - ✅ [PRESS-0169] **The preview frame lets the site's own scripts act with the Face's authority.**
   editor.py and page_editor.py frame the preview with sandbox="allow-same-origin
   allow-scripts", which PRESS-0012 4.7 mandates. WHATWG warns the pair lets
@@ -9096,19 +9119,6 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Self-update, Low (PRESS-0162 L8.2).
   Lanes: updater.
-
-- 💭 [PRESS-0175] **A blog whose slugs are in Cyrillic, Greek or CJK gets every published address changed on import.**
-  pressless_import.resolve_slug folds a slug to ASCII and falls back to
-  the post id where nothing survives, as PRESS-0005 3 decision 4 and
-  PRESS-0007 4.4 require. For a non-Latin blog every address therefore
-  changes, which breaks every inbound link. It matches the spec and the
-  first writer's archive is Latin, so this matters only for general users
-  (PRESS-0125's importer). A fix is a spec decision: transliterate, or keep
-  percent-encoded addresses. Filed as considered, for PRESS-0125.
-  **Layman:** For a blog written in a non-Latin alphabet, importing would change every post's web address.
-  Kind: enhancement.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
-  Lanes: import.
 
 - ✅ [PRESS-0176] **design.md § Errors names two routes to an unknown outcome; there are now more.**
   design.md § Errors says the one failure that cannot say what happened
