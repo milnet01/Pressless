@@ -9278,11 +9278,17 @@ already-built code ships in whichever release comes next.
   Source: user hand check 2026-10-02 (0.7.1, Firefox).
   Lanes: Face.
 
-- 📋 [PRESS-0208] **The practice copy exits 0 on SIGTERM.**
+- ✅ [PRESS-0208] **The practice copy exits 0 on SIGTERM.**
   LWSM reports exit status -2 and a KeyboardInterrupt traceback ending
   in scripts/practice.py's _stop when it sends SIGTERM to the process
   group. A run by hand on 2026-10-02 exited 0, so the signal's timing
   matters: reproduce first. Not blocking; LWSM only logs the code.
+  Resolved (2026-10-02): reproduced by signalling the process group
+  twice: the second SIGTERM landed during shutdown and escaped as
+  KeyboardInterrupt (exit -2). _stop now ignores further SIGTERMs, and
+  main treats an interruption that reaches it as a clean stop. Tests in
+  tests/test_practice.py. A SIGTERM in the first ~50 ms, before the
+  script has loaded, still ends with the default -15.
   **Layman:** When the local web-server manager stops the test copy, it finishes tidily instead of reporting an interruption.
   Kind: fix.
   Source: LocalWebServerManager session message 401, 2026-10-02.

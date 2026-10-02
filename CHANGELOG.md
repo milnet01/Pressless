@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The practice copy stops tidily when it is told to stop twice** (PRESS-0208)
+  When the local web-server manager stopped the practice copy, a
+  second stop signal could arrive while the first was shutting down,
+  and it ended with an error report. It now finishes cleanly.
+
 ## [0.7.1] - 2026-10-02
 
 **Theme:** he can see who is reading

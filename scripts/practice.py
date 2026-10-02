@@ -143,6 +143,9 @@ def disarm(set_attribute=setattr) -> None:
 
 
 def _stop(signum: int, frame: object) -> None:
+    # The manager signals the whole process group, so a second SIGTERM can
+    # land while the first is shutting down (PRESS-0208).
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
     raise KeyboardInterrupt   # the launcher's own shutdown path
 
 
@@ -164,7 +167,10 @@ def main() -> int:
     face.serve = lambda served_folder: real_serve(served_folder, port)
     signal.signal(signal.SIGTERM, _stop)
     print(f"Practice copy of Pressless, in {folder}. It never publishes.", flush=True)
-    return launcher._serve(folder)
+    try:
+        return launcher._serve(folder)
+    except KeyboardInterrupt:   # stopped before the launcher's wait caught it
+        return 0
 
 
 if __name__ == "__main__":
