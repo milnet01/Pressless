@@ -25,7 +25,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 |---|---|---|
 | **Settings** | What is true of this machine and this copy of Pressless rather than of the site: where the site folder is, the site's address, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** secrets are kept, the measurement id the counting code carries, and the property id Insights is queried by. | Everything. It depends on nothing. |
 | **Credentials** | Keeping the two secrets themselves — the GitHub publishing key and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring. Where a file cannot be made private to one user — Windows, where the read-only flag is all there is — there is no fallback: setup stops and says so. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
-| **Store** | Everything that shapes the site: entries as marked text, the pages, the templates, the header, footer and menu, the look, the user's own script, the site's identity, the historical comments, and the photographs and files the site uses. Drafts kept apart from what is published, for everything it holds. Reads, writes, lists. | GitHub, the browser |
+| **Store** | Everything that shapes the site: entries as marked text, the pages, the templates, the header, footer and menu, the look, the user's own script, the site's identity, the historical comments, and the photographs and files the site uses. Drafts kept apart from what is published. Reads, writes, lists. | GitHub, the browser |
 | **Import** | Turning a site from elsewhere — a WordPress export with its media download, or a folder of web pages — into Store files, and listing, item by item, what could not come across (S13). Runs into an empty Store only (rule 9). | GitHub, the browser, the Face |
 | **Marks** | The entries' small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
 | **Blocks** | The pages' language. Owns the table of ready-made sections a page is built from, the interactive pieces included; reads a stored page into its sections, and turns sections into HTML. Anything it cannot read as a section is a code section, kept byte-for-byte. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
@@ -70,10 +70,10 @@ which marks cannot express without becoming HTML.
 4. **The Builder may read the Store and Settings and may never touch the
    network.** So S2 — a poem keeps its lines — is provable without
    anything reaching GitHub. **It writes only the published version of
-   anything into the site folder**: entries, pages, the header, footer
-   and menu, the look and the site's identity. A draft of any of them is
-   held back. That is where S7's guarantee lives, and the same guarantee
-   for pages, and it is the only part that can hold it.
+   anything into the site folder**, and holds back every draft (§ Pages,
+   and how they are held, lists what has one). That is where S7's
+   guarantee lives, and the same guarantee for pages, and it is the only
+   part that can hold it.
 5. **The Publisher may read Settings and a folder of finished files, may
    read and write GitHub, and writes to disk only into a folder it is
    handed — and nothing else.** It must not be able to tell an entry from
@@ -95,8 +95,8 @@ which marks cannot express without becoming HTML.
    cache file in Pressless's own folder — and nothing else.** It never
    opens the Store, never calls Marks or Blocks, and nothing about
    writing or publishing may depend on it. If Google is unreachable, or
-   the user never sets it up at all, everything from S1 to S10 still
-   works — the dashboard is the only thing that says so.
+   the user never sets it up at all, every sign but S11 still holds —
+   the dashboard is the only thing that says so.
 9. **Import may read what the user points it at and write into an empty
    Store — and nothing else.** The Face starts it, as one of setup's
    three starts (§ Setup's three starts), and nothing depends on it once
@@ -119,22 +119,25 @@ which marks cannot express without becoming HTML.
 ways, and only one:
 
 - **The starter site** (S12, PRESS-0126): Pressless's own plain site —
-  homepage, header, footer, menu, About and a few templates — copied
-  into the Store, for the user to change into their own.
+  homepage, header, footer, menu, About and a few templates, with its
+  journal off — copied into the Store, for the user to change into
+  their own.
 - **A site already in a GitHub repository** (PRESS-0218): the Face asks
   the Publisher to fetch the repository's current state into the fetch
   area. Where it carries `content/`, that becomes the Store, the way
   undo writes it back; otherwise its pages go to Import as a folder of
-  web pages. **Photograph originals are never published**, so a site
-  taken in this way brings none: each published web-sized copy becomes
-  the original.
+  web pages. **Photograph originals and added files sit outside
+  `content/`**, so the take-in files each published added file as an
+  added file, and each published web-sized photograph as its original.
+  The Builder's naming rule maps a published name back to the original
+  name the marks use, and the take-in asks it to.
 - **An Import** (S13): a WordPress export with its media download, or a
   folder of web pages.
 
 **A publish refuses when it would replace a site by accident**, and the
 live site is unchanged. Both checks run before the build.
 
-- **A site with a journal, when no published entry would remain**,
+- **A site whose journal is on, when no published entry would remain**,
   counting the entry being published. It guards a Store emptied by
   accident. A publish that follows binning or unpublishing entries is not
   refused, and nor is undo's: each is the result that was asked for.
@@ -143,7 +146,9 @@ live site is unchanged. Both checks run before the build.
   holds a site.** Setup offers to take that site in instead, and
   replacing it needs the user to say so in so many words. This is the
   case of a program moved beside a new Pressless-data folder, whose
-  starter site would otherwise replace the real one.
+  starter site would otherwise replace the real one. **A replace shows
+  the user the untouchable list**, derived as below, and they take off
+  it whatever of the old site should go.
 
 **A site need not have a journal** (PRESS-0214). Entries are one thing
 a site can hold. Where it has none, the Builder makes no journal pages
@@ -173,8 +178,10 @@ section, and still editable.
 **Pages have drafts** — decided with the user 2026-10-02. A change to a
 page is held as that page's draft until the user publishes the page, so
 a homepage rebuilt over several days does not go out half-done with the
-next entry. **The header, footer, menu and look work the same way**,
-because they are edited the same way. The preview builds the draft; the
+next entry. **So do the header, footer, menu, look, identity and
+site-wide script**, because they are edited the same way. With entries,
+that is the whole list of what has drafts; templates, comments,
+originals and added files have none. The preview builds the draft; the
 Builder's site folder gets the published version (rule 4).
 
 **Interactive pieces are sections** (PRESS-0217). Each ready-made piece
@@ -231,12 +238,15 @@ the user picks one.
 description, the icon in the browser tab, and the picture shown when
 the site is shared. It is site material, so it travels in `content/` and
 undo brings it back. The site's name moves there from Settings, decided
-with the user 2026-10-02; Settings keeps the address.
+with the user 2026-10-02, and an existing install's name is carried
+across when it moves; Settings keeps the address.
 
 **Privacy is the one page Pressless keeps.** While visitor counting is
 on, the site must carry a page that discloses it: leaving it out is a
 legal exposure under POPIA, not a missing page. Switching counting on
-adds the starter set's Privacy page where the site has none, and the
+adds the starter set's Privacy page where the site has none, published
+rather than as a draft, so it goes out with the first page carrying the
+counting code. The
 Face refuses to remove that page while counting is on. Decided with the
 user 2026-10-02.
 
@@ -248,10 +258,11 @@ for an hour and wrong again without the user doing anything wrong. So
 undo is a sequence the Face owns: fetch the previous state, write its
 `content/` back into the Store's published files, rebuild, publish.
 **An undo deletes nothing of the user's**: an entry or page the fetched
-state does not hold becomes a draft, and a template, header, footer,
-menu, look or identity file it does not hold is kept beside them — and,
-being kept, is built and published again, so an undo removes nothing of
-theirs from the Store. On the site, an entry or page it demotes to a
+state does not hold becomes a draft — or, for a page that already has a
+draft, keeps that draft and sends its published version to the bin —
+and every other file in `content/` it does not hold is kept beside them
+— and, being kept, is built and published again, so an undo removes
+nothing of theirs from the Store. On the site, an entry or page it demotes to a
 draft stops appearing; every other kept file is published again. **It
 does not reach a photograph's original or an added file**, which the
 Store keeps outside `content/`, so one deleted since the fetched state is
@@ -259,15 +270,17 @@ not brought back by an undo. It ends with the site and the user's files
 agreeing, which is the only reading of "back the way it was" that
 survives the next thing they do. **Drafts are untouched by an undo**,
 since they were never in the repository to fetch back — so an
-unfinished poem or a half-built page can never be lost to one. The one
-exception is an entry or page that is now only a draft and that the
-fetched state publishes, which the toggle below produces: it is
-published again rather than left as a draft beside a published copy.
-**Nor is an edit the user has not published yet.** Where an entry in the
-Store differs from the fetched one, undo keeps their version before
-writing over it, as a new draft under a slug of its own, which the Face
-chooses; any other file that differs and has no draft goes to the bin
-(§ Where everything sits on disk). **An entry's comments file is filed
+unfinished poem or a half-built page can never be lost to one. **An
+entry's draft on a slug the fetched state publishes** moves to a slug of
+its own, so one slug never names two entries — except the draft the
+toggle below produced, which is published again. A page's draft stays
+that page's draft. **Nor is an edit the user has not published yet.**
+Where an entry in the Store differs from the fetched one, undo keeps
+their version before writing over it, as a new draft under a slug of its
+own, which the Face chooses. Anything with drafts holds no unpublished
+edit in its published version, so undo writes over that freely; any
+other file that differs goes to the bin (§ Where everything sits on
+disk). **An entry's comments file is filed
 under the entry's own address**, and moves only when that address does —
 binned or renamed with it. **Demotion leaves it where it is**: the
 Builder writes comments for published entries only (PRESS-0008 §4.7), so
@@ -295,9 +308,10 @@ PRESS-0009 § 4.4 names: Settings accepts `CNAME/`, and compared exactly
 that entry protects nothing. It never re-evaluates the rule there — the
 Builder stops producing a page the user has just deleted too, so the
 rule would protect exactly what they asked to remove. **Setup derives it
-— the Face asks the Publisher what sits at the repository root, removes
-everything the Builder produces, and writes the rest into Settings — and
-the Face offers that same action afterwards**. **That removal compares
+once its start has filled the Store — the Face asks the Publisher what
+sits at the repository root, removes everything the Builder produces
+from that Store, and writes the rest into Settings — and the Face offers
+that same action afterwards**. **That removal compares
 names the way the Publisher does.** An exact-cased one leaves a stale
 `Index.html` on the list, after which `index.html` is never uploaded and
 the home page silently stops updating. **The Builder is what names its
@@ -329,7 +343,7 @@ other mark; Blocks has picture, music, video and download sections. The
 Store keeps photograph originals and every added file — music, a
 download, a PDF (S17) — in Pressless's own folder, never in the site
 folder. The Builder writes a web-sized copy of each photograph, copies
-each added file the site links to unchanged, and **owns the naming rule
+every added file unchanged, linked from a page or not, and **owns the naming rule
 for both, which is written down in one place**. Marks and Blocks do not
 know that rule: their caller hands in the one that turns `seaside.jpg`
 into an address — the Builder its own, the Face one pointing at the
@@ -372,8 +386,8 @@ publish. **What could not come across is listed item by item** (S13).
   setup steps tell the user, one step at a time, how to get it from
   WordPress (PRESS-0125). Skipped, every imported entry goes on pointing
   at the site the user is leaving.
-- **The pages, through Blocks.** Whatever no section fits is a code
-  section, still editable (§ Pages, and how they are held). The
+- **The pages, as HTML.** Whatever no section fits, Blocks reads as a
+  code section, still editable (§ Pages, and how they are held). The
   site's menu becomes the menu list.
 - **From a folder of web pages** (PRESS-0210): each page becomes a page,
   the header and footer the pages share are parted out into the single
@@ -449,7 +463,7 @@ also published.
 | Where | What lives there | Published? |
 |---|---|---|
 | **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, pages, templates, header, footer, menu, look, identity, site-wide script and historical comments, in their source form; and the web-sized photographs, added files and scripts the site uses | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder, whose stylesheet the Builder writes from the look's draft and which every preview is styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Drafts are outside the site folder because of the measurement above,
@@ -699,3 +713,4 @@ about.
 | 14 | 2026-09-11 | 3, cold — genre pinned `adr`; gating § Errors' label for Pressless's own folder, now naming Pressless-data (PRESS-0011). Packet carried `paths.py`, PRESS-0022 § 3 decision 5 and § 4.2, and PRESS-0003 § 3. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 0 | n/a | **Two findings: one verified and fixed, one dismissed. One loop only, by user instruction: not converged.** One lane: § Errors gave one button that copies or opens, while § Logging names two; § Errors now names both. Dismissed: that "beside the program" misleads on Windows, where this document defines the program as the extracted folder, as two other lanes confirmed. Inside the gated sentence. |
 | 15 | 2026-09-11 | 3, cold — genre pinned `adr`; gating rule 9 and *What Import brings across* for the user's decision that the maintainer runs Import (PRESS-0007). Packet carried PRESS-0006 § 3, PRESS-0005 § 3 decisions 4 and 5, and the PRESS-0007 and PRESS-0021 roadmap entries. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 0 | 6 | n/a | **Seven verified: five fixed, two surfaced. One loop only, by user instruction: not converged.** All three lanes: nothing said what the handed folder carries; it is the Store, and setup writes Settings. Two lanes: which copy of the furniture Import takes, and the Store shape cited to the Builder rather than PRESS-0006. One each: the untouchable files are not fixed pages, and an empty Store offers neither setup nor publishing. Surfaced on PRESS-0008 and PRESS-0015: where filtered Daily Prompt entries go, and what undoing the first publish does. Five of seven inside the gated span. |
 | 16 | 2026-09-17 | 3, cold — genre pinned `adr`; gating rule 9 for PRESS-0124 (setup on an empty install, the guard moved to publishing). Packet carried the PRESS-0021 amendment, PRESS-0007 § 1–3, the Publisher's empty-site refusal and an executed build on an empty folder. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 2 | n/a | **Four verified, four fixed after three user decisions, none dismissed. One loop only, by user instruction: not converged.** All three lanes: an empty install does not build an empty site, it stops on a missing `header.html` (executed), and nothing supplied its furniture, pages or templates; the user chose a starter set, PRESS-0126. The guard as written blocked binning the last entry, undo, and a first publish; it now counts the entry being published and exempts both. All four inside the gated span. |
+| 17 | 2026-10-02 | 2, cold — genre pinned `adr`; gating the whole-document rewrite for PRESS-0198. Packet carried discovery, all five ADRs, the history file, project CLAUDE.md, the cited roadmap items, `settings.py`'s fields, and PRESS-0005, 0008, 0009, 0013, 0015, 0023 and 0182 windows. Windows, PyInstaller, GitHub, Analytics and Firebase unrunnable | 0 | 7 | 8 | n/a | **Fifteen verified, fifteen fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** Both lanes: undo said nothing of an item that has a draft, and the untouchable list could be derived before setup fills the Store or keep a replaced site live. Others: drafts listed three ways, the take-in dropped added files, the journal guard undefined, undo's draft rule against PRESS-0015, Privacy possibly a draft, previews styled from a copy the look never reaches. Three came from lanes' open questions. The armed change is the whole document, so no in-span share. |
