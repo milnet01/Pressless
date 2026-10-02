@@ -8,7 +8,9 @@ agreed — `~/.claude/workflow.md` § 2. It passes when someone can take any
 item off the queue and say which part it belongs in and what it may
 touch.
 
-**Status:** agreed 2026-08-24.
+**Status:** agreed 2026-08-24; rewritten 2026-10-02 for a full website
+creator and editor (PRESS-0198). What it used to say is in
+[`history/design.md`](history/design.md).
 
 It works within the shape `docs/discovery.md` § *Shape agreed with the
 user* fixed, and does not reopen it. Where a choice below had two
@@ -21,25 +23,31 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 
 | Part | Responsible for | Deliberately knows nothing about |
 |---|---|---|
-| **Settings** | What is true of this machine and this site rather than of his writing: where the site folder is, the site's name and address, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** his secrets are kept, and the Analytics identifier Insights is queried by. | Everything. It depends on nothing. |
+| **Settings** | What is true of this machine and this copy of Pressless rather than of the site: where the site folder is, the site's address, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** secrets are kept, the measurement id the counting code carries, and the property id Insights is queried by. | Everything. It depends on nothing. |
 | **Credentials** | Keeping the two secrets themselves — the GitHub publishing key and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring. Where a file cannot be made private to one user — Windows, where the read-only flag is all there is — there is no fallback: setup stops and says so. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
-| **Store** | Everything that shapes the site: entries as marked text, the fixed pages, the templates, the header, footer and navigation, the historical comments, and any photograph an entry uses. Drafts kept apart from published. Reads, writes, lists. | GitHub, the browser |
-| **Import** | Turning the twelve years in the WordPress export into Store files, once, on the maintainer's machine (rule 9). The writer's copy never runs it. | GitHub, the browser, the Face |
-| **Marks** | The small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
-| **Builder** | Turning the Store plus Settings into a finished site folder. This is `build_blog.py` re-homed and separated from the writer. | GitHub, the browser, where the writing came from |
-| **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a previous state of it, when asked. | Entries, pages, poems, what a draft is |
-| **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, and which countries. | Entries, pages, marks, HTML, GitHub |
-| **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | His writing, the Store, Settings, Credentials, the site |
-| **Face** | The local web server and the pages he sees in his browser — the editor, the preview, the buttons, the cheat sheet, the dashboard. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Store** | Everything that shapes the site: entries as marked text, the pages, the templates, the header, footer and menu, the look, the user's own script, the site's identity, the historical comments, and the photographs and files the site uses. Drafts kept apart from what is published, for everything it holds. Reads, writes, lists. | GitHub, the browser |
+| **Import** | Turning a site from elsewhere — a WordPress export with its media download, or a folder of web pages — into Store files, and listing, item by item, what could not come across (S13). Runs into an empty Store only (rule 9). | GitHub, the browser, the Face |
+| **Marks** | The entries' small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
+| **Blocks** | The pages' language. Owns the table of ready-made sections a page is built from, the interactive pieces included; reads a stored page into its sections, and turns sections into HTML. Anything it cannot read as a section is a code section, kept byte-for-byte. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
+| **Builder** | Turning the Store plus Settings into a finished site folder: every page through Blocks, every entry through Marks, the menu, the stylesheet the look gives, the counting code, and the photographs, files and scripts the site uses. This is `build_blog.py` re-homed and separated from its first writer. | GitHub, the browser, where the writing came from |
+| **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a state of it, current or previous, when asked. | Entries, pages, what a draft is |
+| **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, which countries, and which provinces or states within them. | Entries, pages, marks, HTML, GitHub |
+| **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
+| **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, the menu list, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
 
-**Marks is a part rather than a detail inside the editor**, and that is
-the least obvious decision in this document. Two different things
-render his writing: the Builder, when it makes the live page, and the
-Face, when it shows him what he is typing. If those are two pieces of
-code, "what you see is what you get" is a claim nobody is keeping —
-they will diverge, and the first person to find out will be the writer,
-after publishing. One part, used by both, is what makes S10 true rather
-than hoped for.
+**Marks and Blocks are parts rather than details inside the editors**,
+and that is the least obvious decision in this document. Two different
+things render the user's work: the Builder, when it makes the live page,
+and the Face, when it shows them what they are editing. If those are two
+pieces of code, "what you see is what you get" is a claim nobody is
+keeping — they will diverge, and the first person to find out will be
+the user, after publishing. One part per language, used by both, is
+what makes S10 and S15 true rather than hoped for.
+
+**There are two languages because an entry and a page want different
+things.** An entry is prose that must stay readable in Notepad (S3,
+ADR-0001). A page is layout — columns, a row of pictures, a slideshow —
+which marks cannot express without becoming HTML.
 
 ## What may depend on what
 
@@ -51,66 +59,52 @@ than hoped for.
 1. **Only the Face knows what order things happen in.** Write → build →
    publish is a sequence the Face owns. No lower part ever calls the
    next one along, and no part may reach back into the Face.
-2. **The Builder and the Face must render through the same Marks code.**
-   Not similar code, not code kept in step by hand — the same part. Any
-   change that gives either its own rendering path breaks S10 and is out
-   of bounds.
-3. **Marks touches no disk and no network, ever.** It takes text and
-   returns a structure. This is what makes it cheap to test exhaustively,
-   which matters because it is the part every poem passes through.
+2. **The Builder and the Face must render through the same code**: Marks
+   for entries, Blocks for pages. Not similar code, not code kept in step
+   by hand — the same part. Any change that gives either its own
+   rendering path breaks S10 or S15 and is out of bounds.
+3. **Marks and Blocks touch no disk and no network, ever.** Each takes
+   text and returns a structure. This is what makes them cheap to test
+   exhaustively, which matters because every poem and every page passes
+   through one of them.
 4. **The Builder may read the Store and Settings and may never touch the
    network.** So S2 — a poem keeps its lines — is provable without
-   anything reaching GitHub. **Of his entries it writes only the
-   published ones into the site folder** — the fixed pages, the templates
-   and the page furniture go there too, and a draft is the one thing held
-   back. That is where S7's guarantee lives, and it is the only part that
-   can hold it.
+   anything reaching GitHub. **It writes only the published version of
+   anything into the site folder**: entries, pages, the header, footer
+   and menu, the look and the site's identity. A draft of any of them is
+   held back. That is where S7's guarantee lives, and the same guarantee
+   for pages, and it is the only part that can hold it.
 5. **The Publisher may read Settings and a folder of finished files, may
    read and write GitHub, and writes to disk only into a folder it is
    handed — and nothing else.** It must not be able to tell an entry from
    a stylesheet — which is exactly why it cannot be the part that keeps a
    draft back. A part that publishes whatever it is handed has nothing
    to decide with, so rule 4 carries S7 and this rule does not. **That
-   disk write is the fetch-back's**: a previous state is laid out in the
-   fetch area inside Pressless's own folder — never the site folder,
-   which is published. The Publisher never writes into the Store; only
-   the Face's undo sequence copies from the fetch area (rule 1).
+   disk write is the fetch-back's**: a state of the repository is laid
+   out in the fetch area inside Pressless's own folder — never the site
+   folder, which is published. The Publisher never writes into the
+   Store; only the Face's sequences copy from the fetch area (rule 1).
 6. **The Store may read Settings and may never PRODUCE HTML** — turning
-   marked text into HTML is Marks' job and nobody else's. It may *hold*
-   a fixed page written as HTML, because the code view below is editable
-   and that is the thing he edits. S3 is about entries — one file per
-   entry — and an entry is never HTML.
+   marked text into HTML is Marks' job, and turning sections into HTML
+   is Blocks'. It may *hold* a page written as HTML, because the code
+   editor edits that file and Blocks reads it. S3 is about entries — one
+   file per entry — and an entry is never HTML.
 7. **No part reaches inside another.** Each has one small documented way
    in; the insides are private.
 8. **Insights may read Settings, may talk to Google, and keeps one
    cache file in Pressless's own folder — and nothing else.** It never
-   opens the Store, never calls Marks, and nothing about writing or
-   publishing may depend on it. If Google is
-   unreachable, or he never sets it up at all, everything from S1 to S10
-   still works — the dashboard is the only thing that says so.
-9. **Nothing may depend on Import once it has run.** The maintainer runs
-   it once, before anything else has, on the maintainer's own machine
-   rather than the writer's, because that machine holds the photograph
-   originals Import reads. The writer receives the Pressless-data folder
-   it made, and nothing in his copy of Pressless runs it. **That folder
-   carries the Store, a copy of the site's `assets/` for previews
-   (PRESS-0007 decision 12), and no settings file**: Settings is facts about his
-   machine and site, and setup writes them there, the Daily Prompt filter
-   included (PRESS-0021). **Setup is offered on an empty install.** That
-   install holds no furniture, fixed pages or templates, so it cannot
-   build. Pressless's own starter set supplies them (PRESS-0126); until
-   it ships, an empty install can set up but not preview or publish.
-   **A publish refuses when no published entry would remain**, counting
-   the entry being published, and the live site is unchanged. It guards
-   a Store emptied by accident, such as a program moved beside a new
-   Pressless-data folder, whose publish would replace the journal with
-   none. A publish that follows binning or unpublishing entries is not
-   refused, and nor is undo's: each is the result that was asked for.
-   The check runs before the build, and PRESS-0013 builds it. Changed by
-   the user 2026-09-17 (PRESS-0124), because Pressless is for any user.
-   Import is the only part that may be
-   deleted from a working installation without changing what the others
-   do. Decided with the user 2026-09-11.
+   opens the Store, never calls Marks or Blocks, and nothing about
+   writing or publishing may depend on it. If Google is unreachable, or
+   the user never sets it up at all, everything from S1 to S10 still
+   works — the dashboard is the only thing that says so.
+9. **Import may read what the user points it at and write into an empty
+   Store — and nothing else.** The Face starts it, as one of setup's
+   three starts (§ Setup's three starts), and nothing depends on it once
+   it has run. It never runs over a Store that holds a site: one site per
+   copy of Pressless, as discovery fixes. Decided with the user
+   2026-10-02. The maintainer's Import that brought the first writer's
+   site in (PRESS-0007) is this part's first form; PRESS-0125 is the one
+   anyone runs.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
     it to the Publisher or Insights as an argument, so rules 5 and 8 stay
     literally true and both parts stay testable without a real keyring.
@@ -121,52 +115,94 @@ than hoped for.
     list verifies against a key built into the program is ever offered
     (PRESS-0023).
 
-**Where the fixed pages live.** Home, About, Music **and Privacy** are
-the Store's, not the Builder's — they are writing he edits, and the only
-thing separating them from an entry is that they are not dated and do
-not appear in the journal. Giving them to the Store is what lets S8
-reuse the editor rather than grow a second one. **Privacy is named
-because leaving it out is a legal exposure, not a missing page**: the
-site discloses its visitor counting there, and the footer links to it
-from all 862 pages.
+**Setup's three starts.** Setup fills an empty Store in one of three
+ways, and only one:
 
-**The code view is editable, and that is what decides rule 6.** "Show me
-the code" opens a fixed page's own HTML for editing — that is the access
-that was asked for, and the reason the Store may hold HTML.
+- **The starter site** (S12, PRESS-0126): Pressless's own plain site —
+  homepage, header, footer, menu, About and a few templates — copied
+  into the Store, for the user to change into their own.
+- **A site already in a GitHub repository** (PRESS-0218): the Face asks
+  the Publisher to fetch the repository's current state into the fetch
+  area. Where it carries `content/`, that becomes the Store, the way
+  undo writes it back; otherwise its pages go to Import as a folder of
+  web pages. **Photograph originals are never published**, so a site
+  taken in this way brings none: each published web-sized copy becomes
+  the original.
+- **An Import** (S13): a WordPress export with its media download, or a
+  folder of web pages.
 
-**A fixed page is stored as HTML and is never generated from marks.**
-That is the whole round-trip rule, and without it the two editors fight.
-The plain box shows only the page's **visible words** and writes them
-back in place, leaving every tag around them byte-for-byte as it was;
-the code view edits the file entire. Neither ever regenerates the page,
-so Marks is not involved in a fixed page at all and nothing he hand-
-writes in the code view can be silently reformatted by the box. The home
-page is six picture tiles rather than prose, so there the words are
-nearly all it can offer and the code view is the real editor.
+**A publish refuses when it would replace a site by accident**, and the
+live site is unchanged. Both checks run before the build.
 
-**The Face owns reading those words out and writing them back**, and it
-is a text swap rather than a rendering — no part produces HTML from
-marks here, so rule 6 is untouched. **The box offers no styling on a
-fixed page**: bold, colour and effects are entry things, and on a page
-they are done in the code view, which is where the tags already are.
-That keeps one honest sentence for him — *the box changes words, the
-code view changes anything* — instead of a styling menu that works
-differently depending on what he opened.
+- **A site with a journal, when no published entry would remain**,
+  counting the entry being published. It guards a Store emptied by
+  accident. A publish that follows binning or unpublishing entries is not
+  refused, and nor is undo's: each is the result that was asked for.
+  PRESS-0013 built it.
+- **The first publish of a starter site, when the repository already
+  holds a site.** Setup offers to take that site in instead, and
+  replacing it needs the user to say so in so many words. This is the
+  case of a program moved beside a new Pressless-data folder, whose
+  starter site would otherwise replace the real one.
 
-The most recent publish is recoverable in one step (S9), which is what
-makes handing him the HTML safe rather than reckless.
+**A site need not have a journal** (PRESS-0214). Entries are one thing
+a site can hold. Where it has none, the Builder makes no journal pages
+and the menu offers none.
 
-**The header, footer and navigation are the Store's, and there is
-exactly one copy of each.** Every page is built from them, so he edits
-them in the same code view as a fixed page — and one edit reaches **all
-862 pages**, the whole journal included. They sit in the Store rather
-than in Settings because they are site material he edits, not machine
-facts: that is what puts them inside `content/`, and therefore inside
-what undo brings back.
+**Pages, and how they are held.** A page is anything the site serves
+that is not a dated entry: the homepage, About, Privacy, and every page
+the user adds. The Store holds them, and the user adds, renames and
+removes them (S14). Renaming a published page leaves a page at the old
+address that forwards to the new one, as an entry's rename does
+(PRESS-0182).
+
+**A page is stored as HTML with each section marked**, the way WordPress
+marks its blocks. The visual editor works on the sections, showing the
+page as it will look; the code editor edits the file entire (S15).
+PRESS-0215's spec decides the marking, and owes an ADR for it.
+
+**The round-trip rule, without which the two editors fight: a section
+whose stored HTML is not exactly what Blocks would write for it is a
+code section, and a code section is kept byte-for-byte.** So nothing the
+user writes in the code editor is reformatted by the visual one. A
+section they change by hand becomes a code section, shown in the visual
+editor as code, as WordPress's custom-HTML block is. A page taken in
+from elsewhere arrives the same way: whatever no section fits is a code
+section, and still editable.
+
+**Pages have drafts** — decided with the user 2026-10-02. A change to a
+page is held as that page's draft until the user publishes the page, so
+a homepage rebuilt over several days does not go out half-done with the
+next entry. **The header, footer, menu and look work the same way**,
+because they are edited the same way. The preview builds the draft; the
+Builder's site folder gets the published version (rule 4).
+
+**Interactive pieces are sections** (PRESS-0217). Each ready-made piece
+— a slideshow, questions that fold open — is a section in Blocks' table
+whose HTML uses a script Pressless ships, and the Builder copies each
+script the site uses into the site folder. Each works with the look and
+needs no outside service. **The user's own script** goes in a code
+section on one page, or in the Store's site-wide script, which the
+Builder includes on every page.
+
+**The menu follows the pages** (S14). It is a list the Store holds, not
+HTML: every published page is on it, in the order the user sets, unless
+they hide it, plus any links to other sites they add. A new page joins
+the end; a removed one leaves; a renamed one keeps its place under its
+new name. The Builder renders it, through Blocks, wherever the header or
+footer holds the menu section.
+
+**The header and footer are the Store's, and there is exactly one copy
+of each.** Every page is built from them, and the user edits them in
+the same visual editor as a page (PRESS-0216) — one edit reaches every
+page of the site, the journal included. They sit in the Store rather
+than in Settings because they are site material the user edits, not
+machine facts: that is what puts them inside `content/`, and therefore
+inside what undo brings back.
 
 **That makes it the highest-blast-radius edit in the app, and it is why
-undo is not a nicety.** A mistake in a fixed page spoils one page; a
-mistake in the footer spoils the site, and the site is the only place he
+undo is not a nicety.** A mistake in a page spoils one page; a mistake
+in the footer spoils the site, and the site is the only place the user
 would see it. Two things follow for whoever builds this: the preview
 must show a real page built with the change *before* it is published,
 and undo must be offered in the same breath as the edit rather than
@@ -179,218 +215,216 @@ broken. So the Face hands the Builder the change and the preview folder,
 and never hands that folder to the Publisher. Each preview replaces the
 last.
 
-**And Pressless must say plainly that editing a header inside a page is
+**And Pressless must say plainly that a header written inside a page is
 wasted work**, because the next build overwrites it from the single
-copy. The sibling workspace learned this the expensive way — the header
-was written out in eight places and had already drifted, the journal
-carrying a six-item menu against the rest of the site's five.
+copy.
+
+**The look is the Store's** (S16). It holds the choices the user picked
+— colours, fonts, layout — and their own style code. The Builder turns
+the choices into the site's stylesheet and puts the style code after
+it, so the user's own rules win. Ready-made sections are styled from the
+same choices, so a section matches the site. A site taken in keeps its
+own stylesheet as its style code; the choices apply over it only once
+the user picks one.
+
+**The site's identity is the Store's** (PRESS-0213): its name, a short
+description, the icon in the browser tab, and the picture shown when
+the site is shared. It is site material, so it travels in `content/` and
+undo brings it back. The site's name moves there from Settings, decided
+with the user 2026-10-02; Settings keeps the address.
+
+**Privacy is the one page Pressless keeps.** While visitor counting is
+on, the site must carry a page that discloses it: leaving it out is a
+legal exposure under POPIA, not a missing page. Switching counting on
+adds the starter set's Privacy page where the site has none, and the
+Face refuses to remove that page while counting is on. Decided with the
+user 2026-10-02.
 
 **What undo actually does, and why a revert is not enough.** The
 Publisher can fetch back a previous state of the repository, and that
 alone is not S9: the Store still holds the text that caused the trouble,
-so his next publish would put it straight back — the site would be right
-for an hour and wrong again without him doing anything wrong. So undo is
-a sequence the Face owns: fetch the previous state, write its `content/`
-back into the Store, rebuild, publish. **An undo deletes nothing of
-his**: an entry the fetched state does not hold becomes a draft, and a
-fixed page, template or furniture file it does not hold is
-kept beside them — and, being kept, is built and published again, so an
-undo removes nothing of his from the Store. On the site, an entry it
-demotes to a draft stops appearing; every other kept file is published
-again. **It does not reach a photograph's original**, which never goes to
-the site folder, so an original deleted since the fetched state is not
-brought back by one. It ends with the site and his own files
+so the next publish would put it straight back — the site would be right
+for an hour and wrong again without the user doing anything wrong. So
+undo is a sequence the Face owns: fetch the previous state, write its
+`content/` back into the Store's published files, rebuild, publish.
+**An undo deletes nothing of the user's**: an entry or page the fetched
+state does not hold becomes a draft, and a template, header, footer,
+menu, look or identity file it does not hold is kept beside them — and,
+being kept, is built and published again, so an undo removes nothing of
+theirs from the Store. On the site, an entry or page it demotes to a
+draft stops appearing; every other kept file is published again. **It
+does not reach a photograph's original or an added file**, which the
+Store keeps outside `content/`, so one deleted since the fetched state is
+not brought back by an undo. It ends with the site and the user's files
 agreeing, which is the only reading of "back the way it was" that
-survives the next thing he does. **Drafts are untouched by an undo**,
-since they were never in the repository to fetch back — so an unfinished
-poem can never be lost to one. The one exception is a draft whose slug
-the fetched state publishes, which the toggle below produces: it is
-published again rather than left beside a published copy, so one slug
-never names two files. **Nor is an edit he has not published yet.**
-Where a file in the Store differs from the fetched one, undo keeps his
-version before writing over it: an entry's becomes a new draft under a
-slug of its own, which the Face chooses, and any other file's goes to
-the bin (§ Where everything sits on disk). **An entry's comments file is
-filed under the entry's own address**, and moves only when that address
-does — binned or renamed with it. **Demotion leaves it where it is**: the
+survives the next thing they do. **Drafts are untouched by an undo**,
+since they were never in the repository to fetch back — so an
+unfinished poem or a half-built page can never be lost to one. The one
+exception is an entry or page that is now only a draft and that the
+fetched state publishes, which the toggle below produces: it is
+published again rather than left as a draft beside a published copy.
+**Nor is an edit the user has not published yet.** Where an entry in the
+Store differs from the fetched one, undo keeps their version before
+writing over it, as a new draft under a slug of its own, which the Face
+chooses; any other file that differs and has no draft goes to the bin
+(§ Where everything sits on disk). **An entry's comments file is filed
+under the entry's own address**, and moves only when that address does —
+binned or renamed with it. **Demotion leaves it where it is**: the
 Builder writes comments for published entries only (PRESS-0008 §4.7), so
 a draft's comments are never published, and publishing the entry again
-brings them back. **Undo reaches back one publish and no
-further**: pressing it again returns the state the first undo replaced,
-so it is a toggle rather than a history.
+brings them back. **Undo reaches back one publish and no further**:
+pressing it again returns the state the first undo replaced, so it is a
+toggle rather than a history.
 
-**Some files in his repository are not ours to touch, and deleting one
+**Some files in the repository are not ours to touch, and deleting one
 is unrecoverable in a way a bad page is not.** **The rule is what binds,
 not a list: every entry at the repository root that the Builder does not
 produce is untouchable.** Settings holds the list; the Publisher neither
 writes nor removes a path on it. Everything else is the Builder's and is
-made to match the folder — deletions included, so a page he removes
-actually goes.
-
-**The list is derived, never typed from memory.** Measured on the live
-repository 2026-08-24 it is **seven**: `CNAME`, `.nojekyll`, `README.md`,
-`google26e8bc6a1b61c6cf.html`, `favicon.ico`, `apple-touch-icon.png` and
-`COPY-ME-new-page.html`. **Deleting `CNAME` detaches his domain** and
-deleting the Google file silently un-verifies his site in search results
-months later, so the item that builds this derives the list from the
-repository rather than reading it from this paragraph.
+made to match the folder — deletions included, so a page the user
+removes actually goes. **Deleting `CNAME` detaches a site's own domain**,
+and deleting a search-engine verification file silently un-verifies the
+site months later, so the list is derived from the repository and never
+typed from memory.
 
 **The rule says what the list must contain; the list is what the
 Publisher consults.** At publish it removes any path absent from the
 folder it was handed unless its first segment is on the list, matched
 ignoring case and any trailing slash on the entry, with the fold
 PRESS-0009 § 4.4 names: Settings accepts `CNAME/`, and compared exactly
-that entry protects nothing. It never
-re-evaluates the rule there — the Builder stops producing a page the
-writer has just deleted too, so the rule would protect exactly what he
-asked to remove. **Setup derives it — the Face asks the Publisher what
-sits at the repository root, removes everything the Builder produces, and
-writes the rest into Settings — and the Face offers that same action
-afterwards**. **That removal compares names the way the Publisher does.**
-An exact-cased one leaves a stale `Index.html` on the list, after which
-`index.html` is never uploaded and the home page silently stops
-updating. **The Builder is what names its own root output**, for the
-reason rule 2 gives: a list kept anywhere else is a list kept in step by
-hand, and it rots the day the Builder writes something new, because a file added to the
-root outside Pressless is unprotected until it runs again.
+that entry protects nothing. It never re-evaluates the rule there — the
+Builder stops producing a page the user has just deleted too, so the
+rule would protect exactly what they asked to remove. **Setup derives it
+— the Face asks the Publisher what sits at the repository root, removes
+everything the Builder produces, and writes the rest into Settings — and
+the Face offers that same action afterwards**. **That removal compares
+names the way the Publisher does.** An exact-cased one leaves a stale
+`Index.html` on the list, after which `index.html` is never uploaded and
+the home page silently stops updating. **The Builder is what names its
+own root output**, for the reason rule 2 gives: a list kept anywhere
+else is a list kept in step by hand, and it rots the day the Builder
+writes something new, because a file added to the root outside
+Pressless is unprotected until it runs again.
 
-**`content/` is not on that list — it is ordinary Builder output**, and
-saying otherwise was how an earlier draft of this document made it
-unwritable by anybody. The Builder copies the Store's published files
-into `content/` in the site folder; the Publisher then treats it like
-every other thing it was handed, so it is uploaded, updated, and pruned
-when he deletes an entry. That last part matters: on the untouchable
-reading, a deleted poem's source text would have stayed on the web
-forever.
+**`content/` is not on that list — it is ordinary Builder output.** The
+Builder copies the Store's published files into `content/` in the site
+folder; the Publisher then treats it like every other thing it was
+handed, so it is uploaded, updated, and pruned when the user deletes
+something. That last part matters: were it untouchable, a deleted
+poem's source text would stay on the web forever.
 
-**Deleting an entry moves it to the bin, and the Store is what moves
-it.** The bin is a folder in Pressless's own folder. A draft and a
-published entry go there alike, and he can move either back; nothing
-Pressless does empties it. A deleted published entry leaves the site on
-the next publish, because the Builder no longer copies it into
-`content/`. Renaming an entry's slug writes the new file and moves the
-old one to the bin, and, for a published entry, leaves a page at the old
-address that forwards to the new one (PRESS-0182).
+**Deleting an entry, a page or a file moves it to the bin, and the Store
+is what moves it.** The bin is a folder in Pressless's own folder. A
+draft and a published item go there alike, and the user can move either
+back; nothing Pressless does empties it. A deleted published item leaves
+the site on the next publish, because the Builder no longer writes it.
+Renaming an entry's slug writes the new file and moves the old one to
+the bin, and, for a published entry, leaves a page at the old address
+that forwards to the new one (PRESS-0182).
 
-**`COPY-ME-new-page.html` stays on the site.** Templates retire it as a
-*way of working* — he is no longer expected to find, copy and rename a
-file by hand — but it is untouchable, so the Publisher never removes it.
-Retiring a habit and deleting a file are different acts and this document
-means the first.
+**Where photographs and files live.** Marks has a picture mark —
+`{photo: seaside.jpg}`, or `{photo: seaside.jpg | Late light on the
+water}` with a caption — so the cheat sheet generates it like every
+other mark; Blocks has picture, music, video and download sections. The
+Store keeps photograph originals and every added file — music, a
+download, a PDF (S17) — in Pressless's own folder, never in the site
+folder. The Builder writes a web-sized copy of each photograph, copies
+each added file the site links to unchanged, and **owns the naming rule
+for both, which is written down in one place**. Marks and Blocks do not
+know that rule: their caller hands in the one that turns `seaside.jpg`
+into an address — the Builder its own, the Face one pointing at the
+original it is serving — and they render what they are given without
+touching a disk. Rule 3 holds, rule 7 holds, and there is no second copy
+to drift. **The preview shows the original scaled in the browser**, so
+a photograph in an unbuilt draft is visible immediately rather than
+appearing as a broken image, which is what S10 asks for. A preview
+build is handed the Face's rule rather than the Builder's, which is how
+a built preview page shows the original too. Originals are never
+modified and never published. That is forced rather than chosen: the
+first writer's originals alone measured 453 MB on 2026-08-24, against
+GitHub Pages' 1 GB limit. **A file larger than GitHub will take is
+refused when it is added**, with a sentence saying so; PRESS-0197's spec
+sets the limit and the kinds of file.
 
-**Where photographs live.** Marks has a picture mark — `{photo:
-seaside.jpg}`, or `{photo: seaside.jpg | Late light on the water}` with
-a caption — so the cheat sheet generates it like every other mark. The
-Store keeps the original in Pressless's own folder, never in the site
-folder; the Builder writes the web-sized copy and **owns the naming
-rule for it, which is written down in one place**. Marks does not know
-that rule: its caller hands in the one that turns `seaside.jpg` into an
-address — the Builder its own, the Face one pointing at the original it
-is serving — and Marks renders what it is given without touching a disk.
-Rule 3 holds, rule 7 holds, and there is no second copy to drift. **The
-preview shows the original scaled in the browser**, so a photograph in an
-unbuilt draft is visible immediately rather than appearing as a broken
-image, which is what S10 asks for. A preview build is handed the Face's
-rule rather than the Builder's, which is how a built preview page shows
-the original too. Originals are never modified and never published —
-the same rule the sibling workspace already runs on, and here it is
-forced: the existing originals alone are **453 MB against GitHub Pages'
-1 GB limit**.
+**What Import brings across, and why it brings everything.** Anything
+Import declines to bring is outside Pressless, so every question below
+is settled the same way: carry it, and let the Builder decide what to
+publish. **What could not come across is listed item by item** (S13).
 
-**What Import brings across, and why it brings everything.** Rule 9
-makes Import unrepeatable, so anything it declines to bring is outside
-Pressless for good — which settles every question below in the same
-direction: carry it, and let the Builder decide what to publish.
-
-- **The 616 published posts**, each with the fields the Builder already
-  reads: title, slug, date, categories and tags. Dropping any of them
-  costs the live site its 6 categories, 167 tags and its by-year archive.
-- **The 62 drafts and 8 private posts, as drafts.** They are his writing
-  and he never deleted them. The 3 trashed are skipped, because he did.
-- **The 29 Daily Prompt entries, tagged as they are.** The live site
-  publishes 587 rather than 616 because the Builder filters them on
-  WordPress's own `dailyprompt-NNNN` tag, on his 2026-08-17
-  decision. **Import must not apply that filter** — it keeps the tag, the
-  filter stays in Settings where it already lives, and the Builder goes
-  on excluding them. Filtering at Import instead would delete 29 pieces
-  of his writing permanently; filtering at build leaves his decision
-  reversible by changing one setting.
+- **Every post, with the fields the Builder reads**: title, slug, date,
+  categories and tags. Dropping any of them costs the site its
+  categories, its tags or its by-year archive.
+- **Drafts and private posts, as drafts.** They are the user's writing
+  and they never deleted them. Trashed posts are skipped, because they
+  did.
+- **Tags as they are.** A filter on what is published belongs at build,
+  in Settings, where changing a setting reverses it — the Daily Prompt
+  filter is the live case. Filtering at Import would delete writing
+  permanently.
 - **The historical comments**, in a file beside the entry rather than
-  inside it — an entry file stays his prose, which is S3. They are
-  read-only and the Builder renders fewer than the archive holds: the
-  rest sit on Daily Prompt entries it filters out. Import carries them
-  all for the same reason it carries those entries — carrying only what
-  the site shows today would lose readers' words permanently.
-  **Import's population is every post, not the published ones**
-  (PRESS-0005 §7), so it carries the comments on drafts and private
-  posts too. Without this they are not in the Store, so the Builder
-  emits pages without them and the Publisher removes real people's words
-  from the live site on the first publish. Commenter names are
-  published, as they are now; their email addresses and IP addresses are
+  inside it — an entry file stays the user's prose, which is S3. They
+  are read-only, carried for every post rather than only those the site
+  shows, so no reader's words are lost. Commenter names are published,
+  as they are on WordPress; their email addresses and IP addresses are
   not, and Import must not carry them into the Store at all.
-- **The photographs, and every entry's image references rewritten to the
-  picture mark.** The originals go where the Store keeps them, in
-  Pressless's own folder, and come from the maintainer's own copy of
-  them. Rule 9 makes this the only chance: skipped,
-  they stay on WordPress and every imported entry goes on pointing at the
-  site he is leaving.
-- **The fixed pages and the page furniture, from the live site's own
-  files.** The export does not hold them: the site's pages are written by
-  hand, and its header, footer and navigation come from today's
-  generator. The furniture is taken from the generator's own templates,
-  whose navigation the hand-written pages carry today. **A fixed page is
-  one the site serves as a page — never a file this document names as
-  untouchable.** PRESS-0006 gives both their Store shape; how a
-  hand-written page is parted from the header and footer written into it
-  is settled with the Builder (PRESS-0008).
+- **The photographs and files, and every image reference rewritten to
+  the picture mark.** They come from the media download, and Pressless's
+  setup steps tell the user, one step at a time, how to get it from
+  WordPress (PRESS-0125). Skipped, every imported entry goes on pointing
+  at the site the user is leaving.
+- **The pages, through Blocks.** Whatever no section fits is a code
+  section, still editable (§ Pages, and how they are held). The
+  site's menu becomes the menu list.
+- **From a folder of web pages** (PRESS-0210): each page becomes a page,
+  the header and footer the pages share are parted out into the single
+  copy, the stylesheet becomes the style code, and every other file
+  becomes an added file.
 
 **Where the cheat sheet comes from.** Marks owns one table of every mark
 it understands, and the cheat sheet is generated from that table — the
 in-app panel and the printable page both. Neither is written by hand.
 A hand-written card drifts the first time a mark changes, and then it
-teaches him something that does not work.
+teaches the user something that does not work.
 
 **A template is a Store file in the same marks as an entry, and never
-becomes a page**, and that is the whole design. Starting something new offers a list — a poem, a lyric with
-verses, an entry built around one photograph, a plain journal entry —
-and picking one copies its text into a new draft. He edits one in the
-same box, adds his own, and nothing new has to be built, learned or
-documented. **Nothing in the parts changes to support them**, which is
-the test that this is the right shape rather than a feature.
+becomes a page**, and that is the whole design. Starting something new
+offers a list — a poem, a lyric with verses, an entry built around one
+photograph, a plain journal entry — and picking one copies its text
+into a new draft. The user edits one in the same box, adds their own,
+and nothing new has to be built, learned or documented. **Nothing in
+the parts changes to support them**, which is the test that this is the
+right shape rather than a feature.
 
-They also retire `COPY-ME-new-page.html`, which is the same idea done by
-hand: a file he was expected to find, copy and rename himself.
+**Pressless writes the counting code itself** (S18, PRESS-0199). Where
+Settings holds a measurement id, the Builder puts Google's tag on every
+page it builds; where it holds none, no page carries one. Setup's steps
+cover only what Google makes a person do in person: an account, a
+property, and finding the two ids below.
 
-**The dashboard, and the two things about it that are easy to get
-wrong.** Insights reads the live Google Analytics property already on
-the site, through Google's reporting
-interface, and hands the Face plain numbers. Two traps:
+**The dashboard, and the things about it that are easy to get wrong.**
+Insights reads the site's Google Analytics property through Google's
+reporting interface, and hands the Face plain numbers.
 
 - **Flags must be bundled pictures, not flag characters.** The obvious
   route is the flag emoji — 🇿🇦 — and **Windows has no glyphs for them**:
-  it draws the two letters `ZA` instead. It looks right on the Linux
-  machine this is built on and wrong on the only machine he uses. So
-  a small set of flag images ships with the app, keyed by country code.
-  **Insights hands back those two-letter codes rather than country
-  names**, which is what this lookup binds to.
-  **Measured 2026-08-25 and confirmed** on a Windows 10 22H2 box over
-  SSH, in Chromium 151, which is the kind of browser the dashboard opens
-  in: the flag sequence renders identically to its two letters forced
-  apart, and takes exactly their combined width. A control emoji
-  rendered normally in the same test, so the fonts are present and it is
-  flags specifically that are missing. His own machine is not the one
-  measured, but the claim is no longer an assumption.
+  it draws the two letters `ZA` instead. So a small set of flag images
+  ships with the app, keyed by country code. **Insights hands back those
+  two-letter codes rather than country names**, which is what this
+  lookup binds to. **Measured 2026-08-25** on a Windows 10 22H2 box, in
+  Chromium 151: the flag sequence renders as its two letters, while a
+  control emoji rendered normally, so it is flags specifically that are
+  missing.
 - **There are two Analytics identifiers and they are not
-  interchangeable.** The site's footer tag carries a measurement id
-  (`G-…`); Google's reporting interface is queried by a numeric property
-  id. Settled 2026-08-26: Settings holds the property id, as
-  `analytics_property_id`, and holds no measurement id — Pressless never
-  writes the footer tag. Passing the other fails every fetch.
+  interchangeable.** The tag on each page carries the measurement id
+  (`G-…`); Google's reporting interface is queried by the numeric
+  property id. Settings holds both, as `analytics_property_id` and the
+  measurement id, each for its own use. Passing either in place of the
+  other fails.
 - **It needs a second credential.** Reading Analytics is a separate
   Google authorisation from the GitHub publishing key. S5 is about the
   publishing key and is not broken by this, but setup grows a second
-  step, and the dashboard is the one feature whose setup he can decline
-  and lose nothing else by declining.
+  step, and the dashboard is the one feature whose setup the user can
+  decline and lose nothing else by declining.
 
 ## What every part does the same way
 
@@ -400,58 +434,59 @@ interface, and hands the Face plain numbers. Two traps:
 ### Where everything sits on disk
 
 **Two folders and a keyring, and the difference between them is what
-reaches the web.** This is decided here because four separate questions
-— where drafts live, where photograph originals live, where the log and
-the Insights cache live, where the second credential lives — are all the
-same question, and answering them one at a time is how they end up
-answered differently.
+reaches the web.** Where drafts live, where originals and added files
+live, where the log and the Insights cache live, where the second
+credential lives — these are all the same question, and answering them
+one at a time is how they end up answered differently.
 
-**What makes it load-bearing: everything in his repository is publicly
-fetchable.** Measured 2026-08-24 — the live site serves the README at
-its repository root, returning HTTP 200. That file is not a page and is not linked from
-anywhere, and it is served all the same. So "in the repository" and "on
-the web" are the same statement, and any file placed there for safe
-keeping is also published.
+**What makes it load-bearing: everything in the repository is publicly
+fetchable.** Measured 2026-08-24 — the first writer's live site serves
+the README at its repository root, returning HTTP 200, though it is not
+a page and nothing links to it. So "in the repository" and "on the web"
+are the same statement, and any file placed there for safe keeping is
+also published.
 
 | Where | What lives there | Published? |
 |---|---|---|
-| **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, fixed pages, templates, page furniture and historical comments, in their source form | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All his writing — drafts and published entries alike, kept apart — photograph originals, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a previous state is laid out in and undo reads back, emptied when that sequence ends, the updater's `updates.json` and `update.log`, and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, pages, templates, header, footer, menu, look, identity, site-wide script and historical comments, in their source form; and the web-sized photographs, added files and scripts the site uses | **Yes**, all of it |
+| **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder and the copy of the site's `assets/` that previews are styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Drafts are outside the site folder because of the measurement above,
 and for no other reason.** Inside it they would be backed up by every
-publish — genuinely attractive — and every unfinished poem would be
-readable by anyone who guessed the address. That is S7 broken in the
-worst way: not a draft appearing as a page, but a draft appearing and
-nobody noticing. **The cost is real and he should be told it:
-unfinished work is not backed up.** Backing drafts up somewhere that is
-not his public site is a good later item; it is not this one.
+publish — genuinely attractive — and every unfinished poem or half-built
+page would be readable by anyone who guessed the address. That is S7
+broken in the worst way: not a draft appearing as a page, but a draft
+appearing and nobody noticing. **The cost is real and the user should
+be told it: unfinished work is not backed up.** Backing drafts up
+somewhere that is not their public site is a good later item; it is not
+this one.
 
 **Pressless's own folder sits beside the program file, not under the
 home directory.** Decided with the user 2026-08-25. It holds the
-photograph originals, so the default location puts hundreds of
-megabytes on a system drive that may have no room for them; choosing
-where the program file lives is how the drive gets chosen. On Linux
-that file is the AppImage, found through the `APPIMAGE` environment
-variable rather than the running process's own path, which points into
-a temporary mount. On Windows it is the extracted folder. **Where the
-folder cannot be created, Pressless stops and says so** — falling back
-to the home directory silently would fill the drive this rule exists to
-protect, and nobody would see it happen.
+photograph originals and added files, so the default location puts
+hundreds of megabytes on a system drive that may have no room for them;
+choosing where the program file lives is how the drive gets chosen. On
+Linux that file is the AppImage, found through the `APPIMAGE`
+environment variable rather than the running process's own path, which
+points into a temporary mount. On Windows it is the extracted folder.
+**Where the folder cannot be created, Pressless stops and says so** —
+falling back to the home directory silently would fill the drive this
+rule exists to protect, and nobody would see it happen.
 
-**Published entries in `content/` are fetchable, and that is fine** —
-they are the source text of writing already on the page.
+**Published work in `content/` is fetchable, and that is fine** — it is
+the source text of what is already on the site.
 
-**`content/` carries everything that shapes the site, not just entries:**
-the published entries and their comments, the fixed pages, the templates,
-and the header, footer and navigation. That is what makes undo whole —
-fetching a previous state brings back the page furniture along with the
-writing, so the one edit that reaches all 862 pages is recoverable by the
+**`content/` carries everything that shapes the site, not just
+entries:** the published entries and their comments, the pages, the
+templates, the header, footer and menu, the look, the identity and the
+site-wide script. That is what makes undo whole — fetching a previous
+state brings back the page furniture and the look along with the
+writing, so the one edit that reaches every page is recoverable by the
 same single step as everything else. Settings keeps what is
 machine-specific instead; the parts table above lists it, and none of it
-is writing. **The settings file lives in Pressless's own folder** and is
-never published.
+is site material. **The settings file lives in Pressless's own folder**
+and is never published.
 
 **The keyring line is a widening of ADR-0003, recorded 2026-08-24.**
 That decision was written about the publishing key when it was the only
@@ -462,51 +497,51 @@ is also not protected. Where there is no keyring it falls back to the
 same owner-only file the publishing key does, which is what ADR-0003
 means by one store, one fallback, one rule.
 
-### Errors — he must be able to tell what went wrong
+### Errors — the user must be able to tell what went wrong
 
-**Every message he can reach has three things, in this order:**
+**Every message they can reach has three things, in this order:**
 
-1. **What happened**, in his words. *"Pressless could not reach
+1. **What happened**, in their words. *"Pressless could not reach
    GitHub."* Never a code, never a stack trace, never the word
    *exception*.
-2. **What it means for his site.** *"Your site has not changed."* This
-   is S6's actual requirement — he is told where his site stands — and
-   it is the part a technical error message always omits. **One failure
-   cannot say that**: a write that can move the site was sent — the
-   reference update, or an empty repository's start write — and GitHub's
-   answer did not say what it did: none came back, a server error, or a
-   success that does not say how (PRESS-0009 § 6). Each way the write may
-   have been applied, so the sentence says the outcome is unknown rather
-   than guessing.
-3. **What to do next.** *"Check your internet and click Press to site again."*
-   An error that does not say this leaves him stuck holding a fact.
+2. **What it means for their site.** *"Your site has not changed."* This
+   is S6's actual requirement — they are told where their site stands —
+   and it is the part a technical error message always omits. **One
+   failure cannot say that**: a write that can move the site was sent —
+   the reference update, or an empty repository's start write — and
+   GitHub's answer did not say what it did: none came back, a server
+   error, or a success that does not say how (PRESS-0009 § 6). Each way
+   the write may have been applied, so the sentence says the outcome is
+   unknown rather than guessing.
+3. **What to do next.** *"Check your internet and click Press to site
+   again."* An error that does not say this leaves them stuck holding a
+   fact.
 
 **Parts raise typed failures; only the Face turns them into sentences.**
-No part writes prose for him — it says *what* failed and the Face owns
-*how it reads*. That keeps one place to check, and one place to fix a
-sentence that confuses him.
+No part writes prose for the user — it says *what* failed and the Face
+owns *how it reads*. That keeps one place to check, and one place to fix
+a sentence that confuses them.
 
 **Nothing raw ever reaches the screen.** The Face has a last-resort
 catch: anything unforeseen becomes *"Something went wrong that Pressless
 did not expect."*, then what it can honestly say about the site — *"Your
 site has not changed."* where nothing was in flight, and the unknown
-sentence above where a publish was in flight — then *"Try
-again, and send the details below to whoever helps you."* A **Show
-details** toggle holds the technical text and where the log file is.
-The technical text is a typed failure's own words, and for an unforeseen
-one its type alone — never a raw traceback, and never a stock message
-naming the file it failed on. Both name absolute paths, which § Logging
-forbids.
+sentence above where a publish was in flight — then *"Try again, and
+send the details below to whoever helps you."* A **Show details** toggle
+holds the technical text and where the log file is. The technical text
+is a typed failure's own words, and for an unforeseen one its type alone
+— never a raw traceback, and never a stock message naming the file it
+failed on. Both name absolute paths, which § Logging forbids.
 **The location is shown as a label, never as a full path** — *"the
 Pressless-data folder, beside the program"* — beside two buttons: one
-copies the real path, the other opens the folder. § Logging owns the reason. The
-helper still reaches the file in one click, and nothing in the message
-names him.
+copies the real path, the other opens the folder. § Logging owns the
+reason. The helper still reaches the file in one click, and nothing in
+the message names the user.
 
 **This is checkable, and it is checked.** Every failure type carries a
 written sentence, and a test walks the list and fails if any one of them
 has no sentence, or has a sentence missing any of the three parts. An
-error nobody wrote is caught by the test, not by him.
+error nobody wrote is caught by the test, not by the user.
 
 ### State
 
@@ -520,14 +555,14 @@ than an exception.** Google limits how often it will answer, so the last
 reply for each time span asked for is kept on disk with the time it was
 fetched, and the dashboard says when it was last updated. Deleting that
 file costs nothing but a fresh fetch. Nothing else in Pressless may keep
-one: a cache of his
-writing would be a second copy that can disagree with the first, and
-which one is true is exactly the question S3 exists to make unaskable.
+one: a cache of the user's writing would be a second copy that can
+disagree with the first, and which one is true is exactly the question
+S3 exists to make unaskable.
 
 **Updating holds one thing in memory, and it is the exception.** A newer
-version found at start, and his Later, last as long as the process
-(PRESS-0023 § 4.9). Nothing of his is in them, and losing them costs one
-check at the next start.
+version found at start, and the user's Later, last as long as the
+process (PRESS-0023 § 4.9). Nothing of theirs is in them, and losing
+them costs one check at the next start.
 
 ### Persistence
 
@@ -539,12 +574,14 @@ check at the next start.
   both Windows and Linux, so a crash mid-save cannot leave half an entry.
 - **Anything Pressless does not understand is left as written, and never
   silently dropped.** A mark it does not know is kept byte-for-byte —
-  ADR-0001's promise, and it is about marks. A header field it has no use
-  for is never dropped and keeps its name and value, but NOT byte-for-byte:
-  the spacing around the value is normalised and the order is the emitted
-  one (measured; `PRESS-0005` §4.2 owns the rule and states the departure).
-  This is a promise about twelve years of writing, and it is the reason the
-  Store never rewrites a file it was only asked to read.
+  ADR-0001's promise, and it is about marks; a page's code section is
+  the same promise for pages. A header field it has no use for is never
+  dropped and keeps its name and value, but NOT byte-for-byte: the
+  spacing around the value is normalised and the order is the emitted
+  one (measured; `PRESS-0005` §4.2 owns the rule and states the
+  departure). This is a promise about years of someone's writing, and it
+  is the reason the Store never rewrites a file it was only asked to
+  read.
 
 ### Logging
 
@@ -554,18 +591,18 @@ survives; the spec sets the size. **No credential is ever written to it,
 not even shortened** — neither the publishing key nor the Google
 authorisation — `security.md` and S5.
 
-**The Face writes it.** Rule 3 denies Marks a disk, and rules 5 and 8
-spend the Publisher's and Insights' one disk write elsewhere — so the
-only part left is the one that sees every step and every failure
+**The Face writes it.** Rule 3 denies Marks and Blocks a disk, and rules
+5 and 8 spend the Publisher's and Insights' one disk write elsewhere —
+so the only part left is the one that sees every step and every failure
 already (rule 1).
 
 **Nothing Pressless shows or writes down carries three things: a
 credential, an account name either secret is filed under, or a full
-filesystem path.** The last two identify him. **Decided with the user
-2026-09-07 for what Pressless says on failure, and it binds every line of
-the log for the same reason** — the log is what he sends to whoever helps
-him, and an ordinary progress record names him just as well as a failure
-does.
+filesystem path.** The last two identify the user. **Decided with the
+user 2026-09-07 for what Pressless says on failure, and it binds every
+line of the log for the same reason** — the log is what they send to
+whoever helps them, and an ordinary progress record names them just as
+well as a failure does.
 
 **The part that raises leaves them out**, so nothing downstream has to
 strip them — `security.md` § 6 is strip before the call, not after, and
@@ -581,44 +618,47 @@ repository is its short name, never `account/name`. A secret is named by
 what it is — *your publishing key*, *your Google sign-in* — never by the
 account it is filed under.
 
-**Outside the rule: the field he typed it into.** Settings shows him back
-the site folder he picked and the repository he typed, and the file
-holding them never leaves the machine. **Everywhere else the substitutes
-apply** — every failure message and every log line, whether or not he
-chose the location it is about. **§ Errors' copy and open buttons are the
-deliberate exception**: they hand the real path to the clipboard or to
-the file manager because the helper needs it, which he does on purpose.
+**Outside the rule: the field they typed it into.** Settings shows them
+back the site folder they picked and the repository they typed, and the
+file holding them never leaves the machine. **Everywhere else the
+substitutes apply** — every failure message and every log line, whether
+or not they chose the location it is about. **§ Errors' copy and open
+buttons are the deliberate exception**: they hand the real path to the
+clipboard or to the file manager because the helper needs it, which the
+user does on purpose.
 
 ## The stack, and what it rules out
 
 **Chosen:** Python 3, the standard library's own web server for the
 Face, `Pillow` for photographs (already proven — `_work/resize.py` in
 the sibling workspace turns 220 MB of camera originals into 31 MB), the
-operating system's keyring for his key, and PyInstaller to package one
+operating system's keyring for the key, and PyInstaller to package one
 artefact per system — an AppImage on Linux, an extracted folder shipped
 as a zip on Windows, which is what § Where everything sits on disk
 resolves against.
 
-**Why:** the risky part of this project is not the app, it is twelve
-years of irregular content — three source formats, entries with no
-title at all, poems whose line breaks are the content. `build_blog.py`
-already handles all of it and has been proven against his real archive.
-Reusing it means the hard part starts working rather than starting
-again. The runner-up was a single Go binary, which is smaller and
-installs even more cleanly; it was turned down because it buys a better
-install by rewriting the one component we have evidence about.
+**Why:** the risky part of this project was never the app, it was the
+first writer's twelve years of irregular content — three source
+formats, entries with no title at all, poems whose line breaks are the
+content. `build_blog.py` already handled all of it and had been proven
+against that archive. Reusing it meant the hard part started working
+rather than starting again. The runner-up was a single Go binary, which
+is smaller and installs even more cleanly; it was turned down because it
+buys a better install by rewriting the one component there was evidence
+about.
 
 **What it rules out — the half that matters more than it looks:**
 
-- **No git on his machine.** Publishing goes through GitHub's own web
-  interface, building one commit from only the files that changed.
-  Shelling out to `git` would mean he installs it first, which is the
+- **No git on the user's machine.** Publishing goes through GitHub's own
+  web interface, building one commit from only the files that changed.
+  Shelling out to `git` would mean they install it first, which is the
   phone call this project exists to remove. See ADR-0002.
-- **No compiler, no database, no Python install** on his side.
-- **No feature that needs a server.** Pressless is not reachable from
-  the internet — discovery fixes that — so anything requiring a visitor
-  to reach it is out of the stack's reach by construction. Visitor
-  statistics are the live example.
+- **No compiler, no database, no Python install** on their side.
+- **No feature that needs a server of Pressless's own.** Pressless is
+  not reachable from the internet — discovery fixes that — so anything a
+  visitor uses works from the published files alone, or through an
+  outside service the visitor's own browser talks to. Visitor counting is
+  the live case; likes would be the second (PRESS-0211).
 - **The Windows file cannot be built on this machine.** PyInstaller does
   not cross-compile. `Pressless.exe` has to be produced by a Windows
   machine, which in practice means a GitHub Actions Windows runner. The
@@ -637,6 +677,7 @@ install by rewriting the one component we have evidence about.
 | [ADR-0003](decisions/ADR-0003-where-the-key-lives.md) | The publishing key lives in the operating system's keyring |
 | [ADR-0004](decisions/ADR-0004-windows-build-in-ci.md) | The Windows executable is built in CI, because it cannot be built here |
 | [ADR-0005](decisions/ADR-0005-dashboard-is-optional-and-separate.md) | The dashboard is a separate part that publishing never depends on |
+| Owed by PRESS-0215 | How a page's sections are marked in its HTML |
 
 ## Review loop log
 
