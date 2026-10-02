@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0214 — A site need not have a journal
 
-**Status:** spec draft (2026-10-02).
+**Status:** accepted (2026-10-02).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0214 (user decision 2026-10-02, PRESS-0198;
 `docs/design.md` § A site need not have a journal).
@@ -72,18 +72,23 @@ OPTIONS_FOLDER = "options"
 OPTIONS_FILE = "options.json"
 
 def options_path_for(folder: Path) -> Path: ...   # folder / OPTIONS_FOLDER / OPTIONS_FILE
+def read_options(folder: Path) -> dict: ...
+def write_options(folder: Path, options: dict) -> Path: ...
 def journal_on(folder: Path) -> bool: ...
 def write_journal(folder: Path, on: bool) -> Path: ...
 ```
 
 The file is UTF-8 JSON, an object. `"journal"` is a boolean.
 
-- **`journal_on`** returns True where the file is absent, or holds no
-  `"journal"` key. It raises `StoreError` where the file cannot be read, is
-  not a JSON object, or holds a `"journal"` that is not a boolean.
-- **`write_journal`** reads the object (an absent file is `{}`), sets
-  `"journal"`, keeps every other key, and writes the file whole or not at
-  all through `_write_atomically`, as `write_forwards` does.
+- **`read_options`** returns `{}` where the file is absent. It raises
+  `StoreError` where the file cannot be read, is not UTF-8, or is not a JSON
+  object.
+- **`write_options`** writes the object whole or not at all through
+  `_write_atomically`, keys sorted, as `write_forwards` does.
+- **`journal_on`** is `read_options(folder).get("journal", True)`, and raises
+  `StoreError` where that value is not a boolean.
+- **`write_journal`** sets `"journal"` in `read_options(folder)`, keeps every
+  other key, and writes it with `write_options`.
 - **`OPTIONS_FOLDER` joins `_BINNABLE`**, because undo bins the version it
   replaces (§ 4.4).
 
@@ -125,11 +130,17 @@ site, and that turning it on from "Your writing" lets this entry publish
 
 ### 4.4 Undo
 
-`undo._read` reads `content/options/options.json` from the fetched state.
-`_restore_other_kinds` restores it as it restores `forwards.json`: where it
-differs from the Store's or the Store holds none, the Store's goes to the bin
-and the fetched one is written, with a reversal recorded. A fetched state
-holding none leaves the Store's file untouched, as every other kind is.
+`undo._read` reads `content/options/options.json` from the fetched state
+with `store.read_options`. A fetched state without it holds `{}`, every
+option at its default. `_restore_other_kinds` compares that object with
+`store.read_options(folder)`. Where they differ, the Store's file goes to
+the bin, and `write_options` writes the fetched object unless it is `{}`.
+A reversal is recorded for each step.
+
+**This is the one kind whose absence from the fetched state is restored.**
+Absence means on (§ 3 decision 3), so keeping the Store's file would leave
+the journal off after an undo to a state where it was on. Every other kind
+keeps PRESS-0015 § 4.4's rule that a file the fetched state lacks is kept.
 
 ### 4.5 The "Your writing" page
 
@@ -145,6 +156,10 @@ button that posts to a new `POST /journal`, which `editor.register` adds.
 - **Turning it off where an entry is published** shows, beside the button,
   that the published entries leave the site at the next publish and come
   back when the journal is turned on again.
+
+**The menu is the navigation furniture file until PRESS-0195** makes it a
+list, so turning the journal off says that a journal link in the menu stays
+until the user removes it in the page editor.
 
 `page_editor`'s "Your newest entry" choice is offered only where
 `store.journal_on(folder)` holds as well as where an entry is published.
@@ -163,7 +178,7 @@ button that posts to a new `POST /journal`, which `editor.register` adds.
 - **INV-3** — With the journal off and a published entry, a build writes
   nothing under `blog/`, and `sitemap.xml` names no `blog/` address. With
   it on, the same Store builds byte-identically to a Store with no options
-  file. *Test:*
+  file, apart from `content/options/options.json`. *Test:*
   `tests/test_builder.py::test_a_site_with_its_journal_off_has_no_blog`.
   *Breaks when:* `listings` or `archive` still runs, or the on case reads the
   file differently from its absence.
@@ -182,9 +197,11 @@ button that posts to a new `POST /journal`, which `editor.register` adds.
   *Breaks when:* the check runs after the move, or not at all.
 - **INV-7** — An undo whose fetched state holds `{"journal": true}` over a
   Store holding `{"journal": false}` writes the fetched file and bins the
-  Store's. A fetched state with no options file leaves the Store's alone.
+  Store's. A fetched state with no options file, over the same Store, bins
+  the Store's, so the journal reads on.
   *Test:* `tests/test_undo.py::test_undo_restores_the_journal_switch`.
-  *Breaks when:* undo ignores the file, or removes the Store's.
+  *Breaks when:* undo ignores the file, or keeps the Store's where the
+  fetched state has none.
 - **INV-8** — `POST /journal` turns an absent file into
   `{"journal": false}` and, posted again, into `{"journal": true}`. *Test:*
   `tests/test_editor.py::test_the_journal_button_switches_it`.
@@ -231,8 +248,7 @@ mutation-probed once the code lands.
 ## 9. Out of scope
 
 - The menu as a list the Store holds, which drops a journal link by itself —
-  PRESS-0195. Until then the menu is the navigation furniture file, edited by
-  hand.
+  PRESS-0195.
 - The starter site turning the journal off — PRESS-0126.
 - Other site-wide options in `options.json` — deferred; not yet queued.
 
@@ -260,7 +276,10 @@ Each edit below is a pointer to this spec beside the clause it changes.
   the options file.
 - `docs/specs/PRESS-0013-publish.md` § 4.3 — the guard depends on the switch,
   and `JournalOff` precedes the move.
-- `docs/specs/PRESS-0015-undo.md` § 4.4 — undo restores the options file.
+- `docs/specs/PRESS-0015-undo.md` § 4.4 — undo restores the options file,
+  and a fetched state without one resets it.
+- `docs/design.md` § A site need not have a journal — the menu drops the
+  journal once PRESS-0195 makes it a list.
 - `docs/specs/PRESS-0005-store.md` § 4.1 — `move_to_bin` takes `options/`.
 - `CHANGELOG.md` — an Added entry when it ships.
 

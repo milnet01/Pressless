@@ -152,7 +152,8 @@ live site is unchanged. Both checks run before the build.
 
 **A site need not have a journal** (PRESS-0214). Entries are one thing
 a site can hold. Where it has none, the Builder makes no journal pages
-and the menu offers none.
+and the menu offers none (once PRESS-0195 makes the menu a list; until
+then, PRESS-0214 § 4.5).
 
 **Pages, and how they are held.** A page is anything the site serves
 that is not a dated entry: the homepage, About, Privacy, and every page
