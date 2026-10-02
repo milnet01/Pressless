@@ -9169,6 +9169,22 @@ already-built code ships in whichever release comes next.
   script is developer tooling built under write-code: it wraps
   face.serve with PORT and runs the launcher's own start-up, so the
   launcher is unchanged (PRESS-0011 section 11).
+  Progress (2026-10-02): PRESS-0011 amended and gated (loop 6,
+  068bcac); serve(folder, port=0) shipped with INV-11's test (022125a).
+  scripts/practice.py is WRITTEN BUT UNCOMMITTED AND NEVER RUN: it seeds
+  a made-up site in $XDG_DATA_HOME/pressless-practice, replaces
+  publisher._Urllib and insights._own_client with refusing transports,
+  makes google_signin.available() false, wraps face.serve with PORT,
+  turns SIGTERM into KeyboardInterrupt, then calls the launcher's
+  _serve(folder). ruff flags its import order (I001). Still to do: fix
+  that; add tests/test_practice.py (port_from's bounds, seed() makes a
+  folder the launcher accepts, disarm() leaves no route to GitHub or
+  Google); add an executable run.sh at the root with the line
+  `PORT=${PORT:-8471}`, then `export PORT`, `cd "$(dirname "$0")"` and
+  `exec python3 scripts/practice.py`; run it once and press Publish to
+  see it refused; then message LWSM via session_message
+  to:"localwebservermanager" (its question: TCP connect or HTTP GET for
+  the running light; a GET without the secret gets 403).
   **Layman:** A test copy of Pressless with made-up writing that a developer can start from the source code, which never publishes anything or reaches Google.
   Kind: feature.
   Source: LocalWebServerManager session request 2026-10-02; user chose the practice copy the same day.
@@ -9211,6 +9227,23 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user request 2026-10-02.
   Lanes: Launcher.
+
+- 📋 [PRESS-0206] **Choose a different Google site without signing in again.**
+  Today, once visitor numbers are set up, google_setup._show offers only
+  "Sign in again" and "Turn off visitor numbers", so changing site means
+  a full Google sign-in. Every part needed already exists in
+  src/pressless/google_setup.py: read the stored refresh token
+  (credentials.read), get an access token (google_signin.access_token),
+  list properties (google_signin.properties), and fill state.pending so
+  the existing picker and _choose run unchanged. Ships in 0.7.1 with
+  PRESS-0201, by the user's choice 2026-10-02. Check the picker on the
+  Windows box in Edge, Chrome and Firefox before signing 0.7.1.
+  Afterwards record the new route in the PRESS-0122 spec as code that
+  already exists (rule 14's code-exists exception, no gate).
+  **Layman:** A "Choose a different site" button in Settings, Visitor numbers, lists your sites again using the permission Pressless already keeps.
+  Kind: feature.
+  Source: user request 2026-10-02, after the 0.7.0 hand checks; user chose it for 0.7.1.
+  Lanes: Face.
 
 ## Milestones
 
