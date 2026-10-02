@@ -18,7 +18,17 @@ from pathlib import Path
 import pytest
 from _face_session import session_cookie
 
-from pressless import credentials, face, google_setup, google_signin, insights, settings, setup
+from pressless import (
+    credentials,
+    face,
+    google_setup,
+    google_signin,
+    insights,
+    settings,
+    setup,
+    starter,
+    store,
+)
 
 CLIENT = "client.apps.googleusercontent.com"
 SECRET = "sentinel-client-secret"  # noqa: S105 -- a sentinel, not a secret
@@ -37,12 +47,13 @@ class _Google:
     sign-in a token came from."""
 
     def __init__(self, *, revoke: BaseException | int = 200, exchange: int = 200,
-                 listed: tuple[str, ...] = LISTED) -> None:
+                 listed: tuple[str, ...] = LISTED, streams: list | None = None) -> None:
         self.clock = 1000.0
         self.calls: list[tuple[str, str, dict[str, list[str]]]] = []
         self.revoke = revoke
         self.exchange = exchange
         self.listed = listed
+        self.streams = streams     # PRESS-0199: a property's data streams
 
     def request(self, method, url, body, headers):
         form = urllib.parse.parse_qs((body or b"").decode())
@@ -55,6 +66,8 @@ class _Google:
             refresh = form["refresh_token"][0]
             return 200, {}, json.dumps({"access_token": f"access-{refresh}",
                                         "expires_in": 3600}).encode()
+        if "/dataStreams" in url:
+            return 200, {}, json.dumps({"dataStreams": self.streams or []}).encode()
         if url.startswith("https://analyticsadmin.googleapis.com/"):
             summaries = [{"property": f"properties/{p}", "displayName": f"Site {p}"}
                          for p in self.listed]
@@ -423,3 +436,30 @@ def test_settings_names_visitor_numbers_once_they_are_on(
     assert 'href="/setup/google"' in page
     assert ("Visitor numbers are on" in page) is signed_in
     assert ("Optional: " in page) is not signed_in
+
+
+# PRESS-0199 INV-6 (docs/specs/PRESS-0199-counting-code.md § 4.3).
+
+STREAM = [{"type": "WEB_DATA_STREAM",
+           "webStreamData": {"measurementId": "G-ABC123", "defaultUri": "https://example.org"}}]
+
+
+def test_choosing_a_property_switches_counting_on(tmp_path: Path,
+                                                  monkeypatch: pytest.MonkeyPatch,
+                                                  registered: None) -> None:
+    """INV-6. Breaks when the found id is not saved, overwrites a typed one,
+    or the Privacy page is not added."""
+    _Store(monkeypatch)
+    for case, typed in (("found", None), ("typed", "G-TYPED1")):
+        folder = tmp_path / case
+        folder.mkdir()
+        _saved(folder, measurement_id=typed)
+        starter.fill(folder, "A Journal")
+        with _served(folder, _Google(streams=STREAM)) as browser:
+            browser.come_back(browser.start())
+            browser.send("GET", "/setup/google")
+            browser.send("POST", "/setup/google/choose", {"property": "111"})
+        assert settings.load(folder).measurement_id == (typed or "G-ABC123"), case
+        assert store.html_path_for(folder, store.PAGES_FOLDER, "privacy").is_file(), case
+        footer = store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, "footer"))
+        assert footer.count("pages/privacy.html") == 1, case

@@ -1208,3 +1208,80 @@ def test_the_style_code_replaces_the_assets_links(tmp_path):
     assert "assets/site.css" not in styled and "assets/blog.css" not in styled
     assert ((tmp_path / "styled" / "look" / "style.css").read_text(encoding="utf-8")
             == "body { color: black; }\n")
+
+
+# PRESS-0199 INV-2, INV-3, INV-4 (docs/specs/PRESS-0199-counting-code.md § 4.2).
+
+TAG = "googletagmanager.com/gtag/js"
+HAND_TAG = '<script async src="https://www.googletagmanager.com/gtag/js?id=G-OLD1"></script>'
+
+
+def _pages_outside_content(root: Path) -> dict[str, str]:
+    return {p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+            for p in root.rglob("*.html") if p.relative_to(root).parts[0] != "content"}
+
+
+def test_every_built_page_carries_the_counting_code(tmp_path):
+    """INV-2. Breaks when an entry page, a listing or a fixed page lacks it, a
+    forward or a content/ copy carries it, or a page whose header holds a tag
+    gets a second."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_forwards(folder, {"old-seaside": "seaside"})
+    build(folder, _settings(measurement_id="G-ABC123"), tmp_path / "on")
+    build(folder, _settings(), tmp_path / "off")
+    forward = "blog/2020/01/02/old-seaside/index.html"
+
+    on = _pages_outside_content(tmp_path / "on")
+    assert forward in on and TAG not in on[forward]
+    for name, text in on.items():
+        if name != forward:
+            assert text.count(TAG) == 1, name
+            assert "?id=G-ABC123" in text, name
+    content = [p for p in (tmp_path / "on" / "content").rglob("*") if p.is_file()]
+    assert content and all(TAG.encode() not in p.read_bytes() for p in content)
+    assert all(TAG not in text for text in _pages_outside_content(tmp_path / "off").values())
+
+    store.write_html(folder, store.FURNITURE_FOLDER, "header", HAND_TAG + "\n" + HEADER)
+    build(folder, _settings(measurement_id="G-ABC123"), tmp_path / "tagged")
+    for name, text in _pages_outside_content(tmp_path / "tagged").items():
+        if name != forward:
+            assert text.count(TAG) == 1, name
+
+
+def test_the_counting_code_finds_its_place(tmp_path):
+    """INV-3. Breaks when the match is case-sensitive, or a hand-written tag
+    is doubled."""
+    pages = {
+        "index": "<HTML><HEAD><title>x</title></HEAD><body>\n"
+                 "<!-- HEADER:START -->\n<!-- HEADER:END -->\n</body></HTML>\n",
+        "nohead": '<body class="x">\n<!-- HEADER:START -->\n<!-- HEADER:END -->\n'
+                  "<p>Hi</p></body>\n",
+        "tagged": f"<html><head>{HAND_TAG}</head><body>\n"
+                  "<!-- HEADER:START -->\n<!-- HEADER:END -->\n</body></html>\n",
+    }
+    folder = _store(tmp_path, pages=pages)
+    into = tmp_path / "site"
+    build(folder, _settings(measurement_id="G-ABC123"), into)
+    code = builder.counting_code("G-ABC123")
+    assert code + "</HEAD>" in (into / "index.html").read_text(encoding="utf-8")
+    assert '<body class="x">' + code in (into / "pages" / "nohead.html").read_text(
+        encoding="utf-8")
+    tagged = (into / "pages" / "tagged.html").read_text(encoding="utf-8")
+    assert tagged.count(TAG) == 1 and "G-ABC123" not in tagged
+    assert 'class="site"' in tagged
+
+
+def test_a_preview_is_never_counted(tmp_path):
+    """INV-4. Breaks when the preview build takes the publishing branch."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    counted = _settings(measurement_id="G-ABC123")
+    builder.preview(folder, counted, tmp_path / "one", _entry("seaside"),
+                    photo_src=lambda name: name)
+    index = store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, "index"))
+    builder.preview_html(folder, counted, tmp_path / "two",
+                         builder.Html(store.PAGES_FOLDER, "index", index), show="index",
+                         photo_src=lambda name: name)
+    for root in (tmp_path / "one", tmp_path / "two"):
+        assert all(TAG.encode() not in p.read_bytes() for p in root.rglob("*") if p.is_file())

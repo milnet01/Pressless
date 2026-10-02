@@ -21,9 +21,10 @@ import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless import credentials, google_signin, insights, settings
+from pressless import credentials, google_signin, insights, settings, starter
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.google_signin import AccessToken, Attempt, Property
+from pressless.store import StoreError
 
 GOOGLE_ACCOUNT = "google"                 # the account the refresh token is filed under
 SIGN_IN = "your Google sign-in"           # the {secret} noun (PRESS-0011 § 4.2)
@@ -249,10 +250,23 @@ def _choose(state: _State, request: Request) -> str:
                           pending.refresh_token)
     except _CREDENTIAL_FAILURES as exc:
         return shown + state.face.fail(exc, publishing=False, secret=SIGN_IN)
+    # PRESS-0199 § 4.3: the property's web streams, read with the token in
+    # hand. A failure here keeps today's save and says counting is still off.
+    found: tuple[str, ...] = ()
+    lookup_failure = ""
+    try:
+        found = google_signin.measurement_ids(pending.access.value, chosen,
+                                              saved.site_address, state.client)
+    except insights.InsightsError as exc:
+        lookup_failure = state.face.fail(exc, publishing=False)
+    measurement_id = saved.measurement_id
+    if measurement_id is None and len(found) == 1:
+        measurement_id = found[0]
     candidate = dataclasses.replace(
         saved,
         credentials=dataclasses.replace(saved.credentials, google_account=GOOGLE_ACCOUNT),
         analytics_property_id=chosen,
+        measurement_id=measurement_id,
     )
     with state.face.capture() as notices:
         settings.check(candidate)
@@ -260,9 +274,44 @@ def _choose(state: _State, request: Request) -> str:
     with state.lock:
         state.held = pending.access
         state.pending = None
-    return (shown + render_notices(notices)
+    privacy = ""
+    if candidate.measurement_id is not None:
+        with state.face.capture() as privacy_notices:
+            try:
+                starter.add_privacy(state.folder, candidate.site_name)
+            except StoreError as exc:
+                privacy = ("<p>Visitor counting is on, but the Privacy page or its link "
+                           "could not be added. Saving Settings tries once more.</p>"
+                           + state.face.fail(exc, publishing=False))
+        privacy = render_notices(privacy_notices) + privacy
+    return (shown + render_notices(notices) + lookup_failure
             + "<h1>Visitor numbers are ready.</h1>"
-              '<p><a href="/">Back to your writing</a></p>')
+            + _counting(saved.measurement_id, found, lookup_failure != "") + privacy
+            + '<p><a href="/">Back to your writing</a></p>')
+
+
+def _counting(kept: str | None, found: tuple[str, ...], failed: bool) -> str:
+    """PRESS-0199 § 4.3: what became of the counting code."""
+    e = html.escape
+    if failed:
+        return ("<p>Pressless could not read this site's counting code from Google, "
+                "so counting is still off. You can type its measurement id on the "
+                'Settings page.</p>')
+    if kept is not None:
+        other = [i for i in found if i != kept]
+        extra = (f" Google also lists {e(', '.join(other))} for this site." if other else "")
+        return f"<p>Counting stays on with {e(kept)}.{extra}</p>"
+    if len(found) == 1:
+        return (f"<p>Pressless found this site's counting code ({e(found[0])}) and "
+                "will put it on every page you publish.</p>")
+    if found:
+        return ("<p>Google lists several web streams for this site: "
+                f"{e(', '.join(found))}. Type the right measurement id on the Settings "
+                "page to start counting.</p>")
+    return ("<p>This site has no web stream in Google Analytics yet, so counting is "
+            "off. In Google Analytics open Admin, then Data streams, then Add stream, "
+            "choose Web and enter your site's address. Then type the measurement id it "
+            "shows on the Settings page.</p>")
 
 
 def _off(state: _State) -> str:

@@ -298,6 +298,7 @@ _SETTINGS_FIELDS = {
     "untouchable",
     "credentials",
     "analytics_property_id",
+    "measurement_id",   # PRESS-0199 § 4.1
 }
 _CREDENTIALS_FIELDS = {"store", "github_account", "google_account"}
 
@@ -1234,3 +1235,22 @@ def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch
             save(tmp_path, after)
     monkeypatch.setattr(os, "replace", real)
     assert (load(tmp_path).repository == after.repository) is written
+
+
+# PRESS-0199 INV-1 (docs/specs/PRESS-0199-counting-code.md § 4.1).
+
+
+def test_the_measurement_id_is_optional_and_shaped(tmp_path):
+    """INV-1. Breaks when an older file fails to load, or a malformed id is
+    saved."""
+    _write(tmp_path, _valid_mapping())
+    older = settings_module.load(tmp_path)
+    assert older.measurement_id is None
+    for bad in ("UA-1234", "g-abc", "G-", "G-abc"):
+        with pytest.raises(settings_module.SettingsError) as refused:
+            settings_module.check(dataclasses.replace(older, measurement_id=bad))
+        assert refused.value.key == "measurement_id", bad
+    settings_module.save(tmp_path, dataclasses.replace(older, measurement_id="G-ABC123"))
+    written = json.loads((tmp_path / FILE_NAME).read_text(encoding="utf-8"))
+    assert written["measurement_id"] == "G-ABC123"
+    assert settings_module.load(tmp_path).measurement_id == "G-ABC123"

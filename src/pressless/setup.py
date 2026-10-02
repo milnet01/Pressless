@@ -27,13 +27,17 @@ GITHUB_ACCOUNT = "github"             # the account the publishing key is filed 
 KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
 
 # The answers a refused SettingsError can name; any other key is a failure.
-_ANSWERED = ("repository", "site_name", "site_address")
-_FIELDS = ("repository", "site_name", "site_address", "daily_prompt_filter")
+_ANSWERED = ("repository", "site_name", "site_address", "measurement_id")
+_FIELDS = ("repository", "site_name", "site_address", "daily_prompt_filter",
+           "measurement_id")
 
 _HINTS = {
     "repository": "Type it as owner/name, the way GitHub shows it.",
     "site_name": "Type the site's name on one line.",
     "site_address": "Type the site's full address, starting with https://.",
+    # PRESS-0199 § 4.4.
+    "measurement_id": "Type the measurement id as Google shows it: G- and then "
+                      "capital letters and numbers, or leave it empty.",
 }
 _NO_SUCH_REPOSITORY = (
     "GitHub has no repository by that name that this key can reach."
@@ -194,7 +198,33 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
             failed = None
     if failed is not None:
         return render_notices(filling) + render_notices(notices) + failed
-    return render_notices(filling) + render_notices(notices) + _done(final, choice, filled)
+    privacy, privacy_failure = _privacy(face, folder, final)
+    return (render_notices(filling) + render_notices(notices) + privacy_failure
+            + _done(final, choice, filled) + privacy)
+
+
+def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
+    """PRESS-0199 § 4.5: after a save holding a measurement id, the Privacy
+    page and its footer link where absent. Returns what to say, and a failure
+    fragment; the id is saved either way, and the next save retries."""
+    if final.measurement_id is None:
+        return "", ""
+    with face.capture() as notices:
+        try:
+            page, link = starter.add_privacy(folder, final.site_name)
+        except StoreError as exc:
+            return "", render_notices(notices) + (
+                "<p>Visitor counting is on, but the Privacy page or its link could "
+                "not be added. Saving again tries once more.</p>"
+                + face.fail(exc, publishing=False))
+    said = []
+    if page:
+        said.append("<p>Your site now has a Privacy page saying that it counts "
+                    "visitors. Open it from Your pages and add how people can "
+                    "reach you.</p>")
+    if link:
+        said.append("<p>Your footer now links to the Privacy page.</p>")
+    return render_notices(notices) + "".join(said), ""
 
 
 def _candidate(folder: Path, saved: settings.Settings | None,
@@ -216,6 +246,7 @@ def _candidate(folder: Path, saved: settings.Settings | None,
         untouchable=(),
         credentials=kept,
         analytics_property_id=property_id,
+        measurement_id=values["measurement_id"] or None,   # PRESS-0199 § 4.4
     )
 
 
@@ -228,7 +259,7 @@ def _read_answers(body: bytes) -> dict[str, str]:
 def _values_from(saved: settings.Settings | None) -> dict[str, str]:
     if saved is None:
         return {name: "" for name in _FIELDS}
-    return {name: getattr(saved, name) for name in _FIELDS}
+    return {name: getattr(saved, name) or "" for name in _FIELDS}
 
 
 def _credential_failure(face: Face, failure: Exception) -> str:
@@ -269,6 +300,8 @@ def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str], *,
         + field("site_address", "Your site's address")
         + field("daily_prompt_filter",
                 "Leave out entries with a tag matching (optional, for example dailyprompt-*)")
+        + field("measurement_id",
+                "Google's measurement id, to count your visitors (optional, starts G-)")
         + _starter_box(start)
         + key_note
         + '<p><label>Your publishing key <input type="password" name="key" '

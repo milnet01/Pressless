@@ -82,6 +82,23 @@ def _entries(count: int) -> str:
     return f"{count} {'entry' if count == 1 else 'entries'}"
 
 
+# PRESS-0199 § 4.2: where Google's tag goes in a page, and how a page that
+# already carries one is told.
+_TAGGED = "googletagmanager.com/gtag/js"
+_HEAD_END = re.compile(r"</head\s*>", re.IGNORECASE)
+_BODY_START = re.compile(r"<body\b[^>]*>", re.IGNORECASE)
+
+
+def counting_code(measurement_id: str) -> str:
+    """Google's tag for `measurement_id`, which Settings' check has already
+    held to G- and capitals and digits, so it needs no escaping."""
+    return (f'<script async src="https://www.googletagmanager.com/gtag/js?id={measurement_id}">'
+            "</script>\n"
+            "<script>window.dataLayer=window.dataLayer||[];"
+            "function gtag(){dataLayer.push(arguments);}gtag('js',new Date());"
+            f"gtag('config','{measurement_id}');</script>\n")
+
+
 def stylesheets(folder: Path) -> tuple[str, ...]:
     """The stylesheets a page links, from the root (PRESS-0126 § 4.6): the
     Store's style code where it holds one, else the live site's assets/ pair."""
@@ -507,7 +524,8 @@ class _Build:
     def fixed_page(self, name: str, text: str) -> None:
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
-        self.write_text(relative, _fill_fixed_page(name, text, depth, self.furniture))
+        self.write_text(relative, self.counted(_fill_fixed_page(name, text, depth,
+                                                                self.furniture)))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug
@@ -526,7 +544,7 @@ class _Build:
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
-        self.write_text(f"{relative}/index.html", f"""<!doctype html>
+        self.write_text(f"{relative}/index.html", self.counted(f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -547,7 +565,21 @@ class _Build:
 
 </body>
 </html>
-""")
+"""))
+
+    def counted(self, text: str) -> str:
+        """PRESS-0199 § 4.2: `text` with Google's tag, on a publishing build
+        where Settings holds an id. Not where the finished text already holds
+        one -- its own, or a header or footer filled into it."""
+        measurement_id = self.settings.measurement_id
+        if self.photo_src is not None or measurement_id is None or _TAGGED in text:
+            return text
+        code = counting_code(measurement_id)
+        if found := _HEAD_END.search(text):
+            return text[:found.start()] + code + text[found.start():]
+        if found := _BODY_START.search(text):
+            return text[:found.end()] + code + text[found.end():]
+        return text + code
 
     def meta(self, entry: store.Entry, up: str) -> str:
         """The date line: the entry's own date, then a chip per category."""

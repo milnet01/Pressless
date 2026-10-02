@@ -3171,7 +3171,7 @@ it decides how pages, the menu and the look are held.
   Kind: doc.
   Source: user-decision-2026-10-01.
 
-- 📋 [PRESS-0199] **Pressless puts the Google Analytics tracking code on the site, with step-by-step help for the rest.**
+- ✅ [PRESS-0199] **Pressless puts the Google Analytics tracking code on the site, with step-by-step help for the rest.**
   User decision 2026-10-01: automate as much as can be automated, and
   give detailed instructions for what cannot. Overturns design.md's
   2026-08-26 settlement that Pressless never writes the footer tag and
@@ -3181,6 +3181,10 @@ it decides how pages, the menu and the look are held.
   Analytics account and property for the site, and finding the two ids.
   Without it a new user's dashboard reads nothing, because Google
   counts only pages that carry the tag.
+  Resolved (2026-10-02): built to docs/specs/PRESS-0199-counting-code.md
+  (accepted after one review round). Eight invariants, each with its test;
+  21 mutations, all killed. Gate green on Linux and the Windows box.
+  By-hand checks owed before release are on PRESS-0133.
   **Layman:** Pressless switches on Google's visitor counting for the site itself, and walks him through the parts it cannot do for him.
   Kind: feature.
   Source: user-decision-2026-10-01.
@@ -3402,6 +3406,10 @@ it decides how pages, the menu and the look are held.
   every entry it kept before "look" joined the Builder's output. The
   stylesheet's contrast was computed by the WCAG formula (17.4, 7.8 and
   11.4 to 1) and the pages were seen rendered in Chrome.
+  Owed (2026-10-02) for PRESS-0199, its spec section 7: a real
+  property's web streams read through the Google step on the Windows box,
+  and Google's Realtime report showing a visit to a page published with
+  the counting code.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

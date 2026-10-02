@@ -10,9 +10,10 @@ already on GitHub (docs/specs/PRESS-0126-starter-site.md).
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 
-from pressless import store, templates
+from pressless import builder, store, templates
 
 MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
 
@@ -95,6 +96,77 @@ img { max-width: 100%; height: auto; }
 .chip { display: inline-block; margin: 0 0.5rem 0.5rem 0; }
 .pager, .back { margin-top: 2rem; }
 """
+
+
+# PRESS-0199 § 4.5: the disclosure counting needs, in the starter pages'
+# shape. `fill` does not write it; `add_privacy` does, while counting is on.
+_PRIVACY = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — {name}</title>
+{links}
+</head>
+<body>
+<!-- HEADER:START page="privacy" -->
+<!-- HEADER:END -->
+<main class="page">
+<h1>Privacy</h1>
+<p>This site counts its visits with Google Analytics, a service run by Google.
+Google Analytics uses cookies, small files your browser keeps, to tell one
+visit from another.</p>
+<p>What is counted: the pages read, the country and region a visit comes
+from, and the kind of device and browser used. The counts are used only to
+see how the site is read.</p>
+<p>Google's own privacy policy says what Google does with this information:
+<a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.
+To stop Google Analytics counting your visits to any site, you can install
+Google's <a href="https://tools.google.com/dlpage/gaoptout">opt-out browser
+add-on</a>.</p>
+<p>Questions about your information: replace this sentence with how to reach
+the person who runs this site.</p>
+</main>
+<!-- FOOTER:START -->
+<!-- FOOTER:END -->
+</body>
+</html>
+"""
+
+PRIVACY_LINK = '<a href="{{UP}}pages/privacy.html">Privacy</a>'
+_FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
+
+
+def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
+    """The Privacy page, linking each stylesheet from depth 1."""
+    links = "\n".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
+                      for sheet in sheets)
+    return _PRIVACY.format(name=html.escape(site_name, quote=True), links=links)
+
+
+def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
+    """PRESS-0199 § 4.5: while counting is on, the Privacy page and a footer
+    link to it, each where absent, and only on a Store holding a site. Returns
+    whether each was added. Never creates a footer file."""
+    folder = Path(folder)
+    if not store.holds_a_site(folder):
+        return False, False
+    page = store.html_path_for(folder, store.PAGES_FOLDER, "privacy")
+    added_page = not page.exists()
+    if added_page:
+        store.write_html(folder, store.PAGES_FOLDER, "privacy",
+                         privacy_page(site_name, builder.stylesheets(folder)))
+    footer = store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
+    added_link = False
+    if footer.exists():
+        text = store.read_html(footer)
+        if "pages/privacy.html" not in text:
+            end = _FOOTER_END.search(text)
+            at = end.start() if end else len(text)
+            store.write_html(folder, store.FURNITURE_FOLDER, "footer",
+                             text[:at] + PRIVACY_LINK + "\n" + text[at:])
+            added_link = True
+    return added_page, added_link
 
 
 def offered(folder: Path) -> bool:

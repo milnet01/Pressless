@@ -642,3 +642,49 @@ def test_an_unticked_box_fills_nothing(tmp_path, monkeypatch):
 def test_the_look_is_builder_output():
     """INV-14. Breaks when "look" is not in ROOT_OUTPUT."""
     assert setup.untouchable(("look", "CNAME")) == ("CNAME",)
+
+
+# PRESS-0199 INV-7, INV-8 (docs/specs/PRESS-0199-counting-code.md §§ 4.4, 4.5).
+
+
+def test_switching_counting_on_adds_privacy_once(tmp_path, monkeypatch):
+    """INV-7. Breaks when the link is inserted on every save, the user's
+    Privacy page is replaced, or an empty Store is written to."""
+    _Store(monkeypatch)
+    site = tmp_path / "site-held"
+    site.mkdir()
+    _saved(site)
+    starter.fill(site, "A Journal")
+    with _setup_page(site, _GitHub()) as browser:
+        browser.post(_answers(measurement_id="G-ABC123", key=""))
+        browser.post(_answers(measurement_id="G-ABC123", key=""))
+    assert settings.load(site).measurement_id == "G-ABC123"
+    assert store.html_path_for(site, store.PAGES_FOLDER, "privacy").is_file()
+    footer = store.read_html(store.html_path_for(site, store.FURNITURE_FOLDER, "footer"))
+    assert footer.count("pages/privacy.html") == 1
+
+    mine = tmp_path / "mine"
+    mine.mkdir()
+    _saved(mine)
+    starter.fill(mine, "A Journal")
+    store.write_html(mine, store.PAGES_FOLDER, "privacy", "<p>my own</p>\n")
+    with _setup_page(mine, _GitHub()) as browser:
+        browser.post(_answers(measurement_id="G-ABC123", key=""))
+    assert store.read_html(store.html_path_for(mine, store.PAGES_FOLDER, "privacy")) == (
+        "<p>my own</p>\n")
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with _setup_page(empty, _GitHub()) as browser:
+        browser.post(_answers(measurement_id="G-ABC123"))
+    assert settings.load(empty).measurement_id == "G-ABC123"
+    assert not store.holds_a_site(empty)
+
+
+def test_a_malformed_measurement_id_is_a_refused_answer(tmp_path, monkeypatch):
+    """INV-8. Breaks when a malformed id reaches settings.save."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, page = browser.post(_answers(measurement_id="UA-1234"))
+    assert _hint_for("measurement_id", page)
+    assert not _settings_file(tmp_path).exists()

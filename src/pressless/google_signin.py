@@ -19,6 +19,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import urllib.parse
 from dataclasses import dataclass
@@ -41,6 +42,10 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 ACCOUNTS_URL = "https://analyticsadmin.googleapis.com/v1beta/accountSummaries"
 ATTEMPT_SECONDS = 600.0  # how long a sign-in may take on Google's page
 PAGE_LIMIT = 10          # accountSummaries pages followed, at 200 accounts each
+STREAMS_URL = "https://analyticsadmin.googleapis.com/v1beta/properties/{}/dataStreams"
+# settings.check's pattern (PRESS-0199 § 4.1), restated because this module
+# imports only insights (INV-1); an id it would refuse is never returned.
+_MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")
 
 _FORM = {"Content-Type": "application/x-www-form-urlencoded"}
 
@@ -175,6 +180,43 @@ def properties(token: str, client: Transport | None = None) -> tuple[Property, .
         if not isinstance(page_token, str) or not page_token:
             break
     return tuple(found)
+
+
+def measurement_ids(token: str, property_id: str, site_address: str,
+                    client: Transport | None = None) -> tuple[str, ...]:
+    """PRESS-0199 § 4.3: the measurement ids of the property's web streams,
+    following at most PAGE_LIMIT pages. Where one stream measures the site's
+    own host, ignoring case and a leading www., its id alone."""
+    transport = client if client is not None else insights._own_client()
+    host = _host(site_address)
+    found: list[tuple[str, str]] = []
+    page_token = ""
+    for _ in range(PAGE_LIMIT):
+        query = {"pageSize": "200"}
+        if page_token:
+            query["pageToken"] = page_token
+        answer = _answer(transport, "GET",
+                         f"{STREAMS_URL.format(property_id)}?{urllib.parse.urlencode(query)}",
+                         None, {"Authorization": f"Bearer {token}"}, (token,))
+        for stream in answer.get("dataStreams") or ():
+            if not isinstance(stream, dict) or stream.get("type") != "WEB_DATA_STREAM":
+                continue
+            data = stream.get("webStreamData")
+            if not isinstance(data, dict):
+                continue
+            found_id = data.get("measurementId")
+            if isinstance(found_id, str) and _MEASUREMENT_ID.fullmatch(found_id):
+                found.append((found_id, _host(str(data.get("defaultUri") or ""))))
+        page_token = answer.get("nextPageToken") or ""
+        if not isinstance(page_token, str) or not page_token:
+            break
+    mine = [found_id for found_id, stream_host in found if host and stream_host == host]
+    return (mine[0],) if mine else tuple(found_id for found_id, _ in found)
+
+
+def _host(address: str) -> str:
+    host = (urllib.parse.urlsplit(address).hostname or "").casefold()
+    return host.removeprefix("www.")
 
 
 def revoke(refresh_token: str, client: Transport | None = None) -> None:

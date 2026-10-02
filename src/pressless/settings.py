@@ -43,6 +43,7 @@ _NAME_CHARS = frozenset(
 # address is joined into sitemap.xml and robots.txt (PRESS-0008 §4.9), where a
 # query, a fragment, a "%" or whitespace carries an address the site does not
 # serve. A pattern rather than a parse, because INV-1 keeps urllib out.
+_MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
 _SITE_ADDRESS = re.compile(
     r"https?://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~-]+)*/?"
 )
@@ -67,6 +68,9 @@ class Settings:
     untouchable: tuple[str, ...]  # repository-root entries the Publisher leaves alone
     credentials: Credentials      # where the two secrets are kept -- never the secrets
     analytics_property_id: str | None  # the NUMERIC property id, not the G-... tag
+    # PRESS-0199 § 4.1: the G-... id the counting code carries; optional on
+    # load, so a file written before it loads as None.
+    measurement_id: str | None = None
 
 
 class NotSetUp(Exception):
@@ -179,6 +183,7 @@ def load(folder: Path) -> Settings:
     github_account = _required(credentials, "github_account", str, target, "credentials.")
     google_account = _optional(credentials, "google_account", str, target, "credentials.")
     analytics_property_id = _optional(raw, "analytics_property_id", str, target)
+    measurement_id = _optional(raw, "measurement_id", str, target)
 
     loaded = Settings(
         site_folder=Path(site_folder),
@@ -193,6 +198,7 @@ def load(folder: Path) -> Settings:
             google_account=google_account,
         ),
         analytics_property_id=analytics_property_id,
+        measurement_id=measurement_id,
     )
     check(loaded)
     return loaded
@@ -276,6 +282,14 @@ def check(settings: Settings) -> None:
             "different identifier and fails every fetch",
             "analytics_property_id",
         )
+    # PRESS-0199 § 4.1: the Builder writes this into every published page, so
+    # its shape is what keeps the tag from carrying anything else.
+    measurement_id = settings.measurement_id
+    if measurement_id is not None and not _MEASUREMENT_ID.fullmatch(measurement_id):
+        raise SettingsError(
+            "measurement_id is not Google's G- id for the counting code",
+            "measurement_id",
+        )
 
 
 def save(folder: Path, settings: Settings) -> None:
@@ -349,6 +363,7 @@ def save(folder: Path, settings: Settings) -> None:
             "google_account": settings.credentials.google_account,
         },
         "analytics_property_id": settings.analytics_property_id,
+        "measurement_id": settings.measurement_id,
     })
 
     try:

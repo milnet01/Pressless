@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless puts Google's visitor counting on your site** (PRESS-0199)
+  After you choose your site in the Google step, Pressless finds its
+  counting code and puts it on every page you publish; you can also type
+  it on the Settings page. Your previews are never counted. A Privacy
+  page saying that visits are counted is added, with a link in your
+  footer, and Pressless tells you to add how people can reach you.
+
 - **A Suggest or report a problem link on every screen** (PRESS-0179)
   It opens a page that explains the report will be public, points a
   security problem to GitHub's private route, and then opens a new issue

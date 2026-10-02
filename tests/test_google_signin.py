@@ -300,3 +300,28 @@ def test_properties_are_listed_across_pages():
     assert len(endless.calls) == google_signin.PAGE_LIMIT
 
     assert google_signin.properties(ACCESS, _Google((200, {}))) == ()
+
+
+# PRESS-0199 INV-5 (docs/specs/PRESS-0199-counting-code.md § 4.3).
+
+
+def test_measurement_ids_reads_the_web_streams():
+    """INV-5. Breaks when an app stream is returned, or the host match ignores
+    the www. and case handling."""
+    streams = {"dataStreams": [
+        {"type": "ANDROID_APP_DATA_STREAM", "webStreamData": {"measurementId": "G-APP1"}},
+        {"type": "WEB_DATA_STREAM",
+         "webStreamData": {"measurementId": "G-OTHER1", "defaultUri": "https://elsewhere.example"}},
+        {"type": "WEB_DATA_STREAM",
+         "webStreamData": {"measurementId": "G-MINE1", "defaultUri": "https://www.Example.org"}},
+        {"type": "WEB_DATA_STREAM", "webStreamData": {"measurementId": "not-an-id"}},
+    ]}
+    client = _Google((200, streams))
+    assert google_signin.measurement_ids(ACCESS, "111", "https://example.org/", client) == (
+        "G-MINE1",)
+    assert client.calls[0][1] == (
+        "https://analyticsadmin.googleapis.com/v1beta/properties/111/dataStreams?pageSize=200")
+    assert client.calls[0][3]["Authorization"] == f"Bearer {ACCESS}"
+    assert google_signin.measurement_ids(
+        ACCESS, "111", "https://nomatch.example", _Google((200, streams))) == (
+        "G-OTHER1", "G-MINE1")
