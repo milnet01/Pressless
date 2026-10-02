@@ -9160,11 +9160,15 @@ already-built code ships in whichever release comes next.
   practice copy: the current source, a practice folder outside the
   repository, made-up writing, and no way to publish or reach Google.
 
-  Two existing decisions move. PRESS-0011 decision 2 binds the Face to a
-  port the system chooses; the practice copy takes PORT when set.
-  PRESS-0013 owns the launcher, which gains the practice start.
-  Needs a spec: a contract another program binds to, three subsystems,
-  and a real choice about what a practice copy may reach.
+  PRESS-0011 decision 2 bound the Face to a port the system chooses; the
+  practice copy takes PORT when set.
+
+  Contract: no spec at this id. The one product change is serve's
+  optional port, an amendment to docs/specs/PRESS-0011-face.md (decision
+  2, section 4.5, INV-11), gated one round 2026-10-02. The practice
+  script is developer tooling built under write-code: it wraps
+  face.serve with PORT and runs the launcher's own start-up, so the
+  launcher is unchanged (PRESS-0011 section 11).
   **Layman:** A test copy of Pressless with made-up writing that a developer can start from the source code, which never publishes anything or reaches Google.
   Kind: feature.
   Source: LocalWebServerManager session request 2026-10-02; user chose the practice copy the same day.

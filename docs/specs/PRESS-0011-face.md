@@ -1,6 +1,6 @@
 # PRESS-0011 — The Face: the local server, and the error contract every message keeps
 
-**Status:** accepted (2026-09-26). Amended for PRESS-0151 (the session cookie and framing) and gated at one round by user decision; first accepted 2026-09-11.
+**Status:** accepted (2026-10-02). Amended for PRESS-0202 (`serve`'s port) and gated at one round by user decision; amended for PRESS-0151 (the session cookie and framing) 2026-09-26; first accepted 2026-09-11.
 **Amended 2026-09-27, before implementation** (PRESS-0170): `serve`
 no longer opens a browser and loses its `open_browser` parameter; the
 launcher, PRESS-0013 § 4.5, is the one place that opens it. That
@@ -442,6 +442,7 @@ capture, it lands on that request's list.
 | The opening link is followed a second time | 403. Accepted: the launcher opens it once, and a new launch makes a new link |
 | Pressless is launched twice on one folder | The second start says Pressless is already running and exits; the folder's lock is PRESS-0023 § 4.11's |
 | The port a caller named is already held | `serve` raises the bind's `OSError` and binds nothing; the caller says so (§ 4.5) |
+| The local web-server manager opens `http://localhost:<port>/` | 403: its `Host` is not `127.0.0.1:<port>`, and it carries no cookie and no link. Accepted by the user 2026-10-02; the practice copy is reached through the tab the launcher's start-up opens, and neither check is relaxed for the manager |
 
 ## 7. Tests
 
@@ -529,8 +530,10 @@ once the code lands, one mutation per *Breaks when* route.
 - PRESS-0013 § 4.5 step 3, and the test start-ups PRESS-0012, PRESS-0013,
   PRESS-0014 and PRESS-0021 quote, drop `open_browser=False` and call
   `face.serve(folder)` (PRESS-0170).
-- PRESS-0202 — the practice copy's start script passes `PORT` to `serve`;
-  no other caller names a port, and PRESS-0013's launcher is unchanged.
+- PRESS-0202 — the practice copy's start script wraps `face.serve` with the
+  `PORT` it was given, then runs the launcher's own start-up, so the
+  practice copy serves the launcher's pages and PRESS-0013's launcher is
+  unchanged. No other caller names a port.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
