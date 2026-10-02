@@ -9,7 +9,7 @@ item off the queue and say which part it belongs in and what it may
 touch.
 
 **Status:** agreed 2026-08-24; rewritten 2026-10-02 for a full website
-creator and editor (PRESS-0198). What it used to say is in
+creator and editor, and agreed again the same day (PRESS-0198). What it used to say is in
 [`history/design.md`](history/design.md).
 
 It works within the shape `docs/discovery.md` § *Shape agreed with the

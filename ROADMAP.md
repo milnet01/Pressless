@@ -3090,7 +3090,7 @@ it decides how pages, the menu and the look are held.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Builder, Store, Face.
 
-- 📋 [PRESS-0198] **Rewrite discovery and design for a full WordPress replacement.**
+- ✅ [PRESS-0198] **Rewrite discovery and design for a full WordPress replacement.**
   First item of this milestone (user decision 2026-10-01, PRESS-0194).
   docs/discovery.md and docs/design.md describe a writing app that edits
   a fixed set of pages; the aim is now a full website administration
@@ -3152,6 +3152,7 @@ it decides how pages, the menu and the look are held.
   today's code is replaced by the Builder's preview stylesheet
   (PRESS-0196); site_name moves from Settings to the Store (PRESS-0213).
   Next: the user agrees the design, then this item ships.
+  Resolved (2026-10-02): the user agreed the rewritten design.
   **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
   Kind: doc.
   Source: user-decision-2026-10-01.
