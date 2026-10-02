@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-02
+
+**Theme:** he can see who is reading
+
 ### Added
 
 - **Choose a different Google site without signing in again** (PRESS-0206)
