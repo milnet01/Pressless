@@ -849,7 +849,7 @@ _THEME_LIMIT = 64
 class Face:
     """The running server. Made by `serve`; one per launch."""
 
-    def __init__(self, folder: Path) -> None:
+    def __init__(self, folder: Path, port: int = 0) -> None:
         self._folder = Path(folder)
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
@@ -864,7 +864,13 @@ class Face:
         self._files: dict[str, Locate] = {}
         self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
         self._reply = threading.local()
-        self._server = _Server(("127.0.0.1", 0), _Handler)
+        try:
+            self._server = _Server(("127.0.0.1", port), _Handler)
+        except OSError:
+            # A named port that is held: no fallback, and no open log left
+            # behind (§ 4.5).
+            self._log.close()
+            raise
         self._server.face = self
         port = self._server.server_address[1]
         self._host = f"127.0.0.1:{port}"
@@ -957,10 +963,13 @@ class Face:
         self._log.close()
 
 
-def serve(folder: Path) -> Face:
+def serve(folder: Path, port: int = 0) -> Face:
     """Start the Face on 127.0.0.1, on a port the system chooses.
+
+    A caller naming `port` gets that port or the bind's OSError; only the
+    practice copy's start script names one (PRESS-0202).
 
     Opens no browser and prints nothing: the launcher (PRESS-0013 § 4.5) owns
     which page opens first and the link printed where no browser opens.
     """
-    return Face(folder)
+    return Face(folder, port)

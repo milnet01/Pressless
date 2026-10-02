@@ -268,6 +268,36 @@ def test_the_server_answers_only_its_own_origin(
         served.stop()
 
 
+def test_serve_binds_the_port_it_is_given(tmp_path: Path) -> None:
+    """INV-11: the practice copy's start script names a port (PRESS-0202)."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    served = face.serve(tmp_path, port=port)
+    try:
+        assert served.url.startswith(f"http://127.0.0.1:{port}/")
+        status, headers = follow_link(served.url)
+        assert status in (302, 303)
+        assert headers.get("Set-Cookie", "").startswith(f"pressless-{port}=")
+    finally:
+        served.stop()
+
+    first, second = face.serve(tmp_path), face.serve(tmp_path)
+    try:
+        ports = {urllib.parse.urlsplit(each.url).port for each in (first, second)}
+        assert len(ports) == 2 and 0 not in ports
+    finally:
+        first.stop()
+        second.stop()
+
+    # Held, so the bind fails: nothing falls back to another port (§ 4.5).
+    with socket.socket() as held:
+        held.bind(("127.0.0.1", 0))
+        held.listen()
+        with pytest.raises(OSError):
+            face.serve(tmp_path, port=held.getsockname()[1])
+
+
 def test_a_failure_is_escaped_on_the_page() -> None:
     """INV-6."""
     fragment = face.render_failure(
