@@ -33,6 +33,8 @@ PAGE = "/setup/google"
 _REFRESH_MARGIN = 60.0   # seconds before expiry a held token stops being handed out
 _PERMISSIONS = "https://myaccount.google.com/permissions"
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
+_NONE_FOUND = ("<h1>No Analytics site found</h1><p>This Google account can see no "
+               "Google Analytics property. Sign in with the account that can.</p>")
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,7 @@ def register(face: Face, folder: Path, *,
     _state = state
     face.add_page("GET", PAGE, lambda request: _show(state))
     face.add_page("POST", PAGE + "/start", lambda request: _start(state))
+    face.add_page("POST", PAGE + "/sites", lambda request: _sites(state))
     face.add_page("POST", PAGE + "/choose", lambda request: _choose(state, request))
     face.add_page("POST", PAGE + "/off", lambda request: _off(state))
     face.add_return_page(RETURN_PATH, lambda request: _back(state, request))
@@ -144,6 +147,7 @@ def _show(state: _State, hint: str = "") -> str:
         return (shown + head
                 + f"<p>Pressless reads visitor numbers for Analytics property "
                   f"{e(saved.analytics_property_id or '')}.</p>"
+                + _button("/sites", "Choose a different site")
                 + _button("/start", "Sign in again")
                 + _button("/off", "Turn off visitor numbers") + back)
     return (shown + head
@@ -190,12 +194,34 @@ def _back(state: _State, request: Request) -> str | Reply:
     except insights.InsightsError as exc:
         return state.face.fail(exc, publishing=False, secret=SIGN_IN) + _continue(moving=False)
     if not found:
-        return ("<h1>No Analytics site found</h1><p>This Google account can see no "
-                "Google Analytics property. Sign in with the account that can.</p>"
-                + _continue(moving=False))
+        return _NONE_FOUND + _continue(moving=False)
     with state.lock:
         state.pending = _Pending(found, refresh, access)
     return "<h1>You are signed in to Google.</h1>" + _continue(moving=True)
+
+
+def _sites(state: _State) -> str:
+    """The list again from the stored sign-in, so changing site needs no
+    new one (PRESS-0206). Nothing is written until he chooses."""
+    saved, shown = _load(state)
+    if saved is None:
+        return shown
+    account = saved.credentials.google_account
+    if not google_signin.available() or account is None:
+        return _show(state)
+    transport = state.transport()
+    try:
+        refresh = credentials.read(saved.credentials.store, state.folder, account)
+        access = google_signin.access_token(refresh, transport)
+        found = google_signin.properties(access.value, transport)
+    except (insights.InsightsError, *_CREDENTIAL_FAILURES) as exc:
+        return shown + state.face.fail(exc, publishing=False, secret=SIGN_IN) \
+            + _continue(moving=False)
+    if not found:
+        return shown + _NONE_FOUND + _continue(moving=False)
+    with state.lock:
+        state.pending = _Pending(found, refresh, access)
+    return _show(state)
 
 
 def _continue(*, moving: bool) -> str:

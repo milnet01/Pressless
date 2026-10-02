@@ -352,3 +352,55 @@ def test_a_failed_return_stays_on_screen(tmp_path: Path, monkeypatch: pytest.Mon
     # The control: a return that worked moves on by itself.
     with _served(tmp_path, _Google()) as browser:
         assert 'http-equiv="refresh"' in browser.come_back(browser.start())[1]
+
+
+# ----------------------------------------------------------- PRESS-0206 ----
+
+
+def test_a_different_site_is_chosen_without_signing_in_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """PRESS-0206. Breaks when Choose a different site sends him to Google,
+    or changes anything before he picks a site."""
+    store = _Store(monkeypatch)
+    _signed_in(tmp_path)
+    before = settings.path_for(tmp_path).read_bytes()
+    google = _Google()
+    with _served(tmp_path, google) as browser:
+        assert "/setup/google/sites" in browser.send("GET", "/setup/google")[2]
+        status, headers, page = browser.send("POST", "/setup/google/sites")
+        assert status == 200 and "Location" not in headers
+        assert 'value="111"' in page and 'value="222"' in page
+        assert settings.path_for(tmp_path).read_bytes() == before
+        browser.send("POST", "/setup/google/choose", {"property": "222"})
+    assert not any(form.get("grant_type") == ["authorization_code"]
+                   for _m, _url, form in google.calls)
+    saved = settings.load(tmp_path)
+    assert saved.credentials.google_account == "google"
+    assert saved.analytics_property_id == "222"
+    assert store.saved == OLD_REFRESH
+
+
+class _Offline(_Google):
+    def request(self, method, url, body, headers):
+        raise OSError("offline")
+
+
+@pytest.mark.parametrize("google", [
+    pytest.param(lambda: _Google(listed=()), id="no-property"),
+    pytest.param(_Offline, id="offline"),
+])
+def test_a_failed_listing_stays_on_screen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, google
+) -> None:
+    """PRESS-0206. Breaks when a listing that failed, or found no site,
+    changes the settings or moves on before he has read it."""
+    _Store(monkeypatch)
+    _signed_in(tmp_path)
+    before = settings.path_for(tmp_path).read_bytes()
+    with _served(tmp_path, google()) as browser:
+        status, _, page = browser.send("POST", "/setup/google/sites")
+    assert status == 200
+    assert ('class="failure"' in page) or ("No Analytics site found" in page)
+    assert 'href="/setup/google"' in page and 'http-equiv="refresh"' not in page
+    assert settings.path_for(tmp_path).read_bytes() == before

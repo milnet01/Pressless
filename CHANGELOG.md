@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Choose a different Google site without signing in again** (PRESS-0206)
+  Settings, Visitor numbers, now has a "Choose a different site" button.
+  It lists your Google Analytics sites again using the permission
+  Pressless already keeps, and nothing changes until you pick one.
+
 ### Fixed
 
 - **Round buttons sit beside their names** (PRESS-0201)
