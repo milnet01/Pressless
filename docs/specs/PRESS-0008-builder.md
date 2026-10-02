@@ -84,6 +84,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ### 4.1 The public surface
 
+*PRESS-0126 § 4.6 adds `look` to `ROOT_OUTPUT`, and `stylesheets(folder)` to the page shell.*
+
 ```python
 # src/pressless/builder.py
 
@@ -147,6 +149,8 @@ raises passes through unchanged, so the Face's sentences for them apply.
 `furniture_spans` are added by `docs/specs/PRESS-0014-fixed-pages.md` § 4.1.
 
 ### 4.2 What is built
+
+*PRESS-0214 § 4.2: the journal pages depend on the site's journal switch.*
 
 - **Entries.** `store.list_slugs(folder, draft=False)`, each read with
   `store.read`, plus an `Entry` passed as `change`. An entry whose
@@ -311,6 +315,8 @@ Each web copy is written once, however many entries name it.
 
 ### 4.7 `content/`
 
+*PRESS-0214 § 4.2: `content/` carries the options file.*
+
 Byte for byte, at the Store's own relative paths, so undo can write each file
 back where it came from:
 
@@ -358,6 +364,8 @@ preview folder*, an entry is its slug, and any other file is its own name
 (`docs/design.md` § Logging).
 
 ### 4.9 `sitemap.xml` and `robots.txt`
+
+*PRESS-0214 § 4.2: the sitemap's journal addresses depend on the switch.*
 
 *The address* below is `settings.site_address` with any trailing `/`
 removed.

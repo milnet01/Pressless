@@ -156,6 +156,8 @@ overturn, and none of the cited ones is.
 
 ### 4.1 The public surface
 
+*PRESS-0126 § 4.2 adds the look's style code to the Store.*
+
 Added to `src/pressless/store.py`, beside the entry surface PRESS-0005
 §4.1 defines. § 8 records why this is not a second module.
 

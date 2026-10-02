@@ -260,6 +260,8 @@ publish, a failure reported as leaving the site unchanged.
 
 ### 4.4 Reconciling the Store
 
+*PRESS-0214 § 4.4: undo restores the options file.*
+
 The fetched state's layout is PRESS-0008 § 4.7's, at the Store's own relative
 paths. Each kind is read and written through the Store's own calls:
 

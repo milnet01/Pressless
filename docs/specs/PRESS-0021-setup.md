@@ -205,6 +205,8 @@ folder that is no longer there.
 
 ### 4.6 The sequence, once the answers are accepted
 
+*PRESS-0126 § 4.4 adds a fill step between storing the key and saving.*
+
 Each step runs only when the one before it succeeded. A failure is shown
 through `Face.fail` and ends the request.
 
@@ -264,6 +266,8 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
   and setup has no Press to site button. They say *"try again"* instead.
 
 ### 4.9 What setup never does
+
+*PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`.*
 
 - It never writes the key into a page, the log, the console or Settings.
 - It never saves a settings file with a list it did not derive.

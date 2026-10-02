@@ -168,6 +168,8 @@ and are marked so.
 
 ### 4.1 The public surface
 
+*PRESS-0214 § 4.1: `move_to_bin` also takes `options/`.*
+
 ```python
 @dataclass(frozen=True)
 class Entry:

@@ -304,6 +304,8 @@ A template picked in the same form fills the body, categories and tags
 
 ### 4.7 The editor page
 
+*PRESS-0126 § 4.6 changes the stylesheet links to `builder.stylesheets(folder)`, and serves `/preview/look/` from the Store.*
+
 `GET /edit?slug=<slug>` finds the file:
 
 | What holds `slug` | What opens |

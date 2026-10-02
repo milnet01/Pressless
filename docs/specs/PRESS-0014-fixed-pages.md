@@ -211,6 +211,8 @@ are not on the site yet. `editor._list` draws it from `store.list_html` and
 
 ### 4.5 The page editor
 
+*PRESS-0126 § 4.6 changes the stylesheet links to `builder.stylesheets(folder)`. PRESS-0214 § 4.5 offers "Your newest entry" only while the journal is on.*
+
 `GET /page` reads the waiting copy where one exists, else the live file.
 `EntryNotFound` through `Face.fail` where neither exists. **A file whose
 markers do not pair opens in the code view**, whatever `view` says, with

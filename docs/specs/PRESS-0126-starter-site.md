@@ -1,14 +1,15 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0126 — A plain starter site for an install that never ran Import
 
-**Status:** spec draft (2026-10-02).
+**Status:** accepted (2026-10-02).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0126 (user decision 2026-09-17 at the PRESS-0124
 design gate; `docs/design.md` § Setup's three starts, rewritten 2026-10-02).
 
 **Blocked by:** PRESS-0214.
 **Amends:** PRESS-0021 (§ 3 decision 9, § 4.6, § 4.9), PRESS-0013 (§ 4.3),
-PRESS-0008 (§ 4.1), PRESS-0006 (§ 4.1). § 11 lists each edit.
+PRESS-0008 (§ 4.1), PRESS-0006 (§ 4.1), PRESS-0012 and PRESS-0014. § 11
+lists each edit.
 
 Layman: someone starting from nothing ticks one box in setup and gets a
 simple site — header, footer, menu, Home and About pages and a plain
@@ -58,13 +59,17 @@ holds a site, until the user says in so many words to replace it.
    user 2026-10-02: a Store file the Builder publishes, which is where the
    design puts the look's style code. Not a file placed once on GitHub.
 3. **PRESS-0214's journal switch is built first.** Decided by the user
-   2026-10-02. This item turns the journal off through it.
+   2026-10-02. This item turns the journal off with `store.write_journal`
+   (PRESS-0214 § 4.1).
 4. **The starter set lives in code, as `src/pressless/starter.py`.**
    *(decided here)* `templates.STARTERS` is the precedent; package data files
    would need `--add-data` in both build scripts.
-5. **"Already holds a site" means an `index.html` at the repository root.**
-   *(decided here)* GitHub Pages serves that file. A list of harmless names
-   would be typed from memory, which design rule 9's derivation forbids.
+5. **"Already holds a site" means an `index.html` or `index.md` at the
+   repository root.** *(decided here)* GitHub Pages looks for `index.html`,
+   `index.md` or `README.md` as a site's entry file. Source:
+   https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site
+   `README.md` is left out: a new repository often carries one, and it is
+   not Builder output, so a publish keeps it.
 6. **The check runs at the publish, not at setup.** *(decided here)* The
    design places it there, and the publish is the act that replaces.
 7. **Whether the starter is still unpublished is a marker file in
@@ -109,10 +114,8 @@ def stylesheets(folder: Path) -> tuple[str, ...]: ...
 ```
 
 ```python
-# src/pressless/publishing.py — added and changed
+# src/pressless/publishing.py — added
 class WouldReplaceASite(Exception): ...   # the starter's first publish met a site
-
-def publish(..., replacing: bool = False) -> Published: ...
 ```
 
 ### 4.2 The Store's look
@@ -137,7 +140,7 @@ site on its own.
 2. Write each file below **only where it is absent** — never over one the
    Store holds.
 3. `templates.seed(folder)`, which writes nothing where `templates/` exists.
-4. Turn the journal off through PRESS-0214's switch.
+4. `store.write_journal(folder, False)` (PRESS-0214 § 4.1).
 
 | Store file | Must hold |
 |---|---|
@@ -177,10 +180,11 @@ A posted `start` where `offered` is False is ignored.
 
 In `publishing.publish`, the guard step gains a check that runs first:
 
-1. Where `starter.unpublished(folder)` and not `replacing`, call
+1. Where `starter.unpublished(folder)`, whether or not `emptying`, call
    `publisher.root_entries(settings, key, transport)`. Where any entry,
    with any trailing `/` removed and folded with `str.casefold`, equals
-   `"index.html"`, raise `WouldReplaceASite`. That fold is PRESS-0009 § 4.4's.
+   `"index.html"` or `"index.md"`, raise `WouldReplaceASite`. That fold is
+   PRESS-0009 § 4.4's.
 2. The existing guard, unchanged here; PRESS-0214 limits it to a site whose
    journal is on.
 
@@ -193,7 +197,8 @@ result stands.
 
 `SENTENCES[WouldReplaceASite]` says the repository already holds a website,
 that the starter site would replace it, and that Pressless stopped
-(`Site.UNCHANGED`). Its next step names the replace page.
+(`Site.UNCHANGED`). Its next step names the replace page, and says to
+publish again after it.
 
 **The replace page**, added by `publishing.register`:
 
@@ -204,21 +209,27 @@ that the starter site would replace it, and that Pressless stopped
 - `POST /publish/replace` — where the typed name, stripped, is not exactly
   `settings.repository`, the page is shown again with a hint, and nothing is
   written or requested. Otherwise, where any entry was unticked,
-  `settings.save` writes the list without it. Then
-  `publish(folder, saved, key, entry=None, replacing=True, ...)` runs, and
-  its result is shown as `/page/publish` shows one.
+  `settings.save` writes the list without it. Then `starter.published(folder)`
+  removes the marker, and the page says to publish again from where the user
+  was. **It publishes nothing itself**: a refused page publish puts its change
+  back (`page_editor`'s publish), so the change is still waiting, and the next
+  publish carries it.
 
 ### 4.6 The Builder
 
 `stylesheets(folder)` is `(STYLE_CODE,)` where
 `store.style_code_path(folder).is_file()`, otherwise `STYLESHEETS`.
 
-- `build`, `preview` and `preview_html` write the style code to
-  `STYLE_CODE` in the folder they build into, where the Store holds it.
+- `build` writes the style code to `STYLE_CODE` in the site folder, where the
+  Store holds it.
 - The page shell (`_Build.page`) links `stylesheets(self.folder)` in place of
   `STYLESHEETS`.
 - `editor` and `page_editor` link `PREVIEW_ADDRESS + sheet` for each sheet in
   `builder.stylesheets(folder)` in place of `builder.STYLESHEETS`.
+- `editor.register` serves `/preview/look/` from `folder / store.LOOK_FOLDER`,
+  as it serves `/preview/assets/` from `paths.PREVIEW_ASSETS`. The Face answers
+  a path from its longest registered prefix, so editor screens and preview
+  pages find the style code with no preview built.
 - A fixed page is unchanged: it carries its own links, byte for byte.
 - `content()` does not copy the style code (§ 9).
 
@@ -267,9 +278,9 @@ other Builder output.
   finishes. *Test:* `tests/test_setup.py::test_an_unticked_box_fills_nothing`.
   *Breaks when:* the fill ignores the box.
 - **INV-9** — While the marker exists, a publish to a repository whose root
-  holds `Index.html` raises `WouldReplaceASite` before the build: the site
-  folder is not written and no upload request is made. A root of
-  `README.md` alone publishes. *Test:*
+  holds `Index.html`, or `index.md` alone, raises `WouldReplaceASite` before
+  the build: the site folder is not written and no upload request is made.
+  A root of `README.md` alone publishes. *Test:*
   `tests/test_publishing.py::test_the_starter_will_not_replace_a_site`, with
   a fake transport.
   *Breaks when:* the check folds no case, runs after the build, or treats any
@@ -284,11 +295,12 @@ other Builder output.
   counting the fake transport's requests.
   *Breaks when:* the check runs on every publish.
 - **INV-12** — `POST /publish/replace` with a wrong repository name writes
-  and requests nothing. With the right name and `CNAME` unticked, the saved
-  list lacks `CNAME` before the publish runs with `replacing=True`. *Test:*
-  `tests/test_publishing.py::test_replace_needs_the_name_and_drops_what_is_unticked`.
-  *Breaks when:* the name is not checked, or the list is saved after the
-  publish.
+  nothing and keeps the marker. With the right name and `CNAME` unticked,
+  the saved list lacks `CNAME`, the marker is gone, and no request is made.
+  *Test:*
+  `tests/test_publishing.py::test_replace_needs_the_name_and_publishes_nothing`.
+  *Breaks when:* the name is not checked, the marker stays, or the page
+  publishes.
 - **INV-13** — Where the Store holds style code, an entry page links
   `look/style.css` alone and the site folder holds it. Where it holds none,
   the page links `STYLESHEETS` and the site folder has no `look/`. *Test:*
@@ -298,10 +310,11 @@ other Builder output.
 - **INV-14** — `setup.untouchable(("look", "CNAME"))` is `("CNAME",)`.
   *Test:* `tests/test_setup.py::test_the_look_is_builder_output`.
   *Breaks when:* `"look"` is not in `ROOT_OUTPUT`.
-- **INV-15** — A preview of a fixed page writes `look/style.css` into the
-  preview folder where the Store holds style code. *Test:*
-  `tests/test_builder.py::test_a_preview_carries_the_style_code`.
-  *Breaks when:* only `build` writes it, and the preview shows unstyled.
+- **INV-15** — With style code in the Store and no preview folder,
+  `GET /preview/look/style.css` answers the style code. *Test:*
+  `tests/test_editor.py::test_the_style_code_is_served_before_any_preview`.
+  *Breaks when:* `/preview/look/` is answered from the preview folder, so a
+  screen is unstyled until a preview is built.
 - **INV-16** — After `fill`, a publish of the untouched starter site is not
   refused with `NothingToPublish`. *Test:*
   `tests/test_starter.py::test_the_starter_publishes_with_no_entries`,
@@ -333,7 +346,7 @@ other Builder output.
 INV-5 and INV-16. `tests/test_store.py` gains INV-1; `tests/test_setup.py`
 INV-6, INV-7, INV-8 and INV-14; `tests/test_publishing.py` INV-9, INV-10,
 INV-11 and INV-12;
-`tests/test_builder.py` INV-13 and INV-15.
+`tests/test_builder.py` INV-13; `tests/test_editor.py` INV-15.
 
 Each test is seen failing against the code before this item, then
 mutation-probed once the code lands.
@@ -359,6 +372,9 @@ mutation-probed once the code lands.
 - **Detect a site by any root entry beyond a list of harmless names.**
   Rejected (§ 3 decision 5).
 - **Check the repository at setup.** Rejected (§ 3 decision 6).
+- **The replace page publishes the site itself.** Rejected: a refused page
+  publish puts its change back, so the replace would upload the untouched
+  starter page over the real site.
 - **Keep the marker in Settings.** Rejected (§ 3 decision 7).
 
 ## 9. Out of scope
@@ -388,10 +404,10 @@ mutation-probed once the code lands.
 | INV-9 | `tests/test_publishing.py::test_the_starter_will_not_replace_a_site` |
 | INV-10 | `tests/test_publishing.py::test_the_marker_outlives_only_a_failed_publish` |
 | INV-11 | `tests/test_publishing.py::test_an_imported_site_publishes_as_before` |
-| INV-12 | `tests/test_publishing.py::test_replace_needs_the_name_and_drops_what_is_unticked` |
+| INV-12 | `tests/test_publishing.py::test_replace_needs_the_name_and_publishes_nothing` |
 | INV-13 | `tests/test_builder.py::test_the_style_code_replaces_the_assets_links` |
 | INV-14 | `tests/test_setup.py::test_the_look_is_builder_output` |
-| INV-15 | `tests/test_builder.py::test_a_preview_carries_the_style_code` |
+| INV-15 | `tests/test_editor.py::test_the_style_code_is_served_before_any_preview` |
 | INV-16 | `tests/test_starter.py::test_the_starter_publishes_with_no_entries` |
 | § 4.3 contrast | **nothing** in CI — by hand (§ 7) |
 | § 4.3 words name nobody | **Partial:** the leak sweep in `scripts/local-ci.sh` catches the patterns it holds; the rest is read |
@@ -405,14 +421,14 @@ Each edit below is a pointer to this spec beside the clause it changes.
   the Store to decide the offer, and writes it only through `starter.fill`.
   § 4.6 gains the fill step.
 - `docs/specs/PRESS-0013-publish.md` § 4.3 — the guard step gains the
-  replace check, and `publish` gains `replacing`.
+  replace check.
 - `docs/specs/PRESS-0008-builder.md` § 4.1 — `ROOT_OUTPUT` gains `look`, and
   the page shell links `stylesheets(folder)`.
 - `docs/specs/PRESS-0006-pages-furniture-comments.md` § 4.1 — the Store gains
   the look's style code.
 - `docs/specs/PRESS-0012-editor.md` and
   `docs/specs/PRESS-0014-fixed-pages.md` — their screens link
-  `builder.stylesheets(folder)`.
+  `builder.stylesheets(folder)`, and `editor.register` serves `/preview/look/`.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
@@ -421,5 +437,6 @@ Rows live in `../reviews/PRESS-0126-starter-site-loop-log.md`.
 
 ## 13. Resource cost
 
-One empty marker file, removed by the first successful publish, and one
-extra GitHub request on each publish while it exists. No new dependency.
+One empty marker file, removed by the first successful publish or by the
+replace page, and the `root_entries` requests on each publish while it
+exists. No new dependency.
