@@ -11,277 +11,206 @@ be things you could actually observe.
 `~/.claude/workflow.md` § 2. It passes when a stranger could read it and
 say whether a given feature serves it.
 
-**Status:** agreed 2026-08-17; amended and re-agreed 2026-08-24; S6
-amended 2026-09-11 on the user's decision.
-
-**What the amendment changed, and why it is recorded rather than quietly
-patched.** Three things were asked for on 2026-08-24: a what-you-see-is-
-what-you-get editor, editing the fixed pages, and reaching the site's own
-code. The first is a *how* and belongs to design. The other two were
-listed below as deliberately out of the first version, so this document
-became false, and `~/.claude/workflow.md` § 7 sends a false discovery
-back to state 1 with the human gate re-armed. Nothing was in flight and
-no code existed, so the whole cost was this edit and agreeing it.
-**The reversed exclusions are struck through rather than deleted** — a
-decision that was reversed is more useful to a later reader than one
-that was erased.
+**Status:** agreed 2026-08-17; rewritten for a full website creator and
+editor and agreed again 2026-10-02 (PRESS-0198). How it got here
+is in [`history/discovery.md`](history/discovery.md).
 
 ## The problem
 
-The writer this was built for has twelve years of journal entries. They
-live on a free WordPress.com blog, which means three things he does not
-want and cannot change:
+Pressless began with one writer whose whole website — its pages, its
+music, its photographs, and twelve years of journal entries — sat on
+free WordPress.com. That meant three things he did not want and could
+not change:
 
-1. **His writing is not his to move.** Getting it out took an export
-   file and a program written specially to read it. Anything he writes
-   from here stays in the same trap unless something changes.
-2. **The free plan decides what his site looks like.** No custom styling,
-   no custom fonts, and WordPress's own marketing on his pages.
-3. **He cannot tell when something is broken.** His subscribe box had no
-   working connection behind it for years. Visitors typed their address,
-   believed they had subscribed, and nothing was recorded. Nobody found
-   out until somebody went looking.
+1. **His writing was not his to move.** Getting it out took an export
+   file and a program written specially to read it.
+2. **The free plan decided what his site looked like.** No custom
+   styling, no custom fonts, and WordPress's own marketing on his pages.
+3. **He could not tell when something was broken.** His subscribe box
+   had no working connection behind it for years, and nobody found out
+   until somebody went looking.
 
-A new site fixes all three — but only while somebody technical is
-available to publish it. **That is the actual hurt this project
-addresses: right now he cannot change a word of his own site without
-asking someone else to do it for him.** He writes at odd hours; the
-person who can publish does not.
+A new site fixed all three — but only while somebody technical was
+available to publish it. **That is the hurt this project addresses: a
+person cannot change a word of their own site without asking someone
+else to do it for them.**
+
+The problem is not his alone. Anyone who wants a website they own and
+run themselves is offered the same two choices: a hosted service that
+owns their words and decides their look, or code they cannot write.
+Pressless is a third choice: **a full website creator and editor that
+runs on their own computer and needs no code.** It builds any kind of
+site from nothing — a band's, a business's, a club's, a journal — or
+takes in a site that already exists and lets them change every part of
+it. A journal of dated entries is one thing a site can hold, not what a
+site is.
 
 ## Who it is for
 
-- **A person who writes most days, often late, and wants what he just
+All of these equally. A feature that serves one and locks out another
+is out of scope.
+
+- **A person who writes most days, often late, and wants what they just
   wrote to be readable by other people within the hour** — without
   waiting for anyone, and without learning what a repository is.
-- **A person who has been burned once by a service owning his words**,
+- **A person who has been burned once by a service owning their words**,
   and will not agree to that a second time even if it is more convenient.
-
-A third, secondarily: **a person in the same position** — the
-app is deliberately not named after him, because the problem is not his
-alone. Nothing in the first version is built for that person, but
-nothing should be built in a way that locks them out either.
+- **A person starting from nothing**, with no site and no web skills,
+  who wants a site of their own — whatever kind — that they can build,
+  change and keep running by themselves.
+- **A person with a site already**, on WordPress or as a folder of web
+  pages, who wants to run it themselves, and needs every page, picture,
+  file and word to come with them.
 
 ## Signs it is working
 
-- **S1** — He writes a new entry on his own machine, clicks one
+The labels are permanent: specs and code cite them, so a sign is
+reworded, never renumbered.
+
+- **S1** — They write a new entry on their own computer, click one
   button, and within a few minutes it is on the live site. Nobody else
   touched anything.
-- **S2** — A poem he publishes through Pressless has the same line
-  breaks on the live site as in the box he typed it into. Not a
-  paragraph; the lines he wrote, where he wrote them.
-- **S3** — With Pressless closed, deleted, or never installed, all his
+- **S2** — A poem they publish has the same line breaks on the live site
+  as in the box they typed it into. Not a paragraph; the lines they
+  wrote, where they wrote them.
+- **S3** — With Pressless closed, deleted, or never installed, all their
   writing is still readable: ordinary files in an ordinary folder, one
   per entry, openable in Notepad.
-- **S4** — He installs it on Windows himself, by following the written
-  steps and asking nobody for help. The steps are complete for his
-  machine: nothing has to be installed first, and nothing has to be
-  translated from another system's instructions. Reworded 2026-08-25.
-  It read "nothing in those steps is different from the ones followed on
-  Linux, other than which file is double-clicked", which stopped being
-  true when Windows became a zip that is extracted and Linux an
-  AppImage. Identical steps were only ever a proxy for installing it
-  unaided, and it is the proxy that broke.
-- **S5** — He is asked for his publishing key exactly once, during
-  setup, and never sees it again in normal use.
+- **S4** — They install it on Windows themselves, by following the
+  written steps and asking nobody for help. The steps are complete for
+  their machine: nothing has to be installed first, and nothing has to
+  be translated from another system's instructions.
+- **S5** — They are asked for their publishing key exactly once, during
+  setup, and never see it again in normal use.
 - **S6** — When publishing fails — no internet, wrong key, GitHub down —
-  he is told so in a sentence he understands, the site is unchanged, and
-  clicking Publish again after fixing it works. He is never left unsure
-  whether it went out, **except** where GitHub may have taken the last
-  step without confirming it, or where something Pressless did not
+  they are told so in a sentence they understand, the site is unchanged,
+  and clicking Publish again after fixing it works. They are never left
+  unsure whether it went out, **except** where GitHub may have taken the
+  last step without confirming it, or where something Pressless did not
   foresee fails while a publish is running. Then nobody can know whether
-  the site changed, so he is told plainly that the outcome is unknown.
-  Pressless or his machine stopping partway through a publish is outside
-  S6. Either way, clicking Publish again is safe and settles it.
-- **S7** — An entry he has not finished is not on the live site. He can
-  close the app mid-sentence, come back tomorrow, and it is where he
+  the site changed, so they are told plainly that the outcome is unknown.
+  Pressless or their computer stopping partway through a publish is
+  outside S6. Either way, clicking Publish again is safe and settles it.
+- **S7** — An entry they have not finished is not on the live site. They
+  can close the app mid-sentence, come back tomorrow, and it is where they
   left it and nowhere else.
-- **S8** — He changes the wording on his About page himself and within a
-  few minutes the live site says the new thing. He did not write an
-  entry to do it, and nobody else touched anything.
-- **S9** — After a change that made the site wrong, he gets it back the
-  way it was in one step, and can see for himself that it is back. He is
-  never left having broken something he cannot undo.
-- **S10** — A word he styles while typing looks the same on the live site
-  as it did in the box. What he saw is what he got, and he did not have
-  to publish to find out.
-- **S11** — He opens Pressless and can see how many people read his site
-  and which countries they came from, each country shown with its flag.
-  He did not log in to anything and did not leave the app.
+- **S8** — They change the wording on their About page themselves and
+  within a few minutes the live site says the new thing. They did not
+  write an entry to do it, and nobody else touched anything.
+- **S9** — After a change that made the site wrong, they get it back the
+  way it was in one step, and can see for themselves that it is back.
+  They are never left having broken something they cannot undo.
+- **S10** — A word they style while typing looks the same on the live
+  site as it did in the box. What they saw is what they got, and they did
+  not have to publish to find out.
+- **S11** — They open Pressless and can see how many people read their
+  site and which countries, and which provinces or states within them,
+  they came from, each country shown with its flag, without leaving the
+  app. Never cities: a visitor's city is guessed from their provider and
+  is often wrong.
+- **S12** — Someone with no site downloads Pressless, sets it up, and
+  publishes a working site of the kind they want, with a homepage, a
+  menu, a header and a footer. They wrote no code and asked nobody for
+  help.
+- **S13** — Someone with an existing site, on WordPress or as a folder
+  of web pages, brings all of it in themselves — pages, menus, entries,
+  drafts, comments, photographs and files — and is told, item by item,
+  about anything that could not come across. From then on every part of
+  it can be changed in Pressless.
+- **S14** — They add a page, rename one, or remove one, and the site's
+  menu follows. They wrote no code.
+- **S15** — They build a new homepage, with their own pictures, links,
+  header, footer and menu, and see it in the preview before it goes
+  live. They wrote no code, and could have opened the page's code had
+  they wanted to.
+- **S16** — They change their site's colours, fonts and layout by
+  picking from choices, and see the result in the preview before
+  publishing. Anyone who wants more can edit the style code itself.
+- **S17** — They put a music file, a download or a PDF on their site and
+  link to it from a page. They wrote no code.
+- **S18** — Someone new switches on visitor numbers by following
+  Pressless's own steps. Pressless puts the counting code on every page
+  itself; the steps cover only what Google makes a person do in person.
 
 ## What it deliberately does not do
 
-**Not in the first version, and that is a decision rather than a
-backlog:**
+**Not now — each is a decision, and each can return as its own
+decision later:**
 
 - **No newsletter.** It is the feature with the most ways to go wrong —
   consent, a mail service, unsubscribes, South African data-protection
-  law — and it serves very few confirmed opt-ins. It comes after S1 to
-  S10 are all true.
-- **No comments.** Agreed with him. The 70 historical ones stay on the
-  site as a read-only record. When comments return, Pressless is where
-  he approves them.
-- ~~**No editing the fixed pages** (About, Songs, Images). Writing
-  entries is what he does daily; the other pages change a few times a
-  year and can wait.~~ **Reversed 2026-08-24.** Editing the fixed pages
-  is in the first version, and so is reaching a page's own code behind a
-  "show me the code" view. S8 and S9 are the signs that say whether it
-  works. The original reasoning measured frequency, and frequency was
-  the wrong measure: a change he makes twice a year still costs him a
-  phone call, and the phone call is the hurt this project exists to
-  remove.
-- ~~**No editing entries already published.** Publishing a new one is
-  the whole first version.~~ **Reversed 2026-08-24.** It was withheld to
-  keep the first version small, and withholding it stopped meaning
-  anything the moment he could reach the site's files: he could edit a
-  published entry anyway, by a worse route and with no safety net. A
-  capability held by accident is more dangerous than one designed for.
-- ~~**No visitor statistics.**~~ **Reversed 2026-08-24: Pressless shows
-  them.** Asked for on 2026-08-17 and recorded
-  here so it is not lost: he wants to know how many people visit and
-  roughly where from. Settled with the user the same day — **country and
-  province, and city is explicitly not wanted**, because a visitor's
-  location is worked out from their internet provider's nearest hub and a
-  South African mobile user in Potchefstroom reads as Johannesburg. City
-  would be a number that looks precise and is not.
-
-  Two things about it are already fixed by decisions above, and design
-  does not get to reopen them. **Pressless cannot collect this**, because
-  it runs on his own machine and is never reachable from the internet, so
-  a visitor cannot report to it. And **GitHub Pages keeps no visitor log**
-  — the traffic graph on a GitHub repository counts people reading the
-  code, not the site. So the shape is a service collecting and Pressless
-  displaying, never Pressless collecting.
-
-  It sits here rather than among the signs of success because it serves
-  nobody's ability to publish. It is a thing he would like to see, not a
-  thing that makes the first version work.
-
-  **Overtaken by events, then reversed.** Google Analytics went live on
-  the site on 2026-08-23, which answered the collecting half without
-  Pressless.
-  The displaying half was asked for on 2026-08-24 and is now S11, so
-  **Pressless does display these numbers in the first version** — the
-  struck heading above is the whole of what was reversed, and the shape
-  this paragraph predicted (a service collects, Pressless displays) is
-  exactly what was built.
-
-  Two details settled with it. **Province was dropped, leaving country
-  only**, because what was asked for was visits by country with its flag
-  — a departure from the sentence above, recorded here rather than left
-  for a reader to notice. And **city, which this document says was
-  explicitly not wanted, is reported by what shipped** — a disagreement
-  about the site rather than about this app, still open below.
+  law.
+- **No new comments.** Comments already on a site stay as a read-only
+  record. A site of plain files cannot take comments without an outside
+  service.
+- **One site per copy of Pressless.** Someone with two sites keeps two
+  Pressless folders.
+- **GitHub Pages is the only place a site is published.** Pressless does
+  as much of the GitHub setup as it can, and gives step-by-step help for
+  the rest.
 
 **Not ever, as far as this document is concerned:**
 
 - **Pressless is not a website host and never talks to visitors.** It
-  runs on his own machine, is not reachable from the internet, and
-  has no login, no accounts and no users. The published site is plain
+  runs on the person's own computer, is not reachable from the internet,
+  and has no login, no accounts and no users. The published site is plain
   files served by GitHub.
-- **Pressless does not own his writing.** If this project is abandoned
-  tomorrow, S3 must still hold. Any design that makes his entries
+- **Pressless does not own anyone's writing.** If this project is
+  abandoned tomorrow, S3 must still hold. Any design that makes entries
   readable only through this app is out of scope by definition.
-- **Pressless is not a WordPress replacement for the general public.**
-  One person's site, on one person's machine.
+- **The automated tests never publish to a real person's site.** A wrong
+  move there is public within a minute, so tests publish only to a
+  repository the project controls, and which repository is a setting,
+  never code.
 
-## Shape agreed with the user (2026-08-17)
+## Shape agreed with the user
 
-Recorded here because design must not silently choose otherwise. The
-*reasons* belong in `docs/design.md`; these are the constraints it works
-within.
-
-| Decision | Chosen |
-|---|---|
-| First version does | Write an entry, preview it, publish it |
-| How it appears | Opens in his normal browser; runs entirely on his own machine |
-| How it publishes | Straight to GitHub, using a key he pastes in once at setup |
-| Where writing lives | One plain text file per entry, in a folder he can see |
-
-**Added 2026-08-24, same standing — design works within these, and the
-reasons live in `docs/design.md` and the ADRs beside it.**
+Design works within these and must not silently choose otherwise. The
+*reasons* live in `docs/design.md` and the ADRs beside it.
 
 | Decision | Chosen |
 |---|---|
-| How he writes | A what-you-see-is-what-you-get box styled as the finished page. The file underneath stays plain text with small marks |
-| How he styles | Bold and italic, his site's own two colours, any colour he picks down to a single letter, and run-wide effects such as rainbow |
+| What it does | Build a whole website of any kind from nothing, or take in an existing one; change every page, menu, header, footer, picture, file and style in it; write, preview and publish entries where the site keeps a journal |
+| How it appears | Opens in their normal browser; runs entirely on their own computer |
+| How it publishes | Straight to GitHub Pages, using a key they give it once at setup |
+| Where writing lives | One plain text file per entry, in a folder they can see |
+| How they write | A what-you-see-is-what-you-get box styled as the finished page. The file underneath stays plain text with small marks |
+| How they style | Bold and italic, the site's own colours, any colour they pick down to a single letter, and run-wide effects such as rainbow |
 | Learning the marks | A cheat sheet **generated from the same table the app parses with**, so the card and the app cannot disagree. In-app panel and a printable page |
-| Fixed pages | Editable — the words in the same box as an entry (words only; styling a page is done in the code view), the page's own code behind a "show me the code" view |
-| Getting back | One step returns the site to how it was, and he can see that it worked |
-| Where the site lives | His entries sit inside his site folder as `content/`, so publishing backs up twelve years of writing as a side effect |
-| Photographs | In the first version. About one entry in three carries one |
-| Starting something new | He picks from a list of templates — a poem, a lyric, an entry around a photograph, a plain entry — and it opens already shaped. He can edit them and add his own |
+| Building pages | No code needed for anything, the homepage included. Each page's own code is behind a "show me the code" view for anyone who wants it |
+| The site's look | Ready-made choices — colours, fonts, layouts — with a live preview, plus the style code for anyone who wants more |
+| Getting back | One step returns the site to how it was, and they can see that it worked |
+| Where the site lives | Entries sit inside the site folder as `content/`, so publishing backs up their writing as a side effect |
+| Photographs and files | Photographs, music, downloads and documents, each linked from a page |
+| Starting something new | They pick from a list of templates — a poem, a lyric, an entry around a photograph, a plain entry — and it opens already shaped. They can edit them and add their own |
+| Starting from nothing | A plain starter site — homepage, menu, header, footer and About — that they change into their own |
+| Help | Whatever Pressless can do for them, it does. Whatever it cannot comes with step-by-step instructions |
 
-## Open questions
+## Decided, not yet scheduled
 
-These are not blockers for design, but each has to be answered before
-the thing it touches is built.
+- **Likes and dislikes on entries** — agreed 2026-10-02, a roadmap item
+  of its own after the whole-site work. Both buttons, publicly, counts
+  stored in a free Google (Firebase) database, because a site of plain
+  files cannot keep a count. Optional per site, and it would be a site's
+  first dependency on a live service. Each site needs its own database,
+  which Pressless helps set up step by step.
 
-- ~~**Photographs in an entry.**~~ **Settled 2026-08-24: in the first
-  version.** Leaving them out meant he still had to ask someone for a
-  third of what he writes, which is most of the hurt left standing. The
-  shrinking already exists and works — `_work/resize.py` in the sibling
-  workspace turns 220 MB of camera originals into 31 MB.
-- **The 616 existing entries have to become files.** Choosing "one file
-  per entry" means the twelve years currently held in the WordPress
-  export must be converted once, up front — otherwise publishing a new
-  entry would rebuild a site that has forgotten all the old ones. This
-  is a one-time job and it is a prerequisite for S1, not a later nicety.
-- ~~**His GitHub account does not exist yet.**~~ **Settled 2026-08-17:
-  it exists.** The account, the repository and the live domain are named
-  in this machine's settings rather than here, which is the same rule the
-  paragraph below applies to the app. Publishing can be tested against
-  the real thing.
+  **The site quietly remembers which entries a visitor's browser has
+  already voted on.** That is anonymous sign-in — no account, no
+  password, nothing the visitor sees or does — and it lets Google,
+  rather than the page, enforce one vote per person per entry. **It is
+  not a login**, which *Not ever* rules out.
 
-  **The rule it carried still stands, and now costs something.** Testing
-  against his live site means a wrong move is visible to the public
-  within a minute. So the difference between his repository and a
-  throwaway one must stay out of the app — it belongs in settings — and
-  the automated tests publish to a repository we control, never to his.
-- **The 172 untitled entries.** Mostly recent daily-prompt writing.
-  Whether Pressless should require a title, suggest one, or accept none
-  is a question about his habit, and he should be asked.
-- **Does the visitor-statistics decision still hold?** This document
-  says city was explicitly not wanted; what went live on 2026-08-23
-  reports it. Nothing in the first version depends on the answer —
-  Pressless shows visits by country only (S11) — but the two
-  records disagree and one of them should change. It is his call,
-  and it is a question about the site rather than about this app.
-- **Likes and dislikes on entries — agreed in principle 2026-08-24,
-  parked on one question for him.** Both buttons, publicly, counts
-  stored in a free Google (Firebase) database. It is not designed or
-  built yet and is deliberately absent from `docs/design.md`, because it
-  would be the site's first dependency on a live service: today the site
-  is plain files and cannot break.
-
-  **The parked question is narrow and is being put to him: may the
-  site quietly remember which entries a visitor's browser has already
-  voted on?** That is anonymous sign-in — no account, no password,
-  nothing the visitor sees or does — and it is what lets Google, rather
-  than the page, enforce one vote per person per entry. **It is not a
-  login**, and the distinction matters because *this document already
-  rules real logins out* under "Not ever". If the answer is no, the
-  counts fall back to a note the visitor's own browser keeps and can
-  erase, which stops an honest double-click and nothing else.
-
-  Two things settled whatever he answers: billing stays switched off on
-  the database, so the worst case of abuse is a quiet day rather than a
-  bill; and the privacy page gains a line, since POPIA applies here as
-  it does to the visitor counting.
+  Billing stays switched off on the database, so the worst case of abuse
+  is a quiet day rather than a bill; and the privacy page gains a line,
+  since POPIA applies here as it does to the visitor counting.
 
   **The anti-spam design, recorded so it is not re-derived.** Four
-  layers, all free: a note in the visitor's own browser (stops the honest
-  double-click and nothing else); anonymous sign-in (the parked
-  question); a security rule allowing one vote document per person per
-  entry, which Google enforces so editing the page's code achieves
-  nothing; and App Check, which is the layer that actually blunts
-  scripted abuse. One vote document per person also buys vote-changing
-  and un-voting, which a bare counter cannot do. **Counting them with
-  the database's own `count()` avoids Cloud Functions**, and that is
-  what keeps billing switchable-off — verify against current Firebase
-  terms on the day, rather than trusting this line.
-
-- **What happens to a mark the app does not recognise?** The intended
-  answer is that it is left exactly as written and never silently
-  dropped, which is what stops an editor eating writing it did not
-  understand. Recorded here because it is a promise about his twelve
-  years, and design must state it rather than assume it.
+  layers, all free: a note in the visitor's own browser; anonymous
+  sign-in (the parked question); a security rule allowing one vote
+  document per person per entry, which Google enforces so editing the
+  page's code achieves nothing; and App Check, which blunts scripted
+  abuse. One vote document per person also buys vote-changing and
+  un-voting. **Counting with the database's own `count()` avoids Cloud
+  Functions**, which keeps billing switchable-off — verify against
+  current Firebase terms on the day.

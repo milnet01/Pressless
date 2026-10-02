@@ -3245,6 +3245,29 @@ this milestone, and its frozen formats include every surface this one adds.
   be automated; whatever cannot be must come with detailed step-by-step
   instructions for the user. First applied to Google Analytics
   (PRESS-0199) and Google's review (PRESS-0200).
+  Decided by the user 2026-10-02, each as recommended:
+  1. Pressless is for the first writer and any stranger equally; every
+     feature must work from an empty install.
+  2. Building a homepage or page needs no code; the code view stays
+     for anyone who wants it.
+  3. The site's look: ready-made choices with a live preview, plus the
+     style code for anyone who wants more.
+  4. Hosting stays GitHub Pages, with Pressless doing what setup it can
+     and step-by-step help for the rest.
+  5. Reader comments and a newsletter stay out for now, as "not now"
+     rather than "never".
+  6. One site per copy of Pressless.
+  7. Discovery and design are reworded to speak about any user.
+  Also 2026-10-02: this item comes before PRESS-0125, as decided
+  2026-10-01; the user confirmed it still stands.
+  Progress (2026-10-02): docs/discovery.md rewritten and agreed by the
+  user. The user's clarification: Pressless is a full website creator
+  and editor for any kind of site, from nothing or from an existing site
+  (WordPress, or a folder of web pages), and the first writer's site is a
+  whole site that includes a journal, not a blog. S11 gains provinces or
+  states, never cities; S12 to S18 added. Filed PRESS-0209 (provinces),
+  PRESS-0210 (import a folder of web pages), PRESS-0211 (likes). Next:
+  docs/design.md, then its review gate.
   **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
   Kind: doc.
   Source: user-decision-2026-10-01.
@@ -9298,6 +9321,38 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
+
+- 📋 [PRESS-0209] **Insights shows provinces or states within each country.**
+  User, 2026-10-02: the more detail the better, but cities are not
+  wanted. docs/discovery.md S11 now names provinces or states. Google
+  Analytics reports a region dimension; check what it returns for
+  South Africa before designing the display.
+  **Layman:** Visitor numbers show which province or state readers came from, not only the country.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Insights, Face.
+
+- 📋 [PRESS-0210] **Import takes in an existing site that is a folder of web pages.**
+  User, 2026-10-02: Pressless must fully edit an existing site, and
+  that includes a plain folder of HTML pages, not only WordPress
+  (docs/discovery.md S13). Design after PRESS-0198 settles how pages
+  and the look are held.
+  **Layman:** Someone whose site is a folder of web pages, not WordPress, can bring it into Pressless and edit every part of it.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Import, Face.
+
+- 📋 [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
+  Decided by the user 2026-10-02, after the whole-site work: both
+  buttons, public counts in each site's own free Firebase database,
+  anonymous sign-in so one vote per person per entry, billing kept
+  switched off, a line on the privacy page, optional per site, and
+  step-by-step help to set the database up. docs/discovery.md
+  "Decided, not yet scheduled" holds the anti-spam design.
+  **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Builder, Face.
 
 ## Milestones
 
