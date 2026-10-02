@@ -8128,6 +8128,23 @@ already-built code ships in whichever release comes next.
   the desktop session, launched through Start Pressless.bat. Firefox is
   not installed there. Still not run: a real publish through the
   button.
+  0.7.0 (2026-10-02), on the draft's own Windows zip, fresh install on
+  the box, then published with sign-release.py. Passed: the self-check
+  reaches WinVaultKeyring in the desktop session; Setup against a new
+  private throwaway repository, key kept in WinVaultKeyring; a real
+  Press to site through the button, commit landed (first time this row
+  ran); the console window owns Pressless; the Settings link; Google
+  sign-in and the visitor page with picture flags and all three periods
+  in the user's own Edge, Chrome and Firefox (Firefox installed that
+  day; its sign-in re-saved settings, so the continue step kept the
+  cookie). The press needed the starter files seeded first: an empty
+  install still cannot press (PRESS-0126). Found: the site picker's
+  radios sat centred above their names (PRESS-0201, fixed for 0.7.1).
+  Box cleaned: keys, tasks and helpers gone, throwaway repository
+  deleted; an empty pressless-check folder stays until the browsers
+  started from it close. Still never run: PRESS-0142's fake-key
+  sentence, PRESS-0146's Open folder, PRESS-0169's direct /preview
+  script row, PRESS-0023's two-cycle update check, PRESS-0173.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
