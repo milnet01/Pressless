@@ -9109,6 +9109,29 @@ already-built code ships in whichever release comes next.
   Source: user-request-2026-10-01.
   Lanes: gate.
 
+- ✅ [PRESS-0201] **Round buttons sit centred above their names, in a text-box frame.**
+  Seen in Edge on the Windows box, on the 0.7.0 draft's zip: the
+  Google step's site picker (/setup/google) shows each radio centred on
+  a line of its own above the site name, and the focused one inside a
+  wide padded frame. The markup is right -- `<label><input> name</label>`.
+  The cause is face.py's stylesheet: every `.face label` is a column
+  flex box, and every `.face input` gets a text box's padding, border
+  and background, radios and checkboxes included. Only the true-colours
+  checkbox overrides both. Fix: one rule for any label holding a radio
+  or checkbox -- button left, name beside it -- and no text-box frame
+  on those inputs. Ships in 0.7.1 (user, 2026-10-02).
+  Fixed (2026-10-02): face.py's stylesheet gives a label holding a radio
+  or checkbox a row layout (button, then words, in the body colour) and
+  those inputs no text-box padding. The true-colours switch's own copy of
+  the rule folded into it. Test: test_face.py
+  test_a_round_button_or_tick_box_sits_left_of_its_words, red without the
+  CSS. Seen before and after in headless Chrome, light and dark. Not yet
+  seen on the Windows box; the 0.7.1 hand check covers that.
+  **Layman:** When you pick your site for visitor numbers, each choice's round button sits on its own line above the name; it should sit to the left of it.
+  Kind: fix.
+  Source: user, 0.7.0 Windows hand check, 2026-10-02.
+  Lanes: Face.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

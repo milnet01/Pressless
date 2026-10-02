@@ -550,6 +550,20 @@ def test_a_dark_look_dims_the_preview_until_he_asks_for_true_colours(
     assert "data-true-colours" in face._SCRIPT
 
 
+def test_a_round_button_or_tick_box_sits_left_of_its_words(tmp_path: Path) -> None:
+    """PRESS-0201: every label stacks its words over a text box, and that put
+    the Google step's round buttons centred above each site's name, in a text
+    box's frame. A label holding one sits in a row, and the button has no
+    frame."""
+    _, style = _served_style(tmp_path)
+    label = _rule(style, '.face label:has(> input[type="radio"]), '
+                         '.face label:has(> input[type="checkbox"])')
+    assert "flex-direction: row" in label
+    assert "align-items: center" in label
+    box = _rule(style, '.face input[type="radio"], .face input[type="checkbox"]')
+    assert "padding: 0" in box
+
+
 def _raises(request: face.Request) -> str:
     raise RuntimeError("a page that fails")
 

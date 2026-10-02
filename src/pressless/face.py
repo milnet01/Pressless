@@ -571,9 +571,12 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
   border-radius: 12px; background: #fff; filter: var(--preview-dim); }
 .face iframe#preview.undimmed { filter: none; }
 .face .true-colours { display: var(--preview-switch); margin: 0 0 .5rem; }
-.face .true-colours label { flex-direction: row; align-items: center; gap: .5rem;
-  margin: 0; font-size: 1rem; cursor: pointer; }
-.face .true-colours input { width: 1.25rem; height: 1.25rem; accent-color: var(--amber); }
+.face .true-colours label { margin: 0; }
+.face label:has(> input[type="radio"]), .face label:has(> input[type="checkbox"]) {
+  flex-direction: row; align-items: center; gap: .5rem; font-size: 1rem; color: var(--ink);
+  cursor: pointer; }
+.face input[type="radio"], .face input[type="checkbox"] { width: 1.25rem; height: 1.25rem;
+  margin: 0; padding: 0; accent-color: var(--amber); }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #failure, .face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {

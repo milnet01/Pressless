@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Round buttons sit beside their names** (PRESS-0201)
+  When you pick your site for visitor numbers, each round button now
+  sits to the left of the site's name, not centred on a line above it.
+  Tick boxes line up the same way.
+
 ## [0.7.0] - 2026-10-02
 
 **Theme:** he can see who is reading
