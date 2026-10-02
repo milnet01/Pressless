@@ -9235,7 +9235,7 @@ already-built code ships in whichever release comes next.
   Source: user request 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0206] **Choose a different Google site without signing in again.**
+- ✅ [PRESS-0206] **Choose a different Google site without signing in again.**
   Today, once visitor numbers are set up, google_setup._show offers only
   "Sign in again" and "Turn off visitor numbers", so changing site means
   a full Google sign-in. Every part needed already exists in
@@ -9247,6 +9247,10 @@ already-built code ships in whichever release comes next.
   Windows box in Edge, Chrome and Firefox before signing 0.7.1.
   Afterwards record the new route in the PRESS-0122 spec as code that
   already exists (rule 14's code-exists exception, no gate).
+  Resolved (2026-10-02, 21f5497): POST /setup/google/sites fills the
+  pending list from the stored sign-in; PRESS-0122 § 4.2 records it (no
+  gate, code-exists). Windows box picker check in Edge, Chrome and
+  Firefox is part of the 0.7.1 hand checks (PRESS-0133).
   **Layman:** A "Choose a different site" button in Settings, Visitor numbers, lists your sites again using the permission Pressless already keeps.
   Kind: feature.
   Source: user request 2026-10-02, after the 0.7.0 hand checks; user chose it for 0.7.1.
