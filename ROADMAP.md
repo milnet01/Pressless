@@ -3031,6 +3031,10 @@ it decides how pages, the menu and the look are held.
   files" and an empty proof, and the list's Header, Footer and Navigation
   links each open "Pressless could not find that entry". Both are what a
   stranger meets first; the starter set should leave neither.
+  Progress (2026-10-02): spec drafted at docs/specs/PRESS-0126-starter-site.md.
+  User decisions 2026-10-02: the starter is a ticked choice in setup, not
+  automatic; its stylesheet is a Store file the Builder publishes; the
+  journal switch (PRESS-0214) is built first, and this item is blocked by it.
   **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
@@ -3085,6 +3089,9 @@ it decides how pages, the menu and the look are held.
   User, 2026-10-02: Pressless builds any kind of site, and a journal
   is one thing a site can hold. Check what the Builder and the starter
   set assume about entries, and let a site turn its journal on or off.
+  User decision 2026-10-02: build this before PRESS-0126, whose starter
+  site turns the journal off through this item's switch and cannot publish
+  without it (the publish guard refuses a site with no entries).
   **Layman:** A business or band site with no dated posts works just as well; the journal is something a site can have, not something it must have.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
