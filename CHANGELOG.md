@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-02
+
+**Theme:** he can see who is reading
+
 ### Added
 
 - **See who is reading your site: how many people, where from, and what they read** (PRESS-0020)
