@@ -8145,6 +8145,16 @@ already-built code ships in whichever release comes next.
   started from it close. Still never run: PRESS-0142's fake-key
   sentence, PRESS-0146's Open folder, PRESS-0169's direct /preview
   script row, PRESS-0023's two-cycle update check, PRESS-0173.
+  0.7.1 (2026-10-02): PASSED on the draft's zip. Self-check ok
+  (store line fails over SSH by design). Setup in the desktop session,
+  key in the keyring. Google sign-in by the user in Edge; Choose a
+  different site then listed both properties with the radios beside
+  their names, and switching saved, in Edge (driven), Chrome (driven)
+  and the user's own Firefox (settings.json read back the chosen property's id).
+  Signed and published. Box cleaned: no Pressless lines in cmdkey,
+  task deleted; %TEMP%\pressless-check is empty but held by the
+  user's Firefox, delete next visit. Publish was not re-run: nothing
+  in 0.7.1 touches it.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -9255,6 +9265,28 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user request 2026-10-02, after the 0.7.0 hand checks; user chose it for 0.7.1.
   Lanes: Face.
+
+- 📋 [PRESS-0207] **Settings names visitor numbers once they are set up.**
+  Settings ends with "Optional: see how many people read your site"
+  whatever the state, so with visitor numbers set up the only way in to
+  Choose a different site reads like an invitation. The user looked for
+  a Visitor numbers entry and did not find it. Where google_account is
+  set, word it as the current state (e.g. "Visitor numbers: change site
+  or turn off").
+  **Layman:** Once visitor numbers are on, Settings says so and links to changing or turning them off, instead of an invitation that reads like a first-time offer.
+  Kind: ux.
+  Source: user hand check 2026-10-02 (0.7.1, Firefox).
+  Lanes: Face.
+
+- 📋 [PRESS-0208] **The practice copy exits 0 on SIGTERM.**
+  LWSM reports exit status -2 and a KeyboardInterrupt traceback ending
+  in scripts/practice.py's _stop when it sends SIGTERM to the process
+  group. A run by hand on 2026-10-02 exited 0, so the signal's timing
+  matters: reproduce first. Not blocking; LWSM only logs the code.
+  **Layman:** When the local web-server manager stops the test copy, it finishes tidily instead of reporting an interruption.
+  Kind: fix.
+  Source: LocalWebServerManager session message 401, 2026-10-02.
+  Lanes: Launcher.
 
 ## Milestones
 
