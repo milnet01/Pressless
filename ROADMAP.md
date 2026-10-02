@@ -3065,6 +3065,13 @@ it decides how pages, the menu and the look are held.
     it. If the person moves the file and said yes, refresh the path on
     the next launch rather than leave a dead shortcut.
   - Hand checks on both systems, from a released build.
+  Found 2026-10-02 while starting it: the packaged app carries no icon a
+  menu entry can use (the Linux build generates a flat placeholder square;
+  Windows has none), and the item's own hand checks need a released build
+  on both systems. Decision for the user, not yet asked: use the existing
+  Pressless logo (docs/screenshots/pressless-logo.svg) as the app icon,
+  rendered to PNG and ICO. Recommendation: yes, and build this item
+  alongside the next release so the hand checks run on that build.
   **Layman:** The first time Pressless opens, it offers to put itself in the Start Menu and on the desktop, so nobody has to hunt for the downloaded file again.
   Kind: feature.
   Source: user-request-2026-09-29.
@@ -3075,6 +3082,13 @@ it decides how pages, the menu and the look are held.
   step-by-step instructions for the rest. Today setup assumes the
   repository exists. Covers making the repository, switching GitHub
   Pages on, and, optionally, pointing their own domain at it.
+  Decision for the user (2026-10-02), not yet asked: should Pressless
+  create the repository itself? That needs a GitHub key allowed to manage
+  repositories, which could also delete them. Recommendation: no.
+  Pressless walks the person through making the account and the
+  repository with exact clicks, then checks each step itself (the
+  repository reachable, Pages switched on) and says plainly what is
+  missing. Why: the publishing key stays limited to one site's contents.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3084,6 +3098,14 @@ it decides how pages, the menu and the look are held.
   S12. WordPress offers these on every site; a stranger's starter site
   needs them to look like theirs. Settings or the Store holds each, as
   PRESS-0198's design decides.
+  Decision for the user (2026-10-02), not yet asked: the icon and the
+  sharing picture need file uploads, which PRESS-0197 brings in 0.10.0, and
+  the design gives identity drafts, which nothing has built yet.
+  Recommendation: do the name and the short description in 0.8.0 (moved
+  into the Store, the name carried across from Settings), and move the icon
+  and the sharing picture to 0.10.0 beside PRESS-0197. Why: a stranger's
+  site gets its own name and description now, with no upload work pulled
+  forward.
   **Layman:** They set their site's name, a one-line description, the little icon in the browser tab, and the picture shown when the site is shared.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3460,6 +3482,9 @@ it decides how pages, the menu and the look are held.
   server somehow: the new launch opens a fresh tab, and the old one
   should say so rather than going dead. Read with PRESS-0204, which
   would be the other way to restart.
+  Recommendation for the user (2026-10-02), not yet asked: put Restart on
+  the Settings page, which the top bar of every screen links. Why: the
+  user suggested Settings, and it needs no new place in the screens.
   **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
   Kind: feature.
   Source: user request 2026-10-02.
@@ -3472,6 +3497,10 @@ it decides how pages, the menu and the look are held.
   offer open, restart and quit. Must work on Windows and Linux (Windows
   parity is the priority), and adds a dependency and packaging work.
   Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  Recommendation for the user (2026-10-02), not yet asked: leave the tray
+  icon until after 1.0. Why: it adds a dependency and packaging work on
+  both systems, the user called it a "perhaps", and PRESS-0203's Restart
+  covers the most common need.
   **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
   Kind: feature.
   Source: user request 2026-10-02.
