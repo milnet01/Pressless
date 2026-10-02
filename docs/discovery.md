@@ -177,7 +177,9 @@ Design works within these and must not silently choose otherwise. The
 | How they write | A what-you-see-is-what-you-get box styled as the finished page. The file underneath stays plain text with small marks |
 | How they style | Bold and italic, the site's own colours, any colour they pick down to a single letter, and run-wide effects such as rainbow |
 | Learning the marks | A cheat sheet **generated from the same table the app parses with**, so the card and the app cannot disagree. In-app panel and a printable page |
-| Building pages | No code needed for anything, the homepage included. Each page's own code is behind a "show me the code" view for anyone who wants it |
+| Building pages | No code needed for anything, the homepage included. As WordPress does it, but simpler: a visual editor that shows the page as it will look, and a code editor for anyone who wants it |
+| The menu | Follows the pages by itself — a new page joins it, a removed one leaves it — and a list lets them reorder it, hide a page from it, or add a link to another site |
+| Interactivity | A few ready-made interactive pieces a page can hold, such as a picture slideshow or questions that fold open, and a place for their own script for anyone who writes one |
 | The site's look | Ready-made choices — colours, fonts, layouts — with a live preview, plus the style code for anyone who wants more |
 | Getting back | One step returns the site to how it was, and they can see that it worked |
 | Where the site lives | Entries sit inside the site folder as `content/`, so publishing backs up their writing as a side effect |

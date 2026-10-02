@@ -3009,23 +3009,10 @@ success.
 
 ## 0.8.0 — a stranger can start from nothing
 
-- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress blog in.**
-  PRESS-0007's Import runs on the maintainer's machine only. It reads
-  the photograph originals and the sibling generator's header and footer
-  templates, which a general user does not have. design.md rule 9 records
-  that it runs once, before anything else, and that nothing in the app
-  runs it.
-
-  An Import for any user needs at least its own templates, and a way to
-  start it that rule 9 allows. Neither is designed. PRESS-0007 stays
-  shipped as it is.
-
-  Decided by the user 2026-09-17 (PRESS-0124 fork 3). Needs a spec
-  before building: it touches Import, the Face and design rule 9.
-  **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
-  Kind: feature.
-  Source: user-decision-2026-09-17 PRESS-0124 fork 3.
-  Lanes: Import, Face.
+S12 and S18. Someone with no site downloads Pressless, is walked through
+GitHub, and publishes a starter site that is theirs, visitor numbers
+included. The design rewrite for a full website editor comes first, since
+it decides how pages, the menu and the look are held.
 
 - 📋 [PRESS-0126] **A plain starter site for an install that never ran Import.**
   An install that never ran Import has no furniture, no fixed pages
@@ -3075,7 +3062,345 @@ success.
   Source: user-request-2026-09-29.
   Lanes: setup, packaging.
 
-## 0.9.0 — the figures from everywhere else
+- 📋 [PRESS-0212] **Setup walks a stranger through GitHub: an account, a repository, and Pages switched on.**
+  S12, and discovery's Help row: automate what can be automated,
+  step-by-step instructions for the rest. Today setup assumes the
+  repository exists. Covers making the repository, switching GitHub
+  Pages on, and, optionally, pointing their own domain at it.
+  **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: setup, Publisher.
+
+- 📋 [PRESS-0213] **Site identity: its name, a short description, an icon and a sharing picture.**
+  S12. WordPress offers these on every site; a stranger's starter site
+  needs them to look like theirs. Settings or the Store holds each, as
+  PRESS-0198's design decides.
+  **Layman:** They set their site's name, a one-line description, the little icon in the browser tab, and the picture shown when the site is shared.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Settings, Builder, Face.
+
+- 📋 [PRESS-0214] **A site need not have a journal.**
+  User, 2026-10-02: Pressless builds any kind of site, and a journal
+  is one thing a site can hold. Check what the Builder and the starter
+  set assume about entries, and let a site turn its journal on or off.
+  **Layman:** A business or band site with no dated posts works just as well; the journal is something a site can have, not something it must have.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Builder, Store, Face.
+
+- 📋 [PRESS-0198] **Rewrite discovery and design for a full WordPress replacement.**
+  First item of this milestone (user decision 2026-10-01, PRESS-0194).
+  docs/discovery.md and docs/design.md describe a writing app that edits
+  a fixed set of pages; the aim is now a full website administration
+  tool: he builds a new homepage, adds and removes pages, changes the
+  site's look, menus, headers and footers, and uploads any file. Update
+  the purpose, the signs of success and the parts, with the user, then
+  gate design.md (CLAUDE.md rule 14). PRESS-0195 to PRESS-0197 are
+  designed after this.
+  Order (user decision 2026-10-01): finish 0.7.0 (PRESS-0193's Settings
+  link, PRESS-0020's live read), then this item straight away, before any
+  0.8.0 or 0.9.0 work, since the new plan may reshape those milestones.
+  Principle for the rewrite (user, 2026-10-01): automate as much as can
+  be automated; whatever cannot be must come with detailed step-by-step
+  instructions for the user. First applied to Google Analytics
+  (PRESS-0199) and Google's review (PRESS-0200).
+  Decided by the user 2026-10-02, each as recommended:
+  1. Pressless is for the first writer and any stranger equally; every
+     feature must work from an empty install.
+  2. Building a homepage or page needs no code; the code view stays
+     for anyone who wants it.
+  3. The site's look: ready-made choices with a live preview, plus the
+     style code for anyone who wants more.
+  4. Hosting stays GitHub Pages, with Pressless doing what setup it can
+     and step-by-step help for the rest.
+  5. Reader comments and a newsletter stay out for now, as "not now"
+     rather than "never".
+  6. One site per copy of Pressless.
+  7. Discovery and design are reworded to speak about any user.
+  Also 2026-10-02: this item comes before PRESS-0125, as decided
+  2026-10-01; the user confirmed it still stands.
+  Progress (2026-10-02): docs/discovery.md rewritten and agreed by the
+  user. The user's clarification: Pressless is a full website creator
+  and editor for any kind of site, from nothing or from an existing site
+  (WordPress, or a folder of web pages), and the first writer's site is a
+  whole site that includes a journal, not a blog. S11 gains provinces or
+  states, never cities; S12 to S18 added. Filed PRESS-0209 (provinces),
+  PRESS-0210 (import a folder of web pages), PRESS-0211 (likes). Next:
+  docs/design.md, then its review gate.
+  Decided by the user 2026-10-02 for the design:
+  1. Page editing works as WordPress's does — a visual block editor that
+     edits the page as it looks, and a code editor — but friendlier.
+  2. Import directs people, step by step, to export their media from
+     WordPress, as was done for the first writer. The first writer's
+     site already sits in its own GitHub repository, so for him setup
+     simply takes the site in from that repository.
+  3. The menu follows pages automatically: a new page joins it, a
+     removed one leaves, a renamed one updates; a list lets them reorder,
+     hide a page, or add a link to another site.
+  The user asked the same day for the roadmap to hold every item needed
+  to reach 1.0.0 as a full website creator and editor.
+  **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
+  Kind: doc.
+  Source: user-decision-2026-10-01.
+
+- 📋 [PRESS-0199] **Pressless puts the Google Analytics tracking code on the site, with step-by-step help for the rest.**
+  User decision 2026-10-01: automate as much as can be automated, and
+  give detailed instructions for what cannot. Overturns design.md's
+  2026-08-26 settlement that Pressless never writes the footer tag and
+  Settings holds no measurement id; PRESS-0198's design rewrite carries
+  that change. Automate: asking for the G- measurement id and writing
+  the tag into every page it builds. Instructions: making a Google
+  Analytics account and property for the site, and finding the two ids.
+  Without it a new user's dashboard reads nothing, because Google
+  counts only pages that carry the tag.
+  **Layman:** Pressless switches on Google's visitor counting for the site itself, and walks him through the parts it cannot do for him.
+  Kind: feature.
+  Source: user-decision-2026-10-01.
+
+- 📋 [PRESS-0200] **Get the Google sign-in verified, and say in the app while it is pending.**
+  User decision 2026-10-01: releases do not wait for Google's review.
+  Until Pressless's OAuth client is verified, the Google step tells the
+  user plainly that Google's review is still pending, and what the
+  unverified-app warning means (google_setup already explains the
+  Advanced / Go to Pressless clicks). Verification needs at least a
+  privacy-policy page; the project website could host it. Research of
+  2026-09-30 (PRESS-0122 body) found unverified apps capped at about
+  100 users over the project's life; that cap is why it is started
+  before 1.0 rather than when needed.
+  **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
+  Kind: chore.
+  Source: user-decision-2026-10-01.
+
+## 0.9.0 — pages, menus and the homepage are theirs
+
+S14 and S15. Every page, the homepage included, is built and changed in a
+visual editor with a code editor beside it; pages are added, renamed and
+removed, and the menu follows.
+
+- 📋 [PRESS-0215] **A visual page editor like WordPress's, but simpler, with a code editor beside it.**
+  S15. Decided by the user 2026-10-02: as WordPress does it, a visual
+  editor and a code editor, but friendlier. Ready-made sections such
+  as text, a heading, a picture, a row of pictures, a button, a video,
+  a music player, a download and columns. Anything an imported page
+  holds that no section fits stays editable as code, as WordPress's
+  custom-HTML block does. Needs a spec: it replaces how a page is held
+  and edited (PRESS-0014).
+  **Layman:** They build and change any page, the homepage included, by working on the page as it will look, adding ready-made sections; the code is there for anyone who wants it.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Face, Store, Builder.
+
+- 📋 [PRESS-0216] **The header, footer and menu are changed in the same visual editor.**
+  S15. Today these are edited only as code. One edit reaches every
+  page, so the preview and undo rules design.md gives the furniture
+  still hold.
+  **Layman:** They change the top and bottom of every page, and the menu, the same way they change a page, with no code.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Face, Store.
+
+- 📋 [PRESS-0217] **Ready-made interactive pieces for a page, and a place for their own script.**
+  User, 2026-10-02: a few JavaScript templates for a bit of
+  interactivity, and let users write their own. Candidates: a picture
+  slideshow, questions that fold open, a picture that enlarges when
+  clicked, back to top, a countdown. Each works with the page's look
+  and needs no outside service.
+  **Layman:** A page can hold a picture slideshow, questions that fold open and similar pieces from a list, and anyone who writes their own script can add it.
+  Kind: feature.
+  Source: user-request-2026-10-02.
+  Lanes: Face, Builder.
+
+- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only the existing
+  fixed pages can be edited; PRESS-0014 section 9 left adding, removing
+  and renaming unqueued. Touches the Store's page set, the menu, the
+  builder and what a publish deletes, so it likely needs a spec
+  (spec-format.md section 1: a contract other parts bind to).
+  **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+## 0.10.0 — their own look, and any file
+
+S16 and S17. The site's colours, fonts and layout are picked from choices,
+with the style code for anyone who wants more; music, downloads and
+documents go on the site beside the photographs.
+
+- ✅ [PRESS-0194] **Pressless manages the whole site, not only the writing.**
+  User, 2026-10-01: "Pressless should be allowing full management of
+  his site, not just the blogs / poems, etc." Today he can write and
+  publish entries, edit the existing fixed pages (PRESS-0014), add
+  photographs and use templates. PRESS-0014 section 9 left adding,
+  removing and renaming pages unqueued, and nothing manages the site's
+  look or files other than photographs. Which of these "full
+  management" means is being asked; this item is split into real items
+  once answered. A change to what Pressless is for, so discovery and
+  design are updated with it.
+  Answered (2026-10-01): all four. Adding, removing and renaming pages;
+  the site's look; files other than photographs (each filed as its own
+  item, same day); and site settings, which is PRESS-0193 widened: a
+  Settings page he can find and change his setup answers on. Which
+  milestone each joins is not decided yet.
+  Widened by the user (2026-10-01): "he should be able to create an
+  entirely new homepage with different pictures / links / footers /
+  headers / navigation bars. This needs to be a full website
+  administration tool for him to replace WordPress entirely." This
+  changes what Pressless is for, so docs/discovery.md and
+  docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
+  designed; the homepage itself becomes something he builds, not only a
+  fixed page he edits.
+  The user adds (2026-10-01) that this was always the aim: a WordPress
+  replacement for the first writer and for anyone else who needs one.
+  Resolved (2026-10-02): the question is answered and split into
+  items. docs/discovery.md now says Pressless is a full website creator
+  and editor (S12 to S18), and the work to reach it is filed across
+  0.8.0 to 1.0.0 (PRESS-0195 to PRESS-0200, PRESS-0209 to PRESS-0219).
+  **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
+  Kind: feature.
+  Source: user-request-2026-10-01.
+
+- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
+  Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
+  its own screens; the live site's stylesheet is not editable in the
+  app. What 'look' covers, and whether it is a set of choices or the
+  stylesheet itself, is still to be decided with the user.
+  **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
+  Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
+  handled (PRESS-0016). Which file kinds, size limits for the GitHub
+  API, and how a page links to a file are still to be decided.
+  **Layman:** He can put music, downloads and documents on his site, not only photographs.
+  Kind: feature.
+  Source: user-request-2026-10-01, PRESS-0194.
+
+## 0.11.0 — anyone can bring their site in
+
+S13. A site that already exists — on WordPress, as a folder of web pages, or
+already in a GitHub repository — comes into Pressless whole, and every part of
+it can then be changed.
+
+- 📋 [PRESS-0218] **Setup takes in a site already in a GitHub repository.**
+  S13. Decided by the user 2026-10-02: the first writer's site already
+  sits in its own GitHub repository, so for him setup simply takes the
+  site in from there. Where the repository carries Pressless's
+  content/, that is the Store; otherwise its pages come in as
+  PRESS-0210 brings in a folder of web pages.
+  **Layman:** Someone whose site is already on GitHub, the first writer included, just points Pressless at it and carries on from there.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: setup, Publisher, Import.
+
+- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress site in.**
+  PRESS-0007's Import runs on the maintainer's machine only. It reads
+  the photograph originals and the sibling generator's header and footer
+  templates, which a general user does not have. design.md rule 9 records
+  that it runs once, before anything else, and that nothing in the app
+  runs it.
+
+  An Import for any user needs at least its own templates, and a way to
+  start it that rule 9 allows. Neither is designed. PRESS-0007 stays
+  shipped as it is.
+
+  Decided by the user 2026-09-17 (PRESS-0124 fork 3). Needs a spec
+  before building: it touches Import, the Face and design rule 9.
+  Decided by the user 2026-10-02: Import directs people, step by
+  step, to export their media from WordPress, as was done for the
+  first writer, and reads that download. A WordPress site is a whole
+  site (pages, menus, media, and a journal where it has one), never
+  only a blog. Starts after PRESS-0198's design and the 0.9.0 page
+  editor, since what a page becomes is decided there.
+  **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
+  Kind: feature.
+  Source: user-decision-2026-09-17 PRESS-0124 fork 3.
+  Lanes: Import, Face.
+
+- 📋 [PRESS-0156] **Import decides what counts as HTML by the first writer's archive, and a link or italic word erases every paragraph for other blogs.**
+  _html.py treats any post holding p, em, a, img and similar tags as
+  markup and collapses its newlines. That matches PRESS-0007 section
+  4.3, whose premise is the sibling generator passing such bodies
+  through. Other WordPress blogs ran wpautop() on classic-editor
+  posts, so readers saw paragraphs. Owed to PRESS-0125's spec before
+  that is built: decide markup the way WordPress did (block content
+  is <!-- wp:, anything else runs through a wpautop-equivalent).
+  Decided by the user 2026-09-26: decide markup the way WordPress
+  did -- block content as-is, anything else through a
+  wpautop-equivalent. Goes into PRESS-0125's spec.
+  Waits on PRESS-0125's spec, as decided; the current Import runs only
+  on the maintainer's machine, so nothing is built for it before then.
+  **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
+  Lanes: import.
+
+- 📋 [PRESS-0157] **Import skips pending and scheduled posts without a word.**
+  pressless_import keeps only publish, draft and private posts;
+  pending and future ones, and other post types, are skipped with
+  nothing in the Report. docs/design.md says everything is carried,
+  and decision 9 forbids silent loss. PRESS-0007 section 4.2 lists the
+  kept statuses, so the fix is the spec's: carry them as drafts, or
+  report each skipped item. Mostly bites under PRESS-0125.
+  Decided by the user 2026-09-26: carry pending and future posts
+  as drafts, and say in the Report how each arrived.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
+  Lanes: import.
+
+- 📋 [PRESS-0158] **One dangling reply or one missing photograph original stops a whole import.**
+  An approved reply to a trashed parent (the Store's DanglingReply) or
+  an attachment whose original is missing stops the run, as PRESS-0007
+  INV-8 requires. For a general user's old blog that cannot be edited,
+  there is no way forward. Decide in PRESS-0125's spec whether to list
+  the item and carry on.
+  Decided by the user 2026-09-26: list the broken comment or
+  missing original in the Report and carry on.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
+  Lanes: import.
+
+- 📋 [PRESS-0161] **Import runs list items and table cells together, and shows script and style text as words.**
+  _html.py splits lines only at br, img, div, p, blockquote, figure and
+  headings, the list PRESS-0007 section 4.3 gives. So <li>one</li>
+  <li>two</li> becomes "onetwo", table cells fuse, pre loses its line
+  breaks, and the report says "its words kept". visible_lines fuses the
+  same way, so INV-5's self-check is blind to it. <script> and <style>
+  contents are handed on as text and become visible paragraphs.
+  Both change PRESS-0007's conversion table and how an archive
+  converts, so the spec comes first: split at li, tr, td/th, hr and
+  pre (keeping pre's newlines) in both the converter and
+  visible_lines, and drop script and style contents with a listing.
+  Belongs with PRESS-0125, where other blogs' posts reach it.
+  Decided by the user 2026-09-26: split at li, tr, td/th, hr and
+  pre (keeping pre's newlines) in both the converter and
+  visible_lines; drop script and style contents with a listing.
+  Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
+  Kind: review-fix.
+  Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
+  Lanes: import.
+
+- 📋 [PRESS-0210] **Import takes in an existing site that is a folder of web pages.**
+  User, 2026-10-02: Pressless must fully edit an existing site, and
+  that includes a plain folder of HTML pages, not only WordPress
+  (docs/discovery.md S13). Design after PRESS-0198 settles how pages
+  and the look are held.
+  **Layman:** Someone whose site is a folder of web pages, not WordPress, can bring it into Pressless and edit every part of it.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Import, Face.
+
+## 0.12.0 — the figures from everywhere else
+
+No new sign. It widens S11: provinces or states within each country, and sources
+past Google.
 
 - 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
   docs/design.md § What may depend on what, rule 8: "Insights may read
@@ -3167,146 +3492,23 @@ success.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-## 0.10.0 — the whole site is his
-
-User decision, 2026-10-01: Pressless replaces WordPress entirely, for the first
-writer and for anyone else, and that must be true before 1.0.0. So 1.0.0 follows
-this milestone, and its frozen formats include every surface this one adds.
-
-- 💭 [PRESS-0194] **Pressless manages the whole site, not only the writing.**
-  User, 2026-10-01: "Pressless should be allowing full management of
-  his site, not just the blogs / poems, etc." Today he can write and
-  publish entries, edit the existing fixed pages (PRESS-0014), add
-  photographs and use templates. PRESS-0014 section 9 left adding,
-  removing and renaming pages unqueued, and nothing manages the site's
-  look or files other than photographs. Which of these "full
-  management" means is being asked; this item is split into real items
-  once answered. A change to what Pressless is for, so discovery and
-  design are updated with it.
-  Answered (2026-10-01): all four. Adding, removing and renaming pages;
-  the site's look; files other than photographs (each filed as its own
-  item, same day); and site settings, which is PRESS-0193 widened: a
-  Settings page he can find and change his setup answers on. Which
-  milestone each joins is not decided yet.
-  Widened by the user (2026-10-01): "he should be able to create an
-  entirely new homepage with different pictures / links / footers /
-  headers / navigation bars. This needs to be a full website
-  administration tool for him to replace WordPress entirely." This
-  changes what Pressless is for, so docs/discovery.md and
-  docs/design.md must be revisited before PRESS-0195 to PRESS-0197 are
-  designed; the homepage itself becomes something he builds, not only a
-  fixed page he edits.
-  The user adds (2026-10-01) that this was always the aim: a WordPress
-  replacement for the first writer and for anyone else who needs one.
-  **Layman:** He should be able to manage his whole website in Pressless, not only write posts and poems.
+- 📋 [PRESS-0209] **Insights shows provinces or states within each country.**
+  User, 2026-10-02: the more detail the better, but cities are not
+  wanted. docs/discovery.md S11 now names provinces or states. Google
+  Analytics reports a region dimension; check what it returns for
+  South Africa before designing the display.
+  **Layman:** Visitor numbers show which province or state readers came from, not only the country.
   Kind: feature.
-  Source: user-request-2026-10-01.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: Insights, Face.
 
-- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
-  Part of PRESS-0194 (user, 2026-10-01). Today only the existing
-  fixed pages can be edited; PRESS-0014 section 9 left adding, removing
-  and renaming unqueued. Touches the Store's page set, the menu, the
-  builder and what a publish deletes, so it likely needs a spec
-  (spec-format.md section 1: a contract other parts bind to).
-  **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
+## 1.0.0 — every sign holds, and the format is frozen
 
-- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
-  Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
-  its own screens; the live site's stylesheet is not editable in the
-  app. What 'look' covers, and whether it is a set of choices or the
-  stylesheet itself, is still to be decided with the user.
-  **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
-
-- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
-  Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
-  handled (PRESS-0016). Which file kinds, size limits for the GitHub
-  API, and how a page links to a file are still to be decided.
-  **Layman:** He can put music, downloads and documents on his site, not only photographs.
-  Kind: feature.
-  Source: user-request-2026-10-01, PRESS-0194.
-
-- 📋 [PRESS-0198] **Rewrite discovery and design for a full WordPress replacement.**
-  First item of this milestone (user decision 2026-10-01, PRESS-0194).
-  docs/discovery.md and docs/design.md describe a writing app that edits
-  a fixed set of pages; the aim is now a full website administration
-  tool: he builds a new homepage, adds and removes pages, changes the
-  site's look, menus, headers and footers, and uploads any file. Update
-  the purpose, the signs of success and the parts, with the user, then
-  gate design.md (CLAUDE.md rule 14). PRESS-0195 to PRESS-0197 are
-  designed after this.
-  Order (user decision 2026-10-01): finish 0.7.0 (PRESS-0193's Settings
-  link, PRESS-0020's live read), then this item straight away, before any
-  0.8.0 or 0.9.0 work, since the new plan may reshape those milestones.
-  Principle for the rewrite (user, 2026-10-01): automate as much as can
-  be automated; whatever cannot be must come with detailed step-by-step
-  instructions for the user. First applied to Google Analytics
-  (PRESS-0199) and Google's review (PRESS-0200).
-  Decided by the user 2026-10-02, each as recommended:
-  1. Pressless is for the first writer and any stranger equally; every
-     feature must work from an empty install.
-  2. Building a homepage or page needs no code; the code view stays
-     for anyone who wants it.
-  3. The site's look: ready-made choices with a live preview, plus the
-     style code for anyone who wants more.
-  4. Hosting stays GitHub Pages, with Pressless doing what setup it can
-     and step-by-step help for the rest.
-  5. Reader comments and a newsletter stay out for now, as "not now"
-     rather than "never".
-  6. One site per copy of Pressless.
-  7. Discovery and design are reworded to speak about any user.
-  Also 2026-10-02: this item comes before PRESS-0125, as decided
-  2026-10-01; the user confirmed it still stands.
-  Progress (2026-10-02): docs/discovery.md rewritten and agreed by the
-  user. The user's clarification: Pressless is a full website creator
-  and editor for any kind of site, from nothing or from an existing site
-  (WordPress, or a folder of web pages), and the first writer's site is a
-  whole site that includes a journal, not a blog. S11 gains provinces or
-  states, never cities; S12 to S18 added. Filed PRESS-0209 (provinces),
-  PRESS-0210 (import a folder of web pages), PRESS-0211 (likes). Next:
-  docs/design.md, then its review gate.
-  **Layman:** Rewrite the project's plan so it describes a complete replacement for WordPress, before building the new pieces.
-  Kind: doc.
-  Source: user-decision-2026-10-01.
-
-- 📋 [PRESS-0199] **Pressless puts the Google Analytics tracking code on the site, with step-by-step help for the rest.**
-  User decision 2026-10-01: automate as much as can be automated, and
-  give detailed instructions for what cannot. Overturns design.md's
-  2026-08-26 settlement that Pressless never writes the footer tag and
-  Settings holds no measurement id; PRESS-0198's design rewrite carries
-  that change. Automate: asking for the G- measurement id and writing
-  the tag into every page it builds. Instructions: making a Google
-  Analytics account and property for the site, and finding the two ids.
-  Without it a new user's dashboard reads nothing, because Google
-  counts only pages that carry the tag.
-  **Layman:** Pressless switches on Google's visitor counting for the site itself, and walks him through the parts it cannot do for him.
-  Kind: feature.
-  Source: user-decision-2026-10-01.
-
-- 📋 [PRESS-0200] **Get the Google sign-in verified, and say in the app while it is pending.**
-  User decision 2026-10-01: releases do not wait for Google's review.
-  Until Pressless's OAuth client is verified, the Google step tells the
-  user plainly that Google's review is still pending, and what the
-  unverified-app warning means (google_setup already explains the
-  Advanced / Go to Pressless clicks). Verification needs at least a
-  privacy-policy page; the project website could host it. Research of
-  2026-09-30 (PRESS-0122 body) found unverified apps capped at about
-  100 users over the project's life; that cap is why it is started
-  before 1.0 rather than when needed.
-  **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
-  Kind: chore.
-  Source: user-decision-2026-10-01.
-
-## 1.0.0 — all eleven, and the format is frozen
-
-No new capability. What makes this 1.0 rather than 0.9 is the promise attached
-to it: an entry file written by 1.0 stays readable by every later version.
-Before 1.0 the on-disk format may still change; after it, S3 stops being a
-design intention and becomes a compatibility guarantee. The exit condition and
-the breaking surfaces are owned by docs/standards/versioning-overrides.md.
+No new sign. What makes this 1.0 is the promise attached to it: every file
+Pressless writes for a site at 1.0 stays readable by every later version.
+Before 1.0 the on-disk format may still change; after it, S3 becomes a
+compatibility guarantee. The exit condition and the breaking surfaces are
+owned by docs/standards/versioning-overrides.md.
 
 - 📋 [PRESS-0138] **Freeze the breaking surfaces, and put a check on each one.**
   `docs/standards/versioning-overrides.md` names the breaking surfaces --
@@ -3330,10 +3532,54 @@ the breaking surfaces are owned by docs/standards/versioning-overrides.md.
   2026-10-01: 1.0.0 now follows 0.10.0 (whole-site management, user
   decision). The freeze must cover every surface that milestone adds:
   new pages, the site's look, and uploaded files.
+  Widened 2026-10-02 (PRESS-0198): the frozen surfaces now include
+  whatever 0.8.0 to 0.11.0 add to the on-disk format, such as how a
+  page, the menu and the site's look are held. List them from the
+  design once it is rewritten.
   **Layman:** Before version 1.0, the shapes of his files, his setup and his site are promised not to change without warning — and a test proves each promise, so nothing can break it quietly.
   Kind: implement.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
   Lanes: Store, Settings, Builder.
+
+- 📋 [PRESS-0219] **A guide for someone new that covers every task.**
+  Discovery's Help row: whatever Pressless cannot do for them comes
+  with step-by-step instructions. Written once every feature before
+  1.0.0 has shipped, so it describes what exists.
+  **Layman:** A plain, step-by-step guide shows a newcomer how to do everything Pressless offers, from setup to changing their site's look.
+  Kind: doc.
+  Source: user-decision-2026-10-02 PRESS-0198.
+  Lanes: docs.
+
+- 📋 [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
+  _local_files reads EVERY file of the site into one dict before
+  anything is compared, and the upload path adds roughly three further
+  copies of each file: b64encode, json.dumps, then .encode.
+
+  ADR-0002 puts the first publish at around 862 files. On a text-only
+  site that is nothing; on a photograph-carrying one it is a large
+  resident set on the modest Windows box PRESS-0022 targets.
+
+  Not fixed with the rest of PRESS-0069 because it is a design change
+  rather than a defect: the comparison wants a hash per file rather than
+  its bytes, and the upload wants streaming. Both alter the shape of the
+  publish loop, and INV-4 pins how files are compared.
+  Decided by the user (2026-09-08): DEFER until packaging can measure
+  it. PRESS-0022 puts a built artefact on the Windows test box; measure
+  the real resident set there, with real photographs, and decide from
+  the number. The reasoning recorded because it is this project's own
+  habit: measurement has been right every time here and reasoning has
+  been wrong more than once, and this change alters INV-4, a settled
+  contract, which should not be spent on a guess. Effectively blocked-by
+  PRESS-0022 and PRESS-0016 -- not by anything either of them must
+  build, but by the measurement only they make possible.
+  No version (2026-09-21): one item spanning two. The measurement becomes
+  possible once photographs and packaging are on the Windows box, and the
+  fix that follows alters INV-4, a settled contract. Which version carries
+  the fix depends on a number nobody has taken, so it takes neither until
+  then. It must land before 1.0.0 freezes the format.
+  **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
+  Kind: perf.
+  Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
 
 ## Backlog — no version yet
 
@@ -6581,37 +6827,6 @@ already-built code ships in whichever release comes next.
   Kind: security.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 2 on 2026-09-02.
 
-- 📋 [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
-  _local_files reads EVERY file of the site into one dict before
-  anything is compared, and the upload path adds roughly three further
-  copies of each file: b64encode, json.dumps, then .encode.
-
-  ADR-0002 puts the first publish at around 862 files. On a text-only
-  site that is nothing; on a photograph-carrying one it is a large
-  resident set on the modest Windows box PRESS-0022 targets.
-
-  Not fixed with the rest of PRESS-0069 because it is a design change
-  rather than a defect: the comparison wants a hash per file rather than
-  its bytes, and the upload wants streaming. Both alter the shape of the
-  publish loop, and INV-4 pins how files are compared.
-  Decided by the user (2026-09-08): DEFER until packaging can measure
-  it. PRESS-0022 puts a built artefact on the Windows test box; measure
-  the real resident set there, with real photographs, and decide from
-  the number. The reasoning recorded because it is this project's own
-  habit: measurement has been right every time here and reasoning has
-  been wrong more than once, and this change alters INV-4, a settled
-  contract, which should not be spent on a guess. Effectively blocked-by
-  PRESS-0022 and PRESS-0016 -- not by anything either of them must
-  build, but by the measurement only they make possible.
-  No version (2026-09-21): one item spanning two. The measurement becomes
-  possible once photographs and packaging are on the Windows box, and the
-  fix that follows alters INV-4, a settled contract. Which version carries
-  the fix depends on a number nobody has taken, so it takes neither until
-  then. It must land before 1.0.0 freezes the format.
-  **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
-  Kind: perf.
-  Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
-
 - ✅ [PRESS-0089] **Nothing decides what the publisher may find in the site folder besides the site.**
   _local_files publishes every ordinary file under the folder. The
   symlink half is closed -- a link's target is no longer read -- but
@@ -8432,53 +8647,6 @@ already-built code ships in whichever release comes next.
   Source: review-code 2026-09-26 PRESS-0135 lane Insights, #32.
   Lanes: insights.
 
-- 📋 [PRESS-0156] **Import decides what counts as HTML by the first writer's archive, and a link or italic word erases every paragraph for other blogs.**
-  _html.py treats any post holding p, em, a, img and similar tags as
-  markup and collapses its newlines. That matches PRESS-0007 section
-  4.3, whose premise is the sibling generator passing such bodies
-  through. Other WordPress blogs ran wpautop() on classic-editor
-  posts, so readers saw paragraphs. Owed to PRESS-0125's spec before
-  that is built: decide markup the way WordPress did (block content
-  is <!-- wp:, anything else runs through a wpautop-equivalent).
-  Decided by the user 2026-09-26: decide markup the way WordPress
-  did -- block content as-is, anything else through a
-  wpautop-equivalent. Goes into PRESS-0125's spec.
-  Waits on PRESS-0125's spec, as decided; the current Import runs only
-  on the maintainer's machine, so nothing is built for it before then.
-  **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
-  Kind: review-fix.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
-  Lanes: import.
-
-- 📋 [PRESS-0157] **Import skips pending and scheduled posts without a word.**
-  pressless_import keeps only publish, draft and private posts;
-  pending and future ones, and other post types, are skipped with
-  nothing in the Report. docs/design.md says everything is carried,
-  and decision 9 forbids silent loss. PRESS-0007 section 4.2 lists the
-  kept statuses, so the fix is the spec's: carry them as drafts, or
-  report each skipped item. Mostly bites under PRESS-0125.
-  Decided by the user 2026-09-26: carry pending and future posts
-  as drafts, and say in the Report how each arrived.
-  Waits on PRESS-0125's spec, as decided; nothing is built before then.
-  **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
-  Kind: review-fix.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
-  Lanes: import.
-
-- 📋 [PRESS-0158] **One dangling reply or one missing photograph original stops a whole import.**
-  An approved reply to a trashed parent (the Store's DanglingReply) or
-  an attachment whose original is missing stops the run, as PRESS-0007
-  INV-8 requires. For a general user's old blog that cannot be edited,
-  there is no way forward. Decide in PRESS-0125's spec whether to list
-  the item and carry on.
-  Decided by the user 2026-09-26: list the broken comment or
-  missing original in the Report and carry on.
-  Waits on PRESS-0125's spec, as decided; nothing is built before then.
-  **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
-  Kind: review-fix.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
-  Lanes: import.
-
 - ✅ [PRESS-0159] **On Windows a renamed entry file can be overwritten by a new entry, and the Store's name rules differ between the two systems.**
   Confirmed on the Windows box 2026-09-26. Needs a PRESS-0005 amendment
   and its gate, then code; recommended next, since #1 loses his words.
@@ -8536,27 +8704,6 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, #10.
   Lanes: publisher.
-
-- 📋 [PRESS-0161] **Import runs list items and table cells together, and shows script and style text as words.**
-  _html.py splits lines only at br, img, div, p, blockquote, figure and
-  headings, the list PRESS-0007 section 4.3 gives. So <li>one</li>
-  <li>two</li> becomes "onetwo", table cells fuse, pre loses its line
-  breaks, and the report says "its words kept". visible_lines fuses the
-  same way, so INV-5's self-check is blind to it. <script> and <style>
-  contents are handed on as text and become visible paragraphs.
-  Both change PRESS-0007's conversion table and how an archive
-  converts, so the spec comes first: split at li, tr, td/th, hr and
-  pre (keeping pre's newlines) in both the converter and
-  visible_lines, and drop script and style contents with a listing.
-  Belongs with PRESS-0125, where other blogs' posts reach it.
-  Decided by the user 2026-09-26: split at li, tr, td/th, hr and
-  pre (keeping pre's newlines) in both the converter and
-  visible_lines; drop script and style contents with a listing.
-  Waits on PRESS-0125's spec, as decided; nothing is built before then.
-  **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
-  Kind: review-fix.
-  Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
-  Lanes: import.
 
 - ✅ [PRESS-0162] **The PRESS-0135 sweep's Low findings still need triage.**
   The sweep's High and Medium findings were closed on 2026-09-26: 25
@@ -9322,26 +9469,6 @@ already-built code ships in whichever release comes next.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0209] **Insights shows provinces or states within each country.**
-  User, 2026-10-02: the more detail the better, but cities are not
-  wanted. docs/discovery.md S11 now names provinces or states. Google
-  Analytics reports a region dimension; check what it returns for
-  South Africa before designing the display.
-  **Layman:** Visitor numbers show which province or state readers came from, not only the country.
-  Kind: feature.
-  Source: user-decision-2026-10-02 PRESS-0198.
-  Lanes: Insights, Face.
-
-- 📋 [PRESS-0210] **Import takes in an existing site that is a folder of web pages.**
-  User, 2026-10-02: Pressless must fully edit an existing site, and
-  that includes a plain folder of HTML pages, not only WordPress
-  (docs/discovery.md S13). Design after PRESS-0198 settles how pages
-  and the look are held.
-  **Layman:** Someone whose site is a folder of web pages, not WordPress, can bring it into Pressless and edit every part of it.
-  Kind: feature.
-  Source: user-decision-2026-10-02 PRESS-0198.
-  Lanes: Import, Face.
-
 - 📋 [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
   Decided by the user 2026-10-02, after the whole-site work: both
   buttons, public counts in each site's own free Firebase database,
@@ -9356,49 +9483,14 @@ already-built code ships in whichever release comes next.
 
 ## Milestones
 
-A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not
-how many items are done. `docs/discovery.md` § Signs it is working owns
-S1-S11. Each heading's own items are its list; none is kept here.
+A version number here says WHICH SIGNS OF SUCCESS HOLD, not how many items
+are done. `docs/discovery.md` § Signs it is working owns the signs. Each
+version heading's intro names its signs, and its own items are its list;
+none is kept here.
 
-**0.1.0 - twelve years survived.** S2, S3, S4. He installs the packaged
-file, points it at the WordPress export, and looks at his whole archive
-rendered on his own machine. There is no Publisher yet, so nothing can
-reach the live site: Import, the one irreversible step, is exercised
-while the stakes are zero.
-
-**0.2.0 - it reaches the live site.** S5, S6. The keyring, setup and the
-Publisher. He is asked for his key once, and a publish that fails tells
-him what happened and leaves the site as it was.
-
-**0.3.0 - he writes in Pressless.** S1, S7, S10. The editor box, the
-preview and the one button. This is the version that does the thing the
-project exists for.
-
-**0.4.0 - he can undo.** S9. A change that made the site wrong comes back
-in one step.
-
-**0.5.0 - the rest of the site is his too.** S8. His fixed pages, not
-just his entries.
-
-**0.6.0 - pictures and helpers.** No new sign. Photographs, templates and
-the cheat sheet add capability the eleven do not name.
-
-**0.7.0 - he can see who is reading.** S11. All eleven hold from here.
-
-**0.8.0 - a stranger can start from nothing.** No new sign. The eleven
-are written about one writer; this is what somebody else needs to begin.
-
-**0.9.0 - the figures from everywhere else.** No new sign. It widens
-S11's sources past Google.
-
-**1.0.0 - all eleven, and the format is frozen.** The eleven already hold
-from 0.7.0, so what 1.0.0 adds is the promise: an entry file written by
-1.0 stays readable by every later version. Before 1.0 the on-disk format
-of ADR-0001 may still change; after it, S3 stops being a design intention
-and becomes a compatibility guarantee.
-
-**Every release is built by CI, including the first.** ADR-0004:
-PyInstaller does not cross-compile, so `Pressless.exe` can only be
-produced by a Windows runner, and S4 cannot be demonstrated without one.
-That is why packaging sits in 0.1.0 rather than at the end - it is not
-the last step, it is the first release's precondition.
+Up to 0.7.0, Pressless did what the first writer needed: write, publish,
+undo, edit the existing pages, photographs and visitor numbers. From 0.8.0
+it becomes a full website creator and editor for anyone: start from
+nothing (0.8.0), build every page and the menu (0.9.0), change the look and
+add any file (0.10.0), bring an existing site in (0.11.0), and widen the
+visitor figures (0.12.0). 1.0.0 freezes the format.
