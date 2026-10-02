@@ -9149,7 +9149,7 @@ already-built code ships in whichever release comes next.
   Source: user, 0.7.0 Windows hand check, 2026-10-02.
   Lanes: Face.
 
-- 🚧 [PRESS-0202] **A practice copy the local web-server manager can start and stop.**
+- ✅ [PRESS-0202] **A practice copy the local web-server manager can start and stop.**
   LWSM lists a project that has an executable run.sh, starts it with
   PORT set, and stops it with SIGTERM to its process group. It reads the
   default port from a `PORT=${PORT:-NNNN}` line in run.sh.
@@ -9185,6 +9185,13 @@ already-built code ships in whichever release comes next.
   see it refused; then message LWSM via session_message
   to:"localwebservermanager" (its question: TCP connect or HTTP GET for
   the running light; a GET without the secret gets 403).
+  Resolved (2026-10-02, 020ceab): run.sh and scripts/practice.py
+  committed with tests/test_practice.py. The refusing transports follow
+  each seam's contract (OSError for no answer, plus wait/now), and the
+  updater is disarmed too. Linux only: the made-up key lives in a file,
+  which credentials refuses on Windows, so main() says so there and the
+  tests skip. Run once on port 18471: 403 without the secret, Publish
+  refused with "could not reach GitHub", SIGTERM exit 0.
   **Layman:** A test copy of Pressless with made-up writing that a developer can start from the source code, which never publishes anything or reaches Google.
   Kind: feature.
   Source: LocalWebServerManager session request 2026-10-02; user chose the practice copy the same day.
