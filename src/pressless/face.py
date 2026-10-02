@@ -623,7 +623,9 @@ def _page(body: str, theme: str = themes.FOLLOW) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>Pressless</title><style>{_STYLE}</style></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f'{themes.picker(theme)}<a href="/setup">Settings</a></header>'
+        f'{themes.picker(theme)}<a href="/setup">Settings</a>'
+        # PRESS-0179: on every screen, failure pages included.
+        '<a href="/report">Suggest or report a problem</a></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 

@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A Suggest or report a problem link on every screen** (PRESS-0179)
+  It opens a page that explains the report will be public, points a
+  security problem to GitHub's private route, and then opens a new issue
+  with only the Pressless version, the system and three questions filled
+  in. Nothing else about you or your site is sent.
+
 - **Someone starting from nothing gets a plain starter site** (PRESS-0126)
   Setup on a new, empty copy of Pressless offers a simple site: a
   homepage, an About page, a menu, a header, a footer and a plain, easy

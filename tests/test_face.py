@@ -757,3 +757,22 @@ def test_a_refused_post_is_answered_not_reset(
     finally:
         served.stop()
     assert status == expected
+
+
+def test_every_page_links_to_the_report_page(tmp_path: Path) -> None:
+    """PRESS-0179. Breaks when the top bar loses the link, on an ordinary page
+    or on a failure page."""
+    def broken(request: face.Request) -> str:
+        raise ValueError("x")
+
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/broken", broken)
+        client = _Client(served)
+        for path in ("/words", "/broken"):
+            _, _, body = client.request("GET", path)
+            bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
+            assert '<a href="/report">Suggest or report a problem</a>' in bar, path
+    finally:
+        served.stop()

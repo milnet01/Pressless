@@ -3406,7 +3406,7 @@ it decides how pages, the menu and the look are held.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
 
-- 📋 [PRESS-0179] **A "Suggest or report a problem" button opens a ready-filled issue on GitHub.**
+- ✅ [PRESS-0179] **A "Suggest or report a problem" button opens a ready-filled issue on GitHub.**
   Today the only route is the README's Getting help section, which a
   user of the downloaded app never sees.
 
@@ -3434,6 +3434,11 @@ it decides how pages, the menu and the look are held.
   questions and ideas their own place, and the button could offer both.
   Decision (user, 2026-09-29): issues only; GitHub Discussions stays
   off.
+  Resolved (2026-10-02): no spec, by spec-format section 1 (one part, a
+  new page and link). src/pressless/report.py adds /report; the Face's top
+  bar links it on every screen, failure pages included. Tests in
+  tests/test_report.py and tests/test_face.py; four mutations, all killed.
+  Seen rendered at desktop and phone widths in headless Chrome.
   **Layman:** A button in the app lets people send a suggestion or report a problem, without leaving anything private behind.
   Kind: feature.
   Source: user-request-2026-09-28.
