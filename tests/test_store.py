@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import dataclasses
 import inspect
+import json
 import os
 import warnings
 from datetime import datetime, timedelta, timezone
@@ -1842,3 +1843,41 @@ def test_forwards_refuse_an_illegal_slug(tmp_path, text):
     path.write_text(text, encoding="utf-8")
     with pytest.raises(StoreError, match="forwards.json"):
         store_module.read_forwards(tmp_path)
+
+
+# PRESS-0214 INV-1, INV-2: the options file
+# (docs/specs/PRESS-0214-journal-switch.md § 4.1). The name is written out
+# here rather than imported, so a module naming another file fails.
+
+
+@pytest.mark.parametrize("data, expected", [
+    (None, True),
+    (b"{}", True),
+    (b'{"journal": true}', True),
+    (b'{"journal": false}', False),
+    (b"[]", StoreError),
+    (b'{"journal": "no"}', StoreError),
+    (b"\xff\xfe{}", StoreError),
+])
+def test_journal_on_reads_the_options_file(tmp_path, data, expected):
+    """INV-1: absent means on; a malformed file is refused, never guessed.
+
+    Breaks when an absent file reads as off, or a malformed one as on."""
+    if data is not None:
+        (tmp_path / "options").mkdir()
+        (tmp_path / "options" / "options.json").write_bytes(data)
+    if expected is StoreError:
+        with pytest.raises(StoreError, match="options.json"):
+            store_module.journal_on(tmp_path)
+    else:
+        assert store_module.journal_on(tmp_path) is expected
+
+
+def test_write_journal_keeps_other_options(tmp_path):
+    """INV-2. Breaks when the file is written as {"journal": ...} alone."""
+    (tmp_path / "options").mkdir()
+    (tmp_path / "options" / "options.json").write_text('{"other": 1}', encoding="utf-8")
+    path = store_module.write_journal(tmp_path, False)
+    assert path == tmp_path / "options" / "options.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == {"journal": False, "other": 1}
+    assert store_module.journal_on(tmp_path) is False

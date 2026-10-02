@@ -145,6 +145,9 @@ class _State:
     # PRESS-0182: the fetched forwards file, keyed by its name like the other
     # kinds; empty where the fetched state has none.
     forwards: dict[str, dict[str, str]] = field(default_factory=dict)
+    # PRESS-0214: the fetched options; {} where the fetched state has none,
+    # which is every option at its default.
+    options: dict = field(default_factory=dict)
 
 
 def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
@@ -184,6 +187,8 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
         elif kind == store.FORWARDS_FOLDER and name == store.FORWARDS_FILE:
             # The fetch area's content/ is laid out as the Store is (PRESS-0182 § 4.4).
             state.forwards[name] = store.read_forwards(fetch / prefix)
+        elif kind == store.OPTIONS_FOLDER and name == store.OPTIONS_FILE:
+            state.options.update(store.read_options(fetch / prefix))
     return state
 
 
@@ -316,6 +321,20 @@ def _restore_other_kinds(folder: Path, state: _State,
             store.write_forwards(folder, forwards)
             if remembered is None:
                 reversals.append(lambda p=path: store.move_to_bin(folder, p))
+
+    # PRESS-0214 § 4.4: the one kind whose ABSENCE is restored. An absent
+    # options file means the journal is on, so keeping his file over a fetched
+    # state without one would leave it off after undoing to a state where it
+    # was on.
+    path = store.options_path_for(folder)
+    remembered_options = store.read_options(folder)
+    if remembered_options != state.options:
+        if path.is_file():
+            store.move_to_bin(folder, path)
+            reversals.append(lambda o=remembered_options: store.write_options(folder, o))
+        if state.options:
+            store.write_options(folder, state.options)
+            reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
     for slug, comments in sorted(state.comments.items()):
         path = store.comments_path_for(folder, slug)

@@ -338,7 +338,10 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             text = store.read_html(path)
             base = _digest(path)
             show = _show(folder, kind, name, request.query.get("show", ""))
-            entries = store.list_slugs(folder, draft=False)
+            # PRESS-0214 § 4.5: no newest entry to show a change on while the
+            # journal is off.
+            entries = (store.list_slugs(folder, draft=False)
+                       if store.journal_on(folder) else ())
             held = store.list_html(folder, store.PAGES_FOLDER)
         except store.StoreError as exc:
             failure: Exception | None = exc

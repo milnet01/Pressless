@@ -680,3 +680,30 @@ def test_undo_keeps_forwards_the_fetched_state_lacks(tmp_path):
 
     assert store.read_forwards(folder) == {"a": "seaside"}
     assert "forwards.json" not in _binned(folder)
+
+
+# PRESS-0214 INV-7 (docs/specs/PRESS-0214-journal-switch.md § 4.4): absence
+# means on, so a fetched state without the options file resets the switch.
+
+
+def test_undo_restores_the_journal_switch(tmp_path):
+    """INV-7. Breaks when undo ignores the file, or keeps the Store's where
+    the fetched state has none."""
+    for case in ("held", "absent"):
+        root = tmp_path / case
+        root.mkdir()
+        folder = _folder(root)
+        store.write(folder, _entry("seaside"), draft=False)
+        store.write_journal(folder, False)
+        files = {**_furnished(root), **_content(root, published=(_entry("seaside"),))}
+        if case == "held":
+            scratch = root / "previous-options"
+            scratch.mkdir()
+            files["content/options/options.json"] = (
+                store.write_journal(scratch, True).read_bytes())
+
+        _undo(folder, _previous(files))
+
+        assert store.journal_on(folder) is True, case
+        assert "options.json" in _binned(folder), case
+        assert store.options_path_for(folder).is_file() is (case == "held"), case

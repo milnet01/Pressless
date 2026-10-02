@@ -472,3 +472,19 @@ def test_the_page_editor_offers_the_previews_true_colours(tmp_path):
         status, _, text = browser.request("GET", "/page?kind=pages&name=about")
     assert status == 200, text
     assert '<input type="checkbox" data-true-colours>' in text, text
+
+
+# PRESS-0214 INV-9 (docs/specs/PRESS-0214-journal-switch.md § 4.5).
+
+
+def test_no_newest_entry_choice_with_the_journal_off(tmp_path):
+    """INV-9. Breaks when the choice shows with the journal off."""
+    folder = _folder(tmp_path)
+    address = "/page?kind=furniture&name=header"
+    with _pages(folder) as browser:
+        _, _, on = browser.request("GET", address)
+    store.write_journal(folder, False)
+    with _pages(folder) as browser:
+        _, _, off = browser.request("GET", address)
+    assert "Your newest entry" in on
+    assert "Your newest entry" not in off

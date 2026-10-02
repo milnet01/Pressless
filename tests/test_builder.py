@@ -1142,3 +1142,45 @@ def test_a_value_mark_outside_an_entry_is_left_alone(tmp_path):
     assert "{years_since: 2000-01-01}" in index, index
     page = _entry_page(into, entry).read_text(encoding="utf-8")
     assert "{years_since: 2000-02-02}" in page, page
+
+
+# PRESS-0214 INV-3, INV-4 (docs/specs/PRESS-0214-journal-switch.md § 4.2).
+
+
+def _built(root: Path) -> dict[str, bytes]:
+    return {p.relative_to(root).as_posix(): p.read_bytes()
+            for p in root.rglob("*") if p.is_file()}
+
+
+def test_a_site_with_its_journal_off_has_no_blog(tmp_path):
+    """INV-3: off writes nothing under blog/ and no blog/ address in the
+    sitemap; on builds as a Store with no options file does.
+
+    Breaks when listings or archive still run, or the on case reads the
+    file differently from its absence."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    build(folder, _settings(), tmp_path / "absent", today=REPRODUCIBLE_TODAY)
+    store.write_journal(folder, True)
+    build(folder, _settings(), tmp_path / "on", today=REPRODUCIBLE_TODAY)
+    store.write_journal(folder, False)
+    build(folder, _settings(), tmp_path / "off", today=REPRODUCIBLE_TODAY)
+
+    assert (tmp_path / "absent" / "blog" / "index.html").is_file()
+    on = _built(tmp_path / "on")
+    del on["content/options/options.json"]
+    assert on == _built(tmp_path / "absent")
+    assert not (tmp_path / "off" / "blog").exists()
+    assert "/blog/" not in (tmp_path / "off" / "sitemap.xml").read_text(encoding="utf-8")
+    assert (tmp_path / "off" / "index.html").is_file()
+
+
+def test_off_keeps_entries_in_content(tmp_path):
+    """INV-4. Breaks when entries are dropped from content/ while off."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_journal(folder, False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+    assert (into / "content" / "published" / "seaside.txt").is_file()
+    assert (into / "content" / "options" / "options.json").is_file()

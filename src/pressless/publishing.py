@@ -53,6 +53,18 @@ SENTENCES[NothingToPublish] = Sentence(
     "Send the details below to whoever helps you.",
 )
 
+
+class JournalOff(Exception):
+    """An entry was asked to publish with the journal off (PRESS-0214 § 4.3)."""
+
+
+SENTENCES[JournalOff] = Sentence(
+    "Your journal is off, so entries are not on your site. This entry is still "
+    "saved as a draft.",
+    Site.UNCHANGED,
+    "Turn the journal on from Your writing, then publish this entry again.",
+)
+
 # "A waiting draft", not "the draft of your changes": a copy of a demoted entry
 # bins two drafts, and a failure between them leaves the OLD one (PRESS-0162).
 _KEPT_COPY = ("A waiting draft from this publish was left in place after publishing. "
@@ -103,10 +115,14 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             if caught is not None:
                 gathered.extend(caught)
 
+    # PRESS-0214 § 4.3: before the move, so nothing has moved to put back.
+    if entry is not None and not captured(lambda: store.journal_on(folder)):
+        raise JournalOff("the journal is off")
     moved = captured(lambda: _move(folder, entry))
 
     def guard_and_build() -> None:
-        if not emptying and not store.list_slugs(folder, draft=False):
+        if (not emptying and store.journal_on(folder)
+                and not store.list_slugs(folder, draft=False)):
             raise NothingToPublish("no published entry would remain")
         builder.build(folder, settings, settings.site_folder)
 

@@ -743,3 +743,20 @@ def test_throwing_an_entry_away_removes_its_forwards(tmp_path):
                 "base": _base(folder, slug, draft=draft)})
         assert status == 200, (route, text)
         assert store.read_forwards(folder) == {"x": "y"}, route
+
+
+# PRESS-0214 INV-8 (docs/specs/PRESS-0214-journal-switch.md § 4.5).
+
+
+def test_the_journal_button_switches_it(tmp_path):
+    """INV-8. Breaks when the post sets a fixed value rather than the opposite."""
+    folder = _folder(tmp_path)
+    options = folder / "options" / "options.json"
+    with _editor(folder) as browser:
+        status, headers, _ = browser.request("POST", "/journal")
+        assert status == 303 and headers.get("Location") == "/"
+        assert json.loads(options.read_text(encoding="utf-8")) == {"journal": False}
+        browser.request("POST", "/journal")
+        assert json.loads(options.read_text(encoding="utf-8")) == {"journal": True}
+        status, _, page = browser.request("GET", "/")
+    assert status == 200 and 'action="/journal"' in page

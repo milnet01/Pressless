@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A site can switch its journal off** (PRESS-0214)
+  A button on Your writing turns the journal off and on. Off, the site
+  has no journal pages and publishes with no entries; switching it back
+  on brings every entry back. Undo brings the switch back too.
+
 ### Changed
 
 - **Settings says when visitor numbers are on** (PRESS-0207)

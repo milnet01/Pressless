@@ -471,7 +471,10 @@ class _Build:
             key=lambda entry: entry.date, reverse=True)
 
     def run(self) -> Built:
-        entries = self.read_entries()
+        # PRESS-0214 § 4.2: with the journal off the entries are read as none,
+        # so no entry page or forward is written, and nothing under blog/.
+        journal = store.journal_on(self.folder)
+        entries = self.read_entries() if journal else {}
         pages = self.read_html()
         filtered = self.filtered(entries)
         shown = self.shown(entries)
@@ -482,12 +485,13 @@ class _Build:
         for entry in shown:
             self.entry_page(entry)
         self.forwards(entries, filtered)
-        self.listings(shown)
-        self.archive(shown)
+        if journal:
+            self.listings(shown)
+            self.archive(shown)
         for name, text in pages.items():
             self.fixed_page(name, text)
         self.content()
-        self.sitemap(sorted(pages), shown)
+        self.sitemap(sorted(pages), shown, journal)
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
 
     def fixed_page(self, name: str, text: str) -> None:
@@ -788,6 +792,8 @@ class _Build:
                      for name in store.list_templates(self.folder))
         if store.forwards_path_for(self.folder).is_file():
             paths.append(store.forwards_path_for(self.folder))   # PRESS-0182, for undo
+        if store.options_path_for(self.folder).is_file():
+            paths.append(store.options_path_for(self.folder))    # PRESS-0214, for undo
         for path in paths:
             relative = path.relative_to(self.folder).as_posix()
             # Read here rather than through store.read*, so a file that cannot
@@ -801,15 +807,16 @@ class _Build:
 
     # -- sitemap.xml and robots.txt (§4.9) --
 
-    def sitemap(self, pages: list[str], shown: list[store.Entry]) -> None:
+    def sitemap(self, pages: list[str], shown: list[store.Entry], journal: bool) -> None:
         address = self.settings.site_address.rstrip("/")
         urls: list[tuple[str, str | None]] = []
         if "index" in pages:
             urls.append((f"{address}/", None))
         urls += [(f"{address}/pages/{name}{store.HTML_SUFFIX}", None)
                  for name in pages if name != "index"]
-        urls += [(f"{address}/blog/index.html", None),
-                 (f"{address}/blog/archive/index.html", None)]
+        if journal:
+            urls += [(f"{address}/blog/index.html", None),
+                     (f"{address}/blog/archive/index.html", None)]
         urls += [(f"{address}/{_entry_path(entry)}/index.html", _iso_day(entry.date))
                  for entry in shown]
         lines = "\n".join(

@@ -3085,13 +3085,16 @@ it decides how pages, the menu and the look are held.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Settings, Builder, Face.
 
-- 📋 [PRESS-0214] **A site need not have a journal.**
+- ✅ [PRESS-0214] **A site need not have a journal.**
   User, 2026-10-02: Pressless builds any kind of site, and a journal
   is one thing a site can hold. Check what the Builder and the starter
   set assume about entries, and let a site turn its journal on or off.
   User decision 2026-10-02: build this before PRESS-0126, whose starter
   site turns the journal off through this item's switch and cannot publish
   without it (the publish guard refuses a site with no entries).
+  Resolved (2026-10-02): built to docs/specs/PRESS-0214-journal-switch.md
+  (accepted after one review round). Nine invariants, each with its test;
+  17 mutations, all killed. Gate green on Linux and the Windows box.
   **Layman:** A business or band site with no dated posts works just as well; the journal is something a site can have, not something it must have.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.

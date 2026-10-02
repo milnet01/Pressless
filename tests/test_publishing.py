@@ -470,3 +470,34 @@ def test_a_move_that_cannot_publish_leaves_the_draft_as_it_was(tmp_path, monkeyp
         publishing.publish(folder, _settings(folder), "a-key", entry="seaside",
                            transport=_github())
     assert store.path_for(folder, "seaside", draft=True).read_bytes() == before
+
+
+# PRESS-0214 INV-5, INV-6 (docs/specs/PRESS-0214-journal-switch.md § 4.3).
+
+
+def test_the_guard_runs_only_with_a_journal(tmp_path):
+    """INV-5. Breaks when the guard ignores the switch, or is dropped."""
+    folder = _folder(tmp_path)
+    saved = _settings(folder)
+    store.write_journal(folder, False)
+    github = _github()
+    publishing.publish(folder, saved, KEY, entry=None, transport=github)
+    assert github.requests
+
+    store.write_journal(folder, True)
+    with pytest.raises(publishing.NothingToPublish):
+        publishing.publish(folder, saved, KEY, entry=None, transport=_github())
+
+
+def test_an_entry_will_not_publish_with_the_journal_off(tmp_path):
+    """INV-6. Breaks when the check runs after the move, or not at all."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    store.write_journal(folder, False)
+    before = _state(folder)
+    github = _github()
+    with pytest.raises(publishing.JournalOff):
+        publishing.publish(folder, _settings(folder), KEY, entry="seaside", transport=github)
+    assert _state(folder) == before
+    assert github.requests == []
+    assert face.sentence_for(publishing.JournalOff("x"), publishing=False).what

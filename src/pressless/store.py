@@ -664,6 +664,8 @@ COMMENTS_FOLDER = "comments"
 PHOTOGRAPHS_FOLDER = "photographs"
 FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it forwards to
 FORWARDS_FILE = "forwards.json"
+OPTIONS_FOLDER = "options"           # PRESS-0214: site-wide switches; absent means every default
+OPTIONS_FILE = "options.json"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -675,7 +677,8 @@ WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-w
 # writing the Store holds, and nothing else.
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
-    TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, *WAITING_FOLDERS.values(),
+    TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
+    *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -970,6 +973,54 @@ def write_forwards(folder: Path, forwards: dict[str, str]) -> Path:
     text = json.dumps(forwards, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".forwards-", newline="\n")
     return target
+
+
+def options_path_for(folder: Path) -> Path:
+    """Where the options file sits (PRESS-0214 § 4.1). In a folder of its own,
+    because move_to_bin refuses a file loose in `folder` and undo bins it."""
+    return Path(folder) / OPTIONS_FOLDER / OPTIONS_FILE
+
+
+def read_options(folder: Path) -> dict:
+    """The site-wide options; {} where there is no file (PRESS-0214 § 4.1)."""
+    target = options_path_for(folder)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
+    try:
+        carried = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
+    if not isinstance(carried, dict):
+        raise StoreError(f"{target.name} is not an object of options")
+    return carried
+
+
+def write_options(folder: Path, options: dict) -> Path:
+    """Replace the options file whole, keys sorted (PRESS-0214 § 4.1)."""
+    target = options_path_for(folder)
+    text = json.dumps(options, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    _write_atomically(folder, target, text, prefix=".options-", newline="\n")
+    return target
+
+
+def journal_on(folder: Path) -> bool:
+    """Whether the site has a journal. Absent means on, so a Store that never
+    chose builds as it always did (PRESS-0214 § 3 decision 3)."""
+    value = read_options(folder).get("journal", True)
+    if not isinstance(value, bool):
+        raise StoreError(f'{OPTIONS_FILE}: "journal" is not true or false')
+    return value
+
+
+def write_journal(folder: Path, on: bool) -> Path:
+    """Set the journal on or off, keeping every other option."""
+    options = read_options(folder)
+    options["journal"] = on
+    return write_options(folder, options)
 
 
 def photograph_path_for(folder: Path, name: str) -> Path:

@@ -149,6 +149,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/discard", route(_discard))
     face.add_page("POST", "/throw", route(_throw))
     face.add_page("POST", "/photograph", route(_photograph))
+    face.add_page("POST", "/journal", route(_journal))
     face.add_files(ASSETS_ADDRESS, within(folder / paths.PREVIEW_ASSETS))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
     face.add_files(ORIGINALS_ADDRESS, lambda name: store.photograph_path_for(folder, name))
@@ -252,6 +253,36 @@ def _edit_address(slug: str) -> str:
 # ---------------------------------------------------------------- routes ---
 
 
+def _journal_switch(journal: bool | None, published: bool) -> str:
+    """PRESS-0214 § 4.5: whether the journal is on, and the one button that
+    switches it. None where the options file could not be read."""
+    if journal is None:
+        return ""
+    if journal:
+        said = "Your journal is on."
+        if published:
+            said += (" Turning it off takes your published entries off your site "
+                     "at your next publish; turning it on again brings them back.")
+        button = "Turn the journal off"
+    else:
+        said = ("Your journal is off, so entries are not on your site. A link to "
+                "the journal in your menu stays until you remove it from the header "
+                "or navigation in Your pages.")
+        button = "Turn the journal on"
+    return (f'<form method="post" action="/journal"><p>{said} '
+            f"<button>{button}</button></p></form>")
+
+
+def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """PRESS-0214 § 4.5: switch the journal to the opposite of what it is."""
+    with lock, face.capture() as notices:
+        try:
+            store.write_journal(folder, not store.journal_on(folder))
+        except store.StoreError as exc:
+            return _failed(face, notices, exc)
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
+
+
 def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
     """§ 4.5."""
     readable: dict[bool, list[store.Entry]] = {True: [], False: []}
@@ -270,6 +301,11 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         except store.StoreError as exc:
             first_failure = first_failure or exc
             pages = "<p>Pressless cannot open your pages folder.</p>"
+        try:
+            journal: bool | None = store.journal_on(folder)
+        except store.StoreError as exc:
+            first_failure = first_failure or exc
+            journal = None
     # Every listed slug, readable or not: _replaced and working_copy ask
     # list_slugs, so an unreadable published entry still has its working copy
     # (PRESS-0162).
@@ -308,6 +344,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             # showing it (§ 3 decision 3).
             '<p><button type="button" data-undo>Undo the last press</button> '
             '<span id="undo-status"></span></p>'
+            f"{_journal_switch(journal, bool(published))}"
             # PRESS-0189: each list is a card.
             f'<section class="card"><h2>Drafts</h2>{rows(drafts, unreadable[True])}</section>'
             '<section class="card"><h2>On your site</h2>'
