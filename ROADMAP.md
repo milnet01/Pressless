@@ -9149,6 +9149,65 @@ already-built code ships in whichever release comes next.
   Source: user, 0.7.0 Windows hand check, 2026-10-02.
   Lanes: Face.
 
+- 🚧 [PRESS-0202] **A practice copy the local web-server manager can start and stop.**
+  LWSM lists a project that has an executable run.sh, starts it with
+  PORT set, and stops it with SIGTERM to its process group. It reads the
+  default port from a `PORT=${PORT:-NNNN}` line in run.sh.
+
+  Pressless cannot start from source today: run unpackaged, main()
+  stops at paths.artefact_path() with NotPackaged, so there is no
+  development run for run.sh to wrap. The user chose (2026-10-02) a
+  practice copy: the current source, a practice folder outside the
+  repository, made-up writing, and no way to publish or reach Google.
+
+  Two existing decisions move. PRESS-0011 decision 2 binds the Face to a
+  port the system chooses; the practice copy takes PORT when set.
+  PRESS-0013 owns the launcher, which gains the practice start.
+  Needs a spec: a contract another program binds to, three subsystems,
+  and a real choice about what a practice copy may reach.
+  **Layman:** A test copy of Pressless with made-up writing that a developer can start from the source code, which never publishes anything or reaches Google.
+  Kind: feature.
+  Source: LocalWebServerManager session request 2026-10-02; user chose the practice copy the same day.
+  Lanes: Launcher, Face.
+
+- 📋 [PRESS-0203] **Restart Pressless from inside the app.**
+  Asked for by the user 2026-10-02. Where the button lives is open
+  (Settings was the user's suggestion). Today a restart means closing
+  the console window and starting Pressless again. A restart drops the
+  opening link's session (PRESS-0151), so the page has to reach the new
+  server somehow: the new launch opens a fresh tab, and the old one
+  should say so rather than going dead. Read with PRESS-0204, which
+  would be the other way to restart.
+  **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Face, Launcher.
+
+- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
+  browser is closed the only way back is the console window, and the
+  opening link is spent, so reopening means a restart. A tray icon would
+  offer open, restart and quit. Must work on Windows and Linux (Windows
+  parity is the priority), and adds a dependency and packaging work.
+  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher, Package.
+
+- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+  Asked for by the user 2026-10-02. LWSM (the user's local web-server
+  manager) manages every app that runs a web server: start, stop,
+  restart, and open the page in the browser of choice. Where LWSM runs
+  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
+  open: LWSM sets PORT in the environment it starts Pressless with
+  (PRESS-0202 records its contract), which is one candidate signal.
+  Depends on PRESS-0204.
+  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher.
+
 ## Milestones
 
 A version number here says WHICH OF THE ELEVEN SIGNS OF SUCCESS HOLD, not

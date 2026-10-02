@@ -5,6 +5,9 @@
 no longer opens a browser and loses its `open_browser` parameter; the
 launcher, PRESS-0013 § 4.5, is the one place that opens it. That
 changes a declared surface, so the gate re-armed.
+**Amended 2026-10-02, before implementation** (PRESS-0202): `serve`
+takes an optional `port`, which only the practice copy's start script
+names (§ 3 decision 2, § 4.5, INV-11).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -50,6 +53,12 @@ server they sit on and the error contract every page keeps.
 2. **(decided here) Loopback only, on a port the system chooses.** A fixed
    port collides with whatever else holds it. Pressless opens the browser on
    every launch, so nobody bookmarks the address.
+   **Amended 2026-10-02 (PRESS-0202, the user's choice that day):** `serve`
+   binds the port its caller names, when it names one. The packaged
+   launcher never names one, so the double-click keeps a port the system
+   chooses. The one caller that does is the practice copy's start script,
+   which passes the `PORT` a local web-server manager sets: a program that
+   starts and stops a server has to know where it listens.
 3. **(decided here) Every request carries a secret made at launch.** Without
    it, any page he visits can send requests to the server through his browser.
    **Amended 2026-09-26 (PRESS-0151, decided by the user):** the opening link's
@@ -113,7 +122,7 @@ class Request:
 
 Page = Callable[[Request], str]      # returns the page's HTML body
 
-def serve(folder: Path) -> Face: ...
+def serve(folder: Path, port: int = 0) -> Face: ...   # 0: the system chooses
 
 class Face:
     url: str                                  # the one link carrying the secret
@@ -233,8 +242,12 @@ capture, it lands on that request's list.
 
 ### 4.5 The server and its boundary
 
-- `http.server.ThreadingHTTPServer` bound to `("127.0.0.1", 0)`, so the
-  system picks the port. Run in a background thread; `stop` shuts it down.
+- `http.server.ThreadingHTTPServer` bound to `("127.0.0.1", port)`, `port`
+  being `serve`'s argument: 0, the default, lets the system pick. A named
+  port that is already held fails `serve` with the `OSError` the bind
+  raises, and nothing tries another port, because the caller named it in
+  order to know where the Face listens. Run in a background thread; `stop`
+  shuts it down.
 - **The secret** is `secrets.token_urlsafe(32)`, made by `serve`. `url` is
   `http://127.0.0.1:<port>/?t=<secret>`. **The session** is a second
   `secrets.token_urlsafe(32)`, made at the same time and never equal to the
@@ -402,6 +415,17 @@ capture, it lands on that request's list.
   *Breaks when:* the handler keeps the standard `log_message`, which prints
   the request line.
 
+- **INV-11** — `serve` binds the port it is given, and one the system
+  chooses when given none.
+  *Test:* `tests/test_face.py::test_serve_binds_the_port_it_is_given` —
+  take a free port by binding a socket to `("127.0.0.1", 0)` and closing
+  it; `serve(tmp_path, port=p)`: `url` starts `http://127.0.0.1:<p>/` and
+  following it on port `p` sets the cookie. Two `serve(tmp_path)` calls
+  bind two different ports, neither 0. With a socket still holding a port,
+  `serve(tmp_path, port=held)` raises `OSError`.
+  *Breaks when:* `serve` ignores `port` and binds 0, so `url` names another
+  port; or it falls back to another port when the named one is held.
+
 ## 6. Failure modes
 
 | What happens | What the Face does |
@@ -417,13 +441,14 @@ capture, it lands on that request's list.
 | He opens another page served on `127.0.0.1` | That page's server receives the session cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page. It cannot frame a Face page (§ 4.5) |
 | The opening link is followed a second time | 403. Accepted: the launcher opens it once, and a new launch makes a new link |
 | Pressless is launched twice on one folder | The second start says Pressless is already running and exits; the folder's lock is PRESS-0023 § 4.11's |
+| The port a caller named is already held | `serve` raises the bind's `OSError` and binds nothing; the caller says so (§ 4.5) |
 
 ## 7. Tests
 
 `tests/test_face.py`, unlabelled. It needs the loopback address and nothing
 beyond it, so it runs everywhere, CI included. INV-1, INV-2, INV-3, INV-4,
-INV-5, INV-6, INV-7, INV-8, INV-9 and INV-10 each have the test their clause
-names.
+INV-5, INV-6, INV-7, INV-8, INV-9, INV-10 and INV-11 each have the test
+their clause names.
 Each is seen failing against a stub `face.py` that
 declares the surface and raises `NotImplementedError`, then mutation-probed
 once the code lands, one mutation per *Breaks when* route.
@@ -431,7 +456,13 @@ once the code lands, one mutation per *Breaks when* route.
 ## 8. Alternatives considered (and rejected)
 
 - **A fixed port.** It collides with whatever else holds it, and the browser
-  is opened fresh on every launch, so a stable address buys nothing.
+  is opened fresh on every launch, so a stable address buys nothing. This
+  still holds for the packaged app; a caller that needs a known port names
+  one (§ 3 decision 2).
+- **`serve` reading `PORT` from the environment itself** (2026-10-02). Every
+  test that starts a Face would bind one port whenever the shell exported
+  `PORT`, and the double-click would take a fixed port from whatever
+  started it. The caller reads its own environment and names the port.
 - **Loopback with no secret.** Any page he visits can send requests to a
   loopback server through his browser, and the `Host` check alone does not
   stop a request whose `Host` is right.
@@ -474,6 +505,7 @@ once the code lands, one mutation per *Breaks when* route.
 | INV-8 | `tests/test_face.py::test_a_notice_is_shown_and_the_call_completes` |
 | INV-9 | `tests/test_face.py::test_the_secret_is_never_printed_or_logged` |
 | INV-10 | `tests/test_face.py::test_no_other_origin_can_frame_the_face` |
+| INV-11 | `tests/test_face.py::test_serve_binds_the_port_it_is_given` |
 | That a real browser refuses the frame | **nothing** — no test drives a browser; the header is checked, the browser's enforcement is not |
 | That each sentence reads well to him | **nothing** — a person reads them; S4's staged run is the first |
 | The Open folder button on Windows | **nothing** — Windows cannot be run here; PRESS-0022's staged box is the first place it is observed |
@@ -497,6 +529,8 @@ once the code lands, one mutation per *Breaks when* route.
 - PRESS-0013 § 4.5 step 3, and the test start-ups PRESS-0012, PRESS-0013,
   PRESS-0014 and PRESS-0021 quote, drop `open_browser=False` and call
   `face.serve(folder)` (PRESS-0170).
+- PRESS-0202 — the practice copy's start script passes `PORT` to `serve`;
+  no other caller names a port, and PRESS-0013's launcher is unchanged.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
