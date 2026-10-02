@@ -1184,3 +1184,27 @@ def test_off_keeps_entries_in_content(tmp_path):
     build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
     assert (into / "content" / "published" / "seaside.txt").is_file()
     assert (into / "content" / "options" / "options.json").is_file()
+
+
+# PRESS-0126 INV-13 (docs/specs/PRESS-0126-starter-site.md § 4.6).
+
+
+def test_the_style_code_replaces_the_assets_links(tmp_path):
+    """INV-13. Breaks when look/style.css is written or linked for a Store
+    without style code, or the assets links stay beside it."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    build(folder, _settings(), tmp_path / "plain", today=REPRODUCIBLE_TODAY)
+    store.write_style_code(folder, "body { color: black; }\n")
+    build(folder, _settings(), tmp_path / "styled", today=REPRODUCIBLE_TODAY)
+
+    def entry_page(root: Path) -> str:
+        return next(root.glob("blog/*/*/*/seaside/index.html")).read_text(encoding="utf-8")
+
+    plain, styled = entry_page(tmp_path / "plain"), entry_page(tmp_path / "styled")
+    assert "assets/site.css" in plain and "look/style.css" not in plain
+    assert not (tmp_path / "plain" / "look").exists()
+    assert "look/style.css" in styled
+    assert "assets/site.css" not in styled and "assets/blog.css" not in styled
+    assert ((tmp_path / "styled" / "look" / "style.css").read_text(encoding="utf-8")
+            == "body { color: black; }\n")

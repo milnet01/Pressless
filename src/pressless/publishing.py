@@ -11,8 +11,10 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import hashlib
+import html
 import json
 import urllib.parse
+import warnings
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -20,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
-from pressless import builder, credentials, editor, publisher, settings, setup, store
+from pressless import builder, credentials, editor, publisher, settings, setup, starter, store
 from pressless.face import (
     SENTENCES,
     Face,
@@ -64,6 +66,36 @@ SENTENCES[JournalOff] = Sentence(
     Site.UNCHANGED,
     "Turn the journal on from Your writing, then publish this entry again.",
 )
+
+class WouldReplaceASite(Exception):
+    """The starter site's first publish met a repository already holding a
+    site (PRESS-0126 § 4.5)."""
+
+
+REPLACE_ADDRESS = "/publish/replace"
+
+SENTENCES[WouldReplaceASite] = Sentence(
+    "Your GitHub repository already holds a website, and publishing your starter "
+    "site would replace it, so Pressless stopped.",
+    Site.UNCHANGED,
+    "If you mean to replace it, choose Replace the site on GitHub below, then "
+    "publish again.",
+)
+
+# GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).
+_A_SITE = frozenset({"index.html", "index.md"})
+
+_STARTER_KEPT = ("Pressless could not note that your starter site is now published, "
+                 "so your next publish will ask once more before it replaces a site.")
+
+
+def replace_link(failure: BaseException) -> str:
+    """The way to the replace page, beside a WouldReplaceASite failure; a
+    Sentence is escaped text and cannot carry it."""
+    if not isinstance(failure, WouldReplaceASite):
+        return ""
+    return f'<p><a href="{REPLACE_ADDRESS}">Replace the site on GitHub</a></p>'
+
 
 # "A waiting draft", not "the draft of your changes": a copy of a demoted entry
 # bins two drafts, and a failure between them leaves the OLD one (PRESS-0162).
@@ -121,6 +153,13 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     moved = captured(lambda: _move(folder, entry))
 
     def guard_and_build() -> None:
+        # PRESS-0126 § 4.5: the starter's first publish, whether or not
+        # emptying, refuses where the repository holds a site. The fold is
+        # PRESS-0009 § 4.4's.
+        if starter.unpublished(folder) and any(
+                entry.rstrip("/").casefold() in _A_SITE
+                for entry in publisher.root_entries(settings, key, transport)):
+            raise WouldReplaceASite("the repository already holds a site")
         if (not emptying and store.journal_on(folder)
                 and not store.list_slugs(folder, draft=False)):
             raise NothingToPublish("no published entry would remain")
@@ -160,6 +199,14 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         if moved is not None and not interrupted:
             captured(moved.put_back)   # a failure here is raised in place of the original
         raise
+    def forget_the_starter() -> None:
+        # PRESS-0126 § 4.5: the publish landed, so the starter is on the web.
+        try:
+            starter.published(folder)
+        except OSError:
+            warnings.warn(store.StoreNotice(_STARTER_KEPT), stacklevel=2)
+
+    captured(forget_the_starter)
     return Published(outcome, finish())
 
 
@@ -229,6 +276,8 @@ def register(face: Face, folder: Path, *,
     folder = Path(folder)
     face.add_page("POST", "/publish",
                   lambda request: _publish(face, folder, request, transport))
+    face.add_page("GET", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
+    face.add_page("POST", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
 
 
 def _publish(face: Face, folder: Path, request: Request,
@@ -261,7 +310,8 @@ def _publish(face: Face, folder: Path, request: Request,
             result = publish(folder, saved, key, entry=written.slug, capture=face.capture,
                              notices=notices, transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
-            failure: str | None = face.fail(exc, publishing=False, secret=setup.KEY)
+            failure: str | None = (face.fail(exc, publishing=False, secret=setup.KEY)
+                                   + replace_link(exc))
             published = False
         else:
             failure = None
@@ -296,3 +346,56 @@ def _left(folder: Path, written: store.Entry) -> tuple[str, bool, str]:
 
 def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _replace(face: Face, folder: Path, request: Request) -> str:
+    """PRESS-0126 § 4.5: the user's say-so to replace the site on GitHub. It
+    trims the untouchable list as asked and removes the marker, and publishes
+    nothing: a refused publish put its change back, so the next one carries it."""
+    with editor.LOCK, face.capture() as notices:
+        body = _replace_page(face, folder, request)
+    return render_notices(notices) + body
+
+
+def _replace_page(face: Face, folder: Path, request: Request) -> str:
+    e = html.escape
+    if not starter.unpublished(folder):
+        return ("<h1>Nothing to replace</h1><p>Your site has been published "
+                'already. <a href="/">Your writing</a></p>')
+    try:
+        saved = settings.load(folder)
+    except (settings.NotSetUp, settings.SettingsError) as exc:
+        return face.fail(exc, publishing=False)
+    hint = ""
+    if request.method == "POST":
+        fields = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"),
+                                       keep_blank_values=True)
+        typed = (fields.get("repository") or [""])[0].strip()
+        if typed == saved.repository:
+            keep = set(fields.get("keep", []))
+            kept = tuple(entry for entry in saved.untouchable if entry in keep)
+            try:
+                if kept != saved.untouchable:
+                    settings.save(folder, dataclasses.replace(saved, untouchable=kept))
+                starter.published(folder)
+            except (settings.SettingsError, OSError) as exc:
+                return face.fail(exc, publishing=False)
+            return ("<h1>Ready to replace your site</h1>"
+                    f"<p>Now publish again from where you were. Your starter site will "
+                    f"replace the site in {e(saved.repository)}.</p>"
+                    '<p><a href="/">Your writing</a></p>')
+        hint = ('<p class="hint" id="repository-hint">Type the repository\'s name '
+                "exactly as it is shown above.</p>")
+    boxes = "".join(
+        f'<li><label><input type="checkbox" name="keep" value="{e(entry, quote=True)}" '
+        f"checked> {e(entry)}</label></li>" for entry in saved.untouchable)
+    left = (f"<p>Pressless leaves these alone. Untick anything of the old site that "
+            f"should go:</p><ul>{boxes}</ul>" if boxes
+            else "<p>Nothing on it is marked to be left alone.</p>")
+    return ("<h1>Replace the site on GitHub</h1>"
+            f"<p>Your repository, {e(saved.repository)}, already holds a website. "
+            "Publishing your starter site replaces its pages with yours.</p>"
+            f'<form method="post" action="{REPLACE_ADDRESS}">{left}'
+            f"<p><label>Type <strong>{e(saved.repository)}</strong> to confirm "
+            '<input type="text" name="repository" autocomplete="off"></label></p>'
+            f"{hint}<p><button>Replace it</button></p></form>")

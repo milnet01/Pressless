@@ -501,3 +501,90 @@ def test_an_entry_will_not_publish_with_the_journal_off(tmp_path):
     assert _state(folder) == before
     assert github.requests == []
     assert face.sentence_for(publishing.JournalOff("x"), publishing=False).what
+
+
+# PRESS-0126 INV-9 to INV-12 (docs/specs/PRESS-0126-starter-site.md § 4.5).
+# The marker's name is written out rather than imported.
+
+MARKER = "starter-unpublished"
+
+
+def _starter_folder(tmp_path: Path) -> Path:
+    folder = _folder(tmp_path)
+    store.write_journal(folder, False)
+    (folder / MARKER).write_bytes(b"")
+    return folder
+
+
+def _holding(*names: str, refuse_writes: bool = False) -> _Transport:
+    writes = [("", (401, {}, b'{"message": "Bad credentials"}'))] if refuse_writes else _writes()
+    return _Transport(reads=_reads(_listing([(name, "sha") for name in names])), writes=writes)
+
+
+def test_the_starter_will_not_replace_a_site(tmp_path):
+    """INV-9. Breaks when the check folds no case, runs after the build, or
+    treats any root entry as a site."""
+    for case, root, refused in (("html", ("Index.html",), True),
+                                ("md", ("index.md",), True),
+                                ("readme", ("README.md",), False)):
+        base = tmp_path / case
+        base.mkdir()
+        folder = _starter_folder(base)
+        saved = _settings(folder)
+        github = _holding(*root)
+        if refused:
+            with pytest.raises(publishing.WouldReplaceASite):
+                publishing.publish(folder, saved, KEY, entry=None, transport=github)
+            assert not saved.site_folder.exists(), case
+            assert all(method == "GET" for method, *_ in github.requests), case
+        else:
+            publishing.publish(folder, saved, KEY, entry=None, transport=github)
+            assert saved.site_folder.is_dir(), case
+
+
+def test_the_marker_outlives_only_a_failed_publish(tmp_path):
+    """INV-10. Breaks when the marker is removed before the upload, or never."""
+    folder = _starter_folder(tmp_path)
+    saved = _settings(folder)
+    with pytest.raises(publisher.PublishError):
+        publishing.publish(folder, saved, KEY, entry=None,
+                           transport=_holding(refuse_writes=True))
+    assert (folder / MARKER).exists()
+    publishing.publish(folder, saved, KEY, entry=None, transport=_github())
+    assert not (folder / MARKER).exists()
+
+
+def test_an_imported_site_publishes_as_before(tmp_path):
+    """INV-11. Breaks when the check runs on every publish."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    github = _github()
+    publishing.publish(folder, _settings(folder), KEY, entry=None, transport=github)
+    assert github.requests
+    assert not any(url.endswith("/commits/HEAD") for _method, url, *_ in github.requests)
+
+
+def test_replace_needs_the_name_and_publishes_nothing(tmp_path):
+    """INV-12. Breaks when the name is not checked, the marker stays, or the
+    page publishes."""
+    from test_editor import _Browser as _PageBrowser
+    folder = _starter_folder(tmp_path)
+    github = _github()
+    served = face.serve(folder)
+    try:
+        publishing.register(served, folder, transport=github)
+        browser = _PageBrowser(served)
+        _, _, page = browser.request("GET", "/publish/replace")
+        browser.request("POST", "/publish/replace", {"repository": "someone/else"})
+        kept = settings.load(folder).untouchable
+        marked = (folder / MARKER).exists()
+        status, _, _ = browser.request(
+            "POST", "/publish/replace", {"repository": " owner/owner.github.io "})
+    finally:
+        served.stop()
+    assert 'name="keep"' in page and "CNAME" in page
+    assert kept == ("CNAME",) and marked
+    assert status == 200
+    assert settings.load(folder).untouchable == ()
+    assert not (folder / MARKER).exists()
+    assert github.requests == []

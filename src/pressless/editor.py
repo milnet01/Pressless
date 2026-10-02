@@ -43,6 +43,7 @@ COPY_SUFFIX = "-changes"
 LONGEST_ADDRESS = 60
 PREVIEW_ADDRESS = "/preview/"
 ASSETS_ADDRESS = "/preview/assets/"
+LOOK_ADDRESS = "/preview/look/"     # PRESS-0126: the Store's style code
 ORIGINALS_ADDRESS = "/originals/"
 
 
@@ -151,6 +152,9 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/photograph", route(_photograph))
     face.add_page("POST", "/journal", route(_journal))
     face.add_files(ASSETS_ADDRESS, within(folder / paths.PREVIEW_ASSETS))
+    # PRESS-0126 § 4.6: the style code straight from the Store, so a screen is
+    # styled before any preview is built. The longest prefix wins.
+    face.add_files(LOOK_ADDRESS, within(folder / store.LOOK_FOLDER))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
     face.add_files(ORIGINALS_ADDRESS, lambda name: store.photograph_path_for(folder, name))
 
@@ -470,7 +474,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     # once that proof is pressed (PRESS-0186).
     address = _address_field(named if proof else entry.slug, hidden=proof)
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
-                          for sheet in builder.STYLESHEETS)
+                          for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
 <p><a href="/">Your writing</a> <span id="save-status"></span></p>
 {standing}

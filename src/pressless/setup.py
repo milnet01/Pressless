@@ -18,8 +18,9 @@ import urllib.parse
 from collections.abc import Iterable
 from pathlib import Path
 
-from pressless import builder, credentials, google_signin, publisher, settings
+from pressless import builder, credentials, google_signin, publisher, settings, starter
 from pressless.face import Face, Request, render_notices
+from pressless.store import StoreError
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
 GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
@@ -82,18 +83,26 @@ def _setup(face: Face, folder: Path, request: Request,
 
     if refused is not None:
         return render_notices(notices) + face.fail(refused, publishing=False)
+    # PRESS-0126 § 4.4: the starter site is offered on a Store holding no site.
+    try:
+        offer = starter.offered(folder)
+    except StoreError as exc:
+        return render_notices(notices) + face.fail(exc, publishing=False)
     if request.method != "POST":
         values = _values_from(saved)
         return render_notices(notices) + _form(saved is not None, values, {},
-                                               google_on=_google_on(saved))
+                                               google_on=_google_on(saved),
+                                               start=(saved is None) if offer else None)
 
     answers = _read_answers(request.body)
-    return render_notices(notices) + _submit(face, folder, saved, answers, transport)
+    return render_notices(notices) + _submit(face, folder, saved, answers, transport, offer)
 
 
 def _submit(face: Face, folder: Path, saved: settings.Settings | None,
-            answers: dict[str, str], transport: publisher.Transport | None) -> str:
+            answers: dict[str, str], transport: publisher.Transport | None,
+            offer: bool) -> str:
     first_run = saved is None
+    box = (answers["start"] == "starter") if offer else None   # PRESS-0126 § 4.4
     typed_key = answers["key"]
     values = {name: answers[name] for name in _FIELDS}
     hints: dict[str, str] = {}
@@ -115,7 +124,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
             return face.fail(exc, publishing=False)
         hints[exc.key] = _HINTS[exc.key]
     if hints:
-        return _form(not first_run, values, hints, google_on=_google_on(saved))
+        return _form(not first_run, values, hints, google_on=_google_on(saved),
+                     start=box)
 
     # § 4.6 step 1: the key in hand.
     key = typed_key
@@ -133,7 +143,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
         # root_entries reads commits/HEAD first, and a 404 there is this type,
         # never RepositoryMissing (§ 4.6 step 2).
         return _form(not first_run, values, {"repository": _NO_SUCH_REPOSITORY},
-                     google_on=_google_on(saved))
+                     google_on=_google_on(saved), start=box)
     except publisher.PublishError as exc:
         return face.fail(exc, publishing=False)
 
@@ -154,6 +164,21 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
         except _CREDENTIAL_FAILURES as exc:
             return _credential_failure(face, exc)
 
+    # PRESS-0126 § 4.4: fill, only where the box was ticked and the starter is
+    # still offered. Before the save, so a failure leaves first run where it was.
+    filled = False
+    with face.capture() as filling:
+        try:
+            if answers["start"] == "starter" and starter.offered(folder):
+                starter.fill(folder, candidate.site_name)
+                filled = True
+        except StoreError as exc:
+            fill_failure: str | None = face.fail(exc, publishing=False)
+        else:
+            fill_failure = None
+    if fill_failure is not None:
+        return render_notices(filling) + fill_failure
+
     # Step 5: save, last.
     final = dataclasses.replace(
         candidate,
@@ -168,8 +193,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
         else:
             failed = None
     if failed is not None:
-        return render_notices(notices) + failed
-    return render_notices(notices) + _done(final, choice)
+        return render_notices(filling) + render_notices(notices) + failed
+    return render_notices(filling) + render_notices(notices) + _done(final, choice, filled)
 
 
 def _candidate(folder: Path, saved: settings.Settings | None,
@@ -196,7 +221,8 @@ def _candidate(folder: Path, saved: settings.Settings | None,
 
 def _read_answers(body: bytes) -> dict[str, str]:
     parsed = urllib.parse.parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
-    return {name: (parsed.get(name) or [""])[0].strip() for name in (*_FIELDS, "key")}
+    return {name: (parsed.get(name) or [""])[0].strip()
+            for name in (*_FIELDS, "key", "start")}
 
 
 def _values_from(saved: settings.Settings | None) -> dict[str, str]:
@@ -213,7 +239,9 @@ def _credential_failure(face: Face, failure: Exception) -> str:
 
 
 def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str], *,
-          google_on: bool = False) -> str:
+          google_on: bool = False, start: bool | None = None) -> str:
+    """`start` is None where the starter site is not offered, else whether its
+    box is ticked (PRESS-0126 § 4.4)."""
     e = html.escape
 
     def field(name: str, label: str) -> str:
@@ -241,6 +269,7 @@ def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str], *,
         + field("site_address", "Your site's address")
         + field("daily_prompt_filter",
                 "Leave out entries with a tag matching (optional, for example dailyprompt-*)")
+        + _starter_box(start)
         + key_note
         + '<p><label>Your publishing key <input type="password" name="key" '
           'autocomplete="off"></label></p>'
@@ -250,7 +279,19 @@ def _form(settings_page: bool, values: dict[str, str], hints: dict[str, str], *,
     )
 
 
-def _done(final: settings.Settings, choice: credentials.Choice | None) -> str:
+def _starter_box(start: bool | None) -> str:
+    if start is None:
+        return ""
+    return ('<p><label><input type="checkbox" name="start" value="starter"'
+            + (" checked" if start else "")
+            + "> Start with a plain site: a homepage, an About page, a menu, a header "
+              "and a footer, ready for you to change.</label></p>"
+              "<p>Leave it unticked if you will bring in a site you already have: "
+              "that needs an empty copy of Pressless.</p>")
+
+
+def _done(final: settings.Settings, choice: credentials.Choice | None,
+          filled: bool = False) -> str:
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
@@ -265,7 +306,9 @@ def _done(final: settings.Settings, choice: credentials.Choice | None) -> str:
                 "<p>No keyring was found on this computer, so the key is kept in a "
                 "file only your account can read, in the Pressless-data folder.</p>"
             )
-    return ("<h1>Setup is done.</h1>" + left_alone + stored
+    started = ("<p>Your starter site is in place. It is not on the web until you "
+               "publish it.</p>" if filled else "")
+    return ("<h1>Setup is done.</h1>" + started + left_alone + stored
             + _google_link(_google_on(final)))
 
 

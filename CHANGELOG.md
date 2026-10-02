@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Someone starting from nothing gets a plain starter site** (PRESS-0126)
+  Setup on a new, empty copy of Pressless offers a simple site: a
+  homepage, an About page, a menu, a header, a footer and a plain, easy
+  to read stylesheet, ready to change and publish. If the GitHub
+  repository already holds a website, the first publish stops and asks
+  before replacing it.
+
 - **A site can switch its journal off** (PRESS-0214)
   A button on Your writing turns the journal off and on. Off, the site
   has no journal pages and publishes with no entries; switching it back

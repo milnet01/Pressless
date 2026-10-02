@@ -1881,3 +1881,24 @@ def test_write_journal_keeps_other_options(tmp_path):
     assert path == tmp_path / "options" / "options.json"
     assert json.loads(path.read_text(encoding="utf-8")) == {"journal": False, "other": 1}
     assert store_module.journal_on(tmp_path) is False
+
+
+# PRESS-0126 INV-1 (docs/specs/PRESS-0126-starter-site.md § 4.2): what counts
+# as a site. Folder names written out.
+
+
+@pytest.mark.parametrize("where", [
+    "published/a.txt", "drafts/a.txt", "pages/a.html", "furniture/header.html",
+    "pages-waiting/a.html", "furniture-waiting/header.html", "comments/a.json",
+    "photographs/a.jpg", "forwards/forwards.json",
+])
+def test_holds_a_site_counts_writing_not_templates(tmp_path, where):
+    """INV-1. Breaks when templates/ is counted, or a counted folder is left out."""
+    for seeded in ("templates/poem.txt", "look/style.css", "options/options.json"):
+        (tmp_path / seeded).parent.mkdir()
+        (tmp_path / seeded).write_text("x", encoding="utf-8")
+    assert store_module.holds_a_site(tmp_path) is False
+    target = tmp_path / where
+    target.parent.mkdir(exist_ok=True)
+    target.write_text("x", encoding="utf-8")
+    assert store_module.holds_a_site(tmp_path) is True

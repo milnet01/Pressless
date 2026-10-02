@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 from _face_session import session_cookie
 
-from pressless import builder, credentials, face, settings, setup, store
+from pressless import builder, credentials, face, settings, setup, starter, store
 
 KEY_NOUN = "your publishing key"
 SENTINEL_KEY = "ghp_SENTINELkey0123456789abcdef"
@@ -317,7 +317,9 @@ def test_an_unreadable_settings_file_is_left_alone(
 def test_setup_works_on_an_empty_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """INV-5. Breaks when setup calls into the Store at all."""
+    """INV-5. Breaks when setup calls into the Store for anything but whether
+    it holds a site, with the starter box unticked. PRESS-0126 § 4.4 lets
+    setup read that much, to offer the starter site."""
     touched: list[str] = []
 
     def refuse(name: str):
@@ -327,7 +329,8 @@ def test_setup_works_on_an_empty_install(
         return refused
 
     for name, function in inspect.getmembers(store, inspect.isfunction):
-        if not name.startswith("_") and function.__module__ == store.__name__:
+        if (not name.startswith("_") and function.__module__ == store.__name__
+                and name != "holds_a_site"):
             monkeypatch.setattr(store, name, refuse(name))
     _Store(monkeypatch)
 
@@ -576,3 +579,66 @@ def test_setup_finishes_against_an_empty_repository(
     assert settings.load(tmp_path).untouchable == ()
     assert github.calls, "setup never asked GitHub, so this proved nothing"
     assert [method for method, _url, _auth in github.calls if method != "GET"] == []
+
+
+# PRESS-0126 INV-6, INV-7, INV-8, INV-14 (docs/specs/PRESS-0126-starter-site.md
+# § 4.4). The marker's name is written out rather than imported.
+
+
+def _store_files(folder: Path) -> dict[str, bytes]:
+    """Every file in a subfolder of `folder`: the Store, not settings or the log."""
+    return {p.relative_to(folder).as_posix(): p.read_bytes()
+            for p in folder.rglob("*") if p.is_file() and p.parent != folder}
+
+
+def test_the_starter_is_offered_only_on_an_empty_store(tmp_path, monkeypatch):
+    """INV-6. Breaks when the box shows over an imported Store, or a forged
+    post fills over one."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, empty = browser.get()
+    store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>mine</p>\n")
+    before = _store_files(tmp_path)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, held = browser.get()
+        browser.post(_answers(start="starter"))
+    assert 'name="start"' in empty
+    assert 'name="start"' not in held
+    assert _store_files(tmp_path) == before
+    assert not (tmp_path / "starter-unpublished").exists()
+
+
+def test_a_failed_fill_saves_nothing(tmp_path, monkeypatch):
+    """INV-7. Breaks when the fill runs after the save."""
+    _Store(monkeypatch)
+
+    def refuse(folder, site_name):
+        raise store.StoreError("the disk is full")
+
+    monkeypatch.setattr(starter, "fill", refuse)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        browser.post(_answers(start="starter"))
+    assert not _settings_file(tmp_path).exists()
+
+
+def test_an_unticked_box_fills_nothing(tmp_path, monkeypatch):
+    """INV-8, and the ticked case beside it. Breaks when the fill ignores the box."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        browser.post(_answers())
+    assert not store.holds_a_site(tmp_path)
+    assert settings.load(tmp_path).repository == "owner/owner.github.io"
+
+    ticked = tmp_path / "ticked"
+    ticked.mkdir()
+    with _setup_page(ticked, _GitHub()) as browser:
+        _, done = browser.post(_answers(start="starter"))
+    assert store.holds_a_site(ticked)
+    assert store.journal_on(ticked) is False
+    assert (ticked / "starter-unpublished").exists()
+    assert "starter site" in done
+
+
+def test_the_look_is_builder_output():
+    """INV-14. Breaks when "look" is not in ROOT_OUTPUT."""
+    assert setup.untouchable(("look", "CNAME")) == ("CNAME",)

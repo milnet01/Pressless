@@ -358,12 +358,12 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     box = words(name, text) if view == WORDS else text
     return render_notices(notices) + _page(
         kind, name, view, show, waiting, base, box, held, bool(entries), broken,
-        preview, preview_failure)
+        preview, preview_failure, builder.stylesheets(folder))
 
 
 def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
           box: str, held: tuple[str, ...], has_entries: bool, broken: str | None,
-          preview: str | None, failure: str | None) -> str:
+          preview: str | None, failure: str | None, sheets: tuple[str, ...]) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -390,7 +390,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
     box_class = f' class="{attr(builder.BODY_CLASS)}"' if view == WORDS else ""
     stylesheets = "".join(
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
-        for sheet in builder.STYLESHEETS)
+        for sheet in sheets)
     return f"""{stylesheets}
 <p><a href="/">Your writing</a> <span id="save-status"></span></p>
 <h1>{html.escape(title)}</h1>
@@ -534,7 +534,8 @@ def _publish(face: Face, folder: Path, request: Request,
                 raise
             kept = finish()
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
-            failure: str | None = face.fail(exc, publishing=False, secret=setup.KEY)
+            failure: str | None = (face.fail(exc, publishing=False, secret=setup.KEY)
+                                   + publishing.replace_link(exc))
             published = False
         else:
             failure = None

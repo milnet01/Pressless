@@ -760,3 +760,17 @@ def test_the_journal_button_switches_it(tmp_path):
         assert json.loads(options.read_text(encoding="utf-8")) == {"journal": True}
         status, _, page = browser.request("GET", "/")
     assert status == 200 and 'action="/journal"' in page
+
+
+# PRESS-0126 INV-15 (docs/specs/PRESS-0126-starter-site.md § 4.6).
+
+
+def test_the_style_code_is_served_before_any_preview(tmp_path):
+    """INV-15. Breaks when /preview/look/ is answered from the preview
+    folder, so a screen is unstyled until a preview is built."""
+    folder = _folder(tmp_path)
+    store.write_style_code(folder, "body { color: black; }\n")
+    assert not (folder / "preview").exists()
+    with _editor(folder) as browser:
+        status, _, css = browser.request("GET", "/preview/look/style.css")
+    assert status == 200 and css == "body { color: black; }\n"

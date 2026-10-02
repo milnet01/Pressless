@@ -33,9 +33,10 @@ from pressless import marks, store
 from pressless.settings import Settings
 
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
-               "sitemap.xml", "robots.txt")
+               "sitemap.xml", "robots.txt", "look")
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
+STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
 
@@ -79,6 +80,12 @@ _REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP"}
 def _entries(count: int) -> str:
     """§4.3's count: `1 entry`, `2 entries`."""
     return f"{count} {'entry' if count == 1 else 'entries'}"
+
+
+def stylesheets(folder: Path) -> tuple[str, ...]:
+    """The stylesheets a page links, from the root (PRESS-0126 § 4.6): the
+    Store's style code where it holds one, else the live site's assets/ pair."""
+    return (STYLE_CODE,) if store.style_code_path(folder).is_file() else STYLESHEETS
 
 
 def web_photograph(name: str) -> str:
@@ -492,6 +499,9 @@ class _Build:
             self.fixed_page(name, text)
         self.content()
         self.sitemap(sorted(pages), shown, journal)
+        style_code = store.read_style_code(self.folder)
+        if style_code is not None:
+            self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
 
     def fixed_page(self, name: str, text: str) -> None:
@@ -514,7 +524,8 @@ class _Build:
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str) -> None:
         up = "../" * depth
-        links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">' for sheet in STYLESHEETS)
+        links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
+                          for sheet in stylesheets(self.folder))
         self.write_text(f"{relative}/index.html", f"""<!doctype html>
 <html lang="en">
 <head>

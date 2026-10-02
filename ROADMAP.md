@@ -3014,7 +3014,7 @@ GitHub, and publishes a starter site that is theirs, visitor numbers
 included. The design rewrite for a full website editor comes first, since
 it decides how pages, the menu and the look are held.
 
-- 📋 [PRESS-0126] **A plain starter site for an install that never ran Import.**
+- ✅ [PRESS-0126] **A plain starter site for an install that never ran Import.**
   An install that never ran Import has no furniture, no fixed pages
   and no templates. Executed 2026-09-17: builder.build on a folder
   holding no Store raises StoreError, "there is no file header.html".
@@ -3035,6 +3035,10 @@ it decides how pages, the menu and the look are held.
   User decisions 2026-10-02: the starter is a ticked choice in setup, not
   automatic; its stylesheet is a Store file the Builder publishes; the
   journal switch (PRESS-0214) is built first, and this item is blocked by it.
+  Resolved (2026-10-02): built to docs/specs/PRESS-0126-starter-site.md
+  (accepted after one review round). Sixteen invariants, each with its
+  test; 31 mutations, all killed. Gate green on Linux and the Windows box.
+  By-hand checks owed before release are on PRESS-0133.
   **Layman:** Someone starting fresh gets a simple header, footer, menu, Home and About pages and a few templates, so they can preview and publish.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
@@ -3391,6 +3395,13 @@ it decides how pages, the menu and the look are held.
   in 0.7.1 touches it.
   Placed in 0.8.0 on 2026-10-02: the rows still never run are owed
   before 0.8.0's release.
+  Owed (2026-10-02) for PRESS-0126, its spec section 7: on the Windows
+  box, an empty install with the starter box ticked, then the editor, the
+  page editor's preview and a publish to a new repository; and setup's
+  derived list over the first writer's repository root, which must keep
+  every entry it kept before "look" joined the Builder's output. The
+  stylesheet's contrast was computed by the WCAG formula (17.4, 7.8 and
+  11.4 to 1) and the pages were seen rendered in Chrome.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

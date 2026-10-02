@@ -666,6 +666,8 @@ FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it 
 FORWARDS_FILE = "forwards.json"
 OPTIONS_FOLDER = "options"           # PRESS-0214: site-wide switches; absent means every default
 OPTIONS_FILE = "options.json"
+LOOK_FOLDER = "look"                 # PRESS-0126: the site's own style code
+STYLE_CODE_NAME = "style.css"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -1021,6 +1023,55 @@ def write_journal(folder: Path, on: bool) -> Path:
     options = read_options(folder)
     options["journal"] = on
     return write_options(folder, options)
+
+
+def style_code_path(folder: Path) -> Path:
+    """Where the site's style code sits (PRESS-0126 § 4.2)."""
+    return Path(folder) / LOOK_FOLDER / STYLE_CODE_NAME
+
+
+def read_style_code(folder: Path) -> str | None:
+    """The style code, decoded and otherwise untouched, as read_html reads a
+    page; None where the Store holds none (PRESS-0126 § 4.2)."""
+    target = style_code_path(folder)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+
+
+def write_style_code(folder: Path, css: str) -> Path:
+    """Write the style code whole or not at all, its bytes as given, as
+    write_html writes a page (PRESS-0126 § 4.2)."""
+    target = style_code_path(folder)
+    _write_atomically(folder, target, css, prefix=".look-", newline="")
+    return target
+
+
+# PRESS-0126 § 4.2: the folders whose files make a site. Not templates/, which
+# every launch seeds, and not look/ or options/, which are no site on their own.
+_SITE_FOLDERS = (
+    PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
+    *WAITING_FOLDERS.values(), COMMENTS_FOLDER, PHOTOGRAPHS_FOLDER, FORWARDS_FOLDER,
+)
+
+
+def holds_a_site(folder: Path) -> bool:
+    """Whether any of the folders that make a site holds a file. Setup offers
+    the starter site only where this is False (PRESS-0126 § 4.4)."""
+    handed = Path(folder)
+    try:
+        return any(child.is_file()
+                   for name in _SITE_FOLDERS if (handed / name).is_dir()
+                   for child in (handed / name).iterdir())
+    except OSError as exc:
+        raise StoreError(f"the Store's folders could not be read: {_why(exc)}") from exc
 
 
 def photograph_path_for(folder: Path, name: str) -> Path:
