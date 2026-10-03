@@ -179,7 +179,7 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool:
     return True
 
 
-def _powershell() -> str:
+def powershell() -> str:
     """By absolute path, never a bare name a search could resolve elsewhere."""
     root = os.environ.get("SystemRoot", r"C:\Windows")
     return "\\".join((root.rstrip("\\"), "System32", "WindowsPowerShell", "v1.0",
@@ -200,7 +200,7 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
     try:
         script.write_text(WINDOWS_SCRIPT, encoding="utf-8")
         subprocess.Popen(  # noqa: S603 -- a fixed script; every path is an argument
-            [_powershell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+            [powershell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
              "-File", str(script), str(program), str(staged), str(log)],
             # Not the program's own folder: Windows refuses to rename a folder
             # that is a live process's working folder (PRESS-0135).

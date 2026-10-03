@@ -71,6 +71,10 @@ class _Opened:
         monkeypatch.setattr(main_module.webbrowser, "open",
                             lambda url: self.links.append(url) or True)
         monkeypatch.setattr(main_module, "_wait", lambda: None)
+        # PRESS-0183: the launch refreshes his shortcuts. Recorded, never run,
+        # so no test reaches the shortcuts in the real home folder.
+        self.refreshed = []
+        monkeypatch.setattr(main_module, "_refresh_shortcuts", self.refreshed.append)
         # A frozen run starts the update check (PRESS-0023 § 4.4); no test
         # reaches the network, so it answers "off" without asking.
         self.checks: list[tuple] = []
@@ -318,3 +322,33 @@ def test_a_failure_at_launch_names_no_path(monkeypatch, tmp_path, capsys):
     out, err = capsys.readouterr()
     assert "RuntimeError" in out
     assert secret not in out + err and "Traceback" not in out + err
+
+
+def test_the_double_click_refreshes_the_shortcuts(monkeypatch, tmp_path, capsys):
+    """PRESS-0183: every launch points his shortcuts at where it runs from."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+
+    assert main_module.main([]) == 0
+    assert opened.refreshed == opened.faces
+
+
+def test_a_shortcut_that_cannot_be_refreshed_is_logged_not_fatal(monkeypatch, tmp_path):
+    noted = []
+
+    class _Served:
+        def note(self, text):
+            noted.append(text)
+
+    where = object()
+    monkeypatch.setattr(main_module.shortcuts, "places", lambda: where)
+
+    def refuse(given):
+        assert given is where
+        raise main_module.shortcuts.ShortcutError("refused")
+
+    monkeypatch.setattr(main_module.shortcuts, "refresh", refuse)
+    main_module._refresh_shortcuts(_Served())
+    assert noted == ["a shortcut could not be refreshed: ShortcutError"]

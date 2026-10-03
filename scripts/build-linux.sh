@@ -40,20 +40,9 @@ cp -a "$work/dist/Pressless" "$appdir/usr/bin/Pressless"
 install -m 755 packaging/linux/AppRun "$appdir/AppRun"
 cp packaging/linux/pressless.desktop "$appdir/pressless.desktop"
 
-# A placeholder icon, generated rather than committed: an AppImage requires one,
-# and there is no artwork yet. A flat 256-pixel square, stdlib only.
-"$PY" - "$appdir/pressless.png" <<'PNG'
-import struct, sys, zlib
-side = 256
-rows = b"".join(b"\x00" + bytes((40, 90, 160)) * side for _ in range(side))
-def chunk(kind, data):
-    body = kind + data
-    return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
-header = struct.pack(">IIBBBBB", side, side, 8, 2, 0, 0, 0)
-with open(sys.argv[1], "wb") as out:
-    out.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header)
-              + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
-PNG
+# The icon the AppImage shows, and the one Pressless copies out for its menu
+# entry (PRESS-0183). Rendered from packaging/icons/pressless-icon.svg.
+cp packaging/icons/pressless.png "$appdir/pressless.png"
 
 out="dist/Pressless-$version-x86_64.AppImage"
 ARCH=x86_64 "${APPIMAGETOOL:-appimagetool}" --runtime-file "$APPIMAGE_RUNTIME" \

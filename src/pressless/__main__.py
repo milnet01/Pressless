@@ -37,6 +37,7 @@ from pressless import (
     report,
     settings,
     setup,
+    shortcuts,
     templates,
     undo,
     updating,
@@ -178,6 +179,7 @@ def _serve_held(folder: Path) -> int:
         undo.register(served, folder)
         page_editor.register(served, folder)
         updating.register(served, folder)
+        _refresh_shortcuts(served)
 
         first = "/"
         with served.capture():
@@ -207,6 +209,18 @@ def _serve_held(folder: Path) -> int:
     finally:
         served.stop()
     return 0
+
+
+def _refresh_shortcuts(served: face.Face) -> None:
+    """Point a shortcut he kept at where the program is now (PRESS-0183).
+    Best effort: a launch never stops over a shortcut. A shortcut that is
+    already right costs one read, so only a launch after a move waits."""
+    try:
+        where = shortcuts.places()
+        if where is not None:
+            shortcuts.refresh(where)
+    except (shortcuts.ShortcutError, OSError) as exc:
+        served.note(f"a shortcut could not be refreshed: {type(exc).__name__}")
 
 
 def _wait() -> None:

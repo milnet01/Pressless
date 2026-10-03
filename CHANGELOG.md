@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless can put itself in the Start Menu or app menu, and on the desktop** (PRESS-0183)
+  Once setup is done, two ticked boxes offer a menu entry and a desktop
+  icon; Settings shows them as they are and can take either away. If
+  the program file moves, the next launch points them at its new place.
+  Pressless now has its own icon, made from its logo.
+
 - **Pressless puts Google's visitor counting on your site** (PRESS-0199)
   After you choose your site in the Google step, Pressless finds its
   counting code and puts it on every page you publish; you can also type

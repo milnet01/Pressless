@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 from _face_session import session_cookie
 
-from pressless import builder, credentials, face, settings, setup, starter, store
+from pressless import builder, credentials, face, settings, setup, shortcuts, starter, store
 
 KEY_NOUN = "your publishing key"
 SENTINEL_KEY = "ghp_SENTINELkey0123456789abcdef"
@@ -116,11 +116,11 @@ class _Browser:
         self.origin = f"http://{self.host}"
         self.cookie = session_cookie(served.url)
 
-    def _send(self, method: str, body: bytes, *, cookie: bool, origin: str | None
-              ) -> tuple[int, str]:
+    def _send(self, method: str, body: bytes, *, cookie: bool, origin: str | None,
+              path: str = "/setup") -> tuple[int, str]:
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         try:
-            conn.putrequest(method, "/setup", skip_host=True, skip_accept_encoding=True)
+            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
             conn.putheader("Host", self.host)
             if cookie:
                 conn.putheader("Cookie", self.cookie)
@@ -139,17 +139,18 @@ class _Browser:
         return self._send("GET", b"", cookie=True, origin=None)
 
     def post(self, answers: dict[str, str], *, cookie: bool = True,
-             origin: str | None = "own") -> tuple[int, str]:
+             origin: str | None = "own", path: str = "/setup") -> tuple[int, str]:
         body = urllib.parse.urlencode(answers).encode("utf-8")
         return self._send("POST", body, cookie=cookie,
-                          origin=self.origin if origin == "own" else origin)
+                          origin=self.origin if origin == "own" else origin, path=path)
 
 
 @contextlib.contextmanager
-def _setup_page(folder: Path, github: _GitHub) -> Iterator[_Browser]:
+def _setup_page(folder: Path, github: _GitHub,
+                places: shortcuts.Places | None = None) -> Iterator[_Browser]:
     served = face.serve(folder)
     try:
-        setup.register(served, folder, transport=github)
+        setup.register(served, folder, transport=github, shortcut_places=lambda: places)
         yield _Browser(served)
     finally:
         served.stop()
@@ -688,3 +689,108 @@ def test_a_malformed_measurement_id_is_a_refused_answer(tmp_path, monkeypatch):
         _, page = browser.post(_answers(measurement_id="UA-1234"))
     assert _hint_for("measurement_id", page)
     assert not _settings_file(tmp_path).exists()
+
+
+# ------------------------------------------------------------ PRESS-0183 ----
+# The menu entry and the desktop icon, offered once setup is done and kept in
+# Settings. The shortcuts themselves are tests/test_shortcuts.py's.
+
+SHORTCUTS = "/setup/shortcuts"
+
+
+def _places(tmp_path: Path) -> shortcuts.Places:
+    program = tmp_path / "apps" / "Pressless.AppImage"
+    program.parent.mkdir(parents=True)
+    program.write_bytes(b"not really an AppImage")
+    (tmp_path / "Desktop").mkdir()
+    return shortcuts.Places(
+        windows=False, menu=tmp_path / "menu" / "pressless.desktop",
+        desktop=tmp_path / "Desktop" / "pressless.desktop", program=program,
+        working=program.parent, icon=None, icon_copy=tmp_path / "icon.png")
+
+
+def _boxes(page: str) -> dict[str, bool]:
+    """Each shortcut box on the page, and whether it is ticked."""
+    return {name: "checked" in tag for tag, name in
+            re.findall(r'(<input type="checkbox" name="(menu|desktop)"[^>]*>)', page)}
+
+
+def test_first_run_offers_both_shortcuts_ticked(tmp_path, monkeypatch):
+    """Breaks when the done page leaves the offer out, or offers it unticked."""
+    _Store(monkeypatch)
+    where = _places(tmp_path / "places")
+    with _setup_page(tmp_path, _GitHub(), where) as browser:
+        _, done = browser.post(_answers())
+    assert "Setup is done." in done
+    assert _boxes(done) == {"menu": True, "desktop": True}
+    assert f'action="{SHORTCUTS}"' in done
+    assert shortcuts.present(where) == (False, False)   # offered, never assumed
+
+
+def test_a_refused_answer_offers_no_shortcuts(tmp_path, monkeypatch):
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub(), _places(tmp_path / "places")) as browser:
+        _, page = browser.post(_answers(site_address="example.org"))
+    assert _hint_for("site_address", page)
+    assert _boxes(page) == {}
+
+
+def test_settings_shows_the_shortcuts_as_they_are(tmp_path, monkeypatch):
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    where = _places(tmp_path / "places")
+    shortcuts.apply(where, menu=True, desktop=False)
+    with _setup_page(tmp_path, _GitHub(), where) as browser:
+        _, page = browser.get()
+    assert _boxes(page) == {"menu": True, "desktop": False}
+
+
+def test_a_development_run_offers_no_shortcuts(tmp_path, monkeypatch):
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, page = browser.get()
+        status, said = browser.post({"menu": "on"}, path=SHORTCUTS)
+    assert _boxes(page) == {}
+    assert status == 200 and "file you downloaded" in said
+
+
+def test_saving_the_boxes_makes_and_removes_the_shortcuts(tmp_path, monkeypatch):
+    """Breaks when the ticks are not read, or removal is not offered."""
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    where = _places(tmp_path / "places")
+    with _setup_page(tmp_path, _GitHub(), where) as browser:
+        _, made = browser.post({"menu": "on", "desktop": "on"}, path=SHORTCUTS)
+        assert shortcuts.present(where) == (True, True)
+        _, again = browser.post({"menu": "on", "desktop": "on"}, path=SHORTCUTS)
+        _, removed = browser.post({}, path=SHORTCUTS)
+    assert "right-click it" in made          # how to pin it, since nothing pins for him
+    assert "icon on your desktop" in made
+    assert "Nothing needed changing" in again
+    assert shortcuts.present(where) == (False, False)
+    assert "no longer in your app menu" in removed
+    assert "gone from your desktop" in removed
+
+
+def test_a_shortcut_failure_is_the_faces_sentence(tmp_path, monkeypatch):
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    where = _places(tmp_path / "places")
+    where.menu.parent.parent.mkdir(parents=True, exist_ok=True)
+    where.menu.parent.write_text("a file where the menu folder goes", encoding="utf-8")
+    with _setup_page(tmp_path, _GitHub(), where) as browser:
+        _, page = browser.post({"menu": "on"}, path=SHORTCUTS)
+    assert "could not change its shortcut" in page
+    assert str(tmp_path) not in page
+
+
+def test_the_shortcut_page_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    where = _places(tmp_path / "places")
+    with _setup_page(tmp_path, _GitHub(), where) as browser:
+        assert browser.post({"menu": "on"}, cookie=False, path=SHORTCUTS)[0] == 403
+        assert browser.post({"menu": "on"}, origin="http://pressless.example",
+                            path=SHORTCUTS)[0] == 403
+    assert shortcuts.present(where) == (False, False)

@@ -15,10 +15,18 @@ from __future__ import annotations
 import dataclasses
 import html
 import urllib.parse
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
-from pressless import builder, credentials, google_signin, publisher, settings, starter
+from pressless import (
+    builder,
+    credentials,
+    google_signin,
+    publisher,
+    settings,
+    shortcuts,
+    starter,
+)
 from pressless.face import Face, Request, render_notices
 from pressless.store import StoreError
 
@@ -47,6 +55,8 @@ _KEY_MALFORMED = "A publishing key has no spaces or line breaks. Paste it again.
 
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
+SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
+
 
 def untouchable(root: Iterable[str]) -> tuple[str, ...]:
     """The root entries the Builder does not produce, compared with casefold
@@ -57,20 +67,28 @@ def untouchable(root: Iterable[str]) -> tuple[str, ...]:
 
 
 def register(face: Face, folder: Path, *,
-             transport: publisher.Transport | None = None) -> None:
-    """Add `GET /setup` and `POST /setup` to `face`. `folder` is Pressless's
-    own folder, the one `face.serve` was handed."""
+             transport: publisher.Transport | None = None,
+             shortcut_places: Callable[[], shortcuts.Places | None] = shortcuts.places,
+             ) -> None:
+    """Add `GET /setup`, `POST /setup` and `POST /setup/shortcuts` to `face`.
+    `folder` is Pressless's own folder, the one `face.serve` was handed;
+    `shortcut_places` says where this copy's shortcuts go (PRESS-0183)."""
     folder = Path(folder)
 
     def page(request: Request) -> str:
-        return _setup(face, folder, request, transport)
+        return _setup(face, folder, request, transport, shortcut_places)
+
+    def change(request: Request) -> str:
+        return _shortcuts(face, shortcut_places(), request)
 
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
+    face.add_page("POST", SHORTCUTS, change)
 
 
 def _setup(face: Face, folder: Path, request: Request,
-           transport: publisher.Transport | None) -> str:
+           transport: publisher.Transport | None,
+           shortcut_places: Callable[[], shortcuts.Places | None]) -> str:
     # § 4.2: which page he sees.
     refused: settings.SettingsError | None = None
     saved: settings.Settings | None = None
@@ -94,17 +112,23 @@ def _setup(face: Face, folder: Path, request: Request,
         return render_notices(notices) + face.fail(exc, publishing=False)
     if request.method != "POST":
         values = _values_from(saved)
-        return render_notices(notices) + _form(saved is not None, values, {},
-                                               google_on=_google_on(saved),
-                                               start=(saved is None) if offer else None)
+        # PRESS-0183: Settings shows the shortcuts as they are now.
+        where = shortcut_places() if saved is not None else None
+        return (render_notices(notices)
+                + _form(saved is not None, values, {}, google_on=_google_on(saved),
+                        start=(saved is None) if offer else None)
+                + (_shortcut_form(where, shortcuts.present(where)) if where else ""))
 
     answers = _read_answers(request.body)
-    return render_notices(notices) + _submit(face, folder, saved, answers, transport, offer)
+    # PRESS-0183: first run offers them, ticked, once setup is done.
+    where = shortcut_places() if saved is None else None
+    return render_notices(notices) + _submit(face, folder, saved, answers, transport,
+                                             offer, where)
 
 
 def _submit(face: Face, folder: Path, saved: settings.Settings | None,
             answers: dict[str, str], transport: publisher.Transport | None,
-            offer: bool) -> str:
+            offer: bool, where: shortcuts.Places | None) -> str:
     first_run = saved is None
     box = (answers["start"] == "starter") if offer else None   # PRESS-0126 § 4.4
     typed_key = answers["key"]
@@ -200,7 +224,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings | None,
         return render_notices(filling) + render_notices(notices) + failed
     privacy, privacy_failure = _privacy(face, folder, final)
     return (render_notices(filling) + render_notices(notices) + privacy_failure
-            + _done(final, choice, filled) + privacy)
+            + _done(final, choice, filled) + privacy
+            + (_shortcut_form(where, (True, True)) if where else ""))
 
 
 def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
@@ -362,3 +387,58 @@ def _google_link(on: bool) -> str:
                 "or turn them off</a>.</p>")
     return ('<p>Optional: <a href="/setup/google">see how many people read your '
             "site</a>, from Google Analytics.</p>")
+
+
+def _shortcuts(face: Face, where: shortcuts.Places | None, request: Request) -> str:
+    """PRESS-0183: make or remove the menu entry and the desktop icon, as ticked."""
+    if where is None:
+        return ("<p>Pressless can add itself to the menu and the desktop only when "
+                "it runs from the file you downloaded.</p>")
+    parsed = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+    menu, desktop = parsed.get("menu") == ["on"], parsed.get("desktop") == ["on"]
+    before = shortcuts.present(where)
+    try:
+        shortcuts.apply(where, menu=menu, desktop=desktop and where.desktop is not None)
+    except shortcuts.ShortcutError as exc:
+        return face.fail(exc, publishing=False) + _shortcut_form(where, shortcuts.present(where))
+    after = shortcuts.present(where)
+    said = []
+    if after[0] and not before[0]:
+        said.append(_PINNING[where.windows])
+    elif before[0] and not after[0]:
+        said.append(f"<p>Pressless is no longer in {_MENU[where.windows]}.</p>")
+    if after[1] and not before[1]:
+        said.append("<p>There is a Pressless icon on your desktop.</p>")
+    elif before[1] and not after[1]:
+        said.append("<p>The Pressless icon is gone from your desktop.</p>")
+    return (("".join(said) or "<p>Nothing needed changing.</p>")
+            + '<p><a href="/">Go to your list</a></p>')
+
+
+_MENU = {True: "the Start Menu", False: "your app menu"}
+_PINNING = {
+    True: "<p>Pressless is in the Start Menu. To pin it to the taskbar, find it in the "
+          "Start Menu, right-click it and choose Pin to taskbar.</p>",
+    False: "<p>Pressless is in your app menu. To add it to your panel, find it in the "
+           "menu, right-click it and choose the option that pins it or adds it to the "
+           "panel. Its name differs between desktops.</p>",
+}
+
+
+def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
+    """The two boxes, ticked as `ticked` says. The desktop box is left out
+    where there is no desktop folder."""
+    def box(name: str, on: bool, label: str) -> str:
+        return (f'<p><label><input type="checkbox" name="{name}" value="on"'
+                + (" checked" if on else "") + f"> {html.escape(label)}</label></p>")
+
+    menu = _MENU[where.windows]
+    return (
+        f"<h2>{'Start Menu' if where.windows else 'App menu'} and desktop</h2>"
+        f'<form method="post" action="{SHORTCUTS}">'
+        + box("menu", ticked[0], f"Put Pressless in {menu}")
+        + (box("desktop", ticked[1], "Put a Pressless icon on the desktop")
+           if where.desktop is not None else "")
+        + "<p>Untick a box and save to take that one away again.</p>"
+        + '<p><button type="submit">Save these</button></p></form>'
+    )

@@ -38,6 +38,7 @@ from pressless import (
     paths,
     publisher,
     settings,
+    shortcuts,
     store,
     themes,
 )
@@ -246,6 +247,10 @@ SENTENCES: dict[type[Exception], Sentence] = {
     FolderNotOpened: _say(
         "Pressless could not open the folder.",
         "Use Copy location instead, and paste it into your file manager.",
+    ),
+    shortcuts.ShortcutError: _say(
+        "Pressless could not change its shortcut in the menu or on the desktop.",
+        _AGAIN,
     ),
 }
 

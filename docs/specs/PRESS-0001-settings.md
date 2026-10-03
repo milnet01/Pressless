@@ -700,8 +700,8 @@ loading or saving does anything.
   address.
 - **PRESS-0002 and PRESS-0019 widen their INV-1 the same way, in the same
   batch** (PRESS-0141): `credentials.py` and `insights.py` call
-  `write_whole` too. `store.py`, `themes.py` and `updater.py`'s whole-file
-  write call it, and the Store's no-overwrite rename calls `patiently`, with
+  `write_whole` too. `store.py`, `themes.py`, `updater.py`'s whole-file
+  write and `shortcuts.py`'s Linux launcher (PRESS-0183) call it, and the Store's no-overwrite rename calls `patiently`, with
   no spec change, as no invariant of theirs forbids
   that import. Each module keeps its own error type.
 - No other sibling spec changes. PRESS-0004 does not read Settings.

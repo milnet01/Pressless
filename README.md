@@ -102,9 +102,13 @@ site's name and address, and your key. It checks them with GitHub before
 saving anything. Then it shows the list of your writing, where **New
 entry** starts one.
 
-When setup is done, Pressless offers one optional step: signing in with
-Google, so it can show who reads your site once the dashboard arrives.
-You can skip it and lose nothing else.
+When setup is done, Pressless offers to put itself in the Start Menu (on
+Linux, your app menu) and on the desktop, so you need not find the
+downloaded file again. Settings can take either away later.
+
+It also offers one optional step: signing in with Google, so it can show
+who reads your site once the dashboard arrives. You can skip it and lose
+nothing else.
 
 ### Upgrading without losing anything
 

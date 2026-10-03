@@ -23,6 +23,10 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "Pressless"
 ENTRY = ROOT / "src" / "pressless" / "__main__.py"
+# Pressless.exe carries it, and a Windows shortcut takes its picture from the
+# exe (PRESS-0183). PyInstaller ignores it on Linux, where the AppImage carries
+# packaging/icons/pressless.png instead.
+ICON = ROOT / "packaging" / "icons" / "pressless.ico"
 HIDDEN_IMPORTS: list[str] = []
 COLLECT_ALL: list[str] = []
 
@@ -44,6 +48,7 @@ def pyinstaller_args(work: Path) -> list[str]:
         "--distpath", str(work / "dist"),
         "--workpath", str(work / "build"),
         "--specpath", str(work),
+        "--icon", str(ICON),
     ]
     for module in HIDDEN_IMPORTS:
         args += ["--hidden-import", module]
