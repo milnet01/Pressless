@@ -631,6 +631,8 @@ FORWARDS_FILE = "forwards.json"
 OPTIONS_FOLDER = "options"           # PRESS-0214: site-wide switches; absent means every default
 OPTIONS_FILE = "options.json"
 LOOK_FOLDER = "look"                 # PRESS-0126: the site's own style code
+IDENTITY_FOLDER = "identity"         # PRESS-0213: the site's name and description
+IDENTITY_FILE = "identity.json"
 STYLE_CODE_NAME = "style.css"
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
@@ -644,7 +646,7 @@ WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-w
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
-    *WAITING_FOLDERS.values(),
+    IDENTITY_FOLDER, *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -989,6 +991,67 @@ def write_journal(folder: Path, on: bool) -> Path:
     return write_options(folder, options)
 
 
+@dataclass(frozen=True)
+class Identity:
+    """The site's name and short description (PRESS-0213 § 4.1)."""
+    name: str
+    description: str = ""
+
+
+def identity_path_for(folder: Path) -> Path:
+    """Where the identity file sits. In a folder of its own, for the reason
+    options_path_for gives."""
+    return Path(folder) / IDENTITY_FOLDER / IDENTITY_FILE
+
+
+def identity_problem(identity: Identity) -> str | None:
+    """Which answer is refused -- "name" or "description" -- or None. A name
+    is one non-blank line; a description is one line and may be empty."""
+    name = identity.name
+    if not name.strip() or "\n" in name or "\r" in name:
+        return "name"
+    if "\n" in identity.description or "\r" in identity.description:
+        return "description"
+    return None
+
+
+def read_identity(folder: Path) -> Identity | None:
+    """The site's identity; None where there is no file (PRESS-0213 § 4.1)."""
+    target = identity_path_for(folder)
+    try:
+        data = target.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
+    try:
+        carried = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
+    if not isinstance(carried, dict):
+        raise StoreError(f"{target.name} is not an object")
+    name, description = carried.get("name"), carried.get("description", "")
+    if not isinstance(name, str) or not isinstance(description, str):
+        raise StoreError(f"{target.name}: the name and description must be text")
+    identity = Identity(name, description)
+    problem = identity_problem(identity)
+    if problem is not None:
+        raise StoreError(f"{target.name}: the {problem} is empty or holds a line break")
+    return identity
+
+
+def write_identity(folder: Path, identity: Identity) -> Path:
+    """Write the identity whole, or refuse it before anything is written."""
+    problem = identity_problem(identity)
+    target = identity_path_for(folder)
+    if problem is not None:
+        raise StoreError(f"{target.name}: the {problem} is empty or holds a line break")
+    text = json.dumps({"description": identity.description, "name": identity.name},
+                      indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    _write_atomically(folder, target, text, prefix=".identity-", newline="\n")
+    return target
+
+
 def style_code_path(folder: Path) -> Path:
     """Where the site's style code sits (PRESS-0126 § 4.2)."""
     return Path(folder) / LOOK_FOLDER / STYLE_CODE_NAME
@@ -1019,7 +1082,8 @@ def write_style_code(folder: Path, css: str) -> Path:
 
 
 # PRESS-0126 § 4.2: the folders whose files make a site. Not templates/, which
-# every launch seeds, and not look/ or options/, which are no site on their own.
+# every launch seeds, and not look/, options/ or identity/, which are no site on
+# their own.
 _SITE_FOLDERS = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     *WAITING_FOLDERS.values(), COMMENTS_FOLDER, PHOTOGRAPHS_FOLDER, FORWARDS_FOLDER,

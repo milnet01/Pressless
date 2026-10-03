@@ -3123,7 +3123,7 @@ it decides how pages, the menu and the look are held.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: setup, Publisher.
 
-- 📋 [PRESS-0213] **Site identity: its name, a short description, an icon and a sharing picture.**
+- ✅ [PRESS-0213] **Site identity: its name and a short description.**
   S12. WordPress offers these on every site; a stranger's starter site
   needs them to look like theirs. Settings or the Store holds each, as
   PRESS-0198's design decides.
@@ -3139,7 +3139,13 @@ it decides how pages, the menu and the look are held.
   recommendations. Name and short description in 0.8.0, moved into the
   Store with the name carried across from Settings; the icon and sharing
   picture move to 0.10.0 beside PRESS-0197.
-  **Layman:** They set their site's name, a one-line description, the little icon in the browser tab, and the picture shown when the site is shared.
+  Resolved (2026-10-03): docs/specs/PRESS-0213-site-identity.md, one
+  review round. The name and description live in identity/identity.json,
+  carried across from Settings at launch; the wizard's site step and the
+  Settings page ask for both; {{SITE_NAME}} and {{SITE_DESCRIPTION}} fill
+  the header and footer. The icon and sharing picture are PRESS-0227.
+  All ten invariants mutation-checked.
+  **Layman:** They set their site's name and a one-line description, and a rename reaches every page's header and footer.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Settings, Builder, Face.
@@ -3560,6 +3566,9 @@ it decides how pages, the menu and the look are held.
   open: LWSM sets PORT in the environment it starts Pressless with
   (PRESS-0202 records its contract), which is one candidate signal.
   Depends on PRESS-0204.
+  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
+  this item applies on Linux only. On Windows the tray icon always shows
+  as PRESS-0204 has it, and the check need not run there.
   **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
   Kind: feature.
   Source: user request 2026-10-02.
@@ -3796,6 +3805,17 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face, store.
+
+- 📋 [PRESS-0227] **Site identity, second half: the icon in the browser tab and the picture shown when the site is shared.**
+  Split from PRESS-0213 by the user's 2026-10-03 decision: both need
+  file uploads, which PRESS-0197 brings in 0.10.0. PRESS-0213 shipped
+  the name and description in identity/identity.json
+  (docs/specs/PRESS-0213-site-identity.md); this item widens that file,
+  its reader and undo's handling of it to carry the two pictures.
+  **Layman:** They pick the little picture in the browser tab and the picture people see when the site is shared.
+  Kind: feature.
+  Source: user-decision-2026-10-03 PRESS-0213.
+  Lanes: Store, Builder, Face.
 
 ## 0.11.0 — anyone can bring their site in
 

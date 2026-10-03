@@ -27,6 +27,7 @@ from pressless import (
     settings,
     shortcuts,
     starter,
+    store,
     wizard,
 )
 from pressless.face import Face, Request, render_notices
@@ -37,13 +38,16 @@ GITHUB_ACCOUNT = "github"             # the account the publishing key is filed 
 KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
 
 # The answers a refused SettingsError can name; any other key is a failure.
-_ANSWERED = ("repository", "site_name", "site_address", "measurement_id")
-_FIELDS = ("repository", "site_name", "site_address", "daily_prompt_filter",
-           "measurement_id")
+_ANSWERED = ("repository", "site_address", "measurement_id")
+_FIELDS = ("repository", "site_name", "site_description", "site_address",
+           "daily_prompt_filter", "measurement_id")
+# PRESS-0213 § 4.6: the two answers the Store keeps, by the field each is typed in.
+_IDENTITY_FIELDS = {"name": "site_name", "description": "site_description"}
 
 _HINTS = {
     "repository": "Type it as owner/name, the way GitHub shows it.",
     "site_name": "Type the site's name on one line.",
+    "site_description": "Write the description on one line, or leave it empty.",
     "site_address": "Type the site's full address, starting with https://.",
     # PRESS-0199 § 4.4.
     "measurement_id": "Type the measurement id as Google shows it: G- and then "
@@ -120,8 +124,12 @@ def _setup(face: Face, folder: Path, request: Request,
     if request.method != "POST":
         # PRESS-0183: Settings shows the shortcuts as they are now.
         where = shortcut_places()
+        try:
+            values = _values_from(folder, saved)
+        except StoreError as exc:
+            return render_notices(notices) + face.fail(exc, publishing=False)
         return (render_notices(notices)
-                + _form(_values_from(saved), {}, google_on=_google_on(saved),
+                + _form(values, {}, google_on=_google_on(saved),
                         start=False if offer else None)
                 + (_shortcut_form(where, shortcuts.present(where)) if where else ""))
     return render_notices(notices) + _submit(face, folder, saved,
@@ -149,6 +157,10 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
         if exc.key not in _ANSWERED:
             return face.fail(exc, publishing=False)
         hints[exc.key] = _HINTS[exc.key]
+    identity = _identity(values)
+    refused_identity = _identity_hint(identity)
+    if refused_identity is not None:
+        hints[refused_identity] = _HINTS[refused_identity]
     if hints:
         return _form(values, hints, google_on=_google_on(saved), start=box)
 
@@ -161,8 +173,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
         except _CREDENTIAL_FAILURES as exc:
             return _credential_failure(face, exc)
 
-    done = _save_sequence(face, folder, candidate, key, transport, typed_key=typed_key,
-                          starter_ticked=answers["start"] == "starter",
+    done = _save_sequence(face, folder, candidate, identity, key, transport,
+                          typed_key=typed_key, starter_ticked=answers["start"] == "starter",
                           choice=None, where=None)
     if isinstance(done, publisher.RemoteStateMissing):
         return _form(values, {"repository": _NO_SUCH_REPOSITORY},
@@ -175,12 +187,14 @@ def _malformed(key: str) -> bool:
     return not (key.isascii() and key.isprintable() and not any(c.isspace() for c in key))
 
 
-def _save_sequence(face: Face, folder: Path, candidate: settings.Settings, key: str,
+def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
+                   identity: store.Identity, key: str,
                    transport: publisher.Transport | None, *, typed_key: str,
                    starter_ticked: bool, choice: credentials.Choice | None,
                    where: shortcuts.Places | None) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
-    starter where ticked, save, and say it is done. `candidate` already
+    starter where ticked, write the identity (PRESS-0213 § 4.6), save, and say
+    it is done. `candidate` already
     carries the store; nothing here chooses one. A repository GitHub cannot
     find inside comes back for the caller to word."""
     # Step 2: ask GitHub.
@@ -202,13 +216,15 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings, key: 
             return _credential_failure(face, exc)
 
     # PRESS-0126 § 4.4: fill, only where the box was ticked and the starter is
-    # still offered. Before the save, so a failure leaves first run where it was.
+    # still offered; then the identity. Both before the save, so a failure
+    # leaves first run where it was.
     filled = False
     with face.capture() as filling:
         try:
             if starter_ticked and starter.offered(folder):
-                starter.fill(folder, candidate.site_name)
+                starter.fill(folder, identity.name)
                 filled = True
+            store.write_identity(folder, identity)
         except StoreError as exc:
             fill_failure: str | None = face.fail(exc, publishing=False)
         else:
@@ -241,7 +257,7 @@ def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, s
         return "", ""
     with face.capture() as notices:
         try:
-            page, link = starter.add_privacy(folder, final.site_name)
+            page, link = starter.add_privacy(folder, starter.privacy_name(folder))
         except StoreError as exc:
             return "", render_notices(notices) + (
                 "<p>Visitor counting is on, but the Privacy page or its link could "
@@ -270,7 +286,6 @@ def _candidate(folder: Path, saved: settings.Settings | None,
     return settings.Settings(
         site_folder=folder / SITE_FOLDER,
         repository=values["repository"],
-        site_name=values["site_name"],
         site_address=values["site_address"],
         daily_prompt_filter=values["daily_prompt_filter"],
         untouchable=(),
@@ -286,10 +301,42 @@ def _read_answers(body: bytes) -> dict[str, str]:
             for name in (*_FIELDS, "key", "start")}
 
 
-def _values_from(saved: settings.Settings | None) -> dict[str, str]:
-    if saved is None:
-        return {name: "" for name in _FIELDS}
-    return {name: getattr(saved, name) or "" for name in _FIELDS}
+def _values_from(folder: Path, saved: settings.Settings) -> dict[str, str]:
+    """The Settings page's answers: the identity from the Store (PRESS-0213
+    § 4.6), empty where it holds none, and the rest from Settings."""
+    identity = store.read_identity(folder) or store.Identity("")
+    held = {"site_name": identity.name, "site_description": identity.description}
+    return {name: held[name] if name in held else getattr(saved, name) or ""
+            for name in _FIELDS}
+
+
+def _identity(values: dict[str, str]) -> store.Identity:
+    return store.Identity(values["site_name"], values["site_description"])
+
+
+def _identity_hint(identity: store.Identity) -> str | None:
+    """The field a refused identity names, or None."""
+    problem = store.identity_problem(identity)
+    return None if problem is None else _IDENTITY_FIELDS[problem]
+
+
+def carry_name_across(folder: Path) -> str | None:
+    """PRESS-0213 § 4.3: move the name an older Pressless kept in Settings into
+    the Store, once. Returns a sentence to print where it could not be moved."""
+    name = settings.retired_site_name(folder)
+    if name is None:
+        return None
+    try:
+        if store.read_identity(folder) is None:
+            store.write_identity(folder, store.Identity(name))
+    except StoreError as exc:
+        return ("Pressless could not move your site's name into your site's own "
+                f"files, and will try again next time it starts: {exc}")
+    try:
+        settings.save(folder, settings.load(folder), retire=("site_name",))
+    except settings.SettingsError:
+        pass        # the identity is written; a later launch retires the key
+    return None
 
 
 def _credential_failure(face: Face, failure: Exception) -> str:
@@ -312,6 +359,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         '<form method="post" action="/setup">'
         + field("repository", "Your site's repository on GitHub (owner/name)")
         + field("site_name", "Your site's name")
+        + field("site_description", "A short description of your site (optional)")
         + field("site_address", "Your site's address")
         + field("daily_prompt_filter",
                 "Leave out entries with a tag matching (optional, for example dailyprompt-*)")
@@ -438,7 +486,6 @@ def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
 # Credentials the moment GitHub accepts it, and never into the progress file.
 
 _ACCOUNT = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
-_PLACEHOLDER_NAME = "Pressless"                     # until the site step asks for it
 _PLACEHOLDER_ADDRESS = "https://github.com"
 
 _NO_ACCOUNT = ("GitHub has no account by that name. Check the spelling, or finish "
@@ -469,7 +516,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         """A candidate for the Publisher's reads and the shape rules, before
         the site step has asked for the rest."""
         return _candidate(folder, None, {
-            "repository": name, "site_name": _PLACEHOLDER_NAME, "site_address": address,
+            "repository": name, "site_address": address,
             "daily_prompt_filter": "", "measurement_id": ""})
 
     def refused(candidate: settings.Settings) -> settings.SettingsError | None:
@@ -566,24 +613,27 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return {**answers, "site_address": address}
 
     def check_site(answers: wizard.Answers):
+        identity = store.Identity(answers.get("site_name", ""),
+                                  answers.get("site_description", ""))
+        refused_identity = _identity_hint(identity)
+        if refused_identity is not None:
+            return wizard.Hint(refused_identity, _HINTS[refused_identity])
         candidate = _candidate(folder, None, {
-            "repository": repository(answers), "site_name": answers["site_name"],
+            "repository": repository(answers),
             "site_address": answers.get("site_address", ""), "daily_prompt_filter": "",
             "measurement_id": ""})
-        store = answers.get("store", "")
+        kept = answers.get("store", "")
         candidate = dataclasses.replace(
-            candidate, credentials=dataclasses.replace(candidate.credentials, store=store))
+            candidate, credentials=dataclasses.replace(candidate.credentials, store=kept))
         problem = refused(candidate)
         if problem is not None:
-            if problem.key == "site_name":
-                return wizard.Hint("site_name", _HINTS["site_name"])
             return wizard.Stop(face.fail(problem, publishing=False))
         try:
-            key = credentials.read(store, folder, GITHUB_ACCOUNT)
+            key = credentials.read(kept, folder, GITHUB_ACCOUNT)
         except _CREDENTIAL_FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc))
-        choice = credentials.Choice(store, answers.get("store_name", store))
-        done = _save_sequence(face, folder, candidate, key, transport, typed_key="",
+        choice = credentials.Choice(kept, answers.get("store_name", kept))
+        done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
                               starter_ticked=answers.get("start") == "starter",
                               choice=choice, where=shortcut_places())
         if isinstance(done, publisher.RemoteStateMissing):
@@ -602,7 +652,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                     _show_repository, check_repository),
         wizard.Step("key", "A key for Pressless", ("key",), _show_key, check_key),
         wizard.Step("pages", "Switch the site on", (), _show_pages, check_pages),
-        wizard.Step("site", "Your site", ("site_name", "start"),
+        wizard.Step("site", "Your site", ("site_name", "site_description", "start"),
                     lambda answers, hint: _show_site(folder, answers, hint), check_site),
     ), folder, "/setup")
 
@@ -686,6 +736,8 @@ def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) 
     return (f"<p>Your site's address is {e(answers.get('site_address', ''))}. It can "
             "take a few minutes after your first publish before it shows.</p>"
             + wizard.field("site_name", "Your site's name", answers, hint)
+            + wizard.field("site_description",
+                           "A short description of your site (optional)", answers, hint)
             + box
             + "<p>Press Next to check everything with GitHub one last time and "
               "finish.</p>")

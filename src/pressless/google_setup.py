@@ -278,7 +278,7 @@ def _choose(state: _State, request: Request) -> str:
     if candidate.measurement_id is not None:
         with state.face.capture() as privacy_notices:
             try:
-                starter.add_privacy(state.folder, candidate.site_name)
+                starter.add_privacy(state.folder, starter.privacy_name(state.folder))
             except StoreError as exc:
                 privacy = ("<p>Visitor counting is on, but the Privacy page or its link "
                            "could not be added. Saving Settings tries once more.</p>"

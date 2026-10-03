@@ -9,7 +9,7 @@ settled 2026-10-03; `docs/design.md` § Pages, and how they are held).
 **Amends:** PRESS-0001 (§§ 4.1–4.4, INV-6), PRESS-0005 (§ 4.1,
 `move_to_bin`'s folders), PRESS-0008 (§ 3 decision 2, §§ 4.3, 4.7, the
 furniture table), PRESS-0015 (§ 4.4), PRESS-0021 (the Settings page's
-fields), PRESS-0126 (§ 3 decision 8, § 4.3), PRESS-0199 (the Privacy page's
+fields, INV-5), PRESS-0126 (§ 3 decision 8, § 4.3), PRESS-0199 (the Privacy page's
 name), PRESS-0212 (the *site* step). § 11 lists each edit.
 
 Layman: the site's name and a one-line description belong to the site,
@@ -355,7 +355,8 @@ Each edit below is a pointer to this spec beside the clause it changes.
 - `docs/specs/PRESS-0015-undo.md` § 4.4 — undo restores the identity file
   and keeps the Store's where the fetched state has none.
 - `docs/specs/PRESS-0021-setup.md` — the Settings page's name comes from
-  the Store, and the page gains the description.
+  the Store, and the page gains the description; INV-5 — setup now also
+  checks and writes the identity.
 - `docs/specs/PRESS-0126-starter-site.md` § 3 decision 8 and § 4.3's
   header and footer rows — the header and footer name the site by
   placeholder, and the header carries the description.

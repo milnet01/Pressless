@@ -90,3 +90,17 @@ def test_the_starter_publishes_with_no_entries(tmp_path):
     publishing.publish(folder, _settings(folder), KEY, entry=None, transport=github)
     assert github.requests
     assert not (folder / "starter-unpublished").exists()
+
+
+def test_the_furniture_names_the_site_by_placeholder(tmp_path):
+    """PRESS-0213 INV-10 (docs/specs/PRESS-0213-site-identity.md § 4.6): a
+    rename in the Store reaches the header and footer with no file rewritten.
+
+    Breaks when fill writes the name into either file."""
+    folder = _filled(tmp_path, "Quite Unusual Name")
+    header = store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, "header"))
+    footer = store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, "footer"))
+    for text in (header, footer):
+        assert "{{SITE_NAME}}" in text
+        assert "Quite Unusual Name" not in text
+    assert "{{SITE_DESCRIPTION}}" in header

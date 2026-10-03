@@ -148,6 +148,9 @@ class _State:
     # PRESS-0214: the fetched options; {} where the fetched state has none,
     # which is every option at its default.
     options: dict = field(default_factory=dict)
+    # PRESS-0213: the fetched identity, keyed by its file's name like forwards;
+    # empty where the fetched state has none, which keeps the Store's.
+    identity: dict[str, store.Identity] = field(default_factory=dict)
 
 
 def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
@@ -189,6 +192,10 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             state.forwards[name] = store.read_forwards(fetch / prefix)
         elif kind == store.OPTIONS_FOLDER and name == store.OPTIONS_FILE:
             state.options.update(store.read_options(fetch / prefix))
+        elif kind == store.IDENTITY_FOLDER and name == store.IDENTITY_FILE:
+            fetched = store.read_identity(fetch / prefix)
+            if fetched is not None:
+                state.identity[name] = fetched
     return state
 
 
@@ -320,6 +327,18 @@ def _restore_other_kinds(folder: Path, state: _State,
                 reversals.append(lambda f=remembered: store.write_forwards(folder, f))
             store.write_forwards(folder, forwards)
             if remembered is None:
+                reversals.append(lambda p=path: store.move_to_bin(folder, p))
+
+    for identity in state.identity.values():             # PRESS-0213 § 4.5
+        path = store.identity_path_for(folder)
+        remembered_identity = store.read_identity(folder)
+        if remembered_identity != identity:
+            if remembered_identity is not None:
+                store.move_to_bin(folder, path)
+                reversals.append(
+                    lambda i=remembered_identity: store.write_identity(folder, i))
+            store.write_identity(folder, identity)
+            if remembered_identity is None:
                 reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
     # PRESS-0214 § 4.4: the one kind whose ABSENCE is restored. An absent

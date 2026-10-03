@@ -49,7 +49,6 @@ def _valid_mapping(**overrides) -> dict:
         # drive is not absolute, and Settings rightly refuses it (PRESS-0120).
         "site_folder": os.path.abspath("/home/writer/Pressless/site"),
         "repository": "owner/owner.github.io",
-        "site_name": "A Journal",
         "site_address": "https://example.org",
         "daily_prompt_filter": "dailyprompt-*",
         "untouchable": ["CNAME", ".nojekyll", "README.md"],
@@ -316,7 +315,6 @@ def test_save_is_atomic(tmp_path, monkeypatch):
 _SETTINGS_FIELDS = {
     "site_folder",
     "repository",
-    "site_name",
     "site_address",
     "daily_prompt_filter",
     "untouchable",
@@ -589,7 +587,6 @@ def test_saving_over_an_undecodable_file_is_a_typed_failure(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
-        site_name="A Journal",
         site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
@@ -625,7 +622,6 @@ def test_saving_over_a_newer_settings_file_is_refused(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
-        site_name="A Journal",
         site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
@@ -647,7 +643,6 @@ def test_the_first_save_still_works_with_no_file_to_carry(tmp_path):
     settings = Settings(
         site_folder=tmp_path / "site",
         repository="owner/name",
-        site_name="A Journal",
         site_address="https://example.org",
         daily_prompt_filter="dailyprompt-*",
         untouchable=("CNAME",),
@@ -743,21 +738,6 @@ def test_a_repository_half_with_dots_that_is_not_a_dot_segment_loads(tmp_path, r
     assert load(tmp_path).repository == repository
 
 
-@pytest.mark.parametrize("site_name", ["", "   ", "A\nJournal", "A\rJournal"])
-def test_a_site_name_that_is_empty_or_breaks_a_line_is_refused(tmp_path, site_name):
-    """§4.3's site_name row. The Builder writes the name into every page's
-    title (PRESS-0008 §4.3), so an empty one titles every page with nothing
-    and a line break splits the element. The refusal names the key and never
-    quotes the value, which identifies the site.
-    """
-    _write(tmp_path, _valid_mapping(site_name=site_name))
-
-    with pytest.raises(SettingsError) as raised:
-        load(tmp_path)
-    assert "site_name" in str(raised.value)
-    assert "Journal" not in str(raised.value)
-
-
 @pytest.mark.parametrize("site_address", [
     "example.org",
     "ftp://example.org",
@@ -794,8 +774,7 @@ def test_a_site_address_the_builder_can_join_still_loads(tmp_path, site_address)
     """The half that matters: a trailing slash, a port and a project site's
     path all load, so the rule refuses punctuation without refusing his site.
     The save goes into an EMPTY folder: saving over the file it came from
-    carries both keys through whether or not save() writes them, and a
-    mutation probe dropping site_name from save() survived exactly that.
+    carries the key through whether or not save() writes it.
     """
     source = tmp_path / "source"
     source.mkdir()
@@ -806,7 +785,6 @@ def test_a_site_address_the_builder_can_join_still_loads(tmp_path, site_address)
     save(target, load(source))
     reloaded = load(target)
     assert reloaded.site_address == site_address
-    assert reloaded.site_name == "A Journal"
 
 
 def test_deeply_nested_json_is_a_typed_failure(tmp_path):
@@ -1178,7 +1156,6 @@ def test_a_save_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeypa
 _SHAPE_REFUSALS = [
     ("site_folder", {"site_folder": "site"}, {"site_folder": Path("site")}),
     ("repository", {"repository": "ownername"}, {"repository": "ownername"}),
-    ("site_name", {"site_name": " "}, {"site_name": " "}),
     ("site_address", {"site_address": "ftp://example.org"},
      {"site_address": "ftp://example.org"}),
     ("untouchable", {"untouchable": ["assets/css"]}, {"untouchable": ("assets/css",)}),
@@ -1218,7 +1195,7 @@ def test_a_refusal_of_the_file_itself_names_no_key(tmp_path):
     missing or mistyped field -- carries `key` None, so setup never reads one
     as a refused answer."""
     for broken in ("{not json", _valid_mapping(version=2),
-                   _valid_mapping(repository=_ABSENT), _valid_mapping(site_name=3)):
+                   _valid_mapping(repository=_ABSENT), _valid_mapping(site_address=3)):
         _write(tmp_path, broken)
         with pytest.raises(SettingsError) as refused:
             load(tmp_path)
@@ -1278,3 +1255,35 @@ def test_the_measurement_id_is_optional_and_shaped(tmp_path):
     written = json.loads((tmp_path / FILE_NAME).read_text(encoding="utf-8"))
     assert written["measurement_id"] == "G-ABC123"
     assert settings_module.load(tmp_path).measurement_id == "G-ABC123"
+
+
+# ----------------------------------------------------- PRESS-0213 INV-3 ----
+
+
+def test_save_retires_only_what_it_is_told(tmp_path):
+    """PRESS-0213 INV-3 (docs/specs/PRESS-0213-site-identity.md § 4.2): the
+    old site_name is carried through by an ordinary save, and left out only by
+    a save told to retire it, so no save but the carry-across can lose a name.
+
+    Breaks when an ordinary save drops the key, or `retire` keeps it."""
+    _write(tmp_path, _valid_mapping(site_name="Old"))
+    assert settings_module.retired_site_name(tmp_path) == "Old"
+
+    save(tmp_path, load(tmp_path))
+    assert json.loads((tmp_path / FILE_NAME).read_text(encoding="utf-8"))["site_name"] == "Old"
+
+    save(tmp_path, load(tmp_path), retire=("site_name",))
+    assert "site_name" not in json.loads((tmp_path / FILE_NAME).read_text(encoding="utf-8"))
+    assert settings_module.retired_site_name(tmp_path) is None
+
+
+@pytest.mark.parametrize("on_disk", [" ", "two\nlines", 3, None])
+def test_retired_site_name_answers_none_for_what_is_no_name(tmp_path, on_disk):
+    """PRESS-0213 § 4.2: no file, or a value the Store would refuse as a
+    name, is None, and the function raises nothing."""
+    assert settings_module.retired_site_name(tmp_path) is None
+    _write(tmp_path, _valid_mapping(site_name=on_disk) if on_disk is not None
+           else _valid_mapping())
+    assert settings_module.retired_site_name(tmp_path) is None
+    (tmp_path / FILE_NAME).write_bytes(b"\xff{not json")
+    assert settings_module.retired_site_name(tmp_path) is None

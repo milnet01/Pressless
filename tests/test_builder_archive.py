@@ -91,13 +91,14 @@ def test_the_first_publish_moves_no_page(imported, tmp_path):  # noqa: F811
     assert live.is_dir(), "PRESSLESS_LIVE_SITE is set and does not name a folder"
     settings = Settings(
         site_folder=tmp_path / "site", repository="owner/name",
-        site_name=PRESSLESS_SITE_NAME, site_address=PRESSLESS_SITE_ADDRESS,
+        site_address=PRESSLESS_SITE_ADDRESS,
         daily_prompt_filter="dailyprompt-*", untouchable=("assets",),
         credentials=Credentials(store="keyring", github_account="publishing-key",
                                 google_account=None),
         analytics_property_id=None,
     )
 
+    store.write_identity(into_store, store.Identity(PRESSLESS_SITE_NAME))   # PRESS-0213
     started = time.monotonic()
     built = build(into_store, settings, settings.site_folder)
     print(f"build: {time.monotonic() - started:.1f} s, {len(built.files)} files, "

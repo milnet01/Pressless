@@ -18,11 +18,13 @@ from pressless import builder, store, templates
 MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
 
 # Shipped to every install, so they name nobody and assume nothing about the
-# user (§ 4.3). {name} is the site's name, already escaped.
+# user (§ 4.3). The header and footer name the site by placeholder, so a
+# rename in the Store reaches every page (PRESS-0213 § 4.6).
 _HEADER = """<!-- The site's header: every page is built with it. -->
 <header class="site">
-  <a class="site-name" href="{{{{UP}}}}index.html">{name}</a>
-{{{{NAVIGATION}}}}
+  <a class="site-name" href="{{UP}}index.html">{{SITE_NAME}}</a>
+  <p class="site-description">{{SITE_DESCRIPTION}}</p>
+{{NAVIGATION}}
 </header>
 """
 
@@ -33,7 +35,7 @@ _NAVIGATION = """  <nav class="primary" aria-label="Primary">
 
 _FOOTER = """<!-- The site's footer: every page is built with it. -->
 <footer class="site">
-  <p>&copy; {{{{YEAR}}}} {name}</p>
+  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>
 </footer>
 """
 
@@ -144,6 +146,13 @@ def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
     return _PRIVACY.format(name=html.escape(site_name, quote=True), links=links)
 
 
+def privacy_name(folder: Path) -> str:
+    """The name the Privacy page carries: the Store's, else "this site"
+    (PRESS-0213 § 4.6). A malformed identity file raises StoreError."""
+    identity = store.read_identity(folder)
+    return identity.name if identity is not None else "this site"
+
+
 def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
     """PRESS-0199 § 4.5: while counting is on, the Privacy page and a footer
     link to it, each where absent, and only on a Store holding a site. Returns
@@ -196,9 +205,9 @@ def fill(folder: Path, site_name: str) -> None:
 
     name = html.escape(site_name, quote=True)
     files = (
-        (store.FURNITURE_FOLDER, "header", _HEADER.format(name=name)),
+        (store.FURNITURE_FOLDER, "header", _HEADER),
         (store.FURNITURE_FOLDER, "navigation", _NAVIGATION),
-        (store.FURNITURE_FOLDER, "footer", _FOOTER.format(name=name)),
+        (store.FURNITURE_FOLDER, "footer", _FOOTER),
         (store.PAGES_FOLDER, "index", _PAGE.format(
             title=name, up="", page="Home", heading=f"Welcome to {name}",
             words="This is your homepage. Change these words to say what your "

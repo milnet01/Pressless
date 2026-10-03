@@ -183,6 +183,9 @@ def _serve_held(folder: Path) -> int:
 
         first = "/"
         with served.capture():
+            moved = setup.carry_name_across(folder)          # PRESS-0213 § 4.3
+            if moved is not None:
+                print(moved)
             try:
                 settings.load(folder)
             except settings.NotSetUp:

@@ -106,11 +106,12 @@ def seed(folder: Path) -> None:
     credentials.write("file", folder, ACCOUNT, NOT_A_KEY)
     settings.save(folder, settings.Settings(
         site_folder=folder / "site", repository="practice/not-a-real-repository",
-        site_name="Practice Notes", site_address="https://practice.example",
+        site_address="https://practice.example",
         daily_prompt_filter="", untouchable=(),
         credentials=settings.Credentials(store="file", github_account=ACCOUNT,
                                          google_account=None),
         analytics_property_id=None))
+    store.write_identity(folder, store.Identity("Practice Notes"))
 
 
 class _Refuse:

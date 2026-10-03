@@ -62,7 +62,6 @@ class Credentials:
 class Settings:
     site_folder: Path             # where the Builder writes the finished site
     repository: str               # "owner/name" on GitHub
-    site_name: str                # the site's own name, in every built page's title
     site_address: str             # its absolute address, joined into the sitemap
     daily_prompt_filter: str      # fnmatch glob, matched per tag (§4.2)
     untouchable: tuple[str, ...]  # repository-root entries the Publisher leaves alone
@@ -123,6 +122,21 @@ def path_for(folder: Path) -> Path:
     return Path(folder) / FILE_NAME
 
 
+def retired_site_name(folder: Path) -> str | None:
+    """The site name a Pressless from before PRESS-0213 kept here, where it is
+    one non-blank line -- the Store's rule for a name, written out because
+    this module imports no other part (§5 INV-1). None otherwise, and never
+    raises (PRESS-0213 § 4.2)."""
+    try:
+        raw = json.loads(path_for(folder).read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError):
+        return None
+    name = raw.get("site_name") if isinstance(raw, dict) else None
+    if not isinstance(name, str) or not name.strip() or "\n" in name or "\r" in name:
+        return None
+    return name
+
+
 def load(folder: Path) -> Settings:
     """Read the settings file in `folder`.
 
@@ -174,7 +188,6 @@ def load(folder: Path) -> Settings:
 
     site_folder = _required(raw, "site_folder", str, target)
     repository = _required(raw, "repository", str, target)
-    site_name = _required(raw, "site_name", str, target)
     site_address = _required(raw, "site_address", str, target)
     daily_prompt_filter = _required(raw, "daily_prompt_filter", str, target)
     untouchable = _required(raw, "untouchable", list, target)
@@ -188,7 +201,6 @@ def load(folder: Path) -> Settings:
     loaded = Settings(
         site_folder=Path(site_folder),
         repository=repository,
-        site_name=site_name,
         site_address=site_address,
         daily_prompt_filter=daily_prompt_filter,
         untouchable=tuple(untouchable),
@@ -251,11 +263,8 @@ def check(settings: Settings) -> None:
         raise SettingsError(
             "repository is not \"owner/name\"", "repository"
         )
-    # Shape, like repository. Both identify the site, so each refusal names the
+    # Shape, like repository. It identifies the site, so the refusal names the
     # key and never quotes the value (§4.3).
-    site_name = settings.site_name
-    if not site_name.strip() or "\n" in site_name or "\r" in site_name:
-        raise SettingsError("site_name is empty or holds a line break", "site_name")
     if not _SITE_ADDRESS.fullmatch(settings.site_address):
         raise SettingsError(
             "site_address is not an absolute http or https address the "
@@ -292,7 +301,7 @@ def check(settings: Settings) -> None:
         )
 
 
-def save(folder: Path, settings: Settings) -> None:
+def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> None:
     """Write `settings` into `folder`, whole or not at all.
 
     A temporary file beside the target, then os.replace, which is atomic on
@@ -300,7 +309,8 @@ def save(folder: Path, settings: Settings) -> None:
     never a truncated one (§4.4). Keys this build does not recognise are
     carried through, so a newer Pressless can write one an older then saves
     over. No existing file is not an error — the first save, at setup, has
-    nothing to carry.
+    nothing to carry. `retire` names carried keys to leave out, which only the
+    site name's move to the Store does (PRESS-0213 § 4.3).
     """
     target = path_for(folder)
     carried = {}
@@ -348,12 +358,11 @@ def save(folder: Path, settings: Settings) -> None:
                 "relabel a file written by another"
             )
 
-    data = dict(carried)
+    data = {key: value for key, value in carried.items() if key not in retire}
     data.update({
         "version": FILE_VERSION,
         "site_folder": str(settings.site_folder),
         "repository": settings.repository,
-        "site_name": settings.site_name,
         "site_address": settings.site_address,
         "daily_prompt_filter": settings.daily_prompt_filter,
         "untouchable": list(settings.untouchable),

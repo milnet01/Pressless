@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **The site's name and a short description belong to the site.** (PRESS-0213)
+  First run and Settings ask for both. They travel with the site, undo
+  brings them back, and a header or footer can show them, so a rename
+  reaches every page. An existing site's name moves across by itself.
+
 - **Setup walks a newcomer through GitHub, one screen at a time** (PRESS-0212)
   The first start is now a short wizard with Back and Next: a GitHub
   account, a repository, a key, and the site switched on. Pressless checks

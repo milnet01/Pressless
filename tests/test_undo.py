@@ -707,3 +707,29 @@ def test_undo_restores_the_journal_switch(tmp_path):
         assert store.journal_on(folder) is True, case
         assert "options.json" in _binned(folder), case
         assert store.options_path_for(folder).is_file() is (case == "held"), case
+
+
+# PRESS-0213 INV-7 (docs/specs/PRESS-0213-site-identity.md § 4.5).
+
+
+def test_undo_restores_the_identity_and_keeps_it_when_absent(tmp_path):
+    """INV-7. Breaks when undo ignores the file, or wipes the name where the
+    fetched state has none."""
+    for case in ("held", "absent"):
+        root = tmp_path / case
+        root.mkdir()
+        folder = _folder(root)
+        store.write(folder, _entry("seaside"), draft=False)
+        store.write_identity(folder, store.Identity("Now"))
+        files = {**_furnished(root), **_content(root, published=(_entry("seaside"),))}
+        if case == "held":
+            scratch = root / "previous-identity"
+            scratch.mkdir()
+            files["content/identity/identity.json"] = (
+                store.write_identity(scratch, store.Identity("Then")).read_bytes())
+
+        _undo(folder, _previous(files))
+
+        expected = "Then" if case == "held" else "Now"
+        assert store.read_identity(folder) == store.Identity(expected), case
+        assert ("identity.json" in _binned(folder)) is (case == "held"), case

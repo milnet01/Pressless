@@ -44,11 +44,12 @@ def test_the_issue_is_ready_filled_and_carries_nothing_of_theirs(tmp_path):
         categories=(), tags=(), body=SENTINEL, extra=()), draft=False)
     settings.save(tmp_path, settings.Settings(
         site_folder=tmp_path / "site", repository=f"owner/{SENTINEL}",
-        site_name=SENTINEL, site_address=f"https://{SENTINEL}.example.org",
+        site_address=f"https://{SENTINEL}.example.org",
         daily_prompt_filter="", untouchable=("CNAME",),
         credentials=settings.Credentials(store="keyring", github_account="github",
                                          google_account=None),
         analytics_property_id=None))
+    store.write_identity(tmp_path, store.Identity(SENTINEL))
     body = _page(tmp_path)
     link = _issue_link(body)
     assert (link.scheme, link.netloc, link.path) == (

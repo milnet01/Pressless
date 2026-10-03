@@ -169,9 +169,9 @@ def _answers(**changes: str) -> dict[str, str]:
 # PRESS-0212: first run is a wizard. These walk it as a person would.
 
 FIRST_RUN = {"account": "owner", "repository": "owner.github.io", "key": SENTINEL_KEY,
-             "site_name": "A Journal", "start": ""}
+             "site_name": "A Journal", "site_description": "", "start": ""}
 STEP_FIELDS = {"welcome": (), "account": ("account",), "repository": ("repository",),
-               "key": ("key",), "pages": (), "site": ("site_name", "start")}
+               "key": ("key",), "pages": (), "site": ("site_name", "site_description", "start")}
 
 
 def _step(page: str) -> str | None:
@@ -217,7 +217,6 @@ def _saved(folder: Path, **changes) -> settings.Settings:
     value = settings.Settings(
         site_folder=folder / "site",
         repository="owner/owner.github.io",
-        site_name="A Journal",
         site_address="https://example.org",
         daily_prompt_filter="",
         untouchable=DERIVED,
@@ -375,8 +374,9 @@ def test_setup_works_on_an_empty_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """INV-5. Breaks when setup calls into the Store for anything but whether
-    it holds a site, with the starter box unticked. PRESS-0126 § 4.4 lets
-    setup read that much, to offer the starter site."""
+    it holds a site and the identity it writes, with the starter box
+    unticked. PRESS-0126 § 4.4 lets setup read the first, to offer the starter
+    site; PRESS-0213 § 4.6 has it check and write the second."""
     touched: list[str] = []
 
     def refuse(name: str):
@@ -387,7 +387,8 @@ def test_setup_works_on_an_empty_install(
 
     for name, function in inspect.getmembers(store, inspect.isfunction):
         if (not name.startswith("_") and function.__module__ == store.__name__
-                and name != "holds_a_site"):
+                and name not in ("holds_a_site", "identity_problem", "write_identity",
+                                 "identity_path_for")):
             monkeypatch.setattr(store, name, refuse(name))
     _Store(monkeypatch)
 
@@ -520,7 +521,6 @@ def test_first_run_saves_a_file_that_loads(
         assert settings.load(folder) == settings.Settings(
             site_folder=folder / "site",
             repository="owner/owner.github.io",
-            site_name="A Journal",
             site_address=ADDRESS,
             daily_prompt_filter="",
             untouchable=DERIVED,
@@ -528,6 +528,7 @@ def test_first_run_saves_a_file_that_loads(
                                              google_account=None),
             analytics_property_id=None,
         ), answered
+        assert store.read_identity(folder) == store.Identity("A Journal"), answered
 
 
 # -------------------------------------------------------------- INV-12 ----
@@ -586,13 +587,14 @@ def test_setup_sits_behind_the_faces_boundary(
     """INV-14, on Settings; the wizard's is PRESS-0212 INV-12. Breaks when
     setup serves its own handler or never registers on the Face."""
     _Store(monkeypatch)
-    _saved(tmp_path, site_name="Before")
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("Before"))
     with _setup_page(tmp_path, _GitHub()) as browser:
         assert browser.post(_answers(key=""), cookie=False)[0] == 403
         assert browser.post(_answers(key=""), origin="http://pressless.example")[0] == 403
-        assert settings.load(tmp_path).site_name == "Before"
+        assert store.read_identity(tmp_path).name == "Before"
         assert browser.post(_answers(key=""))[0] == 200
-    assert settings.load(tmp_path).site_name == "A Journal"
+    assert store.read_identity(tmp_path).name == "A Journal"
 
 
 # -------------------------------------------------------------- INV-15 ----
@@ -680,7 +682,9 @@ def test_the_starter_is_offered_only_on_an_empty_store(tmp_path, monkeypatch):
         _first_run(browser, start="starter")
     assert 'name="start"' in empty
     assert _step(held) == "site" and 'name="start"' not in held
-    assert _store_files(tmp_path) == before
+    after = _store_files(tmp_path)
+    after.pop("identity/identity.json")          # PRESS-0213: the site step writes it
+    assert after == before
     assert not (tmp_path / "starter-unpublished").exists()
 
 
@@ -1018,3 +1022,100 @@ def test_the_wizard_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
         status, page = browser.post(step)
     assert status == 200 and _step(page) == "account"
     assert _progress(tmp_path).exists()
+
+
+# ------------------------------------------------------ PRESS-0213 INV-4 ----
+# docs/specs/PRESS-0213-site-identity.md § 4.3, § 4.6.
+
+
+def _with_old_name(folder: Path, name: str = "Old", **raw) -> None:
+    """A settings file as a Pressless from before PRESS-0213 left it."""
+    _saved(folder)
+    target = _settings_file(folder)
+    data = json.loads(target.read_text(encoding="utf-8"))
+    data.update(site_name=name, **raw)
+    target.write_text(json.dumps(data), encoding="utf-8")
+
+
+def _carried(folder: Path) -> dict:
+    return json.loads(_settings_file(folder).read_text(encoding="utf-8"))
+
+
+def test_the_name_is_carried_across_once(tmp_path, monkeypatch):
+    """INV-4. Breaks when the key is retired before the identity is written,
+    an existing identity is overwritten, or a moved name is reported as not
+    moved."""
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    _with_old_name(fresh)
+    assert setup.carry_name_across(fresh) is None
+    assert store.read_identity(fresh) == store.Identity("Old")
+    assert "site_name" not in _carried(fresh)
+    assert setup.carry_name_across(fresh) is None          # nothing left to move
+
+    renamed = tmp_path / "renamed"
+    renamed.mkdir()
+    _with_old_name(renamed)
+    store.write_identity(renamed, store.Identity("New"))
+    assert setup.carry_name_across(renamed) is None
+    assert store.read_identity(renamed) == store.Identity("New")
+    assert "site_name" not in _carried(renamed)
+
+    carried_elsewhere = tmp_path / "carried"
+    carried_elsewhere.mkdir()
+    _with_old_name(carried_elsewhere, site_folder="site")
+    assert setup.carry_name_across(carried_elsewhere) is None
+    assert store.read_identity(carried_elsewhere) == store.Identity("Old")
+    assert _carried(carried_elsewhere)["site_name"] == "Old"
+
+    stuck = tmp_path / "stuck"
+    stuck.mkdir()
+    _with_old_name(stuck)
+    before = _settings_file(stuck).read_bytes()
+
+    def refuse(folder, identity):
+        raise store.StoreError("identity.json could not be written: the disk is full")
+
+    monkeypatch.setattr(store, "write_identity", refuse)
+    said = setup.carry_name_across(stuck)
+    assert said is not None and "the disk is full" in said
+    assert _settings_file(stuck).read_bytes() == before
+
+
+# ------------------------------------------------- PRESS-0213 INV-8, INV-9 ----
+
+
+def test_the_site_step_saves_the_identity(tmp_path, monkeypatch):
+    """INV-8. Breaks when the identity is written into Settings, after the
+    settings file, or past a refused answer."""
+    for label, changes, hint in (("no name", {"site_name": " "}, "site_name"),
+                                 ("two lines", {"site_description": "a\nb"},
+                                  "site_description")):
+        folder = tmp_path / label.replace(" ", "-")
+        folder.mkdir()
+        _Store(monkeypatch)
+        with _setup_page(folder, _GitHub()) as browser:
+            page = _first_run(browser, **changes)
+        assert _step(page) == "site" and _hint_for(hint, page), label
+        assert store.read_identity(folder) is None, label
+        assert not _settings_file(folder).exists(), label
+
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _first_run(browser, site_description="Poems, mostly.")
+    assert store.read_identity(tmp_path) == store.Identity("A Journal", "Poems, mostly.")
+    assert "site_name" not in _carried(tmp_path)
+
+
+def test_settings_page_edits_the_identity(tmp_path, monkeypatch):
+    """INV-9. Breaks when the page reads or writes the name anywhere but the
+    Store."""
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("Shown Name", "Shown words."))
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = browser.get()[1]
+        assert 'value="Shown Name"' in page and 'value="Shown words."' in page
+        browser.post(_answers(key="", site_name="Renamed", site_description="New words."))
+    assert store.read_identity(tmp_path) == store.Identity("Renamed", "New words.")
+    assert "site_name" not in _carried(tmp_path)

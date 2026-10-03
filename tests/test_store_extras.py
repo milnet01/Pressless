@@ -842,6 +842,8 @@ _PRESS_0182_SURFACE = {"FORWARDS_FOLDER", "FORWARDS_FILE", "forwards_path_for",
                        "read_forwards", "write_forwards"}
 _PRESS_0214_SURFACE = {"OPTIONS_FOLDER", "OPTIONS_FILE", "options_path_for",
                        "read_options", "write_options", "journal_on", "write_journal"}
+_PRESS_0213_SURFACE = {"IDENTITY_FOLDER", "IDENTITY_FILE", "Identity", "identity_path_for",
+                       "identity_problem", "read_identity", "write_identity"}
 _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
                        "read_style_code", "write_style_code", "holds_a_site"}
 
@@ -943,11 +945,12 @@ def test_photographs_stay_where_they_are(tmp_path):
 
     surface = _public_names(store_module)
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
-                        | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE)
+                        | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
+                        | _PRESS_0213_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
-        f"PRESS-0214 §4.1's and PRESS-0126 §4.1's. "
+        f"PRESS-0214 §4.1's, PRESS-0126 §4.1's and PRESS-0213 §4.1's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"

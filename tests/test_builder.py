@@ -73,7 +73,6 @@ def _settings(**overrides) -> Settings:
     values = {
         "site_folder": Path("/writer/Pressless/site"),
         "repository": "owner/name",
-        "site_name": "A Journal",
         "site_address": "https://example.org/",
         "daily_prompt_filter": "dailyprompt-*",
         "untouchable": ("CNAME", "assets"),
@@ -503,6 +502,7 @@ def test_a_generated_page_carries_the_journal_furniture(tmp_path):
     folder = _store(tmp_path)
     entry = _entry("deep", title="Deep")
     store.write(folder, entry, draft=False)
+    store.write_identity(folder, store.Identity("A Journal"))
     into = tmp_path / "site"
     build(folder, _settings(), into)
     page = _entry_page(into, entry).read_text(encoding="utf-8")
@@ -1285,3 +1285,45 @@ def test_a_preview_is_never_counted(tmp_path):
                          photo_src=lambda name: name)
     for root in (tmp_path / "one", tmp_path / "two"):
         assert all(TAG.encode() not in p.read_bytes() for p in root.rglob("*") if p.is_file())
+
+
+# PRESS-0213 INV-5, INV-6 (docs/specs/PRESS-0213-site-identity.md § 4.4).
+
+
+def test_the_identity_names_every_page(tmp_path):
+    """INV-5: the title carries the Store's name, escaped, and the header's
+    placeholders are filled, escaped, on an entry page and a fixed page.
+
+    Breaks when the title reads Settings, or a placeholder is left or filled
+    unescaped."""
+    folder = _store(tmp_path)
+    entry = _entry("deep", title="Deep")
+    store.write(folder, entry, draft=False)
+    build(folder, _settings(), tmp_path / "nameless", today=REPRODUCIBLE_TODAY)
+    assert "<title>Deep</title>" in _entry_page(tmp_path / "nameless", entry).read_text(
+        encoding="utf-8")
+
+    store.write_html(folder, store.FURNITURE_FOLDER, "header",
+                     HEADER.replace("{{NAVIGATION}}",
+                                    "{{NAVIGATION}}<b>{{SITE_NAME}}</b><i>{{SITE_DESCRIPTION}}</i>"))
+    store.write_identity(folder, store.Identity("A & B", 'Poems "here"'))
+    into = tmp_path / "named"
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+    for page in (_entry_page(into, entry), into / "index.html"):
+        text = page.read_text(encoding="utf-8")
+        assert "<b>A &amp; B</b><i>Poems &quot;here&quot;</i>" in text, page
+        assert "{{SITE_" not in text, page
+    assert "<title>Deep — A &amp; B</title>" in _entry_page(into, entry).read_text(
+        encoding="utf-8")
+
+
+def test_content_carries_the_identity(tmp_path):
+    """INV-6. Breaks when the identity file is left out of content/."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    build(folder, _settings(), tmp_path / "without", today=REPRODUCIBLE_TODAY)
+    assert not (tmp_path / "without" / "content" / "identity").exists()
+    store.write_identity(folder, store.Identity("A"))
+    build(folder, _settings(), tmp_path / "with", today=REPRODUCIBLE_TODAY)
+    assert (tmp_path / "with" / "content" / "identity" / "identity.json").read_bytes() == \
+        store.identity_path_for(folder).read_bytes()

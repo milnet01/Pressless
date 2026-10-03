@@ -90,7 +90,6 @@ def _saved(folder: Path, *, signed_in: bool = True) -> None:
     settings.save(folder, settings.Settings(
         site_folder=folder / "site",
         repository="owner/owner.github.io",
-        site_name="A Journal",
         site_address="https://example.org",
         daily_prompt_filter="",
         untouchable=(),

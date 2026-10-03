@@ -44,7 +44,7 @@ def _folder(tmp_path: Path) -> Path:
 def _settings(folder: Path) -> settings.Settings:
     return settings.Settings(
         site_folder=folder / "site", repository="owner/owner.github.io",
-        site_name="A Journal", site_address="https://example.org",
+        site_address="https://example.org",
         daily_prompt_filter="", untouchable=("CNAME",),
         credentials=settings.Credentials(store="keyring", github_account="github",
                                          google_account=None),

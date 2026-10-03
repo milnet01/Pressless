@@ -121,7 +121,7 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
     folder = artefact.parent / _FOLDER_NAME
     settings.save(folder, settings.Settings(
         site_folder=folder / "site", repository="owner/owner.github.io",
-        site_name="A Journal", site_address="https://example.org",
+        site_address="https://example.org",
         daily_prompt_filter="", untouchable=(),
         credentials=settings.Credentials(store="keyring", github_account="github",
                                          google_account=None),

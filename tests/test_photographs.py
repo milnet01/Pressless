@@ -167,7 +167,7 @@ def _folder(tmp_path: Path) -> Path:
         store.write_html(folder, store.FURNITURE_FOLDER, name, text)
     settings.save(folder, settings.Settings(
         site_folder=folder / "site", repository="owner/owner.github.io",
-        site_name="A Journal", site_address="https://example.org",
+        site_address="https://example.org",
         daily_prompt_filter="", untouchable=("CNAME",),
         credentials=settings.Credentials(store="keyring", github_account="github",
                                          google_account=None),

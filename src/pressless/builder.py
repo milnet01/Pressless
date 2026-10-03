@@ -345,6 +345,7 @@ class _Furniture:
     navigation: str
     footer: str
     year: int
+    identity: store.Identity      # PRESS-0213 § 4.4: blank where the Store holds none
 
     def fill(self, kind: str, depth: int, *, page: str = "", animate: bool = False,
              nav: bool = True) -> str:
@@ -361,6 +362,9 @@ class _Furniture:
         else:
             text = _LEADING_COMMENT.sub("", self.footer, count=1).rstrip("\n")
         text = text.replace("{{UP}}", "../" * depth)
+        text = text.replace("{{SITE_NAME}}", html.escape(self.identity.name, quote=True))
+        text = text.replace("{{SITE_DESCRIPTION}}",
+                            html.escape(self.identity.description, quote=True))
         for number, animation in enumerate(_ANIMATION, start=1):
             text = text.replace(f"{{{{ANIM{number}}}}}", animation if animate else "")
         return text.replace("{{YEAR}}", str(self.year))
@@ -450,8 +454,12 @@ class _Build:
         furniture = {name: store.read_html(
                          store.html_path_for(self.folder, store.FURNITURE_FOLDER, name))
                      for name in ("header", "navigation", "footer")}
+        self.set_furniture(furniture)
+
+    def set_furniture(self, furniture: dict[str, str]) -> None:
+        identity = store.read_identity(self.folder) or store.Identity("")
         self.furniture = _Furniture(furniture["header"], furniture["navigation"],
-                                    furniture["footer"], self.today.year)
+                                    furniture["footer"], self.today.year, identity)
 
     def read_entries(self) -> dict[str, store.Entry]:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))
@@ -477,8 +485,7 @@ class _Build:
             store.html_path_for(self.folder, self.change.kind, self.change.name)
             (pages if self.change.kind == store.PAGES_FOLDER else furniture)[
                 self.change.name] = self.change.html
-        self.furniture = _Furniture(furniture["header"], furniture["navigation"],
-                                    furniture["footer"], self.today.year)
+        self.set_furniture(furniture)
         return pages
 
     def filtered(self, entries: dict[str, store.Entry]) -> list[str]:
@@ -539,6 +546,11 @@ class _Build:
 
     # -- a page's shell (§4.3) --
 
+    def titled(self, title: str) -> str:
+        """PRESS-0213 § 4.4: the page's title, then the site's name where it has one."""
+        name = self.furniture.identity.name
+        return f"{title} — {name}" if name else title
+
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str) -> None:
         up = "../" * depth
@@ -549,7 +561,7 @@ class _Build:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(title)} — {html.escape(self.settings.site_name)}</title>
+<title>{html.escape(self.titled(title))}</title>
 <meta name="description" content="{html.escape(description)}">
 {links}
 </head>
@@ -837,6 +849,8 @@ class _Build:
             paths.append(store.forwards_path_for(self.folder))   # PRESS-0182, for undo
         if store.options_path_for(self.folder).is_file():
             paths.append(store.options_path_for(self.folder))    # PRESS-0214, for undo
+        if store.identity_path_for(self.folder).is_file():
+            paths.append(store.identity_path_for(self.folder))   # PRESS-0213, for undo
         for path in paths:
             relative = path.relative_to(self.folder).as_posix()
             # Read here rather than through store.read*, so a file that cannot

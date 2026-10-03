@@ -1896,7 +1896,8 @@ def test_write_journal_keeps_other_options(tmp_path):
 ])
 def test_holds_a_site_counts_writing_not_templates(tmp_path, where):
     """INV-1. Breaks when templates/ is counted, or a counted folder is left out."""
-    for seeded in ("templates/poem.txt", "look/style.css", "options/options.json"):
+    for seeded in ("templates/poem.txt", "look/style.css", "options/options.json",
+                   "identity/identity.json"):
         (tmp_path / seeded).parent.mkdir()
         (tmp_path / seeded).write_text("x", encoding="utf-8")
     assert store_module.holds_a_site(tmp_path) is False
@@ -1904,3 +1905,51 @@ def test_holds_a_site_counts_writing_not_templates(tmp_path, where):
     target.parent.mkdir(exist_ok=True)
     target.write_text("x", encoding="utf-8")
     assert store_module.holds_a_site(tmp_path) is True
+
+
+# PRESS-0213 INV-1, INV-2: the identity file
+# (docs/specs/PRESS-0213-site-identity.md § 4.1). The name is written out
+# here rather than imported, so a module naming another file fails.
+
+
+@pytest.mark.parametrize("data, expected", [
+    (None, None),
+    (b'{"name": "A"}', store_module.Identity("A", "")),
+    (b'{"description": "One line.", "name": "A", "other": 1}',
+     store_module.Identity("A", "One line.")),
+    (b"[]", StoreError),
+    (b"{}", StoreError),
+    (b'{"name": 1}', StoreError),
+    (b'{"name": " "}', StoreError),
+    (b'{"name": "A", "description": "x\\ny"}', StoreError),
+    (b'{"name": "A", "description": 2}', StoreError),
+    (b"\xff\xfe{}", StoreError),
+])
+def test_read_identity_reads_the_identity_file(tmp_path, data, expected):
+    """INV-1: absent is None; a malformed file is refused, never read as a name.
+
+    Breaks when a malformed file is read as some name, or an absent one raises."""
+    if data is not None:
+        (tmp_path / "identity").mkdir()
+        (tmp_path / "identity" / "identity.json").write_bytes(data)
+    if expected is StoreError:
+        with pytest.raises(StoreError, match="identity.json"):
+            store_module.read_identity(tmp_path)
+    else:
+        assert store_module.read_identity(tmp_path) == expected
+
+
+def test_write_identity_refuses_a_bad_name(tmp_path):
+    """INV-2. Breaks when a refused identity reaches the disk."""
+    path = store_module.write_identity(tmp_path, store_module.Identity("A"))
+    assert path == tmp_path / "identity" / "identity.json"
+    assert json.loads(path.read_text(encoding="utf-8")) == {"description": "", "name": "A"}
+    before = path.read_bytes()
+    for refused in (store_module.Identity("two\nlines"), store_module.Identity(" "),
+                    store_module.Identity("A", "two\rlines")):
+        with pytest.raises(StoreError):
+            store_module.write_identity(tmp_path, refused)
+        assert path.read_bytes() == before
+    assert store_module.identity_problem(store_module.Identity(" ")) == "name"
+    assert store_module.identity_problem(store_module.Identity("A", "x\ny")) == "description"
+    assert store_module.identity_problem(store_module.Identity("A", "")) is None
