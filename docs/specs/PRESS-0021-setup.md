@@ -277,7 +277,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 ### 4.9 What setup never does
 
-*PRESS-0212 § 3 decision 4: setup writes one thing to GitHub, the Pages switch.*
+*PRESS-0212 § 3 decision 4: where Pages is off, first-run setup writes an empty `.nojekyll` and switches Pages on.*
 
 *PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`.*
 

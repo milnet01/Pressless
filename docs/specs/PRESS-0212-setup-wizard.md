@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0212 — Setup becomes a wizard that walks a stranger through GitHub
 
-**Status:** spec draft (2026-10-03).
+**Status:** accepted (2026-10-03). One review round, the user's budget for a new spec; its fixes were read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0212 (user decision 2026-10-02, settled
 2026-10-03) and PRESS-0220 (user request 2026-10-03).
@@ -63,11 +63,17 @@ are built on it rather than beside it.
    power from switching Pages on. It saves the stranger a trip through
    GitHub's settings, and PRESS-0222's own-domain wizard needs the same
    permission.
-4. **(decided here) Setup may write to GitHub once: the Pages switch.** This
-   overturns PRESS-0127 § 3 decision 2, "Setup keeps reading GitHub and
-   never writing to it", for this one request. No file is written. A wizard
-   abandoned after it leaves Pages on, which is what the person was setting
-   up anyway.
+4. **(decided here) Setup may write to GitHub when Pages is off: an empty
+   `.nojekyll` file, then the Pages switch.** This overturns PRESS-0127 § 3
+   decision 2, "Setup keeps reading GitHub and never writing to it", for
+   these two requests. `.nojekyll` makes Pages serve files as they are:
+   Pages' default build drops any name starting with `_`, and
+   `photographs.name_for("_DSC1234.JPG", "JPEG")` returns `_dsc1234.jpg`.
+   On an empty repository it is also the first commit, which Pages needs, so
+   PRESS-0127 § 3 decision 1 holds: the person adds no file by hand. It is a
+   root entry the Builder does not produce, so the untouchable list keeps it.
+   A wizard abandoned after these writes leaves Pages on, which is what the
+   person was setting up anyway.
 5. **(decided here) The key is stored as soon as GitHub accepts it.** It is
    not kept until the end of the wizard. GitHub shows a new key once, so
    holding it only in memory would lose it on a quit. It is never in the
@@ -98,7 +104,7 @@ Answers = dict[str, str]
 
 @dataclass(frozen=True)
 class Hint:               # a refused answer: shown beside its field
-    field: str
+    field: str            # "" when the step has no field it is about
     text: str
 
 @dataclass(frozen=True)
@@ -139,7 +145,8 @@ owner registers with `Face.add_page` (PRESS-0021 INV-14).
   - `Answers`: they replace the answers, the progress file is written, and
     the next step is shown.
   - `Hint`: the same step again, with the posted answers and the hint. The
-    progress file is not written.
+    progress file is not written. A hint whose `field` is not one of the
+    step's fields is shown above them.
   - `Stop`: the fragment above the same step. The progress file is not
     written.
   - `Done`: the progress file is removed and the fragment is the page.
@@ -193,7 +200,7 @@ follow them on GitHub's pages.
 |---|---|---|---|
 | *welcome* | none | what the wizard does, what is needed (an email address), and that it can be left and resumed | none |
 | *account* | `account` | how to make a free GitHub account, step by step, with the sign-up link | `publisher.account_exists(account)` |
-| *repository* | `repository` | how to make a **Public** repository, with **Add a README file** ticked, and the naming advice of § 3 decision 7 | `publisher.public_repository("account/repository")` |
+| *repository* | `repository` | how to make a **Public** repository, and the naming advice of § 3 decision 7 | `publisher.public_repository("account/repository")` |
 | *key* | `key` | how to make a fine-grained key: only that repository; Contents **Read and write**; Pages **Read and write** | the key sequence below |
 | *pages* | none | whether Pages is on, and the address | the Pages sequence below |
 | *site* | `site_name`, `start` | the site's name, the address found, and PRESS-0126's starter box where it is offered | the save sequence below |
@@ -214,29 +221,44 @@ PRESS-0021's.
 
 **key.** In this order, each only when the one before succeeded:
 
-1. PRESS-0021 § 4.4's key shape rule. A malformed key is a `Hint`, before
-   any request (PRESS-0021 INV-12).
+1. **The box.** Empty, where the answers already hold `store`: an earlier
+   pass through this step stored a key, and the empty box keeps it. The key
+   in hand is then `credentials.read(store, folder, GITHUB_ACCOUNT)`, and
+   sub-step 4 does not run. Empty otherwise: a `Hint`, as on PRESS-0021's
+   first run. Typed: PRESS-0021 § 4.4's key shape rule, and a malformed key
+   is a `Hint` before any request (PRESS-0021 INV-12).
 2. `publisher.root_entries(candidate, key)`. A `RemoteStateMissing` is a
    `Hint` on `key`, saying this key cannot reach that repository. Any other
    `PublishError` is a `Stop` through `Face.fail`.
 3. `publisher.pages(repository, key)`. A refusal (401 or 403) is a `Hint`
    saying the key lacks Pages permission and how to edit it on GitHub.
-4. `credentials.choose()`, then `credentials.write(store, folder,
+4. Only for a key typed in the box: `credentials.choose()` where the
+   answers hold no `store` yet, then `credentials.write(store, folder,
    GITHUB_ACCOUNT, key)`. A credential failure is a `Stop` with
    `secret=KEY` (PRESS-0021 INV-13); `NoStore` says setup cannot finish on
    this computer, as today.
-5. The answers gain `store` (the `Choice.store`) and `store_name`
-   (`Choice.name`) for the done page.
+5. Where `choose` ran, the answers gain `store` (the `Choice.store`) and
+   `store_name` (`Choice.name`) for the done page.
 
 **pages.** It reads the key back with `credentials.read(store, folder,
-GITHUB_ACCOUNT)`.
+GITHUB_ACCOUNT)`, then `publisher.pages(repository, key)`. Its hints have no
+field (§ 4.1).
 
-- `publisher.pages` says Pages is on: the answers gain `site_address`, the
-  answer's `html_url`. Pages is left as GitHub has it.
-- Pages is off: `publisher.switch_pages_on(repository, key)` asks GitHub to
-  serve the default branch's root, then the address is read as above.
-- The repository is empty: a `Hint` saying GitHub needs one file before
-  Pages can be switched on, and how to add the README on GitHub.
+- **On, serving the default branch's root by a branch build**: Pages is left
+  as GitHub has it. No write is sent.
+- **On, serving anything else** — another branch, `/docs`, or a workflow
+  build: a `Hint` saying what Pages serves now and how to set it, in
+  GitHub's words, to deploy from the default branch's root. Pressless
+  publishes there and nowhere else, so a site served from elsewhere would
+  never show what he publishes. Pressless does not change it: a site already
+  on is his.
+- **Off**: `publisher.switch_pages_on(repository, key)`. A `Refused` is a
+  `Hint` saying the key lacks Pages **write**, and how to edit it.
+- Any other `PublishError` is a `Stop` through `Face.fail`.
+
+Pages on, the answers gain `site_address`, GitHub's `html_url`. It must pass
+`settings.check`'s address rule, or it is a `Stop`: it is GitHub's value, not
+an answer he can correct.
 
 **site.** PRESS-0021 § 4.6 runs from step 2 to step 5, then the
 PRESS-0126 fill and the done page, exactly as `_submit` does today, with
@@ -249,8 +271,8 @@ three differences:
 
 The candidate is PRESS-0021 § 4.5's first-run column, with `repository`,
 `site_name` and `site_address` from the answers, `daily_prompt_filter` `""`
-and `measurement_id` `None`. A refused `site_name` or `site_address` is a
-`Hint`. A save failure is a `Stop`. Success is `Done`.
+and `measurement_id` `None`. A refused `site_name` is a `Hint`. A save
+failure is a `Stop`. Success is `Done`.
 
 ### 4.5 The Publisher's additions
 
@@ -261,6 +283,7 @@ and `measurement_id` `None`. A refused `site_name` or `site_address` is a
 class Pages:
     on: bool
     address: str | None       # GitHub's html_url while on
+    serves_root: bool         # a branch build of the default branch's "/"
 
 def account_exists(account: str, transport: Transport | None = None) -> bool: ...
 def public_repository(repository: str, transport: Transport | None = None) -> bool: ...
@@ -274,21 +297,33 @@ def switch_pages_on(repository: str, token: str,
   `False`. Every other answer keeps § 6's types of PRESS-0009.
 - `pages` reads `GET /repos/{owner}/{name}/pages`. 404 is `Pages(False,
   None)`.
-- `switch_pages_on` sends `POST /repos/{owner}/{name}/pages` with
-  `{"source": {"branch": <default branch>, "path": "/"}}`, the branch
-  resolved as `_default_branch` does, then returns `pages(...)`. A
-  repository with no commits answers the branch read as PRESS-0127 § 4.1
-  measured, and this function raises `RepositoryEmpty`, a new
-  `PublishError`.
+- `serves_root` holds when the answer's `build_type` is `legacy` (or
+  absent), `source.path` is `/`, and `source.branch` is the default branch
+  `_default_branch` resolves.
+- `switch_pages_on`, in order:
+  1. Unless the root already holds `.nojekyll` (`root_entries`), writes it
+     empty with `PUT contents/.nojekyll`. On an empty repository this is the
+     first commit, as PRESS-0127's start file is: `root_entries` answers
+     `()` there, so it is written. The write goes through `_Session.write`
+     with `outcome_unknown=True`, as the start file's does.
+  2. Sends `POST /repos/{owner}/{name}/pages` with `{"build_type": "legacy",
+     "source": {"branch": <default branch>, "path": "/"}}`, the branch read
+     after step 1 so an empty repository has one.
+  3. Returns `pages(...)`.
+- **The account name never reaches a message.** `_without_account` takes the
+  account out of `repos/<account>/<name>` only; it gains the same for
+  `users/<account>`, so a failure of `account_exists` names no account
+  (`docs/design.md` § Logging).
 
 GitHub's documentation for these: Pages read needs the fine-grained
 permission Pages read, and `POST .../pages` needs Pages write.
 Source: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
 
-**Pages builds with Jekyll when switched on this way.** Jekyll copies a file
-with no front matter unchanged and leaves out a name starting with `_` or
-`.`. Store files begin with `Title:` lines, not front matter.
-Source: https://docs.github.com/en/rest/pages/pages
+**Why `.nojekyll`.** A branch build runs Jekyll unless the root holds
+`.nojekyll`, and Jekyll leaves out a name starting with `_`. Pressless keeps
+`_DSC1234.JPG` as `_dsc1234.jpg`, so without it such photographs vanish from
+the site.
+Source: https://github.blog/news-insights/the-library/bypassing-jekyll-on-github-pages
 
 ## 5. Invariants
 
@@ -350,19 +385,22 @@ in `tests/test_setup.py`; the Publisher ones in `tests/test_publisher.py`.
   file after every step, and making `settings.save` fail on *site*.
   *Breaks when:* any earlier step saves a partial `Settings`.
 
-- **INV-8** — Pages is switched on only when it is off. Already on, no write
-  request is sent and the address is GitHub's.
+- **INV-8** — Pages is switched on only when it is off. On and serving the
+  default branch's root, no write is sent and the address is GitHub's. On
+  and serving anything else, no write is sent and the step does not advance.
   *Test:* `test_pages_is_left_as_github_has_it`, with the fake transport
-  recording methods, once with Pages on and once off.
-  *Breaks when:* the step always POSTs, or overwrites an existing Pages
-  source.
+  recording methods: Pages off, on at the root, and on from `/docs`.
+  *Breaks when:* the step always POSTs, overwrites an existing Pages source,
+  or accepts a site served from somewhere Pressless does not publish.
 
-- **INV-9** — The only GitHub write setup makes is `POST .../pages`.
-  *Test:* `test_setup_writes_only_the_pages_switch`, walking the whole wizard
-  against the recording transport and asserting every non-GET request's
-  method and path.
-  *Breaks when:* a step writes a file, a branch or a setting other than
-  Pages.
+- **INV-9** — Setup's GitHub writes are `PUT contents/.nojekyll`, only
+  where the root lacks it, and then `POST .../pages`, both only when Pages is
+  off. An empty repository gets both, in that order.
+  *Test:* `test_setup_writes_only_what_pages_needs`, walking the whole wizard
+  against the recording transport, once over a repository with a root and
+  once over an empty one, asserting every non-GET request's method and path.
+  *Breaks when:* a step writes another file, a branch or a setting, or sends
+  the switch before the empty repository has its first commit.
 
 - **INV-10** — The account and repository checks send no key.
   *Test:* `test_the_first_reads_carry_no_key` in `tests/test_publisher.py`,
@@ -392,7 +430,8 @@ in `tests/test_setup.py`; the Publisher ones in `tests/test_publisher.py`.
 | GitHub rate-limits the unauthenticated reads | `Face.fail`'s `RateLimited` sentence | the step |
 | The key's store refuses | PRESS-0021 INV-13's sentence | everything before *key* |
 | Pages switch refused (a key without Pages write) | a hint on *pages* saying how to add the permission | the stored key |
-| The repository is empty | a hint on *pages*, how to add the README | the stored key |
+| Pages on, serving another branch, `/docs` or a workflow | a hint on *pages* saying how to set it | the stored key |
+| The `.nojekyll` write's answer is unreadable or lost | `Face.fail`'s `OutcomeUnknown` sentence; Next tries again, and finds the file if it landed | the stored key |
 | The progress file cannot be written | `Face.fail`'s sentence for the write's `OSError` | the step, unadvanced |
 | Pressless is closed on any step | nothing; the next launch resumes | everything up to the last Next |
 | He renames the repository on GitHub mid-wizard | the *key* or *pages* check fails with its hint; Back to *repository* | the earlier answers |
@@ -453,7 +492,7 @@ GitHub.
 | INV-6 | `tests/test_setup.py::test_the_key_is_stored_once_github_answers` |
 | INV-7 | `tests/test_setup.py::test_settings_are_written_last_by_the_wizard` |
 | INV-8 | `tests/test_setup.py::test_pages_is_left_as_github_has_it` |
-| INV-9 | `tests/test_setup.py::test_setup_writes_only_the_pages_switch` |
+| INV-9 | `tests/test_setup.py::test_setup_writes_only_what_pages_needs` |
 | INV-10 | `tests/test_publisher.py::test_the_first_reads_carry_no_key` |
 | INV-11 | `tests/test_setup.py::test_a_finished_setup_shows_settings` |
 | INV-12 | `tests/test_setup.py::test_the_wizard_sits_behind_the_faces_boundary` |
@@ -467,10 +506,11 @@ Each spec edit is a pointer to this spec beside the clause it changes.
 - `docs/specs/PRESS-0021-setup.md` § 3 decisions 2 and 10 — first run is the
   wizard and asks neither the filter nor the address. § 4.2 — the first two
   rows. § 4.3 — the form is Settings only. § 4.6 — on first run, steps 3
-  and 4 move to the wizard's *key* step. § 4.9 — setup writes the Pages
-  switch.
-- `docs/specs/PRESS-0127-empty-repository.md` § 3 decision 2 — setup writes
-  the Pages switch, and nothing else.
+  and 4 move to the wizard's *key* step. § 4.9 — where Pages is off,
+  first-run setup writes `.nojekyll` and switches Pages on.
+- `docs/specs/PRESS-0127-empty-repository.md` § 3 decisions 2 and 3, and
+  INV-9 — first-run setup starts an empty repository with `.nojekyll`; INV-9
+  now holds for Settings only, and its test moves to Settings.
 - `docs/design.md` § The parts, the Publisher row — it also reads whether an
   account and a public repository exist, and switches Pages on.
   § Where everything sits on disk — the `wizards` folder.

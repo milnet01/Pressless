@@ -50,7 +50,7 @@ empty.
 
 ## 3. Scope decisions (agreed with the user)
 
-*PRESS-0212 § 3 decision 4 changes decision 2: setup writes the Pages switch, and nothing else.*
+*PRESS-0212 § 3 decision 4 changes decisions 2 and 3: where Pages is off, first-run setup writes an empty `.nojekyll`, which starts an empty repository, then switches Pages on.*
 
 1. **Pressless starts an empty repository itself.** Decided by the user
    2026-09-18. The alternative was a message telling the writer to add a
@@ -205,6 +205,7 @@ with commits and completes it through the normal path.
 
 - **INV-9** — Setup against an empty repository finishes, saves an empty
   untouchable list, and sends no write request to GitHub.
+  *PRESS-0212 INV-9: this now holds for Settings only; the first-run wizard starts an empty repository with `.nojekyll`.*
   *Test:* `tests/test_setup.py::test_setup_finishes_against_an_empty_repository`.
   *Breaks when:* `root_entries` raises on the empty answer, or setup starts
   the repository itself.

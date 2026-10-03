@@ -3107,6 +3107,10 @@ it decides how pages, the menu and the look are held.
   2026-10-03: build this as the first wizard of PRESS-0220, one step per
   screen with Back and Next, sharing that item's pattern. PRESS-0213's
   site identity and PRESS-0183's shortcut offer become its last steps.
+  Spec 2026-10-03: docs/specs/PRESS-0212-setup-wizard.md, which also holds
+  PRESS-0220's shared wizard pattern (its section 4.1). Decided there:
+  Pressless switches Pages on itself, so the key asks for Pages permission
+  on that one repository too.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3583,6 +3587,9 @@ it decides how pages, the menu and the look are held.
   manual (PRESS-0219).
 
   This item builds the shared pattern and the first wizard, setup.
+  Spec 2026-10-03: the shared pattern and the setup wizard are specified
+  together in docs/specs/PRESS-0212-setup-wizard.md (section 4.1 is the
+  pattern). The manual link per step waits for PRESS-0219.
   **Layman:** For the few jobs that take many steps and are done once in a while, Pressless guides you one screen at a time, so you never have to remember what comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
