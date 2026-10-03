@@ -1,6 +1,9 @@
 # PRESS-0002 — Credentials: where the two secrets are kept, and how they are reached
 
 **Status:** accepted (2026-09-02). Re-gated after §3 decision 6 added the fallback read's checks (PRESS-0085), which changed direction and re-armed `CLAUDE.md` rule 14. Two more cold loops, both folded in, nothing left unfixed — that run reached the spec cap of 2 as the 2026-08-25 run did. **A violent cap again:** four of the last loop's seven findings landed on text this run wrote, so a third cold read would mostly repair the second. Implementation is the better third reviewer and this document is routed there. **The gate earned its lanes rather than auditing:** most of both loops' findings fell inside the amended span, and the sharpest were the new invariant naming no exception type, its test being unable to fail, and the new rule being reachable by a door the test never checked. Amended again 2026-09-06 (PRESS-0058): the write table gained the `version` row its read side already carried, INV-6's clause gained the failing store that makes it falsifiable, and ADR-0003's capability test became INV-11. All three record behaviour that already ships and is tested; the invariants and the table row are what a conformer builds from, so this one is gated. That gate found four code defects, filed as PRESS-0100, and reached the spec cap of 2 with an empty tail.
+**Amended 2026-10-03, before implementation** (PRESS-0141): INV-1 lets
+`credentials.py` import `pressless.safe_write`, the one copy of the
+write steps. That changes direction, so the gate re-armed.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -22,7 +25,7 @@ system's own store, and the fallback file — and it is the only code that
 touches either.
 
 It writes no prose, keeps no state between calls, and reads no other part of
-Pressless.
+Pressless but the shared file-writing steps (INV-1).
 
 ## 2. Problem
 
@@ -359,9 +362,14 @@ once the code exists.
 ## 5. Invariants
 
 - **INV-1** — `src/pressless/credentials.py` imports no other `pressless`
-  module.
+  module but `pressless.safe_write`, which carries §4.4's temporary-file,
+  sync and replace steps for every module that saves a file. `safe_write.py`
+  itself imports no `pressless` module, so the rule holds through it. The
+  descriptor's mode is still read and refused in `credentials.py`, before
+  the secret is written (§4.6): `safe_write` hands the raw descriptor to a
+  check its caller supplies and writes nothing until that check returns.
   *Test:* `tests/test_credentials.py::test_credentials_imports_no_sibling`,
-  walking the module's imports as
+  walking `credentials.py`'s imports and then `safe_write.py`'s, as
   `tests/test_settings.py::test_settings_imports_nothing_forbidden` does.
   *Breaks when:* an implementer imports `pressless.settings` to fetch the
   account names itself, which makes the Publisher's one documented way in

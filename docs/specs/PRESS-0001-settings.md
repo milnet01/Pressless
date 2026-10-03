@@ -16,6 +16,9 @@ so the gate re-armed.
 **Amended 2026-09-27, before implementation** (PRESS-0171): a
 `repository` half equal to `.` or `..` is refused. That changes
 direction, so the gate re-armed.
+**Amended 2026-10-03, before implementation** (PRESS-0141): INV-1 lets
+`settings.py` import `pressless.safe_write`, the one copy of §4.4's
+write steps. That changes direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0001 (`docs/design.md` § The parts; ADR-0003).
 
@@ -35,7 +38,8 @@ in that repository are not ours to touch, where the two credentials are
 kept, and the Analytics property id. Every part reads it except Marks, which is
 pure calculation, and Credentials, which is handed what it needs rather than
 reading (`docs/design.md` rule 10). Settings itself reads nothing else: no
-Store, no network, no other part of Pressless.
+Store, no network, no other part of Pressless but the shared file-writing
+steps (INV-1).
 
 ## 2. Problem
 
@@ -363,12 +367,16 @@ which is the writer's choice of somewhere else and is stored absolute.
 ## 5. Invariants
 
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
-  other `pressless` module. Named modules on purpose: an import list sees what
+  other `pressless` module but `pressless.safe_write`, which carries §4.4's
+  temporary-file, sync and replace steps for every module that saves a file.
+  `safe_write.py` itself imports no network module and no `pressless`
+  module, so the rule holds through it. The descriptor check and the
+  `SettingsError` wording stay in `settings.py`. Named modules on purpose: an import list sees what
   is imported and not what it is used for, so *reaches no disk but its own
   file* is not a rule this test could carry — §4.4 requires `os`, and `os`
   reaches every disk there is. INV-7 is what holds the path rule.
   *Test:* `tests/test_settings.py::test_settings_imports_nothing_forbidden`,
-  walking the module's imports as
+  walking `settings.py`'s imports and then `safe_write.py`'s, as
   `tests/test_marks.py::test_marks_is_pure` does — which bans `os` outright,
   and is the precedent rather than the rule here.
   *Breaks when:* an implementer imports `pressless.publisher` to validate the

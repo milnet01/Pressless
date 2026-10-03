@@ -10,6 +10,9 @@ day, top pages and how visitors arrived: the one request becomes a batch of
 four reports, `Report` carries the three new tables, and the cache goes to
 version 3 (§4.1 to §4.3, INV-3, INV-4, INV-28 to INV-32). Gated for one
 loop: five verified, five fixed, not converged.
+Amended 2026-10-03, before implementation (PRESS-0141): INV-1 lets
+`insights.py` import `pressless.safe_write`, the one copy of the cache's
+write steps. That changes direction, so the gate re-armed.
 Written after the code shipped, which is
 not the direction a spec usually runs; §1 says why this one does, and which of
 it is a record and which is a contract for work still to come. Gated to its
@@ -284,8 +287,12 @@ which settled something the contract had left open. **INV-28 to INV-32 are
 PRESS-0020's amendment**, with INV-3 and INV-4 changed to the batch.
 
 - **INV-1** — `insights.py` imports no `pressless` module other than
-  `pressless.settings`. The token is an argument.
-  *Test:* `tests/test_insights.py::test_insights_imports_no_forbidden_sibling`.
+  `pressless.settings` and `pressless.safe_write`. The token is an argument.
+  `safe_write` carries the cache's temporary-file, sync and replace steps
+  (INV-24) for every module that saves a file, and imports no `pressless`
+  module itself, so no route to Credentials runs through it.
+  *Test:* `tests/test_insights.py::test_insights_imports_no_forbidden_sibling`,
+  which walks `safe_write.py`'s imports too.
   *Breaks when:* someone fetches the token here instead of being handed it,
   which is the change `docs/design.md` rule 10 exists to stop.
   **It passes against a module that does nothing**, so it is evidence about
