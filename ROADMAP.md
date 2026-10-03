@@ -4045,14 +4045,34 @@ owned by docs/standards/versioning-overrides.md.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
   Lanes: Store, Settings, Builder.
 
-- 📋 [PRESS-0219] **A guide for someone new that covers every task.**
+- 📋 [PRESS-0219] **A searchable manual inside the app that shows, with pictures and short videos, how to do every task.**
   Discovery's Help row: whatever Pressless cannot do for them comes
   with step-by-step instructions. Written once every feature before
   1.0.0 has shipped, so it describes what exists.
-  **Layman:** A plain, step-by-step guide shows a newcomer how to do everything Pressless offers, from setup to changing their site's look.
-  Kind: doc.
-  Source: user-decision-2026-10-02 PRESS-0198.
-  Lanes: docs.
+
+  Widened 2026-10-03 at the user's request: the manual opens from
+  inside the app, shows rather than tells, and can be searched.
+  - Inside the app: a Help link on every page opens the manual in the
+    same browser tab Pressless already uses, with no internet needed.
+  - Showing: each task carries screenshots, and a short video where a
+    picture cannot show the steps. The record-demo skill makes both on
+    a private display, from a seeded throwaway copy, so no real site or
+    person appears in them.
+  - Searchable: a search box finds every task whose words match, as he
+    types. It searches the manual's own text, so it works offline.
+
+  Recommendations, to confirm when this is started:
+  - Ship the pictures and videos inside the app rather than online, so
+    the manual matches the version he has and works offline. Keep each
+    video short and silent, with captions, to keep the download small.
+  - Write it for low vision too: large text, captions on every video,
+    and alt text on every picture.
+  - Keep it at 1.0.0: pictures go stale with every screen change, so
+    making them earlier means making them twice.
+  **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
+  Kind: feature.
+  Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
+  Lanes: docs, face, packaging.
 
 - 📋 [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
   _local_files reads EVERY file of the site into one dict before
