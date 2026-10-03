@@ -4073,6 +4073,8 @@ owned by docs/standards/versioning-overrides.md.
   settings, store, themes and updater. Doing it still rewrites INV-1 in
   PRESS-0001 and PRESS-0002, which ban any sibling import. Asked the
   user whether to do it now or keep it for 1.0.0.
+  Decided by the user 2026-10-03: keep it for 1.0.0. The fifth-copy
+  trigger is dropped; it is done before the format freezes.
   **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
   Kind: refactor.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
