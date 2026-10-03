@@ -3089,7 +3089,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-09-29.
   Lanes: setup, packaging.
 
-- 📋 [PRESS-0212] **Setup walks a stranger through GitHub: an account, a repository, and Pages switched on.**
+- 🚧 [PRESS-0212] **Setup walks a stranger through GitHub: an account, a repository, and Pages switched on.**
   S12, and discovery's Help row: automate what can be automated,
   step-by-step instructions for the rest. Today setup assumes the
   repository exists. Covers making the repository, switching GitHub
@@ -3111,6 +3111,13 @@ it decides how pages, the menu and the look are held.
   PRESS-0220's shared wizard pattern (its section 4.1). Decided there:
   Pressless switches Pages on itself, so the key asks for Pages permission
   on that one repository too.
+  Built 2026-10-03 (commit 1113ff3): six-step wizard in src/pressless/setup.py,
+  publisher.account_exists / public_repository / pages / switch_pages_on.
+  Gate green: 929 collected, 926 passed, 3 skipped; Windows box 856 passed,
+  73 skipped. Still owed before shipped: spec section 7's by-hand run, a new
+  GitHub account and Public repository on Linux and on the Windows box,
+  ending with a publish whose page answers at the address the wizard found.
+  CI cannot reach GitHub, so nothing else checks the real API answers.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3558,7 +3565,7 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0220] **Wizards walk him through the rare tasks that take many steps, one step per screen.**
+- 🚧 [PRESS-0220] **Wizards walk him through the rare tasks that take many steps, one step per screen.**
   The user asked for wizards on 2026-10-03 and left the choice of tasks
   to Claude.
 
@@ -3590,10 +3597,26 @@ it decides how pages, the menu and the look are held.
   Spec 2026-10-03: the shared pattern and the setup wizard are specified
   together in docs/specs/PRESS-0212-setup-wizard.md (section 4.1 is the
   pattern). The manual link per step waits for PRESS-0219.
+  Shared pattern built 2026-10-03: src/pressless/wizard.py, tests in
+  tests/test_wizard.py. Ships with PRESS-0212 once its by-hand run passes.
+  The other wizards stay with their own items.
   **Layman:** For the few jobs that take many steps and are done once in a while, Pressless guides you one screen at a time, so you never have to remember what comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face.
+
+- 📋 [PRESS-0226] **Test files share one browser helper instead of four copies.**
+  Found while building PRESS-0212: tests/test_setup.py, test_editor.py,
+  test_dashboard.py and test_google_setup.py each define a class _Browser
+  that logs in to a served Face and sends requests; other files import one
+  of them. Move one into tests/_face_session.py beside session_cookie and
+  point every file at it. The user's rule (2026-10-03) is to refactor
+  duplication when found; filed rather than done inside PRESS-0212 to keep
+  that commit to its feature.
+  **Layman:** The tests that click through Pressless's pages use one shared helper, so a fix to how they log in is made once.
+  Kind: refactor.
+  Source: in-session-2026-10-03.
+  Lanes: tests.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
