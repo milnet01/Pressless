@@ -4054,7 +4054,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
 
-- 📋 [PRESS-0141] **The safe-write steps are written out in each module that saves a file.**
+- ✅ [PRESS-0141] **The safe-write steps are written out in each module that saves a file.**
   PRESS-0039 said the helper question was filed separately and that it
   did not close it. Nothing carried it. Write a temporary file, flush,
   fsync, then replace: credentials.py, insights.py, settings.py and
@@ -4075,6 +4075,18 @@ owned by docs/standards/versioning-overrides.md.
   user whether to do it now or keep it for 1.0.0.
   Decided by the user 2026-10-03: keep it for 1.0.0. The fifth-copy
   trigger is dropped; it is done before the format freezes.
+  Reversed by the user 2026-10-03, the same day: "If code is being
+  duplicated, we should refactor that code." Done now rather than at 1.0.0.
+  src/pressless/safe_write.py holds write_whole and patiently; settings,
+  credentials, insights, store, themes and updater call it, each keeping its
+  own error type. PRESS-0001 §4.4 owns the surface; PRESS-0001, PRESS-0002
+  and PRESS-0019 widened INV-1, each gated one round (four findings fixed on
+  PRESS-0001, none on the other two). Proven red against a stub; five
+  mutations of safe_write each killed, plus the settings no-copy check and
+  the rewritten insights failure-arm test. Gate green on Linux; the Windows
+  box was unreachable, so GitHub's Windows job is the first Windows run.
+  Not merged, being different operations: photographs' binary staging, the
+  installer's swap, the publisher's restore and paths' probe.
   **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
   Kind: refactor.
   Source: review residue 2026-09-25, from PRESS-0039's own note.

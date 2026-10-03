@@ -36,6 +36,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from pressless import update_key
 from pressless.installer import UpdateError
+from pressless.safe_write import write_whole
 
 # The app's repository, not his site's. PRESSLESS_UPDATE_REPOSITORY replaces it
 # for one run, which is how § 7.1 points a build at a scratch repository; it
@@ -176,16 +177,8 @@ def read_state(folder: Path) -> tuple[bool, str | None]:
 def write_state(folder: Path, *, check: bool, skip: str | None) -> None:
     """Write the switch and the skipped version, replacing the file whole."""
     target = Path(folder) / FILE_NAME
-    staging = target.with_name(f".{FILE_NAME}.{secrets.token_hex(4)}")
-    text = json.dumps({"version": 1, "check": check, "skip": skip})
-    try:
-        with open(staging, "w", encoding="utf-8") as out:
-            out.write(text)
-            out.flush()
-            os.fsync(out.fileno())
-        os.replace(staging, target)
-    finally:
-        staging.unlink(missing_ok=True)
+    write_whole(target, json.dumps({"version": 1, "check": check, "skip": skip}),
+                prefix=f".{FILE_NAME}.")
 
 
 # ------------------------------------------------------------------ reads ---

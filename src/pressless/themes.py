@@ -11,10 +11,10 @@ repository is public, and a title is somebody's trademark.
 from __future__ import annotations
 
 import json
-import os
-import secrets
 from dataclasses import dataclass
 from pathlib import Path
+
+from pressless.safe_write import write_whole
 
 FILE_NAME = "theme.json"
 FOLLOW = "follow"  # no theme of its own: light or dark as the computer is set
@@ -138,15 +138,7 @@ def write_choice(folder: Path, key: str) -> None:
     if not known(key):
         raise ValueError(f"no theme is called {key!r}")
     target = Path(folder) / FILE_NAME
-    staging = target.with_name(f".{FILE_NAME}.{secrets.token_hex(4)}")
-    try:
-        with open(staging, "w", encoding="utf-8") as out:
-            out.write(json.dumps({"version": 1, "theme": key}))
-            out.flush()
-            os.fsync(out.fileno())
-        os.replace(staging, target)
-    finally:
-        staging.unlink(missing_ok=True)
+    write_whole(target, json.dumps({"version": 1, "theme": key}), prefix=f".{FILE_NAME}.")
 
 
 def declarations(theme: Theme) -> str:

@@ -20,12 +20,12 @@ import os
 import re
 import stat
 import sys
-import tempfile
-import time
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from pressless.safe_write import patiently, write_whole
 
 
 @dataclass(frozen=True)
@@ -455,26 +455,6 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
             )
 
 
-# Windows refuses to replace or rename a file another program holds open -- its
-# own scanners open what was just written for a moment -- where Linux does not
-# (measured on the Windows box: error 5). A short wait clears that; a file
-# marked read-only is refused throughout and fails as before (PRESS-0135).
-_WINDOWS_TRIES = 10
-_WINDOWS_PAUSE = 0.1
-
-
-def _windows_patient(step) -> None:
-    """Run `step`, retrying a PermissionError for a moment on Windows only."""
-    for attempt in range(_WINDOWS_TRIES):
-        try:
-            step()
-            return
-        except PermissionError:
-            if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
-                raise
-            time.sleep(_WINDOWS_PAUSE)
-
-
 def _move_without_overwriting(source: Path, target: Path) -> None:
     """Move `source` onto `target`, refusing rather than replacing it.
 
@@ -494,7 +474,7 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
     visible rather than quiet.
     """
     if _is_windows():
-        _windows_patient(lambda: os.rename(source, target))
+        patiently(lambda: os.rename(source, target))
         return
     os.link(source, target)
     try:
@@ -618,22 +598,6 @@ def _why(exc: Exception) -> str:
     if isinstance(exc, OSError):
         return exc.strerror or type(exc).__name__
     return str(exc)
-
-
-def _discard(temporary: str) -> None:
-    """Remove a temporary file whose write did not complete.
-
-    Every route out of _write_atomically passes through here, so a failed or
-    interrupted save leaves the folder as it found it. A killed process does
-    not: nothing runs, and the temporary stays. No rule forbids that -- the
-    file is not an entry, list_slugs matches the suffix so it is never listed,
-    and a sweep could not tell an orphan from a second copy of Pressless
-    writing its own (PRESS-0067 item 7).
-    """
-    try:
-        os.unlink(temporary)
-    except OSError:
-        pass
 
 
 # ---------------------------------------------------------------------------
@@ -1471,39 +1435,14 @@ def _write_atomically(
             f"{destination.name} could not be created: {_why(exc)}"
         ) from exc
 
-    try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(destination), prefix=prefix, suffix=".tmp"
-        )
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be written: {_why(exc)}") from exc
-    try:
-        try:
-            _report_a_wide_grant(handle, target)
-        except BaseException:
-            # The PRESS-0066 leak by a second route. This runs on the RAW
-            # descriptor, before fdopen takes ownership, and a caller whose
-            # filter turns StoreNotice into an error makes it raise --
-            # _discard then unlinks the path and cannot close a descriptor.
-            os.close(handle)
-            raise
-        with os.fdopen(handle, "w", encoding="utf-8", newline=newline) as stream:
-            stream.write(text)
-            # rename(2) orders the namespace, not the data, so without
-            # this a power loss can commit the rename before the blocks
-            # and leave an empty file where §4.5 promises the previous one (PRESS-0039).
-            stream.flush()
-            os.fsync(stream.fileno())
-        _windows_patient(lambda: os.replace(temporary, target))
     # UnicodeError joins OSError because INV-9 covers it: text UTF-8 cannot
     # encode -- a lone surrogate in a body -- is a value the format cannot
     # carry, and the up-front check cannot see it, since it inspects header
     # values rather than the encoded bytes (PRESS-0067 item 5). A TypeError
     # from a caller passing the wrong type is NOT covered and still escapes
     # raw: that is a bug in the caller, and StoreError would hide it.
+    try:
+        write_whole(target, text, prefix=prefix, newline=newline,
+                    check=lambda handle: _report_a_wide_grant(handle, target))
     except (OSError, UnicodeError) as exc:
-        _discard(temporary)
         raise StoreError(f"{target.name} could not be written: {_why(exc)}") from exc
-    except BaseException:
-        _discard(temporary)
-        raise

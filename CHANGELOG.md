@@ -41,6 +41,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Every file Pressless saves whole now goes through one shared routine** (PRESS-0141)
+  The safe-save steps were copied into each module that saves a file;
+  there is now one copy. On Windows the visitor-numbers cache, the theme
+  choice and the update settings now also wait a moment when a virus
+  scanner briefly holds the file, as Settings and the Store already did.
+
 - **Settings says when visitor numbers are on** (PRESS-0207)
   Once visitor numbers are set up, the end of Settings reads "Visitor
   numbers are on: change the site or turn them off", instead of

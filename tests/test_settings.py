@@ -12,6 +12,7 @@ import inspect
 import io
 import json
 import os
+import tempfile
 import warnings
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
+from pressless import safe_write
 from pressless.settings import (
     Credentials,
     NotSetUp,
@@ -89,43 +91,65 @@ _FORBIDDEN_TOP_LEVEL_IMPORTS = {
 }
 
 
+def _imports(module) -> tuple[set[str], list]:
+    """Top-level names a module imports, and its relative imports."""
+    imported = set()
+    relative = []
+    for node in ast.walk(ast.parse(inspect.getsource(module))):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                relative.append(node)
+            elif node.module:
+                imported.add(node.module)
+    return imported, relative
+
+
+def _calls(module) -> set[str]:
+    """Every dotted name a module calls, such as `os.fsync`."""
+    called = set()
+    for node in ast.walk(ast.parse(inspect.getsource(module))):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if isinstance(node.func.value, ast.Name):
+                called.add(f"{node.func.value.id}.{node.func.attr}")
+    return called
+
+
 def test_settings_imports_nothing_forbidden():
     """INV-1: settings.py imports no network module and no other pressless
-    module.
+    module but pressless.safe_write, which imports neither, so the rule holds
+    through it. settings.py calls neither tempfile.mkstemp nor os.fsync
+    itself, so §4.4's steps are not copied back (PRESS-0141).
 
-    Walks the module's AST, as test_marks_is_pure does. Reads the module's
-    source from the test, never from settings.py itself.
+    Walks each module's AST, as test_marks_is_pure does. Reads the source from
+    the test, never from settings.py itself.
 
     Breaks when an implementer imports pressless.publisher to validate the
-    repository name, or urllib to check it exists.
+    repository name, or urllib to check it exists, or writes the save steps
+    out here again.
 
     This test is weak in a way the spec names (§7): an import list proves what
     the module imports, never that loading or saving does anything. It passes
     against the stub by design."""
-    tree = ast.parse(inspect.getsource(settings_module))
-
-    imported_top_level = set()
-    relative_imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported_top_level.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                relative_imports.append(node)
-            elif node.module:
-                imported_top_level.add(node.module.split(".")[0])
-
-    forbidden = imported_top_level & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"})
-    assert not forbidden, (
-        f"settings.py imports {forbidden!r} — a network module, or another "
-        f"pressless module. Its row in docs/design.md § The parts is "
-        f"'depends on nothing'"
+    imported, relative = _imports(settings_module)
+    top = {name.split(".")[0] for name in imported}
+    ours = {name for name in imported if name.split(".")[0] == "pressless"}
+    assert not top & _FORBIDDEN_TOP_LEVEL_IMPORTS, top & _FORBIDDEN_TOP_LEVEL_IMPORTS
+    assert ours <= {"pressless.safe_write"}, (
+        f"settings.py imports {ours - {'pressless.safe_write'}!r}. Its row in "
+        f"docs/design.md § The parts is 'depends on nothing': no other part"
     )
-    assert not relative_imports, (
-        f"settings.py has relative import(s) {[n.module for n in relative_imports]!r}, "
+    assert not relative, (
+        f"settings.py has relative import(s) {[n.module for n in relative]!r}, "
         f"which can only name a sibling pressless module"
     )
+    helper, helper_relative = _imports(safe_write)
+    helper_top = {name.split(".")[0] for name in helper}
+    assert not helper_top & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"}), helper_top
+    assert not helper_relative
+    copied = _calls(settings_module) & {"tempfile.mkstemp", "os.fsync"}
+    assert not copied, f"settings.py calls {copied!r} itself; §4.4's steps live in safe_write"
 
 
 # --------------------------------------------------------------- INV-2 ----
@@ -809,7 +833,7 @@ def test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor(
     settings = load(tmp_path)
 
     handed = []
-    real_mkstemp = settings_module.tempfile.mkstemp
+    real_mkstemp = tempfile.mkstemp
 
     def recording_mkstemp(*args, **kwargs):
         handle, path = real_mkstemp(*args, **kwargs)
@@ -819,7 +843,7 @@ def test_a_save_whose_temporary_file_cannot_be_opened_leaks_no_descriptor(
     def refusing_fdopen(*args, **kwargs):
         raise OSError("no descriptors left")
 
-    monkeypatch.setattr(settings_module.tempfile, "mkstemp", recording_mkstemp)
+    monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
     monkeypatch.setattr(settings_module.os, "fdopen", refusing_fdopen)
 
     with pytest.raises(SettingsError):
@@ -1121,14 +1145,14 @@ def test_a_save_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeypa
     settings = load(tmp_path)
 
     handed = []
-    real_mkstemp = settings_module.tempfile.mkstemp
+    real_mkstemp = tempfile.mkstemp
 
     def recording_mkstemp(*args, **kwargs):
         handle, path = real_mkstemp(*args, **kwargs)
         handed.append(handle)
         return handle, path
 
-    monkeypatch.setattr(settings_module.tempfile, "mkstemp", recording_mkstemp)
+    monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
     _wide_grant(monkeypatch)
 
     with warnings.catch_warnings():
@@ -1213,8 +1237,8 @@ def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch
 
     Breaks when the first refusal is final on Windows.
     """
-    monkeypatch.setattr(settings_module, "_is_windows", lambda: True)
-    monkeypatch.setattr(settings_module.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write.time, "sleep", lambda seconds: None)
     _write(tmp_path, _valid_mapping())
     before = load(tmp_path)
     real = os.replace

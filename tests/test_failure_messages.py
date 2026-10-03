@@ -22,6 +22,7 @@
 import json
 import os
 import re
+import tempfile
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -337,7 +338,7 @@ def test_no_store_failure_names_a_path(tmp_path, monkeypatch):
     def full_disk(*args, **kwargs):
         raise OSError(28, "No space left on device", str(folder))
 
-    monkeypatch.setattr(store.tempfile, "mkstemp", full_disk)
+    monkeypatch.setattr(tempfile, "mkstemp", full_disk)
     failure("a write onto a full disk",
             lambda: store.write(folder, replace(good, slug="full"), draft=True))
     monkeypatch.undo()

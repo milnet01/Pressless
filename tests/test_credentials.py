@@ -27,6 +27,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.credentials as credentials_module
+from pressless import safe_write
 from pressless.credentials import (
     Choice,
     CredentialError,
@@ -109,10 +110,27 @@ def _windows(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
 
 
-def test_credentials_imports_no_sibling():
-    """INV-1: credentials.py imports no other pressless module.
+def _imports(module) -> tuple[set[str], list]:
+    """Full dotted names a module imports, and its relative imports."""
+    imported = set()
+    relative = []
+    for node in ast.walk(ast.parse(inspect.getsource(module))):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                relative.append(node)
+            elif node.module:
+                imported.add(node.module)
+    return imported, relative
 
-    Walks the module's AST, as test_settings_imports_nothing_forbidden does.
+
+def test_credentials_imports_no_sibling():
+    """INV-1: credentials.py imports no other pressless module but
+    pressless.safe_write, which imports no pressless module itself, so the
+    rule holds through it (PRESS-0141).
+
+    Walks each module's AST, as test_settings_imports_nothing_forbidden does.
 
     Breaks when an implementer imports pressless.settings to fetch the
     account names itself, which makes the Publisher's one documented way in
@@ -122,29 +140,20 @@ def test_credentials_imports_no_sibling():
     module that does nothing. It is evidence about imports, never about
     reaching a store, and it passes against the stub by design.
     """
-    tree = ast.parse(inspect.getsource(credentials_module))
-
-    imported_top_level = set()
-    relative_imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported_top_level.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                relative_imports.append(node)
-            elif node.module:
-                imported_top_level.add(node.module.split(".")[0])
-
-    assert "pressless" not in imported_top_level, (
-        "credentials.py imports another pressless module. INV-1 keeps the "
-        "Publisher's one documented way in singular"
+    imported, relative = _imports(credentials_module)
+    ours = {name for name in imported if name.split(".")[0] == "pressless"}
+    assert ours <= {"pressless.safe_write"}, (
+        f"credentials.py imports {ours - {'pressless.safe_write'}!r}. INV-1 "
+        "keeps the Publisher's one documented way in singular"
     )
-    assert not relative_imports, (
+    assert not relative, (
         f"credentials.py has relative import(s) "
-        f"{[n.module for n in relative_imports]!r}, which can only name a "
+        f"{[n.module for n in relative]!r}, which can only name a "
         f"sibling pressless module"
     )
+    helper, helper_relative = _imports(safe_write)
+    assert not {name for name in helper if name.split(".")[0] == "pressless"}, helper
+    assert not helper_relative
 
 
 def test_windows_never_writes_a_file(tmp_path, monkeypatch):

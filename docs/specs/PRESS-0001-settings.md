@@ -295,7 +295,7 @@ power loss can commit the rename ahead of the blocks and leave an empty file
 where this section promises the previous one.
 
 **Those steps live once, in `pressless.safe_write`** (PRESS-0141); §11
-names the modules that call it. Its surface is one function:
+names the modules that call it. Its main function:
 
     write_whole(target, text, *, prefix, newline="\n", check=None)
 
@@ -307,7 +307,8 @@ translation, flushes, fsyncs, and replaces `target`. On Windows a
 `PermissionError` from the replace is retried for a moment, because a
 scanner opening the file just written refuses it briefly (PRESS-0159).
 Whether it is Windows is read at call time from `safe_write._is_windows()`,
-and that is what a retry test patches. On
+and that is what a retry test patches. The retry is `patiently(step)`, which
+the Store also runs its own rename through. On
 any failure the descriptor is closed, the temporary is removed, and the
 exception propagates unchanged; turning it into a module's own error is the
 caller's. It imports no `pressless` module and no network module.
@@ -700,7 +701,8 @@ loading or saving does anything.
 - **PRESS-0002 and PRESS-0019 widen their INV-1 the same way, in the same
   batch** (PRESS-0141): `credentials.py` and `insights.py` call
   `write_whole` too. `store.py`, `themes.py` and `updater.py`'s whole-file
-  write call it with no spec change, as no invariant of theirs forbids
+  write call it, and the Store's no-overwrite rename calls `patiently`, with
+  no spec change, as no invariant of theirs forbids
   that import. Each module keeps its own error type.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 

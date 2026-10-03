@@ -15,11 +15,11 @@ import os
 import re
 import stat
 import sys
-import tempfile
-import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+
+from pressless.safe_write import write_whole
 
 FILE_NAME = "settings.json"
 
@@ -366,74 +366,18 @@ def save(folder: Path, settings: Settings) -> None:
         "measurement_id": settings.measurement_id,
     })
 
+    # newline is named rather than left to the platform: §4.2's file is a
+    # shape the installation carries between machines, so its bytes may not
+    # depend on which system wrote it (PRESS-0039). The check runs on the raw
+    # descriptor, before a byte is written (§4.4).
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(folder), prefix=".settings-", suffix=".tmp"
-        )
+        write_whole(target, text, prefix=".settings-",
+                    check=lambda handle: _report_a_wide_grant(handle, target))
     except OSError as exc:
         raise SettingsError(
             f"the settings file could not be written: {_why(exc)}"
         ) from exc
-    try:
-        try:
-            _report_a_wide_grant(handle, target)
-        except BaseException:
-            # The PRESS-0066 leak by a second route. This runs on the RAW
-            # descriptor, before fdopen takes ownership, and a caller whose
-            # filter turns SettingsNotice into an error makes it raise --
-            # _discard then unlinks the path and cannot close a descriptor.
-            os.close(handle)
-            raise
-        # newline is named rather than left to the platform: §4.2's file is
-        # a shape the installation carries between machines, so its bytes may
-        # not depend on which system wrote it (PRESS-0039).
-        try:
-            stream = os.fdopen(handle, "w", encoding="utf-8", newline="\n")
-        except BaseException:
-            # mkstemp hands back a RAW descriptor and only fdopen takes
-            # ownership of it, so a failure HERE leaked one per failed save:
-            # _discard unlinks the path and cannot close a descriptor
-            # (PRESS-0066).
-            os.close(handle)
-            raise
-        with stream:
-            json.dump(data, stream, indent=2, ensure_ascii=False)
-            stream.write("\n")
-            # rename(2) orders the namespace, not the data, so without
-            # this a power loss can commit the rename before the blocks
-            # and leave an empty file where §4.4 promises the previous one (PRESS-0039).
-            stream.flush()
-            os.fsync(stream.fileno())
-        _windows_patient(lambda: os.replace(temporary, target))
-    except OSError as exc:
-        _discard(temporary)
-        raise SettingsError(
-            f"the settings file could not be written: {_why(exc)}"
-        ) from exc
-    except BaseException:
-        _discard(temporary)
-        raise
-
-
-# Windows refuses to replace a file another program holds open -- its own
-# scanners open what was just written for a moment -- where Linux does not
-# (measured on the Windows box: error 5). A short wait clears that; a file
-# marked read-only is refused throughout and fails as before (PRESS-0159).
-# The Store carries the same helper; INV-1 keeps this module from importing it.
-_WINDOWS_TRIES = 10
-_WINDOWS_PAUSE = 0.1
-
-
-def _windows_patient(step) -> None:
-    """Run `step`, retrying a PermissionError for a moment on Windows only."""
-    for attempt in range(_WINDOWS_TRIES):
-        try:
-            step()
-            return
-        except PermissionError:
-            if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
-                raise
-            time.sleep(_WINDOWS_PAUSE)
 
 
 def _is_windows() -> bool:
@@ -502,16 +446,3 @@ def _optional(mapping: dict, key: str, kind: type, target: Path, prefix: str = "
             f"not {kind.__name__} or absent"
         )
     return value
-
-
-def _discard(temporary: str) -> None:
-    """Remove this call's own temporary file, and nothing else (§5 INV-7)."""
-    try:
-        os.unlink(temporary)
-    except OSError:
-        # Swallowed deliberately: this runs while a failure is already on its
-        # way up, and a temporary file that cannot be removed must not replace
-        # the SettingsError saying what actually went wrong. What is left
-        # behind is inert -- nothing reads it, and the next save writes its
-        # own (PRESS-0066).
-        pass

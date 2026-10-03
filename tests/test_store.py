@@ -11,6 +11,7 @@ import dataclasses
 import inspect
 import json
 import os
+import tempfile
 import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -25,6 +26,7 @@ from _mode_support import (
 from _open_watch import _Open, _watch_opens  # noqa: F401 -- _Open documents the record shape
 
 import pressless.store as store_module
+from pressless import safe_write
 from pressless.store import (
     RECOGNISED_FIELDS,
     Entry,
@@ -1635,14 +1637,14 @@ def test_a_write_whose_grant_report_raises_leaks_no_descriptor(tmp_path, monkeyp
     makes that call raise, and _discard unlinks the path without closing the
     descriptor. Found by a test review on 2026-09-07."""
     handed = []
-    real_mkstemp = store_module.tempfile.mkstemp
+    real_mkstemp = tempfile.mkstemp
 
     def recording_mkstemp(*args, **kwargs):
         handle, path = real_mkstemp(*args, **kwargs)
         handed.append(handle)
         return handle, path
 
-    monkeypatch.setattr(store_module.tempfile, "mkstemp", recording_mkstemp)
+    monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
     _wide_grant(monkeypatch)
 
     with warnings.catch_warnings():
@@ -1695,8 +1697,8 @@ def test_a_replace_windows_refuses_for_a_moment_is_retried(tmp_path, monkeypatch
 
     Breaks when the first refusal is final on Windows.
     """
-    monkeypatch.setattr(store_module, "_is_windows", lambda: True)
-    monkeypatch.setattr(store_module.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write.time, "sleep", lambda seconds: None)
     write(tmp_path, _entry("an-example", body="Before."), draft=True)
     real = os.replace
     left = [refusals]

@@ -15,12 +15,13 @@ import json
 import os
 import stat
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 import keyring
 import keyring.errors
+
+from pressless.safe_write import write_whole
 
 SERVICE = "Pressless"            # what both secrets are filed under in the store
 PROBE = "pressless-store-probe"  # the account choose() round-trips; never a secret
@@ -309,70 +310,34 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         account: secret,
     }
 
-    # mkstemp then os.replace: atomic, and mkstemp creates its file
-    # owner-only, a mode os.replace carries onto the target (§4.6). So the
-    # file is private from the instant it exists, and no chmod follows a
-    # write that has already left a readable file behind.
+    # write_whole: atomic, and mkstemp creates its file owner-only, a mode
+    # os.replace carries onto the target (§4.6). So the file is private from
+    # the instant it exists, and no chmod follows a write that has already
+    # left a readable file behind. The newline is named rather than left to
+    # the platform, so the file is the same bytes on both systems (PRESS-0039).
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(folder), prefix=".credentials-", suffix=".tmp"
-        )
+        write_whole(target, text, prefix=".credentials-", check=_refuse_a_wide_grant)
     except OSError as exc:
         raise CredentialError(
             f"the credentials file could not be written: {_why(exc)}"
         ) from exc
 
-    # ADR-0003 states a CAPABILITY test, so the mode is read off the
-    # descriptor rather than inferred from the platform. mkstemp ASKS for
-    # 0600; a mount that does not enforce POSIX modes ignores it, chmod
-    # cannot repair it, and os.replace would carry the permissive mode onto
-    # the target. Checking the temporary means the secret never reaches such
-    # a filesystem at all -- one syscall, before the write (PRESS-0042).
-    try:
-        granted = stat.S_IMODE(os.fstat(handle).st_mode)
-    except OSError as exc:
-        os.close(handle)
-        _discard(temporary)
-        raise CredentialError(
-            f"the credentials file could not be written: {_why(exc)}"
-        ) from exc
+
+def _refuse_a_wide_grant(handle: int) -> None:
+    """ADR-0003 states a CAPABILITY test, so the mode is read off the
+    descriptor rather than inferred from the platform. mkstemp ASKS for 0600;
+    a mount that does not enforce POSIX modes ignores it, chmod cannot repair
+    it, and os.replace would carry the permissive mode onto the target.
+    write_whole runs this on the temporary before a byte is written, so the
+    secret never reaches such a filesystem at all (PRESS-0042)."""
+    granted = stat.S_IMODE(os.fstat(handle).st_mode)
     if granted & 0o077:
-        os.close(handle)
-        _discard(temporary)
         raise NoStore(
             "Pressless's own folder cannot hold a file private to one "
             f"user: a new file there is mode {granted:03o}, so the key would "
             "be readable by others on this machine"
         )
-
-    try:
-        # newline is named rather than left to the platform, so the file is
-        # the same bytes on both systems (PRESS-0039).
-        try:
-            stream = os.fdopen(handle, "w", encoding="utf-8", newline="\n")
-        except BaseException:
-            # Only fdopen takes ownership of the raw descriptor, so a failure
-            # here would leak it; settings.save closes it the same way
-            # (PRESS-0066, PRESS-0162).
-            os.close(handle)
-            raise
-        with stream:
-            json.dump(data, stream, indent=2, ensure_ascii=False)
-            stream.write("\n")
-            # rename(2) orders the namespace, not the data, so without
-            # this a power loss can commit the rename before the blocks
-            # and leave an empty file where §4.4 promises the previous one (PRESS-0039).
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, target)
-    except OSError as exc:
-        _discard(temporary)
-        raise CredentialError(
-            f"the credentials file could not be written: {_why(exc)}"
-        ) from exc
-    except BaseException:
-        _discard(temporary)
-        raise
 
 
 def _read_ours(target: Path) -> str:
@@ -443,11 +408,3 @@ def _read_mapping(target: Path) -> dict | None:
             f"the credentials file holds {type(raw).__name__}, not an object"
         )
     return raw
-
-
-def _discard(temporary: str) -> None:
-    """Remove this call's own temporary file, and nothing else."""
-    try:
-        os.unlink(temporary)
-    except OSError:
-        pass

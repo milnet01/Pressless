@@ -50,6 +50,7 @@ from _durability_watch import _assert_synced_before_replace, _watch_durability
 from _open_watch import _watch_opens
 
 import pressless.insights as insights_module
+from pressless import safe_write
 from pressless.insights import (
     DEFAULT_DAYS,
     Country,
@@ -253,7 +254,9 @@ def _codes(report: Report) -> list[str]:
 
 def test_insights_imports_no_forbidden_sibling():
     """INV-1: insights.py imports no pressless module other than
-    pressless.settings.
+    pressless.settings and pressless.safe_write, and safe_write imports no
+    pressless module itself, so no route to Credentials runs through it
+    (PRESS-0141).
 
     Walks the module's AST, as test_marks_is_pure and
     test_publisher_imports_no_forbidden_sibling do.
@@ -287,7 +290,7 @@ def test_insights_imports_no_forbidden_sibling():
                 else:
                     pressless_imports.add(node.module)
 
-    forbidden = pressless_imports - {"pressless.settings"}
+    forbidden = pressless_imports - {"pressless.settings", "pressless.safe_write"}
     assert not forbidden, (
         f"insights.py imports {sorted(forbidden)!r}, not just "
         f"pressless.settings -- this is the breach of docs/design.md rule 10 "
@@ -298,6 +301,16 @@ def test_insights_imports_no_forbidden_sibling():
         f"insights.py has relative import(s) "
         f"{[node.module for node in relative_imports]!r}, which can only name "
         f"a sibling pressless module"
+    )
+    helper = set()
+    for node in ast.walk(ast.parse(inspect.getsource(safe_write))):
+        if isinstance(node, ast.Import):
+            helper.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            helper.add("." if node.level else (node.module or "").split(".")[0])
+    assert not helper & {"pressless", "."}, (
+        "safe_write.py imports a pressless module, which would give insights.py "
+        "a route to it that INV-1 cannot see"
     )
 
 
@@ -1531,16 +1544,13 @@ def test_store_leaves_no_temporary_on_either_failure_arm(tmp_path, monkeypatch):
     os.replace is patched to raise OSError for the first -- the arm the
     module's own docstring calls "not worth failing a fetch over," so the
     fetch itself must still succeed even though the cache write did not.
-    json.dump is patched to raise a BaseException for the second, standing
-    in for a real KeyboardInterrupt landing mid-write; that arm re-raises,
-    so read() must fail with the same exception.
+    os.fsync is patched to raise a BaseException for the second, standing
+    in for a real KeyboardInterrupt landing mid-write, after the temporary
+    exists; that arm re-raises, so read() must fail with the same exception.
 
-    Breaks when insights.py::_store drops `_discard(temporary)` from the
-    `except OSError` arm (line 518) or the `except BaseException` arm (line
-    520), or drops the `except BaseException` arm entirely (lines 519-521)
-    -- which would let anything that is not an OSError, a real
-    KeyboardInterrupt included, escape mid-write with the temporary still on
-    disk.
+    Breaks when the cache write stops discarding its temporary on an OSError
+    or on any other exception -- the steps live in safe_write.write_whole
+    since PRESS-0141 -- which would leave the temporary on disk.
     """
     # The OSError arm.
     osfolder = tmp_path / "oserror"
@@ -1569,17 +1579,17 @@ def test_store_leaves_no_temporary_on_either_failure_arm(tmp_path, monkeypatch):
     # The BaseException arm.
     bfolder = tmp_path / "baseexception"
     bfolder.mkdir()
-    real_dump = json.dump
+    real_fsync = os.fsync
 
     def _raise_abort(*_args, **_kwargs):
         raise _StoreAbort("simulated interrupt during the cache write")
 
-    monkeypatch.setattr(json, "dump", _raise_abort)
+    monkeypatch.setattr(os, "fsync", _raise_abort)
     try:
         with pytest.raises(_StoreAbort):
             _seed(bfolder, _Transport())
     finally:
-        monkeypatch.setattr(json, "dump", real_dump)
+        monkeypatch.setattr(os, "fsync", real_fsync)
 
     leftover = list(bfolder.glob(".insights-*.tmp"))
     assert not leftover, (

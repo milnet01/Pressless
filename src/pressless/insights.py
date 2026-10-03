@@ -30,9 +30,7 @@ import datetime
 import http.client
 import json
 import math
-import os
 import ssl
-import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -43,6 +41,7 @@ from typing import Protocol
 
 import certifi
 
+from pressless.safe_write import write_whole
 from pressless.settings import Settings
 
 API = "https://analyticsdata.googleapis.com/v1beta"
@@ -770,35 +769,10 @@ def _store(target: Path, report: Report) -> None:
         "version": CACHE_VERSION,
         "windows": windows,
     }
+    # newline is named rather than left to the platform, so the cache is the
+    # same bytes on both systems (PRESS-0039).
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     try:
-        handle, temporary = tempfile.mkstemp(
-            dir=str(target.parent), prefix=".insights-", suffix=".tmp"
-        )
+        write_whole(target, text, prefix=".insights-")
     except OSError:
         return
-    try:
-        # newline is named rather than left to the platform, so the cache is
-        # the same bytes on both systems (PRESS-0039).
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            json.dump(data, stream, indent=2, ensure_ascii=False)
-            stream.write("\n")
-            # rename(2) orders the namespace, not the data, so without
-            # this a power loss can commit the rename before the blocks
-            # and leave an empty file where INV-24 promises a whole one (PRESS-0039).
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, target)
-    except OSError:
-        _discard(temporary)
-    except BaseException:
-        _discard(temporary)
-        raise
-
-
-def _discard(temporary: str) -> None:
-    try:
-        os.unlink(temporary)
-    except OSError:
-        # Best effort: the write has already failed and is being reported,
-        # and a stray temporary costs a few bytes and nothing else.
-        pass
