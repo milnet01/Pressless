@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Setup walks a newcomer through GitHub, one screen at a time** (PRESS-0212)
+  The first start is now a short wizard with Back and Next: a GitHub
+  account, a repository, a key, and the site switched on. Pressless checks
+  each step itself, switches GitHub Pages on, and remembers where you got
+  to if you close it halfway. Settings is still one page.
+
 - **Pressless can put itself in the Start Menu or app menu, and on the desktop** (PRESS-0183)
   Once setup is done, two ticked boxes offer a menu entry and a desktop
   icon; Settings shows them as they are and can take either away. If

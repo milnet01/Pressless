@@ -24,7 +24,17 @@ from pathlib import Path
 import pytest
 from _face_session import session_cookie
 
-from pressless import builder, credentials, face, settings, setup, shortcuts, starter, store
+from pressless import (
+    builder,
+    credentials,
+    face,
+    publisher,
+    settings,
+    setup,
+    shortcuts,
+    starter,
+    store,
+)
 
 KEY_NOUN = "your publishing key"
 SENTINEL_KEY = "ghp_SENTINELkey0123456789abcdef"
@@ -33,10 +43,12 @@ LOG_NAME = "pressless.log"
 ROOT = ("CNAME", "assets", "content", "index.html")
 DERIVED = ("CNAME", "assets")
 
+ADDRESS = "https://example.org"
+
 ANSWERS = {
     "repository": "owner/owner.github.io",
     "site_name": "A Journal",
-    "site_address": "https://example.org",
+    "site_address": ADDRESS,
     "daily_prompt_filter": "",
     "key": SENTINEL_KEY,
 }
@@ -46,12 +58,17 @@ class _GitHub:
     """A recording double for the Publisher's Transport, answering by URL.
 
     `refuse` maps a URL substring to the status that address answers with.
-    Everything else answers as a repository whose root holds `root`.
+    Everything else answers as a public repository `owner/owner.github.io`
+    whose root holds `root`, under the account `owner`. `pages` is "root"
+    (on, serving the main branch's root), "elsewhere" (on, serving /docs) or
+    "off"; switching it on makes it "root" (PRESS-0212 § 4.5).
     """
 
-    def __init__(self, root: tuple[str, ...] = ROOT, refuse: dict[str, int] | None = None):
+    def __init__(self, root: tuple[str, ...] = ROOT, refuse: dict[str, int] | None = None,
+                 pages: str = "root"):
         self.root = root
         self.refuse = refuse or {}
+        self.pages = pages
         self.calls: list[tuple[str, str, str]] = []
 
     def request(self, method: str, url: str, body: bytes | None,
@@ -60,6 +77,22 @@ class _GitHub:
         for fragment, status in self.refuse.items():
             if fragment in url:
                 return status, {}, b'{"message": "refused"}'
+        path = url.removeprefix(publisher.API)
+        if method == "GET" and path == "/users/owner":
+            return 200, {}, b'{"login": "owner"}'
+        if method == "GET" and path == "/repos/owner/owner.github.io":
+            return 200, {}, b'{"default_branch": "main", "private": false}'
+        if path == "/repos/owner/owner.github.io/pages":
+            if method == "POST":
+                self.pages = "root"
+                return 201, {}, b"{}"
+            if self.pages == "off":
+                return 404, {}, b'{"message": "Not Found"}'
+            source = {"branch": "main", "path": "/docs" if self.pages == "elsewhere" else "/"}
+            return 200, {}, json.dumps({"html_url": ADDRESS, "build_type": "legacy",
+                                        "source": source}).encode()
+        if method == "PUT" and path.endswith("/contents/.nojekyll"):
+            return 201, {}, b'{"commit": {"sha": "c1"}}'
         if url.endswith("/commits/HEAD"):
             return 200, {}, json.dumps({"sha": "abc123"}).encode()
         if "/git/trees/abc123" in url:
@@ -69,6 +102,10 @@ class _GitHub:
 
     def wait(self, seconds: float) -> None:
         return None
+
+    def writes(self) -> list[tuple[str, str]]:
+        return [(method, url.removeprefix(publisher.API))
+                for method, url, _auth in self.calls if method != "GET"]
 
 
 class _Store:
@@ -160,6 +197,52 @@ def _answers(**changes: str) -> dict[str, str]:
     return {**ANSWERS, **changes}
 
 
+# PRESS-0212: first run is a wizard. These walk it as a person would.
+
+FIRST_RUN = {"account": "owner", "repository": "owner.github.io", "key": SENTINEL_KEY,
+             "site_name": "A Journal", "start": ""}
+STEP_FIELDS = {"welcome": (), "account": ("account",), "repository": ("repository",),
+               "key": ("key",), "pages": (), "site": ("site_name", "start")}
+
+
+def _step(page: str) -> str | None:
+    """The wizard step a page shows, or None for a page that is no step."""
+    found = re.search(r'name="step" value="([a-z]+)"', page)
+    return found.group(1) if found else None
+
+
+def _next(browser: _Browser, page: str, **changes: str) -> str:
+    """Press Next on the step `page` shows, with FIRST_RUN's answers."""
+    step = _step(page)
+    assert step is not None, "not a wizard step"
+    answers = {**FIRST_RUN, **changes}
+    return browser.post({"step": step, "go": "next",
+                         **{name: answers[name] for name in STEP_FIELDS[step]}})[1]
+
+
+def _first_run(browser: _Browser, **changes: str) -> str:
+    """Walk the wizard from where it stands until a step does not move on, or
+    the wizard ends; the last page."""
+    page = browser.get()[1]
+    while _step(page) is not None:
+        after = _next(browser, page, **changes)
+        if _step(after) == _step(page):
+            return after
+        page = after
+    return page
+
+
+def _walk_to(browser: _Browser, step: str, **changes: str) -> str:
+    """Walk the wizard to `step`'s page, from where it stands."""
+    page = browser.get()[1]
+    while _step(page) != step:
+        assert _step(page) is not None, f"the wizard ended before {step}"
+        after = _next(browser, page, **changes)
+        assert _step(after) != _step(page), f"the wizard stayed on {_step(page)}"
+        page = after
+    return page
+
+
 def _saved(folder: Path, **changes) -> settings.Settings:
     """Save a settings file in `folder`, as an earlier setup would have."""
     value = settings.Settings(
@@ -205,9 +288,12 @@ def _log(folder: Path) -> str:
 def test_nothing_is_written_before_github_answers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """INV-1. Breaks when credentials.write or choose moves ahead of
-    root_entries, or the address check is dropped and the form reaches GitHub."""
+    """INV-1, on Settings; the wizard's half is PRESS-0212 INV-6. Breaks when
+    credentials.write moves ahead of root_entries, or the address check is
+    dropped and the form reaches GitHub."""
     keyring = _Store(monkeypatch)
+    _saved(tmp_path)
+    before = _settings_file(tmp_path).read_bytes()
 
     github = _GitHub()
     with _setup_page(tmp_path, github) as browser:
@@ -229,7 +315,7 @@ def test_nothing_is_written_before_github_answers(
     assert status == 200
     assert _offers_the_form(page) and _hint_for("repository", page)
 
-    assert not _settings_file(tmp_path).exists()
+    assert _settings_file(tmp_path).read_bytes() == before
     assert keyring.chosen == 0
     assert keyring.writes == []
 
@@ -245,14 +331,14 @@ def test_the_settings_file_is_written_last(
     first.mkdir()
     _Store(monkeypatch, choose_raises=credentials.CredentialError("locked"))
     with _setup_page(first, _GitHub()) as browser:
-        browser.post(_answers())
+        _first_run(browser)
     assert not _settings_file(first).exists()
 
     second = tmp_path / "write-fails"
     second.mkdir()
     keyring = _Store(monkeypatch, write_raises=credentials.NoStore("none here"))
     with _setup_page(second, _GitHub()) as browser:
-        browser.post(_answers())
+        _first_run(browser)
     assert keyring.chosen == 1, "the run never reached the store, so this proved nothing"
     assert not _settings_file(second).exists()
 
@@ -299,7 +385,8 @@ def test_an_unreadable_settings_file_is_left_alone(
     with _setup_page(refused, github) as browser:
         _, shown = browser.get()
         browser.post(_answers())
-    assert not _offers_the_form(shown)
+        browser.post({"step": "welcome", "go": "next"})
+    assert not _offers_the_form(shown) and _step(shown) is None
     assert _settings_file(refused).read_bytes() == before
     assert github.calls == []
     assert keyring.chosen == 0 and keyring.writes == []
@@ -309,7 +396,7 @@ def test_an_unreadable_settings_file_is_left_alone(
     _saved(carried, site_folder=Path("site"))
     with _setup_page(carried, _GitHub()) as browser:
         _, shown = browser.get()
-    assert _offers_the_form(shown)
+    assert _step(shown) == "welcome"
 
 
 # --------------------------------------------------------------- INV-5 ----
@@ -337,8 +424,8 @@ def test_setup_works_on_an_empty_install(
 
     with _setup_page(tmp_path, _GitHub()) as browser:
         _, shown = browser.get()
-        browser.post(_answers())
-    assert _offers_the_form(shown)
+        _first_run(browser)
+    assert _step(shown) == "welcome"
     assert touched == []
     assert settings.load(tmp_path).repository == "owner/owner.github.io"
 
@@ -352,22 +439,33 @@ def test_the_key_is_never_shown(
     """INV-6. Breaks when the re-rendered form fills the key box, or the done
     page echoes it."""
     cases = [
-        ("success", _GitHub(), _answers()),
-        ("refused site name", _GitHub(), _answers(site_name=" ")),
-        ("refused key", _GitHub(refuse={"/commits/HEAD": 401}), _answers()),
+        ("success", _GitHub(), {}),
+        ("refused site name", _GitHub(), {"site_name": " "}),
+        ("refused key", _GitHub(refuse={"/commits/HEAD": 401}), {}),
     ]
-    for label, github, answers in cases:
+    for label, github, changes in cases:
         folder = tmp_path / label.replace(" ", "-")
         folder.mkdir()
         _Store(monkeypatch)
+        pages = []
         with _setup_page(folder, github) as browser:
-            _, page = browser.post(answers)
+            page = browser.get()[1]
+            while _step(page) is not None:
+                pages.append(page)
+                after = _next(browser, page, **changes)
+                if _step(after) == _step(page):
+                    pages.append(after)
+                    break
+                page = after
+            else:
+                pages.append(page)
         captured = capfd.readouterr()
-        assert SENTINEL_KEY not in page, label
+        for shown in pages:
+            assert SENTINEL_KEY not in shown, label
+            for box in _key_inputs(shown):
+                assert "value=" not in box, label
         assert SENTINEL_KEY not in _log(folder), label
         assert SENTINEL_KEY not in captured.out + captured.err, label
-        for field in _key_inputs(page):
-            assert "value=" not in field, label
     assert _settings_file(tmp_path / "success").exists(), "the success case did not succeed"
 
 
@@ -411,9 +509,9 @@ def test_an_empty_key_box_keeps_the_saved_key(
     keyring = _Store(monkeypatch)
     github = _GitHub()
     with _setup_page(first_run, github) as browser:
-        _, page = browser.post(_answers(key=""))
-    assert _offers_the_form(page) and _hint_for("key", page)
-    assert github.calls == [] and keyring.writes == []
+        page = _first_run(browser, key="")
+    assert _step(page) == "key" and _hint_for("key", page)
+    assert all(auth == "" for _, _, auth in github.calls) and keyring.writes == []
     assert not _settings_file(first_run).exists()
 
 
@@ -449,12 +547,12 @@ def test_first_run_saves_a_file_that_loads(
         folder.mkdir()
         _Store(monkeypatch, answers=answered)
         with _setup_page(folder, _GitHub()) as browser:
-            browser.post(_answers())
+            _first_run(browser)
         assert settings.load(folder) == settings.Settings(
             site_folder=folder / "site",
             repository="owner/owner.github.io",
             site_name="A Journal",
-            site_address="https://example.org",
+            site_address=ADDRESS,
             daily_prompt_filter="",
             untouchable=DERIVED,
             credentials=settings.Credentials(store=answered, github_account="github",
@@ -475,12 +573,14 @@ def test_a_malformed_key_is_refused_before_any_request(
     whitespace. A control character and a non-ASCII letter are not, so they
     are what show the printable and ASCII halves of § 4.4's rule held."""
     for malformed in ("ghp_abc\ndef", "ghp_abc def", "ghp_abc\x00def", "ghp_abcédef"):
+        folder = tmp_path / str(abs(hash(malformed)))
+        folder.mkdir()
         _Store(monkeypatch)
         github = _GitHub()
-        with _setup_page(tmp_path, github) as browser:
-            _, page = browser.post(_answers(key=malformed))
-        assert github.calls == [], repr(malformed)
-        assert _offers_the_form(page) and _hint_for("key", page), repr(malformed)
+        with _setup_page(folder, github) as browser:
+            page = _first_run(browser, key=malformed)
+        assert all(auth == "" for _, _, auth in github.calls), repr(malformed)
+        assert _step(page) == "key" and _hint_for("key", page), repr(malformed)
 
 
 # -------------------------------------------------------------- INV-13 ----
@@ -495,8 +595,9 @@ def test_a_credential_failure_names_the_key(
     first_run.mkdir()
     _Store(monkeypatch, choose_raises=credentials.NoStore("none here"))
     with _setup_page(first_run, _GitHub()) as browser:
-        _, page = browser.post(_answers())
+        page = _first_run(browser)
     assert KEY_NOUN in page
+    assert "Setup cannot finish on this computer." in page
 
     settings_path = tmp_path / "not-stored"
     settings_path.mkdir()
@@ -513,15 +614,16 @@ def test_a_credential_failure_names_the_key(
 def test_setup_sits_behind_the_faces_boundary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """INV-14. Breaks when setup serves its own handler or never registers on
-    the Face."""
+    """INV-14, on Settings; the wizard's is PRESS-0212 INV-12. Breaks when
+    setup serves its own handler or never registers on the Face."""
     _Store(monkeypatch)
+    _saved(tmp_path, site_name="Before")
     with _setup_page(tmp_path, _GitHub()) as browser:
-        assert browser.post(_answers(), cookie=False)[0] == 403
-        assert browser.post(_answers(), origin="http://pressless.example")[0] == 403
-        assert not _settings_file(tmp_path).exists()
-        assert browser.post(_answers())[0] == 200
-    assert _settings_file(tmp_path).exists()
+        assert browser.post(_answers(key=""), cookie=False)[0] == 403
+        assert browser.post(_answers(key=""), origin="http://pressless.example")[0] == 403
+        assert settings.load(tmp_path).site_name == "Before"
+        assert browser.post(_answers(key=""))[0] == 200
+    assert settings.load(tmp_path).site_name == "A Journal"
 
 
 # -------------------------------------------------------------- INV-15 ----
@@ -534,7 +636,7 @@ def test_the_filter_is_the_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     first_run.mkdir()
     _Store(monkeypatch)
     with _setup_page(first_run, _GitHub()) as browser:
-        browser.post(_answers(daily_prompt_filter=""))
+        _first_run(browser)
     assert settings.load(first_run).daily_prompt_filter == ""
 
     settings_path = tmp_path / "settings-page"
@@ -567,19 +669,21 @@ class _EmptyGitHub(_GitHub):
 def test_setup_finishes_against_an_empty_repository(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """PRESS-0127 INV-9. Breaks when root_entries raises on the empty answer,
-    or setup starts the repository itself."""
+    """PRESS-0127 INV-9, which PRESS-0212 leaves to Settings. Breaks when
+    root_entries raises on the empty answer, or Settings starts the
+    repository itself."""
     _Store(monkeypatch)
+    _saved(tmp_path)
     github = _EmptyGitHub()
 
     with _setup_page(tmp_path, github) as browser:
-        status, page = browser.post(_answers())
+        status, page = browser.post(_answers(key=""))
 
     assert status == 200
     assert "Setup is done." in page
     assert settings.load(tmp_path).untouchable == ()
     assert github.calls, "setup never asked GitHub, so this proved nothing"
-    assert [method for method, _url, _auth in github.calls if method != "GET"] == []
+    assert github.writes() == []
 
 
 # PRESS-0126 INV-6, INV-7, INV-8, INV-14 (docs/specs/PRESS-0126-starter-site.md
@@ -587,9 +691,11 @@ def test_setup_finishes_against_an_empty_repository(
 
 
 def _store_files(folder: Path) -> dict[str, bytes]:
-    """Every file in a subfolder of `folder`: the Store, not settings or the log."""
+    """Every file in a subfolder of `folder`: the Store, not settings, the log
+    or the wizard's progress (PRESS-0212 § 4.2)."""
     return {p.relative_to(folder).as_posix(): p.read_bytes()
-            for p in folder.rglob("*") if p.is_file() and p.parent != folder}
+            for p in folder.rglob("*") if p.is_file() and p.parent != folder
+            and p.relative_to(folder).parts[0] != "wizards"}
 
 
 def test_the_starter_is_offered_only_on_an_empty_store(tmp_path, monkeypatch):
@@ -597,14 +703,14 @@ def test_the_starter_is_offered_only_on_an_empty_store(tmp_path, monkeypatch):
     post fills over one."""
     _Store(monkeypatch)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        _, empty = browser.get()
+        empty = _walk_to(browser, "site")
     store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>mine</p>\n")
     before = _store_files(tmp_path)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        _, held = browser.get()
-        browser.post(_answers(start="starter"))
+        held = browser.get()[1]
+        _first_run(browser, start="starter")
     assert 'name="start"' in empty
-    assert 'name="start"' not in held
+    assert _step(held) == "site" and 'name="start"' not in held
     assert _store_files(tmp_path) == before
     assert not (tmp_path / "starter-unpublished").exists()
 
@@ -618,7 +724,8 @@ def test_a_failed_fill_saves_nothing(tmp_path, monkeypatch):
 
     monkeypatch.setattr(starter, "fill", refuse)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        browser.post(_answers(start="starter"))
+        page = _first_run(browser, start="starter")
+    assert _step(page) == "site"
     assert not _settings_file(tmp_path).exists()
 
 
@@ -626,14 +733,14 @@ def test_an_unticked_box_fills_nothing(tmp_path, monkeypatch):
     """INV-8, and the ticked case beside it. Breaks when the fill ignores the box."""
     _Store(monkeypatch)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        browser.post(_answers())
+        _first_run(browser)
     assert not store.holds_a_site(tmp_path)
     assert settings.load(tmp_path).repository == "owner/owner.github.io"
 
     ticked = tmp_path / "ticked"
     ticked.mkdir()
     with _setup_page(ticked, _GitHub()) as browser:
-        _, done = browser.post(_answers(start="starter"))
+        done = _first_run(browser, start="starter")
     assert store.holds_a_site(ticked)
     assert store.journal_on(ticked) is False
     assert (ticked / "starter-unpublished").exists()
@@ -676,8 +783,9 @@ def test_switching_counting_on_adds_privacy_once(tmp_path, monkeypatch):
 
     empty = tmp_path / "empty"
     empty.mkdir()
+    _saved(empty)
     with _setup_page(empty, _GitHub()) as browser:
-        browser.post(_answers(measurement_id="G-ABC123"))
+        browser.post(_answers(measurement_id="G-ABC123", key=""))
     assert settings.load(empty).measurement_id == "G-ABC123"
     assert not store.holds_a_site(empty)
 
@@ -685,10 +793,12 @@ def test_switching_counting_on_adds_privacy_once(tmp_path, monkeypatch):
 def test_a_malformed_measurement_id_is_a_refused_answer(tmp_path, monkeypatch):
     """INV-8. Breaks when a malformed id reaches settings.save."""
     _Store(monkeypatch)
+    _saved(tmp_path)
+    before = _settings_file(tmp_path).read_bytes()
     with _setup_page(tmp_path, _GitHub()) as browser:
-        _, page = browser.post(_answers(measurement_id="UA-1234"))
+        _, page = browser.post(_answers(measurement_id="UA-1234", key=""))
     assert _hint_for("measurement_id", page)
-    assert not _settings_file(tmp_path).exists()
+    assert _settings_file(tmp_path).read_bytes() == before
 
 
 # ------------------------------------------------------------ PRESS-0183 ----
@@ -720,7 +830,7 @@ def test_first_run_offers_both_shortcuts_ticked(tmp_path, monkeypatch):
     _Store(monkeypatch)
     where = _places(tmp_path / "places")
     with _setup_page(tmp_path, _GitHub(), where) as browser:
-        _, done = browser.post(_answers())
+        done = _first_run(browser)
     assert "Setup is done." in done
     assert _boxes(done) == {"menu": True, "desktop": True}
     assert f'action="{SHORTCUTS}"' in done
@@ -730,8 +840,8 @@ def test_first_run_offers_both_shortcuts_ticked(tmp_path, monkeypatch):
 def test_a_refused_answer_offers_no_shortcuts(tmp_path, monkeypatch):
     _Store(monkeypatch)
     with _setup_page(tmp_path, _GitHub(), _places(tmp_path / "places")) as browser:
-        _, page = browser.post(_answers(site_address="example.org"))
-    assert _hint_for("site_address", page)
+        page = _first_run(browser, site_name=" ")
+    assert _hint_for("site_name", page)
     assert _boxes(page) == {}
 
 
@@ -794,3 +904,148 @@ def test_the_shortcut_page_sits_behind_the_faces_boundary(tmp_path, monkeypatch)
         assert browser.post({"menu": "on"}, origin="http://pressless.example",
                             path=SHORTCUTS)[0] == 403
     assert shortcuts.present(where) == (False, False)
+
+
+# ------------------------------------------------------------ PRESS-0212 ----
+# The setup wizard (docs/specs/PRESS-0212-setup-wizard.md § 5). The pattern's
+# own invariants, INV-1 to INV-4, are tests/test_wizard.py's.
+
+
+def _progress(folder: Path) -> Path:
+    return folder / "wizards" / "setup.json"
+
+
+def test_the_key_never_reaches_the_progress_file(tmp_path, monkeypatch):
+    """INV-5. Breaks when the wizard writes every posted field, or a step
+    stores the key in its answers."""
+    keyring = _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = _walk_to(browser, "pages")
+    assert keyring.writes == [("keyring", "github", SENTINEL_KEY)], "no key was taken"
+    held = _progress(tmp_path).read_text(encoding="utf-8")
+    assert SENTINEL_KEY not in held
+    assert "key" not in json.loads(held)["answers"]
+    assert SENTINEL_KEY not in page
+
+
+def test_the_key_is_stored_once_github_answers(tmp_path, monkeypatch):
+    """INV-6. Breaks when write moves ahead of root_entries or pages, or the
+    save sequence keeps step 3 or 4 of PRESS-0021 § 4.6."""
+    keyring = _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = _first_run(browser, key="ghp_abc def")
+    assert _step(page) == "key"
+    with _setup_page(tmp_path, _GitHub(refuse={"/commits/HEAD": 401})) as browser:
+        page = _first_run(browser)
+    assert "GitHub would not accept your publishing key." in page
+    with _setup_page(tmp_path, _GitHub(refuse={"/pages": 403})) as browser:
+        page = _first_run(browser)
+    assert _step(page) == "key" and _hint_for("key", page)
+    assert keyring.chosen == 0 and keyring.writes == []
+
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        done = _first_run(browser)
+    assert "Setup is done." in done
+    assert keyring.chosen == 1
+    assert keyring.writes == [("keyring", "github", SENTINEL_KEY)]
+
+    again = tmp_path / "back-to-the-key"
+    again.mkdir()
+    keyring = _Store(monkeypatch)
+    with _setup_page(again, _GitHub()) as browser:
+        pages = _walk_to(browser, "pages")
+        key = browser.post({"step": _step(pages), "go": "back"})[1]
+        assert _step(key) == "key" and "Leave the box empty" in key
+        pages = _next(browser, key, key="")
+        key = browser.post({"step": _step(pages), "go": "back"})[1]
+        _first_run(browser, key="ghp_a-second-key")
+    assert keyring.chosen == 1
+    assert keyring.writes == [("keyring", "github", SENTINEL_KEY),
+                              ("keyring", "github", "ghp_a-second-key")]
+    assert _settings_file(again).exists()
+
+
+def test_settings_are_written_last_by_the_wizard(tmp_path, monkeypatch):
+    """INV-7. Breaks when any earlier step saves a partial Settings."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = browser.get()[1]
+        while _step(page) != "site":
+            assert not _settings_file(tmp_path).exists(), _step(page)
+            page = _next(browser, page)
+
+        def refuse(folder, value):
+            raise settings.SettingsError("the disk is full")
+
+        monkeypatch.setattr(settings, "save", refuse)
+        page = _next(browser, page)
+    assert _step(page) == "site"
+    assert not _settings_file(tmp_path).exists()
+
+
+def test_pages_is_left_as_github_has_it(tmp_path, monkeypatch):
+    """INV-8. Breaks when the step always POSTs, overwrites an existing Pages
+    source, or accepts a site served from somewhere Pressless does not publish."""
+    _Store(monkeypatch)
+    for state, moved, writes in (
+        ("root", True, []),
+        ("off", True, [("PUT", "/repos/owner/owner.github.io/contents/.nojekyll"),
+                       ("POST", "/repos/owner/owner.github.io/pages")]),
+        ("elsewhere", False, []),
+    ):
+        folder = tmp_path / state
+        folder.mkdir()
+        github = _GitHub(pages=state)
+        with _setup_page(folder, github) as browser:
+            pages = _walk_to(browser, "pages")
+            after = _next(browser, pages)
+        assert (_step(after) == "site") is moved, state
+        assert github.writes() == writes, state
+        if moved:
+            assert ADDRESS in after, state
+        else:
+            assert "Deploy from a branch" in after, state
+
+
+def test_setup_writes_only_what_pages_needs(tmp_path, monkeypatch):
+    """INV-9. Breaks when a step writes another file, a branch or a setting,
+    or sends the switch before the empty repository has its first commit."""
+    _Store(monkeypatch)
+    nojekyll = ("PUT", "/repos/owner/owner.github.io/contents/.nojekyll")
+    switch = ("POST", "/repos/owner/owner.github.io/pages")
+    for label, github, writes in (
+        ("held", _GitHub(pages="off"), [nojekyll, switch]),
+        ("empty", _EmptyGitHub(pages="off"), [nojekyll, switch]),
+        ("served-as-is", _GitHub(root=(*ROOT, ".nojekyll"), pages="off"), [switch]),
+        ("already-on", _GitHub(), []),
+    ):
+        folder = tmp_path / label
+        folder.mkdir()
+        with _setup_page(folder, github) as browser:
+            done = _first_run(browser)
+        assert "Setup is done." in done, label
+        assert github.writes() == writes, label
+
+
+def test_a_finished_setup_shows_settings(tmp_path, monkeypatch):
+    """INV-11. Breaks when Done leaves the file, or /setup checks the progress
+    file before settings.load."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _first_run(browser)
+        _, shown = browser.get()
+    assert not _progress(tmp_path).exists()
+    assert _offers_the_form(shown) and "<h1>Settings</h1>" in shown
+
+
+def test_the_wizard_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
+    """INV-12. Breaks when the wizard is served by its own handler."""
+    _Store(monkeypatch)
+    step = {"step": "welcome", "go": "next"}
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        assert browser.post(step, cookie=False)[0] == 403
+        assert browser.post(step, origin="http://pressless.example")[0] == 403
+        assert not _progress(tmp_path).exists()
+        status, page = browser.post(step)
+    assert status == 200 and _step(page) == "account"
+    assert _progress(tmp_path).exists()

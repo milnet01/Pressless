@@ -2504,3 +2504,93 @@ def test_the_client_follows_no_redirected_write():
     finally:
         server.shutdown()
         server.server_close()
+
+
+# PRESS-0212 § 4.5: the reads and writes the setup wizard makes. Each answer
+# is chosen by method and URL, never by position (docs/working-here.md).
+
+
+class _ByUrl:
+    """Answers (method, URL suffix) from `answers`, else 404, and records
+    every request as (method, url, body, headers)."""
+
+    def __init__(self, answers: dict[tuple[str, str], tuple[int, dict]]):
+        self.answers = answers
+        self.requests: list[tuple[str, str, bytes | None, dict[str, str]]] = []
+
+    def request(self, method, url, body, headers):
+        self.requests.append((method, url, body, dict(headers)))
+        for (want, suffix), (status, payload) in self.answers.items():
+            if method == want and url.endswith(suffix):
+                return status, {}, json.dumps(payload).encode()
+        return 404, {}, b'{"message": "Not Found"}'
+
+    def wait(self, seconds):
+        return None
+
+    def writes(self) -> list[tuple[str, str]]:
+        return [(m, u.removeprefix(publisher_module.API)) for m, u, _b, _h in self.requests
+                if m != "GET"]
+
+
+def test_the_first_reads_carry_no_key():
+    """PRESS-0212 INV-10. Breaks when account_exists or public_repository
+    reuses an authenticated session."""
+    github = _ByUrl({("GET", "/users/someone"): (200, {"login": "someone"}),
+                     ("GET", "/repos/someone/site"): (200, {"private": False})})
+    assert publisher_module.account_exists("someone", github) is True
+    assert publisher_module.public_repository("someone/site", github) is True
+    assert publisher_module.account_exists("nobody", github) is False
+    assert publisher_module.public_repository("someone/gone", github) is False
+    assert len(github.requests) == 4
+    assert all("Authorization" not in headers for *_rest, headers in github.requests)
+
+
+def test_a_failed_account_read_names_no_account():
+    """PRESS-0212 § 4.5: the account never reaches a message. Breaks when
+    _without_account strips repos/<account> only."""
+    github = _ByUrl({("GET", "/users/someone"): (500, {})})
+    with pytest.raises(PublishError) as raised:
+        publisher_module.account_exists("someone", github)
+    assert "someone" not in str(raised.value)
+
+
+def _pages_answer(branch="main", path="/", build_type="legacy"):
+    return (200, {"html_url": "https://someone.github.io/site/", "build_type": build_type,
+                  "source": {"branch": branch, "path": path}})
+
+
+def test_pages_says_whether_it_serves_the_root():
+    """Breaks when serves_root ignores the branch, the path or the build."""
+    repo = {("GET", "/repos/someone/site"): (200, {"default_branch": "main"})}
+    cases = [(_pages_answer(), True), (_pages_answer(path="/docs"), False),
+             (_pages_answer(branch="gh-pages"), False),
+             (_pages_answer(build_type="workflow"), False)]
+    for answer, serves in cases:
+        github = _ByUrl({**repo, ("GET", "/repos/someone/site/pages"): answer})
+        shown = publisher_module.pages("someone/site", SENTINEL, github)
+        assert shown.on and shown.serves_root is serves, answer
+        assert shown.address == "https://someone.github.io/site/"
+    off = publisher_module.pages("someone/site", SENTINEL, _ByUrl(repo))
+    assert (off.on, off.address) == (False, None)
+
+
+def test_switching_pages_on_writes_nojekyll_first():
+    """PRESS-0212 § 4.5. Breaks when the switch precedes the first commit of
+    an empty repository, or .nojekyll is written over one already there."""
+    repo = {("GET", "/repos/someone/site"): (200, {"default_branch": "main"}),
+            ("PUT", "/contents/.nojekyll"): (201, {"commit": {"sha": "c1"}}),
+            ("POST", "/repos/someone/site/pages"): (201, {})}
+    empty = _ByUrl({**repo, ("GET", "/commits/HEAD"):
+                    (409, {"message": "Git Repository is empty."})})
+    publisher_module.switch_pages_on("someone/site", SENTINEL, empty)
+    assert empty.writes() == [("PUT", "/repos/someone/site/contents/.nojekyll"),
+                              ("POST", "/repos/someone/site/pages")]
+    posted = json.loads(next(b for m, _u, b, _h in empty.requests if m == "POST"))
+    assert posted == {"build_type": "legacy", "source": {"branch": "main", "path": "/"}}
+
+    held = _ByUrl({**repo,
+                   ("GET", "/commits/HEAD"): (200, {"sha": "h1"}),
+                   ("GET", "/git/trees/h1"): (200, {"tree": [{"path": ".nojekyll"}]})})
+    publisher_module.switch_pages_on("someone/site", SENTINEL, held)
+    assert held.writes() == [("POST", "/repos/someone/site/pages")]

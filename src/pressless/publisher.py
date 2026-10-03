@@ -442,17 +442,86 @@ def root_entries(settings: Settings, token: str,
     it cannot know which of them the Builder produces. Setup and the Face
     remove those and store the rest.
     """
-    session = _Session(transport or _Urllib(), token)
-    head = session.read(_repo_url(settings.repository, "commits/HEAD"),
-                        empty_ok=True)
+    return _root_names(_Session(transport or _Urllib(), token), settings.repository)
+
+
+def _root_names(session: _Session, repository: str) -> tuple[str, ...]:
+    """root_entries' answer over `session`; () for an empty repository."""
+    head = session.read(_repo_url(repository, "commits/HEAD"), empty_ok=True)
     if head is None:
         return ()
-    listing = _tree(session, settings.repository,
-                    _required(head, "sha", "the head commit"),
+    listing = _tree(session, repository, _required(head, "sha", "the head commit"),
                     recursive=False)
     return tuple(sorted(
         entry["path"] for entry in listing.get("tree", []) if entry.get("path")
     ))
+
+
+# PRESS-0212 § 4.5: the setup wizard's reads, and the one switch it makes.
+
+NO_JEKYLL = ".nojekyll"   # Pages serves the files as they are, `_dsc1234.jpg` included
+
+
+@dataclass(frozen=True)
+class Pages:
+    on: bool
+    address: str | None       # GitHub's html_url while on
+    serves_root: bool         # a branch build of the default branch's "/"
+
+
+def account_exists(account: str, transport: Transport | None = None) -> bool:
+    """Whether GitHub has an account by this name. Sends no key: there is none yet."""
+    try:
+        _Session(transport or _Urllib(), None).read(f"{API}/users/{_segment(account)}")
+    except RemoteStateMissing:
+        return False
+    return True
+
+
+def public_repository(repository: str, transport: Transport | None = None) -> bool:
+    """Whether `owner/name` is a repository GitHub shows without a key: a
+    Private one answers 404 exactly as a missing one does."""
+    try:
+        _Session(transport or _Urllib(), None).read(_repo_url(repository, ""))
+    except RepositoryMissing:
+        return False
+    return True
+
+
+def pages(repository: str, token: str, transport: Transport | None = None) -> Pages:
+    """Whether Pages is on, where it answers, and whether it serves what
+    Pressless publishes."""
+    return _pages(_Session(transport or _Urllib(), token), repository)
+
+
+def switch_pages_on(repository: str, token: str,
+                    transport: Transport | None = None) -> Pages:
+    """Write an empty `.nojekyll` where the root lacks one, then switch Pages
+    on for the default branch's root. On an empty repository the file is the
+    first commit, which Pages needs."""
+    session = _Session(transport or _Urllib(), token)
+    if NO_JEKYLL not in _root_names(session, repository):
+        session.write("PUT", _repo_url(repository, f"contents/{NO_JEKYLL}"),
+                      {"message": "Serve the site as it is", "content": ""},
+                      outcome_unknown=True)
+    branch = _default_branch(session, repository)
+    session.write("POST", _repo_url(repository, "pages"),
+                  {"build_type": "legacy", "source": {"branch": branch, "path": "/"}})
+    return _pages(session, repository)
+
+
+def _pages(session: _Session, repository: str) -> Pages:
+    try:
+        answer = session.read(_repo_url(repository, "pages"))
+    except RemoteStateMissing:
+        return Pages(on=False, address=None, serves_root=False)
+    source = answer.get("source") if isinstance(answer.get("source"), dict) else {}
+    address = answer.get("html_url")
+    serves_root = (answer.get("build_type") in (None, "legacy")
+                   and source.get("path") == "/"
+                   and source.get("branch") == _default_branch(session, repository))
+    return Pages(on=True, address=address if isinstance(address, str) else None,
+                 serves_root=serves_root)
 
 
 def fetch_previous(settings: Settings, token: str, into: Path,
@@ -562,9 +631,9 @@ class _Session:
     Holds the key for the length of a call and never puts it in a message.
     """
 
-    def __init__(self, client: Transport, token: str) -> None:
+    def __init__(self, client: Transport, token: str | None) -> None:
         self._client = client
-        self._token = token
+        self._token = token     # None for the wizard's reads before there is a key
         self._written = False
 
     def read(self, url: str, *, empty_ok: bool = False) -> dict | None:
@@ -589,10 +658,11 @@ class _Session:
               outcome_unknown: bool = False, empty_ok: bool = False) -> dict | None:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         headers = {
-            "Authorization": f"Bearer {self._token}",
             "Accept": "application/vnd.github+json",
             "User-Agent": "Pressless",
         }
+        if self._token is not None:
+            headers["Authorization"] = f"Bearer {self._token}"
         if body is not None:
             # urllib inserts application/x-www-form-urlencoded whenever a
             # body is present and this is unset, which describes §4.3's
@@ -730,15 +800,17 @@ def _repo_url(repository: str, suffix: str) -> str:
 def _without_account(url: str) -> str:
     """The request's URL with the account it sits under taken out.
 
-    Every URL here carries `repos/<account>/<name>`, and `docs/design.md`
-    § Logging names a repository by its short name, never `account/name`:
-    the account identifies the writer as surely as a path does. The method
-    and what was asked for still say which request failed.
+    Every URL here carries `repos/<account>/<name>` or `users/<account>`,
+    and `docs/design.md` § Logging names a repository by its short name,
+    never `account/name`: the account identifies the writer as surely as a
+    path does. The method and what was asked for still say which request
+    failed.
     """
-    head, marker, rest = url.partition("/repos/")
-    if not marker:
-        return url
-    return f"{head}{marker}{rest.partition('/')[2]}"
+    for marker in ("/repos/", "/users/"):
+        head, found, rest = url.partition(marker)
+        if found:
+            return f"{head}{found}{rest.partition('/')[2]}"
+    return url
 
 
 def _why(exc: OSError) -> str:

@@ -56,17 +56,12 @@ lists what each release added.
 
 ## Before you start
 
-You need two things from GitHub (the site where your website's files
-are kept):
-
-1. **A GitHub account, and a repository for your site** — a repository
-   is GitHub's name for a project folder. It can be empty. Turn on GitHub
-   Pages (GitHub's free web hosting) for it in the repository's
-   **Settings → Pages**.
-2. **A publishing key.** On GitHub, open **Settings → Developer settings →
-   Personal access tokens** and make a token that may change the contents
-   of your site's repository. Pressless calls this your key. It asks for
-   it once and keeps it where only your computer account can read it.
+You need an email address. Your site lives on GitHub, which hosts it for
+free, and the first time you start Pressless it walks you through
+getting a GitHub account, a repository for your site (GitHub's name for
+a project folder) and a key that lets Pressless change it. It checks
+each step itself and switches the site on. It keeps the key where only
+your computer account can read it.
 
 ## Getting started
 
@@ -97,10 +92,11 @@ live** before you first start it.
 
 ### The first time
 
-Pressless asks for your site's repository (written as `owner/name`), your
-site's name and address, and your key. It checks them with GitHub before
-saving anything. Then it shows the list of your writing, where **New
-entry** starts one.
+Pressless takes you through setup one screen at a time, with **Back** and
+**Next**. Some steps happen on GitHub's own pages, and each screen says
+exactly what to click there. If you close Pressless partway, it starts
+again where you left off. When it is done, it shows the list of your
+writing, where **New entry** starts one.
 
 When setup is done, Pressless offers to put itself in the Start Menu (on
 Linux, your app menu) and on the desktop, so you need not find the
