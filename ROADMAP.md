@@ -3072,6 +3072,10 @@ it decides how pages, the menu and the look are held.
   Pressless logo (docs/screenshots/pressless-logo.svg) as the app icon,
   rendered to PNG and ICO. Recommendation: yes, and build this item
   alongside the next release so the hand checks run on that build.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations, so the Pressless logo becomes the app icon (PNG and
+  ICO), and this is built alongside the next release so its hand checks
+  run on that build.
   **Layman:** The first time Pressless opens, it offers to put itself in the Start Menu and on the desktop, so nobody has to hunt for the downloaded file again.
   Kind: feature.
   Source: user-request-2026-09-29.
@@ -3089,6 +3093,9 @@ it decides how pages, the menu and the look are held.
   repository with exact clicks, then checks each step itself (the
   repository reachable, Pages switched on) and says plainly what is
   missing. Why: the publishing key stays limited to one site's contents.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. Pressless does not create the repository; it walks
+  the person through it with exact clicks and checks each step itself.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3106,6 +3113,10 @@ it decides how pages, the menu and the look are held.
   and the sharing picture to 0.10.0 beside PRESS-0197. Why: a stranger's
   site gets its own name and description now, with no upload work pulled
   forward.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. Name and short description in 0.8.0, moved into the
+  Store with the name carried across from Settings; the icon and sharing
+  picture move to 0.10.0 beside PRESS-0197.
   **Layman:** They set their site's name, a one-line description, the little icon in the browser tab, and the picture shown when the site is shared.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3485,6 +3496,8 @@ it decides how pages, the menu and the look are held.
   Recommendation for the user (2026-10-02), not yet asked: put Restart on
   the Settings page, which the top bar of every screen links. Why: the
   user suggested Settings, and it needs no new place in the screens.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. Restart goes on the Settings page.
   **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
   Kind: feature.
   Source: user request 2026-10-02.
@@ -3501,6 +3514,9 @@ it decides how pages, the menu and the look are held.
   icon until after 1.0. Why: it adds a dependency and packaging work on
   both systems, the user called it a "perhaps", and PRESS-0203's Restart
   covers the most common need.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. The tray icon waits until after 1.0; move it out of
+  0.8.0 when next touching the section.
   **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
   Kind: feature.
   Source: user request 2026-10-02.
@@ -3692,6 +3708,7 @@ it can then be changed.
   wpautop-equivalent. Goes into PRESS-0125's spec.
   Waits on PRESS-0125's spec, as decided; the current Import runs only
   on the maintainer's machine, so nothing is built for it before then.
+  Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
@@ -3707,6 +3724,7 @@ it can then be changed.
   Decided by the user 2026-09-26: carry pending and future posts
   as drafts, and say in the Report how each arrived.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
@@ -3721,6 +3739,7 @@ it can then be changed.
   Decided by the user 2026-09-26: list the broken comment or
   missing original in the Report and carry on.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
@@ -3742,6 +3761,7 @@ it can then be changed.
   pre (keeping pre's newlines) in both the converter and
   visible_lines; drop script and style contents with a listing.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
+  Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
