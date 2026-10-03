@@ -3104,6 +3104,9 @@ it decides how pages, the menu and the look are held.
   Settled 2026-10-03: the user said to go ahead with the
   recommendations. Pressless does not create the repository; it walks
   the person through it with exact clicks and checks each step itself.
+  2026-10-03: build this as the first wizard of PRESS-0220, one step per
+  screen with Back and Next, sharing that item's pattern. PRESS-0213's
+  site identity and PRESS-0183's shortcut offer become its last steps.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3551,6 +3554,40 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-02.
   Lanes: Launcher.
 
+- 📋 [PRESS-0220] **Wizards walk him through the rare tasks that take many steps, one step per screen.**
+  The user asked for wizards on 2026-10-03 and left the choice of tasks
+  to Claude.
+
+  Which tasks get one: a task done rarely, so nobody remembers its steps;
+  with several steps that depend on each other, often on another site
+  (GitHub, Google, a domain seller); and where a wrong step is costly or
+  hard to see. Everyday work (writing, publishing, undo, photographs,
+  pages) stays one click and never becomes a wizard.
+
+  The wizards, each built with the item that owns its task:
+  - Setting up from nothing: GitHub account, repository, Pages, key,
+    site details and identity, shortcuts. Built with PRESS-0212,
+    PRESS-0213 and PRESS-0183's offer.
+  - Counting visitors: Google Analytics and the Google sign-in, which
+    PRESS-0199 and PRESS-0122 now explain on one page.
+  - Bringing a site in: WordPress, a GitHub repository or a folder of
+    pages. Built with PRESS-0125, PRESS-0218 and PRESS-0210, since
+    Import runs once and cannot be repeated.
+  - Moving to a new computer, or making a backup: PRESS-0221.
+  - Using his own domain name: PRESS-0222.
+
+  What every wizard shares: one step per screen, Back and Next, a line
+  saying which step of how many, a check before Next where a step can be
+  checked (GitHub answered, the key works), and leaving it halfway keeps
+  what was done so it can be resumed. Each step links to its page in the
+  manual (PRESS-0219).
+
+  This item builds the shared pattern and the first wizard, setup.
+  **Layman:** For the few jobs that take many steps and are done once in a while, Pressless guides you one screen at a time, so you never have to remember what comes next.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -3706,6 +3743,8 @@ it can then be changed.
   site (pages, menus, media, and a journal where it has one), never
   only a blog. Starts after PRESS-0198's design and the 0.9.0 page
   editor, since what a page becomes is decided there.
+  2026-10-03: the Import anyone runs is a wizard under PRESS-0220, with
+  PRESS-0218 and PRESS-0210 as its other two starting points.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
@@ -9653,6 +9692,33 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
+
+- 📋 [PRESS-0221] **A wizard moves Pressless to a new computer, or makes a backup of everything it keeps.**
+  Chosen under PRESS-0220. The Pressless-data folder is the only place his
+  drafts and photograph originals are kept (README, Upgrading without
+  losing anything), and moving it by hand is easy to get wrong.
+  The wizard makes one backup file, says where it went, and on the new
+  computer takes it back in. The publishing key is not in the backup: it
+  is asked for again, so no secret travels in a file.
+  No version yet. Recommendation: 0.10.0, before Import is open to
+  everyone in 0.11.0 and more people hold a site only in Pressless.
+  **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, store.
+
+- 📋 [PRESS-0222] **A wizard puts the site on his own domain name.**
+  Chosen under PRESS-0220. GitHub Pages serves a site at its own address
+  until a domain is set up, which takes a CNAME file in the repository,
+  records at the domain seller, and a wait for HTTPS. Pressless can
+  write the CNAME file and check each step; the records at the seller
+  are shown exactly, to copy.
+  No version yet. Recommendation: soon after 0.8.0's setup wizard, since
+  a stranger with a domain wants it soon after starting.
+  **Layman:** If you own a web address, a guided step-by-step shows exactly what to type at your domain seller so your site appears at that address.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, publisher.
 
 ## Milestones
 
