@@ -54,6 +54,7 @@ def _field(text: str, key: str) -> str:
                 if line.startswith(f"{key}="))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="a Linux launcher names a POSIX path")
 def test_both_shortcuts_are_made_and_start_the_program(tmp_path):
     where = _linux(tmp_path)
     shortcuts.apply(where, menu=True, desktop=True)
@@ -129,6 +130,7 @@ def test_a_line_break_in_the_path_is_refused(tmp_path):
     assert not where.menu.exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="a Linux launcher names a POSIX path")
 def test_a_moved_program_is_followed_at_the_next_launch(tmp_path):
     where = _linux(tmp_path)
     shortcuts.apply(where, menu=True, desktop=True)
