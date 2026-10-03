@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 from _face_session import Browser
+from test_editor import _binned
 from test_publisher import _listing, _reads, _Transport, _tree_creation_paths, _writes
 
 from pressless import builder, credentials, editor, face, publisher, publishing, settings, store
@@ -80,11 +81,6 @@ def _base(folder: Path, slug: str, *, draft: bool) -> str:
 def _state(folder: Path) -> dict[tuple[bool, str], store.Entry]:
     return {(draft, slug): store.read(store.path_for(folder, slug, draft=draft))
             for draft in (True, False) for slug in store.list_slugs(folder, draft=draft)}
-
-
-def _binned(folder: Path) -> list[str]:
-    return sorted(p.name for p in (folder / "bin").rglob("*") if p.is_file()) \
-        if (folder / "bin").exists() else []
 
 
 class _Browser(Browser):
