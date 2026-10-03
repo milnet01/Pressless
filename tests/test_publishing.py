@@ -12,15 +12,13 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import html
-import http.client
 import json
-import urllib.parse
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-from _face_session import session_cookie
+from _face_session import Browser
 from test_publisher import _listing, _reads, _Transport, _tree_creation_paths, _writes
 
 from pressless import builder, credentials, editor, face, publisher, publishing, settings, store
@@ -89,12 +87,9 @@ def _binned(folder: Path) -> list[str]:
         if (folder / "bin").exists() else []
 
 
-class _Browser:
+class _Browser(Browser):
     def __init__(self, served: face.Face) -> None:
-        parts = urllib.parse.urlsplit(served.url)
-        self.port = parts.port
-        self.host = f"127.0.0.1:{self.port}"
-        self.cookie = session_cookie(served.url)
+        super().__init__(served, timeout=30)
 
     def publish(self, slug: str, draft: bool, base: str, *, body: str | None = None,
                 folder: Path) -> tuple[int, str]:
@@ -102,20 +97,8 @@ class _Browser:
         form = {"slug": slug, "draft": "1" if draft else "0", "base": base,
                 "title": entry.title, "categories": "", "tags": "",
                 "body": entry.body if body is None else body}
-        data = urllib.parse.urlencode(form).encode("utf-8")
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
-        try:
-            conn.putrequest("POST", "/publish", skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", self.host)
-            conn.putheader("Cookie", self.cookie)
-            conn.putheader("Origin", f"http://{self.host}")
-            conn.putheader("Content-Type", "application/x-www-form-urlencoded")
-            conn.putheader("Content-Length", str(len(data)))
-            conn.endheaders(data)
-            response = conn.getresponse()
-            return response.status, response.read().decode("utf-8", "replace")
-        finally:
-            conn.close()
+        status, _, page = self.request("POST", "/publish", form)
+        return status, page
 
 
 @contextlib.contextmanager

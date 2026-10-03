@@ -7,15 +7,13 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import http.client
 import json
 import re
-import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from _face_session import session_cookie
+from _face_session import Browser
 
 from pressless import credentials, dashboard, face, google_setup, google_signin, settings
 
@@ -62,24 +60,11 @@ class _Google:
         return [report["dateRanges"][0]["startDate"] for report in self.reports]
 
 
-class _Browser:
-    def __init__(self, served: face.Face) -> None:
-        self.served = served
-        self.port = urllib.parse.urlsplit(served.url).port
-        self.cookie = session_cookie(served.url)
-
+class _Browser(Browser):
     def get(self, path: str) -> str:
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        try:
-            conn.putrequest("GET", path, skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", f"127.0.0.1:{self.port}")
-            conn.putheader("Cookie", self.cookie)
-            conn.endheaders()
-            response = conn.getresponse()
-            assert response.status == 200, response.status
-            return response.read().decode("utf-8")
-        finally:
-            conn.close()
+        status, _, page = self.request("GET", path)
+        assert status == 200, status
+        return page
 
     def card(self) -> str:
         return "".join(self.served.list_pieces(above=True))

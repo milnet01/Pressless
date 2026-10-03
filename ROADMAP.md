@@ -3605,7 +3605,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-03.
   Lanes: face.
 
-- 📋 [PRESS-0226] **Test files share one browser helper instead of four copies.**
+- ✅ [PRESS-0226] **Test files share one browser helper instead of four copies.**
   Found while building PRESS-0212: tests/test_setup.py, test_editor.py,
   test_dashboard.py and test_google_setup.py each define a class _Browser
   that logs in to a served Face and sends requests; other files import one
@@ -3613,6 +3613,10 @@ it decides how pages, the menu and the look are held.
   point every file at it. The user's rule (2026-10-03) is to refactor
   duplication when found; filed rather than done inside PRESS-0212 to keep
   that commit to its feature.
+  Resolved (2026-10-03): tests/_face_session.py holds one Browser with
+  request(); six files (test_face's _Client and test_publishing's were
+  two more than counted) keep only their own steps on top. Suite 911
+  passed, 18 skipped, unchanged.
   **Layman:** The tests that click through Pressless's pages use one shared helper, so a fix to how they log in is made once.
   Kind: refactor.
   Source: in-session-2026-10-03.

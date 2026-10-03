@@ -20,7 +20,7 @@ import urllib.parse
 from pathlib import Path
 
 import pytest
-from _face_session import follow_link, session_cookie
+from _face_session import Browser, follow_link, session_cookie
 
 import pressless
 from pressless import credentials, face, insights, publisher, store, themes
@@ -60,44 +60,17 @@ def _log_text(folder: Path) -> str:
     return target.read_text(encoding="utf-8") if target.exists() else ""
 
 
-class _Client:
-    """Talks to a served Face with every header under the test's control."""
+class _Client(Browser):
+    """Sends Origin only when a test names one, and keeps the link's secret."""
 
     def __init__(self, served: face.Face, *, follow: bool = True) -> None:
-        """`follow=False` leaves the link unspent, for a test that spends it."""
-        parts = urllib.parse.urlsplit(served.url)
-        assert parts.port is not None
-        self.port = parts.port
-        self.secret = urllib.parse.parse_qs(parts.query)["t"][0]
-        self.host = f"127.0.0.1:{self.port}"
-        self.origin = f"http://{self.host}"
-        self.cookie = session_cookie(served.url) if follow else ""
+        super().__init__(served, follow=follow)
+        self.secret = urllib.parse.parse_qs(urllib.parse.urlsplit(served.url).query)["t"][0]
 
-    def request(
-        self,
-        method: str,
-        path: str,
-        *,
-        host: str | None = None,
-        cookie: bool = True,
-        origin: str | None = None,
-    ) -> tuple[int, dict[str, str], str]:
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        try:
-            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", host or self.host)
-            if cookie:
-                conn.putheader("Cookie", self.cookie)
-            if origin:
-                conn.putheader("Origin", origin)
-            if method == "POST":
-                conn.putheader("Content-Length", "0")
-            conn.endheaders()
-            response = conn.getresponse()
-            body = response.read().decode("utf-8", "replace")
-            return response.status, dict(response.getheaders()), body
-        finally:
-            conn.close()
+    def request(self, method: str, path: str, form: dict[str, str] | None = None, *,
+                cookie: bool = True, origin: str | None = None,
+                host: str | None = None) -> tuple[int, dict[str, str], str]:
+        return super().request(method, path, form, cookie=cookie, origin=origin, host=host)
 
 
 def test_every_failure_type_has_a_sentence() -> None:

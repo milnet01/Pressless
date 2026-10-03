@@ -13,16 +13,14 @@ import contextlib
 import dataclasses
 import hashlib
 import html
-import http.client
 import json
 import re
-import urllib.parse
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-from _face_session import session_cookie
+from _face_session import Browser
 
 from pressless import editor, face, marks, settings, store
 
@@ -34,39 +32,7 @@ NAVIGATION = '<nav><a href="{{UP}}blog/index.html" data-nav="Journal">Journal</a
 FOOTER = "<footer>{{YEAR}}</footer>\n"
 
 
-class _Browser:
-    """Talks to a served Face with the cookie and Origin under the test's control."""
-
-    def __init__(self, served: face.Face) -> None:
-        parts = urllib.parse.urlsplit(served.url)
-        assert parts.port is not None
-        self.port = parts.port
-        self.host = f"127.0.0.1:{self.port}"
-        self.origin = f"http://{self.host}"
-        self.cookie = session_cookie(served.url)
-
-    def request(self, method: str, path: str, form: dict[str, str] | None = None, *,
-                cookie: bool = True, origin: str | None = "own"
-                ) -> tuple[int, dict[str, str], str]:
-        body = urllib.parse.urlencode(form or {}).encode("utf-8")
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        try:
-            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", self.host)
-            if cookie:
-                conn.putheader("Cookie", self.cookie)
-            if method == "POST":
-                if origin:
-                    conn.putheader("Origin", self.origin if origin == "own" else origin)
-                conn.putheader("Content-Type", "application/x-www-form-urlencoded")
-                conn.putheader("Content-Length", str(len(body)))
-            conn.endheaders(body if method == "POST" else None)
-            response = conn.getresponse()
-            return (response.status, dict(response.getheaders()),
-                    response.read().decode("utf-8", "replace"))
-        finally:
-            conn.close()
-
+class _Browser(Browser):
     def save(self, slug: str, draft: bool, base: str, *, title: str = "A title",
              categories: str = "", tags: str = "", body: str = "Words."
              ) -> tuple[int, dict[str, str], str]:

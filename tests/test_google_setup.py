@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import http.client
 import json
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from _face_session import session_cookie
+from _face_session import Browser
 
 from pressless import (
     credentials,
@@ -104,33 +103,16 @@ class _Store:
         monkeypatch.setattr(credentials, "write", write)
 
 
-class _Browser:
+class _Browser(Browser):
     def __init__(self, served: face.Face) -> None:
-        self.port = urllib.parse.urlsplit(served.url).port
-        self.host = f"127.0.0.1:{self.port}"
-        self.cookie = session_cookie(served.url)
+        super().__init__(served)
         self.pages: list[str] = []
 
     def send(self, method: str, path: str, fields: dict[str, str] | None = None, *,
              cookie: bool = True) -> tuple[int, dict[str, str], str]:
-        body = urllib.parse.urlencode(fields or {}).encode()
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        try:
-            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", self.host)
-            if cookie:
-                conn.putheader("Cookie", self.cookie)
-            if method == "POST":
-                conn.putheader("Origin", f"http://{self.host}")
-                conn.putheader("Content-Type", "application/x-www-form-urlencoded")
-                conn.putheader("Content-Length", str(len(body)))
-            conn.endheaders(body if method == "POST" else None)
-            response = conn.getresponse()
-            text = response.read().decode("utf-8", "replace")
-            self.pages.append(text)
-            return response.status, dict(response.getheaders()), text
-        finally:
-            conn.close()
+        status, headers, text = self.request(method, path, fields, cookie=cookie)
+        self.pages.append(text)
+        return status, headers, text
 
     def start(self) -> str:
         """Press Sign in with Google; the state Google would carry back."""

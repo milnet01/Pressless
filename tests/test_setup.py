@@ -13,16 +13,14 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
-import http.client
 import inspect
 import json
 import re
-import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from _face_session import session_cookie
+from _face_session import Browser
 
 from pressless import (
     builder,
@@ -142,44 +140,15 @@ class _Store:
         monkeypatch.setattr(credentials, "write", write)
 
 
-class _Browser:
-    """Talks to a served Face with the cookie and Origin under the test's control."""
-
-    def __init__(self, served: face.Face) -> None:
-        parts = urllib.parse.urlsplit(served.url)
-        assert parts.port is not None
-        self.port = parts.port
-        self.host = f"127.0.0.1:{self.port}"
-        self.origin = f"http://{self.host}"
-        self.cookie = session_cookie(served.url)
-
-    def _send(self, method: str, body: bytes, *, cookie: bool, origin: str | None,
-              path: str = "/setup") -> tuple[int, str]:
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        try:
-            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
-            conn.putheader("Host", self.host)
-            if cookie:
-                conn.putheader("Cookie", self.cookie)
-            if origin:
-                conn.putheader("Origin", origin)
-            if method == "POST":
-                conn.putheader("Content-Type", "application/x-www-form-urlencoded")
-                conn.putheader("Content-Length", str(len(body)))
-            conn.endheaders(body if method == "POST" else None)
-            response = conn.getresponse()
-            return response.status, response.read().decode("utf-8", "replace")
-        finally:
-            conn.close()
-
+class _Browser(Browser):
     def get(self) -> tuple[int, str]:
-        return self._send("GET", b"", cookie=True, origin=None)
+        status, _, page = self.request("GET", "/setup")
+        return status, page
 
     def post(self, answers: dict[str, str], *, cookie: bool = True,
              origin: str | None = "own", path: str = "/setup") -> tuple[int, str]:
-        body = urllib.parse.urlencode(answers).encode("utf-8")
-        return self._send("POST", body, cookie=cookie,
-                          origin=self.origin if origin == "own" else origin, path=path)
+        status, _, page = self.request("POST", path, answers, cookie=cookie, origin=origin)
+        return status, page
 
 
 @contextlib.contextmanager

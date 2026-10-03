@@ -46,7 +46,7 @@ def _served(folder: Path, steps: list[wizard.Step]) -> Iterator[_Browser]:
 
 
 def _get(browser: _Browser) -> str:
-    return browser._send("GET", b"", cookie=True, origin=None, path=ADDRESS)[1]
+    return browser.request("GET", ADDRESS)[2]
 
 
 def _go(browser: _Browser, step: str, go: str, **fields: str) -> str:
