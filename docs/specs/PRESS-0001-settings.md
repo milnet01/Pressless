@@ -294,6 +294,23 @@ of it:** `os.replace` orders the namespace and not the data, so without it a
 power loss can commit the rename ahead of the blocks and leave an empty file
 where this section promises the previous one.
 
+**Those steps live once, in `pressless.safe_write`, for every module that
+replaces a file whole** (PRESS-0141). Its surface is one function:
+
+    write_whole(target, text, *, prefix, newline="\n", check=None)
+
+It makes the temporary with `mkstemp` in `target`'s folder, named
+`prefix` + random + `.tmp`. Where `check` is given, it calls `check(fd)` on
+the raw descriptor before writing a byte; anything `check` raises propagates
+unchanged. It then writes `text` as UTF-8 with `newline` as the line-ending
+translation, flushes, fsyncs, and replaces `target`. On Windows a
+`PermissionError` from the replace is retried for a moment, because a
+scanner opening the file just written refuses it briefly (PRESS-0159). On
+any failure the descriptor is closed, the temporary is removed, and the
+exception propagates unchanged; turning it into a module's own error is the
+caller's. It imports no `pressless` module and no network module.
+`settings.py` passes its owner-only notice (below) as `check`.
+
 **On POSIX the file is left readable by its owner alone.** `mkstemp` creates
 the temporary with mode `0600`, and `os.replace` carries that mode onto the
 target — so a file that was wider before a save is narrower after it.

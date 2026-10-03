@@ -289,7 +289,8 @@ PRESS-0020's amendment**, with INV-3 and INV-4 changed to the batch.
 - **INV-1** — `insights.py` imports no `pressless` module other than
   `pressless.settings` and `pressless.safe_write`. The token is an argument.
   `safe_write` carries the cache's temporary-file, sync and replace steps
-  (INV-24) for every module that saves a file, and imports no `pressless`
+  (INV-24) for every module that saves a file (PRESS-0001 §4.4 owns its
+  surface), and imports no `pressless`
   module itself, so no route to Credentials runs through it.
   *Test:* `tests/test_insights.py::test_insights_imports_no_forbidden_sibling`,
   which walks `safe_write.py`'s imports too.

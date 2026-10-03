@@ -366,8 +366,8 @@ once the code exists.
   sync and replace steps for every module that saves a file. `safe_write.py`
   itself imports no `pressless` module, so the rule holds through it. The
   descriptor's mode is still read and refused in `credentials.py`, before
-  the secret is written (§4.6): `safe_write` hands the raw descriptor to a
-  check its caller supplies and writes nothing until that check returns.
+  the secret is written (§4.6), as the `check` PRESS-0001 §4.4 gives
+  `write_whole`: it runs on the raw descriptor before a byte is written.
   *Test:* `tests/test_credentials.py::test_credentials_imports_no_sibling`,
   walking `credentials.py`'s imports and then `safe_write.py`'s, as
   `tests/test_settings.py::test_settings_imports_nothing_forbidden` does.
