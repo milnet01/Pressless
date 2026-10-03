@@ -3044,7 +3044,7 @@ it decides how pages, the menu and the look are held.
   Source: user-decision-2026-09-17 PRESS-0124 design gate.
   Lanes: Store, Face.
 
-- 📋 [PRESS-0183] **First launch offers a Start Menu entry and a desktop icon.**
+- ✅ [PRESS-0183] **First launch offers a Start Menu entry and a desktop icon.**
   Two tick boxes on the first-launch page, on Windows and Linux: a
   Start Menu / app-menu entry, and a desktop icon. Settings offers the
   same later, and can take them away again.
@@ -3076,6 +3076,14 @@ it decides how pages, the menu and the look are held.
   recommendations, so the Pressless logo becomes the app icon (PNG and
   ICO), and this is built alongside the next release so its hand checks
   run on that build.
+  Shipped (2026-10-03), e3eb000 and 419ffe2: src/pressless/shortcuts.py,
+  the /setup/shortcuts form on the done page (ticked) and in Settings (as
+  they are), a refresh at each launch, and the logo icon in
+  packaging/icons/. No spec (cheap to redo). Settled while building: a
+  shortcut's presence is the record that he said yes; Linux compares only
+  the Exec line, so his own edits stay; the refresh is in line, not a
+  thread. Real .lnk tests passed on wintest. The by-hand checks on
+  released builds are recorded in PRESS-0133.
   **Layman:** The first time Pressless opens, it offers to put itself in the Start Menu and on the desktop, so nobody has to hunt for the downloaded file again.
   Kind: feature.
   Source: user-request-2026-09-29.
@@ -3443,6 +3451,14 @@ it decides how pages, the menu and the look are held.
   property's web streams read through the Google step on the Windows box,
   and Google's Realtime report showing a visit to a page published with
   the counting code.
+  Owed (2026-10-03) for PRESS-0183, on the released build of each
+  system: after first-run setup, both boxes ticked, the menu entry and
+  the desktop icon appear with the Pressless icon and start Pressless in
+  its console window; Settings shows them ticked, and unticking removes
+  each. Then move the AppImage (Linux) or the extracted folder (Windows)
+  and start it from the new place: the shortcuts follow. On Windows, also
+  a OneDrive-redirected desktop if the box has one, and pinning from the
+  Start Menu. On GNOME the desktop icon may need Allow Launching.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
