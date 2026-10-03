@@ -4054,7 +4054,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
 
-- 📋 [PRESS-0141] **The safe-write steps are written out in four modules.**
+- 📋 [PRESS-0141] **The safe-write steps are written out in each module that saves a file.**
   PRESS-0039 said the helper question was filed separately and that it
   did not close it. Nothing carried it. Write a temporary file, flush,
   fsync, then replace: credentials.py, insights.py, settings.py and
@@ -4067,6 +4067,12 @@ owned by docs/standards/versioning-overrides.md.
   Placed in 1.0.0 on 2026-10-02. The 2026-09-25 condition stands: do
   it when a fifth copy would appear, which the work before 1.0.0 may
   bring; otherwise it is done before the format freezes.
+  Found (2026-10-03): the fifth-copy condition passed unnoticed.
+  updater.py (PRESS-0023) and themes.py (PRESS-0190) each spell the
+  same steps out, so the copies now sit in credentials, insights,
+  settings, store, themes and updater. Doing it still rewrites INV-1 in
+  PRESS-0001 and PRESS-0002, which ban any sibling import. Asked the
+  user whether to do it now or keep it for 1.0.0.
   **Layman:** The code that saves a file safely is copied in four places; it works, and sharing it waits until a fifth copy would appear.
   Kind: refactor.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
