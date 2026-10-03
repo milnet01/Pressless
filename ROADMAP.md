@@ -3707,6 +3707,62 @@ documents go on the site beside the photographs.
   Source: user-request-2026-09-28.
   Lanes: face, settings.
 
+- 📋 [PRESS-0223] **Pressless holds several sites, and you create, open and switch between them.**
+  The user asked on 2026-10-03 for saving and loading a Pressless project
+  before 1.0.0, and chose both several sites and one-file save and open.
+  Today one copy holds one site, in the Pressless-data folder beside the
+  program, so a second site needs a second copy. Each site keeps saving
+  itself as it is worked on; there is no unsaved project.
+  This changes where Pressless keeps things (docs/design.md), so it needs
+  a spec. Each site's publishing key is filed under its own name.
+  Version 0.10.0 settled by the user 2026-10-03.
+  **Layman:** One copy of Pressless can look after more than one website, and you pick which one you are working on, like opening files in a word processor.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, store, settings.
+
+- 📋 [PRESS-0224] **A whole site saves to one file, and such a file opens again as a site.**
+  The user asked on 2026-10-03, with PRESS-0223. Shares its file with
+  PRESS-0221's backup: one format, one reader, so a backup and a saved
+  site are the same kind of file. The publishing key is never in the
+  file, as PRESS-0221 decided; opening the file asks for it again.
+  The file is a format, so it is frozen with the rest at 1.0.0.
+  Version 0.10.0 settled by the user 2026-10-03.
+  **Layman:** You can save everything about one site, its writing, photographs and settings, as a single file, and open that file later or on another computer.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, store.
+
+- 📋 [PRESS-0225] **Pressless makes a backup file by itself each day, and keeps the last few.**
+  The user asked on 2026-10-03 for autosave. Writing already saves itself
+  about a second after typing stops (src/pressless/editor.py), so what
+  the user chose is automatic backups: the same file as PRESS-0224, made
+  without being asked. How often, how many are kept and where they go
+  are for the spec; the recommendation is daily, the last seven, on a
+  folder the person picks, since a backup beside the original is lost
+  with it.
+  Version 0.10.0 settled by the user 2026-10-03.
+  **Layman:** Even if you forget, Pressless quietly keeps a recent copy of your sites, so losing the computer or the folder does not lose your writing.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: store, face.
+
+- 📋 [PRESS-0221] **A wizard moves Pressless to a new computer, or makes a backup of everything it keeps.**
+  Chosen under PRESS-0220. The Pressless-data folder is the only place his
+  drafts and photograph originals are kept (README, Upgrading without
+  losing anything), and moving it by hand is easy to get wrong.
+  The wizard makes one backup file, says where it went, and on the new
+  computer takes it back in. The publishing key is not in the backup: it
+  is asked for again, so no secret travels in a file.
+  Version 0.10.0, settled by the user 2026-10-03: before Import is open
+  to everyone in 0.11.0 and more people hold a site only in Pressless.
+  Its backup file is the same file PRESS-0224 saves and opens, and
+  PRESS-0225 makes one each day.
+  **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, store.
+
 ## 0.11.0 — anyone can bring their site in
 
 S13. A site that already exists — on WordPress, as a folder of web pages, or
@@ -9692,20 +9748,6 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
-
-- 📋 [PRESS-0221] **A wizard moves Pressless to a new computer, or makes a backup of everything it keeps.**
-  Chosen under PRESS-0220. The Pressless-data folder is the only place his
-  drafts and photograph originals are kept (README, Upgrading without
-  losing anything), and moving it by hand is easy to get wrong.
-  The wizard makes one backup file, says where it went, and on the new
-  computer takes it back in. The publishing key is not in the backup: it
-  is asked for again, so no secret travels in a file.
-  No version yet. Recommendation: 0.10.0, before Import is open to
-  everyone in 0.11.0 and more people hold a site only in Pressless.
-  **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
-  Kind: feature.
-  Source: user-request-2026-10-03.
-  Lanes: face, store.
 
 - 📋 [PRESS-0222] **A wizard puts the site on his own domain name.**
   Chosen under PRESS-0220. GitHub Pages serves a site at its own address
