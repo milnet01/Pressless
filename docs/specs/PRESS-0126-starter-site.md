@@ -52,6 +52,8 @@ holds a site, until the user says in so many words to replace it.
 
 ## 3. Scope decisions (agreed with the user)
 
+*PRESS-0213 § 4.6 changes decision 8.*
+
 1. **The starter is a choice in setup, not automatic.** Decided by the user
    2026-10-02. Import and take-in run only into an empty copy, so filling
    every empty install would lock out a later Import.
@@ -133,6 +135,8 @@ file in this item, so `_BINNABLE` is unchanged.
 site on its own.
 
 ### 4.3 The starter set
+
+*PRESS-0213 § 4.6 changes this section.*
 
 *PRESS-0199 § 4.5 adds `privacy_page` to the starter set; `fill` does not write it.*
 

@@ -105,6 +105,8 @@ session.** §8 carries what each beat.
 
 ### 4.1 The public surface
 
+*PRESS-0213 § 4.2 changes this section.*
+
 *PRESS-0199 § 4.1 adds the optional `measurement_id`, and overturns § 4.2's "Pressless never writes that tag".*
 
 ```python
@@ -157,6 +159,8 @@ both, which is PRESS-0011's business and not this document's.
 not create it, search for it, or fall back to another one.
 
 ### 4.2 The file
+
+*PRESS-0213 § 4.2 changes this section.*
 
 ```json
 {
@@ -244,6 +248,8 @@ live repository root.
 
 ### 4.3 Loading
 
+*PRESS-0213 § 4.1 and § 4.2 change this section.*
+
 `load()`'s outcomes, and they are distinguishable:
 
 | State | Result |
@@ -285,6 +291,8 @@ we do not overwrite: the writer's settings are recoverable by hand only as
 long as they are still there.
 
 ### 4.4 Saving
+
+*PRESS-0213 § 4.2 and § 4.3 change this section.*
 
 `save()` writes to a temporary file in the same directory, flushes and fsyncs
 it, then replaces the target with `os.replace`, which is atomic on both
@@ -388,6 +396,8 @@ reasoning is about **Pressless's own** files and does not reach `site_folder`,
 which is the writer's choice of somewhere else and is stored absolute.
 
 ## 5. Invariants
+
+*PRESS-0213 § 4.2 changes INV-6.*
 
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
   other `pressless` module but `pressless.safe_write`, which carries §4.4's

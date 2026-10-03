@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0213 — The site's name and short description
 
-**Status:** draft (2026-10-03).
+**Status:** accepted (2026-10-03).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0213 (user decision 2026-10-02, PRESS-0198,
 settled 2026-10-03; `docs/design.md` § Pages, and how they are held).
@@ -9,7 +9,7 @@ settled 2026-10-03; `docs/design.md` § Pages, and how they are held).
 **Amends:** PRESS-0001 (§§ 4.1–4.4, INV-6), PRESS-0005 (§ 4.1,
 `move_to_bin`'s folders), PRESS-0008 (§ 3 decision 2, §§ 4.3, 4.7, the
 furniture table), PRESS-0015 (§ 4.4), PRESS-0021 (the Settings page's
-fields), PRESS-0126 (§ 3 decision 8), PRESS-0199 (the Privacy page's
+fields), PRESS-0126 (§ 3 decision 8, § 4.3), PRESS-0199 (the Privacy page's
 name), PRESS-0212 (the *site* step). § 11 lists each edit.
 
 Layman: the site's name and a one-line description belong to the site,
@@ -100,11 +100,9 @@ The file is UTF-8 JSON, an object with string values `"name"` and
   string, or holds an `Identity` that `identity_problem` refuses. A missing
   `"description"` reads as `""`. Other keys are ignored.
 - **`write_identity`** raises `StoreError` where `identity_problem` refuses
-  the identity, before anything is written. Otherwise it sets `"name"` and
-  `"description"` in the object the file holds, keeps every other key, and
-  writes it whole through `_write_atomically`, keys sorted, as
-  `write_options` does. Kept keys are what 0.10.0's icon and picture will
-  add.
+  the identity, before anything is written. Otherwise it writes
+  `{"description": …, "name": …}` whole through `_write_atomically`, keys
+  sorted, as `write_options` does.
 - **`IDENTITY_FOLDER` joins `_BINNABLE`**, because undo bins the version it
   replaces (§ 4.5). It does not join `_SITE_FOLDERS`: a name alone is no
   site, so the starter is still offered.
@@ -112,15 +110,18 @@ The file is UTF-8 JSON, an object with string values `"name"` and
 ### 4.2 Settings
 
 `Settings` loses `site_name`. `load` no longer reads it, `check` no longer
-checks it, and `save` no longer writes it.
+checks it, and `save` no longer writes it. A `"site_name"` already in the
+file is carried through like any other key `load` does not read
+(PRESS-0001 § 4.4), until § 4.3 retires it.
 
 ```python
 # src/pressless/settings.py — added
 def retired_site_name(folder: Path) -> str | None: ...
+def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> None: ...
 ```
 
-- **`save` removes a carried `"site_name"`** from what it writes. Without
-  this, PRESS-0001 § 4.4's carry-through would keep the old key forever.
+- **`save`'s `retire`** names carried keys to leave out of what it writes.
+  Only § 4.3 passes it.
 - **`retired_site_name`** returns the settings file's `"site_name"` where
   the file exists, parses as a JSON object, and holds a string there that
   `store.identity_problem` would accept as a name. Otherwise None. It
@@ -133,21 +134,21 @@ def retired_site_name(folder: Path) -> str | None: ...
 def carry_name_across(folder: Path) -> str | None: ...
 ```
 
-`__main__.main` calls it once, inside `served.capture()`, before reading
-Settings to choose the first page. In order:
+`__main__._serve_held` calls it once, inside `served.capture()`, before
+the `settings.load` that chooses the first page. In order:
 
 1. `name = settings.retired_site_name(folder)`. None → return None.
 2. Where `store.read_identity(folder)` is None, write
-   `store.Identity(name)`.
-3. `settings.save(folder, settings.load(folder))`, which drops the key
-   (§ 4.2).
+   `store.Identity(name)`. A `StoreError` stops here and returns a sentence
+   saying the site's name could not be moved and will be tried at the next
+   launch, with the error's own words. `_serve_held` prints it to the
+   console.
+3. `settings.save(folder, settings.load(folder), retire=("site_name",))`.
+   A `SettingsError` here leaves the key for a later launch and returns
+   None: the identity is already written.
 
-A `StoreError` or `SettingsError` stops the steps and returns a sentence
-saying the site's name could not be moved and will be tried at the next
-launch, with the error's own words. `main` prints it to the console. The
-identity is written before the key is dropped, so a failure between the
-two loses nothing: the next launch finds an identity and only drops the
-key.
+The identity is written before the key is retired, and no other save
+retires it, so a failure at either step loses nothing.
 
 ### 4.4 The Builder
 
@@ -216,25 +217,29 @@ of your site (optional)", beside `site_name`.
   `tests/test_store.py::test_read_identity_reads_the_identity_file`.
   *Breaks when:* a malformed file is read as some name, or an absent one
   raises.
-- **INV-2** — `write_identity` keeps a key it does not know, and refuses an
-  identity `identity_problem` refuses without writing. *Test:*
-  `tests/test_store.py::test_write_identity_keeps_other_keys_and_refuses_a_bad_name`,
-  with `{"icon": "x.png"}` present, then a name of `"two\nlines"`.
-  *Breaks when:* the file is written as name and description alone, or a
-  refused identity reaches the disk.
-- **INV-3** — The field names of `Settings` no longer include `site_name`,
-  and `save` over a file carrying `"site_name"` writes a file without it.
-  *Test:* `tests/test_settings.py::test_field_names_are_the_documented_set`
-  and `::test_save_drops_the_retired_site_name`.
-  *Breaks when:* the field stays, or the key is carried through.
+- **INV-2** — `write_identity` refuses an identity `identity_problem`
+  refuses, and writes nothing. *Test:*
+  `tests/test_store.py::test_write_identity_refuses_a_bad_name`, with a
+  file already holding `Identity("A")`, then a name of `"two\nlines"`.
+  *Breaks when:* a refused identity reaches the disk.
+- **INV-3** — The field names of `Settings` no longer include `site_name`.
+  `save` over a file carrying `"site_name"` keeps it, and the same save
+  with `retire=("site_name",)` writes a file without it. *Test:*
+  `tests/test_settings.py::test_field_names_are_the_documented_set` and
+  `::test_save_retires_only_what_it_is_told`.
+  *Breaks when:* the field stays, an ordinary save drops the key, or
+  `retire` keeps it.
 - **INV-4** — With a settings file carrying `"site_name": "Old"` and no
   identity, `carry_name_across` leaves `Identity("Old")` in the Store and no
   `"site_name"` in the settings file. With an identity `Identity("New")`
-  already there, it keeps `"New"` and still drops the key. Where the
-  identity cannot be written, the settings file is unchanged. *Test:*
+  already there, it keeps `"New"` and still retires the key. Where the
+  identity cannot be written, the settings file is unchanged and a sentence
+  is returned. Where `settings.load` refuses the file, the identity is
+  written, the key stays, and None is returned. *Test:*
   `tests/test_setup.py::test_the_name_is_carried_across_once`.
-  *Breaks when:* the key is dropped before the identity is written, or an
-  existing identity is overwritten.
+  *Breaks when:* the key is retired before the identity is written, an
+  existing identity is overwritten, or a moved name is reported as not
+  moved.
 - **INV-5** — A built entry page's title ends ` — A & B`, escaped, for an
   identity named `A & B`, and is the entry's title alone with no identity.
   A header holding `{{SITE_NAME}}` and `{{SITE_DESCRIPTION}}` builds with
@@ -324,8 +329,8 @@ mutation-probed once the code lands.
 | Rule | What catches a breach |
 |------|----------------------|
 | INV-1 | `tests/test_store.py::test_read_identity_reads_the_identity_file` |
-| INV-2 | `tests/test_store.py::test_write_identity_keeps_other_keys_and_refuses_a_bad_name` |
-| INV-3 | `tests/test_settings.py::test_field_names_are_the_documented_set`, `::test_save_drops_the_retired_site_name` |
+| INV-2 | `tests/test_store.py::test_write_identity_refuses_a_bad_name` |
+| INV-3 | `tests/test_settings.py::test_field_names_are_the_documented_set`, `::test_save_retires_only_what_it_is_told` |
 | INV-4 | `tests/test_setup.py::test_the_name_is_carried_across_once` |
 | INV-5 | `tests/test_builder.py::test_the_identity_names_every_page` |
 | INV-6 | `tests/test_builder.py::test_content_carries_the_identity` |
@@ -341,7 +346,7 @@ mutation-probed once the code lands.
 Each edit below is a pointer to this spec beside the clause it changes.
 
 - `docs/specs/PRESS-0001-settings.md` §§ 4.1–4.3 and INV-6 — `site_name`
-  leaves `Settings`; § 4.4 — `save` drops the retired key.
+  leaves `Settings`; § 4.4 — `save` takes `retire`.
 - `docs/specs/PRESS-0005-store.md` § 4.1 — `move_to_bin` takes
   `identity/`.
 - `docs/specs/PRESS-0008-builder.md` § 3 decision 2 and § 4.3 — the title
@@ -351,8 +356,9 @@ Each edit below is a pointer to this spec beside the clause it changes.
   and keeps the Store's where the fetched state has none.
 - `docs/specs/PRESS-0021-setup.md` — the Settings page's name comes from
   the Store, and the page gains the description.
-- `docs/specs/PRESS-0126-starter-site.md` § 3 decision 8 — the header and
-  footer name the site by placeholder.
+- `docs/specs/PRESS-0126-starter-site.md` § 3 decision 8 and § 4.3's
+  header and footer rows — the header and footer name the site by
+  placeholder, and the header carries the description.
 - `docs/specs/PRESS-0199-counting-code.md` — the Privacy page's name comes
   from the Store.
 - `docs/specs/PRESS-0212-setup-wizard.md` § 4 — the *site* step's fields

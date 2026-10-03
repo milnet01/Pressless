@@ -146,6 +146,8 @@ writes § 4.5's first-run values over that file, the Google fields included:
 
 ### 4.3 The form
 
+*PRESS-0213 § 4.6 changes this section.*
+
 *PRESS-0212 § 4.3: this form is Settings only; first run is the wizard.*
 
 Five fields, posted under these names: `repository`, `site_name`,
@@ -161,6 +163,8 @@ submit button says it checks the repository again.
 The words on the page, and how to make a key, are the implementer's.
 
 ### 4.4 Checking the answers
+
+*PRESS-0213 § 4.6 changes this section.*
 
 *PRESS-0199 § 4.4 adds `measurement_id` to the refused answers and the candidate; § 4.5 there adds the Privacy steps after the save.*
 
@@ -212,6 +216,8 @@ Pressless's own folder moves with the program, so a saved one can name a
 folder that is no longer there.
 
 ### 4.6 The sequence, once the answers are accepted
+
+*PRESS-0213 § 4.6 changes this section.*
 
 *PRESS-0212 § 4.4: on first run, steps 3 and 4 run on the wizard's key step, and the rest on its site step.*
 

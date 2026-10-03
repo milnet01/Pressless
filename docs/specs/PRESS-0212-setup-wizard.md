@@ -93,6 +93,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ## 4. Design
 
+*PRESS-0213 § 4.6 changes the *site* step.*
+
 ### 4.1 The wizard pattern (PRESS-0220)
 
 A new module, in the Face (`docs/design.md` rule 1).

@@ -46,6 +46,8 @@ its own.
 
 ## 3. Scope decisions (agreed with the user)
 
+*PRESS-0213 § 4.4 changes decision 2.*
+
 1. **A Daily Prompt entry the filter excludes is copied into `content/` and
    is on no page.** Decided by the user 2026-09-11 (PRESS-0008 roadmap
    note), so an undo keeps it published and the filter stays reversible.
@@ -165,6 +167,8 @@ raises passes through unchanged, so the Face's sentences for them apply.
 
 ### 4.3 Where each page goes
 
+*PRESS-0213 § 4.4 changes this section.*
+
 *PRESS-0199 § 4.2: a published page carries Google's counting code where Settings holds an id.*
 
 Every page is a folder holding `index.html`, as today, except the fixed
@@ -236,6 +240,8 @@ at newlines into `Line`s of one `Text` each. So Marks does the escaping, and
 an asterisk a reader typed stays an asterisk.
 
 ### 4.4 Fixed pages and furniture
+
+*PRESS-0213 § 4.4 changes this section.*
 
 **A fixed page is written byte for byte, except between its markers.** A
 marker pair is
@@ -316,6 +322,8 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
 Each web copy is written once, however many entries name it.
 
 ### 4.7 `content/`
+
+*PRESS-0213 § 4.4 changes this section.*
 
 *PRESS-0214 § 4.2: `content/` carries the options file.*
 
