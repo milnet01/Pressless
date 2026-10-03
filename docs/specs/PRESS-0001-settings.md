@@ -294,8 +294,8 @@ of it:** `os.replace` orders the namespace and not the data, so without it a
 power loss can commit the rename ahead of the blocks and leave an empty file
 where this section promises the previous one.
 
-**Those steps live once, in `pressless.safe_write`, for every module that
-replaces a file whole** (PRESS-0141). Its surface is one function:
+**Those steps live once, in `pressless.safe_write`** (PRESS-0141); §11
+names the modules that call it. Its surface is one function:
 
     write_whole(target, text, *, prefix, newline="\n", check=None)
 
@@ -305,11 +305,16 @@ the raw descriptor before writing a byte; anything `check` raises propagates
 unchanged. It then writes `text` as UTF-8 with `newline` as the line-ending
 translation, flushes, fsyncs, and replaces `target`. On Windows a
 `PermissionError` from the replace is retried for a moment, because a
-scanner opening the file just written refuses it briefly (PRESS-0159). On
+scanner opening the file just written refuses it briefly (PRESS-0159).
+Whether it is Windows is read at call time from `safe_write._is_windows()`,
+and that is what a retry test patches. On
 any failure the descriptor is closed, the temporary is removed, and the
 exception propagates unchanged; turning it into a module's own error is the
 caller's. It imports no `pressless` module and no network module.
 `settings.py` passes its owner-only notice (below) as `check`.
+**`safe_write` is not a part**, as `paths` and `update_key` are not:
+`docs/design.md` § The parts lists parts, and *depends on nothing* there
+means on no other part. A module that knows no part leaves that true.
 
 **On POSIX the file is left readable by its owner alone.** `mkstemp` creates
 the temporary with mode `0600`, and `os.replace` carries that mode onto the
@@ -385,15 +390,18 @@ which is the writer's choice of somewhere else and is stored absolute.
 
 - **INV-1** — `src/pressless/settings.py` imports no network module and no
   other `pressless` module but `pressless.safe_write`, which carries §4.4's
-  temporary-file, sync and replace steps for every module that saves a file.
+  temporary-file, sync and replace steps (§4.4).
   `safe_write.py` itself imports no network module and no `pressless`
   module, so the rule holds through it. The descriptor check and the
-  `SettingsError` wording stay in `settings.py`. Named modules on purpose: an import list sees what
+  `SettingsError` wording stay in `settings.py`, and `settings.py` calls
+  neither `tempfile.mkstemp` nor `os.fsync` itself, so the steps are not
+  copied back. Named modules on purpose: an import list sees what
   is imported and not what it is used for, so *reaches no disk but its own
   file* is not a rule this test could carry — §4.4 requires `os`, and `os`
   reaches every disk there is. INV-7 is what holds the path rule.
   *Test:* `tests/test_settings.py::test_settings_imports_nothing_forbidden`,
-  walking `settings.py`'s imports and then `safe_write.py`'s, as
+  walking `settings.py`'s imports and then `safe_write.py`'s, and
+  `settings.py`'s calls for those two names, as
   `tests/test_marks.py::test_marks_is_pure` does — which bans `os` outright,
   and is the precedent rather than the rule here.
   *Breaks when:* an implementer imports `pressless.publisher` to validate the
@@ -689,6 +697,11 @@ loading or saving does anything.
   and **PRESS-0021** asks for them at setup and writes them.
 - `docs/design.md` § The parts — the Settings row names the site's name and
   address.
+- **PRESS-0002 and PRESS-0019 widen their INV-1 the same way, in the same
+  batch** (PRESS-0141): `credentials.py` and `insights.py` call
+  `write_whole` too. `store.py`, `themes.py` and `updater.py`'s whole-file
+  write call it with no spec change, as no invariant of theirs forbids
+  that import. Each module keeps its own error type.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
@@ -708,3 +721,4 @@ loading or saving does anything.
 | 10 | 2026-09-09 | 3, cold — genre pinned `spec`; loop 1 of a new run, armed by PRESS-0117 giving §4.3 a message rule (no path, no account, no `owner/name`). Packet carried `docs/design.md` § Errors and § Logging quoted whole plus the module's message-bearing lines. **The packet asserted the code was not yet written; it ships, and all three lanes said so.** Finding 3 exists only because they checked it anyway | 3 | 3 | 0 | 1 | **Six verified, six fixed, none dismissed.** Stopped at loop 1 by instruction — no second loop, so this is surfaced-and-fixed rather than converged, and no cold read has seen the fixes. **Three lanes each found INV-8 naming `os.name` where §4.4 rules `os.name` out by name and the shipped code uses `_is_windows()`** — an implementer would branch on a seam §10's own prescribed test cannot patch. **Three found `never skips` against the shipped `_require_posix_modes` guard.** **The gate's own trigger was the largest finding: the new rule had no falsifier anywhere, and `::test_a_wider_grant_is_reported` asserted its opposite — that the path IS in the notice.** Fixed by a fifth INV-8 row, `::test_the_notice_names_no_path`, proved red against the shipped message. Also widened the rule from §4.3's `load()` table to every message the module raises, added the account, named `strerror` outright, narrowed §11's *no notice's wording is a contract*, and corrected the status block's *before implementation* |
 | 11 | 2026-09-13 | 3, cold — genre pinned `spec`; gating the two new Settings fields for PRESS-0008. Packet carried `settings.py` and `test_settings.py` windows, PRESS-0008 § 3, § 4.9 and § 11, PRESS-0009 § 4.4 and `versioning-overrides.md` § Setup state. Windows, GitHub and Google unrunnable | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed. One loop only, by the amendment budget: not converged.** Three lanes: the address's letters and digits were not said to be ASCII. One lane, raised by all three: the never-the-value rule read wider than the module's shape refusals, so a builder copying their pattern would quote the site's address. Both inside the gated span. |
 | 12 | 2026-09-27 | 2, cold — genre pinned `spec`; armed by PRESS-0171 (dot-only halves). Packet carried `settings.py` shape check and the repository tests, plus the executed fact that `owner/..` loads today | 0 | 0 | 0 | 1 | **One verified, one fixed; two dismissed as changing nothing built** (a stale "three patched rows" count and a stale claim about a shipped test, both pre-existing). The fix: §10's test also loads `.github`-shaped names, so an over-wide refusal fails. One round by the user's amendment budget; not converged. |
+| 13 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the six modules' write code, the import tests, the retry tests and PRESS-0005 §4.5 / §11. Windows unrunnable | 0 | 2 | 1 | 1 | **Four verified, four fixed, none dismissed.** Both lanes: §4.4's "every module" against §11's "no other sibling spec changes"; *depends on nothing* read as barring the import; the Windows retry's test seam unnamed. One lane: "one copy" had no falsifier, so INV-1 now checks `settings.py` calls no `fsync`. One round by the user's budget; the fixes are read by no lane. |

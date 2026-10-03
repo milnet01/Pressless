@@ -363,7 +363,7 @@ once the code exists.
 
 - **INV-1** — `src/pressless/credentials.py` imports no other `pressless`
   module but `pressless.safe_write`, which carries §4.4's temporary-file,
-  sync and replace steps for every module that saves a file. `safe_write.py`
+  sync and replace steps (PRESS-0001 §4.4 and §11). `safe_write.py`
   itself imports no `pressless` module, so the rule holds through it. The
   descriptor's mode is still read and refused in `credentials.py`, before
   the secret is written (§4.6), as the `check` PRESS-0001 §4.4 gives
