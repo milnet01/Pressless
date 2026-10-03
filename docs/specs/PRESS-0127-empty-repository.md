@@ -50,6 +50,8 @@ empty.
 
 ## 3. Scope decisions (agreed with the user)
 
+*PRESS-0212 § 3 decision 4 changes decision 2: setup writes the Pages switch, and nothing else.*
+
 1. **Pressless starts an empty repository itself.** Decided by the user
    2026-09-18. The alternative was a message telling the writer to add a
    file on GitHub first.

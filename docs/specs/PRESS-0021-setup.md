@@ -51,6 +51,8 @@ publishing key, derives the untouchable list, and saves Settings last.
 
 ## 3. Scope decisions (agreed with the user)
 
+*PRESS-0212 § 3 changes decisions 2 and 10: first run is a wizard, and asks neither the Daily Prompt filter nor the address.*
+
 1. **The Google step is not this item's.** Decided by the user 2026-09-17 and
    moved to PRESS-0122. Setup writes `credentials.google_account` and
    `analytics_property_id` as absent, which PRESS-0001 § 4.2 already allows.
@@ -122,6 +124,8 @@ or mistyped field — keep `key` as `None`.
 
 ### 4.2 Which page he sees
 
+*PRESS-0212 § 4.3: the first two rows show the setup wizard.*
+
 Every request to `/setup` first runs `settings.load(folder)` inside
 `face.capture()`:
 
@@ -141,6 +145,8 @@ writes § 4.5's first-run values over that file, the Google fields included:
 `load` refused it, so nothing in it is read.
 
 ### 4.3 The form
+
+*PRESS-0212 § 4.3: this form is Settings only; first run is the wizard.*
 
 Five fields, posted under these names: `repository`, `site_name`,
 `site_address`, `daily_prompt_filter` and `key`. The filter is optional on
@@ -207,6 +213,8 @@ folder that is no longer there.
 
 ### 4.6 The sequence, once the answers are accepted
 
+*PRESS-0212 § 4.4: on first run, steps 3 and 4 run on the wizard's key step, and the rest on its site step.*
+
 *PRESS-0126 § 4.4 adds a fill step between storing the key and saving.*
 
 Each step runs only when the one before it succeeded. A failure is shown
@@ -268,6 +276,8 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
   and setup has no Press to site button. They say *"try again"* instead.
 
 ### 4.9 What setup never does
+
+*PRESS-0212 § 3 decision 4: setup writes one thing to GitHub, the Pages switch.*
 
 *PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`.*
 
