@@ -3693,6 +3693,15 @@ it decides how pages, the menu and the look are held.
   and GitHub's own registration, as the Google sign-in needed (PRESS-0122).
   Placed in 0.8.0 by the user 2026-10-05: the hand-made key is the
   biggest thing in a stranger's way.
+  User decision 2026-10-05: a GitHub App, not an OAuth app. Research the
+  same day: an OAuth token needs the full `repo` scope to switch Pages
+  on (every repository, private ones too, never expiring). A GitHub App's
+  user token carries only the permissions it asks for, expires in 8
+  hours, renews without a client secret when made by the device flow,
+  and the person can remove the app in one click. Its Administration
+  permission can delete a repository, which today's hand-made key
+  already can. This overturns PRESS-0212 § 3 decision 1, "Pressless
+  does not create the repository" (2026-10-03).
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
