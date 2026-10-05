@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0231 — Sign in with GitHub, so Pressless makes the repository and switches the site on
 
-**Status:** draft (2026-10-05).
+**Status:** accepted (2026-10-05). One review round, the user's budget for a new spec; its fixes were read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0231 (user request 2026-10-05; GitHub App chosen
 by the user the same day).
@@ -87,14 +87,14 @@ class DeviceCode:
     device_code: str   # never shown
     user_code: str     # shown: the person types it on GitHub
     address: str       # GitHub's verification_uri
-    expires_at: float
+    expires_in: int    # seconds, as GitHub gives it
     interval: int
 
 @dataclass(frozen=True)
 class Tokens:
     access: str
     refresh: str
-    expires_at: float  # the access token's
+    expires_in: int    # the access token's life, in seconds
 
 class Pending(PublishError): ...    # authorization_pending or slow_down
 class Expired(PublishError): ...    # expired_token
@@ -111,7 +111,7 @@ def begin(transport=None) -> DeviceCode: ...
 def poll(code: DeviceCode, transport=None) -> Tokens: ...
 def refresh(refresh_token: str, transport=None) -> Tokens: ...
 def login(token: str, transport=None) -> str: ...
-def installation(token: str, transport=None) -> Installation | None: ...
+def installation(token: str, login: str, transport=None) -> Installation | None: ...
 def create_repository(token: str, name: str, transport=None) -> bool: ...
 def include(token: str, installation: Installation, repository: str,
             transport=None) -> None: ...
@@ -128,7 +128,8 @@ def include(token: str, installation: Installation, repository: str,
 - Every request to `github.com` sends `Accept: application/json`.
 - `login` reads `GET /user`'s `login`.
 - `installation` reads `GET /user/installations` and returns the one whose
-  `app_slug` is `APP_SLUG`, else `None`.
+  `app_slug` is `APP_SLUG` and whose `account.login` is `login`, else
+  `None`. An organisation's installation of the app is never it.
 - `create_repository` POSTs `{"name": name, "private": false}` to
   `/user/repos` and returns `True`. A 422 is `False`: the name is taken in
   this account.
@@ -151,24 +152,35 @@ Source: https://docs.github.com/en/rest/authentication/permissions-required-for-
 ### 4.2 The pass every GitHub request uses (the Face)
 
 A new Face module, `src/pressless/github_setup.py`, holding the access token
-for one launch under a lock, as `google_setup` holds Google's.
+for one launch.
 
 ```python
+def register(face: Face, folder: Path, *,
+             transport: publisher.Transport | None = None,
+             clock: Callable[[], float] = time.time) -> None: ...
 def token(folder: Path, store: str, account: str) -> str: ...
 def hold(tokens: github_signin.Tokens) -> None: ...   # a sign-in's first pass
 ```
 
-It takes the arguments `credentials.read` takes and replaces that call
+`token` takes the arguments `credentials.read` takes and replaces that call
 wherever a GitHub secret is read: in `publishing`, `undo`, `page_editor` and
 `setup`.
 
 1. `secret = credentials.read(store, folder, account)`.
 2. A `secret` not starting `ghr_` is a key: return it.
-3. A held access token more than 60 seconds from `expires_at` is returned.
+3. A held access token more than 60 seconds from its expiry is returned.
 4. Otherwise `github_signin.refresh(secret)`; then `credentials.write` of the
    new refresh token; then the new access token is held and returned. The
    write comes before the return, because the old refresh token has stopped
    working.
+
+Steps 1 to 4 run under one lock held by the module: GitHub's refresh token
+works once, so two renewals at once would leave one of them signed out.
+
+`register` runs at launch, as `google_setup.register` does. `token`, `hold`,
+the *signin* step and `/setup/github` use its transport and its clock, and
+turn each `expires_in` into a time with that clock. Tests pass a recording
+transport and a fake clock there.
 
 A `SignedOut` reaches `Face.fail` like any `PublishError`. Its sentence says
 GitHub has signed Pressless out, the site has not changed, and to sign in
@@ -184,7 +196,7 @@ Where `github_signin.available()`, PRESS-0212 § 4.4's steps become:
 | *signin* | none | how to sign in with a code | the sign-in sequence below |
 | *install* | none | how to install the Pressless app, with `https://github.com/apps/<APP_SLUG>/installations/new` | `installation` is not `None`, else a `Hint`; the answers gain `all_repositories` |
 | *repository* | `repository` | the naming advice of PRESS-0212 § 3 decision 7, the box filled with `<login>.github.io` | the repository sequence below |
-| *pages* | none | as PRESS-0212 | as PRESS-0212, the key in hand from `token` |
+| *pages* | none | as PRESS-0212 | as PRESS-0212, the key in hand from `token`, except that a `Refused` hint says the Pressless app cannot reach this repository and to check its installation on GitHub |
 | *site* | as PRESS-0212 | as PRESS-0212 | as PRESS-0212, the key in hand from `token` |
 
 Where it is false, the steps are PRESS-0212's, unchanged.
@@ -192,7 +204,7 @@ Where it is false, the steps are PRESS-0212's, unchanged.
 **signin.** The device code is held by the wizard's owner in memory, never in
 the progress file (PRESS-0212 § 4.2).
 
-1. No code held, or the held one past `expires_at`: `begin`, hold it, and
+1. No code held, or the held one past its expiry: `begin`, hold it, and
    return a `Hint` showing `user_code` and a link to `address`, saying to
    type the code there, click Authorize, and press Next.
 2. A code held: `poll`. `Pending` is a `Hint` saying GitHub has not heard
@@ -209,8 +221,9 @@ the progress file (PRESS-0212 § 4.2).
 repository rule, or the hint is PRESS-0021's.
 
 1. `create_repository`. `True` goes to step 3.
-2. `False`: `publisher.public_repository` and then `publisher.root_entries`.
-   A Public repository whose root answers `()` is taken as this person's own
+2. `False`: `publisher.public_repository`, then `publisher.root_entries`
+   with no key, as `public_repository` reads (its `token` becomes
+   `str | None`). A Public repository whose root answers `()` is taken as this person's own
    new one: a Next after a lost answer finds what the first press made. Any
    other is a `Hint`: a repository by that name already exists, choose
    another name. Nothing is written to it.
@@ -274,7 +287,7 @@ push gate's secret scanner does not mistake them.
   it.
 
 - **INV-5** — An expired code is replaced, not polled. A Next after
-  `expires_at` sends `begin` and no `poll`.
+  the code's expiry sends `begin` and no `poll`.
   *Test:* `test_an_expired_code_is_replaced`, advancing the fake clock past
   the code's life.
   *Breaks when:* the step polls a dead code and shows GitHub's error.
@@ -304,8 +317,9 @@ push gate's secret scanner does not mistake them.
   PUT of INV-8 where it applies, and then PRESS-0212 INV-9's two. No request
   is a DELETE.
   *Test:* `test_signed_in_setup_writes_only_what_it_needs`, walking the whole
-  wizard against the recording transport and asserting every non-GET
-  request's method and path.
+  wizard against the recording transport and asserting the method and path
+  of every non-GET request to `api.github.com`. The sign-in's own POSTs go
+  to `github.com`.
   *Breaks when:* a step writes another file, setting or repository.
 
 - **INV-10** — Without a registered app, first run is PRESS-0212's wizard.
@@ -346,7 +360,7 @@ push gate's secret scanner does not mistake them.
 | The name is taken by a repository with files | a hint to choose another name | the stored refresh token |
 | The create's answer is lost | Next again finds the empty repository and goes on | everything before |
 | The new refresh token cannot be stored | the credential failure's sentence; the next renewal signs Pressless out | the site, unchanged |
-| Six months unused, or the app removed on GitHub | `SignedOut`'s sentence and the link to sign in again | the site, unchanged |
+| Six months unused | `SignedOut`'s sentence and the link to sign in again | the site, unchanged |
 | The app is installed on all repositories | nothing; the done page says how to narrow it to this one | everything |
 
 ## 7. Tests
@@ -365,8 +379,8 @@ what that run found.
 
 **By hand, before release:** the whole wizard against a new GitHub account,
 once on Linux and once on the Windows box, ending with a publish whose page
-answers at the address the wizard found. Then remove the app on GitHub and
-publish again: the sign-in-again sentence shows. CI cannot reach GitHub.
+answers at the address the wizard found. Then revoke Pressless on GitHub,
+publish again, and record what is shown. CI cannot reach GitHub.
 
 ## 8. Alternatives considered (and rejected)
 
@@ -423,7 +437,8 @@ Each spec edit is a pointer to this spec beside the clause it changes.
 - `docs/specs/PRESS-0002-credentials.md` — the GitHub secret may be a
   GitHub App refresh token, renewed on each refresh.
 - `docs/specs/PRESS-0021-setup.md` § 4.3 — the signed-in line above the key
-  box, and `/setup/github`.
+  box, and `/setup/github`. § 4.6 step 1 — the key is read with
+  `github_setup.token`.
 - `docs/design.md` § The parts — the Publisher row: it also signs in to
   GitHub, makes the repository and adds it to the installation; the
   Credentials row: the GitHub secret is a publishing key or a sign-in.
