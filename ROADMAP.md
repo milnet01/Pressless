@@ -3089,7 +3089,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-09-29.
   Lanes: setup, packaging.
 
-- 🚧 [PRESS-0212] **Setup walks a stranger through GitHub: an account, a repository, and Pages switched on.**
+- ✅ [PRESS-0212] **Setup walks a stranger through GitHub: an account, a repository, and Pages switched on.**
   S12, and discovery's Help row: automate what can be automated,
   step-by-step instructions for the rest. Today setup assumes the
   repository exists. Covers making the repository, switching GitHub
@@ -3118,6 +3118,14 @@ it decides how pages, the menu and the look are held.
   GitHub account and Public repository on Linux and on the Windows box,
   ending with a publish whose page answers at the address the wizard found.
   CI cannot reach GitHub, so nothing else checks the real API answers.
+  Shipped 2026-10-05 after spec § 7's by-hand run, packaged builds of
+  the current code on both systems. Linux: an existing account (GitHub
+  refused a new sign-up from the user's network) and a new Public
+  repository; the run found PRESS-0229 and PRESS-0230 and four smaller
+  gaps, all fixed in ae526b7. Windows box: a NEW account and a new Public
+  repository, walked with those fixes; Pressless wrote .nojekyll, switched
+  Pages on itself, and the publish answered 200 at the address the wizard
+  found. Not covered: the account step's sign-up instructions on Linux.
   **Layman:** Someone who has never used GitHub is taken through getting their site's free home there, step by step, with Pressless doing what it can itself.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
