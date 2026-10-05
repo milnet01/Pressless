@@ -3750,7 +3750,7 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-05.
   Lanes: Setup, Publisher, Credentials.
 
-- 📋 [PRESS-0232] **A link to the live site, wherever Pressless shows the site's address or a publish.**
+- ✅ [PRESS-0232] **A link to the live site, wherever Pressless shows the site's address or a publish.**
   Asked during PRESS-0231's by-hand run on a new account: after "Press to
   site" says "Published. Your site shows it within a few minutes.", nothing
   in Pressless opens the site. Nothing does anywhere: no link carries
@@ -3758,6 +3758,12 @@ it decides how pages, the menu and the look are held.
   beside Settings once setup is done, and the published note linking to
   that page's own live address. The setup done page and the last step name
   the address as plain text; they link it too.
+  Resolved (2026-10-05, 6c3e331): "View your site" in the top bar
+  once settings hold an address; both editors' published note copies
+  that link; setup's last step and done page link the address. The note
+  links the site, not the page just published: an entry's address
+  depends on its date and on the journal being on. Owed: a look at the
+  published note's link in a browser, on PRESS-0231's packaged-build run.
   **Layman:** One click from Pressless opens your site as visitors see it.
   Kind: ux.
   Source: user-request-2026-10-05.
