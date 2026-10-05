@@ -2593,3 +2593,26 @@ def test_switching_pages_on_writes_nojekyll_first():
                    ("GET", "/git/trees/h1"): (200, {"tree": [{"path": ".nojekyll"}]})})
     publisher_module.switch_pages_on("someone/site", SENTINEL, held)
     assert held.writes() == [("POST", "/repos/someone/site/pages")]
+
+
+def test_pages_github_switched_on_itself_is_on():
+    """PRESS-0212 § 4.5. GitHub switches Pages on by itself when the first
+    commit lands in <account>.github.io, then answers the switch with 409.
+    Breaks when that refusal stops setup, or a refusal hides Pages still off."""
+    repo = {("GET", "/repos/someone/someone.github.io"): (200, {"default_branch": "main"}),
+            ("GET", "/repos/someone/someone.github.io/commits/HEAD"):
+                (409, {"message": "Git Repository is empty."}),
+            ("PUT", "/repos/someone/someone.github.io/contents/.nojekyll"):
+                (201, {"commit": {"sha": "c1"}}),
+            ("POST", "/repos/someone/someone.github.io/pages"):
+                (409, {"message": "GitHub Pages is already enabled."})}
+    already = _ByUrl({**repo, ("GET", "/repos/someone/someone.github.io/pages"):
+                      _pages_answer()})
+    shown = publisher_module.switch_pages_on("someone/someone.github.io", SENTINEL, already)
+    assert shown.on
+    assert already.writes() == [
+        ("PUT", "/repos/someone/someone.github.io/contents/.nojekyll"),
+        ("POST", "/repos/someone/someone.github.io/pages")]
+
+    with pytest.raises(PublishError):
+        publisher_module.switch_pages_on("someone/someone.github.io", SENTINEL, _ByUrl(repo))

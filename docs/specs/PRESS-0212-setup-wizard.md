@@ -316,7 +316,11 @@ def switch_pages_on(repository: str, token: str,
      with `outcome_unknown=True`, as the start file's does.
   2. Sends `POST /repos/{owner}/{name}/pages` with `{"build_type": "legacy",
      "source": {"branch": <default branch>, "path": "/"}}`, the branch read
-     after step 1 so an empty repository has one.
+     after step 1 so an empty repository has one. Where GitHub refuses it,
+     `pages(...)` is read: on, it is the answer; off, the refusal stands.
+     GitHub switches Pages on by itself when step 1's commit lands in
+     `<account>.github.io`, then answers the POST with 409 (PRESS-0231's
+     2026-10-05 by-hand run).
   3. Returns `pages(...)`.
 - **The account name never reaches a message.** `_without_account` takes the
   account out of `repos/<account>/<name>` only; it gains the same for

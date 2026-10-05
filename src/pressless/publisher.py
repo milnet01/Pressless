@@ -506,8 +506,16 @@ def switch_pages_on(repository: str, token: str,
                       {"message": "Serve the site as it is", "content": ""},
                       outcome_unknown=True)
     branch = _default_branch(session, repository)
-    session.write("POST", _repo_url(repository, "pages"),
-                  {"build_type": "legacy", "source": {"branch": branch, "path": "/"}})
+    try:
+        session.write("POST", _repo_url(repository, "pages"),
+                      {"build_type": "legacy", "source": {"branch": branch, "path": "/"}})
+    except PublishError:
+        # GitHub switches Pages on by itself when the first commit lands in
+        # <account>.github.io, then refuses the switch with 409. On is on.
+        shown = _pages(session, repository)
+        if shown.on:
+            return shown
+        raise
     return _pages(session, repository)
 
 
