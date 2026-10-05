@@ -3702,6 +3702,11 @@ it decides how pages, the menu and the look are held.
   permission can delete a repository, which today's hand-made key
   already can. This overturns PRESS-0212 § 3 decision 1, "Pressless
   does not create the repository" (2026-10-03).
+  Spec accepted 2026-10-05: docs/specs/PRESS-0231-github-sign-in.md, one
+  review round (two cold lanes, eight findings, all fixed; the fixes were
+  read by no lane). Before building the install step's words, register
+  the GitHub App and record what its install page offers an account with
+  no repositories (spec § 7).
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
