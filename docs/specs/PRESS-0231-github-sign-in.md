@@ -66,6 +66,10 @@ unchanged.
    A key typed there replaces a sign-in.
 6. **(decided here) Signing in again is a page, `/setup/github`,** reached
    from Settings, as the Google step is reached at `/setup/google`.
+7. **The person names the account before signing in.** Requested by the
+   user 2026-10-05: a browser signed in to another account would otherwise
+   be used without a word. A sign-in to any other account is refused and
+   nothing is stored.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -146,8 +150,8 @@ The app is registered by hand under the maintainer's account: public, device
 flow enabled, no webhook, and the repository permissions Contents, Pages and
 Administration **Read and write**. GitHub's permission list also names
 Repository creation for `POST /user/repos`; the registration form does not
-offer it, so § 7's first real run must prove the repository is created
-without it. `docs/working-here.md` gains the steps, as it has
+offer it, and § 7's by-hand run of 2026-10-05 created a repository without
+it. `docs/working-here.md` gains the steps, as it has
 Google's. Until both constants are filled, `available()` is false.
 Source: https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps
 
@@ -195,7 +199,7 @@ Where `github_signin.available()`, PRESS-0212 § 4.4's steps become:
 | Step | Fields | What it shows | Its check |
 |---|---|---|---|
 | *welcome* | none | what the wizard does; that a GitHub account is needed, with the sign-up link | none |
-| *signin* | none | how to sign in with a code | the sign-in sequence below |
+| *signin* | `account` | how to sign in with a code, and a box for the account's name | the sign-in sequence below |
 | *install* | none | how to install the Pressless app, with `https://github.com/apps/<APP_SLUG>/installations/new` | `installation` is not `None`, else a `Hint`; the answers gain `all_repositories` |
 | *repository* | `repository` | the naming advice of PRESS-0212 § 3 decision 7, the box filled with `<login>.github.io` | the repository sequence below |
 | *pages* | none | as PRESS-0212 | as PRESS-0212, the key in hand from `token`, except that a `Refused` hint says the Pressless app cannot reach this repository and to check its installation on GitHub |
@@ -206,6 +210,8 @@ Where it is false, the steps are PRESS-0212's, unchanged.
 **signin.** The device code is held by the wizard's owner in memory, never in
 the progress file (PRESS-0212 § 4.2).
 
+0. `account` must match PRESS-0212's *account* step's pattern, or it is a
+   `Hint`, and GitHub is not asked.
 1. No code held, or the held one past its expiry: `begin`, hold it, and
    return a `Hint` showing `user_code` and a link to `address`, saying to
    type the code there, click Authorize, and press Next.
@@ -214,7 +220,9 @@ the progress file (PRESS-0212 § 4.2).
    `Declined` drops the code and is a `Hint` saying the sign-in was
    cancelled on GitHub.
 3. `Tokens`: the code is dropped, and `login` is read first, so a failure
-   there stores nothing. Then `credentials.choose()` where the answers hold
+   there stores nothing. A `login` other than `account`, ignoring case, is a
+   `Hint` naming both, and nothing is stored; the next Next starts a new
+   code. Then `credentials.choose()` where the answers hold
    no `store`, then
    `credentials.write(store, folder, GITHUB_ACCOUNT, tokens.refresh)`. A
    credential failure is a `Stop`, as on PRESS-0212's *key* step. Then
@@ -353,6 +361,14 @@ push gate's secret scanner does not mistake them.
   *Test:* `test_signing_in_again_sits_behind_the_faces_boundary`.
   *Breaks when:* the page is served by its own handler.
 
+- **INV-14** — First-run setup keeps a sign-in only for the account the
+  person named. A malformed name sends no request; a sign-in to another
+  account stores nothing; a name differing only in case is the same
+  account, kept as GitHub spells it.
+  *Test:* `test_the_account_signed_in_is_the_one_named`.
+  *Breaks when:* a sign-in to another account is kept, the name is not
+  checked before GitHub is asked, or its case is held against the person.
+
 ## 6. Failure modes
 
 | What fails | What they see | What is kept |
@@ -360,6 +376,7 @@ push gate's secret scanner does not mistake them.
 | No internet on *signin*, *install* or *repository* | `Face.fail`'s `Unreachable` sentence | the step, unadvanced |
 | The person never types the code | the same code, and "GitHub has not heard yet" | the step |
 | The code expires (15 minutes) | a new code | the step |
+| The browser is signed in to another account | a hint naming both accounts; Next starts again | the step, nothing stored |
 | The person clicks Cancel on GitHub | a hint that the sign-in was cancelled; Next starts again | the step |
 | The app is not installed | the install hint and link | the stored refresh token |
 | The name is taken by a repository with files | a hint to choose another name | the stored refresh token |
@@ -372,7 +389,7 @@ push gate's secret scanner does not mistake them.
 
 The tests of § 5, each written first and seen to fail against today's code:
 INV-1, INV-2, INV-11 and INV-12 in `tests/test_github_setup.py`; INV-3,
-INV-4, INV-5, INV-6, INV-7, INV-8, INV-9, INV-10 and INV-13 in
+INV-4, INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-13 and INV-14 in
 `tests/test_setup.py`. `tests/test_github_signin.py`
 holds the protocol's own tests: each request's address and fields, and each
 `error` answer's type.

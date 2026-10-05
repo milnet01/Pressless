@@ -181,7 +181,7 @@ FIRST_RUN = {"account": "owner", "repository": "owner.github.io", "key": SENTINE
              "site_name": "A Journal", "site_description": "", "start": ""}
 STEP_FIELDS = {"welcome": (), "account": ("account",), "repository": ("repository",),
                "key": ("key",), "pages": (), "site": ("site_name", "site_description", "start"),
-               "signin": (), "install": ()}
+               "signin": ("account",), "install": ()}
 
 
 def _step(page: str) -> str | None:
@@ -1353,6 +1353,29 @@ def test_signing_in_stores_only_what_github_issued(tmp_path, monkeypatch):
     assert _step(page) == "install"
     assert keyring.chosen == 1
     assert keyring.writes == [("keyring", "github", FIRST_REFRESH)]
+
+
+def test_the_account_signed_in_is_the_one_named(tmp_path, monkeypatch):
+    """INV-14. Breaks when a sign-in to another account is kept, the name is
+    not checked before GitHub is asked, or its case is held against him."""
+    _app(monkeypatch)
+    keyring = _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub()
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        page = _walk_to(browser, "signin")
+        unnamed = _next(browser, page, account="")
+        assert _step(unnamed) == "signin" and _hint_for("account", unnamed)
+        assert github.sent_to("/login/device/code") == 0
+        coded = _next(browser, unnamed, account="someone-else")
+        other = _next(browser, coded, account="someone-else")
+        assert _step(other) == "signin" and _hint_for("account", other)
+        assert "owner" in other and "someone-else" in other
+        assert keyring.writes == []
+        coded = _next(browser, other, account="Owner")
+        install = _next(browser, coded, account="Owner")
+    assert _step(install) == "install"
+    assert keyring.writes == [("keyring", "github", FIRST_REFRESH)]
+    assert '"account": "owner"' in _progress(tmp_path).read_text(encoding="utf-8")
 
 
 def test_an_expired_code_is_replaced(tmp_path, monkeypatch):

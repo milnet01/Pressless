@@ -611,6 +611,7 @@ def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
 _ACCOUNT = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
 _PLACEHOLDER_ADDRESS = "https://github.com"
 
+_TYPE_ACCOUNT = "Type your GitHub account name, as GitHub shows it."
 _NO_ACCOUNT = ("GitHub has no account by that name. Check the spelling, or finish "
                "making it first.")
 _NOT_PUBLIC = ("GitHub shows no public repository by that name. Check the spelling, "
@@ -631,8 +632,15 @@ _TAKEN = ("A repository by that name already exists in your account. Choose anot
           "name.")
 _APP_CANNOT_REACH = ("The Pressless app cannot reach this repository. On GitHub, click "
                      "your picture, then Settings, then Applications, and check that "
-                     "the Pressless app's installation includes it. Then press Next "
+                     "Pressless App's installation includes it. Then press Next "
                      "again.")
+
+
+def _other_account(signed_in: str, typed: str) -> str:
+    """PRESS-0231 INV-14: the sign-in reached an account he did not name."""
+    return (f"You signed in to GitHub as {signed_in}, not {typed}. To use {typed}, "
+            f"switch to it on github.com, or correct the name above. Then press Next "
+            f"to sign in again.")
 # PRESS-0229: never advice to re-point Pages, which would take that site offline.
 _ELSEWHERE = ("This repository already puts a site on the web another way, so Pressless "
               "cannot publish to it. Press Back and choose a different, new repository. "
@@ -677,7 +685,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
     def check_account(answers: wizard.Answers):
         if not _ACCOUNT.fullmatch(answers["account"]):
-            return wizard.Hint("account", "Type your GitHub account name, as GitHub shows it.")
+            return wizard.Hint("account", _TYPE_ACCOUNT)
         try:
             if not publisher.account_exists(answers["account"], transport):
                 return wizard.Hint("account", _NO_ACCOUNT)
@@ -795,7 +803,11 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
     def check_signin(answers: wizard.Answers):
         # § 4.3 signin: each press polls GitHub once; nothing is stored until
-        # GitHub has issued the tokens (INV-4).
+        # GitHub has issued the tokens (INV-4), and then only for the account
+        # he named (INV-14).
+        typed = answers.get("account", "")
+        if not _ACCOUNT.fullmatch(typed):
+            return wizard.Hint("account", _TYPE_ACCOUNT)
         try:
             pressed = sign_in.press()
             if isinstance(pressed, str):
@@ -803,6 +815,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             account = github_signin.login(pressed.access, transport)
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
+        # GitHub's account names ignore case; the name kept is GitHub's.
+        if account.lower() != typed.lower():
+            return wizard.Hint("account", _other_account(account, typed))
         kept = dict(answers)
         try:
             if not kept.get("store"):
@@ -856,8 +871,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     if signing_in:
         return wizard.Wizard("setup", (
             wizard.Step("welcome", "Set up Pressless", (), _show_welcome_signing_in),
-            wizard.Step("signin", "Sign in to GitHub", (),
-                        lambda answers, hint: github_setup.HOW + sign_in.shown(),
+            wizard.Step("signin", "Sign in to GitHub", ("account",),
+                        lambda answers, hint: _show_signin(answers, hint, sign_in),
                         check_signin),
             wizard.Step("install", "Let Pressless reach your site", (), _show_install,
                         check_install),
@@ -907,17 +922,30 @@ def _show_welcome_signing_in(answers: wizard.Answers, hint: wizard.Hint | None) 
               "now:</p>" + _SIGN_UP)
 
 
+def _show_signin(answers: wizard.Answers, hint: wizard.Hint | None,
+                 sign_in: github_setup.SignIn) -> str:
+    return (github_setup.HOW
+            + "<p>Type the name of the GitHub account your site will live in. If you "
+              "have more than one, Pressless checks you sign in to this one.</p>"
+            + wizard.field("account", "Your GitHub account name", answers, hint)
+            + sign_in.shown())
+
+
 def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    # Its words follow GitHub's pages as the 2026-10-05 by-hand run found
+    # them, from an account with no repositories (§ 7).
     e = html.escape
     address = github_signin.INSTALL_URL.format(github_signin.APP_SLUG)
-    return ("<p>Pressless works through its own app on GitHub, which reaches only the "
-            "repositories you let it. Install it on your account:</p><ol>"
+    account = e(answers.get("account", ""))
+    return ("<p>Pressless works through its own app on GitHub, Pressless App, which "
+            "reaches only the repositories you let it. Install it on your account:</p><ol>"
             f'<li>Open <a href="{e(address, quote=True)}" target="_blank" '
             f'rel="noopener">{e(address)}</a>.</li>'
-            "<li>If GitHub asks where to install it, choose your own account.</li>"
-            "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b> "
-            "if GitHub lets you, or <b>All repositories</b> if it does not. Pressless "
-            "adds your site's repository itself in the next step.</li>"
+            "<li>If GitHub asks you to select a user, click <b>Continue</b> beside "
+            f"<b>{account}</b>.</li>"
+            "<li>Under <b>for these repositories</b>, leave <b>All repositories</b> "
+            "chosen. Pressless makes your site's repository next, and at the end "
+            "tells you how to let the app reach only that one.</li>"
             "<li>Click <b>Install</b>, then come back here and press <b>Next</b>.</li>"
             "</ol>")
 
@@ -940,7 +968,7 @@ def _narrow(repository: str) -> str:
     return ("<p>The Pressless app can reach every repository in your account. To let "
             "it reach only your site's: on GitHub, click your picture, then "
             "<b>Settings</b>, then <b>Applications</b>. Click <b>Configure</b> beside "
-            "Pressless, choose <b>Only select repositories</b>, pick "
+            "<b>Pressless App</b>, choose <b>Only select repositories</b>, pick "
             f"<b>{html.escape(repository)}</b>, and click <b>Save</b>.</p>")
 
 

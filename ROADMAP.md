@@ -3736,6 +3736,18 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-05.
   Lanes: Setup, Publisher, Credentials.
 
+- 📋 [PRESS-0232] **A link to the live site, wherever Pressless shows the site's address or a publish.**
+  Asked during PRESS-0231's by-hand run on a new account: after "Press to
+  site" says "Published. Your site shows it within a few minutes.", nothing
+  in Pressless opens the site. Nothing does anywhere: no link carries
+  settings.site_address. Proposed: a "View your site" link in the top bar
+  beside Settings once setup is done, and the published note linking to
+  that page's own live address. The setup done page and the last step name
+  the address as plain text; they link it too.
+  **Layman:** One click from Pressless opens your site as visitors see it.
+  Kind: ux.
+  Source: user-request-2026-10-05.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
