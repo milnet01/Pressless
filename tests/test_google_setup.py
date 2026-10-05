@@ -444,3 +444,22 @@ def test_choosing_a_property_switches_counting_on(tmp_path: Path,
         assert store.html_path_for(folder, store.PAGES_FOLDER, "privacy").is_file(), case
         footer = store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, "footer"))
         assert footer.count("pages/privacy.html") == 1, case
+
+
+# PRESS-0200: until Google approves the client, the page says so.
+
+
+@pytest.mark.parametrize("approved", [False, True])
+def test_the_page_says_while_google_has_not_approved_pressless(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, approved: bool
+) -> None:
+    """Breaks when the page explains Google's warning without saying the
+    review is still pending, or keeps both once Google has approved."""
+    monkeypatch.setattr(google_signin, "APPROVED", approved)
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _served(tmp_path, _Google()) as browser:
+        page = browser.send("GET", "/setup/google")[2]
+    assert "Sign in with Google" in page
+    assert ("still checking Pressless" in page) is not approved
+    assert ("<strong>Go to Pressless</strong>" in page) is not approved

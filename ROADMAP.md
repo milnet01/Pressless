@@ -3268,6 +3268,12 @@ it decides how pages, the menu and the look are held.
   2026-09-30 (PRESS-0122 body) found unverified apps capped at about
   100 users over the project's life; that cap is why it is started
   before 1.0 rather than when needed.
+  Progress (2026-10-05): the in-app half is built. The Google step says
+  Google is still checking Pressless while `google_signin.APPROVED` is
+  false; set it true once Google approves and the notice goes. Test:
+  test_the_page_says_while_google_has_not_approved_pressless. Still owed:
+  the privacy-policy page and the verification request itself, which
+  need the user's Google Cloud console.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.

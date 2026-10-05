@@ -155,10 +155,17 @@ def _show(state: _State, hint: str = "") -> str:
             + "<p>Pressless can show how many people read your site, and from which "
               "countries, by reading them from Google Analytics. This is optional: "
               "without it, only the visitor numbers are missing.</p>"
-            + "<p>Google will say it has not verified this app. Pressless only reads "
-              "your visitor numbers. To carry on, click <strong>Advanced</strong>, then "
-              "<strong>Go to Pressless</strong>.</p>"
+            + _pending()
             + _button("/start", "Sign in with Google") + back)
+
+
+def _pending() -> str:
+    """Google's unverified-app warning, explained while its review runs (PRESS-0200)."""
+    if google_signin.APPROVED:
+        return ""
+    return ("<p>Google is still checking Pressless, so it will say it has not verified "
+            "this app. Pressless only reads your visitor numbers. To carry on, click "
+            "<strong>Advanced</strong>, then <strong>Go to Pressless</strong>.</p>")
 
 
 def _button(action: str, label: str) -> str:

@@ -35,6 +35,10 @@ except ImportError:  # a development checkout, before write_google_secret.py run
 # The registered Desktop client (§ 4.6). An id, not a secret: it ships in the
 # program by design. Its secret comes from `_google_secret`, above.
 CLIENT_ID = "407838712240-ioic610gg2obnav839qe4pdk07ar1gki.apps.googleusercontent.com"
+# Whether Google has finished verifying the client (PRESS-0200). Until it
+# has, the Google step says the review is pending and how to get past the
+# unverified-app warning.
+APPROVED = False
 SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 -- an address, not a secret

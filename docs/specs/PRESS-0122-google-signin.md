@@ -231,6 +231,8 @@ replaces the held token and an off drops it.
 The warning before sign-in says, in his words: Google will say it has not
 verified this app; Pressless only reads visitor numbers; to carry on, click
 Advanced and then Go to Pressless. The exact words are the implementer's.
+It also says Google is still checking Pressless, and it shows only while
+`google_signin.APPROVED` is false (PRESS-0200).
 
 ### 4.3 The return from Google
 
