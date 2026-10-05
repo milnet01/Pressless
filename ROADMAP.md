@@ -3657,6 +3657,46 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-05.
   Lanes: Face, Setup.
 
+- ✅ [PRESS-0229] **The Pages step tells him to re-point a repository that already serves a site another way.**
+  Found in the by-hand run: the user picked an existing public
+  repository whose Pages is built by a GitHub Actions workflow
+  (build_type "workflow") with a custom domain. The Pages step refused
+  correctly and wrote nothing, but its hint says to choose Deploy from a
+  branch, main and / (root). Following it would stop that site being
+  built. Where Pages is on and its build_type is "workflow", or it
+  already carries a custom domain, the hint should say the repository
+  already publishes a site another way and send him back to choose a
+  different repository, never to re-point it.
+  Shipped 2026-10-05: _ELSEWHERE now says the repository already puts a site
+  on the web another way and to choose a different, new repository, and
+  never to change its Pages settings. PRESS-0212 § 4.4 amended to match;
+  review not run, by the user's choice. INV-8's test asserts the new hint
+  and the old advice's absence.
+  **Layman:** If the repository you pick already publishes a website some other way, setup tells you to change its settings, which would take that website offline; it should tell you to pick another repository instead.
+  Kind: fix.
+  Source: by-hand run of PRESS-0212 § 7, 2026-10-05.
+  Lanes: Setup.
+
+- ✅ [PRESS-0230] **The key instructions omit Administration, so Pressless can never switch Pages on.**
+  Found in the by-hand run: a key made exactly as the wizard says
+  (Contents and Pages, Read and write) wrote .nojekyll, then POST
+  /repos/{owner}/{repo}/pages answered as refused. GitHub's permission
+  reference lists that endpoint under BOTH Administration (write) and
+  Pages (write). The user chose 2026-10-05 to ask for Administration
+  rather than have him switch Pages on by hand, accepting that the key
+  can then delete or hide the repository. Fix the shared key steps
+  (_NEW_KEY), the _NO_PAGES_WRITE hint, and the Settings help's "and
+  nothing else", which stops being true.
+  Shipped 2026-10-05: the shared key steps set Contents, Pages and
+  Administration to Read and write; _NO_PAGES_WRITE and the Settings key
+  help say so, and the help no longer claims "nothing else". PRESS-0212
+  § 4.4 amended; review not run, by the user's choice. Proved by hand: the
+  same key, given Administration, switched Pages on in the 2026-10-05 run.
+  **Layman:** The steps for making the GitHub key leave out one permission, so setup always stops at "switch the site on" even when you followed them exactly.
+  Kind: fix.
+  Source: by-hand run of PRESS-0212 § 7, 2026-10-05.
+  Lanes: Setup.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -3671,6 +3711,11 @@ removed, and the menu follows.
   holds that no section fits stays editable as code, as WordPress's
   custom-HTML block does. Needs a spec: it replaces how a page is held
   and edited (PRESS-0014).
+  2026-10-05: the user asked for syntax highlighting in the code box
+  (HTML, and the stylesheet's CSS). It belongs to this item's code editor
+  rather than to today's plain textarea, which this item replaces. The
+  Face's policy allows only its own scripts, so a highlighter is bundled
+  or written here, never loaded from elsewhere.
   **Layman:** They build and change any page, the homepage included, by working on the page as it will look, adding ready-made sections; the code is there for anyone who wants it.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -3855,6 +3900,13 @@ it can then be changed.
   site in from there. Where the repository carries Pressless's
   content/, that is the Store; otherwise its pages come in as
   PRESS-0210 brings in a folder of web pages.
+  2026-10-05, from the PRESS-0212 by-hand run: cover a repository
+  whose Pages is built by a GitHub Actions workflow, often with a custom
+  domain. The wizard meets it today and, after PRESS-0229, sends him to
+  another repository. Taking such a site in means Pressless replacing
+  that build, so the switch, and keeping the custom domain, are this
+  item's to design. The user asked 2026-10-05 that existing sites be
+  onboardable as well as new ones.
   **Layman:** Someone whose site is already on GitHub, the first writer included, just points Pressless at it and carries on from there.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.

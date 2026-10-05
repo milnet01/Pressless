@@ -59,8 +59,9 @@ _HINTS = {
 def _new_repository(account: str) -> str:
     """How to make the repository, for the wizard's step and Settings' help.
     `account` is already escaped."""
-    return ("<ol><li>On GitHub, click the <b>+</b> at the top right, then "
-            "<b>New repository</b>.</li>"
+    return ("<ol><li>Open <a href=\"https://github.com/new\" target=\"_blank\" "
+            "rel=\"noopener\">github.com/new</a>. Or, on GitHub, click the <b>+</b> at "
+            "the top right, then <b>New repository</b>.</li>"
             f"<li>Under <b>Repository name</b>, type <b>{account}.github.io</b>. Your "
             f"site's address is then https://{account}.github.io. Any other name works "
             f"too, and gives https://{account}.github.io/<i>the-name</i>/.</li>"
@@ -79,8 +80,9 @@ _NEW_KEY = (
     "into Settings.</li>"
     "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b>, "
     "then your site's repository.</li>"
-    "<li>Under <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and "
-    "write</b>, and <b>Pages</b> to <b>Read and write</b>.</li>"
+    "<li>Under <b>Repository permissions</b>, set <b>Contents</b>, <b>Pages</b> and "
+    "<b>Administration</b> each to <b>Read and write</b>. Pressless needs "
+    "Administration to switch your site on (PRESS-0230).</li>"
     "<li>Click <b>Generate token</b>, then copy it. GitHub shows it only once.</li></ol>")
 
 # Settings' "?" beside each box (PRESS-0228): where the answer comes from.
@@ -123,9 +125,9 @@ _SETTINGS_HELP = {
         "stream</b>, then <b>Web</b>, and type your site's address.</li>"
         "<li>Copy the <b>Measurement ID</b>. It starts G-.</li></ol>"),
     "key": (
-        "<p>The key lets Pressless change your site's repository, and nothing "
-        "else. Leave the box empty to keep the key Pressless already has. To make "
-        "a new one:</p>" + _NEW_KEY),
+        "<p>The key lets Pressless change your site's repository and its "
+        "settings, and no other repository. Leave the box empty to keep the key "
+        "Pressless already has. To make a new one:</p>" + _NEW_KEY),
 }
 
 _NO_SUCH_REPOSITORY = (
@@ -164,9 +166,18 @@ def register(face: Face, folder: Path, *,
     def change(request: Request) -> str:
         return _shortcuts(face, shortcut_places(), request)
 
+    face.add_to_list(lambda: _unpublished_starter(folder), above=True)
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
     face.add_page("POST", SHORTCUTS, change)
+
+
+def _unpublished_starter(folder: Path) -> str:
+    """Above the list until the starter site is first published."""
+    if not starter.unpublished(folder):
+        return ""
+    return ('<p id="starter-unpublished">Your starter site is not on the web yet. '
+            + _PUBLISH_STARTER.removeprefix("<p>"))
 
 
 def _setup(face: Face, folder: Path, request: Request,
@@ -460,6 +471,12 @@ def _starter_box(start: bool | None) -> str:
               "that needs an empty copy of Pressless.</p>")
 
 
+# How a starter site first reaches the web: there is no Publish on the list.
+_PUBLISH_STARTER = ("<p>To put it on the web, open <b>Home</b> under <b>Your pages</b> "
+                    "on your list, and press <b>Press to site</b>.</p>")
+_ONWARD = '<p><a href="/">Go to your list</a></p>'
+
+
 def _done(final: settings.Settings, choice: credentials.Choice | None,
           filled: bool = False) -> str:
     e = html.escape
@@ -477,9 +494,9 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
                 "file only your account can read, in the Pressless-data folder.</p>"
             )
     started = ("<p>Your starter site is in place. It is not on the web until you "
-               "publish it.</p>" if filled else "")
+               "publish it.</p>" + _PUBLISH_STARTER if filled else "")
     return ("<h1>Setup is done.</h1>" + started + left_alone + stored
-            + _google_link(_google_on(final)))
+            + _google_link(_google_on(final)) + _ONWARD)
 
 
 def _google_on(saved: settings.Settings | None) -> bool:
@@ -573,13 +590,13 @@ _KEY_NOT_GRANTED = ("This key cannot reach that repository. On GitHub, edit the 
 _NO_PAGES_READ = ("This key cannot see GitHub Pages. On GitHub, edit the key and set "
                   "Pages to Read and write under Repository permissions.")
 _NO_PAGES_WRITE = ("This key cannot switch GitHub Pages on. On GitHub, edit the key and "
-                   "set Pages to Read and write under Repository permissions, then press "
-                   "Next again.")
-_ELSEWHERE = ("GitHub Pages is on, but it serves something other than your repository's "
-              "main branch, so it would never show what Pressless publishes. On GitHub, "
-              "open your repository's Settings, then Pages. Under Build and deployment, "
-              "choose Deploy from a branch, your main branch, and / (root), and press "
-              "Save. Then press Next again.")
+                   "set Pages and Administration to Read and write under Repository "
+                   "permissions, then press Next again.")
+# PRESS-0229: never advice to re-point Pages, which would take that site offline.
+_ELSEWHERE = ("This repository already puts a site on the web another way, so Pressless "
+              "cannot publish to it. Press Back and choose a different, new repository. "
+              "Leave this one's GitHub Pages settings as they are: changing them would "
+              "take the site already there offline.")
 
 
 def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport | None,
@@ -763,8 +780,8 @@ def _show_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
 def _show_key(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     kept = ("<p>Pressless already has the key you gave it. Leave the box empty to "
             "keep it, or paste a new one.</p>" if answers.get("store") else "")
-    return ("<p>Pressless needs a key that lets it change your site, and nothing "
-            "else. Make one:</p>" + _NEW_KEY + kept
+    return ("<p>Pressless needs a key that reaches your site's repository and no "
+            "other. Make one:</p>" + _NEW_KEY + kept
             + wizard.field("key", "Paste the key here", answers, hint, "password")
             + "<p>Pressless keeps the key in your computer's own safe store, never in a "
               "file it shows anyone.</p>")

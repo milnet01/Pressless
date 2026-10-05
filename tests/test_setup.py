@@ -25,6 +25,7 @@ from _face_session import Browser
 from pressless import (
     builder,
     credentials,
+    editor,
     face,
     publisher,
     settings,
@@ -845,6 +846,36 @@ def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
     assert setup._NEW_KEY in page and setup._NEW_KEY in setup._show_key({}, None)
 
 
+def test_the_key_steps_ask_for_administration(tmp_path, monkeypatch):
+    """PRESS-0230: GitHub switches Pages on only for a key with Administration
+    write, so the wizard's key step, Settings' help and the refusal name it."""
+    assert "<b>Administration</b>" in setup._show_key({}, None)
+    assert "<b>Administration</b>" in setup._SETTINGS_HELP["key"]
+    assert "Administration" in setup._NO_PAGES_WRITE
+
+
+def test_a_finished_setup_says_how_to_publish_the_starter(tmp_path, monkeypatch):
+    """The done page leads on to the list and says how the starter site first
+    reaches the web; the list says so too, until the first publish."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        done = _first_run(browser, start="starter")
+    assert "Setup is done." in done and starter.unpublished(tmp_path)
+    assert '<a href="/">Go to your list</a>' in done
+    assert "<b>Press to site</b>" in done
+
+    served = face.serve(tmp_path)
+    try:
+        setup.register(served, tmp_path, transport=_GitHub())
+        editor.register(served, tmp_path)
+        browser = Browser(served)
+        assert 'id="starter-unpublished"' in browser.request("GET", "/")[2]
+        starter.published(tmp_path)
+        assert 'id="starter-unpublished"' not in browser.request("GET", "/")[2]
+    finally:
+        served.stop()
+
+
 def test_a_development_run_offers_no_shortcuts(tmp_path, monkeypatch):
     _Store(monkeypatch)
     _saved(tmp_path)
@@ -994,7 +1025,9 @@ def test_pages_is_left_as_github_has_it(tmp_path, monkeypatch):
         if moved:
             assert ADDRESS in after, state
         else:
-            assert "Deploy from a branch" in after, state
+            # PRESS-0229: sent elsewhere, never told to re-point a live site.
+            assert "choose a different, new repository" in after, state
+            assert "Deploy from a branch" not in after, state
 
 
 def test_setup_writes_only_what_pages_needs(tmp_path, monkeypatch):

@@ -42,20 +42,20 @@ _FOOTER = """<!-- The site's footer: every page is built with it. -->
 _PAGE = """<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title}</title>
-<link rel="stylesheet" href="{up}look/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <link rel="stylesheet" href="{up}look/style.css">
 </head>
 <body>
-<!-- HEADER:START page="{page}" -->
-<!-- HEADER:END -->
-<main class="page">
-<h1>{heading}</h1>
-<p>{words}</p>
-</main>
-<!-- FOOTER:START -->
-<!-- FOOTER:END -->
+  <!-- HEADER:START page="{page}" -->
+  <!-- HEADER:END -->
+  <main class="page">
+    <h1>{heading}</h1>
+    <p>{words}</p>
+  </main>
+  <!-- FOOTER:START -->
+  <!-- FOOTER:END -->
 </body>
 </html>
 """
@@ -105,32 +105,32 @@ img { max-width: 100%; height: auto; }
 _PRIVACY = """<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy — {name}</title>
-{links}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy — {name}</title>
+  {links}
 </head>
 <body>
-<!-- HEADER:START page="privacy" -->
-<!-- HEADER:END -->
-<main class="page">
-<h1>Privacy</h1>
-<p>This site counts its visits with Google Analytics, a service run by Google.
-Google Analytics uses cookies, small files your browser keeps, to tell one
-visit from another.</p>
-<p>What is counted: the pages read, the country and region a visit comes
-from, and the kind of device and browser used. The counts are used only to
-see how the site is read.</p>
-<p>Google's own privacy policy says what Google does with this information:
-<a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.
-To stop Google Analytics counting your visits to any site, you can install
-Google's <a href="https://tools.google.com/dlpage/gaoptout">opt-out browser
-add-on</a>.</p>
-<p>Questions about your information: replace this sentence with how to reach
-the person who runs this site.</p>
-</main>
-<!-- FOOTER:START -->
-<!-- FOOTER:END -->
+  <!-- HEADER:START page="privacy" -->
+  <!-- HEADER:END -->
+  <main class="page">
+    <h1>Privacy</h1>
+    <p>This site counts its visits with Google Analytics, a service run by Google.
+    Google Analytics uses cookies, small files your browser keeps, to tell one
+    visit from another.</p>
+    <p>What is counted: the pages read, the country and region a visit comes
+    from, and the kind of device and browser used. The counts are used only to
+    see how the site is read.</p>
+    <p>Google's own privacy policy says what Google does with this information:
+    <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.
+    To stop Google Analytics counting your visits to any site, you can install
+    Google's <a href="https://tools.google.com/dlpage/gaoptout">opt-out browser
+    add-on</a>.</p>
+    <p>Questions about your information: replace this sentence with how to reach
+    the person who runs this site.</p>
+  </main>
+  <!-- FOOTER:START -->
+  <!-- FOOTER:END -->
 </body>
 </html>
 """
@@ -141,7 +141,7 @@ _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
 
 def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
     """The Privacy page, linking each stylesheet from depth 1."""
-    links = "\n".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
+    links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
                       for sheet in sheets)
     return _PRIVACY.format(name=html.escape(site_name, quote=True), links=links)
 

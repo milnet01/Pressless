@@ -203,7 +203,7 @@ follow them on GitHub's pages.
 | *welcome* | none | what the wizard does, what is needed (an email address), and that it can be left and resumed | none |
 | *account* | `account` | how to make a free GitHub account, step by step, with the sign-up link | `publisher.account_exists(account)` |
 | *repository* | `repository` | how to make a **Public** repository, and the naming advice of § 3 decision 7 | `publisher.public_repository("account/repository")` |
-| *key* | `key` | how to make a fine-grained key: only that repository; Contents **Read and write**; Pages **Read and write** | the key sequence below |
+| *key* | `key` | how to make a fine-grained key: only that repository; Contents, Pages and Administration **Read and write** | the key sequence below |
 | *pages* | none | whether Pages is on, and the address | the Pages sequence below |
 | *site* | `site_name`, `start` | the site's name, the address found, and PRESS-0126's starter box where it is offered | the save sequence below |
 
@@ -249,13 +249,14 @@ field (§ 4.1).
 - **On, serving the default branch's root by a branch build**: Pages is left
   as GitHub has it. No write is sent.
 - **On, serving anything else** — another branch, `/docs`, or a workflow
-  build: a `Hint` saying what Pages serves now and how to set it, in
-  GitHub's words, to deploy from the default branch's root. Pressless
-  publishes there and nowhere else, so a site served from elsewhere would
-  never show what he publishes. Pressless does not change it: a site already
-  on is his.
+  build: a `Hint` saying this repository already puts a site on the web
+  another way, and to go Back and choose another repository (PRESS-0229).
+  Pressless publishes to the default branch's root and nowhere else, so it
+  cannot publish there. It never changes Pages, and never tells him to:
+  re-pointing it would take the site already there offline.
 - **Off**: `publisher.switch_pages_on(repository, key)`. A `Refused` is a
-  `Hint` saying the key lacks Pages **write**, and how to edit it.
+  `Hint` saying the key lacks Pages or Administration **write**, and how to
+  edit it.
 - Any other `PublishError` is a `Stop` through `Face.fail`.
 
 Pages on, the answers gain `site_address`, GitHub's `html_url`. It must pass
@@ -318,7 +319,9 @@ def switch_pages_on(repository: str, token: str,
   (`docs/design.md` § Logging).
 
 GitHub's documentation for these: Pages read needs the fine-grained
-permission Pages read, and `POST .../pages` needs Pages write.
+permission Pages read, and `POST .../pages` needs both Pages write and
+Administration write (PRESS-0230: a key without Administration was refused
+in the 2026-10-05 by-hand run).
 Source: https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens
 
 **Why `.nojekyll`.** A branch build runs Jekyll unless the root holds

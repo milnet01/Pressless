@@ -64,6 +64,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Setup links straight to github.com/new, the done page leads on to the list and says how to publish the starter site, the list says so until the first publish, and the starter site's pages are indented.**
+
 - **Every file Pressless saves whole now goes through one shared routine** (PRESS-0141)
   The safe-save steps were copied into each module that saves a file;
   there is now one copy. On Windows the visitor-numbers cache, the theme
@@ -76,6 +78,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   offering them as if for the first time.
 
 ### Fixed
+
+- **Setup's key steps ask for Administration too, without which GitHub refused to switch the site on.** (PRESS-0230)
+
+- **Setup no longer advises changing a repository that already publishes a site another way; it asks for a different repository.** (PRESS-0229)
 
 - **The practice copy stops tidily when it is told to stop twice** (PRESS-0208)
   When the local web-server manager stopped the practice copy, a
