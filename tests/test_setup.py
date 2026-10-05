@@ -1203,7 +1203,7 @@ DEVICE_CODE = "plain-device-code"
 USER_CODE = "WDJB-MJHT"
 FIRST_ACCESS = "ghu_plain-first-access"
 FIRST_REFRESH = "ghr_plain-first-refresh"
-INSTALLATION = "/user/installations/7/repositories/99"
+REACHED = "/user/installations/7/repositories"
 
 
 class _Clock:
@@ -1223,15 +1223,18 @@ class _SignInGitHub(_GitHub):
     what already holds the repository's name: None, "empty" or "full"; a
     repository Pressless makes is empty. `lose_create` makes the first create
     succeed on GitHub and lose its answer. `refuse_refresh` refuses every
-    renewal of the pass.
+    renewal of the pass. `reached` is whether a `selected` installation lists
+    owner/owner.github.io, as it does once the person has added it there.
     """
 
     def __init__(self, *, polls: tuple[str, ...] = ("tokens",),
                  selection: str | None = "selected", taken: str | None = None,
-                 lose_create: bool = False, refuse_refresh: bool = False, **kwargs) -> None:
+                 lose_create: bool = False, refuse_refresh: bool = False,
+                 reached: bool = True, **kwargs) -> None:
         super().__init__(**kwargs)
         self.polls = list(polls)
         self.selection = selection
+        self.reached = reached
         self.taken = taken
         self.lose_create = lose_create
         self.refuse_refresh = refuse_refresh
@@ -1245,6 +1248,11 @@ class _SignInGitHub(_GitHub):
         if method == "GET" and path == "/user":
             self.calls.append((method, url, headers.get("Authorization", "")))
             return 200, {}, b'{"login": "owner"}'
+        if method == "GET" and path.startswith(REACHED):
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            listed = [{"full_name": "owner/owner.github.io"}] if self.reached else []
+            return 200, {}, json.dumps({"total_count": len(listed),
+                                        "repositories": listed}).encode()
         if method == "GET" and path.startswith("/user/installations"):
             self.calls.append((method, url, headers.get("Authorization", "")))
             found = [] if self.selection is None else [
@@ -1261,9 +1269,6 @@ class _SignInGitHub(_GitHub):
                 self.lose_create = False
                 raise OSError("the answer was lost")
             return 201, {}, b'{"full_name": "owner/owner.github.io"}'
-        if method == "PUT" and path == INSTALLATION:
-            self.calls.append((method, url, headers.get("Authorization", "")))
-            return 204, {}, b""
         if method == "GET" and path == "/repos/owner/owner.github.io":
             self.calls.append((method, url, headers.get("Authorization", "")))
             return 200, {}, b'{"id": 99, "default_branch": "main", "private": false}'
@@ -1437,11 +1442,11 @@ def test_a_second_press_finds_the_first_repository(tmp_path, monkeypatch):
     assert github.sent_to("/user/repos") == 2
 
 
-def test_the_new_repository_is_included(tmp_path, monkeypatch):
-    """INV-8. Breaks when the PUT is skipped for `selected`, so the pages step
-    meets a 404."""
+def test_the_new_repository_is_reached(tmp_path, monkeypatch):
+    """INV-8. Breaks when the repository step moves on while the app cannot
+    reach the new repository, so the pages step meets a 404."""
     _app(monkeypatch)
-    for selection, included in (("selected", True), ("all", False)):
+    for selection, chosen in (("selected", True), ("all", False)):
         folder = tmp_path / selection
         folder.mkdir()
         _Store(monkeypatch, saved_key=FIRST_REFRESH)
@@ -1449,9 +1454,23 @@ def test_the_new_repository_is_included(tmp_path, monkeypatch):
         with _setup_page(folder, github, clock=_Clock()) as browser:
             _, done = _walk(browser)
         assert "Setup is done." in done, selection
-        assert (("PUT", INSTALLATION) in github.writes()) is included, selection
+        assert (github.sent_to(f"{REACHED}?per_page=100") > 0) is chosen, selection
         # Where the app reaches every repository, the done page says how to narrow it.
-        assert ("Only select repositories" in done) is not included, selection
+        assert ("Only select repositories" in done) is not chosen, selection
+
+    folder = tmp_path / "unreached"
+    folder.mkdir()
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(reached=False, pages="off")
+    with _setup_page(folder, github, clock=_Clock()) as browser:
+        _, page = _walk(browser, until="repository")
+        held = _next(browser, page)
+        assert _step(held) == "repository"
+        assert "Select repositories" in held and "owner.github.io" in held
+        github.reached = True       # the person adds it on GitHub's page
+        after = _next(browser, held)
+    assert _step(after) == "pages"
+    assert all(method != "PUT" for method, _url, _auth in github.calls)
 
 
 def test_signed_in_setup_writes_only_what_it_needs(tmp_path, monkeypatch):
@@ -1464,7 +1483,6 @@ def test_signed_in_setup_writes_only_what_it_needs(tmp_path, monkeypatch):
     assert "Setup is done." in done
     assert [write for write in github.writes() if write[1].startswith("/")] == [
         ("POST", "/user/repos"),
-        ("PUT", INSTALLATION),
         ("PUT", "/repos/owner/owner.github.io/contents/.nojekyll"),
         ("POST", "/repos/owner/owner.github.io/pages"),
     ]

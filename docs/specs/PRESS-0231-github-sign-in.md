@@ -117,8 +117,8 @@ def refresh(refresh_token: str, transport=None) -> Tokens: ...
 def login(token: str, transport=None) -> str: ...
 def installation(token: str, login: str, transport=None) -> Installation | None: ...
 def create_repository(token: str, name: str, transport=None) -> bool: ...
-def include(token: str, installation: Installation, repository: str,
-            transport=None) -> None: ...
+def reaches(token: str, installation: Installation, repository: str,
+            transport=None) -> bool: ...
 ```
 
 - `begin` POSTs `client_id` to `https://github.com/login/device/code`.
@@ -137,10 +137,10 @@ def include(token: str, installation: Installation, repository: str,
 - `create_repository` POSTs `{"name": name, "private": false}` to
   `/user/repos` and returns `True`. A 422 is `False`: the name is taken in
   this account.
-- `include`, where `installation.all_repositories` is false, reads the
-  repository's `id` with `GET /repos/{owner}/{name}` and sends
-  `PUT /user/installations/{installation.id}/repositories/{id}`. Otherwise
-  it sends nothing.
+- `reaches`, where `installation.all_repositories` is false, reads
+  `GET /user/installations/{installation.id}/repositories?per_page=100` and
+  answers whether a `full_name` there equals `repository`, ignoring case.
+  Otherwise it sends nothing and answers `True`.
   Source: https://docs.github.com/en/rest/apps/installations
 - **No device code, access token or refresh token reaches a message.** Each
   failure's text has them replaced, as `google_signin._scrub` does for
@@ -151,7 +151,12 @@ flow enabled, no webhook, and the repository permissions Contents, Pages and
 Administration **Read and write**. GitHub's permission list also names
 Repository creation for `POST /user/repos`; the registration form does not
 offer it, and § 7's by-hand run of 2026-10-05 created a repository without
-it. `docs/working-here.md` gains the steps, as it has
+it. Adding a repository to an installation needs GitHub App installation
+repository access, which the form does not offer either. That run's PUT was
+refused, and GitHub had already added the repository Pressless made to an
+installation reaching chosen repositories. Where it has not, the person adds
+it (§ 4.3). `docs/working-here.md` gains the
+steps, as it has
 Google's. Until both constants are filled, `available()` is false.
 Source: https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps
 
@@ -240,7 +245,9 @@ repository rule, or the hint asks for the name alone, as PRESS-0212's
    new one: a Next after a lost answer finds what the first press made. Any
    other is a `Hint`: a repository by that name already exists, choose
    another name. Nothing is written to it.
-3. `include`, with `installation` read again.
+3. `reaches`, with `installation` read again. `False` is a `Hint` naming
+   GitHub's clicks to add the repository to Pressless App, by name; the next
+   press runs steps 1 to 3 again.
 
 The *pages* step then gives an empty repository `.nojekyll` as its first
 commit, as PRESS-0212 § 4.5 already does. Where the answers'
@@ -319,15 +326,17 @@ push gate's secret scanner does not mistake them.
   *Breaks when:* the 422 is always a `Hint`, so a dropped answer strands the
   person.
 
-- **INV-8** — The new repository is in the installation. With
-  `repository_selection` `selected`, `include` sends the PUT; with `all`, it
-  sends nothing.
-  *Test:* `test_the_new_repository_is_included`, both selections.
-  *Breaks when:* the PUT is skipped for `selected`, so the *pages* step meets
-  a 404.
+- **INV-8** — The *repository* step moves on only once the app reaches the
+  new repository. With `repository_selection` `selected`, `reaches` reads the
+  installation's repositories, and a repository missing there is a `Hint`;
+  with `all`, nothing is sent.
+  *Test:* `test_the_new_repository_is_reached`, both selections and a
+  repository added after the hint.
+  *Breaks when:* the step moves on regardless, so the *pages* step meets a
+  404.
 
-- **INV-9** — Setup's GitHub writes with sign-in are `POST /user/repos`, the
-  PUT of INV-8 where it applies, and then PRESS-0212 INV-9's two. No request
+- **INV-9** — Setup's GitHub writes with sign-in are `POST /user/repos`, and
+  then PRESS-0212 INV-9's two. No request
   is a DELETE.
   *Test:* `test_signed_in_setup_writes_only_what_it_needs`, walking the whole
   wizard against the recording transport and asserting the method and path
@@ -441,7 +450,7 @@ publish again, and record what is shown. CI cannot reach GitHub.
 | INV-5 | `tests/test_setup.py::test_an_expired_code_is_replaced` |
 | INV-6 | `tests/test_setup.py::test_a_taken_name_is_left_alone` |
 | INV-7 | `tests/test_setup.py::test_a_second_press_finds_the_first_repository` |
-| INV-8 | `tests/test_setup.py::test_the_new_repository_is_included` |
+| INV-8 | `tests/test_setup.py::test_the_new_repository_is_reached` |
 | INV-9 | `tests/test_setup.py::test_signed_in_setup_writes_only_what_it_needs` |
 | INV-10 | `tests/test_setup.py::test_the_steps_follow_the_registration` |
 | INV-11 | `tests/test_github_setup.py::test_a_lapsed_sign_in_says_sign_in_again` |

@@ -642,6 +642,15 @@ _NOT_INSTALLED = ("GitHub shows no Pressless app installed on your account yet. 
                   "the steps above, then press Next again.")
 _TAKEN = ("A repository by that name already exists in your account. Choose another "
           "name.")
+
+
+def _add_to_app(repository: str) -> str:
+    """The repository step's hint where the app reaches chosen repositories
+    and not this one. A hint is text, escaped where it is shown."""
+    return ("Pressless made the repository, but the Pressless app cannot reach it yet. "
+            "On GitHub, click your picture, then Settings, then Applications. Click "
+            "Configure beside Pressless App, click Select repositories, pick "
+            f"{repository.partition('/')[2]}, and click Save. Then press Next again.")
 _APP_CANNOT_REACH = ("The Pressless app cannot reach this repository. On GitHub, click "
                      "your picture, then Settings, then Applications, and check that "
                      "Pressless App's installation includes it. Then press Next "
@@ -872,7 +881,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             found = github_signin.installation(key, answers.get("account", ""), transport)
             if found is None:
                 return wizard.Hint("", _NOT_INSTALLED)
-            github_signin.include(key, found, name, transport)
+            if not github_signin.reaches(key, found, name, transport):
+                return wizard.Hint("", _add_to_app(name))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
@@ -959,7 +969,9 @@ def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
             "chosen. Pressless makes your site's repository next, and at the end "
             "tells you how to let the app reach only that one.</li>"
             "<li>Click <b>Install</b>, then come back here and press <b>Next</b>.</li>"
-            "</ol>")
+            "</ol><p>If GitHub shows Pressless App's settings instead, with no "
+            "<b>Install</b> button, the app is already installed. Come back here and "
+            "press <b>Next</b>.</p>")
 
 
 def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:

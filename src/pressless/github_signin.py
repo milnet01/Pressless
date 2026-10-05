@@ -160,20 +160,19 @@ def create_repository(token: str, name: str, transport: Transport | None = None)
     return status != 422
 
 
-def include(token: str, installation: Installation, repository: str,
-            transport: Transport | None = None) -> None:
-    """Add `owner/name` to the installation, where it reaches chosen
-    repositories only. Where it reaches them all, nothing is sent."""
+def reaches(token: str, installation: Installation, repository: str,
+            transport: Transport | None = None) -> bool:
+    """Whether the installation reaches `owner/name`. Where it reaches every
+    repository, nothing is sent. GitHub added the repository Pressless made
+    on the 2026-10-05 run; adding one needs a permission the registration
+    form does not offer, so where it has not, the person does (§ 4.1)."""
     if installation.all_repositories:
-        return
-    owner, _, name = repository.partition("/")
+        return True
     answer = _api(transport, "GET",
-                  f"/repos/{publisher._segment(owner)}/{publisher._segment(name)}", token)[1]
-    number = answer.get("id")
-    if not isinstance(number, int) or isinstance(number, bool):
-        raise PublishError("GitHub's answer does not name the repository's id")
-    _api(transport, "PUT", f"/user/installations/{installation.id}/repositories/{number}",
-         token)
+                  f"/user/installations/{installation.id}/repositories?per_page=100", token)[1]
+    wanted = repository.casefold()
+    return any(isinstance(found, dict) and str(found.get("full_name", "")).casefold() == wanted
+               for found in answer.get("repositories") or ())
 
 
 def _form(transport: Transport | None, url: str, fields: dict[str, str], *,

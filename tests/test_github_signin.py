@@ -177,13 +177,16 @@ def test_create_repository_makes_a_public_one():
         github_signin.create_repository(ACCESS, "site", _GitHub((403, {"message": "no"})))
 
 
-def test_include_adds_the_repository_where_the_selection_is_chosen():
-    github = _GitHub((200, {"id": 99, "default_branch": "main"}), (204, b""))
-    github_signin.include(ACCESS, github_signin.Installation(7, False), "owner/site", github)
+def test_reaches_reads_the_installations_repositories_where_they_are_chosen():
+    listed = {"total_count": 1, "repositories": [{"full_name": "Owner/Site"}]}
+    chosen = github_signin.Installation(7, False)
+    github = _GitHub((200, listed))
+    assert github_signin.reaches(ACCESS, chosen, "owner/site", github) is True
     assert [(m, u) for m, u, _b, _h in github.sent] == [
-        ("GET", f"{publisher.API}/repos/owner/site"),
-        ("PUT", f"{publisher.API}/user/installations/7/repositories/99"),
+        ("GET", f"{publisher.API}/user/installations/7/repositories?per_page=100"),
     ]
+    assert github_signin.reaches(ACCESS, chosen, "owner/other", _GitHub((200, listed))) is False
     every = _GitHub()
-    github_signin.include(ACCESS, github_signin.Installation(7, True), "owner/site", every)
+    assert github_signin.reaches(ACCESS, github_signin.Installation(7, True), "owner/site",
+                                 every) is True
     assert every.sent == []
