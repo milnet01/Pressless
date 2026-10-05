@@ -3554,42 +3554,7 @@ it decides how pages, the menu and the look are held.
   Source: user request 2026-10-02.
   Lanes: Face, Launcher.
 
-- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
-  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
-  browser is closed the only way back is the console window, and the
-  opening link is spent, so reopening means a restart. A tray icon would
-  offer open, restart and quit. Must work on Windows and Linux (Windows
-  parity is the priority), and adds a dependency and packaging work.
-  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
-  Recommendation for the user (2026-10-02), not yet asked: leave the tray
-  icon until after 1.0. Why: it adds a dependency and packaging work on
-  both systems, the user called it a "perhaps", and PRESS-0203's Restart
-  covers the most common need.
-  Settled 2026-10-03: the user said to go ahead with the
-  recommendations. The tray icon waits until after 1.0; move it out of
-  0.8.0 when next touching the section.
-  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher, Package.
-
-- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
-  Asked for by the user 2026-10-02. LWSM (the user's local web-server
-  manager) manages every app that runs a web server: start, stop,
-  restart, and open the page in the browser of choice. Where LWSM runs
-  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
-  open: LWSM sets PORT in the environment it starts Pressless with
-  (PRESS-0202 records its contract), which is one candidate signal.
-  Depends on PRESS-0204.
-  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
-  this item applies on Linux only. On Windows the tray icon always shows
-  as PRESS-0204 has it, and the check need not run there.
-  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher.
-
-- 🚧 [PRESS-0220] **Wizards walk him through the rare tasks that take many steps, one step per screen.**
+- ✅ [PRESS-0220] **Wizards walk him through the rare tasks that take many steps, one step per screen.**
   The user asked for wizards on 2026-10-03 and left the choice of tasks
   to Claude.
 
@@ -3627,6 +3592,10 @@ it decides how pages, the menu and the look are held.
   User 2026-10-05: first-run setup stays a full page; every other wizard
   opens as a modal dialog over the page it starts from, sleek and modern.
   The Settings help (PRESS-0228) is the dialog pattern to build on.
+  Shipped 2026-10-05 with PRESS-0212, whose by-hand run passed on Linux
+  and the Windows box: the shared pattern and the setup wizard are both
+  in. The per-step manual link still waits for PRESS-0219 (1.0.0); the
+  other wizards, as modal dialogs, are built with their own items.
   **Layman:** For the few jobs that take many steps and are done once in a while, Pressless guides you one screen at a time, so you never have to remember what comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -9924,6 +9893,41 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face, publisher.
+
+- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
+  browser is closed the only way back is the console window, and the
+  opening link is spent, so reopening means a restart. A tray icon would
+  offer open, restart and quit. Must work on Windows and Linux (Windows
+  parity is the priority), and adds a dependency and packaging work.
+  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  Recommendation for the user (2026-10-02), not yet asked: leave the tray
+  icon until after 1.0. Why: it adds a dependency and packaging work on
+  both systems, the user called it a "perhaps", and PRESS-0203's Restart
+  covers the most common need.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. The tray icon waits until after 1.0; move it out of
+  0.8.0 when next touching the section.
+  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher, Package.
+
+- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+  Asked for by the user 2026-10-02. LWSM (the user's local web-server
+  manager) manages every app that runs a web server: start, stop,
+  restart, and open the page in the browser of choice. Where LWSM runs
+  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
+  open: LWSM sets PORT in the environment it starts Pressless with
+  (PRESS-0202 records its contract), which is one candidate signal.
+  Depends on PRESS-0204.
+  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
+  this item applies on Linux only. On Windows the tray icon always shows
+  as PRESS-0204 has it, and the check need not run there.
+  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher.
 
 ## Milestones
 
