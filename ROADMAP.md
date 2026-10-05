@@ -3776,6 +3776,9 @@ it decides how pages, the menu and the look are held.
   links the site, not the page just published: an entry's address
   depends on its date and on the journal being on. Owed: a look at the
   published note's link in a browser, on PRESS-0231's packaged-build run.
+  Checked (2026-10-05): the top bar's link opened the live site on
+  the packaged Linux run. The published note's copy of it was replaced
+  by PRESS-0234's View your site button (ea91c9c).
   **Layman:** One click from Pressless opens your site as visitors see it.
   Kind: ux.
   Source: user-request-2026-10-05.
@@ -3791,6 +3794,49 @@ it decides how pages, the menu and the look are held.
   Kind: fix.
   Source: in-session-2026-10-05.
   Lanes: Face, Setup.
+
+- 📋 [PRESS-0234] **View your site beside Press to site, and one fixed status line under the press row.**
+  The user missed the top bar's link on PRESS-0231's packaged run
+  (partially sighted). Asked: a button beside Press to site, greyed
+  out until there is something to see (no address, or a starter site
+  never published), turned on by a publish in the page. And no status
+  between buttons: one status line of its own, a fixed size, saying
+  where the page stands between presses (On your site / Changes not
+  published yet / Not on your site yet), with Undo reporting there
+  too. The published note's copy of the bar link (PRESS-0232) goes:
+  the button beside it replaces it.
+  Progress (2026-10-05): built in ea91c9c. Owed: a look in a real
+  browser on the packaged build before it ships.
+  **Layman:** Next to Press to site there is now a View your site button, and publishing news appears in one steady line below the buttons instead of pushing them around.
+  Kind: ux.
+  Source: user-request-2026-10-05.
+  Lanes: Face, Editor.
+
+- 📋 [PRESS-0235] **Publishing status survives leaving the page.**
+  Seen on PRESS-0231's packaged run: Show me the code during a press
+  loads a new page and the result is lost, though the publish finished.
+  Pressless keeps the running press and its outcome itself; every
+  editor and the list show it in the press row's status line and ask
+  until it ends. Touches the Face, both editors, the list and
+  publishing, with two pages and Undo mid-press to settle: the user
+  chose a short spec and one review round before building (step 2 of
+  PRESS-0234).
+  **Layman:** If you click away while your site is publishing, the page you land on still says it is publishing, and then whether it worked.
+  Kind: feature.
+  Source: user-request-2026-10-05.
+  Lanes: Face, Editor, Publisher.
+
+- 📋 [PRESS-0236] **No status message moves a control anywhere in Pressless.**
+  The user's standing rule (2026-10-05): every control keeps a fixed
+  size and position for a given window size, and status text goes in
+  a place that already reserves room for it. PRESS-0234 does the press
+  row. Sweep the rest: the save note beside Your writing, the
+  photograph note, the list's Undo note, setup's and Settings' hints,
+  and any other text that appears or changes beside a control.
+  **Layman:** Buttons and boxes stay exactly where they are while Pressless tells you what it is doing.
+  Kind: ux.
+  Source: user-request-2026-10-05.
+  Lanes: Face.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
