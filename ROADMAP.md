@@ -3745,6 +3745,10 @@ it decides how pages, the menu and the look are held.
   packaged build on Linux and the Windows box; README § Getting started.
   The test sign-in's refresh token sits in this Linux PC's keyring under
   Pressless/github; the user removes it (keyring steps are theirs).
+  Progress (2026-10-05): README's Before you start now describes
+  signing in, not making a key (31fef81). Still owed: include()'s PUT
+  against real GitHub; § 7's whole-wizard run with the packaged build
+  on Linux and the Windows box.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
