@@ -497,6 +497,10 @@ def _open_folder(folder: Path) -> None:
 # The buttons' script. It lives in the page, never in a fragment, and it asks
 # for the path only when Copy is clicked, so the path is never in the document.
 _SCRIPT = """
+document.addEventListener("click", (event) => {
+  const view = event.target.closest("button[data-view-site]");
+  if (view) window.open(view.dataset.viewSite, "_blank", "noopener");
+});
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
@@ -594,6 +598,9 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face dialog::backdrop { background: rgba(0, 0, 0, .5); }
 .face button:hover { border-color: var(--amber); transform: translateY(-1px);
   box-shadow: 0 3px 10px var(--shadow); }
+.face button:disabled, .face button:disabled:hover { opacity: .45; cursor: not-allowed;
+  border-color: var(--line); transform: none; box-shadow: none; }
+.face .press-status { min-height: 4.5em; }
 .face [data-editor="publish"], .face form > button:only-of-type { background: var(--press);
   color: var(--on-press); border-color: var(--press); }
 .face #editor { display: flex; flex-wrap: wrap; align-items: flex-end; }
@@ -920,6 +927,7 @@ class Face:
         self._returns: set[str] = set()
         self._files: dict[str, Locate] = {}
         self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
+        self._unseen: list[Callable[[], bool]] = []
         self._reply = threading.local()
         try:
             self._server = _Server(("127.0.0.1", port), _Handler)
@@ -984,6 +992,21 @@ class Face:
             return settings.load(self._folder).site_address
         except (settings.NotSetUp, settings.SettingsError):
             return ""
+
+    def add_unseen(self, check: Callable[[], bool]) -> None:
+        """Have View your site greyed out while `check()` holds: the site has
+        nothing to see yet (PRESS-0234), so a part can say so without the
+        editors importing it."""
+        self._unseen.append(check)
+
+    def view_site(self) -> str:
+        """PRESS-0234: "View your site" beside Press to site, greyed out with no
+        address or while a part says there is nothing to see. The editors'
+        scripts turn it on after a publish."""
+        address = self.live_address()
+        live = bool(address) and not any(check() for check in self._unseen)
+        return (f'<button type="button" data-view-site="{html.escape(address, quote=True)}"'
+                f'{"" if live else " disabled"}>View your site</button>')
 
     def note(self, text: str) -> None:
         """One line in the rolling log. The caller keeps URLs and paths out."""

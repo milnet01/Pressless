@@ -169,6 +169,7 @@ def register(face: Face, folder: Path, *,
         return _shortcuts(face, shortcut_places(), request)
 
     face.add_to_list(lambda: _unpublished_starter(folder), above=True)
+    face.add_unseen(lambda: starter.unpublished(folder))
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
     face.add_page("POST", SHORTCUTS, change)

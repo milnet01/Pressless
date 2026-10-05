@@ -23,7 +23,7 @@ import pytest
 from _face_session import Browser
 from test_setup import _saved
 
-from pressless import editor, face, marks, page_editor, settings, store
+from pressless import editor, face, marks, page_editor, settings, setup, starter, store
 
 PREVIEW = "preview"
 REPLACES = "Replaces"
@@ -743,14 +743,41 @@ def test_the_style_code_is_served_before_any_preview(tmp_path):
     assert status == 200 and css == "body { color: black; }\n"
 
 
-def test_a_publish_note_links_to_the_live_site():
-    """PRESS-0232. Breaks when either editor's "Published." note stops
-    carrying the top bar's link to the site, or builds its own."""
+def test_view_your_site_sits_by_press_to_site_in_both_editors(tmp_path):
+    """PRESS-0234. Breaks when either editor loses the button beside Press to
+    site, puts a status between its buttons, or a publish in the page leaves
+    the button greyed out."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_html(folder, store.PAGES_FOLDER, "index",
+                     "<html><body>\n<p>Home words.</p>\n</body></html>\n")
+    beside = ('Press to site</button>\n <button type="button" '
+              'data-view-site="https://example.org">View your site</button>')
+    served = face.serve(folder)
+    try:
+        editor.register(served, folder)
+        page_editor.register(served, folder)
+        setup.register(served, folder)
+        browser = _Browser(served)
+        for path in ("/edit?slug=seaside", "/page?kind=pages&name=index"):
+            status, _, page = browser.request("GET", path)
+            assert status == 200 and beside in page, path
+            # One status line of its own, below the row (no status between buttons).
+            assert ('Undo the last press</button></p>\n<p id="publish-status" '
+                    'class="press-status" role="status">On your site</p>') in page, path
+        # A starter site never published has nothing to see yet.
+        (folder / starter.MARKER).write_bytes(b"")
+        for path in ("/edit?slug=seaside", "/page?kind=pages&name=index"):
+            page = browser.request("GET", path)[2]
+            assert beside.replace(">View", " disabled>View") in page, path
+        assert "Not on your site yet</p>" in page
+    finally:
+        served.stop()
     for name, script in (("entry", editor._EDITOR_SCRIPT), ("page", page_editor._PAGE_SCRIPT)):
         after = script.split('"Published. Your site shows it within a few minutes."', 1)[1]
         added = after.split("} catch", 1)[0]
-        assert 'document.querySelector(".bar a[data-site]")' in added, name
-        assert 'said.append(" ", site.cloneNode(true))' in added, name
+        assert 'document.querySelector("button[data-view-site]")' in added, name
+        assert "view.disabled = false" in added, name
 
 
 def test_the_list_names_the_site_it_edits(tmp_path):

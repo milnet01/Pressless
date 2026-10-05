@@ -463,11 +463,11 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
     return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure,
-                                           missing)
+                                           missing, face.view_site())
 
 
 def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
-          preview: str | None, failure: str | None, missing: list[str]) -> str:
+          preview: str | None, failure: str | None, missing: list[str], visit: str) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -493,6 +493,10 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     # save makes a proof, whose address cannot change, and shows it again
     # once that proof is pressed (PRESS-0186).
     address = _address_field(named if proof else entry.slug, hidden=proof)
+    # PRESS-0234: the press row's status line, between presses. The script
+    # keeps it in step (its `standing`).
+    standing_word = ("On your site" if not draft else
+                     "Changes not published yet" if on_site else "Not on your site yet")
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
@@ -508,9 +512,9 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
 {address}
 <p><button type="button" data-editor="publish">Press to site</button>
- <span id="publish-status"></span>
- <button type="button" data-undo>Undo the last press</button>
- <span id="undo-status"></span></p>
+ {visit}
+ <button type="button" data-undo>Undo the last press</button></p>
+<p id="publish-status" class="press-status" role="status">{standing_word}</p>
 <p><button type="button" data-editor="photograph">Add a photograph</button>
  <input type="file" id="photograph-file" hidden
  accept="image/jpeg,image/png,image/webp,image/gif">
@@ -735,7 +739,9 @@ _UNDO_SCRIPT = """
 (() => {
   const button = document.querySelector("button[data-undo]");
   if (!button) return;
-  const said = document.getElementById("undo-status");
+  // PRESS-0234: an editor's press row has one status line for both buttons.
+  const said = document.getElementById("publish-status") ||
+    document.getElementById("undo-status");
   const result = document.getElementById("undo-result");
 
   const show = (fragment, sentence) => {
@@ -825,7 +831,11 @@ _EDITOR_SCRIPT = """
       document.querySelector("button[data-editor=throw]").textContent =
         "Throw this entry away";
     }
+    document.getElementById("publish-status").textContent = standing();
   };
+  // PRESS-0234: what the press row's status line says between presses.
+  const standing = () => state.draft === "0" ? "On your site"
+    : form.dataset.onSite === "1" ? "Changes not published yet" : "Not on your site yet";
   const stop = (text) => {
     stopped = true;
     status.textContent = "Not saved";
@@ -901,17 +911,17 @@ _EDITOR_SCRIPT = """
       dirty = false;
       const answer = await fetch("/publish", {method: "POST", body: body});
       const text = await answer.text();
-      if (answer.status !== 200) { said.textContent = ""; stop(text); return; }
+      if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
       const reply = JSON.parse(text);
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
-        ? "Published. Your site shows it within a few minutes." : "";
-      // PRESS-0232: the top bar's link to the site, where there is one.
-      const site = document.querySelector(".bar a[data-site]");
-      if (reply.published && site) said.append(" ", site.cloneNode(true));
+        ? "Published. Your site shows it within a few minutes." : standing();
+      // PRESS-0234: there is now something to see.
+      const view = document.querySelector("button[data-view-site]");
+      if (reply.published && view && view.dataset.viewSite) view.disabled = false;
     } catch (error) {
-      said.textContent = ""; stop("");
+      said.textContent = standing(); stop("");
     } finally {
       publish.disabled = false;
       inFlight = false;

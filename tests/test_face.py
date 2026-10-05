@@ -485,6 +485,28 @@ def test_the_bar_links_to_the_live_site_once_set_up(tmp_path: Path) -> None:
         served.stop()
 
 
+def test_view_your_site_is_live_only_with_something_to_see(tmp_path: Path) -> None:
+    """PRESS-0234. Breaks when the button beside Press to site is live with
+    no address, or while a part says there is nothing to see, or is greyed
+    out once there is a site."""
+    def button(address: str, live: bool) -> str:
+        return (f'<button type="button" data-view-site="{address}"'
+                f'{"" if live else " disabled"}>View your site</button>')
+
+    served = face.serve(tmp_path)
+    try:
+        assert served.view_site() == button("", False)
+        _saved(tmp_path)
+        assert served.view_site() == button("https://example.org", True)
+        unseen = [True]
+        served.add_unseen(lambda: unseen[0])
+        assert served.view_site() == button("https://example.org", False)
+        unseen[0] = False
+        assert served.view_site() == button("https://example.org", True)
+    finally:
+        served.stop()
+
+
 def test_a_reply_is_sent_as_given(tmp_path: Path) -> None:
     """PRESS-0012 INV-9."""
     served = face.serve(tmp_path)
