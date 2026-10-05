@@ -3731,6 +3731,20 @@ it decides how pages, the menu and the look are held.
   owed: § 7's install-page look (milnet02's leftover pressless-test-2 to be
   deleted first), the whole-wizard run on both systems, README § Getting
   started.
+  Progress (2026-10-05, later): § 7's install-page look and a full
+  sign-in setup ran from source on Linux as milnet02 (no repositories):
+  sign-in, install (All repositories), repository created with
+  Administration alone, Pages, a starter-site publish live at
+  milnet02.github.io, and the done page's narrowing steps all worked.
+  Fixed from it: Pages GitHub switches on itself for <account>.github.io
+  answered 409 (19b1d1d); install and done-page words now follow GitHub's
+  pages, and the sign-in step asks for the account and refuses any other
+  (169eb27, INV-14; the user said no review round for it). Still owed:
+  include()'s PUT against real GitHub (needs a run choosing Only select
+  repositories with an existing repository); § 7's whole-wizard run with the
+  packaged build on Linux and the Windows box; README § Getting started.
+  The test sign-in's refresh token sits in this Linux PC's keyring under
+  Pressless/github; the user removes it (keyring steps are theirs).
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
