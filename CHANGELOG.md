@@ -64,6 +64,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Your writing names the site you are editing, says what a journal is, and shows the journal and update switches as tidy rows.**
+
 - **Setup links straight to github.com/new, the done page leads on to the list and says how to publish the starter site, the list says so until the first publish, and the starter site's pages are indented.**
 
 - **Every file Pressless saves whole now goes through one shared routine** (PRESS-0141)

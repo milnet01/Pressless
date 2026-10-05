@@ -152,9 +152,10 @@ def _switch_html(checking: bool) -> str:
         ("Pressless looks for a new version each time it starts.", "false", "Stop looking")
         if checking else
         ("Pressless does not look for new versions.", "true", "Look when Pressless starts"))
-    return ('<form method="post" action="/update/checking" id="update-switch"><p>'
-            f'{words} <input type="hidden" name="check" value="{value}">'
-            f"<button>{label}</button></p></form>")
+    return ('<form method="post" action="/update/checking" id="update-switch" '
+            f'class="switch-row"><p>{words}</p>'
+            f'<input type="hidden" name="check" value="{value}">'
+            f"<button>{label}</button></form>")
 
 
 def _update_now(face: Face, folder: Path, offer: updater.Offer, artefact: Path,

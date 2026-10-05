@@ -3616,6 +3616,9 @@ it decides how pages, the menu and the look are held.
   Shared pattern built 2026-10-03: src/pressless/wizard.py, tests in
   tests/test_wizard.py. Ships with PRESS-0212 once its by-hand run passes.
   The other wizards stay with their own items.
+  User 2026-10-05: first-run setup stays a full page; every other wizard
+  opens as a modal dialog over the page it starts from, sleek and modern.
+  The Settings help (PRESS-0228) is the dialog pattern to build on.
   **Layman:** For the few jobs that take many steps and are done once in a while, Pressless guides you one screen at a time, so you never have to remember what comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -3875,6 +3878,8 @@ documents go on the site beside the photographs.
   to everyone in 0.11.0 and more people hold a site only in Pressless.
   Its backup file is the same file PRESS-0224 saves and opens, and
   PRESS-0225 makes one each day.
+  User 2026-10-05: this wizard opens as a modal dialog, not a page of its
+  own (see PRESS-0220).
   **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
   Kind: feature.
   Source: user-request-2026-10-03.

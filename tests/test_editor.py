@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 from _face_session import Browser
+from test_setup import _saved
 
 from pressless import editor, face, marks, settings, store
 
@@ -740,3 +741,14 @@ def test_the_style_code_is_served_before_any_preview(tmp_path):
     with _editor(folder) as browser:
         status, _, css = browser.request("GET", "/preview/look/style.css")
     assert status == 200 and css == "body { color: black; }\n"
+
+
+def test_the_list_names_the_site_it_edits(tmp_path):
+    """The list says which site it is for: the Store's name, Settings'
+    address. Nothing where the address cannot be read yet."""
+    assert editor._site_line(tmp_path) == ""
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("Field Notes"))
+    line = editor._site_line(tmp_path)
+    assert "<b>Field Notes</b>" in line
+    assert 'href="https://example.org"' in line and ">example.org</a>" in line

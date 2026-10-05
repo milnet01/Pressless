@@ -263,18 +263,37 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
     if journal is None:
         return ""
     if journal:
-        said = "Your journal is on."
+        said = ("Your journal is on: each published entry has a page of its own on "
+                "your site, and your journal lists them, newest first.")
         if published:
             said += (" Turning it off takes your published entries off your site "
                      "at your next publish; turning it on again brings them back.")
         button = "Turn the journal off"
     else:
-        said = ("Your journal is off, so entries are not on your site. A link to "
-                "the journal in your menu stays until you remove it from the header "
-                "or navigation in Your pages.")
+        said = ("Your journal is off. A journal is the dated part of a site, like a "
+                "blog: each entry gets a page of its own, and the journal lists them, "
+                "newest first. While it is off, your entries stay here and are not on "
+                "your site. If your menu links to the journal, that link stays until "
+                "you remove it from the header or navigation in Your pages.")
         button = "Turn the journal on"
-    return (f'<form method="post" action="/journal"><p>{said} '
-            f"<button>{button}</button></p></form>")
+    return (f'<form method="post" action="/journal" class="switch-row"><p>{said}</p>'
+            f"<button>{button}</button></form>")
+
+
+def _site_line(folder: Path) -> str:
+    """Which site this list is for: its name and its address. Empty where
+    either cannot be read, which the rest of the page does not depend on."""
+    try:
+        identity = store.read_identity(folder)
+        address = settings.load(folder).site_address
+    except (store.StoreError, settings.SettingsError, settings.NotSetUp):
+        return ""
+    e = html.escape
+    name = identity.name if identity is not None and identity.name else "Your site"
+    shown = re.sub(r"^https?://", "", address).rstrip("/")
+    return (f'<p class="site-line">Editing <b>{e(name)}</b> at '
+            f'<a href="{e(address, quote=True)}" target="_blank" rel="noopener">'
+            f"{e(shown)}</a></p>")
 
 
 def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -305,6 +324,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         except store.StoreError as exc:
             first_failure = first_failure or exc
             pages = "<p>Pressless cannot open your pages folder.</p>"
+        site = _site_line(folder)
         try:
             journal: bool | None = store.journal_on(folder)
         except store.StoreError as exc:
@@ -334,7 +354,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
 
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
     return (render_notices(notices) + failure +
-            '<h1>Your writing</h1>'
+            '<h1>Your writing</h1>' + site
             # PRESS-0023 § 4.9: what other parts show here, without this
             # module importing them.
             + "".join(face.list_pieces(above=True)) +

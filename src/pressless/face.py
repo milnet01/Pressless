@@ -555,6 +555,13 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
   padding: .5rem 1.1rem; vertical-align: bottom; box-shadow: 0 1px 3px var(--shadow);
   transition: border-color .15s, transform .15s, box-shadow .15s; }
 .face label + button, .face label ~ button { margin-bottom: .75rem; }
+.face .switch-row { display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem 1.5rem; flex-wrap: wrap; margin: 1.25rem 0; padding: .9rem 1.4rem;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; }
+.face .switch-row p { margin: 0; flex: 1 1 22rem; }
+.face form.switch-row > button:only-of-type { flex: none; margin: 0; background: var(--paper);
+  color: var(--ink); border-color: var(--line); }
+.face .site-line { margin: -.4rem 0 1rem; color: var(--soft); }
 .face button.help { padding: .4rem .8rem; min-width: 2.4rem; }
 .face dialog { max-width: min(42rem, calc(100vw - 2rem)); color: var(--ink);
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
