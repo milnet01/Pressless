@@ -3716,6 +3716,14 @@ it decides how pages, the menu and the look are held.
   it; spec section 7's whole-wizard run on Linux and the Windows box;
   and the README's Getting started, which must wait until the
   constants ship or it would say something untrue.
+  Decided with the user (2026-10-05): build before registering;
+  the app is named Pressless and registered under the maintainer's
+  own account; the install-page look uses the spare test account.
+  Unconfirmed: GitHub's permission reference lists the PUT that adds
+  a repository to an installation under a permission named for
+  installation repository access, which the registration form may not
+  offer. The by-hand run must confirm include() works with Contents,
+  Pages, Administration and Repository creation alone.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
