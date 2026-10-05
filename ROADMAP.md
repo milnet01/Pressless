@@ -3724,6 +3724,13 @@ it decides how pages, the menu and the look are held.
   installation repository access, which the registration form may not
   offer. The by-hand run must confirm include() works with Contents,
   Pages, Administration and Repository creation alone.
+  Progress (2026-10-05): registered as "Pressless App" (pressless-app) —
+  GitHub reserves "Pressless" for another account. Constants filled and
+  pushed in cb90841. The form offers no Repository creation; the first real
+  run must prove a repository is created with Administration alone. Still
+  owed: § 7's install-page look (milnet02's leftover pressless-test-2 to be
+  deleted first), the whole-wizard run on both systems, README § Getting
+  started.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
