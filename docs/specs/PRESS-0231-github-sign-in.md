@@ -144,8 +144,10 @@ def include(token: str, installation: Installation, repository: str,
 
 The app is registered by hand under the maintainer's account: public, device
 flow enabled, no webhook, and the repository permissions Contents, Pages and
-Administration **Read and write** plus Repository creation, as GitHub's
-permission list names it. `docs/working-here.md` gains the steps, as it has
+Administration **Read and write**. GitHub's permission list also names
+Repository creation for `POST /user/repos`; the registration form does not
+offer it, so § 7's first real run must prove the repository is created
+without it. `docs/working-here.md` gains the steps, as it has
 Google's. Until both constants are filled, `available()` is false.
 Source: https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps
 

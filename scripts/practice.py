@@ -29,6 +29,7 @@ from pressless import __main__ as launcher  # noqa: E402
 from pressless import (  # noqa: E402
     credentials,
     face,
+    github_signin,
     google_signin,
     insights,
     publisher,
@@ -141,6 +142,7 @@ def disarm(set_attribute=setattr) -> None:
     set_attribute(updater, "_Urllib", _Refuse)
     set_attribute(insights, "_own_client", _Refuse)
     set_attribute(google_signin, "available", lambda: False)
+    set_attribute(github_signin, "available", lambda: False)
 
 
 def _stop(signum: int, frame: object) -> None:

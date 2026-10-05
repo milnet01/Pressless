@@ -24,8 +24,8 @@ from pressless.publisher import PublishError, Transport
 # The registered GitHub App (§ 4.1). Neither is a secret: both ship in the
 # program by design. Until both are filled, available() is false and setup
 # asks for a hand-made key instead.
-CLIENT_ID = ""
-APP_SLUG = ""                     # its name in github.com/apps/<slug>
+CLIENT_ID = "Iv23liTJMrp5m0HkID6A"
+APP_SLUG = "pressless-app"        # its name in github.com/apps/<slug>
 
 DEVICE_URL = "https://github.com/login/device/code"
 TOKEN_URL = "https://github.com/login/oauth/access_token"  # noqa: S105 -- an address

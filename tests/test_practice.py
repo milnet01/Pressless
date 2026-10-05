@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pressless import google_signin, insights, publisher, settings, updater
+from pressless import github_signin, google_signin, insights, publisher, settings, updater
 
 _SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "practice.py"
 
@@ -62,6 +62,7 @@ def test_no_other_route_out_is_left(monkeypatch):
     practice = _practice()
     practice.disarm(monkeypatch.setattr)
     assert google_signin.available() is False
+    assert github_signin.available() is False
     with pytest.raises(OSError):
         insights._own_client().request("GET", "https://example.invalid", None, {})
     with pytest.raises(OSError):
@@ -83,7 +84,7 @@ def main_without_serving(monkeypatch, tmp_path):
     monkeypatch.delenv("PORT", raising=False)
     for module, name in ((publisher, "_Urllib"), (updater, "_Urllib"),
                          (insights, "_own_client"), (google_signin, "available"),
-                         (face, "serve")):
+                         (github_signin, "available"), (face, "serve")):
         monkeypatch.setattr(module, name, getattr(module, name))
     old = signal.getsignal(signal.SIGTERM)
 

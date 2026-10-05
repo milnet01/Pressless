@@ -184,14 +184,15 @@ settings; GitHub's words below were checked against its registration and
 permission pages on 2026-10-05.
 
 1. On GitHub: your picture, **Settings**, **Developer settings**,
-   **GitHub Apps**, **New GitHub App**. Name it **Pressless**; the homepage
-   is the repository's page. Leave the callback address empty.
+   **GitHub Apps**, **New GitHub App**. Name it **Pressless App**: GitHub
+   reserves **Pressless** for another account. The homepage is the
+   repository's page. Leave the callback address empty.
 2. Tick **Enable Device Flow**. Leave **Expire user authorization tokens**
    ticked: § 8 rejects a token that never expires.
 3. Untick **Active** under the webhook.
 4. Under **Permissions**, in the repository permissions, set **Contents**,
-   **Pages** and **Administration** to **Read and write**, and **Repository
-   creation** to write.
+   **Pages** and **Administration** to **Read and write**. The form offers no
+   **Repository creation**, though GitHub's permission list names it.
 5. Under where it can be installed, choose **Any account**.
 6. Create it. Its **Client ID** goes into `CLIENT_ID`, and the last part of
    its public page's address, `github.com/apps/<slug>`, into `APP_SLUG`.
