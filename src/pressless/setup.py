@@ -24,6 +24,7 @@ from pressless import (
     credentials,
     google_signin,
     publisher,
+    restarting,
     settings,
     shortcuts,
     starter,
@@ -131,7 +132,8 @@ def _setup(face: Face, folder: Path, request: Request,
         return (render_notices(notices)
                 + _form(values, {}, google_on=_google_on(saved),
                         start=False if offer else None)
-                + (_shortcut_form(where, shortcuts.present(where)) if where else ""))
+                + (_shortcut_form(where, shortcuts.present(where)) if where else "")
+                + restarting.LINK)
     return render_notices(notices) + _submit(face, folder, saved,
                                              _read_answers(request.body), transport, offer)
 

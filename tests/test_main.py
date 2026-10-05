@@ -70,7 +70,7 @@ class _Opened:
         monkeypatch.setattr(main_module.face, "serve", serve)
         monkeypatch.setattr(main_module.webbrowser, "open",
                             lambda url: self.links.append(url) or True)
-        monkeypatch.setattr(main_module, "_wait", lambda: None)
+        monkeypatch.setattr(main_module, "_wait", lambda restart: False)
         # PRESS-0183: the launch refreshes his shortcuts. Recorded, never run,
         # so no test reaches the shortcuts in the real home folder.
         self.refreshed = []
@@ -128,6 +128,26 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
         analytics_property_id=None))
     assert main_module.main([]) == 0
     assert urllib.parse.urlsplit(opened.links[1]).path == "/"
+
+
+def test_restart_serves_a_fresh_face(monkeypatch, tmp_path, capsys):
+    """PRESS-0203: a restart stops the Face, serves a new one with a new link
+    behind the same lock, and opens it; closing the window still ends it."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    opened = _Opened(monkeypatch)
+    answers = iter([True, False])
+    monkeypatch.setattr(main_module, "_wait", lambda restart: next(answers))
+
+    assert main_module.main([]) == 0
+    assert len(opened.faces) == 2 and len(opened.links) == 2
+    assert opened.links[0] != opened.links[1]
+    assert ("POST", "/restart") in opened.faces[1]._pages
+    assert "Pressless is restarting." in capsys.readouterr().out
+    assert not opened.faces[0]._thread.is_alive(), "the first Face was not stopped"
+    assert main_module.editor.LOCK.acquire(blocking=False), "the restart kept the lock"
+    main_module.editor.LOCK.release()
 
 
 def test_an_unanswerable_question_exits_non_zero(monkeypatch, tmp_path, capsys):
@@ -254,11 +274,12 @@ def test_one_pressless_per_folder(monkeypatch, tmp_path, capsys):
 
     held_while_serving: list[bool] = []
 
-    def serving() -> None:
+    def serving(restart: threading.Event) -> bool:
         handle = _try_lock(lock)
         held_while_serving.append(handle is None)
         if handle is not None:
             handle.close()
+        return False
 
     monkeypatch.setattr(main_module, "_wait", serving)
     assert main_module.main([]) == 0

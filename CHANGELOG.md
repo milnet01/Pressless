@@ -14,6 +14,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Restart Pressless from Settings.** (PRESS-0203)
+  Pressless asks first, then opens again in a new tab, in the same
+  window. The tab you restarted from says so instead of going dead.
+
 - **The site's name and a short description belong to the site.** (PRESS-0213)
   First run and Settings ask for both. They travel with the site, undo
   brings them back, and a header or footer can show them, so a rename

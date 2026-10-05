@@ -3521,7 +3521,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-09-28.
   Lanes: face.
 
-- 📋 [PRESS-0203] **Restart Pressless from inside the app.**
+- ✅ [PRESS-0203] **Restart Pressless from inside the app.**
   Asked for by the user 2026-10-02. Where the button lives is open
   (Settings was the user's suggestion). Today a restart means closing
   the console window and starting Pressless again. A restart drops the
@@ -3534,6 +3534,13 @@ it decides how pages, the menu and the look are held.
   user suggested Settings, and it needs no new place in the screens.
   Settled 2026-10-03: the user said to go ahead with the
   recommendations. Restart goes on the Settings page.
+  Shipped 2026-10-05. The user chose an in-place restart with a
+  confirm step. Settings links to /restart (restarting.py), which asks
+  first; its POST asks the launcher, after the reply is sent, to stop the
+  Face once editor.LOCK is free and serve a fresh one behind the same
+  folder lock, opening a new tab. PRESS-0013 § 4.5 step 6 records it.
+  Four mutations, each killed. Linux gate 948 passed, 3 skipped; the
+  Windows box was unreachable, so its run is owed before the push.
   **Layman:** A Restart button, for example in Settings, so you can restart Pressless without hunting for its window.
   Kind: feature.
   Source: user request 2026-10-02.

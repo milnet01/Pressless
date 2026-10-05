@@ -254,7 +254,9 @@ on a click:
 6. **Wait.** Print *"Pressless is running. Keep this window open while you use
    it, and close it to stop Pressless."* Then block in `_wait()`, a
    module-level function a test can replace. `KeyboardInterrupt` stops the
-   Face and returns 0.
+   Face and returns 0. `_wait` returning True is a restart (PRESS-0203): the
+   Face stops once `editor.LOCK` is free, and steps 3 to 6 run again behind
+   the same folder lock.
 
 ### 4.6 What this item never does
 

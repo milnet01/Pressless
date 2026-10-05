@@ -10,7 +10,8 @@ tests/features/packaging/ parses the lines.
 
 `--self-check` stops there. The double-click then serves the Face, with setup,
 the editor, publishing, undo and the page editor on it, opens his browser,
-and runs until the console window is closed. Every part is imported here at
+and runs until the console window is closed. Restart in Settings serves a
+fresh Face in the same window (PRESS-0203). Every part is imported here at
 module level, so a packaged `--self-check` proves each one loads in the bundle.
 """
 from __future__ import annotations
@@ -35,6 +36,7 @@ from pressless import (
     paths,
     publishing,
     report,
+    restarting,
     settings,
     setup,
     shortcuts,
@@ -166,6 +168,16 @@ def _serve(folder: Path) -> int:
 
 
 def _serve_held(folder: Path) -> int:
+    while _serve_once(folder):
+        print("Pressless is restarting.")
+    return 0
+
+
+def _serve_once(folder: Path) -> bool:
+    """One Face, from start to stop. True where he asked for a restart
+    (PRESS-0203): the caller then serves a new one, behind the same lock."""
+    restart = threading.Event()
+    again = False
     served = face.serve(folder)
     try:
         setup.register(served, folder)
@@ -179,6 +191,7 @@ def _serve_held(folder: Path) -> int:
         undo.register(served, folder)
         page_editor.register(served, folder)
         updating.register(served, folder)
+        restarting.register(served, restart.set)
         _refresh_shortcuts(served)
 
         first = "/"
@@ -206,12 +219,17 @@ def _serve_held(folder: Path) -> int:
         print("Pressless is running. Keep this window open while you use it, "
               "and close it to stop Pressless.")
         try:
-            _wait()
+            again = _wait(restart)
         except KeyboardInterrupt:
             pass
     finally:
-        served.stop()
-    return 0
+        if again:
+            # A save, publish or undo under way ends before its Face does.
+            with editor.LOCK:
+                served.stop()
+        else:
+            served.stop()
+    return again
 
 
 def _refresh_shortcuts(served: face.Face) -> None:
@@ -226,9 +244,11 @@ def _refresh_shortcuts(served: face.Face) -> None:
         served.note(f"a shortcut could not be refreshed: {type(exc).__name__}")
 
 
-def _wait() -> None:
-    """Block until the console window is closed or interrupted."""
-    threading.Event().wait()
+def _wait(restart: threading.Event) -> bool:
+    """Block until the console window is closed or interrupted, or until
+    `restart` is set. True on a restart."""
+    restart.wait()
+    return True
 
 
 if __name__ == "__main__":
