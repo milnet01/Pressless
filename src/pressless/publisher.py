@@ -432,7 +432,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
                    removed=tuple(removed))
 
 
-def root_entries(settings: Settings, token: str,
+def root_entries(settings: Settings, token: str | None,
                  transport: Transport | None = None) -> tuple[str, ...]:
     """Every entry at the repository root, as bare names (§4.4).
 
@@ -440,7 +440,8 @@ def root_entries(settings: Settings, token: str,
     settings.untouchable holds. It decides nothing and filters nothing --
     rule 5 leaves this module unable to tell a stylesheet from an entry, so
     it cannot know which of them the Builder produces. Setup and the Face
-    remove those and store the rest.
+    remove those and store the rest. With no key it reads a Public
+    repository as `public_repository` does (PRESS-0231 § 4.3).
     """
     return _root_names(_Session(transport or _Urllib(), token), settings.repository)
 

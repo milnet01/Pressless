@@ -16,6 +16,7 @@ import dataclasses
 import inspect
 import json
 import re
+import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from pressless import (
     credentials,
     editor,
     face,
+    github_setup,
+    github_signin,
     publisher,
     settings,
     setup,
@@ -154,10 +157,15 @@ class _Browser(Browser):
 
 @contextlib.contextmanager
 def _setup_page(folder: Path, github: _GitHub,
-                places: shortcuts.Places | None = None) -> Iterator[_Browser]:
+                places: shortcuts.Places | None = None,
+                clock: _Clock | None = None) -> Iterator[_Browser]:
+    """With `clock`, the GitHub pass is registered too (PRESS-0231), over the
+    same double."""
     served = face.serve(folder)
     try:
         setup.register(served, folder, transport=github, shortcut_places=lambda: places)
+        if clock is not None:
+            github_setup.register(served, folder, transport=github, clock=clock)
         yield _Browser(served)
     finally:
         served.stop()
@@ -172,7 +180,8 @@ def _answers(**changes: str) -> dict[str, str]:
 FIRST_RUN = {"account": "owner", "repository": "owner.github.io", "key": SENTINEL_KEY,
              "site_name": "A Journal", "site_description": "", "start": ""}
 STEP_FIELDS = {"welcome": (), "account": ("account",), "repository": ("repository",),
-               "key": ("key",), "pages": (), "site": ("site_name", "site_description", "start")}
+               "key": ("key",), "pages": (), "site": ("site_name", "site_description", "start"),
+               "signin": (), "install": ()}
 
 
 def _step(page: str) -> str | None:
@@ -1169,3 +1178,296 @@ def test_settings_page_edits_the_identity(tmp_path, monkeypatch):
         browser.post(_answers(key="", site_name="Renamed", site_description="New words."))
     assert store.read_identity(tmp_path) == store.Identity("Renamed", "New words.")
     assert "site_name" not in _carried(tmp_path)
+
+
+# --------------------------------------------- PRESS-0231: GitHub sign-in ----
+# docs/specs/PRESS-0231-github-sign-in.md § 5. GitHub's sign-in endpoints
+# answer through the same recording double, at github.com rather than
+# api.github.com. Secrets are plain words, so the push gate's secret scanner
+# does not mistake them.
+
+APP = "pressless-app"
+DEVICE_CODE = "plain-device-code"
+USER_CODE = "WDJB-MJHT"
+FIRST_ACCESS = "ghu_plain-first-access"
+FIRST_REFRESH = "ghr_plain-first-refresh"
+INSTALLATION = "/user/installations/7/repositories/99"
+
+
+class _Clock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class _SignInGitHub(_GitHub):
+    """_GitHub, with GitHub's sign-in endpoints and the GitHub App's requests.
+
+    `polls` answers each poll of a device code in turn, its last repeating:
+    an `error` code, or "tokens". `selection` is the installation's
+    repository_selection, or None where the app is not installed. `taken` is
+    what already holds the repository's name: None, "empty" or "full"; a
+    repository Pressless makes is empty. `lose_create` makes the first create
+    succeed on GitHub and lose its answer. `refuse_refresh` refuses every
+    renewal of the pass.
+    """
+
+    def __init__(self, *, polls: tuple[str, ...] = ("tokens",),
+                 selection: str | None = "selected", taken: str | None = None,
+                 lose_create: bool = False, refuse_refresh: bool = False, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.polls = list(polls)
+        self.selection = selection
+        self.taken = taken
+        self.lose_create = lose_create
+        self.refuse_refresh = refuse_refresh
+
+    def request(self, method: str, url: str, body: bytes | None,
+                headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+        path = url.removeprefix(publisher.API)
+        if url.startswith("https://github.com/"):
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 200, {}, json.dumps(self._signing_in(url, body)).encode()
+        if method == "GET" and path == "/user":
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 200, {}, b'{"login": "owner"}'
+        if method == "GET" and path.startswith("/user/installations"):
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            found = [] if self.selection is None else [
+                {"id": 7, "app_slug": APP, "account": {"login": "owner"},
+                 "repository_selection": self.selection}]
+            return 200, {}, json.dumps({"total_count": len(found),
+                                        "installations": found}).encode()
+        if method == "POST" and path == "/user/repos":
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            if self.taken is not None:
+                return 422, {}, b'{"message": "Repository creation failed."}'
+            self.taken = "empty"
+            if self.lose_create:
+                self.lose_create = False
+                raise OSError("the answer was lost")
+            return 201, {}, b'{"full_name": "owner/owner.github.io"}'
+        if method == "PUT" and path == INSTALLATION:
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 204, {}, b""
+        if method == "GET" and path == "/repos/owner/owner.github.io":
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 200, {}, b'{"id": 99, "default_branch": "main", "private": false}'
+        if self.taken == "empty" and "/commits/" in url:
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 409, {}, b'{"message": "Git Repository is empty."}'
+        return super().request(method, url, body, headers)
+
+    def _signing_in(self, url: str, body: bytes | None) -> dict:
+        form = urllib.parse.parse_qs((body or b"").decode())
+        if url.endswith("/login/device/code"):
+            return {"device_code": DEVICE_CODE, "user_code": USER_CODE,
+                    "verification_uri": "https://github.com/login/device",
+                    "expires_in": 900, "interval": 5}
+        if form.get("grant_type") == ["refresh_token"]:
+            if self.refuse_refresh:
+                return {"error": "bad_refresh_token",
+                        "error_description": f"{form['refresh_token'][0]} is spent"}
+            return {"access_token": "ghu_plain-renewed", "refresh_token": "ghr_plain-renewed",
+                    "expires_in": 28800}
+        answer = self.polls.pop(0) if len(self.polls) > 1 else self.polls[0]
+        if answer != "tokens":
+            return {"error": answer, "error_description": f"about {DEVICE_CODE}"}
+        return {"access_token": FIRST_ACCESS, "refresh_token": FIRST_REFRESH,
+                "expires_in": 28800}
+
+    def sent_to(self, ending: str) -> int:
+        return sum(1 for _m, url, _a in self.calls if url.endswith(ending))
+
+
+def _app(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A copy of Pressless carrying a registered GitHub App."""
+    monkeypatch.setattr(github_signin, "CLIENT_ID", "Iv1.plain-client")
+    monkeypatch.setattr(github_signin, "APP_SLUG", APP)
+
+
+def _walk(browser: _Browser, until: str | None = None) -> tuple[list[str], str]:
+    """Press Next from where the wizard stands, a second time on signin (the
+    first press fetches the code), until `until`'s page or a step that does
+    not move on. The steps passed, and the last page."""
+    page = browser.get()[1]
+    seen: list[str] = []
+    while (step := _step(page)) is not None and step != until:
+        seen.append(step)
+        after = _next(browser, page)
+        if step == "signin" and _step(after) == step:
+            after = _next(browser, after)
+        if _step(after) == step:
+            return seen, after
+        page = after
+    return seen, page
+
+
+def test_the_sign_in_secrets_stay_out_of_sight(tmp_path, monkeypatch):
+    """INV-3. Breaks when a failure's text carries GitHub's answer, or the
+    wizard writes the held code into the answers."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    clock = _Clock()
+    shown: list[str] = []
+    with _setup_page(tmp_path, _SignInGitHub(refuse_refresh=True), clock=clock) as browser:
+        page = _walk_to(browser, "signin")
+        shown.append(page)
+        coded = _next(browser, page)
+        shown.append(coded)
+        assert _step(coded) == "signin" and USER_CODE in coded
+        install = _next(browser, coded)
+        shown.append(install)
+        assert _step(install) == "install"
+        clock.now += 9 * 3600       # the pass is spent, and GitHub will not renew it
+        lapsed = _next(browser, install)
+        shown.append(lapsed)
+    assert _step(lapsed) == "install" and "GitHub has signed Pressless out." in lapsed
+    held = _progress(tmp_path).read_text(encoding="utf-8")
+    for secret in (DEVICE_CODE, FIRST_ACCESS, FIRST_REFRESH):
+        assert all(secret not in page for page in shown), secret
+        assert secret not in _log(tmp_path), secret
+        assert secret not in held, secret
+
+
+def test_signing_in_stores_only_what_github_issued(tmp_path, monkeypatch):
+    """INV-4. Breaks when a pending answer stores something, or the step
+    advances on it."""
+    _app(monkeypatch)
+    keyring = _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(polls=("authorization_pending", "expired_token",
+                                  "access_denied", "tokens"))
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        page = _walk_to(browser, "signin")
+        said = {}
+        for press in ("a code", "pending", "expired", "declined", "a new code"):
+            page = _next(browser, page)
+            said[press] = page
+            assert _step(page) == "signin", press
+            assert keyring.writes == [] and keyring.chosen == 0, press
+        page = _next(browser, page)
+    assert "GitHub has not heard from you yet." in said["pending"]
+    assert "cancelled on GitHub" in said["declined"]
+    assert _step(page) == "install"
+    assert keyring.chosen == 1
+    assert keyring.writes == [("keyring", "github", FIRST_REFRESH)]
+
+
+def test_an_expired_code_is_replaced(tmp_path, monkeypatch):
+    """INV-5. Breaks when the step polls a dead code and shows GitHub's error."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(polls=("expired_token",))
+    clock = _Clock()
+    with _setup_page(tmp_path, github, clock=clock) as browser:
+        page = _next(browser, _walk_to(browser, "signin"))
+        clock.now += 901
+        page = _next(browser, page)
+    assert _step(page) == "signin" and USER_CODE in page
+    assert github.sent_to("/login/device/code") == 2
+    assert github.sent_to("/login/oauth/access_token") == 0
+
+
+def test_a_taken_name_is_left_alone(tmp_path, monkeypatch):
+    """INV-6. Breaks when the step adopts any existing repository, or pages
+    runs over it."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(taken="full")
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        _, page = _walk(browser, until="repository")
+        assert _step(page) == "repository" and 'value="owner.github.io"' in page
+        after = _next(browser, page)
+    assert _step(after) == "repository" and _hint_for("repository", after)
+    assert "already exists" in after
+    assert [write for write in github.writes() if write[1].startswith("/")] == [
+        ("POST", "/user/repos")]
+
+
+def test_a_second_press_finds_the_first_repository(tmp_path, monkeypatch):
+    """INV-7. Breaks when the 422 is always a Hint, so a dropped answer strands
+    the person."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(lose_create=True)
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        _, page = _walk(browser, until="repository")
+        lost = _next(browser, page)
+        assert _step(lost) == "repository" and "Pressless could not reach GitHub." in lost
+        assert github.sent_to("/user/repos") == 1
+        after = _next(browser, lost)
+    assert _step(after) == "pages"
+    assert github.sent_to("/user/repos") == 2
+
+
+def test_the_new_repository_is_included(tmp_path, monkeypatch):
+    """INV-8. Breaks when the PUT is skipped for `selected`, so the pages step
+    meets a 404."""
+    _app(monkeypatch)
+    for selection, included in (("selected", True), ("all", False)):
+        folder = tmp_path / selection
+        folder.mkdir()
+        _Store(monkeypatch, saved_key=FIRST_REFRESH)
+        github = _SignInGitHub(selection=selection, pages="off")
+        with _setup_page(folder, github, clock=_Clock()) as browser:
+            _, done = _walk(browser)
+        assert "Setup is done." in done, selection
+        assert (("PUT", INSTALLATION) in github.writes()) is included, selection
+        # Where the app reaches every repository, the done page says how to narrow it.
+        assert ("Only select repositories" in done) is not included, selection
+
+
+def test_signed_in_setup_writes_only_what_it_needs(tmp_path, monkeypatch):
+    """INV-9. Breaks when a step writes another file, setting or repository."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub(pages="off")
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        _, done = _walk(browser)
+    assert "Setup is done." in done
+    assert [write for write in github.writes() if write[1].startswith("/")] == [
+        ("POST", "/user/repos"),
+        ("PUT", INSTALLATION),
+        ("PUT", "/repos/owner/owner.github.io/contents/.nojekyll"),
+        ("POST", "/repos/owner/owner.github.io/pages"),
+    ]
+    assert all(url.startswith("https://github.com/login/")
+               for method, url in github.writes() if not url.startswith("/"))
+    assert all(method != "DELETE" for method, _url, _auth in github.calls)
+
+
+def test_the_steps_follow_the_registration(tmp_path, monkeypatch):
+    """INV-10. Breaks when a development copy offers a sign-in GitHub will
+    refuse, or a registered one still asks for a key."""
+    _Store(monkeypatch)
+    folder = tmp_path / "unregistered"
+    folder.mkdir()
+    with _setup_page(folder, _GitHub(pages="off")) as browser:
+        seen, done = _walk(browser)
+    assert seen == ["welcome", "account", "repository", "key", "pages", "site"]
+    assert "Setup is done." in done
+
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    folder = tmp_path / "registered"
+    folder.mkdir()
+    with _setup_page(folder, _SignInGitHub(pages="off"), clock=_Clock()) as browser:
+        seen, done = _walk(browser)
+    assert seen == ["welcome", "signin", "install", "repository", "pages", "site"]
+    assert "Setup is done." in done
+
+
+def test_signing_in_again_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
+    """INV-13. Breaks when the page is served by its own handler."""
+    _app(monkeypatch)
+    _saved(tmp_path)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    github = _SignInGitHub()
+    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
+        assert browser.post({}, cookie=False, path="/setup/github")[0] == 403
+        assert browser.post({}, origin="http://pressless.example", path="/setup/github")[0] == 403
+        assert github.calls == []
+        status, page = browser.post({}, path="/setup/github")
+    assert status == 200 and USER_CODE in page

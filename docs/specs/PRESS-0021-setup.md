@@ -150,6 +150,9 @@ writes § 4.5's first-run values over that file, the Google fields included:
 
 *PRESS-0212 § 4.3: this form is Settings only; first run is the wizard.*
 
+*PRESS-0231 § 4.4 adds the signed-in line above the key box, and
+`/setup/github`.*
+
 Five fields, posted under these names: `repository`, `site_name`,
 `site_address`, `daily_prompt_filter` and `key`. The filter is optional on
 both paths. The key is
@@ -222,6 +225,8 @@ folder that is no longer there.
 *PRESS-0212 § 4.4: on first run, steps 3 and 4 run on the wizard's key step, and the rest on its site step.*
 
 *PRESS-0126 § 4.4 adds a fill step between storing the key and saving.*
+
+*PRESS-0231 § 4.2: step 1 reads the key with `github_setup.token`.*
 
 Each step runs only when the one before it succeeded. A failure is shown
 through `Face.fail` and ends the request.

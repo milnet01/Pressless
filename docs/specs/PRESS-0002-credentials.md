@@ -139,6 +139,9 @@ privacy there and costs him the key here.
 Google one is `None` where the dashboard was declined (ADR-0005), and a caller
 checks that before calling — `read()` is not given `None`.
 
+*PRESS-0231 § 3 decision 4: the GitHub secret may be a GitHub App refresh
+token, replaced by a new one on each renewal.*
+
 ### 4.2 Choosing a store
 
 `choose()` is setup's question and is asked once. It writes `PROBE` under

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pressless import credentials, editor, publisher, publishing, settings, setup, store
+from pressless import editor, github_setup, publisher, publishing, settings, setup, store
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
 
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
@@ -438,8 +438,8 @@ def _undo(face: Face, folder: Path, request: Request,
     with editor.LOCK:
         try:
             saved = gathered(lambda: settings.load(folder))
-            key = credentials.read(saved.credentials.store, folder,
-                                   saved.credentials.github_account)
+            key = github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
             result = undo(folder, saved, key, capture=face.capture,
                           notices=notices, transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page

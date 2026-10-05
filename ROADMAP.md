@@ -3683,7 +3683,7 @@ it decides how pages, the menu and the look are held.
   Source: by-hand run of PRESS-0212 § 7, 2026-10-05.
   Lanes: Setup.
 
-- 📋 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
+- 🚧 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
   Asked for by the user 2026-10-05 during the PRESS-0212 by-hand run,
   whose hardest step was making the fine-grained key by hand. Needs a
   spec: the choice between a GitHub OAuth app (device flow; the
@@ -3707,6 +3707,15 @@ it decides how pages, the menu and the look are held.
   read by no lane). Before building the install step's words, register
   the GitHub App and record what its install page offers an account with
   no repositories (spec § 7).
+  Progress (2026-10-05): built from the spec and tested against
+  doubles; CLIENT_ID and APP_SLUG are still empty, so no copy offers
+  it yet. Still owed before this ships: the maintainer registers the
+  GitHub App (docs/working-here.md has the steps) and fills both
+  constants; spec section 7's look at the install page from an account
+  with no repositories, then the install step's words checked against
+  it; spec section 7's whole-wizard run on Linux and the Windows box;
+  and the README's Getting started, which must wait until the
+  constants ship or it would say something untrue.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.

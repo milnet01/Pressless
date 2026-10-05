@@ -22,6 +22,8 @@ from pathlib import Path
 from pressless import (
     builder,
     credentials,
+    github_setup,
+    github_signin,
     google_signin,
     publisher,
     restarting,
@@ -216,7 +218,8 @@ def _setup(face: Face, folder: Path, request: Request,
             return render_notices(notices) + face.fail(exc, publishing=False)
         return (render_notices(notices)
                 + _form(values, {}, google_on=_google_on(saved),
-                        start=False if offer else None)
+                        start=False if offer else None,
+                        signed_in=_signed_in(folder, saved))
                 + (_shortcut_form(where, shortcuts.present(where)) if where else "")
                 + restarting.LINK)
     return render_notices(notices) + _submit(face, folder, saved,
@@ -249,23 +252,27 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
     if refused_identity is not None:
         hints[refused_identity] = _HINTS[refused_identity]
     if hints:
-        return _form(values, hints, google_on=_google_on(saved), start=box)
+        return _form(values, hints, google_on=_google_on(saved), start=box,
+                     signed_in=_signed_in(folder, saved))
 
-    # § 4.6 step 1: the key in hand.
+    # § 4.6 step 1: the key in hand, or the pass a sign-in buys (PRESS-0231).
     key = typed_key
     if not key:
         try:
-            key = credentials.read(saved.credentials.store, folder,
-                                   saved.credentials.github_account)
+            key = github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
         except _CREDENTIAL_FAILURES as exc:
             return _credential_failure(face, exc)
+        except publisher.PublishError as exc:
+            return face.fail(exc, publishing=False)
 
     done = _save_sequence(face, folder, candidate, identity, key, transport,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
                           choice=None, where=None)
     if isinstance(done, publisher.RemoteStateMissing):
         return _form(values, {"repository": _NO_SUCH_REPOSITORY},
-                     google_on=_google_on(saved), start=box)
+                     google_on=_google_on(saved), start=box,
+                     signed_in=_signed_in(folder, saved))
     return done
 
 
@@ -278,7 +285,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    identity: store.Identity, key: str,
                    transport: publisher.Transport | None, *, typed_key: str,
                    starter_ticked: bool, choice: credentials.Choice | None,
-                   where: shortcuts.Places | None) -> str | publisher.RemoteStateMissing:
+                   where: shortcuts.Places | None, signed_in: bool = False,
+                   narrow: str = "") -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, write the identity (PRESS-0213 § 4.6), save, and say
     it is done. `candidate` already
@@ -332,7 +340,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         return render_notices(filling) + render_notices(notices) + failed
     privacy, privacy_failure = _privacy(face, folder, final)
     return (render_notices(filling) + render_notices(notices) + privacy_failure
-            + _done(final, choice, filled) + privacy
+            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow) + privacy
             + (_shortcut_form(where, (True, True)) if where else ""))
 
 
@@ -426,17 +434,19 @@ def carry_name_across(folder: Path) -> str | None:
     return None
 
 
-def _credential_failure(face: Face, failure: Exception) -> str:
-    fragment = face.fail(failure, publishing=False, secret=KEY)
+def _credential_failure(face: Face, failure: Exception, noun: str = KEY) -> str:
+    fragment = face.fail(failure, publishing=False, secret=noun)
     if isinstance(failure, credentials.NoStore):
         return "<p>Setup cannot finish on this computer.</p>" + fragment
     return fragment
 
 
 def _form(values: dict[str, str], hints: dict[str, str], *,
-          google_on: bool = False, start: bool | None = None) -> str:
+          google_on: bool = False, start: bool | None = None,
+          signed_in: bool = False) -> str:
     """The Settings page. `start` is None where the starter site is not
-    offered, else whether its box is ticked (PRESS-0126 § 4.4)."""
+    offered, else whether its box is ticked (PRESS-0126 § 4.4). `signed_in`
+    says the stored secret is a GitHub sign-in (PRESS-0231 § 4.4)."""
     def field(name: str, label: str, kind: str = "text") -> str:
         hint = wizard.Hint(name, hints[name]) if name in hints else None
         return wizard.field(name, label, values, hint, kind, _SETTINGS_HELP[name])
@@ -453,11 +463,30 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + field("measurement_id",
                 "Google's measurement id, to count your visitors (optional, starts G-)")
         + _starter_box(start)
+        + (_SIGNED_IN if signed_in else "")
         + "<p>Leave the key box empty to keep the key Pressless already has.</p>"
         + field("key", "Your publishing key", "password")
         + '<p><button type="submit">Check the repository again and save</button></p></form>'
         + _google_link(google_on)
     )
+
+
+_SIGNED_IN = ('<p id="signed-in">Pressless is signed in to GitHub. Typing a key below '
+              'replaces the sign-in. <a href="/setup/github">Sign in to GitHub '
+              "again</a>.</p>")
+
+
+def _signed_in(folder: Path, saved: settings.Settings) -> bool:
+    """Whether the stored GitHub secret is a sign-in. Only a copy that can
+    sign in reads it; one that cannot read it says nothing."""
+    if not github_signin.available():
+        return False
+    try:
+        secret = credentials.read(saved.credentials.store, folder,
+                                  saved.credentials.github_account)
+    except _CREDENTIAL_FAILURES:
+        return False
+    return github_setup.signed_in(secret)
 
 
 def _starter_box(start: bool | None) -> str:
@@ -478,7 +507,7 @@ _ONWARD = '<p><a href="/">Go to your list</a></p>'
 
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,
-          filled: bool = False) -> str:
+          filled: bool = False, *, signed_in: bool = False, narrow: str = "") -> str:
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
@@ -487,15 +516,16 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
     )
     stored = ""
     if choice is not None:
-        stored = f"<p>Your publishing key is kept in {e(choice.name)}.</p>"
+        kept = "Your GitHub sign-in is" if signed_in else "Your publishing key is"
+        stored = f"<p>{kept} kept in {e(choice.name)}.</p>"
         if choice.store == "file":
             stored += (
-                "<p>No keyring was found on this computer, so the key is kept in a "
+                "<p>No keyring was found on this computer, so it is kept in a "
                 "file only your account can read, in the Pressless-data folder.</p>"
             )
     started = ("<p>Your starter site is in place. It is not on the web until you "
                "publish it.</p>" + _PUBLISH_STARTER if filled else "")
-    return ("<h1>Setup is done.</h1>" + started + left_alone + stored
+    return ("<h1>Setup is done.</h1>" + started + left_alone + stored + narrow
             + _google_link(_google_on(final)) + _ONWARD)
 
 
@@ -592,6 +622,17 @@ _NO_PAGES_READ = ("This key cannot see GitHub Pages. On GitHub, edit the key and
 _NO_PAGES_WRITE = ("This key cannot switch GitHub Pages on. On GitHub, edit the key and "
                    "set Pages and Administration to Read and write under Repository "
                    "permissions, then press Next again.")
+_NAME_ALONE = ("Type the repository's name alone, as GitHub shows it after your "
+               "account name.")
+# PRESS-0231 § 4.3: the steps with sign-in.
+_NOT_INSTALLED = ("GitHub shows no Pressless app installed on your account yet. Follow "
+                  "the steps above, then press Next again.")
+_TAKEN = ("A repository by that name already exists in your account. Choose another "
+          "name.")
+_APP_CANNOT_REACH = ("The Pressless app cannot reach this repository. On GitHub, click "
+                     "your picture, then Settings, then Applications, and check that "
+                     "the Pressless app's installation includes it. Then press Next "
+                     "again.")
 # PRESS-0229: never advice to re-point Pages, which would take that site offline.
 _ELSEWHERE = ("This repository already puts a site on the web another way, so Pressless "
               "cannot publish to it. Press Back and choose a different, new repository. "
@@ -619,6 +660,21 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return exc
         return None
 
+    # PRESS-0231: where this copy carries a registered GitHub App, he signs in
+    # rather than making a key, and Pressless makes the repository.
+    signing_in = github_signin.available()
+    noun = github_setup.SIGN_IN if signing_in else KEY
+    sign_in = github_setup.SignIn()     # its device code, in memory only
+
+    def key_for(answers: wizard.Answers) -> str | wizard.Stop:
+        """The key in hand: a hand-made key, or the pass a sign-in buys."""
+        try:
+            return github_setup.token(folder, answers.get("store", ""), GITHUB_ACCOUNT)
+        except _CREDENTIAL_FAILURES as exc:
+            return wizard.Stop(_credential_failure(face, exc, noun))
+        except publisher.PublishError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+
     def check_account(answers: wizard.Answers):
         if not _ACCOUNT.fullmatch(answers["account"]):
             return wizard.Hint("account", "Type your GitHub account name, as GitHub shows it.")
@@ -632,8 +688,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     def check_repository(answers: wizard.Answers):
         name = repository(answers)
         if refused(probe(name)) is not None:
-            return wizard.Hint("repository", "Type the repository's name alone, as GitHub "
-                                             "shows it after your account name.")
+            return wizard.Hint("repository", _NAME_ALONE)
         try:
             if not publisher.public_repository(name, transport):
                 return wizard.Hint("repository", _NOT_PUBLIC)
@@ -648,10 +703,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         if not typed:
             if not store:
                 return wizard.Hint("key", _KEY_MISSING)
-            try:
-                key = credentials.read(store, folder, GITHUB_ACCOUNT)
-            except _CREDENTIAL_FAILURES as exc:
-                return wizard.Stop(_credential_failure(face, exc))
+            held = key_for(answers)
+            if isinstance(held, wizard.Stop):
+                return held
+            key = held
         elif _malformed(typed):
             return wizard.Hint("key", _KEY_MALFORMED)
         else:
@@ -685,10 +740,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
     def check_pages(answers: wizard.Answers):
         name = repository(answers)
-        try:
-            key = credentials.read(answers.get("store", ""), folder, GITHUB_ACCOUNT)
-        except _CREDENTIAL_FAILURES as exc:
-            return wizard.Stop(_credential_failure(face, exc))
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key
         try:
             shown = publisher.pages(name, key, transport)
             if shown.on and not shown.serves_root:
@@ -696,7 +750,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not shown.on:
                 shown = publisher.switch_pages_on(name, key, transport)
         except publisher.Refused:
-            return wizard.Hint("", _NO_PAGES_WRITE)
+            return wizard.Hint("", _APP_CANNOT_REACH if signing_in else _NO_PAGES_WRITE)
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         address = shown.address or ""
@@ -721,14 +775,16 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         problem = refused(candidate)
         if problem is not None:
             return wizard.Stop(face.fail(problem, publishing=False))
-        try:
-            key = credentials.read(kept, folder, GITHUB_ACCOUNT)
-        except _CREDENTIAL_FAILURES as exc:
-            return wizard.Stop(_credential_failure(face, exc))
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key
         choice = credentials.Choice(kept, answers.get("store_name", kept))
+        narrow = (_narrow(repository(answers))
+                  if answers.get("all_repositories") == "yes" else "")
         done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
                               starter_ticked=answers.get("start") == "starter",
-                              choice=choice, where=shortcut_places())
+                              choice=choice, where=shortcut_places(),
+                              signed_in=signing_in, narrow=narrow)
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
         # The sequence words its own failures and success alike; the settings
@@ -737,6 +793,78 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return wizard.Stop(done)
         return wizard.Done(done)
 
+    def check_signin(answers: wizard.Answers):
+        # § 4.3 signin: each press polls GitHub once; nothing is stored until
+        # GitHub has issued the tokens (INV-4).
+        try:
+            pressed = sign_in.press()
+            if isinstance(pressed, str):
+                return wizard.Hint("", pressed)
+            account = github_signin.login(pressed.access, transport)
+        except publisher.PublishError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        kept = dict(answers)
+        try:
+            if not kept.get("store"):
+                choice = credentials.choose()
+                kept.update(store=choice.store, store_name=choice.name)
+            credentials.write(kept["store"], folder, GITHUB_ACCOUNT, pressed.refresh)
+        except _CREDENTIAL_FAILURES as exc:
+            return wizard.Stop(_credential_failure(face, exc, noun))
+        github_setup.hold(pressed)
+        kept["account"] = account
+        return kept
+
+    def check_install(answers: wizard.Answers):
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key
+        try:
+            found = github_signin.installation(key, answers.get("account", ""), transport)
+        except publisher.PublishError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        if found is None:
+            return wizard.Hint("", _NOT_INSTALLED)
+        return {**answers, "all_repositories": "yes" if found.all_repositories else "no"}
+
+    def check_new_repository(answers: wizard.Answers):
+        name = repository(answers)
+        if refused(probe(name)) is not None:
+            return wizard.Hint("repository", _NAME_ALONE)
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key
+        try:
+            # A 422 over a Public repository with nothing at its root is the
+            # one an earlier press made and lost the answer to (INV-7); any
+            # other is left alone (INV-6).
+            if not (github_signin.create_repository(key, answers["repository"], transport)
+                    or (publisher.public_repository(name, transport)
+                        and publisher.root_entries(probe(name), None, transport) == ())):
+                return wizard.Hint("repository", _TAKEN)
+            found = github_signin.installation(key, answers.get("account", ""), transport)
+            if found is None:
+                return wizard.Hint("", _NOT_INSTALLED)
+            github_signin.include(key, found, name, transport)
+        except publisher.PublishError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        return answers
+
+    pages = wizard.Step("pages", "Switch the site on", (), _show_pages, check_pages)
+    site = wizard.Step("site", "Your site", ("site_name", "site_description", "start"),
+                       lambda answers, hint: _show_site(folder, answers, hint), check_site)
+    if signing_in:
+        return wizard.Wizard("setup", (
+            wizard.Step("welcome", "Set up Pressless", (), _show_welcome_signing_in),
+            wizard.Step("signin", "Sign in to GitHub", (),
+                        lambda answers, hint: github_setup.HOW + sign_in.shown(),
+                        check_signin),
+            wizard.Step("install", "Let Pressless reach your site", (), _show_install,
+                        check_install),
+            wizard.Step("repository", "A home for your site", ("repository",),
+                        _show_new_repository, check_new_repository),
+            pages, site,
+        ), folder, "/setup")
     return wizard.Wizard("setup", (
         wizard.Step("welcome", "Set up Pressless", (), _show_welcome),
         wizard.Step("account", "A GitHub account", ("account",), _show_account,
@@ -744,9 +872,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         wizard.Step("repository", "A home for your site", ("repository",),
                     _show_repository, check_repository),
         wizard.Step("key", "A key for Pressless", ("key",), _show_key, check_key),
-        wizard.Step("pages", "Switch the site on", (), _show_pages, check_pages),
-        wizard.Step("site", "Your site", ("site_name", "site_description", "start"),
-                    lambda answers, hint: _show_site(folder, answers, hint), check_site),
+        pages, site,
     ), folder, "/setup")
 
 
@@ -759,16 +885,63 @@ def _show_welcome(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
             "off.</p>")
 
 
-def _show_account(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return ("<p>If you already have a GitHub account, type its name below.</p>"
-            "<p>If not, make one:</p><ol>"
+# How to make a GitHub account, for the wizard's first steps.
+_SIGN_UP = ("<ol>"
             '<li>Open <a href="https://github.com/signup" target="_blank" '
             'rel="noopener">github.com/signup</a>.</li>'
             "<li>Type your email address, a password and a username, and follow "
             "GitHub's steps. It sends a code to your email to check it is yours.</li>"
             "<li>When GitHub asks which plan, the free one is all Pressless needs.</li>"
-            "</ol>"
+            "</ol>")
+
+
+def _show_account(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    return ("<p>If you already have a GitHub account, type its name below.</p>"
+            "<p>If not, make one:</p>" + _SIGN_UP
             + wizard.field("account", "Your GitHub account name", answers, hint))
+
+
+def _show_welcome_signing_in(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    return (_show_welcome(answers, hint)
+            + "<p>You need a GitHub account. If you do not have one yet, make one "
+              "now:</p>" + _SIGN_UP)
+
+
+def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    e = html.escape
+    address = github_signin.INSTALL_URL.format(github_signin.APP_SLUG)
+    return ("<p>Pressless works through its own app on GitHub, which reaches only the "
+            "repositories you let it. Install it on your account:</p><ol>"
+            f'<li>Open <a href="{e(address, quote=True)}" target="_blank" '
+            f'rel="noopener">{e(address)}</a>.</li>'
+            "<li>If GitHub asks where to install it, choose your own account.</li>"
+            "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b> "
+            "if GitHub lets you, or <b>All repositories</b> if it does not. Pressless "
+            "adds your site's repository itself in the next step.</li>"
+            "<li>Click <b>Install</b>, then come back here and press <b>Next</b>.</li>"
+            "</ol>")
+
+
+def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    account = answers.get("account", "")
+    filled = {**answers, "repository": answers.get("repository") or f"{account}.github.io"}
+    e = html.escape(account)
+    return ("<p>A repository is the folder on GitHub your site lives in. Pressless makes "
+            "it for you, as Public: GitHub hosts sites for free only from public "
+            "repositories.</p>"
+            f"<p>Named <b>{e}.github.io</b>, your site's address is "
+            f"https://{e}.github.io. Any other name works too, and gives "
+            f"https://{e}.github.io/<i>the-name</i>/.</p>"
+            + wizard.field("repository", "The repository's name", filled, hint))
+
+
+def _narrow(repository: str) -> str:
+    """The done page's advice where the app reaches every repository (§ 4.3)."""
+    return ("<p>The Pressless app can reach every repository in your account. To let "
+            "it reach only your site's: on GitHub, click your picture, then "
+            "<b>Settings</b>, then <b>Applications</b>. Click <b>Configure</b> beside "
+            "Pressless, choose <b>Only select repositories</b>, pick "
+            f"<b>{html.escape(repository)}</b>, and click <b>Save</b>.</p>")
 
 
 def _show_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:

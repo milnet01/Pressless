@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Sign in to GitHub with a short code instead of making a key.** (PRESS-0231)
+  Setup then makes your site's repository and switches it on by
+  itself, and Pressless keeps the sign-in fresh. A key you made by hand
+  still works, and Settings can sign in again.
+
 - **A "?" beside each Settings box explains what goes in it and where to find it.** (PRESS-0228)
 
 - **Restart Pressless from Settings.** (PRESS-0203)

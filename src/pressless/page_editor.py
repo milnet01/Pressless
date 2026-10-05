@@ -23,7 +23,16 @@ from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 
-from pressless import builder, credentials, editor, publisher, publishing, settings, setup, store
+from pressless import (
+    builder,
+    editor,
+    github_setup,
+    publisher,
+    publishing,
+    settings,
+    setup,
+    store,
+)
 from pressless.face import (
     SENTENCES,
     TRUE_COLOURS,
@@ -517,8 +526,8 @@ def _publish(face: Face, folder: Path, request: Request,
 
         try:
             saved = gathered(lambda: settings.load(folder))
-            key = credentials.read(saved.credentials.store, folder,
-                                   saved.credentials.github_account)
+            key = github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
             remembered = gathered(lambda: store.read_html(store.html_path_for(folder, kind, name)))
             gathered(lambda: store.write_html(folder, kind, name, new))
             try:

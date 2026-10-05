@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
-from pressless import builder, credentials, editor, publisher, settings, setup, starter, store
+from pressless import builder, editor, github_setup, publisher, settings, setup, starter, store
 from pressless.face import (
     SENTENCES,
     Face,
@@ -305,8 +305,8 @@ def _publish(face: Face, folder: Path, request: Request,
 
         try:
             saved = gathered(lambda: settings.load(folder))
-            key = credentials.read(saved.credentials.store, folder,
-                                   saved.credentials.github_account)
+            key = github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
             result = publish(folder, saved, key, entry=written.slug, capture=face.capture,
                              notices=notices, transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save

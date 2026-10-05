@@ -174,6 +174,33 @@ PRESS-0122 § 4.6 owns the steps; in brief:
    which asks for it without showing it. Never paste it into a session.
 4. One real sign-in, exchange and refresh through Pressless.
 
+## Registering the GitHub App
+
+Sign in with GitHub (PRESS-0231) needs one GitHub App, registered once by
+the maintainer under their own GitHub account. Until
+`github_signin.CLIENT_ID` and `github_signin.APP_SLUG` both hold its
+values, setup asks for a hand-made key instead. PRESS-0231 § 4.1 owns the
+settings; GitHub's words below were checked against its registration and
+permission pages on 2026-10-05.
+
+1. On GitHub: your picture, **Settings**, **Developer settings**,
+   **GitHub Apps**, **New GitHub App**. Name it **Pressless**; the homepage
+   is the repository's page. Leave the callback address empty.
+2. Tick **Enable Device Flow**. Leave **Expire user authorization tokens**
+   ticked: § 8 rejects a token that never expires.
+3. Untick **Active** under the webhook.
+4. Under **Permissions**, in the repository permissions, set **Contents**,
+   **Pages** and **Administration** to **Read and write**, and **Repository
+   creation** to write.
+5. Under where it can be installed, choose **Any account**.
+6. Create it. Its **Client ID** goes into `CLIENT_ID`, and the last part of
+   its public page's address, `github.com/apps/<slug>`, into `APP_SLUG`.
+   Neither is a secret. The device flow needs no client secret, so
+   generate none.
+7. Before trusting the install step's words, § 7's look at the install
+   page from an account with no repositories. Before a release, § 7's
+   whole-wizard run on both systems.
+
 ## Windows and browser checks
 
 **Windows is testable, and that is not obvious from anything else here.**

@@ -32,6 +32,7 @@ from pathlib import Path
 from pressless import (
     builder,
     credentials,
+    github_signin,
     google_signin,
     insights,
     log,
@@ -67,6 +68,7 @@ class Sentence:
     what: str  # what happened, in his words; may hold the "{secret}" slot
     site: Site  # what it means for his site
     next: str  # what to do next
+    link: tuple[str, str] | None = None  # a fixed page and its label, after `next`
 
 
 @dataclass(frozen=True)
@@ -82,8 +84,9 @@ class FolderNotOpened(Exception):
     """The platform's opener is missing or failed (§ 6)."""
 
 
-def _say(what: str, next_step: str, site: Site = Site.UNCHANGED) -> Sentence:
-    return Sentence(what, site, next_step)
+def _say(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
+         link: tuple[str, str] | None = None) -> Sentence:
+    return Sentence(what, site, next_step, link)
 
 
 _AGAIN = "Try again. If it keeps happening, send the details below to whoever helps you."
@@ -244,6 +247,25 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "Something Pressless needed from GitHub was not there.",
         "Try again.",
     ),
+    # PRESS-0231 § 4.2. The sign-in step words the first three as hints; these
+    # are for anywhere else they reach.
+    github_signin.Pending: _say(
+        "GitHub has not heard from you yet.",
+        "Type the code on GitHub's page, click Authorize, then try again.",
+    ),
+    github_signin.Expired: _say(
+        "The code for signing in to GitHub ran out.",
+        "Sign in to GitHub again from Settings.",
+    ),
+    github_signin.Declined: _say(
+        "The sign-in was cancelled on GitHub.",
+        "Sign in to GitHub again from Settings whenever you like.",
+    ),
+    github_signin.SignedOut: _say(
+        "GitHub has signed Pressless out.",
+        "Sign in to GitHub again in Settings, then try again.",
+        link=("/setup/github", "Sign in to GitHub again"),
+    ),
     FolderNotOpened: _say(
         "Pressless could not open the folder.",
         "Use Copy location instead, and paste it into your file manager.",
@@ -268,7 +290,8 @@ def sentence_for(
     if entry is None:
         site = Site.UNKNOWN if publishing else Site.UNCHANGED
         return Sentence(_UNFORESEEN_WHAT, site, _UNFORESEEN_NEXT)
-    return Sentence(entry.what.replace("{secret}", secret or _UNNAMED_NOUN), entry.site, entry.next)
+    return Sentence(entry.what.replace("{secret}", secret or _UNNAMED_NOUN), entry.site,
+                    entry.next, entry.link)
 
 
 def details_for(failure: BaseException) -> str:
@@ -305,7 +328,9 @@ def render_failure(
         f'<p class="what">{e(sentence.what)}</p>'
         f'<p class="site">{e(sentence.site.value)}</p>'
         f'<p class="next">{e(sentence.next)}</p>'
-        "<details><summary>Show details</summary>"
+        + (f'<p class="next"><a href="{e(sentence.link[0], quote=True)}">'
+           f"{e(sentence.link[1])}</a></p>" if sentence.link else "")
+        + "<details><summary>Show details</summary>"
         f"<pre>{e(details_for(failure))}</pre>"
         f"<p>The log is {e(log.FILE_NAME)}, and the older part of it {e(log.OLD_NAME)}, "
         f"in {e(LABEL)}.</p>"

@@ -31,6 +31,7 @@ from pressless import (
     dashboard,
     editor,
     face,
+    github_setup,
     google_setup,
     page_editor,
     paths,
@@ -181,6 +182,7 @@ def _serve_once(folder: Path) -> bool:
     served = face.serve(folder)
     try:
         setup.register(served, folder)
+        github_setup.register(served, folder)
         google_setup.register(served, folder)
         dashboard.register(served, folder)
         editor.register(served, folder)

@@ -50,6 +50,8 @@ are built on it rather than beside it.
 
 1. **Pressless does not create the repository.** Decided by the user
    2026-10-03 (PRESS-0212). It gives exact clicks and checks each step itself.
+   *PRESS-0231 § 3 decision 2 overturns this for a copy carrying a
+   registered GitHub App.*
 2. **Setup is the first wizard, and the pattern is shared.** Decided by the
    user 2026-10-03 (PRESS-0220): one step per screen, Back and Next, which
    step of how many, a check before Next where a step can be checked, and
@@ -192,6 +194,9 @@ file loads is the Settings form, as today. The first-run form of PRESS-0021
 § 4.3 is gone.
 
 ### 4.4 The setup wizard's steps
+
+*PRESS-0231 § 4.3: where `github_signin.available()`, the steps are that
+section's.*
 
 Every GitHub request goes through the Publisher (`docs/design.md` rule 5).
 The words on each step are the implementer's, except where a sentence is

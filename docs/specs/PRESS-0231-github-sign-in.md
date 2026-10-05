@@ -211,14 +211,17 @@ the progress file (PRESS-0212 § 4.2).
    yet, with the same code. `Expired` drops the code and runs step 1.
    `Declined` drops the code and is a `Hint` saying the sign-in was
    cancelled on GitHub.
-3. `Tokens`: `credentials.choose()` where the answers hold no `store`, then
+3. `Tokens`: the code is dropped, and `login` is read first, so a failure
+   there stores nothing. Then `credentials.choose()` where the answers hold
+   no `store`, then
    `credentials.write(store, folder, GITHUB_ACCOUNT, tokens.refresh)`. A
    credential failure is a `Stop`, as on PRESS-0212's *key* step. Then
-   `github_setup.hold(tokens)`, and the code is dropped.
+   `github_setup.hold(tokens)`.
 4. The answers gain `store`, `store_name` and `account`, `login`'s answer.
 
 **repository.** The joined `account/repository` must pass `settings.check`'s
-repository rule, or the hint is PRESS-0021's.
+repository rule, or the hint asks for the name alone, as PRESS-0212's
+*repository* step does.
 
 1. `create_repository`. `True` goes to step 3.
 2. `False`: `publisher.public_repository`, then `publisher.root_entries`
