@@ -601,6 +601,7 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face button:disabled, .face button:disabled:hover { opacity: .45; cursor: not-allowed;
   border-color: var(--line); transform: none; box-shadow: none; }
 .face .press-status { min-height: 4.5em; }
+.face #save-hint { min-height: 4.7em; }
 .face [data-editor="publish"], .face form > button:only-of-type { background: var(--press);
   color: var(--on-press); border-color: var(--press); }
 .face #editor { display: flex; flex-wrap: wrap; align-items: flex-end; }
