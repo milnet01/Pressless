@@ -3830,6 +3830,9 @@ documents go on the site beside the photographs.
   This changes where Pressless keeps things (docs/design.md), so it needs
   a spec. Each site's publishing key is filed under its own name.
   Version 0.10.0 settled by the user 2026-10-03.
+  2026-10-05, the user: Settings could list the sites in his GitHub
+  account (its public repositories with Pages on) and let him switch
+  between them, rather than typing each one in.
   **Layman:** One copy of Pressless can look after more than one website, and you pick which one you are working on, like opening files in a word processor.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -9893,6 +9896,20 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face, publisher.
+
+- 📋 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
+  Asked for by the user 2026-10-05 during the PRESS-0212 by-hand run,
+  whose hardest step was making the fine-grained key by hand. Needs a
+  spec: the choice between a GitHub OAuth app (device flow; the
+  public_repo scope reaches every public repository) and a GitHub App
+  (installed per repository, but it cannot create the repository it has
+  not been installed on yet), what the token can reach, where it is kept,
+  and GitHub's own registration, as the Google sign-in needed (PRESS-0122).
+  Not yet placed in a version.
+  **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
+  Kind: feature.
+  Source: user request 2026-10-05.
+  Lanes: Setup, Publisher, Credentials.
 
 ## Milestones
 
