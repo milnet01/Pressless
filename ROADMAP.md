@@ -3749,6 +3749,14 @@ it decides how pages, the menu and the look are held.
   signing in, not making a key (31fef81). Still owed: include()'s PUT
   against real GitHub; § 7's whole-wizard run with the packaged build
   on Linux and the Windows box.
+  Progress (2026-10-05): include()'s PUT ran against real GitHub
+  (packaged build, milnet02, Only select repositories): refused. It needs
+  GitHub App installation repository access, which the registration form
+  does not offer, and GitHub had already added the new repository itself.
+  Replaced by reaches() plus a hint naming the clicks, the user's choice
+  (6f16962); the install step also covers an app already installed.
+  Still owed: finishing that packaged run (pages, publish, View your
+  site) and the Windows box run.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
@@ -3771,6 +3779,18 @@ it decides how pages, the menu and the look are held.
   **Layman:** One click from Pressless opens your site as visitors see it.
   Kind: ux.
   Source: user-request-2026-10-05.
+
+- 📋 [PRESS-0233] **A refusal tells a signed-in person to sign in again, not to re-enter a publishing key.**
+  Seen on PRESS-0231's packaged run: GitHub refused a request during
+  sign-in setup, and the page said "GitHub would not accept your
+  publishing key. Enter your publishing key again in Settings". The
+  words come from face.py's message for publisher.Refused, which
+  knows nothing of sign-in. With sign-in they should point at signing
+  in again from Settings (/setup/github).
+  **Layman:** When GitHub turns Pressless away, the message tells you to sign in again rather than to type a key you never made.
+  Kind: fix.
+  Source: in-session-2026-10-05.
+  Lanes: Face, Setup.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
