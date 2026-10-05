@@ -3708,6 +3708,21 @@ it decides how pages, the menu and the look are held.
   Source: by-hand run of PRESS-0212 § 7, 2026-10-05.
   Lanes: Setup.
 
+- 📋 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
+  Asked for by the user 2026-10-05 during the PRESS-0212 by-hand run,
+  whose hardest step was making the fine-grained key by hand. Needs a
+  spec: the choice between a GitHub OAuth app (device flow; the
+  public_repo scope reaches every public repository) and a GitHub App
+  (installed per repository, but it cannot create the repository it has
+  not been installed on yet), what the token can reach, where it is kept,
+  and GitHub's own registration, as the Google sign-in needed (PRESS-0122).
+  Placed in 0.8.0 by the user 2026-10-05: the hand-made key is the
+  biggest thing in a stranger's way.
+  **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
+  Kind: feature.
+  Source: user request 2026-10-05.
+  Lanes: Setup, Publisher, Credentials.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -9909,20 +9924,6 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face, publisher.
-
-- 📋 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
-  Asked for by the user 2026-10-05 during the PRESS-0212 by-hand run,
-  whose hardest step was making the fine-grained key by hand. Needs a
-  spec: the choice between a GitHub OAuth app (device flow; the
-  public_repo scope reaches every public repository) and a GitHub App
-  (installed per repository, but it cannot create the repository it has
-  not been installed on yet), what the token can reach, where it is kept,
-  and GitHub's own registration, as the Google sign-in needed (PRESS-0122).
-  Not yet placed in a version.
-  **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
-  Kind: feature.
-  Source: user request 2026-10-05.
-  Lanes: Setup, Publisher, Credentials.
 
 ## Milestones
 
