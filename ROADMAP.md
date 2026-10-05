@@ -3838,6 +3838,16 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-05.
   Lanes: Face.
 
+- 📋 [PRESS-0237] **The list's Your pages names the starter's About page "about", beside Home, Header and Footer.**
+  Seen on PRESS-0231's packaged run (milnet02, plain site ticked):
+  Your pages listed "about", "Home", "Header", "Footer", "Navigation".
+  The fixed pages are labelled; a page's own name shows as its file
+  name. Show a label for it too (its title, or the name capitalised).
+  **Layman:** The list of your pages shows each name the same way, so About is not the odd one out in small letters.
+  Kind: ux.
+  Source: in-session-2026-10-05.
+  Lanes: Editor.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
