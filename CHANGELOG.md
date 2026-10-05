@@ -14,6 +14,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **One click from Pressless opens your site: "View your site" in the top bar, after a publish, and at the end of setup.** (PRESS-0232)
+
 - **Sign in to GitHub with a short code instead of making a key.** (PRESS-0231)
   Setup then makes your site's repository and switches it on by
   itself, and Pressless keeps the sign-in fresh. A key you made by hand
