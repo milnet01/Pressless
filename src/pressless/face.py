@@ -494,6 +494,13 @@ document.addEventListener("change", (event) => {
   else document.documentElement.dataset.theme = picker.value;
   fetch("/theme", {method: "POST", body: picker.value});
 });
+// PRESS-0228: a "?" beside a box opens its help; Close or Escape shuts it.
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest("button[data-help]");
+  if (opener) document.getElementById(opener.dataset.help).showModal();
+  const closer = event.target.closest("button[data-close]");
+  if (closer) closer.closest("dialog").close();
+});
 // PRESS-0187: a dark look dims the preview; this switch shows its true colours.
 document.addEventListener("change", (event) => {
   const box = event.target.closest("input[data-true-colours]");
@@ -548,6 +555,11 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
   padding: .5rem 1.1rem; vertical-align: bottom; box-shadow: 0 1px 3px var(--shadow);
   transition: border-color .15s, transform .15s, box-shadow .15s; }
 .face label + button, .face label ~ button { margin-bottom: .75rem; }
+.face button.help { padding: .4rem .8rem; min-width: 2.4rem; }
+.face dialog { max-width: min(42rem, calc(100vw - 2rem)); color: var(--ink);
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.1rem 1.4rem; box-shadow: 0 8px 30px var(--shadow); }
+.face dialog::backdrop { background: rgba(0, 0, 0, .5); }
 .face button:hover { border-color: var(--amber); transform: translateY(-1px);
   box-shadow: 0 3px 10px var(--shadow); }
 .face [data-editor="publish"], .face form > button:only-of-type { background: var(--press);

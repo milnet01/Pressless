@@ -54,6 +54,80 @@ _HINTS = {
     "measurement_id": "Type the measurement id as Google shows it: G- and then "
                       "capital letters and numbers, or leave it empty.",
 }
+
+
+def _new_repository(account: str) -> str:
+    """How to make the repository, for the wizard's step and Settings' help.
+    `account` is already escaped."""
+    return ("<ol><li>On GitHub, click the <b>+</b> at the top right, then "
+            "<b>New repository</b>.</li>"
+            f"<li>Under <b>Repository name</b>, type <b>{account}.github.io</b>. Your "
+            f"site's address is then https://{account}.github.io. Any other name works "
+            f"too, and gives https://{account}.github.io/<i>the-name</i>/.</li>"
+            "<li>Choose <b>Public</b>. GitHub hosts sites for free only from public "
+            "repositories.</li>"
+            "<li>Click <b>Create repository</b>. Leave everything else as it is.</li></ol>")
+
+
+# How to make the publishing key, for the wizard's step and Settings' help.
+_NEW_KEY = (
+    "<ol><li>On GitHub, click your picture at the top right, then <b>Settings</b>.</li>"
+    "<li>At the bottom of the left-hand list, click <b>Developer settings</b>, "
+    "then <b>Personal access tokens</b>, then <b>Fine-grained tokens</b>.</li>"
+    "<li>Click <b>Generate new token</b>. Name it <b>Pressless</b>, and choose how "
+    "long it lasts. When it runs out, make a new one the same way and paste it "
+    "into Settings.</li>"
+    "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b>, "
+    "then your site's repository.</li>"
+    "<li>Under <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and "
+    "write</b>, and <b>Pages</b> to <b>Read and write</b>.</li>"
+    "<li>Click <b>Generate token</b>, then copy it. GitHub shows it only once.</li></ol>")
+
+# Settings' "?" beside each box (PRESS-0228): where the answer comes from.
+_SETTINGS_HELP = {
+    "repository": (
+        "<p>Type the repository's owner and name with a slash between, as GitHub "
+        "shows them at the top of the repository's page: <b>owner/name</b>. They are "
+        "also the end of that page's address, after github.com/.</p>"
+        "<p>To make a new repository:</p>" + _new_repository("your-name")),
+    "site_name": (
+        "<p>Your own choice. Pressless puts it wherever your site's header and "
+        "footer have a place for the site's name.</p>"),
+    "site_description": (
+        "<p>One line about your site, in your own words. Pressless puts it wherever "
+        "your site's header and footer have a place for it. Leave it empty if you "
+        "do not want one.</p>"),
+    "site_address": (
+        "<p>The address people type to reach your site, starting with https://. "
+        "On GitHub, open your site's repository and click <b>Settings</b>, then "
+        "<b>Pages</b>: once the site is live, its address is shown there.</p>"
+        "<p>A repository named <b>your-name.github.io</b> is at "
+        "https://your-name.github.io. Any other name is at "
+        "https://your-name.github.io/<i>the-name</i>/. If you gave your site a "
+        "domain of your own under <b>Custom domain</b> on that page, type that "
+        "instead.</p>"),
+    "daily_prompt_filter": (
+        "<p>Pressless leaves off your site every entry with a tag that matches "
+        "this. A <b>*</b> stands for any letters, so <b>dailyprompt-*</b> matches "
+        "dailyprompt-1 and dailyprompt-2024. Capital letters must match too.</p>"
+        "<p>Leave it empty to keep every entry.</p>"),
+    "measurement_id": (
+        "<p>It tells Google Analytics which counter your visitors are counted on. "
+        "Leave it empty and Pressless adds no counting code to your site. "
+        "To find it:</p><ol>"
+        '<li>Open <a href="https://analytics.google.com" target="_blank" '
+        'rel="noopener">analytics.google.com</a> and sign in.</li>'
+        "<li>Click <b>Admin</b>, the gear at the bottom left.</li>"
+        "<li>Under <b>Data collection and modification</b>, click <b>Data "
+        "streams</b>, then your site's stream. If there is none, click <b>Add "
+        "stream</b>, then <b>Web</b>, and type your site's address.</li>"
+        "<li>Copy the <b>Measurement ID</b>. It starts G-.</li></ol>"),
+    "key": (
+        "<p>The key lets Pressless change your site's repository, and nothing "
+        "else. Leave the box empty to keep the key Pressless already has. To make "
+        "a new one:</p>" + _NEW_KEY),
+}
+
 _NO_SUCH_REPOSITORY = (
     "GitHub has no repository by that name that this key can reach."
 )
@@ -354,7 +428,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
     offered, else whether its box is ticked (PRESS-0126 § 4.4)."""
     def field(name: str, label: str, kind: str = "text") -> str:
         hint = wizard.Hint(name, hints[name]) if name in hints else None
-        return wizard.field(name, label, values, hint, kind)
+        return wizard.field(name, label, values, hint, kind, _SETTINGS_HELP[name])
 
     return (
         "<h1>Settings</h1>"
@@ -681,17 +755,8 @@ def _show_account(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
 
 
 def _show_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    e = html.escape
-    account = e(answers.get("account", "your-name"))
-    return ("<p>A repository is the folder on GitHub your site lives in. Make one:</p><ol>"
-            "<li>On GitHub, click the <b>+</b> at the top right, then "
-            "<b>New repository</b>.</li>"
-            f"<li>Under <b>Repository name</b>, type <b>{account}.github.io</b>. Your "
-            f"site's address is then https://{account}.github.io. Any other name works "
-            f"too, and gives https://{account}.github.io/<i>the-name</i>/.</li>"
-            "<li>Choose <b>Public</b>. GitHub hosts sites for free only from public "
-            "repositories.</li>"
-            "<li>Click <b>Create repository</b>. Leave everything else as it is.</li></ol>"
+    return ("<p>A repository is the folder on GitHub your site lives in. Make one:</p>"
+            + _new_repository(html.escape(answers.get("account", "your-name")))
             + wizard.field("repository", "The repository's name", answers, hint))
 
 
@@ -699,19 +764,7 @@ def _show_key(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     kept = ("<p>Pressless already has the key you gave it. Leave the box empty to "
             "keep it, or paste a new one.</p>" if answers.get("store") else "")
     return ("<p>Pressless needs a key that lets it change your site, and nothing "
-            "else. Make one:</p><ol>"
-            "<li>On GitHub, click your picture at the top right, then <b>Settings</b>.</li>"
-            "<li>At the bottom of the left-hand list, click <b>Developer settings</b>, "
-            "then <b>Personal access tokens</b>, then <b>Fine-grained tokens</b>.</li>"
-            "<li>Click <b>Generate new token</b>. Name it <b>Pressless</b>, and choose how "
-            "long it lasts. When it runs out, make a new one the same way and paste it "
-            "into Settings.</li>"
-            "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b>, "
-            "then your site's repository.</li>"
-            "<li>Under <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and "
-            "write</b>, and <b>Pages</b> to <b>Read and write</b>.</li>"
-            "<li>Click <b>Generate token</b>, then copy it. GitHub shows it only once.</li>"
-            "</ol>" + kept
+            "else. Make one:</p>" + _NEW_KEY + kept
             + wizard.field("key", "Paste the key here", answers, hint, "password")
             + "<p>Pressless keeps the key in your computer's own safe store, never in a "
               "file it shows anyone.</p>")

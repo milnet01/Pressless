@@ -63,15 +63,25 @@ def is_secret(name: str) -> bool:
 
 
 def field(name: str, label: str, answers: Answers, hint: Hint | None,
-          kind: str = "text") -> str:
+          kind: str = "text", help_html: str = "") -> str:
     """One labelled box, filled from `answers` unless it holds a key, with its
-    hint beneath when the hint is about it."""
+    hint beneath when the hint is about it. `help_html`, fixed text and never
+    an answer, adds a "?" button beside the box that opens it in a dialog."""
     e = html.escape
     value = "" if is_secret(name) else f' value="{e(answers.get(name, ""), quote=True)}"'
     shown = (f'<p class="hint" id="{name}-hint">{e(hint.text)}</p>'
              if hint is not None and hint.field == name else "")
+    button = dialog = ""
+    if help_html:
+        # Outside the label, which would otherwise hand the box's clicks to it.
+        button = (f' <button type="button" class="help" data-help="{name}-help" '
+                  f'aria-haspopup="dialog" aria-label="Help: {e(label, quote=True)}">'
+                  "?</button>")
+        dialog = (f'<dialog id="{name}-help" aria-labelledby="{name}-help-title">'
+                  f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
+                  '<p><button type="button" data-close>Close</button></p></dialog>')
     return (f'<p><label>{e(label)} <input type="{kind}" name="{name}"{value} '
-            f'autocomplete="off"></label></p>{shown}')
+            f'autocomplete="off"></label>{button}</p>{dialog}{shown}')
 
 
 class Wizard:

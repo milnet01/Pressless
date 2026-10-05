@@ -14,6 +14,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A "?" beside each Settings box explains what goes in it and where to find it.** (PRESS-0228)
+
 - **Restart Pressless from Settings.** (PRESS-0203)
   Pressless asks first, then opens again in a new tab, in the same
   window. The tab you restarted from says so instead of going dead.

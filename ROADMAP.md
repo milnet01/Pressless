@@ -3638,6 +3638,25 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-03.
   Lanes: tests.
 
+- ✅ [PRESS-0228] **A "?" beside each Settings box explains where its answer comes from.**
+  Asked for by the user 2026-10-05, from a screenshot of the old
+  setup form. Settings only: the first-run wizard already explains each
+  box on its own step, and the help shares the wizard's GitHub steps
+  rather than copying them. A native dialog, opened by the Face's page
+  script; Close or Escape shuts it.
+  Shipped 2026-10-05. wizard.field takes fixed help HTML and adds a
+  "?" button outside the label plus a dialog; the Face's page script
+  opens it. The key and repository steps are now one copy each, shared
+  with the wizard. Two mutations killed; headless Chrome opened the
+  dialogs and shut them by Escape and by Close, with no script errors.
+  Linux gate 949 passed, 3 skipped; the Windows box was unreachable.
+  Not checked by hand: the Google Analytics menu names in the
+  measurement id's help.
+  **Layman:** A question-mark button next to each box in Settings opens a window saying where to find what goes in it, and how.
+  Kind: feature.
+  Source: user request 2026-10-05.
+  Lanes: Face, Setup.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a

@@ -828,6 +828,23 @@ def test_settings_shows_the_shortcuts_as_they_are(tmp_path, monkeypatch):
     assert _boxes(page) == {"menu": True, "desktop": False}
 
 
+def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
+    """PRESS-0228: each box on Settings has a "?" that opens a dialog of its
+    own and never submits the form; the key's help is the wizard's steps."""
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, page = browser.get()
+    boxes = re.findall(r'<input type="(?:text|password)" name="([^"]+)"', page)
+    assert "key" in boxes and "repository" in boxes
+    for name in boxes:
+        assert re.search(rf'<button type="button" class="help" data-help="{name}-help"',
+                         page), f"{name} has no help button"
+        assert f'<dialog id="{name}-help"' in page, f"{name} has no help dialog"
+    assert page.count('class="help"') == len(boxes)
+    assert setup._NEW_KEY in page and setup._NEW_KEY in setup._show_key({}, None)
+
+
 def test_a_development_run_offers_no_shortcuts(tmp_path, monkeypatch):
     _Store(monkeypatch)
     _saved(tmp_path)
