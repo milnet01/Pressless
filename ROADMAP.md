@@ -3833,6 +3833,12 @@ it decides how pages, the menu and the look are held.
   row. Sweep the rest: the save note beside Your writing, the
   photograph note, the list's Undo note, setup's and Settings' hints,
   and any other text that appears or changes beside a control.
+  Progress (2026-10-05): the page editor's save hint (the refusal
+  when the box's paragraph count changes) now has three lines held
+  open above the press row. The PRESS-0234 hand check caught it
+  pushing everything down. Measured headless: the row holds at
+  desktop and narrow widths, and moves only near phone width. The
+  other spots listed above are still to do.
   **Layman:** Buttons and boxes stay exactly where they are while Pressless tells you what it is doing.
   Kind: ux.
   Source: user-request-2026-10-05.
@@ -3901,6 +3907,21 @@ removed, and the menu follows.
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
+
+- 📋 [PRESS-0238] **The words box lets the writer add or remove a paragraph on a fixed page.**
+  Today a fixed page's words box ties each paragraph to one spot in
+  the page's code (PRESS-0014), so pressing Enter twice to start a new
+  paragraph is refused: "did not save it ... press Show me the code".
+  The user hit this on the first try during the PRESS-0234 hand check
+  and chose to change it. A new paragraph should land after the one it
+  follows, as the same kind of element; removing one should remove its
+  element. Likely needs a short spec first: it amends PRESS-0014's rule
+  that the count must match, and it decides what happens beside
+  headings, lists and links.
+  **Layman:** You can start a new paragraph, or delete one, straight in the words box, without opening the code.
+  Kind: feature.
+  Source: user-request-2026-10-05.
+  Lanes: Face.
 
 ## 0.10.0 — their own look, and any file
 
