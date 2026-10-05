@@ -23,7 +23,7 @@ import pytest
 from _face_session import Browser
 from test_setup import _saved
 
-from pressless import editor, face, marks, settings, store
+from pressless import editor, face, marks, page_editor, settings, store
 
 PREVIEW = "preview"
 REPLACES = "Replaces"
@@ -741,6 +741,16 @@ def test_the_style_code_is_served_before_any_preview(tmp_path):
     with _editor(folder) as browser:
         status, _, css = browser.request("GET", "/preview/look/style.css")
     assert status == 200 and css == "body { color: black; }\n"
+
+
+def test_a_publish_note_links_to_the_live_site():
+    """PRESS-0232. Breaks when either editor's "Published." note stops
+    carrying the top bar's link to the site, or builds its own."""
+    for name, script in (("entry", editor._EDITOR_SCRIPT), ("page", page_editor._PAGE_SCRIPT)):
+        after = script.split('"Published. Your site shows it within a few minutes."', 1)[1]
+        added = after.split("} catch", 1)[0]
+        assert 'document.querySelector(".bar a[data-site]")' in added, name
+        assert 'said.append(" ", site.cloneNode(true))' in added, name
 
 
 def test_the_list_names_the_site_it_edits(tmp_path):

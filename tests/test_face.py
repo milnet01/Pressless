@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 from _face_session import Browser, follow_link, session_cookie
+from test_setup import _saved
 
 import pressless
 from pressless import credentials, face, insights, publisher, store, themes
@@ -445,6 +446,41 @@ def test_every_page_links_to_settings(tmp_path: Path) -> None:
             bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
             assert status == expected, path
             assert '<a href="/setup">Settings</a>' in bar, path
+    finally:
+        served.stop()
+
+
+def test_the_bar_links_to_the_live_site_once_set_up(tmp_path: Path) -> None:
+    """PRESS-0232. Breaks when the top bar has no link to the site's address
+    once settings hold one, shows one before, or a missing or unreadable
+    settings file stops a page from rendering."""
+    def broken(request: face.Request) -> str:
+        raise ValueError("x")
+
+    link = ('<a href="https://example.org" target="_blank" rel="noopener" '
+            "data-site>View your site</a>")
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        served.add_page("GET", "/broken", broken)
+        client = _Client(served)
+
+        def bars() -> list[tuple[int, str]]:
+            found = []
+            for path in ("/words", "/broken"):
+                status, _, body = client.request("GET", path)
+                found.append((status, body.split('<header class="bar">', 1)[1]
+                              .split("</header>", 1)[0]))
+            return found
+
+        assert [status for status, _ in bars()] == [200, 500]
+        assert all("View your site" not in bar for _, bar in bars())
+        _saved(tmp_path)
+        for status, bar in bars():
+            assert link + '<a href="/setup">Settings</a>' in bar, status
+        (tmp_path / "settings.json").write_text("{not json", encoding="utf-8")
+        for (status, bar), expected in zip(bars(), (200, 500), strict=True):
+            assert status == expected and "View your site" not in bar
     finally:
         served.stop()
 

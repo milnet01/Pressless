@@ -863,6 +863,18 @@ def test_the_key_steps_ask_for_administration(tmp_path, monkeypatch):
     assert "Administration" in setup._NO_PAGES_WRITE
 
 
+def test_setup_links_the_sites_address(tmp_path):
+    """PRESS-0232. Breaks when the last step or the done page names the
+    site's address without linking it, or links an address that is not
+    http or https."""
+    link = ('<a href="https://example.org" target="_blank" rel="noopener">'
+            "https://example.org</a>")
+    assert link in setup._show_site(tmp_path, {"site_address": "https://example.org"}, None)
+    assert link in setup._done(_saved(tmp_path), None)
+    shown = setup._show_site(tmp_path, {"site_address": "javascript:alert(1)"}, None)
+    assert "<a href" not in shown.split("</p>", 1)[0]
+
+
 def test_a_finished_setup_says_how_to_publish_the_starter(tmp_path, monkeypatch):
     """The done page leads on to the list and says how the starter site first
     reaches the web; the list says so too, until the first publish."""

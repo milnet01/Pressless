@@ -678,6 +678,9 @@ _PAGE_SCRIPT = """
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
         ? "Published. Your site shows it within a few minutes." : "";
+      // PRESS-0232: the top bar's link to the site, where there is one.
+      const site = document.querySelector(".bar a[data-site]");
+      if (reply.published && site) said.append(" ", site.cloneNode(true));
     } catch (error) {
       said.textContent = ""; stop("");
     } finally {

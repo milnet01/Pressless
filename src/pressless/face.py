@@ -665,14 +665,18 @@ _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
          '<rect x="28" y="116" width="30" height="7" rx="3.5"/></g></svg>')
 
 
-def _page(body: str, theme: str = themes.FOLLOW) -> str:
+def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
+    # PRESS-0232: the editors' publish notes copy this link, so it is the one
+    # place a page reads the site's address from.
+    visit = (f'<a href="{html.escape(site, quote=True)}" target="_blank" rel="noopener" '
+             "data-site>View your site</a>" if site else "")
     return (
         f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>Pressless</title><style>{_STYLE}</style></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f'{themes.picker(theme)}<a href="/setup">Settings</a>'
+        f'{themes.picker(theme)}{visit}<a href="/setup">Settings</a>'
         # PRESS-0179: on every screen, failure pages included.
         '<a href="/report">Suggest or report a problem</a></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
@@ -800,7 +804,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             try:
                 _open_folder(face._folder)
             except FolderNotOpened as exc:
-                self._send(500, _page(face.fail(exc, publishing=False), face._theme), "text/html")
+                self._send(500, _page(face.fail(exc, publishing=False), face._theme,
+                                      face.live_address()), "text/html")
                 return
             self._send(204, "", "text/plain")
             return
@@ -857,14 +862,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         try:
             body = page(request)
         except Exception as exc:  # noqa: BLE001 -- § Errors' last-resort catch
-            self._send(500, _page(face.fail(exc, publishing=publishing), face._theme), "text/html",
+            self._send(500, _page(face.fail(exc, publishing=publishing), face._theme,
+                                  face.live_address()), "text/html",
                        (("Content-Security-Policy", _FRAMES_POLICY),))
             return
         if isinstance(body, Reply):
             location = (("Location", body.location),) if body.location is not None else ()
             self._send_bytes(body.status, body.body, body.content_type, location)
             return
-        self._send(200, _page(body, face._theme), "text/html",
+        self._send(200, _page(body, face._theme, face.live_address()), "text/html",
                    (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _send_file(self, method: str, path: str, face: Face) -> None:
@@ -969,6 +975,15 @@ class Face:
     def list_pieces(self, above: bool) -> list[str]:
         """What every part registered for that side of the list shows now."""
         return [render() for render in self._list_pieces[above]]
+
+    def live_address(self) -> str:
+        """The site's address for the top bar (PRESS-0232), or "" before setup
+        or where the settings file cannot be read: the page still renders, and
+        the failure is told where the settings are used."""
+        try:
+            return settings.load(self._folder).site_address
+        except (settings.NotSetUp, settings.SettingsError):
+            return ""
 
     def note(self, text: str) -> None:
         """One line in the rolling log. The caller keeps URLs and paths out."""

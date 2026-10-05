@@ -525,8 +525,20 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
             )
     started = ("<p>Your starter site is in place. It is not on the web until you "
                "publish it.</p>" + _PUBLISH_STARTER if filled else "")
-    return ("<h1>Setup is done.</h1>" + started + left_alone + stored + narrow
+    return ("<h1>Setup is done.</h1>"
+            + f"<p>Your site's address is {_site_link(final.site_address)}.</p>"
+            + started + left_alone + stored + narrow
             + _google_link(_google_on(final)) + _ONWARD)
+
+
+def _site_link(address: str) -> str:
+    """The site's address as a link that opens it (PRESS-0232), or as text
+    where it is not an http or https address."""
+    shown = html.escape(address)
+    if not address.startswith(("https://", "http://")):
+        return shown
+    return (f'<a href="{html.escape(address, quote=True)}" target="_blank" '
+            f'rel="noopener">{shown}</a>')
 
 
 def _google_on(saved: settings.Settings | None) -> bool:
@@ -997,7 +1009,6 @@ def _show_pages(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
 
 
 def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    e = html.escape
     try:
         offered = starter.offered(folder)
     except StoreError:
@@ -1006,7 +1017,7 @@ def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) 
     if offered:
         ticked = answers.get("start", "starter") == "starter"
         box = _starter_box(ticked)
-    return (f"<p>Your site's address is {e(answers.get('site_address', ''))}. It can "
+    return (f"<p>Your site's address is {_site_link(answers.get('site_address', ''))}. It can "
             "take a few minutes after your first publish before it shows.</p>"
             + wizard.field("site_name", "Your site's name", answers, hint)
             + wizard.field("site_description",

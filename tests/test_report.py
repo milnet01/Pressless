@@ -61,7 +61,12 @@ def test_the_issue_is_ready_filled_and_carries_nothing_of_theirs(tmp_path):
     assert platform.system() in text
     for blank in ("What I pressed", "What I expected", "What I saw"):
         assert blank in text
-    assert SENTINEL not in body
+    # PRESS-0232: the top bar links every page to his own site; nothing else
+    # on this one may name it.
+    visit = (f'<a href="https://{SENTINEL}.example.org" target="_blank" rel="noopener" '
+             "data-site>")
+    assert body.count(visit) == 1
+    assert SENTINEL not in body.replace(visit, "")
 
 
 def test_it_says_the_issue_is_public_and_points_security_elsewhere(tmp_path):
