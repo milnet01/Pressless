@@ -57,11 +57,12 @@ lists what each release added.
 ## Before you start
 
 You need an email address. Your site lives on GitHub, which hosts it for
-free, and the first time you start Pressless it walks you through
-getting a GitHub account, a repository for your site (GitHub's name for
-a project folder) and a key that lets Pressless change it. It checks
-each step itself and switches the site on. It keeps the key where only
-your computer account can read it.
+free. The first time you start Pressless, it walks you through getting
+a GitHub account if you have none, signing in to GitHub, and installing
+Pressless's own app there. Pressless then makes a repository for your
+site (GitHub's name for a project folder) and switches the site on. You
+make no key by hand. It keeps your sign-in where only your computer
+account can read it.
 
 ## Getting started
 
