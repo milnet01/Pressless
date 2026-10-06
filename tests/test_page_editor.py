@@ -209,6 +209,16 @@ def test_the_refusal_moves_nothing():
     assert float(held.group(1)) >= 4.65, held.group(0)  # three lines at 1.55
 
 
+def test_a_refused_press_says_nothing_was_published():
+    # A hand check pressed Press to site with a paragraph added to the box. The
+    # publish was refused, yet the status line went back to "On your site", so
+    # the press seemed to do nothing, or to have worked (PRESS-0234).
+    after = page_editor._PAGE_SCRIPT.split(
+        '"Published. Your site shows it within a few minutes."', 1)[1]
+    otherwise = after.split(";", 1)[0]
+    assert "reply.hint" in otherwise and '"Not published' in otherwise, otherwise
+
+
 # ------------------------------------------------------------------ INV-4 ---
 
 

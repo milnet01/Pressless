@@ -689,7 +689,9 @@ _PAGE_SCRIPT = """
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
-        ? "Published. Your site shows it within a few minutes." : standing();
+        ? "Published. Your site shows it within a few minutes."
+        : reply.hint ? "Not published, because the box holds a different number of " +
+          "paragraphs from your page." : standing();
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
       if (reply.published && view && view.dataset.viewSite) view.disabled = false;
