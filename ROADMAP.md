@@ -3807,6 +3807,14 @@ it decides how pages, the menu and the look are held.
   the button beside it replaces it.
   Progress (2026-10-05): built in ea91c9c. Owed: a look in a real
   browser on the packaged build before it ships.
+  Progress (2026-10-06): hand check on the packaged Linux build passed for the
+  layout: three buttons in one row, "Published. Your site shows it within a
+  few minutes." in the fixed line below, nothing moved. It found a refused
+  press (paragraph count changed) leaving the line on "On your site";
+  fixed in efacf5c, which now says "Not published, because...". Still owed
+  before shipping: the user's look at that message on the rebuilt test copy
+  (cc-job pressless-handrun). Then flip to shipped and write changelog
+  lines for this, PRESS-0231's changes and the PRESS-0236 save-hint fix.
   **Layman:** Next to Press to site there is now a View your site button, and publishing news appears in one steady line below the buttons instead of pushing them around.
   Kind: ux.
   Source: user-request-2026-10-05.
@@ -3839,6 +3847,10 @@ it decides how pages, the menu and the look are held.
   pushing everything down. Measured headless: the row holds at
   desktop and narrow widths, and moves only near phone width. The
   other spots listed above are still to do.
+  Progress (2026-10-06): the user hand-checked the save hint on the packaged
+  build (57dff50): it appeared without moving anything. Still open: at phone
+  width it wraps to four lines and nudges the row; recommendation is a
+  shorter message rather than more held space.
   **Layman:** Buttons and boxes stay exactly where they are while Pressless tells you what it is doing.
   Kind: ux.
   Source: user-request-2026-10-05.
