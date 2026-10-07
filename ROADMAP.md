@@ -3874,6 +3874,13 @@ it decides how pages, the menu and the look are held.
   better than they currently do." PRESS-0126 shipped a deliberately
   plain stylesheet. What "better" means is still to be settled with the
   user before building; it must stay easy to read with low vision.
+  Decided (2026-10-07): the user chose a warm, modern look (large
+  clear text, a coloured header band, roomy spacing, a tidy menu), and
+  asked for a few starter sites offered with different themes and
+  different layouts to pick from.
+  Requirement (2026-10-07, the user): every starter works on a phone
+  and on a PC, rearranging itself to the screen's width rather than
+  guessing the device, so one site serves both layouts.
   **Layman:** The sample pages a new site starts with should look finished and pleasant, so a newcomer is happy to publish them as they are.
   Kind: ux.
   Source: user-request-2026-10-07.

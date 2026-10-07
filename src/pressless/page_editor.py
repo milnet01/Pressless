@@ -58,11 +58,9 @@ class PiecesChanged(Exception):
 
 # Added here rather than in face.py, which cannot import this module back.
 SENTENCES[PiecesChanged] = Sentence(
-    "The box now holds a different number of paragraphs from your page, so Pressless "
-    "did not save it.",
+    "Not saved: the paragraph count no longer matches your page.",
     Site.UNCHANGED,
-    "Put the paragraphs back as they were, or press Show me the code to add or "
-    "remove one.",
+    "Put it back, or use Show me the code.",
 )
 
 STRAY = ("The text you put between the header or footer markers will be replaced "

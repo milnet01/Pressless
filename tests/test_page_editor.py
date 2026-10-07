@@ -209,6 +209,14 @@ def test_the_refusal_moves_nothing():
     assert float(held.group(1)) >= 4.65, held.group(0)  # three lines at 1.55
 
 
+def test_the_refusal_fits_its_lines_on_a_phone():
+    # At phone width the old hint wrapped to a fourth line and pushed the
+    # press row down. Measured 2026-10-07 in headless Chrome, the page in a
+    # 320px frame: 97 characters fill the three held lines, 99 take four.
+    hint = page_editor._hint(page_editor.PiecesChanged())
+    assert len(hint) <= 97, (len(hint), hint)
+
+
 def test_a_refused_press_says_nothing_was_published():
     # A hand check pressed Press to site with a paragraph added to the box. The
     # publish was refused, yet the status line went back to "On your site", so
