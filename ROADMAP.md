@@ -3795,7 +3795,7 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-05.
   Lanes: Face, Setup.
 
-- 📋 [PRESS-0234] **View your site beside Press to site, and one fixed status line under the press row.**
+- ✅ [PRESS-0234] **View your site beside Press to site, and one fixed status line under the press row.**
   The user missed the top bar's link on PRESS-0231's packaged run
   (partially sighted). Asked: a button beside Press to site, greyed
   out until there is something to see (no address, or a starter site
@@ -3815,6 +3815,9 @@ it decides how pages, the menu and the look are held.
   before shipping: the user's look at that message on the rebuilt test copy
   (cc-job pressless-handrun). Then flip to shipped and write changelog
   lines for this, PRESS-0231's changes and the PRESS-0236 save-hint fix.
+  Resolved (2026-10-07): the user looked at the rebuilt test copy and
+  confirmed the refused press says "Not published, because..." and that
+  nothing moves.
   **Layman:** Next to Press to site there is now a View your site button, and publishing news appears in one steady line below the buttons instead of pushing them around.
   Kind: ux.
   Source: user-request-2026-10-05.

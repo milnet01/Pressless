@@ -19,7 +19,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **Sign in to GitHub with a short code instead of making a key.** (PRESS-0231)
   Setup then makes your site's repository and switches it on by
   itself, and Pressless keeps the sign-in fresh. A key you made by hand
-  still works, and Settings can sign in again.
+  still works, and Settings can sign in again. If GitHub has not given
+  Pressless the new repository, setup says which clicks add it.
 
 - **A "?" beside each Settings box explains what goes in it and where to find it.** (PRESS-0228)
 
@@ -71,6 +72,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **The page editors' buttons stay still: Press to site, View your site and Undo sit side by side, with one steady line below them.** (PRESS-0234)
+  That line says whether the page is on your site, has changes not
+  published yet, or is not on your site yet. View your site is greyed
+  out until there is a site to see. A press that is refused says the
+  page was not published, and why.
+
 - **The Google step says Google is still checking Pressless** (PRESS-0200)
   So the "unverified app" warning reads as expected rather than alarming.
   The note goes away once Google has approved Pressless.
@@ -91,6 +98,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   offering them as if for the first time.
 
 ### Fixed
+
+- **A refused save in the page editor no longer pushes the buttons and the words box down.** (PRESS-0236)
 
 - **Setup's key steps ask for Administration too, without which GitHub refused to switch the site on.** (PRESS-0230)
 
