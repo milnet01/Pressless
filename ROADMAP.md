@@ -3886,6 +3886,17 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-07.
   Lanes: Starter.
 
+- 🚧 [PRESS-0240] **The app's own pages show the Pressless icon in the browser tab.**
+  The user, 2026-10-07: "add the app icon to the website when running the
+  app." Read as the Face's browser tab: every Face page is built by
+  face._page, whose head has a title and no icon. The icon is drawn
+  inline, as the bar's mark is (PRESS-0178), so no file needs serving or
+  packaging. The published site is left alone: it is the writer's.
+  **Layman:** While Pressless is open in your browser, its tab shows the Pressless icon, so it is easy to find among other tabs.
+  Kind: ux.
+  Source: user-request-2026-10-07.
+  Lanes: Face.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -4606,6 +4617,18 @@ owned by docs/standards/versioning-overrides.md.
   Kind: perf.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
   Lanes: publisher.
+
+- 📋 [PRESS-0242] **Every screen's words come from one place, ready to be translated.**
+  The prep half of PRESS-0241, which the user wants before 1.0.0
+  while the translations themselves come after it (2026-10-07). The app
+  still speaks English only when this ships. Every screen's words,
+  including the page scripts', go through one lookup with English as its
+  only table, and a test fails on a new English string written straight
+  into a screen. Needs a spec: it touches every screen.
+  **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
+  Kind: refactor.
+  Source: user-request-2026-10-07.
+  Lanes: Face, Editor, Setup.
 
 ## Backlog — no version yet
 
@@ -10137,6 +10160,21 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user request 2026-10-02.
   Lanes: Launcher.
+
+- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
+  The user, 2026-10-07, asked whether the app has multilanguage
+  support. It has none: every screen's words are English strings in the
+  Python modules and the page scripts, with no translation layer. Still
+  to settle with the user: which languages first, whether the published
+  site's own words (the starter pages, dates) are in scope or only the
+  app's screens, and how a language is chosen. Touches every screen, so
+  it needs a spec before building.
+  Timing (2026-10-07, the user): the languages come after 1.0.0;
+  the prep comes before it, as PRESS-0242 in 1.0.0.
+  **Layman:** You can use Pressless in your own language, not only English.
+  Kind: feature.
+  Source: user-request-2026-10-07.
+  Lanes: Face, Editor, Setup.
 
 ## Milestones
 
