@@ -3823,7 +3823,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-05.
   Lanes: Face, Editor.
 
-- 📋 [PRESS-0235] **Publishing status survives leaving the page.**
+- 🚧 [PRESS-0235] **Publishing status survives leaving the page.**
   Seen on PRESS-0231's packaged run: Show me the code during a press
   loads a new page and the result is lost, though the publish finished.
   Pressless keeps the running press and its outcome itself; every
@@ -3832,6 +3832,15 @@ it decides how pages, the menu and the look are held.
   publishing, with two pages and Undo mid-press to settle: the user
   chose a short spec and one review round before building (step 2 of
   PRESS-0234).
+  Progress (2026-10-07): spec accepted after one review round
+  (cd84e2d, 6 findings fixed); built in f5d3c8c. test_pressing.py's 8
+  tests pass and 9 hand mutations, one per invariant, were each caught;
+  local-ci 997 passed, 9 skipped; Windows tests not run (wintest off).
+  Still owed before shipping: the by-hand browser check spec § 10 names
+  (two tabs: Press to site in one, open an editor and the list in the
+  other; buttons disable, the line asks then shows the outcome, the
+  holding page reloads into the editor, a busy refusal keeps the typing,
+  Undo the same), then the CHANGELOG Added entry.
   **Layman:** If you click away while your site is publishing, the page you land on still says it is publishing, and then whether it worked.
   Kind: feature.
   Source: user-request-2026-10-05.
