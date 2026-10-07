@@ -552,6 +552,17 @@ def test_every_page_carries_a_light_and_a_dark_look(tmp_path: Path) -> None:
     assert "@media (prefers-color-scheme: dark)" in style
 
 
+def test_every_page_shows_the_app_icon_in_its_tab(tmp_path: Path) -> None:
+    """PRESS-0240: the browser tab carries the packaged icon, drawn inline so
+    the Face serves no file for it."""
+    body, _ = _served_style(tmp_path)
+    head = body.split("</head>", 1)[0]
+    found = re.search(r'<link rel="icon" href="data:image/svg\+xml,([^"]*)">', head)
+    assert found, "the page carries no icon"
+    icon = Path(__file__).resolve().parents[1] / "packaging" / "icons" / "pressless-icon.svg"
+    assert urllib.parse.unquote(found.group(1)) == icon.read_text(encoding="utf-8").strip()
+
+
 def test_the_look_is_scoped_and_leaves_the_box_to_his_site(tmp_path: Path) -> None:
     """PRESS-0178: the editor links his site's stylesheets into the same page.
 

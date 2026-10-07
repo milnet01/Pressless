@@ -672,6 +672,23 @@ _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
          'rx="3.5"/><rect x="28" y="98" width="44" height="7" rx="3.5"/>'
          '<rect x="28" y="116" width="30" height="7" rx="3.5"/></g></svg>')
 
+# The browser tab's icon: packaging/icons/pressless-icon.svg, inline for the
+# same reason as the mark (PRESS-0240). A test holds the two equal.
+_ICON = "data:image/svg+xml," + urllib.parse.quote(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="256" height="256" '
+    'role="img" aria-label="Pressless">\n'
+    '  <rect width="160" height="160" rx="32" fill="#2b2620"/>\n'
+    '  <g transform="translate(29 5)">\n'
+    '    <path d="M16 34 H62 L86 58 V146 a6 6 0 0 1 -6 6 H22 a6 6 0 0 1 -6 -6 V40 '
+    'a6 6 0 0 1 6 -6 Z" fill="none" stroke="#F4EFE6" stroke-width="6" '
+    'stroke-linejoin="round"/>\n'
+    '    <path d="M62 34 V52 a6 6 0 0 0 6 6 H86 Z" fill="#E9A23B"/>\n'
+    '    <g fill="#E9A23B"><rect x="28" y="80" width="44" height="7" rx="3.5"/>'
+    '<rect x="28" y="98" width="44" height="7" rx="3.5"/>'
+    '<rect x="28" y="116" width="30" height="7" rx="3.5"/></g>\n'
+    '  </g>\n'
+    '</svg>', safe="")
+
 
 def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
@@ -682,7 +699,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
     return (
         f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>Pressless</title><style>{_STYLE}</style></head>"
+        f'<title>Pressless</title><link rel="icon" href="{_ICON}">'
+        f"<style>{_STYLE}</style></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         f'{themes.picker(theme)}{visit}<a href="/setup">Settings</a>'
         # PRESS-0179: on every screen, failure pages included.
