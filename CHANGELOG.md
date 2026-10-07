@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **The app's own pages show the Pressless icon in the browser tab.** (PRESS-0240)
+  While Pressless is open in your browser, its tab shows the Pressless icon, so it is easy to find among other tabs.
+
 - **One click from Pressless opens your site: "View your site" in the top bar, after a publish, and at the end of setup.** (PRESS-0232)
 
 - **Sign in to GitHub with a short code instead of making a key.** (PRESS-0231)

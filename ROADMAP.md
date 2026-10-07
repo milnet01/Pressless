@@ -3886,12 +3886,15 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-07.
   Lanes: Starter.
 
-- 🚧 [PRESS-0240] **The app's own pages show the Pressless icon in the browser tab.**
+- ✅ [PRESS-0240] **The app's own pages show the Pressless icon in the browser tab.**
   The user, 2026-10-07: "add the app icon to the website when running the
   app." Read as the Face's browser tab: every Face page is built by
   face._page, whose head has a title and no icon. The icon is drawn
   inline, as the bar's mark is (PRESS-0178), so no file needs serving or
   packaging. The published site is left alone: it is the writer's.
+  Shipped (2026-10-07, f169e4f): face._page links the icon inline;
+  test_every_page_shows_the_app_icon_in_its_tab holds it equal to the
+  packaged SVG. Not yet looked at in a browser.
   **Layman:** While Pressless is open in your browser, its tab shows the Pressless icon, so it is easy to find among other tabs.
   Kind: ux.
   Source: user-request-2026-10-07.
