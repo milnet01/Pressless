@@ -3869,6 +3869,16 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-05.
   Lanes: Editor.
 
+- 📋 [PRESS-0239] **The starter site looks good enough to keep, not just plain.**
+  The user, 2026-10-07: "I hope the initial sample pages will look
+  better than they currently do." PRESS-0126 shipped a deliberately
+  plain stylesheet. What "better" means is still to be settled with the
+  user before building; it must stay easy to read with low vision.
+  **Layman:** The sample pages a new site starts with should look finished and pleasant, so a newcomer is happy to publish them as they are.
+  Kind: ux.
+  Source: user-request-2026-10-07.
+  Lanes: Starter.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
