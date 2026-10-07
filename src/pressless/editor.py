@@ -23,7 +23,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, paths, photographs, settings, store
+from pressless import builder, cheatsheet, paths, photographs, pressing, settings, store
 from pressless.face import (
     SENTENCES,
     TRUE_COLOURS,
@@ -84,6 +84,8 @@ SENTENCES[photographs.NotAPhotograph] = Sentence(
 # taken twice, so `save` leaves it to its caller (PRESS-0013 § 4.1).
 LOCK = threading.Lock()
 
+# PRESS-0235 § 4.5: a press-row line rendered while a press runs; the script asks.
+_RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
 
@@ -353,12 +355,14 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         return "<ul>" + "".join(items) + "</ul>" if items else "<p>None yet.</p>"
 
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
+    # PRESS-0235 § 4.5: the list's press row is the undo line.
+    said, running, ended = pressing.shown("")
     return (render_notices(notices) + failure +
             '<h1>Your writing</h1>' + site
             # PRESS-0023 § 4.9: what other parts show here, without this
             # module importing them.
             + "".join(face.list_pieces(above=True)) +
-            '<div id="undo-result"></div>'
+            f'<div id="undo-result">{ended or ""}</div>'
             '<div id="listing">'
             '<form method="post" action="/new"><label>Title '
             '<input name="title" autocomplete="off"></label> '
@@ -367,7 +371,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
             # showing it (§ 3 decision 3).
             '<p><button type="button" data-undo>Undo the last press</button> '
-            '<span id="undo-status"></span></p>'
+            f'<span id="undo-status"{_RUNNING if running else ""}>{html.escape(said)}</span></p>'
             f"{_journal_switch(journal, bool(published))}"
             # PRESS-0189: each list is a card.
             f'<section class="card"><h2>Drafts</h2>{rows(drafts, unreadable[True])}</section>'
@@ -439,6 +443,10 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
 def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str | Reply:
     """§ 4.7."""
     slug = request.query.get("slug", "")
+    # PRESS-0235 § 4.5: during a press, a page that opens the editor once it ends.
+    held = pressing.holding()
+    if held is not None:
+        return held
     with lock, face.capture() as notices:
         try:
             if slug in store.list_slugs(folder, draft=True):
@@ -497,6 +505,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     # keeps it in step (its `standing`).
     standing_word = ("On your site" if not draft else
                      "Changes not published yet" if on_site else "Not on your site yet")
+    said, running, ended = pressing.shown(standing_word)
+    pressed = _RUNNING if running else ""
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
@@ -514,7 +524,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <p><button type="button" data-editor="publish">Press to site</button>
  {visit}
  <button type="button" data-undo>Undo the last press</button></p>
-<p id="publish-status" class="press-status" role="status">{standing_word}</p>
+<p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 <p><button type="button" data-editor="photograph">Add a photograph</button>
  <input type="file" id="photograph-file" hidden
  accept="image/jpeg,image/png,image/webp,image/gif">
@@ -526,7 +536,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  away</button></p>
 </form>
 {cheatsheet.panel()}
-<div id="failure">{failure or ""}</div>
+<div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
 <div id="proof">{TRUE_COLOURS}
 <iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
@@ -564,7 +574,9 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
         slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
         categories=_names_of(folder, form.get("categories", ""), "categories"),
         tags=_names_of(folder, form.get("tags", ""), "tags"), body=body, extra=extra)
-    return written, _digest(store.write(folder, written, draft=True))
+    digest = _digest(store.write(folder, written, draft=True))
+    pressing.forget()  # PRESS-0235 decision 6
+    return written, digest
 
 
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -735,7 +747,7 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
 # the reply is the only place the summary and the gathered notices exist, and a
 # reload throws both away before he has read them. So the box is replaced with
 # what came back, and a link back to his list is offered instead.
-_UNDO_SCRIPT = """
+_UNDO_SCRIPT = pressing.SCRIPT + """
 (() => {
   const button = document.querySelector("button[data-undo]");
   if (!button) return;
@@ -765,28 +777,31 @@ _UNDO_SCRIPT = """
 
   button.addEventListener("click", async () => {
     button.disabled = true;
-    said.textContent = "Putting your site back\u2026 this can take a few minutes. " +
-      "Keep this page open.";
+    said.textContent = window.presslessPress.words.undoing;
     try {
       const answer = await fetch("/undo", {method: "POST"});
       const text = await answer.text();
       said.textContent = "";
       if (answer.status !== 200) { show("", text); return; }
       const reply = JSON.parse(text);
+      // PRESS-0235: another press runs; ask until it ends.
+      if (reply.busy) { said.textContent = reply.said; window.presslessPress.ask(); return; }
+      said.textContent = reply.undone
+        ? window.presslessPress.words.undone : window.presslessPress.words.notUndone;
       show((reply.notices || "") + (reply.undone ? "" : reply.failure || ""),
            reply.undone ? reply.summary : "");
     } catch (error) {
       said.textContent = "";
       show("", "Pressless could not reach itself. Your site was not changed.");
     } finally {
-      button.disabled = false;
+      button.disabled = window.presslessPress.asking();
     }
   });
 })();
 """
 
 
-_EDITOR_SCRIPT = """
+_EDITOR_SCRIPT = pressing.SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {slug: form.dataset.slug, draft: form.dataset.draft, base: form.dataset.base};
@@ -836,6 +851,7 @@ _EDITOR_SCRIPT = """
   // PRESS-0234: what the press row's status line says between presses.
   const standing = () => state.draft === "0" ? "On your site"
     : form.dataset.onSite === "1" ? "Changes not published yet" : "Not on your site yet";
+  window.presslessPress.standing(standing);
   const stop = (text) => {
     stopped = true;
     status.textContent = "Not saved";
@@ -904,8 +920,7 @@ _EDITOR_SCRIPT = """
     inFlight = true;
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = "Publishing\u2026 this can take a few minutes the first time. " +
-      "Keep this page open.";
+    said.textContent = window.presslessPress.words.publishing;
     try {
       const body = fields();
       dirty = false;
@@ -913,17 +928,25 @@ _EDITOR_SCRIPT = """
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
       const reply = JSON.parse(text);
+      // PRESS-0235: another press runs. Nothing was saved, so the change is
+      // still to save, and the page asks until that press ends.
+      if (reply.busy) {
+        dirty = true;
+        said.textContent = reply.said;
+        window.presslessPress.ask();
+        return;
+      }
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
-        ? "Published. Your site shows it within a few minutes." : standing();
+        ? window.presslessPress.words.published : window.presslessPress.words.notPublished;
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
       if (reply.published && view && view.dataset.viewSite) view.disabled = false;
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
-      publish.disabled = false;
+      publish.disabled = window.presslessPress.asking();
       inFlight = false;
       if (dirty && !stopped) schedule();
     }

@@ -35,6 +35,7 @@ from pressless import (
     google_setup,
     page_editor,
     paths,
+    pressing,
     publishing,
     report,
     restarting,
@@ -192,6 +193,7 @@ def _serve_once(folder: Path) -> bool:
         publishing.register(served, folder)
         undo.register(served, folder)
         page_editor.register(served, folder)
+        pressing.register(served)
         updating.register(served, folder)
         restarting.register(served, restart.set)
         _refresh_shortcuts(served)

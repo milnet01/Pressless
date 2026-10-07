@@ -211,6 +211,8 @@ are not on the site yet. `editor._list` draws it from `store.list_html` and
 
 ### 4.5 The page editor
 
+`GET /page` during a press answers a holding page: [PRESS-0235](PRESS-0235-press-status.md) § 4.5.
+
 *PRESS-0126 § 4.6 changes the stylesheet links to `builder.stylesheets(folder)`. PRESS-0214 § 4.5 offers "Your newest entry" only while the journal is on.*
 
 `GET /page` reads the waiting copy where one exists, else the live file.
@@ -280,6 +282,8 @@ A save answers status 200, `application/json`:
 `waiting` and `base` name the file the page saves to next.
 
 ### 4.7 Publishing a page
+
+The route runs as a press and may answer `busy`: [PRESS-0235](PRESS-0235-press-status.md) § 4.4.
 
 `POST /page/publish` takes § 4.6's fields. Under `editor.LOCK`, held
 throughout:

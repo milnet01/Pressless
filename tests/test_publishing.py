@@ -123,6 +123,7 @@ def test_a_draft_is_dated_and_published(tmp_path, monkeypatch):
     assert status == 200, text
     reply = json.loads(text)
     assert reply["published"] is True and reply["slug"] == "seaside"
+    assert reply["busy"] is False  # PRESS-0235 § 4.4
     assert reply["draft"] is False
     assert store.list_slugs(folder, draft=True) == ()
     published = store.read(store.path_for(folder, "seaside", draft=False))

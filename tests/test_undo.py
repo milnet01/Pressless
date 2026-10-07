@@ -606,6 +606,7 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
         served.stop()
     answer = json.loads(reply.body)
     assert answer["undone"] is False
+    assert answer["busy"] is False  # PRESS-0235 § 4.4
     assert face.Site.UNCHANGED.value in answer["failure"], answer["failure"]
     assert face.Site.UNKNOWN.value not in answer["failure"]
 

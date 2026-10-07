@@ -133,6 +133,8 @@ imported, as `editor.py` does, because `face.py` cannot import it back.
 
 ### 4.2 The route
 
+The route runs as a press and may answer `busy`: [PRESS-0235](PRESS-0235-press-status.md) § 4.4.
+
 `POST /publish` takes § 4.8's save fields. In order, under `editor.LOCK`, which
 it holds for the whole publish, so a put-back cannot meet a save from another
 window. The editor's other pages wait until the publish ends:
@@ -223,6 +225,8 @@ in the Store's own form (PRESS-0005 § 4.2), with the same fields and body.
 told something is wrong with his files rather than only with GitHub.
 
 ### 4.4 The editor page
+
+The press row's words come from [PRESS-0235](PRESS-0235-press-status.md) § 4.3.
 
 PRESS-0012 § 4.7's page gains a **Press to site** button beside the box. Its script,
 on a click:

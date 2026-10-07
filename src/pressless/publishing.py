@@ -22,7 +22,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
-from pressless import builder, editor, github_setup, publisher, settings, setup, starter, store
+from pressless import (
+    builder,
+    editor,
+    github_setup,
+    pressing,
+    publisher,
+    settings,
+    setup,
+    starter,
+    store,
+)
 from pressless.face import (
     SENTENCES,
     Face,
@@ -282,9 +292,25 @@ def register(face: Face, folder: Path, *,
 
 def _publish(face: Face, folder: Path, request: Request,
              transport: publisher.Transport | None) -> Reply:
-    """§ 4.2."""
+    """§ 4.2, run as a press (PRESS-0235 § 4.4)."""
     fields = urllib.parse.parse_qs(request.body.decode("utf-8"), keep_blank_values=True)
     form = {name: values[0] for name, values in fields.items()}
+
+    def busy(said: str) -> Reply:
+        """Nothing saved: the page keeps the file it posted (PRESS-0235 § 4.4)."""
+        return Reply(json.dumps({
+            "published": False, "slug": form.get("slug", ""),
+            "draft": form.get("draft") == "1", "base": form.get("base", ""),
+            "failure": None, "notices": "", "busy": True, "said": said,
+        }).encode("utf-8"), "application/json")
+
+    return pressing.run(pressing.PUBLISH, busy,
+                        lambda told: _pressed(face, folder, form, transport, told))
+
+
+def _pressed(face: Face, folder: Path, form: dict[str, str],
+             transport: publisher.Transport | None,
+             told: Callable[[pressing.Outcome], None]) -> Reply:
     notices: list[str] = []
 
     def gathered(step: Callable[[], _T]) -> _T:
@@ -300,7 +326,9 @@ def _publish(face: Face, folder: Path, request: Request,
         try:
             written, _ = gathered(lambda: editor.save(folder, form))
         except (store.StoreError, editor.ChangedElsewhere, editor.TooManyCopies) as exc:
-            body = render_notices(notices) + face.fail(exc, publishing=False)
+            failed = face.fail(exc, publishing=False)
+            told(pressing.Outcome(pressing.NOT_PUBLISHED, failed))
+            body = render_notices(notices) + failed
             return Reply(body.encode("utf-8"), "text/html; charset=utf-8", status=409)
 
         try:
@@ -318,11 +346,13 @@ def _publish(face: Face, folder: Path, request: Request,
             published = True
             if result.copy_kept:
                 notices.append(Notice(_KEPT_COPY, Site.UPDATED))
+        told(pressing.Outcome(pressing.PUBLISHED, None) if published
+             else pressing.Outcome(pressing.NOT_PUBLISHED, failure))
         slug, draft, base = gathered(lambda: _left(folder, written))
 
     return Reply(json.dumps({
         "published": published, "slug": slug, "draft": draft, "base": base,
-        "failure": failure, "notices": render_notices(notices),
+        "failure": failure, "notices": render_notices(notices), "busy": False,
     }).encode("utf-8"), "application/json")
 
 

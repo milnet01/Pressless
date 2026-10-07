@@ -19,6 +19,7 @@ import json
 import re
 import threading
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -27,6 +28,7 @@ from pressless import (
     builder,
     editor,
     github_setup,
+    pressing,
     publisher,
     publishing,
     settings,
@@ -319,7 +321,9 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     posted = form.get("text", "")
     new = (put_code(text, posted) if _view(kind, form.get("view", "")) == CODE
            else put_words(name, text, posted))
-    return new, _digest(store.write_html(folder, kind, name, new, waiting=True))
+    digest = _digest(store.write_html(folder, kind, name, new, waiting=True))
+    pressing.forget()  # PRESS-0235 decision 6
+    return new, digest
 
 
 def _hint(failure: PiecesChanged) -> str:
@@ -339,6 +343,10 @@ def _json(value: dict) -> Reply:
 def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
     """§ 4.5."""
     kind, name = request.query.get("kind", ""), request.query.get("name", "")
+    # PRESS-0235 § 4.5: during a press, a page that opens the editor once it ends.
+    held = pressing.holding()
+    if held is not None:
+        return held
     broken = None
     with lock, face.capture() as notices:
         try:
@@ -402,6 +410,8 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
     # keeps it in step (its `standing`).
     standing_word = ("Not on your site yet" if off_site else
                      "Changes not published yet" if waiting else "On your site")
+    said, running, ended = pressing.shown(standing_word)
+    pressed = editor._RUNNING if running else ""
     stylesheets = "".join(
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
         for sheet in sheets)
@@ -428,11 +438,11 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <p><button type="button" data-editor="publish">Press to site</button>
  {visit}
  <button type="button" data-undo>Undo the last press</button></p>
-<p id="publish-status" class="press-status" role="status">{standing_word}</p>
+<p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 <textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
 </form>
-<div id="failure">{failure or ""}</div>
+<div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
 <div id="proof">{TRUE_COLOURS}
 <iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
@@ -495,8 +505,22 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
 
 def _publish(face: Face, folder: Path, request: Request,
              transport: publisher.Transport | None) -> Reply:
-    """§ 4.7."""
+    """§ 4.7, run as a press (PRESS-0235 § 4.4)."""
     form = editor._form(request)
+
+    def busy(said: str) -> Reply:
+        """Nothing saved: the page keeps the file it posted (PRESS-0235 § 4.4)."""
+        return _json({"published": False, "waiting": form.get("waiting") == "1",
+                      "base": form.get("base", ""), "failure": None, "hint": None,
+                      "notices": "", "busy": True, "said": said})
+
+    return pressing.run(pressing.PUBLISH, busy,
+                        lambda told: _pressed(face, folder, form, transport, told))
+
+
+def _pressed(face: Face, folder: Path, form: dict[str, str],
+             transport: publisher.Transport | None,
+             told: Callable[[pressing.Outcome], None]) -> Reply:
     kind, name = form.get("kind", ""), form.get("name", "")
     notices: list[str] = []
 
@@ -513,10 +537,12 @@ def _publish(face: Face, folder: Path, request: Request,
         try:
             new, _ = gathered(lambda: _write(folder, form))
         except PiecesChanged as exc:
+            told(pressing.Outcome(pressing.PARAGRAPHS))
             return _json({"published": False, "waiting": form.get("waiting") == "1",
                           "base": form.get("base", ""), "failure": None, "hint": _hint(exc),
-                          "notices": render_notices(notices)})
+                          "notices": render_notices(notices), "busy": False})
         except (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped) as exc:
+            told(pressing.Outcome(pressing.NOT_PUBLISHED, face.fail(exc, publishing=False)))
             return _failed(face, notices, exc)
 
         copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -556,10 +582,13 @@ def _publish(face: Face, folder: Path, request: Request,
             published = True
             if kept:
                 notices.append(Notice(_KEPT_COPY, Site.UPDATED))
+        told(pressing.Outcome(pressing.PUBLISHED, None) if published
+             else pressing.Outcome(pressing.NOT_PUBLISHED, failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
     return _json({"published": published, "waiting": waiting, "base": base,
-                  "failure": failure, "hint": None, "notices": render_notices(notices)})
+                  "failure": failure, "hint": None, "notices": render_notices(notices),
+                  "busy": False})
 
 
 def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
@@ -574,7 +603,7 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 # change saves about a second after the last one, never two saves at once, and
 # on leaving only where a change is unsaved. A switch of view or a picker link
 # waits for a save in flight and saves an unsaved change first.
-_PAGE_SCRIPT = """
+_PAGE_SCRIPT = pressing.SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,
@@ -604,6 +633,7 @@ _PAGE_SCRIPT = """
   // PRESS-0234: what the press row's status line says between presses.
   const standing = () => form.dataset.offSite === "1" ? "Not on your site yet"
     : state.waiting === "1" ? "Changes not published yet" : "On your site";
+  window.presslessPress.standing(standing);
   const stop = (text) => {
     stopped = true;
     status.textContent = "Not saved";
@@ -674,8 +704,7 @@ _PAGE_SCRIPT = """
     inFlight = new Promise((resolve) => { published = resolve; });
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = "Publishing\\u2026 this can take a few minutes the first time. " +
-      "Keep this page open.";
+    said.textContent = window.presslessPress.words.publishing;
     try {
       const body = fields();
       dirty = false;
@@ -683,20 +712,27 @@ _PAGE_SCRIPT = """
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
       const reply = JSON.parse(text);
+      // PRESS-0235: another press runs. Nothing was saved, so the change is
+      // still to save, and the page asks until that press ends.
+      if (reply.busy) {
+        dirty = true;
+        said.textContent = reply.said;
+        window.presslessPress.ask();
+        return;
+      }
       if (reply.published) form.dataset.offSite = "0";
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
-      said.textContent = reply.published
-        ? "Published. Your site shows it within a few minutes."
-        : reply.hint ? "Not published, because the box holds a different number of " +
-          "paragraphs from your page." : standing();
+      said.textContent = reply.published ? window.presslessPress.words.published
+        : reply.hint ? window.presslessPress.words.paragraphs
+        : window.presslessPress.words.notPublished;
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
       if (reply.published && view && view.dataset.viewSite) view.disabled = false;
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
-      publish.disabled = false;
+      publish.disabled = window.presslessPress.asking();
       inFlight = null;
       published();
       if (dirty && !stopped) schedule();

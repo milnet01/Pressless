@@ -221,10 +221,11 @@ def test_a_refused_press_says_nothing_was_published():
     # A hand check pressed Press to site with a paragraph added to the box. The
     # publish was refused, yet the status line went back to "On your site", so
     # the press seemed to do nothing, or to have worked (PRESS-0234).
-    after = page_editor._PAGE_SCRIPT.split(
-        '"Published. Your site shows it within a few minutes."', 1)[1]
+    # PRESS-0235: the words come from pressing, so the anchor is their use.
+    after = page_editor._PAGE_SCRIPT.split(".words.published", 1)[1]
     otherwise = after.split(";", 1)[0]
-    assert "reply.hint" in otherwise and '"Not published' in otherwise, otherwise
+    assert "reply.hint" in otherwise and ".words.paragraphs" in otherwise, otherwise
+    assert '"paragraphs": "Not published' in page_editor._PAGE_SCRIPT
 
 
 # ------------------------------------------------------------------ INV-4 ---
@@ -334,6 +335,7 @@ def test_publishing_a_page(tmp_path, monkeypatch):
     github = _Transport(reads=_reads(_listing([])), writes=_writes())
     folder, reply = publish(tmp_path / "published", github)
     assert reply["published"] is True, reply
+    assert reply["busy"] is False  # PRESS-0235 § 4.4
     written = ABOUT.replace(">Hello<", ">Published<").encode("utf-8")
     assert _live(folder, "pages", "about").read_bytes() == written
     assert not _waiting(folder, "pages", "about").exists()

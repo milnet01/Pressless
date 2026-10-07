@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pressless import editor, github_setup, publisher, publishing, settings, setup, store
+from pressless import editor, github_setup, pressing, publisher, publishing, settings, setup, store
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
 
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
@@ -422,8 +422,21 @@ def register(face: Face, folder: Path, *,
 
 def _undo(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
-    """§ 4.2. A failure at any step answers 200 rather than an error status, so
-    the page can render it beside what it already shows."""
+    """§ 4.2, run as a press (PRESS-0235 § 4.4). A failure at any step answers
+    200 rather than an error status, so the page can render it beside what it
+    already shows."""
+    def busy(said: str) -> Reply:
+        return Reply(json.dumps({
+            "undone": False, "failure": None, "notices": "", "summary": None,
+            "busy": True, "said": said,
+        }).encode("utf-8"), "application/json")
+
+    return pressing.run(pressing.UNDO, busy,
+                        lambda told: _pressed(face, folder, transport, told))
+
+
+def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
+             told: Callable[[pressing.Outcome], None]) -> Reply:
     notices: list[str] = []
 
     def gathered(step: Callable[[], _T]) -> _T:
@@ -451,10 +464,12 @@ def _undo(face: Face, folder: Path, request: Request,
         else:
             failure = None
             summary = _summary(result)
+        told(pressing.Outcome(pressing.UNDONE, None) if failure is None
+             else pressing.Outcome(pressing.NOT_UNDONE, failure))
 
     return Reply(json.dumps({
         "undone": failure is None, "failure": failure,
-        "notices": render_notices(notices), "summary": summary,
+        "notices": render_notices(notices), "summary": summary, "busy": False,
     }).encode("utf-8"), "application/json")
 
 

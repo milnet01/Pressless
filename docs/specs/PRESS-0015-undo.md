@@ -155,6 +155,8 @@ imported, as `publishing.py` and `editor.py` do.
 
 ### 4.2 The route
 
+The route runs as a press and may answer `busy`: [PRESS-0235](PRESS-0235-press-status.md) § 4.4.
+
 `POST /undo` takes no fields. It runs under `editor.LOCK`, held for the whole
 sequence, so a save in another window cannot meet a Store write half way
 through. In order:
@@ -358,6 +360,8 @@ it wrote**, because nothing else removes a file the Store did not hold before.
 His two drafts are left as they were, and the bin keeps the copy undo wrote.
 
 ### 4.6 The pages
+
+The pages' words and asking during a press: [PRESS-0235](PRESS-0235-press-status.md) §§ 4.3 and 4.5.
 
 **The front page** (`editor._list`) gains an **Undo the last press** button.
 It always shows (§ 3 decision 3).

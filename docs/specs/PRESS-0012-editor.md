@@ -279,6 +279,8 @@ rule 7).
 
 ### 4.5 The list
 
+During a press, `#undo-status` shows it: [PRESS-0235](PRESS-0235-press-status.md) § 4.5.
+
 Drafts, then published entries, each newest date first, ties by address. Each
 row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
 
@@ -303,6 +305,8 @@ A template picked in the same form fills the body, categories and tags
 (`docs/specs/PRESS-0017-templates.md` § 4.3).
 
 ### 4.7 The editor page
+
+`GET /edit` during a press answers a holding page: [PRESS-0235](PRESS-0235-press-status.md) § 4.5.
 
 *PRESS-0126 § 4.6 changes the stylesheet links to `builder.stylesheets(folder)`, and serves `/preview/look/` from the Store.*
 
