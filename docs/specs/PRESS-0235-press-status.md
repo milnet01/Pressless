@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0235 — Publishing status survives leaving the page
 
-**Status:** draft.
+**Status:** accepted (2026-10-07). One review round, the user's budget for a new spec; its fixes were read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0235 (user request 2026-10-05, seen on PRESS-0231's
 packaged run; the user chose a short spec and one review round).
@@ -70,7 +70,7 @@ PUBLISH, UNDO = "publish", "undo"
 
 def start(kind: str) -> bool: ...        # False where a press is running
 def end(outcome: Outcome) -> None: ...   # the press has ended, with this outcome
-def forget() -> None: ...                # a save: the outcome stops being shown
+def forget() -> None: ...                # a save: an ended outcome stops being shown
 def state() -> dict: ...                 # § 4.2's JSON
 def register(face: Face) -> None: ...    # GET /press
 ```
@@ -78,7 +78,8 @@ def register(face: Face) -> None: ...    # GET /press
 One record per process, behind its own lock, held only to read or change the
 record. `start` checks and marks running in one step, so two presses arriving
 together cannot both start. `Outcome` holds the line's words and the failure's
-HTML (`face.fail`'s output, or None). Nothing is written to disk; a restart
+HTML (`face.fail`'s output, or None). `forget` does nothing while a press
+runs, since every publish saves first. Nothing is written to disk; a restart
 starts with no record.
 
 ### 4.2 `GET /press`
@@ -116,11 +117,14 @@ so each sentence has one home:
 `publishing._publish`, `page_editor._publish` and `undo._undo` each:
 
 1. call `pressing.start(kind)` before taking `editor.LOCK`. Where it returns
-   False, answer at once with the route's usual JSON, `published` (or
-   `undone`) false, `failure` null, and a new key `"busy": true`. Nothing is
-   saved and nothing is published.
+   False, answer at once with the route's usual keys: `published` (or
+   `undone`) false, `failure` null, the posted `slug`, `draft` and `base`
+   (or `waiting` and `base`) echoed back as the `PiecesChanged` refusal
+   does, and new keys `"busy": true` and `said`, the running press's
+   words. Nothing is saved and nothing is published.
 2. call `pressing.end` with the outcome in a `finally`, so an unforeseen
-   exception still ends the record, with the failed words.
+   exception still ends the record, with the failed words. Only a request
+   whose `start` returned True calls `end`.
 
 Every other reply carries `"busy": false`. A `PiecesChanged` refusal ends the
 record with its own words (§ 4.3).
@@ -133,11 +137,13 @@ which ends what decision 6 shows.
 - **A page that opens during a press** writes the running words into its
   press-row line, disables Press to site and Undo the last press, and asks
   `GET /press` every two seconds. When `running` turns false it writes `said`
-  into the line, the failure where it shows failures today, and enables both
-  buttons again.
-- **A page that opens after a press ended** carries the outcome's words in its
-  line from the server, in place of the standing words, until `forget`.
-- **A busy reply** shows the running words and starts asking, as above.
+  into the line, or the standing words where `said` is empty, the failure
+  where it shows failures today, and enables both buttons again.
+- **A page that opens after a press ended** carries, from the server, the
+  outcome's words in its line in place of the standing words, and its failure
+  where it shows failures today, until `forget`.
+- **A busy reply** shows its `said`, marks the page's change unsaved again so
+  it is saved later, and starts asking, as above.
 - **The starting page** behaves as today on its own reply, with § 4.3's
   words. Undo's summary still shows only there.
 - **The list** has no press row; its `#undo-status` is the line, and its
@@ -161,11 +167,14 @@ which ends what decision 6 shows.
   *Breaks when:* `/press` takes `editor.LOCK`, or the record is not ended.
 - **INV-3** — With a publish held mid-run, `POST /publish`, `POST
   /page/publish` and `POST /undo` each answer within a second with `busy`
-  true, and the transport is called by the first press only. *Test:*
+  true, the transport is called by the first press only, and `GET /press`
+  still answers `running` true. *Test:*
   `tests/test_pressing.py::test_a_second_press_is_refused`.
-  *Breaks when:* a route checks after taking the lock, or skips the check.
-- **INV-4** — A publish whose transport raises an exception no route expects
-  leaves `GET /press` at `running` false with the failed words. *Test:*
+  *Breaks when:* a route checks after taking the lock, skips the check, or
+  ends the record on a refusal.
+- **INV-4** — A publish whose transport raises a `BaseException` subclass,
+  which no route's `except Exception` catches, leaves `GET /press` at
+  `running` false with the failed words. *Test:*
   `tests/test_pressing.py::test_an_unforeseen_failure_ends_the_press`.
   *Breaks when:* `end` is not in a `finally`.
 - **INV-5** — With a publish held mid-run, `GET /edit` and `GET /page`
