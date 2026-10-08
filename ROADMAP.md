@@ -4697,6 +4697,17 @@ owned by docs/standards/versioning-overrides.md.
   matching once) applied by a script, then a before/after render diff.
   For PRESS-0241: the list's dates use strftime %b (English months).
   Next: step 5, setup, wizard, github_setup, google_setup.
+  Progress (2026-10-08): step 5 built in four commits: 0a434f9
+  (wizard frame), 667c181 (github_setup), c560b56 (google_setup and
+  dashboard's noun), 96c514f (setup and Settings). KEY and both SIGN_IN
+  constants are gone: a credential failure's noun is a key,
+  failure.secret.*, looked up when shown. A wizard step's title is a
+  key. Each gate green (1012 Linux, 942 Windows box). Check: a pytest
+  plugin recorded every page body and every string the four modules
+  return, before and after; identical, and the branches no test renders
+  were compared old against new directly. Step 11 also owes PRESS-0013
+  and PRESS-0015 their setup.KEY mentions and PRESS-0122 its SIGN_IN
+  ones. Next: step 6, dashboard (country family) and insights display.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
