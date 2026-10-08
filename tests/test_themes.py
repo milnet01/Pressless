@@ -167,7 +167,8 @@ def test_the_picker_applies_a_theme_without_a_reload(tmp_path: Path) -> None:
         page = _get(served, session_cookie(served.url), "/words")
     finally:
         served.stop()
-    script = re.search(r"<script>(.*?)</script>", page, re.S).group(1)
+    # Every plain script: the words' `say` sits in <head> ahead of this one.
+    script = "".join(re.findall(r"<script>(.*?)</script>", page, re.S))
     assert "select[data-theme-picker]" in script
     assert "document.documentElement.dataset.theme = picker.value" in script
     for theme in themes.THEMES:

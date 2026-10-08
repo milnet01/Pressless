@@ -46,6 +46,7 @@ from pressless.face import (
     Sentence,
     Site,
     render_notices,
+    sentence_for,
 )
 
 WORDS = "words"
@@ -60,9 +61,9 @@ class PiecesChanged(Exception):
 
 # Added here rather than in face.py, which cannot import this module back.
 SENTENCES[PiecesChanged] = Sentence(
-    "Not saved: the paragraph count no longer matches your page.",
+    "failure.page_editor.PiecesChanged.what",
     Site.UNCHANGED,
-    "Put it back, or use Show me the code.",
+    "failure.page_editor.PiecesChanged.next",
 )
 
 STRAY = ("The text you put between the header or footer markers will be replaced "
@@ -327,7 +328,7 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
 
 
 def _hint(failure: PiecesChanged) -> str:
-    said = SENTENCES[PiecesChanged]
+    said = sentence_for(failure, publishing=False)
     return f"{said.what} {said.next}"
 
 

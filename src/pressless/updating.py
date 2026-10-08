@@ -22,26 +22,26 @@ from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site
 
 # § 4.10. The base carries the generic sentence; each type below it its own.
 SENTENCES[installer.UpdateError] = Sentence(
-    "Pressless could not update itself.", Site.UNCHANGED,
-    "Keep using this version, and try again later.")
+    "failure.installer.UpdateError.what", Site.UNCHANGED,
+    "failure.installer.UpdateError.next")
 SENTENCES[updater.DownloadFailed] = Sentence(
-    "Pressless could not download the new version.", Site.UNCHANGED,
-    "Check your internet connection and click Update now again.")
+    "failure.updater.DownloadFailed.what", Site.UNCHANGED,
+    "failure.updater.DownloadFailed.next")
 SENTENCES[updater.DiskFull] = Sentence(
-    "There is not enough room on this computer to download the new version.",
+    "failure.updater.DiskFull.what",
     Site.UNCHANGED,
-    "Free some space on this computer, then click Update now again.")
+    "failure.updater.DiskFull.next")
 SENTENCES[updater.DownloadEndedEarly] = Sentence(
-    "The download stopped before it finished.", Site.UNCHANGED,
-    "Click Update now again.")
+    "failure.updater.DownloadEndedEarly.what", Site.UNCHANGED,
+    "failure.updater.DownloadEndedEarly.next")
 SENTENCES[updater.UpdateRejected] = Sentence(
-    "The download did not prove it came from Pressless, so nothing was installed.",
+    "failure.updater.UpdateRejected.what",
     Site.UNCHANGED,
-    "Keep using this version, and send the details below to whoever helps you.")
+    "failure.updater.UpdateRejected.next")
 SENTENCES[installer.InstallFailed] = Sentence(
-    "Pressless could not put the new version in place. This version is still installed.",
+    "failure.installer.InstallFailed.what",
     Site.UNCHANGED,
-    "Try again later. If it keeps happening, send the details below to whoever helps you.")
+    "failure.installer.InstallFailed.next")
 
 _UPDATING_CONSOLE = "Pressless is updating. You can close this window."
 

@@ -105,7 +105,7 @@ def test_a_refused_sign_in_sends_him_to_sign_in_again() -> None:
 def test_what_it_means_for_his_site() -> None:
     """INV-2."""
     unknown, unchanged = face.Site.UNKNOWN, face.Site.UNCHANGED
-    assert unchanged.value == UNCHANGED_WORDS
+    assert unchanged.words == UNCHANGED_WORDS
 
     for kind, sentence in face.SENTENCES.items():
         expected = unknown if kind is publisher.OutcomeUnknown else unchanged

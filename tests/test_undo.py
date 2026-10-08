@@ -607,8 +607,8 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
     answer = json.loads(reply.body)
     assert answer["undone"] is False
     assert answer["busy"] is False  # PRESS-0235 § 4.4
-    assert face.Site.UNCHANGED.value in answer["failure"], answer["failure"]
-    assert face.Site.UNKNOWN.value not in answer["failure"]
+    assert face.Site.UNCHANGED.words in answer["failure"], answer["failure"]
+    assert face.Site.UNKNOWN.words not in answer["failure"]
 
 
 def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):

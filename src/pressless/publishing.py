@@ -60,9 +60,9 @@ class NothingToPublish(Exception):
 
 # Added here rather than in face.py, which cannot import this module back.
 SENTENCES[NothingToPublish] = Sentence(
-    "Publishing now would leave your site with no entries, so Pressless stopped.",
+    "failure.publishing.NothingToPublish.what",
     Site.UNCHANGED,
-    "Send the details below to whoever helps you.",
+    "failure.publishing.NothingToPublish.next",
 )
 
 
@@ -71,10 +71,9 @@ class JournalOff(Exception):
 
 
 SENTENCES[JournalOff] = Sentence(
-    "Your journal is off, so entries are not on your site. This entry is still "
-    "saved as a draft.",
+    "failure.publishing.JournalOff.what",
     Site.UNCHANGED,
-    "Turn the journal on from Your writing, then publish this entry again.",
+    "failure.publishing.JournalOff.next",
 )
 
 class WouldReplaceASite(Exception):
@@ -85,11 +84,9 @@ class WouldReplaceASite(Exception):
 REPLACE_ADDRESS = "/publish/replace"
 
 SENTENCES[WouldReplaceASite] = Sentence(
-    "Your GitHub repository already holds a website, and publishing your starter "
-    "site would replace it, so Pressless stopped.",
+    "failure.publishing.WouldReplaceASite.what",
     Site.UNCHANGED,
-    "If you mean to replace it, choose Replace the site on GitHub below, then "
-    "publish again.",
+    "failure.publishing.WouldReplaceASite.next",
 )
 
 # GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).

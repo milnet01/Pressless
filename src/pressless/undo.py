@@ -35,9 +35,9 @@ class NothingToUndo(Exception):
 
 # Added here rather than in face.py, which cannot import this module back.
 SENTENCES[NothingToUndo] = Sentence(
-    "Pressless cannot undo your very first publish.",
+    "failure.undo.NothingToUndo.what",
     Site.UNCHANGED,
-    "There is no earlier version of your site to go back to.",
+    "failure.undo.NothingToUndo.next",
 )
 
 

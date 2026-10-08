@@ -4,7 +4,8 @@ The contract is docs/specs/PRESS-0011-face.md. Two jobs, and they are one job:
 this is the web server on his own machine that his browser talks to, and it is
 the one place a failure any part raises becomes a sentence he understands
 (`docs/design.md` § Errors). Every part raises typed failures and writes no
-prose; the words live here, keyed by the failure's class.
+prose; the sentences live here, keyed by the failure's class, and their words
+in the words table (PRESS-0242).
 
 Nothing here keeps state between requests (`docs/design.md` § State) beyond
 what the server itself needs: the secret made at launch, the pages later items
@@ -42,29 +43,26 @@ from pressless import (
     shortcuts,
     store,
     themes,
+    words,
 )
-
-LABEL = "the Pressless-data folder, beside the program"
-
-# One next step for every notice: StoreNotice covers three occasions under one
-# type, so the Face cannot tell them apart (§ 4.4).
-NOTICE_NEXT = "Nothing was lost. Send this to whoever helps you if you did not expect it."
-
-_UNFORESEEN_WHAT = "Something went wrong that Pressless did not expect."
-_UNFORESEEN_NEXT = "Try again, and send the details below to whoever helps you."
-
-# What a credential sentence says where the Face named no secret.
-_UNNAMED_NOUN = "that secret"
+from pressless.words import say
 
 
 class Site(enum.Enum):
-    UNCHANGED = "Your site has not changed."
-    UNKNOWN = "Pressless cannot tell whether your site changed."
-    UPDATED = "Your site has been updated."  # a notice's only (§ 4.4)
+    """Each value is a key in the words table (PRESS-0242)."""
+    UNCHANGED = "site.unchanged"
+    UNKNOWN = "site.unknown"
+    UPDATED = "site.updated"  # a notice's only (§ 4.4)
+
+    @property
+    def words(self) -> str:
+        return say(self.value)
 
 
 @dataclass(frozen=True)
 class Sentence:
+    """In SENTENCES each part is a key in the words table; `sentence_for`
+    returns the same shape holding the words (PRESS-0242)."""
     what: str  # what happened, in his words; may hold the "{secret}" slot
     site: Site  # what it means for his site
     next: str  # what to do next
@@ -89,195 +87,187 @@ def _say(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
     return Sentence(what, site, next_step, link)
 
 
-_AGAIN = "Try again. If it keeps happening, send the details below to whoever helps you."
-
 # Keyed by the class object, never its name: publisher and insights both define
 # Unreachable, Refused and RateLimited (§ 4.2). Each Publisher type's next step
 # follows the answer PRESS-0009 § 4.1 pairs with it.
 SENTENCES: dict[type[Exception], Sentence] = {
     paths.NotPackaged: _say(
-        "Pressless could not tell where it is running from.",
-        "Start Pressless by double-clicking the file you downloaded.",
+        "failure.paths.NotPackaged.what",
+        "failure.paths.NotPackaged.next",
     ),
     paths.FolderUnusable: _say(
-        "Pressless could not create or write its Pressless-data folder.",
-        "Move Pressless to a folder you can save files in, then start it again.",
+        "failure.paths.FolderUnusable.what",
+        "failure.paths.FolderUnusable.next",
     ),
-    store.StoreError: _say("Pressless could not use one of your files.", _AGAIN),
+    store.StoreError: _say("failure.store.StoreError.what", "failure.again"),
     store.EntryNotFound: _say(
-        "Pressless could not find that entry.",
-        "Go back to your list of entries and choose it again.",
+        "failure.store.EntryNotFound.what",
+        "failure.store.EntryNotFound.next",
     ),
     store.SlugInUse: _say(
-        "Another entry already uses that address, so nothing was moved.",
-        "Choose a different address and save again.",
+        "failure.store.SlugInUse.what",
+        "failure.store.SlugInUse.next",
     ),
     store.DanglingReply: _say(
-        "A reply points at a comment that is not there, so nothing was saved.",
-        "Send the details below to whoever helps you.",
+        "failure.store.DanglingReply.what",
+        "failure.store.DanglingReply.next",
     ),
     builder.BuildStopped: _say(
-        "Pressless could not build your site from one of your files.",
-        "Check the file named in the details below, then try again. If it keeps "
-        "happening, send the details to whoever helps you.",
+        "failure.builder.BuildStopped.what",
+        "failure.builder.BuildStopped.next",
     ),
     builder.SiteFolderUnusable: _say(
-        "Pressless could not write the folder your site is built into.",
-        _AGAIN,
+        "failure.builder.SiteFolderUnusable.what",
+        "failure.again",
     ),
     insights.InsightsError: _say(
-        "Google sent back an answer Pressless could not use.",
-        "Try again later. If it keeps happening, send the details below to whoever "
-        "helps you.",
+        "failure.insights.InsightsError.what",
+        "failure.insights.InsightsError.next",
     ),
     insights.NotConfigured: _say(
-        "The visitor numbers are not set up.",
-        "Set up the dashboard in Settings if you want to see them.",
+        "failure.insights.NotConfigured.what",
+        "failure.insights.NotConfigured.next",
     ),
     insights.Unreachable: _say(
-        "Pressless could not reach Google.",
-        "Check your internet connection and try again.",
+        "failure.insights.Unreachable.what",
+        "failure.insights.Unreachable.next",
     ),
     insights.Refused: _say(
-        "Google would not let Pressless read your visitor numbers.",
-        "Sign in to Google again from Settings.",
+        "failure.insights.Refused.what",
+        "failure.insights.Refused.next",
     ),
     insights.RateLimited: _say(
-        "Google asked Pressless to wait before asking again.",
-        "Try again later.",
+        "failure.insights.RateLimited.what",
+        "failure.insights.RateLimited.next",
     ),
     google_signin.Declined: _say(
-        "You chose not to let Pressless read your visitor numbers.",
-        "Sign in with Google from Settings whenever you like.",
+        "failure.google_signin.Declined.what",
+        "failure.google_signin.Declined.next",
     ),
     google_signin.Expired: _say(
-        "The sign-in with Google took too long.",
-        "Sign in with Google again from Settings.",
+        "failure.google_signin.Expired.what",
+        "failure.google_signin.Expired.next",
     ),
     credentials.NoStore: _say(
-        "Pressless found nowhere safe on this computer to keep {secret}.",
-        "Send the details below to whoever helps you.",
+        "failure.credentials.NoStore.what",
+        "failure.credentials.NoStore.next",
     ),
     credentials.NotStored: _say(
-        "Pressless does not have {secret} yet.",
-        "Enter it again in Settings.",
+        "failure.credentials.NotStored.what",
+        "failure.credentials.NotStored.next",
     ),
     # Setup's store step and first save raise this too, where nothing was
     # read and re-entering fixes nothing -- a locked keyring, or on Windows a
     # program started over a remote connection, which the vault refuses
     # (PRESS-0120, PRESS-0162). So it names reaching, and the unlock first.
     credentials.CredentialError: _say(
-        "Pressless could not safely reach {secret} in this computer's keyring.",
-        "If your keyring is locked, unlock it and try again; otherwise enter it again in "
-        "Settings. If this keeps happening, send the details below to whoever helps you.",
+        "failure.credentials.CredentialError.what",
+        "failure.credentials.CredentialError.next",
     ),
     settings.NotSetUp: _say(
-        "Pressless is not set up yet.",
-        "Go through setup first.",
+        "failure.settings.NotSetUp.what",
+        "failure.settings.NotSetUp.next",
     ),
     settings.SettingsError: _say(
-        "Pressless could not read its settings.",
-        "Pressless changed nothing in them. Send the details below to whoever helps you.",
+        "failure.settings.SettingsError.what",
+        "failure.settings.SettingsError.next",
     ),
     publisher.PublishError: _say(
-        "GitHub answered in a way Pressless did not expect.",
-        _AGAIN,
+        "failure.publisher.PublishError.what",
+        "failure.again",
     ),
     publisher.Unreachable: _say(
-        "Pressless could not reach GitHub.",
-        "Check your internet connection and try again.",
+        "failure.publisher.Unreachable.what",
+        "failure.publisher.Unreachable.next",
     ),
     publisher.OutcomeUnknown: _say(
-        "GitHub's answer did not say whether your site was updated.",
-        "Check your internet connection and click Press to site again. Publishing again is safe "
-        "and settles it.",
+        "failure.publisher.OutcomeUnknown.what",
+        "failure.publisher.OutcomeUnknown.next",
         Site.UNKNOWN,
     ),
     publisher.Refused: _say(
-        "GitHub would not accept your publishing key.",
-        "Enter your publishing key again in Settings, then try again.",
+        "failure.publisher.Refused.what",
+        "failure.publisher.Refused.next",
     ),
     publisher.SignInRefused: _say(
-        "GitHub would not accept Pressless's sign-in.",
-        "Sign in to GitHub again in Settings, then try again.",
-        link=("/setup/github", "Sign in to GitHub again"),
+        "failure.publisher.SignInRefused.what",
+        "failure.publisher.SignInRefused.next",
+        link=("/setup/github", "failure.publisher.SignInRefused.link"),
     ),
     publisher.RepositoryMissing: _say(
-        "GitHub could not find your site's repository.",
-        "Check the repository name in Settings, then click Press to site again.",
+        "failure.publisher.RepositoryMissing.what",
+        "failure.publisher.RepositoryMissing.next",
     ),
     publisher.Conflict: _say(
-        "Your site on GitHub changed while Pressless was publishing.",
-        "Try again.",
+        "failure.publisher.Conflict.what",
+        "failure.publisher.Conflict.next",
     ),
     publisher.TooLarge: _say(
-        "Something you are publishing is larger than GitHub accepts.",
-        "If you added a large file, remove or shrink it. Then try again, and if it keeps "
-        "happening, send the details below to whoever helps you.",
+        "failure.publisher.TooLarge.what",
+        "failure.publisher.TooLarge.next",
     ),
     publisher.RateLimited: _say(
-        "GitHub asked Pressless to slow down.",
-        "Wait a while, then try again.",
+        "failure.publisher.RateLimited.what",
+        "failure.publisher.RateLimited.next",
     ),
     publisher.NoPreviousState: _say(
-        "There is no earlier version of your site to go back to.",
-        "Nothing needs undoing.",
+        "failure.publisher.NoPreviousState.what",
+        "failure.publisher.NoPreviousState.next",
     ),
     publisher.SiteFolderMissing: _say(
-        "Pressless could not find the folder your site is built into.",
-        "Build your site again, then click Press to site again. If it keeps happening, send the "
-        "details below to whoever helps you.",
+        "failure.publisher.SiteFolderMissing.what",
+        "failure.publisher.SiteFolderMissing.next",
     ),
     publisher.StrayFile: _say(
-        "Your site folder holds a file Pressless did not make.",
-        "Remove that file from your site folder, then click Press to site again.",
+        "failure.publisher.StrayFile.what",
+        "failure.publisher.StrayFile.next",
     ),
     publisher.SiteWouldBeEmptied: _say(
-        "Publishing now would empty your site, so Pressless stopped.",
-        "Build your site again, then click Press to site again.",
+        "failure.publisher.SiteWouldBeEmptied.what",
+        "failure.publisher.SiteWouldBeEmptied.next",
     ),
     publisher.FetchNotWritten: _say(
-        "Pressless could not save the earlier version of your site to this computer.",
-        "Free some space on this computer's drive, then try again.",
+        "failure.publisher.FetchNotWritten.what",
+        "failure.publisher.FetchNotWritten.next",
     ),
     publisher.UnfetchablePath: _say(
-        "The earlier version of your site names a file this computer cannot hold.",
-        "Rename the file named below on your site, publish, then try again.",
+        "failure.publisher.UnfetchablePath.what",
+        "failure.publisher.UnfetchablePath.next",
     ),
     publisher.RepositoryMoved: _say(
-        "GitHub says your site's repository has been renamed or moved.",
-        "Enter its new name in Settings, then click Press to site again.",
+        "failure.publisher.RepositoryMoved.what",
+        "failure.publisher.RepositoryMoved.next",
     ),
     publisher.RemoteStateMissing: _say(
-        "Something Pressless needed from GitHub was not there.",
-        "Try again.",
+        "failure.publisher.RemoteStateMissing.what",
+        "failure.publisher.RemoteStateMissing.next",
     ),
     # PRESS-0231 § 4.2. The sign-in step words the first three as hints; these
     # are for anywhere else they reach.
     github_signin.Pending: _say(
-        "GitHub has not heard from you yet.",
-        "Type the code on GitHub's page, click Authorize, then try again.",
+        "failure.github_signin.Pending.what",
+        "failure.github_signin.Pending.next",
     ),
     github_signin.Expired: _say(
-        "The code for signing in to GitHub ran out.",
-        "Sign in to GitHub again from Settings.",
+        "failure.github_signin.Expired.what",
+        "failure.github_signin.Expired.next",
     ),
     github_signin.Declined: _say(
-        "The sign-in was cancelled on GitHub.",
-        "Sign in to GitHub again from Settings whenever you like.",
+        "failure.github_signin.Declined.what",
+        "failure.github_signin.Declined.next",
     ),
     github_signin.SignedOut: _say(
-        "GitHub has signed Pressless out.",
-        "Sign in to GitHub again in Settings, then try again.",
-        link=("/setup/github", "Sign in to GitHub again"),
+        "failure.github_signin.SignedOut.what",
+        "failure.github_signin.SignedOut.next",
+        link=("/setup/github", "failure.github_signin.SignedOut.link"),
     ),
     FolderNotOpened: _say(
-        "Pressless could not open the folder.",
-        "Use Copy location instead, and paste it into your file manager.",
+        "failure.face.FolderNotOpened.what",
+        "failure.face.FolderNotOpened.next",
     ),
     shortcuts.ShortcutError: _say(
-        "Pressless could not change its shortcut in the menu or on the desktop.",
-        _AGAIN,
+        "failure.shortcuts.ShortcutError.what",
+        "failure.again",
     ),
 }
 
@@ -290,13 +280,16 @@ def sentence_for(
     A subclass with no entry is unforeseen: a base's sentence is written for no
     situation in particular. An unforeseen failure while publishing says the
     outcome is unknown, because the Face cannot tell whether the site moved.
+    The sentence returned holds words, its keys looked up now.
     """
     entry = SENTENCES.get(type(failure))
     if entry is None:
         site = Site.UNKNOWN if publishing else Site.UNCHANGED
-        return Sentence(_UNFORESEEN_WHAT, site, _UNFORESEEN_NEXT)
-    return Sentence(entry.what.replace("{secret}", secret or _UNNAMED_NOUN), entry.site,
-                    entry.next, entry.link)
+        return Sentence(say("failure.unforeseen.what"), site, say("failure.unforeseen.next"))
+    # Where the Face named no secret, the sentence says "that secret".
+    noun = secret or say("failure.unnamed_secret")
+    link = (entry.link[0], say(entry.link[1])) if entry.link else None
+    return Sentence(say(entry.what, secret=noun), entry.site, say(entry.next), link)
 
 
 def details_for(failure: BaseException) -> str:
@@ -323,7 +316,7 @@ def render_failure(
     """The three-part sentence and Show details, as an HTML fragment.
 
     Everything inserted is escaped: a failure's words are text, not markup. The
-    fragment names the log by its file name and its folder by LABEL, never by a
+    fragment names the log by its file name and its folder in words, never by a
     path; the page's own script fetches the path only when Copy is clicked.
     """
     sentence = sentence_for(failure, publishing=publishing, secret=secret)
@@ -331,16 +324,16 @@ def render_failure(
     return (
         '<section class="failure">'
         f'<p class="what">{e(sentence.what)}</p>'
-        f'<p class="site">{e(sentence.site.value)}</p>'
+        f'<p class="site">{e(sentence.site.words)}</p>'
         f'<p class="next">{e(sentence.next)}</p>'
         + (f'<p class="next"><a href="{e(sentence.link[0], quote=True)}">'
            f"{e(sentence.link[1])}</a></p>" if sentence.link else "")
-        + "<details><summary>Show details</summary>"
+        + f"<details><summary>{say('failure.show_details')}</summary>"
         f"<pre>{e(details_for(failure))}</pre>"
-        f"<p>The log is {e(log.FILE_NAME)}, and the older part of it {e(log.OLD_NAME)}, "
-        f"in {e(LABEL)}.</p>"
-        '<button type="button" data-action="copy-location">Copy location</button> '
-        '<button type="button" data-action="open-folder">Open folder</button>'
+        f"<p>{say('failure.log', log=e(log.FILE_NAME), old=e(log.OLD_NAME))}</p>"
+        '<button type="button" data-action="copy-location">'
+        f"{say('failure.copy_location')}</button> "
+        f'<button type="button" data-action="open-folder">{say("failure.open_folder")}</button>'
         "</details></section>"
     )
 
@@ -356,10 +349,12 @@ def render_notices(notices: list[str | Notice]) -> str:
         return ""
     e = html.escape
     shown = [notice if isinstance(notice, Notice) else Notice(notice) for notice in notices]
+    # One next step for every notice: StoreNotice covers three occasions under
+    # one type, so the Face cannot tell them apart (§ 4.4).
     items = "".join(
         f'<li><p class="what">{e(notice.text)}</p>'
-        f'<p class="site">{e(notice.site.value)}</p>'
-        f'<p class="next">{e(NOTICE_NEXT)}</p></li>'
+        f'<p class="site">{e(notice.site.words)}</p>'
+        f'<p class="next">{e(say("notice.next"))}</p></li>'
         for notice in shown
     )
     return f'<ul class="notices">{items}</ul>'
@@ -451,7 +446,7 @@ def _served_file(rest: str, locate: Locate) -> Path | None:
 
 
 def _running(request: Request) -> str:
-    return "<h1>Pressless is running.</h1>"
+    return f"<h1>{say('face.running')}</h1>"
 
 
 def _is_secret(offered: str, secret: str) -> bool:
@@ -541,6 +536,22 @@ document.addEventListener("change", (event) => {
   if (!box) return;
   document.getElementById("preview").classList.toggle("undimmed", box.checked);
 });
+"""
+
+# PRESS-0242 § 4.3: a page script's words, gaps filled as words.say fills them.
+# It reads the words block on each call and declares nothing else, because a
+# failure page written over this one by document.write runs it a second time.
+_SAY = r"""
+function say(key, slots = {}) {
+  const table = JSON.parse(document.getElementById("pressless-words").textContent);
+  if (!(key in table)) throw new Error("no words for " + key);
+  return table[key].replace(/\{\{|\}\}|\{(\w+)\}/g, (found, name) => {
+    if (found === "{{") return "{";
+    if (found === "}}") return "}";
+    if (!(name in slots)) throw new Error("no " + name + " for " + key);
+    return slots[name];
+  });
+}
 """
 
 
@@ -700,16 +711,19 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
     # PRESS-0232: the editors' publish notes copy this link, so it is the one
     # place a page reads the site's address from.
     visit = (f'<a href="{html.escape(site, quote=True)}" target="_blank" rel="noopener" '
-             "data-site>View your site</a>" if site else "")
+             f"data-site>{say('face.view_site')}</a>" if site else "")
     return (
         f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f'<title>Pressless</title><link rel="icon" href="{_ICON}">'
-        f"<style>{_STYLE}</style></head>"
+        f"<style>{_STYLE}</style>"
+        # PRESS-0242 § 4.3: before <main>, whose scripts run as they load.
+        '<script type="application/json" id="pressless-words">'
+        f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f'{themes.picker(theme)}{visit}<a href="/setup">Settings</a>'
+        f'{themes.picker(theme)}{visit}<a href="/setup">{say("face.settings")}</a>'
         # PRESS-0179: on every screen, failure pages included.
-        '<a href="/report">Suggest or report a problem</a></header>'
+        f'<a href="/report">{say("face.report")}</a></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 
@@ -1030,7 +1044,7 @@ class Face:
         address = self.live_address()
         live = bool(address) and not any(check() for check in self._unseen)
         return (f'<button type="button" data-view-site="{html.escape(address, quote=True)}"'
-                f'{"" if live else " disabled"}>View your site</button>')
+                f'{"" if live else " disabled"}>{say("face.view_site")}</button>')
 
     def note(self, text: str) -> None:
         """One line in the rolling log. The caller keeps URLs and paths out."""

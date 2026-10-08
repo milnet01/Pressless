@@ -62,22 +62,19 @@ class LeftOut(store.StoreNotice):
 # Added here rather than in face.py, which cannot import this module back
 # (§ 4.1).
 SENTENCES[ChangedElsewhere] = Sentence(
-    "This entry was changed in another window or outside Pressless, so Pressless "
-    "did not save over it.",
+    "failure.editor.ChangedElsewhere.what",
     Site.UNCHANGED,
-    "Copy anything you typed since, then open the entry again from your list.",
+    "failure.editor.ChangedElsewhere.next",
 )
 SENTENCES[TooManyCopies] = Sentence(
-    "More than one draft holds unpublished changes to this entry, so Pressless did "
-    "not open it.",
+    "failure.editor.TooManyCopies.what",
     Site.UNCHANGED,
-    "Open your Pressless-data folder, keep one of those drafts, and move the others "
-    "out of the drafts folder.",
+    "failure.editor.TooManyCopies.next",
 )
 SENTENCES[photographs.NotAPhotograph] = Sentence(
-    "That file is not a picture Pressless can put on your site, so it was not added.",
+    "failure.photographs.NotAPhotograph.what",
     Site.UNCHANGED,
-    "Choose a JPEG, PNG, WebP or GIF photograph.",
+    "failure.photographs.NotAPhotograph.next",
 )
 
 # Every write, preview and publish runs under it; a threading.Lock cannot be
