@@ -179,7 +179,8 @@ def test_a_changed_paragraph_count_writes_nothing(tmp_path):
     # capture, which fills its list only on exit, so a notice raised before
     # the refusal never reached the reply.
     def notice_then_refuse(folder, form):
-        warnings.warn("a notice before the refusal", store.StoreNotice, stacklevel=1)
+        warnings.warn(store.StoreNotice("notice.store.passed_over", file="pages/early.html",
+                                        reason="a notice before the refusal"), stacklevel=1)
         raise page_editor.PiecesChanged("the paragraphs changed")
 
     with pytest.MonkeyPatch.context() as patch:
@@ -187,7 +188,8 @@ def test_a_changed_paragraph_count_writes_nothing(tmp_path):
         with _pages(folder) as browser:
             _, _, text = _save(browser, "pages", "about", "words", added,
                                waiting=False, base=base)
-    assert "a notice before the refusal" in json.loads(text)["notices"], text
+    assert ("pages/early.html was passed over: a notice before the refusal"
+            in json.loads(text)["notices"]), text
 
     # PRESS-0143: a run of blank lines is one gap, and an emptied paragraph is
     # refused however many blank lines it leaves behind.

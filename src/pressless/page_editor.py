@@ -48,6 +48,7 @@ from pressless.face import (
     render_notices,
     sentence_for,
 )
+from pressless.words import say
 
 WORDS = "words"
 CODE = "code"
@@ -69,13 +70,6 @@ SENTENCES[PiecesChanged] = Sentence(
 STRAY = ("The text you put between the header or footer markers will be replaced "
          "from the one Header or Footer when your site is built. Edit the Header or "
          "Footer instead.")
-
-_KEPT_COPY = ("Your changes were published, but their waiting copy was left in place. "
-              "You can throw it away.")
-# After an unknown outcome the live file already holds the changes (§ 4.7), so
-# throwing the copy away loses nothing either way (PRESS-0144).
-_KEPT_COPY_UNKNOWN = ("Pressless cannot tell whether your changes were published, and "
-                      "their waiting copy was left in place. You can throw it away.")
 
 _HIDDEN = frozenset(("script", "style", "template"))
 _LABELS = {"header": "Header", "footer": "Footer", "navigation": "Navigation"}
@@ -567,7 +561,8 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
                                    notices=notices, transport=transport)
             except publisher.OutcomeUnknown:
                 if finish():
-                    notices.append(Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN))
+                    notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
+                                          Site.UNKNOWN))
                 raise
             except BaseException:
                 # A failure here is raised in place of the original (§ 4.7).
@@ -582,7 +577,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             failure = None
             published = True
             if kept:
-                notices.append(Notice(_KEPT_COPY, Site.UPDATED))
+                notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
         told(pressing.Outcome(pressing.PUBLISHED, None) if published
              else pressing.Outcome(pressing.NOT_PUBLISHED, failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))

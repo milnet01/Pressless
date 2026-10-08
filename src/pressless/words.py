@@ -281,6 +281,57 @@ _WORDS: dict[str, str] = {
     "failure.open_folder": "Open folder",
     # A notice's next step, and what a failure or notice means for the site.
     "notice.next": "Nothing was lost. Send this to whoever helps you if you did not expect it.",
+    # Notices: a StoreNotice or SettingsNotice carries its key and slots.
+    "notice.store.twin": (
+        "{twin} names the same entry as {target} and is not the file Pressless reads; after "
+        "this move the folder holds both, and {twin} can only be reached by renaming it"
+    ),
+    "notice.store.passed_over": "{file} was passed over: {reason}",
+    "notice.store.not_private": (
+        "{file} could not be made private: this filesystem granted mode {mode} rather than "
+        "owner-only, so others with an account on this machine can read it"
+    ),
+    "notice.settings.not_private": (
+        "the settings file could not be made private: this filesystem granted mode {mode} "
+        "rather than owner-only, so others with an account on this machine can read it"
+    ),
+    "notice.editor.left_out.categories": (
+        "“{name}” was left out of the categories: Pressless cannot make it part of "
+        "a web address. Give it another name."
+    ),
+    "notice.editor.left_out.tags": (
+        "“{name}” was left out of the tags: Pressless cannot make it part of a web "
+        "address. Give it another name."
+    ),
+    "notice.publishing.starter_kept": (
+        "Pressless could not note that your starter site is now published, so your next "
+        "publish will ask once more before it replaces a site."
+    ),
+    # "A waiting draft", not "the draft of your changes": a copy of a demoted
+    # entry bins two drafts, and a failure between them leaves the OLD one
+    # (PRESS-0162).
+    "notice.publishing.kept_copy": (
+        "A waiting draft from this publish was left in place after publishing. You can throw "
+        "it away."
+    ),
+    # After an unknown outcome the move stands, so the published entry already
+    # holds the copy's changes and throwing the copy away loses nothing
+    # (PRESS-0013 § 4.3, PRESS-0147).
+    "notice.publishing.kept_copy_unknown": (
+        "Pressless cannot tell whether your changes were published, and a waiting draft from "
+        "this publish was left in place. You can throw it away."
+    ),
+    "notice.page_editor.kept_copy": (
+        "Your changes were published, but their waiting copy was left in place. You can throw "
+        "it away."
+    ),
+    # After an unknown outcome the live file already holds the changes
+    # (PRESS-0014 § 4.7), so throwing the copy away loses nothing either way
+    # (PRESS-0144).
+    "notice.page_editor.kept_copy_unknown": (
+        "Pressless cannot tell whether your changes were published, and their waiting copy "
+        "was left in place. You can throw it away."
+    ),
     "site.unchanged": "Your site has not changed.",
     "site.unknown": "Pressless cannot tell whether your site changed.",
     "site.updated": "Your site has been updated.",

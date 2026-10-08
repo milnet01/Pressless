@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pressless.safe_write import write_whole
+from pressless.words import ENGLISH
 
 FILE_NAME = "settings.json"
 
@@ -86,7 +87,14 @@ class SettingsNotice(UserWarning):
     One notice per save. Suppressing repeats is the caller's: the default
     warnings filter shows a repeat once, but a caller that CAPTURES sees every
     one -- and capturing is what the Face must do to render it.
+
+    Raised with a key in the words table and its slots, as StoreNotice is
+    (PRESS-0242).
     """
+
+    def __init__(self, key: str, **slots: str) -> None:
+        super().__init__(ENGLISH[key].format_map(slots))
+        self.key, self.slots = key, slots
 
 
 class SettingsError(Exception):
@@ -421,13 +429,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
         return
     granted = stat.S_IMODE(os.fstat(handle).st_mode)
     if granted & 0o077:
-        warnings.warn(
-            "the settings file could not be made private: this filesystem granted "
-            f"mode {granted:03o} rather than owner-only, so others with an "
-            "account on this machine can read it",
-            SettingsNotice,
-            stacklevel=2,
-        )
+        warnings.warn(SettingsNotice("notice.settings.not_private", mode=f"{granted:03o}"),
+                      stacklevel=2)
 
 
 def _required(mapping: dict, key: str, kind: type, target: Path, prefix: str = ""):

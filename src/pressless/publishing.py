@@ -43,8 +43,9 @@ from pressless.face import (
     Site,
     render_notices,
 )
+from pressless.words import say
 
-MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
+MESSAGE ="Publish {slug}"     # the commit message; {slug} is the entry's address
 
 # The header marking a draft undo demoted (PRESS-0015 § 4.5). Nothing parses the
 # value -- it is the moment of the demotion, written so that a person reading his
@@ -92,27 +93,12 @@ SENTENCES[WouldReplaceASite] = Sentence(
 # GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).
 _A_SITE = frozenset({"index.html", "index.md"})
 
-_STARTER_KEPT = ("Pressless could not note that your starter site is now published, "
-                 "so your next publish will ask once more before it replaces a site.")
-
-
 def replace_link(failure: BaseException) -> str:
     """The way to the replace page, beside a WouldReplaceASite failure; a
     Sentence is escaped text and cannot carry it."""
     if not isinstance(failure, WouldReplaceASite):
         return ""
     return f'<p><a href="{REPLACE_ADDRESS}">Replace the site on GitHub</a></p>'
-
-
-# "A waiting draft", not "the draft of your changes": a copy of a demoted entry
-# bins two drafts, and a failure between them leaves the OLD one (PRESS-0162).
-_KEPT_COPY = ("A waiting draft from this publish was left in place after publishing. "
-              "You can throw it away.")
-# After an unknown outcome the move stands, so the published entry already holds
-# the copy's changes and throwing the copy away loses nothing (§ 4.3, PRESS-0147).
-_KEPT_COPY_UNKNOWN = ("Pressless cannot tell whether your changes were published, and "
-                      "a waiting draft from this publish was left in place. "
-                      "You can throw it away.")
 
 
 @dataclass(frozen=True)
@@ -200,7 +186,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             raise
     except publisher.OutcomeUnknown:
         if finish():
-            gathered.append(Notice(_KEPT_COPY_UNKNOWN, Site.UNKNOWN))
+            gathered.append(Notice(say("notice.publishing.kept_copy_unknown"), Site.UNKNOWN))
         raise
     except BaseException:
         if moved is not None and not interrupted:
@@ -211,7 +197,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         try:
             starter.published(folder)
         except OSError:
-            warnings.warn(store.StoreNotice(_STARTER_KEPT), stacklevel=2)
+            warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
     captured(forget_the_starter)
     return Published(outcome, finish())
@@ -342,7 +328,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             failure = None
             published = True
             if result.copy_kept:
-                notices.append(Notice(_KEPT_COPY, Site.UPDATED))
+                notices.append(Notice(say("notice.publishing.kept_copy"), Site.UPDATED))
         told(pressing.Outcome(pressing.PUBLISHED, None) if published
              else pressing.Outcome(pressing.NOT_PUBLISHED, failure))
         slug, draft, base = gathered(lambda: _left(folder, written))

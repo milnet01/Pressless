@@ -1074,9 +1074,9 @@ class Face:
             finally:
                 for warning in caught:
                     if issubclass(warning.category, (store.StoreNotice, settings.SettingsNotice)):
-                        text = str(warning.message)
-                        notices.append(text)
-                        self._log.note(f"notice: {text}")
+                        notice = warning.message
+                        notices.append(say(notice.key, **notice.slots))
+                        self._log.note(f"notice: {notice}")  # the log stays English
 
     def fail(self, failure: BaseException, *, publishing: bool, secret: str | None = None) -> str:
         """Note the failure's details in the log and return its fragment."""

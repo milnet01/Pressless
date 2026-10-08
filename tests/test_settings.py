@@ -22,7 +22,7 @@ from _mode_support import _require_posix_modes
 from _open_watch import _watch_opens
 
 import pressless.settings as settings_module
-from pressless import safe_write
+from pressless import _flag_data, marks, safe_write, words
 from pressless.settings import (
     Credentials,
     NotSetUp,
@@ -135,9 +135,11 @@ def test_settings_imports_nothing_forbidden():
     top = {name.split(".")[0] for name in imported}
     ours = {name for name in imported if name.split(".")[0] == "pressless"}
     assert not top & _FORBIDDEN_TOP_LEVEL_IMPORTS, top & _FORBIDDEN_TOP_LEVEL_IMPORTS
-    assert ours <= {"pressless.safe_write"}, (
-        f"settings.py imports {ours - {'pressless.safe_write'}!r}. Its row in "
-        f"docs/design.md § The parts is 'depends on nothing': no other part"
+    allowed = {"pressless.safe_write", "pressless.words"}
+    assert ours <= allowed, (
+        f"settings.py imports {ours - allowed!r}. Its row in docs/design.md § The "
+        f"parts is 'depends on nothing': no other part but the words table, which "
+        f"touches no disk and no network (PRESS-0242)"
     )
     assert not relative, (
         f"settings.py has relative import(s) {[n.module for n in relative]!r}, "
@@ -147,6 +149,19 @@ def test_settings_imports_nothing_forbidden():
     helper_top = {name.split(".")[0] for name in helper}
     assert not helper_top & (_FORBIDDEN_TOP_LEVEL_IMPORTS | {"pressless"}), helper_top
     assert not helper_relative
+    # The words table builds from two modules and nothing else, so the rule
+    # holds through it as well (PRESS-0242).
+    table_parts = {alias.name for node in ast.walk(ast.parse(inspect.getsource(words)))
+                   if isinstance(node, ast.ImportFrom) and node.module == "pressless"
+                   for alias in node.names}
+    assert table_parts <= {"_flag_data", "marks"}, table_parts
+    for module in (words, marks, _flag_data):
+        names, module_relative = _imports(module)
+        names_top = {name.split(".")[0] for name in names}
+        assert not names_top & _FORBIDDEN_TOP_LEVEL_IMPORTS, (module.__name__, names_top)
+        assert not module_relative, module.__name__
+        if module is not words:
+            assert "pressless" not in names_top, (module.__name__, names_top)
     copied = _calls(settings_module) & {"tempfile.mkstemp", "os.fsync"}
     assert not copied, f"settings.py calls {copied!r} itself; §4.4's steps live in safe_write"
 

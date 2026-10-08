@@ -203,6 +203,10 @@ def _usable(folder: Path, name: str) -> bool:
     return True
 
 
+_LEFT_OUT = {"categories": "notice.editor.left_out.categories",
+             "tags": "notice.editor.left_out.tags"}
+
+
 def _names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
     """§ 4.8 step 3: a part the Store takes is kept, any other becomes an
     address, and repeats are dropped. A part that leaves nothing the Store would
@@ -215,9 +219,7 @@ def _names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
         name = typed if _usable(folder, typed) else name_address(typed)
         usable = bool(name) and _usable(folder, name)
         if not usable:
-            warnings.warn(LeftOut(
-                f"\u201c{typed}\u201d was left out of the {box}: Pressless cannot "
-                "make it part of a web address. Give it another name."), stacklevel=2)
+            warnings.warn(LeftOut(_LEFT_OUT[box], name=typed), stacklevel=2)
         elif name not in names:
             names.append(name)
     return tuple(names)

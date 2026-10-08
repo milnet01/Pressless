@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 from pressless.safe_write import patiently, write_whole
+from pressless.words import ENGLISH
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,15 @@ class StoreNotice(UserWarning):
     One notice per occasion. Suppressing repeats is the caller's: the default
     warnings filter shows a repeat once, but a caller that CAPTURES sees every
     one -- and capturing is what the Face must do to render it.
+
+    Raised with a key in the words table and its slots, kept as `key` and
+    `slots`; its str() is the English words, which the log records
+    (PRESS-0242).
     """
+
+    def __init__(self, key: str, **slots: str) -> None:
+        super().__init__(ENGLISH[key].format_map(slots))
+        self.key, self.slots = key, slots
 
 
 class SlugInUse(StoreError):
@@ -446,13 +455,8 @@ def _report_a_stranded_twin(target: Path, slug: str) -> None:
         return
     for path in folder.iterdir():
         if path.name != target.name and _folded(path.name) == _folded(target.name):
-            warnings.warn(
-                f"{path.name} names the same entry as {target.name} and is not the "
-                f"file Pressless reads; after this move the folder holds both, "
-                f"and {path.name} can only be reached by renaming it",
-                StoreNotice,
-                stacklevel=3,
-            )
+            warnings.warn(StoreNotice("notice.store.twin", twin=path.name,
+                                      target=target.name), stacklevel=3)
 
 
 def _move_without_overwriting(source: Path, target: Path) -> None:
@@ -1369,11 +1373,9 @@ def _only_usable(
         try:
             compose(name)
         except StoreError as exc:
-            warnings.warn(
-                f"{subfolder.name}/{file_name} was passed over: {exc}",
-                StoreNotice,
-                stacklevel=3,
-            )
+            warnings.warn(StoreNotice("notice.store.passed_over",
+                                      file=f"{subfolder.name}/{file_name}", reason=str(exc)),
+                          stacklevel=3)
             continue
         if name not in usable:
             usable.append(name)
@@ -1464,13 +1466,8 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
         return
     granted = stat.S_IMODE(os.fstat(handle).st_mode)
     if granted & 0o077:
-        warnings.warn(
-            f"{target.name} could not be made private: this filesystem granted "
-            f"mode {granted:03o} rather than owner-only, so others with an "
-            f"account on this machine can read it",
-            StoreNotice,
-            stacklevel=2,
-        )
+        warnings.warn(StoreNotice("notice.store.not_private", file=target.name,
+                                  mode=f"{granted:03o}"), stacklevel=2)
 
 
 def _write_atomically(
