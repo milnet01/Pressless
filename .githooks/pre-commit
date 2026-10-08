@@ -20,7 +20,8 @@
 # relabelled as unsafe while two other files went on prescribing it.
 #
 # ONE EXCLUSION, and it is not optional: text the same change re-adds
-# elsewhere is a MOVE, not a survivor.
+# elsewhere is a MOVE, not a survivor. It is asked of each copy found, so a
+# copy in a file nothing touched still blocks.
 #
 # `docs/` is out of scope throughout — a dated record describes the tree as it
 # was, and is not a claim about now.
@@ -64,16 +65,29 @@ for f in $staged; do
 
   # --- surviving copies of deleted text --------------------------------
   # 45 characters: shorter fragments match everywhere and say nothing.
-  added=$(git diff --cached -- "$f" | grep -E '^\+[^+]' |
+  # `^-` minus the literal header, never `^-[^-]`: that reads as "skip the
+  # `--- a/file` header" and means "skip every markdown bullet", because git
+  # emits a deleted `- text` line as `-- text`. A roadmap is entirely
+  # bullets, and a rule stated twice is usually a bullet both times, which
+  # is the exact case this check is for. The added side is excluded the same
+  # way for symmetry.
+  added=$(git diff --cached -- "$f" | grep -E '^\+' | grep -v -e '^+++ ' |
     sed 's/^+//; s/^[[:space:]]*//; s/[[:space:]]*$//')
-  git diff --cached -- "$f" | grep -E '^-[^-]' |
+  git diff --cached -- "$f" | grep -E '^-' | grep -v -e '^--- ' |
     sed 's/^-//; s/^[[:space:]]*//; s/[[:space:]]*$//' |
     while IFS= read -r gone; do
       [ ${#gone} -ge 45 ] || continue
       printf '%s\n' "$added" | grep -qF -- "$gone" && continue
       git grep -n -F -- "$gone" -- '*.md' ':!docs/' 2>/dev/null |
         while IFS= read -r hit; do
-          [ "${hit%%:*}" = "$f" ] && continue
+          hf=${hit%%:*}
+          [ "$hf" = "$f" ] && continue
+          # A copy in a file this same change ADDED the text to is where
+          # the text went (CFG-0733). Asked per copy, not of the whole
+          # change: a move would otherwise clear every other copy too.
+          git diff --cached -- "$hf" | grep -E '^\+' | grep -v -e '^+++ ' |
+            sed 's/^+//; s/^[[:space:]]*//; s/[[:space:]]*$//' |
+            grep -qF -- "$gone" && continue
           printf 'BLOCK survivor %s -> %s\n' "$f" "$hit"
         done
     done >>/tmp/.pc-link.$$ 2>/dev/null
