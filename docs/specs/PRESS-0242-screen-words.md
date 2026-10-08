@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0242 — Every screen's words come from one table
 
-**Status:** spec draft (2026-10-08).
+**Status:** accepted (2026-10-08). One review round, the user's budget for a new spec; its fixes were read by no lane.
 **Kind:** refactor.
 **Source:** ROADMAP PRESS-0242 (user request 2026-10-07: the preparation half
 of PRESS-0241, wanted before 1.0.0).
@@ -61,8 +61,8 @@ as it does today.
    gaps as `{slot}`.** *(decided here)* Splitting a sentence around a
    `<b>` or a link fixes its word order, which a translation cannot keep.
 6. **One table, keyed by dotted names grouped by screen** (`setup.key_missing`,
-   `press.publishing`). *(decided here)* A key is not the English words, so
-   rewording English changes no key.
+   `script.press.publishing`). *(decided here)* A key is not the English
+   words, so rewording English changes no key.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -80,8 +80,9 @@ def say(key: str, **slots: str) -> str: ...
     # unfilled, raises KeyError.
 
 def use(table: dict[str, str]) -> contextlib.AbstractContextManager: ...
-    # Puts `table` in front of ENGLISH while the block runs. The tests'
-    # seam, and the hook PRESS-0241's language choice uses.
+    # Puts `table` in front of ENGLISH for the whole process, every server
+    # thread included, while the block runs. The tests' seam, and the hook
+    # PRESS-0241's language choice uses once at startup.
 
 def for_scripts() -> str: ...
     # Every "script." entry, as a JSON object safe inside <script>.
@@ -90,18 +91,31 @@ def for_scripts() -> str: ...
 `say` inserts slot values as given. Each caller escapes what it passes, as
 each f-string does today. A literal brace in an entry is written `{{`.
 
+- **A word a script reads lives under `script.`, once**, and Python reads
+  that same key where it shows the word too (the press words, the standing
+  words).
+- **Two families come from their own sources.** `ENGLISH` builds
+  `country.<code>` from `_flag_data.NAMES`, which `scripts/make_flags.py`
+  goes on generating, and `mark.<name>` and `mark.<name>.example` from
+  `marks.MARKS`, whose `example` stays the parse fixture. `words.py`
+  imports only the standard library and those two modules.
+- **An entry holds words, never a page's template.** `starter.py` keeps its
+  `{{SITE_NAME}}`-style placeholders, and its `data-nav` names, which the
+  Builder matches on, and puts looked-up words between them.
+
 ### 4.2 Where words are looked up
 
 - **When shown, never at import.** A module constant holding words becomes
   a key, or a function returning `say(...)`.
 - **`face.SENTENCES`** keeps its keys and shape; a `Sentence`'s `what` and
   `next` hold keys, and `face.sentence_for` looks them up.
-- **Notices.** A notice raised by a module that does not import `words`
-  (`store.StoreNotice`) carries a key and slots instead of English;
-  `face.render_notices` looks it up. `store.py` keeps its imports.
-- **Countries.** `_flag_data.NAMES` moves into the table as `country.<code>`.
-- **The cheat sheet.** `marks.Mark.explains` moves into the table as
-  `mark.<name>`, which `cheatsheet.py`, its only reader, looks up.
+- **Notices.** A `store.StoreNotice` or `settings.SettingsNotice`,
+  subclasses such as `editor.LeftOut` included, is raised with a key and
+  slots and keeps them as attributes. Its `str()` is its English words, so
+  the log line and a notice printed outside a capture read as today.
+  `face.capture` shows `words.say` of the key and slots. `store.py` and
+  `settings.py` import `words` for this.
+- **Countries and the cheat sheet** look up the two families (§ 4.1).
   `marks.py` keeps its standard-library-only imports.
 - **Sample pages and templates** (`starter.py`, `templates.STARTERS`) take
   their words when they are written into a site, so a site starts in the
@@ -109,11 +123,12 @@ each f-string does today. A literal brace in an entry is written `{{`.
 
 ### 4.3 The page scripts
 
-Every page the Face serves carries one
+`face._page` puts one
 `<script type="application/json" id="pressless-words">` holding
-`words.for_scripts()`. Each script reads its words from there, and a small
-`say(key, slots)` in `face._SCRIPT` fills gaps the same way `words.say`
-does. No script holds English. `pressing.SCRIPT` stops baking in its words.
+`words.for_scripts()`, and a small `say(key, slots)` that fills gaps the
+same way `words.say` does, in every page's `<head>`. They must come before
+`<main>`: the page scripts there run as they load. Each script reads its
+words from there. No script holds English. `pressing.SCRIPT` stops baking in its words.
 
 ### 4.4 Building it
 
@@ -137,7 +152,9 @@ page's words keeps its expected words; one that reads a script's internals
   each page the tests can reach (the list, both editors, the holding page,
   each setup step, Settings, the dashboard, the report, the cheat sheet,
   the template list, a failure, a notice) and seed a starter site; strip
-  markup and the writer's own content; no word outside a marker remains.
+  markup, the writer's own content, the body of Show details' `<details>`
+  after its `<summary>`, and slot values that are exception messages
+  (decision 4); no word outside a marker remains.
   *Breaks when:* a module fixes its words at import, or a page builder
   writes English itself.
 
@@ -166,9 +183,9 @@ page's words keeps its expected words; one that reads a script's internals
 - **A key the table lacks** raises `KeyError` where the page is built; the
   Face shows its unforeseen failure. INV-4 stops this reaching a release.
 - **A gap left unfilled** raises the same way.
-- **The words block missing from a page** leaves its script without words;
-  every page gets it from the Face's page chrome, so only a page built
-  outside the chrome could lack it.
+- **The words block missing from a page** leaves its script without words.
+  Every page carrying a script today, the holding page included, is a body
+  `face._page` wraps, so only a page built outside it could lack the block.
 - **INV-3's test misses one-word lowercase English** ("saving"). INV-2 still
   catches it on any page the tests render.
 
@@ -210,8 +227,10 @@ wording tests across the suite.
 ## 11. Cross-doc impact
 
 - `docs/design.md` § The parts — a row for the words table.
-- `docs/specs/PRESS-0011-face.md` — `SENTENCES` holds keys (§ 4.2) and pages
-  carry the words block (§ 4.3).
+- `docs/specs/PRESS-0011-face.md` — `SENTENCES` holds keys (§ 4.2), a
+  notice carries a key and slots (§ 4.4), and pages carry the words block.
+- `docs/design.md` § What may depend on what — any part may import
+  `words`, which touches no disk and no network.
 - `docs/specs/PRESS-0235-press-status.md` § 4.3 — the press words' home
   moves from `pressing.py` to the table.
 - PRESS-0241's roadmap body — the user's 2026-10-08 language decision.
