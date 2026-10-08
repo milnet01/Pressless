@@ -67,12 +67,9 @@ SENTENCES[PiecesChanged] = Sentence(
     "failure.page_editor.PiecesChanged.next",
 )
 
-STRAY = ("The text you put between the header or footer markers will be replaced "
-         "from the one Header or Footer when your site is built. Edit the Header or "
-         "Footer instead.")
-
 _HIDDEN = frozenset(("script", "style", "template"))
-_LABELS = {"header": "Header", "footer": "Footer", "navigation": "Navigation"}
+_LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
+           "navigation": "editor.pages.navigation"}
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
 
@@ -385,43 +382,45 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
         return f'<a data-page-link href="{attr(address)}"{marked}>{html.escape(label)}</a>'
 
     shown = NEWEST if show is None else show
-    title = ("Home" if name == HOME else name) if kind == store.PAGES_FOLDER \
-        else _LABELS.get(name, name)
+    if kind == store.PAGES_FOLDER:
+        title = say("editor.pages.home") if name == HOME else name
+    else:
+        title = say(_LABELS[name]) if name in _LABELS else name
     switch = ""
     if kind == store.PAGES_FOLDER and broken is None:
-        other, label = (CODE, "Show me the code") if view == WORDS else (WORDS, "Back to the words")
+        other, label = ((CODE, say("page_editor.show_code")) if view == WORDS
+                        else (WORDS, say("page_editor.show_words")))
         switch = f"<p>{link(label, _page_address(kind, name, view=other))}</p>"
     picker = ""
     if kind == store.FURNITURE_FOLDER:
-        choices = [link("Home" if page == HOME else page,
+        choices = [link(say("editor.pages.home") if page == HOME else page,
                         _page_address(kind, name, show=page), page == show)
                    for page in held]
         if has_entries:
-            choices.append(link("Your newest entry", _page_address(kind, name, show=NEWEST),
+            choices.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
                                 show is None))
-        picker = "<p>Show it on: " + " ".join(choices) + "</p>"
+        picker = f"<p>{say('page_editor.show_on')} " + " ".join(choices) + "</p>"
     box_class = f' class="{attr(builder.BODY_CLASS)}"' if view == WORDS else ""
     # PRESS-0234: the press row's status line, between presses. The script
     # keeps it in step (its `standing`).
-    standing_word = ("Not on your site yet" if off_site else
-                     "Changes not published yet" if waiting else "On your site")
+    standing_word = say("script.standing.off_site" if off_site else
+                        "script.standing.changes" if waiting else "script.standing.on_site")
     said, running, ended = pressing.shown(standing_word)
     pressed = editor._RUNNING if running else ""
     stylesheets = "".join(
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
         for sheet in sheets)
     return f"""{stylesheets}
-<p><a href="/">Your writing</a> <span id="save-status"></span></p>
+<p><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
 <h1>{html.escape(title)}</h1>
 <div id="standing" data-waiting="{'1' if waiting else '0'}">
-<p data-when="1"{'' if waiting else ' hidden'}>These changes are not on your site yet.</p>
+<p data-when="1"{'' if waiting else ' hidden'}>{say("editor.standing.waiting")}</p>
 <form data-when="1" method="post" action="/page/discard"{'' if waiting else ' hidden'}>
 <input type="hidden" name="kind" value="{attr(kind)}">
 <input type="hidden" name="name" value="{attr(name)}">
 <input type="hidden" name="base" value="{attr(base)}">
-<button>Bin this proof</button></form>
-<p data-when="0"{' hidden' if waiting else ''}>Your changes stay on this computer until you
- publish this page.</p>
+<button>{say("editor.bin_proof")}</button></form>
+<p data-when="0"{' hidden' if waiting else ''}>{say("page_editor.standing")}</p>
 </div>
 {switch}{picker}
 <div id="broken">{broken or ""}</div>
@@ -430,9 +429,9 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
  data-show="{attr(shown)}" data-waiting="{'1' if waiting else '0'}" data-base="{attr(base)}"
  data-off-site="{'1' if off_site else '0'}" onsubmit="return false">
-<p><button type="button" data-editor="publish">Press to site</button>
+<p><button type="button" data-editor="publish">{say("editor.press")}</button>
  {visit}
- <button type="button" data-undo>Undo the last press</button></p>
+ <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 <textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
@@ -440,7 +439,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
 <div id="proof">{TRUE_COLOURS}
-<iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
+<iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""
@@ -464,7 +463,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             failure = None
             if (kind == store.PAGES_FOLDER and _view(kind, form.get("view", "")) == CODE
                     and stray_furniture(name, new)):
-                notices.append(STRAY)
+                notices.append(say("notice.page_editor.stray"))
             preview, preview_failure = _preview(
                 face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")))
     if changed is not None:
@@ -628,29 +627,29 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
     document.getElementById("publish-status").textContent = standing();
   };
   // PRESS-0234: what the press row's status line says between presses.
-  const standing = () => form.dataset.offSite === "1" ? "Not on your site yet"
-    : state.waiting === "1" ? "Changes not published yet" : "On your site";
+  const standing = () => say(form.dataset.offSite === "1" ? "script.standing.off_site"
+    : state.waiting === "1" ? "script.standing.changes" : "script.standing.on_site");
   window.presslessPress.standing(standing);
   const stop = (text) => {
     stopped = true;
-    status.textContent = "Not saved";
+    status.textContent = say("script.editor.not_saved");
     document.getElementById("failure").innerHTML = text;
   };
 
   async function send() {
-    dirty = false; status.textContent = "Saving";
+    dirty = false; status.textContent = say("script.editor.saving");
     try {
       const answer = await fetch("/page/save", {method: "POST", body: fields()});
       const text = await answer.text();
       if (answer.status !== 200) { stop(text); return; }
       const reply = JSON.parse(text);
       adopt(reply);
-      if (reply.hint) { status.textContent = "Not saved"; return; }
+      if (reply.hint) { status.textContent = say("script.editor.not_saved"); return; }
       document.getElementById("failure").innerHTML = reply.failure || "";
       if (reply.preview) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
-      status.textContent = "Saved";
+      status.textContent = say("script.editor.saved");
     } catch (error) {
       stop("");
     }

@@ -443,6 +443,16 @@ _WORDS: dict[str, str] = {
     "script.editor.confirm_throw_draft": (
         "Throw this draft away? It moves to the bin in your Pressless-data folder."
     ),
+    # The fixed pages and the furniture (page_editor.py).
+    "notice.page_editor.stray": (
+        "The text you put between the header or footer markers will be replaced from the one "
+        "Header or Footer when your site is built. Edit the Header or Footer instead."
+    ),
+    "page_editor.show_code": "Show me the code",
+    "page_editor.show_words": "Back to the words",
+    "page_editor.newest": "Your newest entry",
+    "page_editor.show_on": "Show it on:",
+    "page_editor.standing": "Your changes stay on this computer until you publish this page.",
 }
 
 def _literal(text: str) -> str:
