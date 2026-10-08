@@ -22,6 +22,7 @@ from pathlib import Path
 
 from pressless import safe_write
 from pressless.face import Face, Request
+from pressless.words import say
 
 Answers = dict[str, str]
 
@@ -75,11 +76,13 @@ def field(name: str, label: str, answers: Answers, hint: Hint | None,
     if help_html:
         # Outside the label, which would otherwise hand the box's clicks to it.
         button = (f' <button type="button" class="help" data-help="{name}-help" '
-                  f'aria-haspopup="dialog" aria-label="Help: {e(label, quote=True)}">'
+                  f'aria-haspopup="dialog" '
+                  f'aria-label="{e(say("wizard.help", label=label), quote=True)}">'
                   "?</button>")
         dialog = (f'<dialog id="{name}-help" aria-labelledby="{name}-help-title">'
                   f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
-                  '<p><button type="button" data-close>Close</button></p></dialog>')
+                  f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
+                  "</dialog>")
     return (f'<p><label>{e(label)} <input type="{kind}" name="{name}"{value} '
             f'autocomplete="off"></label>{button}</p>{dialog}{shown}')
 
@@ -166,16 +169,17 @@ class Wizard:
         step = self._steps[index]
         loose = (f'<p class="hint">{e(hint.text)}</p>'
                  if hint is not None and hint.field not in step.fields else "")
-        back = ('<button type="submit" name="go" value="back">Back</button>'
+        back = (f'<button type="submit" name="go" value="back">{say("wizard.back")}</button>'
                 if index > 0 else "")
         return (
             f"<h1>{e(step.title)}</h1>"
-            f'<p class="wizard-step">Step {index + 1} of {len(self._steps)}</p>'
+            f'<p class="wizard-step">'
+            f'{say("wizard.step", number=str(index + 1), total=str(len(self._steps)))}</p>'
             + above + loose
             + f'<form method="post" action="{e(self._address, quote=True)}">'
             f'<input type="hidden" name="step" value="{e(step.name, quote=True)}">'
             + step.show(answers, hint)
             # Next comes first, so pressing Enter in a box means Next.
-            + '<p><button type="submit" name="go" value="next">Next</button> '
+            + f'<p><button type="submit" name="go" value="next">{say("wizard.next")}</button> '
             + back + "</p></form>"
         )

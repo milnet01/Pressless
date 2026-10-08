@@ -483,6 +483,12 @@ _WORDS: dict[str, str] = {
         "Now publish again from where you were. Your starter site will replace the site in "
         "{repository}."
     ),
+    # Every wizard's frame (wizard.py).
+    "wizard.step": "Step {number} of {total}",
+    "wizard.next": "Next",
+    "wizard.back": "Back",
+    "wizard.help": "Help: {label}",
+    "wizard.close": "Close",
 }
 
 def _literal(text: str) -> str:
