@@ -4721,6 +4721,18 @@ owned by docs/standards/versioning-overrides.md.
   strftime %b/%a, as in the editor: PRESS-0241's. Next: step 7,
   updating, restarting, report, cheatsheet, templates, themes,
   shortcuts.
+  Progress (2026-10-08): step 7 built in seven commits: cb5a0ed
+  (updating, its console line included), 00dec08 (restarting; LINK is
+  now link()), 4162d48 (report page; the GitHub issue form stays
+  English, decision 4), 9bf4dce (cheat sheet, mark.* family), 0441ffe
+  (theme picker; a Theme's name and group hold keys), f7f1057
+  (templates; STARTERS is now starters(), names stay as file names),
+  539305d (shortcut tooltip; file names stay). Each gate green (1012
+  Linux, 942 Windows box); recorded pages identical; entries no test
+  renders compared old against new directly. Two tests followed a
+  move: test_cheatsheet's new-mark test adds the mark's entries
+  (still red against a frozen copy), test_templates reads starters().
+  Next: step 8, starter sample pages.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
