@@ -15,6 +15,7 @@ from pathlib import Path
 
 from pressless import builder, cheatsheet, editor, store
 from pressless.face import Face, Reply, Request, render_notices
+from pressless.words import say
 
 _STARTED = datetime(2026, 9, 27)
 
@@ -24,21 +25,17 @@ def _starter(name: str, title: str, body: str) -> store.Entry:
                        body=body, extra=())
 
 
-# Shipped to every install, so they name nobody and assume nothing about the
-# writer's life (§ 3 decision 6).
-STARTERS: tuple[store.Entry, ...] = (
-    _starter("poem", "A poem",
-             "The first line of the poem\nThe second line\n\n"
-             "A blank line starts the next verse."),
-    _starter("lyric", "A lyric with verses",
-             "{muted}Verse 1{/}\nThe first line of the verse\nThe next line\n\n"
-             "{muted}Chorus{/}\nThe chorus, written once\n\n"
-             "{muted}Verse 2{/}\nThe second verse"),
-    _starter("photograph", "An entry around one photograph",
-             "{photo: your-photograph.jpg | A caption for it}\n\n"
-             "A few lines about the photograph."),
-    _starter("journal", "A plain journal entry", "What happened, in your own words."),
-)
+def starters() -> tuple[store.Entry, ...]:
+    """The four starters, in the words in use when they are written. Shipped
+    to every install, so they name nobody and assume nothing about the
+    writer's life (§ 3 decision 6). The names are file names and stay."""
+    return (
+        _starter("poem", say("templates.poem"), say("templates.poem.body")),
+        _starter("lyric", say("templates.lyric"), say("templates.lyric.body")),
+        _starter("photograph", say("templates.photograph"),
+                 say("templates.photograph.body")),
+        _starter("journal", say("templates.journal"), say("templates.journal.body")),
+    )
 
 
 def seed(folder: Path) -> bool:
@@ -49,7 +46,7 @@ def seed(folder: Path) -> bool:
     """
     if (Path(folder) / store.TEMPLATES_FOLDER).exists():
         return False
-    for starter in STARTERS:
+    for starter in starters():
         store.write_template(folder, starter)
     return True
 
@@ -81,15 +78,15 @@ def _listed(folder: Path) -> str:
     try:
         names = store.list_templates(folder)
     except store.StoreError:
-        items = "<p>Pressless cannot open your templates folder.</p>"
+        items = f'<p>{say("templates.unreadable")}</p>'
     else:
         items = "<ul>" + "".join(
             f'<li><a href="{html.escape(_address(name), quote=True)}">'
             f"{html.escape(name)}</a></li>" for name in names) + "</ul>"
-    return ('<section class="card"><h2>Your templates</h2>' + items +
-            '<form method="post" action="/template/new"><label>Name '
+    return (f'<section class="card"><h2>{say("templates.yours")}</h2>' + items +
+            f'<form method="post" action="/template/new"><label>{say("templates.name")} '
             '<input name="name" autocomplete="off"></label> '
-            "<button>New template</button></form></section>")
+            f'<button>{say("templates.new")}</button></form></section>')
 
 
 def _open(face: Face, folder: Path, request: Request) -> str:
@@ -109,24 +106,24 @@ def _page(template: store.Entry, base: str) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
-    return f"""<p><a href="/">Your writing</a></p>
-<p>The template <strong>{html.escape(template.slug)}</strong>. It is never put on
-your site as a page; starting something new can begin from it.</p>
+    tags = say("editor.tags")
+    return f"""<p><a href="/">{say('face.your_writing')}</a></p>
+<p>{say('templates.about', name=html.escape(template.slug))}</p>
 <form method="post" action="/template/save">
 <input type="hidden" name="name" value="{attr(template.slug)}">
 <input type="hidden" name="base" value="{attr(base)}">
-<label>Title <input name="title" value="{attr(template.title)}"></label>
-<label>Categories <input name="categories"
+<label>{say('editor.title')} <input name="title" value="{attr(template.title)}"></label>
+<label>{say('editor.categories')} <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(template.categories))}"></label>
-<label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(template.tags))}"></label>
+<label>{tags} <input name="tags" value="{attr(store.LIST_SEPARATOR.join(template.tags))}"></label>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(template.body)}</textarea>
-<p><button>Save</button></p>
+<p><button>{say('templates.save')}</button></p>
 </form>
 <form method="post" action="/template/bin">
 <input type="hidden" name="name" value="{attr(template.slug)}">
 <input type="hidden" name="base" value="{attr(base)}">
-<button>Bin this template</button></form>
+<button>{say('templates.bin')}</button></form>
 {cheatsheet.panel()}"""
 
 

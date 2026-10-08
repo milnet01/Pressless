@@ -101,9 +101,9 @@ def test_starters_are_written_once(tmp_path):
 
 
 def test_every_starter_is_well_formed(tmp_path):
-    assert [starter.slug for starter in templates.STARTERS] == [
+    assert [starter.slug for starter in templates.starters()] == [
         "poem", "lyric", "photograph", "journal"]
-    for starter in templates.STARTERS:
+    for starter in templates.starters():
         assert store.read(store.write_template(tmp_path, starter)) == starter
         rendered = marks.render(starter.body, lambda name: "/o/" + name)
         assert not re.search(r"\{[a-z#/]|\*\*", rendered), starter.slug

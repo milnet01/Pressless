@@ -1056,6 +1056,33 @@ _WORDS: dict[str, str] = {
     "themes.yellow_town": "Yellow town",
     "themes.time_box": "Time box",
     "themes.bounty_hunter": "Bounty hunter",
+    # Templates (templates.py): the list card, a template's page, and the four starters.
+    "templates.yours": "Your templates",
+    "templates.unreadable": "Pressless cannot open your templates folder.",
+    "templates.name": "Name",
+    "templates.new": "New template",
+    "templates.about": (
+        "The template <strong>{name}</strong>. It is never put on\nyour site as a page; "
+        "starting something new can begin from it."
+    ),
+    "templates.save": "Save",
+    "templates.bin": "Bin this template",
+    "templates.poem": "A poem",
+    "templates.poem.body": (
+        "The first line of the poem\nThe second line\n\nA blank line starts the next verse."
+    ),
+    "templates.lyric": "A lyric with verses",
+    "templates.lyric.body": (
+        "{{muted}}Verse 1{{/}}\nThe first line of the verse\nThe next "
+        "line\n\n{{muted}}Chorus{{/}}\nThe chorus, written once\n\n{{muted}}Verse 2{{/}}\nThe "
+        "second verse"
+    ),
+    "templates.photograph": "An entry around one photograph",
+    "templates.photograph.body": (
+        "{{photo: your-photograph.jpg | A caption for it}}\n\nA few lines about the photograph."
+    ),
+    "templates.journal": "A plain journal entry",
+    "templates.journal.body": "What happened, in your own words.",
 }
 
 def _literal(text: str) -> str:
