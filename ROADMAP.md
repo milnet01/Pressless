@@ -4686,6 +4686,17 @@ owned by docs/standards/versioning-overrides.md.
   test_settings' import rule allows pressless.words and checks it
   through. Step 4 also takes publishing.py's replace page and
   replace_link, which no step named.
+  Progress (2026-10-08): step 4 built in four commits: 84194c4 (press
+  words, script.press.*), a3f594a (editor.py), 2c78b10 (page_editor.py),
+  d3f08a2 (undo summary, publishing's replace page). Each gate green
+  (1012 Linux, 942 Windows box); renders identical before and after
+  except line breaks inside two labels, now spaces; node compared every
+  old script expression with say(). Headless-Chrome run of the real
+  editor, fixed-page editor and undo: all checks pass, no script errors.
+  Method that worked: a replacement table (exact old source -> new, each
+  matching once) applied by a script, then a before/after render diff.
+  For PRESS-0241: the list's dates use strftime %b (English months).
+  Next: step 5, setup, wizard, github_setup, google_setup.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
