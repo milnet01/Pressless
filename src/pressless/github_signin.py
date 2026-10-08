@@ -80,7 +80,7 @@ _POLL_ERRORS: dict[str, type[PublishError]] = {
     "slow_down": Pending,
     "expired_token": Expired,
     "access_denied": Declined,
-    "device_flow_disabled": publisher.Refused,
+    "device_flow_disabled": publisher.SignInRefused,
 }
 
 
@@ -194,7 +194,7 @@ def _form(transport: Transport | None, url: str, fields: dict[str, str], *,
     if signed_out and status in (400, 401):
         raise SignedOut(f"GitHub refused to renew the sign-in ({status})")
     if status in (401, 403):
-        raise publisher.Refused(f"GitHub refused {where} ({status})")
+        raise publisher.SignInRefused(f"GitHub refused {where} ({status})")
     raise PublishError(f"GitHub answered {status} for {where}")
 
 
@@ -223,7 +223,7 @@ def _api(transport: Transport | None, method: str, path: str, token: str,
         return status, {}
     if publisher._retry_hint(status, answer_headers) is not None:
         raise publisher.RateLimited(f"GitHub asked us to wait on {where}")
-    raise publisher._failure(status, method, url)
+    raise publisher._failure(status, method, url, signed_in=True)
 
 
 def _tokens(answer: dict) -> Tokens:

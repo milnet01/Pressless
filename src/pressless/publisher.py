@@ -38,6 +38,8 @@ from pressless.settings import Settings
 
 API = "https://api.github.com"
 
+_SIGN_IN_PREFIX = "ghu_"   # every GitHub App sign-in's pass; no publishing key starts so
+
 # GitHub asks for at least a second between successive write requests (§4.3).
 # A breach is answered with a retry hint rather than a plain refusal, so the
 # wait is honoured and the write retried; only an exhausted bound raises.
@@ -115,6 +117,10 @@ class OutcomeUnknown(PublishError):
 
 class Refused(PublishError):
     """Key rejected, or no write access."""
+
+
+class SignInRefused(Refused):
+    """A sign-in's pass rejected, or no write access with it (PRESS-0233)."""
 
 
 class RepositoryMissing(PublishError):
@@ -765,7 +771,8 @@ class _Session:
                 # status no meaning beyond "conflict". Told apart here, before
                 # any type is chosen, so a 404 keeps its own.
                 return None
-            raise _failure(status, method, url)
+            raise _failure(status, method, url, signed_in=(self._token or "").startswith(
+                _SIGN_IN_PREFIX))
 
 
 def _default_branch(session: _Session, repository: str) -> str:
@@ -1115,10 +1122,16 @@ def _names_the_repository(url: str) -> bool:
     return len(urllib.parse.urlsplit(url).path.strip("/").split("/")) == 3
 
 
-def _failure(status: int, method: str, url: str) -> PublishError:
-    """The typed failure for an HTTP status (§6). Never carries the key."""
+def _failure(status: int, method: str, url: str, *, signed_in: bool = False) -> PublishError:
+    """The typed failure for an HTTP status (§6). Never carries the key.
+
+    `signed_in` when the key is a sign-in's pass, whose refusal is answered by
+    signing in again rather than by entering a key (PRESS-0233).
+    """
     where = f"{method} {_without_account(url)}"
     if status in (401, 403):
+        if signed_in:
+            return SignInRefused(f"GitHub refused the sign-in for {where}")
         return Refused(f"GitHub refused the publishing key for {where}")
     if status == 404:
         if _names_the_repository(url):

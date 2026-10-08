@@ -93,6 +93,15 @@ def test_every_failure_type_has_a_sentence() -> None:
         assert isinstance(sentence.site, face.Site), kind
 
 
+def test_a_refused_sign_in_sends_him_to_sign_in_again() -> None:
+    """PRESS-0233. Breaks when GitHub refusing a sign-in tells him to enter a
+    publishing key again, which a signed-in person never made."""
+    sentence = face.sentence_for(publisher.SignInRefused("x"), publishing=True)
+    assert sentence.what == "GitHub would not accept Pressless's sign-in."
+    assert sentence.next == "Sign in to GitHub again in Settings, then try again."
+    assert sentence.link == ("/setup/github", "Sign in to GitHub again")
+
+
 def test_what_it_means_for_his_site() -> None:
     """INV-2."""
     unknown, unchanged = face.Site.UNKNOWN, face.Site.UNCHANGED

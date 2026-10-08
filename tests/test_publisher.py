@@ -1521,6 +1521,24 @@ def test_a_server_error_on_the_reference_update_is_outcome_unknown(tmp_path):
         publish(settings, tmp_path, "a-token", "message", transport=key_rejected)
 
 
+def test_a_refused_sign_in_is_not_a_refused_key(tmp_path):
+    """PRESS-0233. Breaks when GitHub refusing a sign-in's pass raises the
+    key's refusal, whose sentence sends a signed-in person to re-enter a
+    publishing key they never made."""
+    (tmp_path / "index.html").write_text("<html>new</html>", encoding="utf-8")
+    listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
+    settings = _settings()
+    for token, kind in (("ghu_plain-pass", publisher_module.SignInRefused),
+                        ("ghp_plain-key", Refused)):
+        rejected = _Transport(
+            reads=_reads(listing),
+            writes=[("/git/refs", (401, {}, b'{"message": "Bad credentials"}'))] + _writes(),
+        )
+        with pytest.raises(Refused) as raised:
+            publish(settings, tmp_path, token, "message", transport=rejected)
+        assert type(raised.value) is kind, token
+
+
 def test_the_primary_rate_limit_is_waited_out_not_read_as_a_refusal(tmp_path):
     """GitHub's PRIMARY limit answers 403 with x-ratelimit-remaining: 0 and
     NO Retry-After. Reading only Retry-After, that fell through to Refused --

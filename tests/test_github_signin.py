@@ -102,7 +102,7 @@ def test_poll_sends_the_device_code_and_reads_the_tokens():
     ("slow_down", github_signin.Pending),
     ("expired_token", github_signin.Expired),
     ("access_denied", github_signin.Declined),
-    ("device_flow_disabled", publisher.Refused),
+    ("device_flow_disabled", publisher.SignInRefused),
     ("incorrect_device_code", publisher.PublishError),
 ])
 def test_each_poll_error_has_its_type(error, kind):
@@ -173,8 +173,15 @@ def test_create_repository_makes_a_public_one():
     assert json.loads(body) == {"name": "site", "private": False}
     taken = _GitHub((422, {"message": "Repository creation failed."}))
     assert github_signin.create_repository(ACCESS, "site", taken) is False
-    with pytest.raises(publisher.Refused):
+    with pytest.raises(publisher.SignInRefused):
         github_signin.create_repository(ACCESS, "site", _GitHub((403, {"message": "no"})))
+
+
+def test_a_refused_sign_in_request_is_a_refused_sign_in():
+    """PRESS-0233. Breaks when github.com refusing a sign-in form raises the
+    publishing key's refusal, which tells him to re-enter a key."""
+    with pytest.raises(publisher.SignInRefused):
+        github_signin.begin(_GitHub((401, {"message": "no"})))
 
 
 def test_reaches_reads_the_installations_repositories_where_they_are_chosen():

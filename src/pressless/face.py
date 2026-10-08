@@ -197,6 +197,11 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "GitHub would not accept your publishing key.",
         "Enter your publishing key again in Settings, then try again.",
     ),
+    publisher.SignInRefused: _say(
+        "GitHub would not accept Pressless's sign-in.",
+        "Sign in to GitHub again in Settings, then try again.",
+        link=("/setup/github", "Sign in to GitHub again"),
+    ),
     publisher.RepositoryMissing: _say(
         "GitHub could not find your site's repository.",
         "Check the repository name in Settings, then click Press to site again.",

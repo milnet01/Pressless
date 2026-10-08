@@ -125,7 +125,8 @@ def reaches(token: str, installation: Installation, repository: str,
 - `poll` POSTs `client_id`, `device_code` and `grant_type`
   `urn:ietf:params:oauth:grant-type:device_code` to
   `https://github.com/login/oauth/access_token`. GitHub's `error` field maps
-  as named above; `device_flow_disabled` is a `Refused`.
+  as named above; `device_flow_disabled` is a `SignInRefused`, as is a
+  401 or 403 from any request this module makes (PRESS-0233).
 - `refresh` POSTs `client_id`, `grant_type` `refresh_token` and the refresh
   token to the same address. Any `error` answer is `SignedOut`. GitHub
   returns a new refresh token and the old one stops working.

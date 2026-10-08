@@ -736,6 +736,7 @@ behaviour.
 | GitHub answers the reference update or PRESS-0127's start write with a 2xx other than 200 or 201, or with a body that is not JSON; or answers the start write without naming its commit | `OutcomeUnknown` | **unknown — may or may not have changed** |
 | GitHub answers a write with a 307 or 308 redirect — its answer for a repository that was renamed or moved | `RepositoryMoved` | unchanged |
 | Key rejected, or no write access | `Refused` | unchanged |
+| The same, where the key is a GitHub App sign-in's pass (it starts `ghu_`) | `SignInRefused`, a `Refused` | unchanged |
 | `settings.repository` resolves to nothing, on the request that names the repository itself | `RepositoryMissing` | unchanged |
 | Something asked for INSIDE a repository that answers is absent — a deleted branch, a missing blob | `RemoteStateMissing` | unchanged |
 | Branch moved since the listing was read — not a read GitHub answers as an empty repository, which PRESS-0127 §4.1 owns | `Conflict` | unchanged |
