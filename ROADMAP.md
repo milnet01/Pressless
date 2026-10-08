@@ -3783,13 +3783,17 @@ it decides how pages, the menu and the look are held.
   Kind: ux.
   Source: user-request-2026-10-05.
 
-- 📋 [PRESS-0233] **A refusal tells a signed-in person to sign in again, not to re-enter a publishing key.**
+- ✅ [PRESS-0233] **A refusal tells a signed-in person to sign in again, not to re-enter a publishing key.**
   Seen on PRESS-0231's packaged run: GitHub refused a request during
   sign-in setup, and the page said "GitHub would not accept your
   publishing key. Enter your publishing key again in Settings". The
   words come from face.py's message for publisher.Refused, which
   knows nothing of sign-in. With sign-in they should point at signing
   in again from Settings (/setup/github).
+  Resolved (2026-10-08, 2a97a5c): publisher.SignInRefused, a Refused,
+  is raised for a ghu_ pass and by every sign-in module refusal; its
+  sentence links to /setup/github. No CHANGELOG line: sign-in is
+  itself unreleased, so this fixes nothing a release carried.
   **Layman:** When GitHub turns Pressless away, the message tells you to sign in again rather than to type a key you never made.
   Kind: fix.
   Source: in-session-2026-10-05.
@@ -10183,6 +10187,8 @@ already-built code ships in whichever release comes next.
   it needs a spec before building.
   Timing (2026-10-07, the user): the languages come after 1.0.0;
   the prep comes before it, as PRESS-0242 in 1.0.0.
+  User 2026-10-08: when translating, use Chrome and Gemini to help
+  settle the right wording.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
