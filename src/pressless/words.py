@@ -984,6 +984,17 @@ _WORDS: dict[str, str] = {
         "its window and start it again."
     ),
     "updating.console": "Pressless is updating. You can close this window.",
+    # Restarting Pressless from Settings (restarting.py).
+    "restarting.link": "Restart Pressless",
+    "restarting.ask.title": "Restart Pressless?",
+    "restarting.ask": (
+        "Pressless will close and open again in a new tab. Every Pressless tab open now "
+        "stops working, so save anything you are writing in another tab first."
+    ),
+    "restarting.restart": "Restart",
+    "restarting.back": "Go back to Settings",
+    "restarting.going.title": "Pressless is restarting.",
+    "restarting.going": "It opens again in a new tab in a moment. You can close this one.",
 }
 
 def _literal(text: str) -> str:

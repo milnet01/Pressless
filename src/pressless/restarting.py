@@ -11,24 +11,14 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from pressless.face import Face, Request
+from pressless.words import say
 
 PATH = "/restart"
 
-LINK = f'<p><a href="{PATH}">Restart Pressless</a></p>'
 
-_ASK = (
-    "<h1>Restart Pressless?</h1>"
-    "<p>Pressless will close and open again in a new tab. Every Pressless tab "
-    "open now stops working, so save anything you are writing in another tab "
-    "first.</p>"
-    f'<form method="post" action="{PATH}"><button>Restart</button></form>'
-    '<p><a href="/setup">Go back to Settings</a></p>'
-)
-
-_GOING = (
-    "<h1>Pressless is restarting.</h1>"
-    "<p>It opens again in a new tab in a moment. You can close this one.</p>"
-)
+def link() -> str:
+    """Settings' link to the restart page."""
+    return f'<p><a href="{PATH}">{say("restarting.link")}</a></p>'
 
 
 def register(face: Face, restart: Callable[[], None]) -> None:
@@ -36,11 +26,16 @@ def register(face: Face, restart: Callable[[], None]) -> None:
     answer has been sent, so the page that asked always arrives."""
 
     def ask(request: Request) -> str:
-        return _ASK
+        return (f'<h1>{say("restarting.ask.title")}</h1>'
+                f'<p>{say("restarting.ask")}</p>'
+                f'<form method="post" action="{PATH}">'
+                f'<button>{say("restarting.restart")}</button></form>'
+                f'<p><a href="/setup">{say("restarting.back")}</a></p>')
 
     def go(request: Request) -> str:
         face.after_reply(restart)
-        return _GOING
+        return (f'<h1>{say("restarting.going.title")}</h1>'
+                f'<p>{say("restarting.going")}</p>')
 
     face.add_page("GET", PATH, ask)
     face.add_page("POST", PATH, go)

@@ -182,7 +182,7 @@ def _setup(face: Face, folder: Path, request: Request,
                         start=False if offer else None,
                         signed_in=_signed_in(folder, saved))
                 + (_shortcut_form(where, shortcuts.present(where)) if where else "")
-                + restarting.LINK)
+                + restarting.link())
     return render_notices(notices) + _submit(face, folder, saved,
                                              _read_answers(request.body), transport, offer)
 
