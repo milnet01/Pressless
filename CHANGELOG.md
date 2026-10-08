@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **The starter site comes in three looks to choose from in setup: Sunrise, Meadow and Harbour.** (PRESS-0239)
+  Each has large, clear text and strong contrast, and rearranges itself
+  to fit a phone or a computer screen. Setup shows a small picture of
+  each. You can still change anything in the look afterwards.
+
 - **If you leave the page while your site is publishing, Pressless still shows it, then whether it worked.** (PRESS-0235)
   Every editor and the list show the publish in progress, and their
   publishing buttons wait until it ends.

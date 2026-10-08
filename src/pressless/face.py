@@ -649,7 +649,23 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
   flex-direction: row; align-items: center; gap: .5rem; font-size: 1rem; color: var(--ink);
   cursor: pointer; }
 .face input[type="radio"], .face input[type="checkbox"] { width: 1.25rem; height: 1.25rem;
-  margin: 0; padding: 0; accent-color: var(--amber); }
+  margin: 0; padding: 0; accent-color: var(--amber); flex: none; }
+.face fieldset.looks { border: 0; margin: 0 0 1rem; padding: 0; }
+.face fieldset.looks legend { padding: 0; margin-bottom: .5rem; }
+.face label.look { display: flex; margin: 0 0 .75rem; }
+.face .mini { flex: none; display: grid; width: 6rem; height: 4rem; overflow: hidden;
+  border: 1px solid var(--soft); border-radius: 6px; }
+.face .mini-sunrise { grid-template-rows: 1.4rem 1fr .7rem; }
+.face .mini-sunrise > :nth-child(1) { background: #9a3412; }
+.face .mini-sunrise > :nth-child(2) { background: #fffaf2; }
+.face .mini-sunrise > :nth-child(3) { background: #f3e3cf; }
+.face .mini-meadow { grid-template-columns: 1.8rem 1fr; grid-template-rows: 1fr .5rem; }
+.face .mini-meadow > :nth-child(1) { background: #1f4d2b; grid-row: 1 / 3; }
+.face .mini-meadow > :nth-child(2), .face .mini-meadow > :nth-child(3) { background: #f6f8f4; }
+.face .mini-meadow > :nth-child(3) { border-top: 1px solid #c9d6c9; }
+.face .mini-harbour { grid-template-rows: 1rem 1fr .9rem; }
+.face .mini-harbour > :nth-child(1), .face .mini-harbour > :nth-child(3) { background: #14213d; }
+.face .mini-harbour > :nth-child(2) { background: #ffffff; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #failure, .face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {

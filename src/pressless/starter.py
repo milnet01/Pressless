@@ -1,11 +1,12 @@
-"""The plain starter site, for an install that never ran Import (PRESS-0126).
+"""The starter site, for an install that never ran Import (PRESS-0126).
 
 Setup offers it on a Store that holds no site, and `fill` copies it in: a
-header, footer and menu, a Home and an About page, the templates, and a plain
-stylesheet, with the journal off. Nothing is written over a file the Store
-already holds. A marker in Pressless's own folder says the starter has not
-been published yet, which is what lets publishing refuse to replace a site
-already on GitHub (docs/specs/PRESS-0126-starter-site.md).
+header, footer and menu, a Home and an About page, the templates, and the
+stylesheet of the look chosen (PRESS-0239), with the journal off. Nothing is
+written over a file the Store already holds. A marker in Pressless's own
+folder says the starter has not been published yet, which is what lets
+publishing refuse to replace a site already on GitHub
+(docs/specs/PRESS-0126-starter-site.md).
 """
 from __future__ import annotations
 
@@ -69,38 +70,191 @@ _PAGE = """<!doctype html>
 </html>
 """
 
-# Large type, dark on light, underlined links and a visible focus ring: the
-# first user is partially sighted (§ 4.3). Contrast on #ffffff, by the WCAG
-# formula: #1a1a1a 17.4:1, #0b4fa8 7.8:1, #3a3a3a 11.4:1.
-_STYLE_RULES = """
-html { font-size: 112.5%; }
+# PRESS-0239: three looks to start from, each with large type, underlined
+# links and a visible focus ring, and each rearranging itself to the screen's
+# width: the first user is partially sighted (§ 4.3). Every text colour has a
+# contrast of at least 7:1 against its background, by the WCAG formula. The
+# names are the looks' own, as file names are, and are never shown: the words
+# table holds what setup says about each.
+LOOKS = ("sunrise", "meadow", "harbour")
+
+# Sunrise: a warm band across the top, one centred column. Lowest contrast:
+# the footer's links, #7c2a0b on #f3e3cf, 7.6:1.
+_SUNRISE = """
+html { font-size: 118.75%; }
+body {
+  margin: 0;
+  background: #fffaf2;
+  color: #2b1d14;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+a { color: #7c2a0b; text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid #2b1d14; outline-offset: 3px; }
+
+header.site {
+  background: #9a3412;
+  color: #ffffff;
+  padding: 1.5rem max(1.25rem, calc((100% - 44rem) / 2));
+}
+header.site a { color: #ffffff; }
+header.site a:focus-visible { outline-color: #ffffff; }
+.site-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.9rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+.site-description { margin: 0.25rem 0 0; font-size: 1.05rem; }
+.site-description:empty { display: none; }
+nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
+nav.primary a { font-weight: 600; }
+nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #ffffff; }
+
+main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: 46.5rem;
+  margin: 0 auto; padding: 2rem 1.25rem; }
+h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.25; color: #2b1d14; }
+h1 { font-size: 2.2rem; margin-top: 0.5rem; }
+img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+
+footer.site {
+  background: #f3e3cf;
+  padding: 1.25rem max(1.25rem, calc((100% - 44rem) / 2));
+  font-size: 0.95rem;
+}
+footer.site p { margin: 0; }
+"""
+
+# Meadow: the name and menu in a green panel, beside the page on a wide
+# screen and above it on a narrow one. Lowest: links, #1d5c32 on #f6f8f4, 7.5:1.
+_MEADOW = """
+html { font-size: 118.75%; }
+body {
+  margin: 0;
+  background: #f6f8f4;
+  color: #1c2a1f;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.65;
+}
+a { color: #1d5c32; text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid #1c2a1f; outline-offset: 3px; }
+
+header.site { background: #1f4d2b; color: #ffffff; padding: 1.5rem 1.25rem; }
+header.site a { color: #ffffff; }
+header.site a:focus-visible { outline-color: #ffffff; }
+.site-name { font-size: 1.7rem; font-weight: bold; text-decoration: none; line-height: 1.2; }
+.site-description { margin: 0.5rem 0 0; font-size: 1rem; }
+.site-description:empty { display: none; }
+nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
+nav.primary a { font-weight: 600; }
+nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #ffffff; }
+
+main, .wrap { max-width: 42rem; padding: 2rem 1.25rem; }
+h1, h2, h3 { line-height: 1.25; }
+h1 { font-size: 2.1rem; margin-top: 0.5rem; color: #1f4d2b; }
+img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+
+footer.site {
+  border-top: 2px solid #c9d6c9;
+  margin: 2rem 1.25rem 0;
+  padding: 1rem 0 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* Wide screens: the name and the menu sit in a panel on the left. */
+@media (min-width: 56rem) {
+  body {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+    min-height: 100vh;
+  }
+  header.site { grid-row: 1 / 3; padding: 2.5rem 1.75rem; }
+  nav.primary { flex-direction: column; gap: 0.75rem; margin-top: 2rem; }
+  nav.primary a { border-left: 4px solid transparent; padding-left: 0.6rem;
+    margin-left: calc(-0.6rem - 4px); }
+  nav.primary a[aria-current="page"] { border-bottom: none; border-left-color: #ffffff; }
+  main, .wrap { padding: 3rem 3rem 2rem; }
+  footer.site { margin: 0 3rem; }
+}
+"""
+
+# Harbour: a navy bar, the name on the left and the menu on the right on a
+# wide screen. Lowest: links, #1e40af on #ffffff, 8.7:1.
+_HARBOUR = """
+html { font-size: 118.75%; }
 body {
   margin: 0;
   background: #ffffff;
-  color: #1a1a1a;
-  font-family: Georgia, "Times New Roman", serif;
-  line-height: 1.6;
+  color: #14213d;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
-a { color: #0b4fa8; text-decoration: underline; }
-a:focus-visible, button:focus-visible { outline: 3px solid #0b4fa8; outline-offset: 2px; }
+a { color: #1e40af; text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid #14213d; outline-offset: 3px; }
 
-header.site, main, footer.site, .wrap {
-  max-width: 42rem;
-  margin: 0 auto;
-  padding: 1rem 1.25rem;
+header.site {
+  background: #14213d;
+  color: #ffffff;
+  padding: 1.25rem max(1.25rem, calc((100% - 43.5rem) / 2));
 }
-header.site { border-bottom: 2px solid #1a1a1a; }
-.site-name { font-size: 1.5rem; font-weight: bold; text-decoration: none; color: #1a1a1a; }
-nav.primary { margin-top: 0.5rem; }
-nav.primary a { margin-right: 1.25rem; }
-nav.primary a[aria-current="page"] { font-weight: bold; text-decoration: none; }
-footer.site { border-top: 2px solid #1a1a1a; margin-top: 2rem; font-size: 0.95rem; }
+header.site a { color: #ffffff; }
+header.site a:focus-visible { outline-color: #ffffff; }
+.site-name { font-size: 1.6rem; font-weight: 800; text-decoration: none; letter-spacing: 0.01em; }
+.site-description { margin: 0.25rem 0 0; font-size: 1rem; color: #dbe4f3; }
+.site-description:empty { display: none; }
+nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.75rem; }
+nav.primary a { font-weight: 600; }
+nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #f4a261; }
 
-h1, h2, h3 { line-height: 1.25; }
-img { max-width: 100%; height: auto; }
+/* Wide screens: the name on the left, the menu on the right. */
+@media (min-width: 48rem) {
+  header.site {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 2rem;
+  }
+  .site-name { grid-column: 1; }
+  .site-description { grid-column: 1; }
+  nav.primary { grid-column: 2; grid-row: 1 / 3; margin-top: 0; }
+}
 
+main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: 46rem;
+  margin: 0 auto; padding: 2.5rem 1.25rem; }
+h1, h2, h3 { line-height: 1.2; color: #14213d; }
+h1 { font-size: clamp(2rem, 7vw, 2.6rem); font-weight: 800; margin-top: 0.5rem; }
+h1::after {
+  content: "";
+  display: block;
+  width: 4rem;
+  height: 0.3rem;
+  margin-top: 0.75rem;
+  background: #f4a261;
+  border-radius: 0.15rem;
+}
+img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+
+footer.site {
+  background: #14213d;
+  color: #ffffff;
+  padding: 1.5rem max(1.25rem, calc((100% - 43.5rem) / 2));
+  font-size: 0.95rem;
+}
+footer.site a { color: #ffffff; }
+footer.site p { margin: 0; }
 """
-_JOURNAL_RULES = """.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: #3a3a3a; }
+
+_LOOK_RULES = {"sunrise": _SUNRISE, "meadow": _MEADOW, "harbour": _HARBOUR}
+
+_JOURNAL_RULES = """.prose { overflow-wrap: break-word; }
+.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: #3a3a3a; }
 .post-list, .comment-list { list-style: none; padding: 0; }
 .post-list li, .comment { margin-bottom: 1.25rem; }
 .chip { display: inline-block; margin: 0 0.5rem 0.5rem 0; }
@@ -108,8 +262,8 @@ _JOURNAL_RULES = """.post-meta, .eyebrow, .lead, .page-intro, .comments-note { c
 """
 
 
-def _style_code() -> str:
-    return (f"/* {say('starter.style_note')} */\n" + _STYLE_RULES
+def _style_code(look: str) -> str:
+    return (f"/* {say('starter.style_note')} */\n" + _LOOK_RULES[look] + "\n"
             + f"/* {say('starter.journal_note')} */\n" + _JOURNAL_RULES)
 
 
@@ -204,10 +358,14 @@ def published(folder: Path) -> None:
     (Path(folder) / MARKER).unlink(missing_ok=True)
 
 
-def fill(folder: Path, site_name: str) -> None:
+def fill(folder: Path, site_name: str, look: str = LOOKS[0]) -> None:
     """§ 4.3, in order: the marker, each starter file only where it is absent,
-    the templates, and the journal off. A StoreError propagates, and what was
-    written stays, so setup can offer the box again and finish the fill."""
+    the templates, and the journal off. `look` is one of LOOKS; any other,
+    a forged post's, is the first (PRESS-0239). A StoreError propagates, and
+    what was written stays, so setup can offer the box again and finish the
+    fill."""
+    if look not in _LOOK_RULES:
+        look = LOOKS[0]
     folder = Path(folder)
     marker = folder / MARKER
     try:
@@ -231,6 +389,6 @@ def fill(folder: Path, site_name: str) -> None:
         if not store.html_path_for(folder, kind, file_name).exists():
             store.write_html(folder, kind, file_name, text)
     if not store.style_code_path(folder).exists():
-        store.write_style_code(folder, _style_code())
+        store.write_style_code(folder, _style_code(look))
     templates.seed(folder)
     store.write_journal(folder, False)

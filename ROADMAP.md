@@ -3277,6 +3277,13 @@ it decides how pages, the menu and the look are held.
   Decided (user, 2026-10-08): this item is done for 0.8.0 once the
   verification request is sent. Setting google_signin.APPROVED true after
   Google says yes is a later release's one-line change.
+  Progress (2026-10-08): the privacy-policy text is written, each claim
+  checked against the code (the analytics.readonly scope, the account
+  summaries, data streams and report figures read, the keyring, the
+  cache kept outside the site folder, Turn off revoking at Google), and
+  sent to the website session (message 531) to publish. Still owed: its
+  address, then the user's verification request in the Google Cloud
+  console.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
@@ -3496,6 +3503,10 @@ it decides how pages, the menu and the look are held.
   and start it from the new place: the shortcuts follow. On Windows, also
   a OneDrive-redirected desktop if the box has one, and pinning from the
   Start Menu. On GNOME the desktop icon may need Allow Launching.
+  Owed (2026-10-08) for PRESS-0239, on the 0.8.0 draft, both systems:
+  the wizard's site step shows the three looks with their pictures, one
+  per row; a fresh install filled with each look builds and publishes in
+  that look; and PRESS-0237's Your pages reads About, not about.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -3894,7 +3905,7 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-05.
   Lanes: Editor.
 
-- 📋 [PRESS-0239] **The starter site looks good enough to keep, not just plain.**
+- ✅ [PRESS-0239] **The starter site looks good enough to keep, not just plain.**
   The user, 2026-10-07: "I hope the initial sample pages will look
   better than they currently do." PRESS-0126 shipped a deliberately
   plain stylesheet. What "better" means is still to be settled with the
@@ -3909,6 +3920,15 @@ it decides how pages, the menu and the look are held.
   Decided (user, 2026-10-08): three starters, each with its own colours
   and layout, no spec. The user sees a preview of all three and says yes
   before the choice is wired into setup.
+  Resolved (2026-10-08): the user approved a preview of three looks
+  (Sunrise, Meadow, Harbour), each a stylesheet over the same starter
+  pages, every text colour at least 7:1, no sideways scroll at 375 and
+  1280 wide. starter.LOOKS and fill's look; setup's box gains a look
+  choice with a drawn miniature of each, on Settings and the wizard.
+  PRESS-0126 § 4.1, § 4.3 and § 4.4 amended to match. Tests:
+  test_each_look_writes_its_own_style, test_the_chosen_look_is_the_one_filled.
+  Seen in headless Chrome on Settings at both widths; the wizard's site
+  step is owed a look in the release's hand run.
   **Layman:** The sample pages a new site starts with should look finished and pleasant, so a newcomer is happy to publish them as they are.
   Kind: ux.
   Source: user-request-2026-10-07.

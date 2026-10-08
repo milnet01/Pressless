@@ -179,9 +179,10 @@ def _answers(**changes: str) -> dict[str, str]:
 # PRESS-0212: first run is a wizard. These walk it as a person would.
 
 FIRST_RUN = {"account": "owner", "repository": "owner.github.io", "key": SENTINEL_KEY,
-             "site_name": "A Journal", "site_description": "", "start": ""}
+             "site_name": "A Journal", "site_description": "", "start": "", "look": ""}
 STEP_FIELDS = {"welcome": (), "account": ("account",), "repository": ("repository",),
-               "key": ("key",), "pages": (), "site": ("site_name", "site_description", "start"),
+               "key": ("key",), "pages": (),
+               "site": ("site_name", "site_description", "start", "look"),
                "signin": ("account",), "install": ()}
 
 
@@ -699,11 +700,27 @@ def test_the_starter_is_offered_only_on_an_empty_store(tmp_path, monkeypatch):
     assert not (tmp_path / "starter-unpublished").exists()
 
 
+def test_the_chosen_look_is_the_one_filled(tmp_path, monkeypatch):
+    """PRESS-0239: the site step offers every look, and the one chosen is
+    the one the starter is filled with. Breaks when the choice is dropped on
+    the way to the fill."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        site = _walk_to(browser, "site")
+        _first_run(browser, start="starter", look="meadow")
+    for look in starter.LOOKS:
+        assert f'name="look" value="{look}"' in site, look
+    expected = tmp_path / "expected"
+    expected.mkdir()
+    starter.fill(expected, "A Journal", "meadow")
+    assert store.read_style_code(tmp_path) == store.read_style_code(expected)
+
+
 def test_a_failed_fill_saves_nothing(tmp_path, monkeypatch):
     """INV-7. Breaks when the fill runs after the save."""
     _Store(monkeypatch)
 
-    def refuse(folder, site_name):
+    def refuse(folder, site_name, look=""):
         raise store.StoreError("the disk is full")
 
     monkeypatch.setattr(starter, "fill", refuse)

@@ -104,3 +104,19 @@ def test_the_furniture_names_the_site_by_placeholder(tmp_path):
         assert "{{SITE_NAME}}" in text
         assert "Quite Unusual Name" not in text
     assert "{{SITE_DESCRIPTION}}" in header
+
+
+def test_each_look_writes_its_own_style(tmp_path):
+    """PRESS-0239: each look fills its own style code, every one styling the
+    entry body the Builder writes; a look Pressless does not have fills the
+    first. Breaks when two looks share a stylesheet, or a forged look fails."""
+    styles = {}
+    for look in (*starter.LOOKS, "nonsense"):
+        folder = tmp_path / look
+        folder.mkdir()
+        starter.fill(folder, "A Site", look)
+        styles[look] = store.read_style_code(folder)
+    assert len({styles[look] for look in starter.LOOKS}) == len(starter.LOOKS) == 3
+    assert styles["nonsense"] == styles[starter.LOOKS[0]]
+    for look in starter.LOOKS:
+        assert ".prose" in styles[look], look

@@ -91,7 +91,9 @@ Every "(decided here)" is open to the maintainer to overturn.
 MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
 
 def offered(folder: Path) -> bool: ...         # § 4.4
-def fill(folder: Path, site_name: str) -> None: ...
+LOOKS = ("sunrise", "meadow", "harbour")     # PRESS-0239
+
+def fill(folder: Path, site_name: str, look: str = LOOKS[0]) -> None: ...
 def unpublished(folder: Path) -> bool: ...      # MARKER exists
 def published(folder: Path) -> None: ...        # removes MARKER; absent is fine
 ```
@@ -155,7 +157,7 @@ site on its own.
 | `furniture/footer.html` | `{{YEAR}}` and the site's name |
 | `pages/index.html` | a whole HTML document linking `look/style.css`, with a `HEADER:START page="Home"` / `HEADER:END` pair, a `FOOTER:START` / `FOOTER:END` pair, and a heading and a sentence telling the user this is their homepage to change |
 | `pages/about.html` | the same at depth 1: it links `../look/style.css`, and its header pair carries `page="about"` |
-| `look/style.css` | a plain stylesheet for those pages and for the Builder's page shell (`builder.BODY_CLASS` included) |
+| `look/style.css` | the stylesheet of the look `fill` was given, one of `LOOKS`, for those pages and for the Builder's page shell (`builder.BODY_CLASS` included); a look not in `LOOKS` is the first (PRESS-0239) |
 
 The site's name is escaped with `html.escape(site_name, quote=True)`
 wherever it is written. The words are the implementer's. Like
@@ -171,7 +173,9 @@ The second half lets a fill an interruption cut short be completed.
 - **The form** (PRESS-0021 § 4.3) gains a checkbox named `start` with value
   `starter`, on either path, only where `offered` holds. It is ticked on
   first run. Its words say that leaving it unticked keeps this copy empty for
-  bringing in a site the user already has.
+  bringing in a site the user already has. Beneath it, a radio choice named
+  `look`, one per `starter.LOOKS`, the first checked by default; the fill
+  step passes the posted value to `fill` (PRESS-0239).
 - **The sequence** (PRESS-0021 § 4.6) gains a step between storing the key
   and saving: **fill**, only where `start` is `starter` and `offered` still
   holds. It is `starter.fill(folder, candidate.site_name)` inside

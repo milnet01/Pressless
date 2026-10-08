@@ -214,7 +214,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
         hints[refused_identity] = say(_HINTS[refused_identity])
     if hints:
         return _form(values, hints, google_on=_google_on(saved), start=box,
-                     signed_in=_signed_in(folder, saved))
+                     look=answers["look"], signed_in=_signed_in(folder, saved))
 
     # § 4.6 step 1: the key in hand, or the pass a sign-in buys (PRESS-0231).
     key = typed_key
@@ -229,10 +229,10 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
 
     done = _save_sequence(face, folder, candidate, identity, key, transport,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
-                          choice=None, where=None)
+                          look=answers["look"], choice=None, where=None)
     if isinstance(done, publisher.RemoteStateMissing):
         return _form(values, {"repository": say("setup.hint.no_such_repository")},
-                     google_on=_google_on(saved), start=box,
+                     google_on=_google_on(saved), start=box, look=answers["look"],
                      signed_in=_signed_in(folder, saved))
     return done
 
@@ -246,11 +246,12 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    identity: store.Identity, key: str,
                    transport: publisher.Transport | None, *, typed_key: str,
                    starter_ticked: bool, choice: credentials.Choice | None,
+                   look: str = "",
                    where: shortcuts.Places | None, signed_in: bool = False,
                    narrow: str = "") -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
-    starter where ticked, write the identity (PRESS-0213 § 4.6), save, and say
-    it is done. `candidate` already
+    starter where ticked, in the look chosen (PRESS-0239), write the identity
+    (PRESS-0213 § 4.6), save, and say it is done. `candidate` already
     carries the store; nothing here chooses one. A repository GitHub cannot
     find inside comes back for the caller to word."""
     # Step 2: ask GitHub.
@@ -278,7 +279,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     with face.capture() as filling:
         try:
             if starter_ticked and starter.offered(folder):
-                starter.fill(folder, identity.name)
+                starter.fill(folder, identity.name, look)
                 filled = True
             store.write_identity(folder, identity)
         except StoreError as exc:
@@ -350,7 +351,7 @@ def _candidate(folder: Path, saved: settings.Settings | None,
 def _read_answers(body: bytes) -> dict[str, str]:
     parsed = urllib.parse.parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
     return {name: (parsed.get(name) or [""])[0].strip()
-            for name in (*_FIELDS, "key", "start")}
+            for name in (*_FIELDS, "key", "start", "look")}
 
 
 def _values_from(folder: Path, saved: settings.Settings) -> dict[str, str]:
@@ -399,10 +400,11 @@ def _credential_failure(face: Face, failure: Exception,
 
 
 def _form(values: dict[str, str], hints: dict[str, str], *,
-          google_on: bool = False, start: bool | None = None,
+          google_on: bool = False, start: bool | None = None, look: str = "",
           signed_in: bool = False) -> str:
     """The Settings page. `start` is None where the starter site is not
-    offered, else whether its box is ticked (PRESS-0126 § 4.4). `signed_in`
+    offered, else whether its box is ticked (PRESS-0126 § 4.4), and `look`
+    the look chosen for it (PRESS-0239). `signed_in`
     says the stored secret is a GitHub sign-in (PRESS-0231 § 4.4)."""
     def field(name: str, label: str, kind: str = "text") -> str:
         hint = wizard.Hint(name, hints[name]) if name in hints else None
@@ -417,7 +419,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + field("site_address", say("setup.field.site_address"))
         + field("daily_prompt_filter", say("setup.field.daily_prompt_filter"))
         + field("measurement_id", say("setup.field.measurement_id"))
-        + _starter_box(start)
+        + _starter_box(start, look)
         + (f'<p id="signed-in">{say("setup.signed_in")}</p>' if signed_in else "")
         + f"<p>{say('setup.key_kept')}</p>"
         + field("key", say("setup.field.key"), "password")
@@ -439,13 +441,31 @@ def _signed_in(folder: Path, saved: settings.Settings) -> bool:
     return github_setup.signed_in(secret)
 
 
-def _starter_box(start: bool | None) -> str:
+# PRESS-0239: each look's name and what it looks like, as words keys.
+_LOOK_WORDS = {"sunrise": ("setup.look.sunrise", "setup.look.sunrise.about"),
+               "meadow": ("setup.look.meadow", "setup.look.meadow.about"),
+               "harbour": ("setup.look.harbour", "setup.look.harbour.about")}
+
+
+def _starter_box(start: bool | None, look: str = "") -> str:
+    """The starter's box, and beneath it a choice of look, each with a
+    small drawing of it. A look Pressless does not have chooses the first."""
     if start is None:
         return ""
+    chosen = look if look in starter.LOOKS else starter.LOOKS[0]
+    choices = "".join(
+        f'<label class="look"><input type="radio" name="look" value="{name}"'
+        + (" checked" if name == chosen else "")
+        + f'> <span class="mini mini-{name}" aria-hidden="true">'
+        "<span></span><span></span><span></span></span>"
+        f"<span><b>{say(_LOOK_WORDS[name][0])}</b>: {say(_LOOK_WORDS[name][1])}</span></label>"
+        for name in starter.LOOKS)
     return ('<p><label><input type="checkbox" name="start" value="starter"'
             + (" checked" if start else "")
             + f"> {say('setup.starter.box')}</label></p>"
-              f"<p>{say('setup.starter.box.empty')}</p>")
+              f"<p>{say('setup.starter.box.empty')}</p>"
+              f'<fieldset class="looks"><legend>{say("setup.starter.look")}</legend>'
+            + choices + "</fieldset>")
 
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,
@@ -713,7 +733,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                   if answers.get("all_repositories") == "yes" else "")
         done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
                               starter_ticked=answers.get("start") == "starter",
-                              choice=choice, where=shortcut_places(),
+                              look=answers.get("look", ""), choice=choice, where=shortcut_places(),
                               signed_in=signing_in, narrow=narrow)
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
@@ -789,7 +809,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return answers
 
     pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
-    site = wizard.Step("site", "setup.step.site", ("site_name", "site_description", "start"),
+    site = wizard.Step("site", "setup.step.site",
+                       ("site_name", "site_description", "start", "look"),
                        lambda answers, hint: _show_site(folder, answers, hint), check_site)
     if signing_in:
         return wizard.Wizard("setup", (
@@ -899,7 +920,7 @@ def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) 
     box = ""
     if offered:
         ticked = answers.get("start", "starter") == "starter"
-        box = _starter_box(ticked)
+        box = _starter_box(ticked, answers.get("look", ""))
     link = _site_link(answers.get("site_address", ""))
     return (f"<p>{say('setup.site', link=link)}</p>"
             + wizard.field("site_name", say("setup.field.site_name"), answers, hint)

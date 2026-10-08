@@ -837,9 +837,16 @@ _WORDS: dict[str, str] = {
     "setup.key_kept": "Leave the key box empty to keep the key Pressless already has.",
     "setup.save": "Check the repository again and save",
     "setup.starter.box": (
-        "Start with a plain site: a homepage, an About page, a menu, a header and a footer, "
+        "Start with a starter site: a homepage, an About page, a menu, a header and a footer, "
         "ready for you to change."
     ),
+    "setup.starter.look": "Its look (you can change anything in it later)",
+    "setup.look.sunrise": "Sunrise",
+    "setup.look.sunrise.about": "warm colours, a coloured band across the top, one column",
+    "setup.look.meadow": "Meadow",
+    "setup.look.meadow.about": "calm greens, the menu in a panel beside the page",
+    "setup.look.harbour": "Harbour",
+    "setup.look.harbour.about": "navy and white, the menu on the right of a bar",
     "setup.starter.box.empty": (
         "Leave it unticked if you will bring in a site you already have: that needs an empty "
         "copy of Pressless."
