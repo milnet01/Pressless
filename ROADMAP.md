@@ -4639,7 +4639,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
   Lanes: publisher.
 
-- 🚧 [PRESS-0242] **Every screen's words come from one place, ready to be translated.**
+- ✅ [PRESS-0242] **Every screen's words come from one place, ready to be translated.**
   The prep half of PRESS-0241, which the user wants before 1.0.0
   while the translations themselves come after it (2026-10-07). The app
   still speaks English only when this ships. Every screen's words,
@@ -4733,6 +4733,17 @@ owned by docs/standards/versioning-overrides.md.
   move: test_cheatsheet's new-mark test adds the mark's entries
   (still red against a frozen copy), test_templates reads starters().
   Next: step 8, starter sample pages.
+  Shipped (2026-10-08): steps 8 to 11 built. c7c5719 (starter site;
+  its Privacy page's paragraphs now one line each, shown the same),
+  d872dc3 (console lines; the self-check report stays English),
+  995721d (three face.py phrases the new INV-3 scan found: the
+  true-colours box and the 403 and 404 replies), 69df2cf (INV-2, INV-3,
+  INV-4 tested: 28 renders under a marked table, every screen module's
+  literals scanned, every key and entry matched; each test proved red
+  by a hand mutation per Breaks-when route), 4aba470 (documents, spec
+  § 11). Gate green throughout, finally 1016 passed Linux, 946 Windows
+  box. What this left for PRESS-0241 is in that item's body. No
+  CHANGELOG entry: nothing a user sees changed (spec § 11).
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
