@@ -1083,6 +1083,8 @@ _WORDS: dict[str, str] = {
     ),
     "templates.journal": "A plain journal entry",
     "templates.journal.body": "What happened, in your own words.",
+    # The desktop and menu shortcut's tooltip (shortcuts.py).
+    "shortcuts.comment": "Write and publish your own site",
 }
 
 def _literal(text: str) -> str:

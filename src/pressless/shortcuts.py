@@ -31,12 +31,12 @@ import sys
 from pathlib import Path
 
 from pressless import installer, paths, safe_write
+from pressless.words import say
 
 _ENTRY = "pressless.desktop"   # Linux, in the menu folder and on the desktop
 _LINK = "Pressless.lnk"        # Windows, the same
 _ICON = "pressless.png"        # inside the AppImage, and the copy made of it
 _BATCH = "Start Pressless.bat"
-_COMMENT = "Write and publish your own site"
 
 # Windows: SHGetFolderPathW's ids for the user's Start Menu Programs folder and
 # desktop. Asked of Windows rather than built from %APPDATA% or the profile,
@@ -255,7 +255,7 @@ def _entry(program: Path, icon: Path | None) -> str:
         "[Desktop Entry]",
         "Type=Application",
         "Name=Pressless",
-        f"Comment={_COMMENT}",
+        f"Comment={say('shortcuts.comment')}",
         f"Exec={_exec_value(program)}",
     ]
     if icon is not None:
@@ -284,7 +284,7 @@ def _write_link(where: Places, target: Path) -> None:
         "PRESSLESS_TARGET": str(where.program),
         "PRESSLESS_WORKING": str(where.working),
         "PRESSLESS_ICON": str(where.icon),
-        "PRESSLESS_COMMENT": _COMMENT,
+        "PRESSLESS_COMMENT": say("shortcuts.comment"),
     })
     try:
         done = subprocess.run(  # noqa: S603 -- a fixed script; every path is in env
