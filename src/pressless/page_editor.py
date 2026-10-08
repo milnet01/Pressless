@@ -37,7 +37,6 @@ from pressless import (
 )
 from pressless.face import (
     SENTENCES,
-    TRUE_COLOURS,
     Face,
     Notice,
     Reply,
@@ -46,6 +45,7 @@ from pressless.face import (
     Site,
     render_notices,
     sentence_for,
+    true_colours,
 )
 from pressless.words import say
 
@@ -437,7 +437,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 </form>
 <div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
-<div id="proof">{TRUE_COLOURS}
+<div id="proof">{true_colours()}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>

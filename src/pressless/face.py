@@ -675,9 +675,12 @@ _STYLE = (
     + themes.css() + _SHAPES
 )
 
-# Sits above each editor's preview; shown only on a dark look (PRESS-0187).
-TRUE_COLOURS = ('<p class="true-colours"><label><input type="checkbox" data-true-colours>'
-                " Show the preview in its true colours</label></p>")
+
+def true_colours() -> str:
+    """Sits above each editor's preview; shown only on a dark look (PRESS-0187)."""
+    return ('<p class="true-colours"><label><input type="checkbox" data-true-colours>'
+            f' {say("face.true_colours")}</label></p>')
+
 
 # The logo's mark, drawn inline so the bar needs no file (PRESS-0178).
 _MARK = ('<svg viewBox="16 34 70 118" aria-hidden="true">'
@@ -783,7 +786,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _refuse(self) -> None:
         self._drain()
-        self._send(403, "Forbidden", "text/plain")
+        self._send(403, say("face.forbidden"), "text/plain")
 
     def _drain(self) -> None:
         """Read and drop a body that will not be used, so the answer arrives.
@@ -930,7 +933,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except OSError:
             data = None  # unreadable is answered like absent, never as a failure
         if target is None or data is None:
-            self._send(404, "Not found", "text/plain")
+            self._send(404, say("face.not_found"), "text/plain")
             return
         kind = _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream")
         self._send_bytes(200, data, kind, (

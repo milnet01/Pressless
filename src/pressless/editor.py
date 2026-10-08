@@ -26,13 +26,13 @@ from pathlib import Path
 from pressless import builder, cheatsheet, paths, photographs, pressing, settings, store
 from pressless.face import (
     SENTENCES,
-    TRUE_COLOURS,
     Face,
     Reply,
     Request,
     Sentence,
     Site,
     render_notices,
+    true_colours,
     within,
 )
 from pressless.words import say
@@ -536,7 +536,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {cheatsheet.panel()}
 <div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
-<div id="proof">{TRUE_COLOURS}
+<div id="proof">{true_colours()}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_EDITOR_SCRIPT}</script>

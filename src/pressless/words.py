@@ -1138,6 +1138,10 @@ _WORDS: dict[str, str] = {
         "Pressless is running. Keep this window open while you use it, and close it to stop "
         "Pressless."
     ),
+    # The Face: the preview's true-colours box, and the plain 403 and 404 replies.
+    "face.true_colours": "Show the preview in its true colours",
+    "face.forbidden": "Forbidden",
+    "face.not_found": "Not found",
 }
 
 def _literal(text: str) -> str:
