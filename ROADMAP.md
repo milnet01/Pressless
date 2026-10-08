@@ -3827,7 +3827,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-05.
   Lanes: Face, Editor.
 
-- 🚧 [PRESS-0235] **Publishing status survives leaving the page.**
+- ✅ [PRESS-0235] **Publishing status survives leaving the page.**
   Seen on PRESS-0231's packaged run: Show me the code during a press
   loads a new page and the result is lost, though the publish finished.
   Pressless keeps the running press and its outcome itself; every
@@ -3848,6 +3848,7 @@ it decides how pages, the menu and the look are held.
   Progress (2026-10-08): the user ran the two-tab browser check on
   the test copy and it passed. Still owed: the CHANGELOG Added entry,
   then the flip to shipped.
+  Resolved (2026-10-08): CHANGELOG Added entry written; shipped.
   **Layman:** If you click away while your site is publishing, the page you land on still says it is publishing, and then whether it worked.
   Kind: feature.
   Source: user-request-2026-10-05.

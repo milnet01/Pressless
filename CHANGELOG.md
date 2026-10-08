@@ -14,6 +14,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **If you leave the page while your site is publishing, Pressless still shows it, then whether it worked.** (PRESS-0235)
+  Every editor and the list show the publish in progress, and their
+  publishing buttons wait until it ends.
+
 - **The app's own pages show the Pressless icon in the browser tab.** (PRESS-0240)
   While Pressless is open in your browser, its tab shows the Pressless icon, so it is easy to find among other tabs.
 
