@@ -15,6 +15,7 @@ import urllib.parse
 
 from pressless import __version__, updater
 from pressless.face import Face, Request
+from pressless.words import say
 
 ADDRESS = "/report"
 SECURITY_ADDRESS = f"https://github.com/{updater.REPOSITORY}/security/advisories/new"
@@ -45,19 +46,14 @@ def issue_address() -> str:
 
 def _page(request: Request) -> str:
     e = html.escape
+    security = e(SECURITY_ADDRESS, quote=True)
+    issue = e(issue_address(), quote=True)
     return (
-        "<h1>Suggest or report a problem</h1>"
-        "<p>This opens a new issue on Pressless's page on GitHub, with a short form "
-        "already filled in: which Pressless you have, the system it runs on, and "
-        "three questions for you to answer. Nothing else is sent, and you can read "
-        "and change all of it before you submit it.</p>"
-        "<p><strong>An issue is public</strong>: anyone can read it. Leave out your "
-        "site's address, your writing and your publishing key.</p>"
-        "<p>Found a security problem? Please do not report it here. Use GitHub's "
-        f'<a href="{e(SECURITY_ADDRESS, quote=True)}" target="_blank" '
-        'rel="noopener noreferrer">private report</a> instead.</p>'
-        f'<p><a href="{e(issue_address(), quote=True)}" target="_blank" '
-        'rel="noopener noreferrer">Open the report on GitHub</a></p>'
+        f'<h1>{say("face.report")}</h1>'
+        f'<p>{say("report.what")}</p>'
+        f'<p>{say("report.public")}</p>'
+        f'<p>{say("report.security", address=security)}</p>'
+        f'<p>{say("report.open", address=issue)}</p>'
     )
 
 

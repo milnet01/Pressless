@@ -995,6 +995,26 @@ _WORDS: dict[str, str] = {
     "restarting.back": "Go back to Settings",
     "restarting.going.title": "Pressless is restarting.",
     "restarting.going": "It opens again in a new tab in a moment. You can close this one.",
+    # Suggest or report a problem (report.py). The issue form it fills stays English.
+    "report.what": (
+        "This opens a new issue on Pressless's page on GitHub, with a short form already "
+        "filled in: which Pressless you have, the system it runs on, and three questions for "
+        "you to answer. Nothing else is sent, and you can read and change all of it before "
+        "you submit it."
+    ),
+    "report.public": (
+        "<strong>An issue is public</strong>: anyone can read it. Leave out your site's "
+        "address, your writing and your publishing key."
+    ),
+    "report.security": (
+        "Found a security problem? Please do not report it here. Use GitHub's <a "
+        "href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">private report</a> "
+        "instead."
+    ),
+    "report.open": (
+        "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Open the report on "
+        "GitHub</a>"
+    ),
 }
 
 def _literal(text: str) -> str:
