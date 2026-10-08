@@ -31,6 +31,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    message_box,
     render_notices,
     true_colours,
     within,
@@ -264,16 +265,18 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
     switches it. None where the options file could not be read."""
     if journal is None:
         return ""
-    if journal:
-        said = say("editor.journal.on")
-        if published:
-            said += " " + say("editor.journal.on_published")
-        button = say("editor.journal.turn_off")
-    else:
-        said = say("editor.journal.off")
-        button = say("editor.journal.turn_on")
-    return (f'<form method="post" action="/journal" class="switch-row"><p>{said}</p>'
-            f"<button>{button}</button></form>")
+    on = say("editor.journal.on")
+    if published:
+        on += " " + say("editor.journal.on_published")
+    off = say("editor.journal.off")
+    # PRESS-0236: both states' words in one place, the other one hidden, so
+    # switching leaves the button and everything below where they were.
+    shut, open_ = (" hidden", "") if journal else ("", " hidden")
+    return ('<form method="post" action="/journal" class="switch-row">'
+            f'<div class="states"><p{open_}>{off}</p><p{shut}>{on}</p></div>'
+            '<button><span class="states">'
+            f'<span{open_}>{say("editor.journal.turn_on")}</span>'
+            f'<span{shut}>{say("editor.journal.turn_off")}</span></span></button></form>')
 
 
 def _site_line(folder: Path) -> str:
@@ -356,7 +359,9 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             # PRESS-0023 § 4.9: what other parts show here, without this
             # module importing them.
             + "".join(face.list_pieces(above=True)) +
-            f'<div id="undo-result">{ended or ""}</div>'
+            # PRESS-0236: a press's failure opens over the list.
+            message_box("failure", ended or "") +
+            '<div id="undo-result"></div>'
             '<div id="listing">'
             f'<form method="post" action="/new"><label>{say("editor.title")} '
             '<input name="title" autocomplete="off"></label> '
@@ -364,8 +369,9 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             f"<button>{say('editor.list.new')}</button></form>"
             # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
             # showing it (§ 3 decision 3).
-            f'<p><button type="button" data-undo>{say("editor.undo")}</button> '
-            f'<span id="undo-status"{_RUNNING if running else ""}>{html.escape(said)}</span></p>'
+            f'<p><button type="button" data-undo>{say("editor.undo")}</button></p>'
+            f'<p id="undo-status" class="press-status" role="status"'
+            f'{_RUNNING if running else ""}>{html.escape(said)}</p>'
             f"{_journal_switch(journal, bool(published))}"
             # PRESS-0189: each list is a card.
             f'<section class="card"><h2>{say("editor.list.drafts")}</h2>'
@@ -509,8 +515,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
                           for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
 <p><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
-{standing}
-<div id="notices"></div>
+<div class="states">{standing}</div>
+{message_box("notices")}
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
  data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}"
  data-on-site="{'1' if on_site else '0'}" onsubmit="return false">
@@ -535,7 +541,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  say("script.editor.throw_entry" if on_site else "editor.throw_draft")}</button></p>
 </form>
 {cheatsheet.panel()}
-<div id="failure">{failure or ""}{ended or ""}</div>
+{message_box("failure", (failure or "") + (ended or ""))}
+{message_box("address-hint", focus="address")}
 <div id="undo-result"></div>
 <div id="proof">{true_colours()}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
@@ -549,7 +556,7 @@ def _address_field(slug: str, *, hidden: bool) -> str:
     return (f'<span id="address"{" hidden" if hidden else ""}><label>{say("editor.address")} '
             f'<input name="address" value="{value}">'
             '</label> <button type="button" data-editor="address">'
-            f'{say("editor.change_address")}</button> <span id="address-hint"></span></span>')
+            f'{say("editor.change_address")}</button></span>')
 
 
 def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:

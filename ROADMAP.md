@@ -3507,6 +3507,10 @@ it decides how pages, the menu and the look are held.
   the wizard's site step shows the three looks with their pictures, one
   per row; a fresh install filled with each look builds and publishes in
   that look; and PRESS-0237's Your pages reads About, not about.
+  Owed (2026-10-08) for PRESS-0236, on the 0.8.0 draft: a press from
+  the entry editor (draft to published) and a save after it leave the
+  press row where it was; the GitHub sign-in code appearing leaves Next
+  where it was; a failure opens in a box with OK, in Edge and Chrome.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -3870,7 +3874,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-05.
   Lanes: Face, Editor, Publisher.
 
-- 📋 [PRESS-0236] **No status message moves a control anywhere in Pressless.**
+- ✅ [PRESS-0236] **No status message moves a control anywhere in Pressless.**
   The user's standing rule (2026-10-05): every control keeps a fixed
   size and position for a given window size, and status text goes in
   a place that already reserves room for it. PRESS-0234 does the press
@@ -3887,6 +3891,26 @@ it decides how pages, the menu and the look are held.
   build (57dff50): it appeared without moving anything. Still open: at phone
   width it wraps to four lines and nudges the row; recommendation is a
   shorter message rather than more held space.
+  Decided (user, 2026-10-08): a failure or notice card that appears while
+  working opens in a box over the page with an OK button, as the "?" help
+  boxes do. A refused Settings or setup field opens its hint in the same
+  box, and the field gets an outline that does not change its size. Short
+  status lines get reserved room, as the press row's does.
+  Resolved (2026-10-08): face.message_box holds the editors' and the
+  list's failure and notices, the address hint, and every setup, Settings,
+  Google-property and replace-page hint; the Face's script opens one when
+  its words change and returns to the refused field on closing. Room is
+  kept for the save note, the photograph lines, the list's Undo line and
+  the GitHub sign-in code; the editors' standing lines and the journal
+  switch stack their states in one place. Missing-photograph words
+  shortened. Tests: test_messages_open_over_the_page_and_status_lines_keep_room,
+  and setup's _hint_for now requires the box and the outline (9 tests red
+  on the old code). Measured headless at 1280 and 375 wide: nothing moved
+  on a missing photograph and the save note, the journal switch, or a
+  refused Settings address. Left as they were: notices rendered above a
+  whole page when it loads, since nothing moves after it is shown. Not
+  measured, owed in the release's hand run: the standing lines across a
+  press, and the sign-in code's slot.
   **Layman:** Buttons and boxes stay exactly where they are while Pressless tells you what it is doing.
   Kind: ux.
   Source: user-request-2026-10-05.

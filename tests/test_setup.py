@@ -250,7 +250,11 @@ def _offers_the_form(page: str) -> bool:
 
 
 def _hint_for(field: str, page: str) -> bool:
-    return f'id="{field}-hint"' in page
+    """PRESS-0236: the hint opens in a box over the page, and the refused box
+    is outlined, so nothing below it moves."""
+    boxed = re.search(rf'<dialog class="message"[^>]*><div id="{field}-hint">', page)
+    outlined = re.search(rf'name="{field}"[^>]*aria-invalid="true"', page)
+    return boxed is not None and outlined is not None
 
 
 def _key_inputs(page: str) -> list[str]:

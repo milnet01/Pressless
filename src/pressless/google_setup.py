@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pressless import credentials, google_signin, insights, settings, starter
-from pressless.face import Face, Reply, Request, render_notices
+from pressless.face import Face, Reply, Request, message_box, render_notices
 from pressless.google_signin import AccessToken, Attempt, Property
 from pressless.store import StoreError
 from pressless.words import say
@@ -136,7 +136,7 @@ def _show(state: _State, hint: str = "") -> str:
             f"{e(p.name)} ({e(p.account)})</label></p>"
             for p in pending.properties
         )
-        shown_hint = f'<p class="hint" id="property-hint">{e(hint)}</p>' if hint else ""
+        shown_hint = message_box("property-hint", e(hint), focus="property") if hint else ""
         return (shown + head + f"<p>{say('google_setup.which')}</p>"
                 + f'<form method="post" action="{PAGE}/choose">{choices}{shown_hint}'
                 f'<p><button type="submit">{say("google_setup.use")}</button></p></form>'

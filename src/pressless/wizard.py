@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pressless import safe_write
-from pressless.face import Face, Request
+from pressless.face import Face, Request, message_box
 from pressless.words import say
 
 Answers = dict[str, str]
@@ -65,13 +65,16 @@ def is_secret(name: str) -> bool:
 
 def field(name: str, label: str, answers: Answers, hint: Hint | None,
           kind: str = "text", help_html: str = "") -> str:
-    """One labelled box, filled from `answers` unless it holds a key, with its
-    hint beneath when the hint is about it. `help_html`, fixed text and never
+    """One labelled box, filled from `answers` unless it holds a key, outlined
+    and with its hint in a message box when the hint is about it. `help_html`, fixed text and never
     an answer, adds a "?" button beside the box that opens it in a dialog."""
     e = html.escape
     value = "" if is_secret(name) else f' value="{e(answers.get(name, ""), quote=True)}"'
-    shown = (f'<p class="hint" id="{name}-hint">{e(hint.text)}</p>'
-             if hint is not None and hint.field == name else "")
+    # PRESS-0236: a refused box's hint opens over the page, and the box is
+    # outlined, so nothing below it moves.
+    refused = hint is not None and hint.field == name
+    shown = message_box(f"{name}-hint", e(hint.text), focus=name) if refused else ""
+    invalid = f' aria-invalid="true" aria-describedby="{name}-hint"' if refused else ""
     button = dialog = ""
     if help_html:
         # Outside the label, which would otherwise hand the box's clicks to it.
@@ -83,7 +86,7 @@ def field(name: str, label: str, answers: Answers, hint: Hint | None,
                   f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
                   f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
                   "</dialog>")
-    return (f'<p><label>{e(label)} <input type="{kind}" name="{name}"{value} '
+    return (f'<p><label>{e(label)} <input type="{kind}" name="{name}"{value}{invalid} '
             f'autocomplete="off"></label>{button}</p>{dialog}{shown}')
 
 
@@ -167,7 +170,7 @@ class Wizard:
               above: str = "") -> str:
         e = html.escape
         step = self._steps[index]
-        loose = (f'<p class="hint">{e(hint.text)}</p>'
+        loose = (message_box("step-hint", e(hint.text))
                  if hint is not None and hint.field not in step.fields else "")
         back = (f'<button type="submit" name="go" value="back">{say("wizard.back")}</button>'
                 if index > 0 else "")

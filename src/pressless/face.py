@@ -530,6 +530,28 @@ document.addEventListener("click", (event) => {
   const closer = event.target.closest("button[data-close]");
   if (closer) closer.closest("dialog").close();
 });
+// PRESS-0236: a message box opens when its words change, so nothing beside a
+// control moves. A save writing the same words again leaves it shut; words
+// cleared away close it. Closing returns to the field it is about.
+for (const box of document.querySelectorAll("dialog.message")) {
+  const words = box.firstElementChild;
+  let shown = "";
+  const look = () => {
+    const now = words.innerHTML.trim();
+    if (now === shown) return;
+    shown = now;
+    if (!now) { if (box.open) box.close(); }
+    else if (!box.open) box.showModal();
+  };
+  new MutationObserver(look).observe(words,
+    {childList: true, subtree: true, characterData: true});
+  look();
+  box.addEventListener("close", () => {
+    const field = box.dataset.focus &&
+      document.querySelector(`[name="${CSS.escape(box.dataset.focus)}"]`);
+    if (field) field.focus();
+  });
+}
 // PRESS-0187: a dark look dims the preview; this switch shows its true colours.
 document.addEventListener("change", (event) => {
   const box = event.target.closest("input[data-true-colours]");
@@ -603,7 +625,8 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .switch-row { display: flex; align-items: center; justify-content: space-between;
   gap: 1rem 1.5rem; flex-wrap: wrap; margin: 1.25rem 0; padding: .9rem 1.4rem;
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; }
-.face .switch-row p { margin: 0; flex: 1 1 22rem; }
+.face .switch-row p { margin: 0; }
+.face .switch-row > .states { flex: 1 1 22rem; }
 .face form.switch-row > button:only-of-type { flex: none; margin: 0; background: var(--paper);
   color: var(--ink); border-color: var(--line); }
 .face .site-line { margin: -.4rem 0 1rem; color: var(--soft); }
@@ -617,6 +640,23 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face button:disabled, .face button:disabled:hover { opacity: .45; cursor: not-allowed;
   border-color: var(--line); transform: none; box-shadow: none; }
 .face .press-status { min-height: 4.5em; }
+.face dialog.message [id] { color: var(--ink); }
+.face [aria-invalid="true"] { outline: 3px solid var(--amber-ink); outline-offset: 2px; }
+.face #save-status { display: inline-block; min-width: 6em; }
+.face #photograph-status { display: block; min-height: 1.55em; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.face #editor > #photograph-missing { min-height: 4.65em; max-height: 4.65em;
+  overflow-y: auto; margin-top: 0; }
+.face #photograph-missing[hidden] { display: block; visibility: hidden; }
+.face #address[hidden] { display: inline; visibility: hidden; }
+.face .sign-in-slot { min-height: 6.5em; }
+.face .states, .face #standing { display: grid; }
+.face .states > * { grid-area: 1 / 1; }
+.face #standing > [data-when="1"]:not(form) { grid-area: 1 / 1; }
+.face #standing > form[data-when="1"] { grid-area: 2 / 1; }
+.face #standing > [data-when="0"] { grid-area: 1 / 1 / 3 / 2; }
+.face .states [hidden], .face #standing [hidden] { display: block; visibility: hidden; }
+.face #standing[hidden] { display: grid; visibility: hidden; }
 .face #save-hint { min-height: 4.7em; }
 .face [data-editor="publish"], .face form > button:only-of-type { background: var(--press);
   color: var(--on-press); border-color: var(--press); }
@@ -667,7 +707,7 @@ body.face { margin: 0; background: var(--paper); color: var(--ink);
 .face .mini-harbour > :nth-child(1), .face .mini-harbour > :nth-child(3) { background: #14213d; }
 .face .mini-harbour > :nth-child(2) { background: #ffffff; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
-.face main > #failure, .face main > #undo-result { order: -1; }
+.face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {
   .face main:has(> #editor) { max-width: none; display: grid; column-gap: 2rem;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -690,6 +730,17 @@ _STYLE = (
     f" --shadow: rgba(0, 0, 0, .45); {themes.preview(True)} }} }}\n"
     + themes.css() + _SHAPES
 )
+
+
+def message_box(inner_id: str, content: str = "", *, focus: str = "") -> str:
+    """PRESS-0236: a message that opens over the page, so nothing beside a
+    control moves when it appears. Scripts write into `inner_id`; the Face's
+    script opens the box whenever those words change, OK closes it, and
+    closing returns to the field named `focus`, where one is named."""
+    to = f' data-focus="{html.escape(focus, quote=True)}"' if focus else ""
+    return (f'<dialog class="message"{to}><div id="{inner_id}">{content}</div>'
+            f'<p><button type="button" data-close>{say("face.message.ok")}</button></p>'
+            "</dialog>")
 
 
 def true_colours() -> str:

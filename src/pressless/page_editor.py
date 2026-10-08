@@ -43,6 +43,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    message_box,
     render_notices,
     sentence_for,
     true_colours,
@@ -423,7 +424,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 </div>
 {switch}{picker}
 <div id="broken">{broken or ""}</div>
-<div id="notices"></div>
+{message_box("notices")}
 <p id="save-hint"></p>
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
  data-show="{attr(shown)}" data-waiting="{'1' if waiting else '0'}" data-base="{attr(base)}"
@@ -435,7 +436,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
 </form>
-<div id="failure">{failure or ""}{ended or ""}</div>
+{message_box("failure", (failure or "") + (ended or ""))}
 <div id="undo-result"></div>
 <div id="proof">{true_colours()}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"

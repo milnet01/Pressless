@@ -148,7 +148,7 @@ which ends what decision 6 shows.
 - **The starting page** behaves as today on its own reply, with § 4.3's
   words. Undo's summary still shows only there.
 - **The list** has no press row; its `#undo-status` is the line, and its
-  failure goes in `#undo-result`.
+  failure goes in its `#failure` box (PRESS-0236).
 - **`editor._edit` and `page_editor._open` during a press** answer at once,
   without taking `editor.LOCK`, with a holding page: the running words in a
   `press-status` line, and a script that asks `GET /press` and reloads the

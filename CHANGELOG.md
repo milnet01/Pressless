@@ -84,6 +84,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Buttons and boxes stay where they are while Pressless tells you something.** (PRESS-0236)
+  A problem, a warning, or a hint about something you typed now opens in a
+  box over the page with an OK button, and the box it is about gets an
+  outline. Short notes, such as Saving, the photograph lines and Undo's
+  line, have room kept for them, and the journal switch keeps its place
+  whichever way it is set.
+
 - **The page editors' buttons stay still: Press to site, View your site and Undo sit side by side, with one steady line below them.** (PRESS-0234)
   That line says whether the page is on your site, has changes not
   published yet, or is not on your site yet. View your site is greyed

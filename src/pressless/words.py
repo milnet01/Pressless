@@ -419,12 +419,12 @@ _WORDS: dict[str, str] = {
     "script.editor.throw_entry": "Throw this entry away",
     "script.editor.not_saved": "Not saved",
     "script.editor.missing_one": (
-        "Pressless does not have this photograph: {names}. Add it with Add a photograph, or "
-        "correct the name, before you press this entry to your site."
+        "Missing photograph: {names}. Add it with Add a photograph, or fix its name, before "
+        "you press."
     ),
     "script.editor.missing_many": (
-        "Pressless does not have these photographs: {names}. Add each with Add a photograph, "
-        "or correct the name, before you press this entry to your site."
+        "Missing photographs: {names}. Add each with Add a photograph, or fix the names, "
+        "before you press."
     ),
     "script.editor.saving": "Saving",
     "script.editor.saved": "Saved",
@@ -489,6 +489,7 @@ _WORDS: dict[str, str] = {
     "wizard.back": "Back",
     "wizard.help": "Help: {label}",
     "wizard.close": "Close",
+    "face.message.ok": "OK",
     # Signing in to GitHub (github_setup.py), and the links its page shares with Google's.
     "setup.back": "Back to Settings",
     "setup.first": "Set up Pressless first, <a href=\"/setup\">on the setup page</a>.",

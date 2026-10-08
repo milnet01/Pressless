@@ -801,3 +801,20 @@ def test_your_pages_labels_each_page_like_the_fixed_ones(tmp_path):
     for label in ("Home", "About", "My shows", "Header", "Footer"):
         assert f">{label}</a>" in listed, label
     assert ">about</a>" not in listed and ">my-shows</a>" not in listed
+
+
+def test_messages_open_over_the_page_and_status_lines_keep_room(tmp_path):
+    """PRESS-0236: failures, notices and the address hint are written into
+    boxes that open over the page, and the list's Undo line has room kept,
+    so nothing beside a control moves. Breaks when one goes back into the
+    page's flow."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    with _editor(folder) as browser:
+        listing = browser.request("GET", "/")[2]
+        page = browser.request("GET", "/edit?slug=seaside")[2]
+    for shown, inner in ((page, "failure"), (page, "notices"), (page, "address-hint"),
+                         (listing, "failure")):
+        assert re.search(rf'<dialog class="message"[^>]*><div id="{inner}">', shown), inner
+    assert '<p id="undo-status" class="press-status"' in listing
+    assert "dialog.message" in face._SCRIPT and "showModal" in face._SCRIPT

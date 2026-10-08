@@ -40,6 +40,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    message_box,
     render_notices,
 )
 from pressless.words import say
@@ -396,7 +397,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             return (f"<h1>{say('publishing.ready.heading')}</h1>"
                     f"<p>{say('publishing.ready', repository=e(saved.repository))}</p>"
                     f'<p><a href="/">{say("face.your_writing")}</a></p>')
-        hint = f'<p class="hint" id="repository-hint">{say("publishing.hint")}</p>'
+        hint = message_box("repository-hint", say("publishing.hint"), focus="repository")
     boxes = "".join(
         f'<li><label><input type="checkbox" name="keep" value="{e(entry, quote=True)}" '
         f"checked> {e(entry)}</label></li>" for entry in saved.untouchable)

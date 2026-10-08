@@ -21,7 +21,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from pressless import credentials, github_signin, publisher, settings
-from pressless.face import Face, Reply, Request, render_notices
+from pressless.face import Face, Reply, Request, message_box, render_notices
 from pressless.github_signin import DeviceCode, Tokens
 from pressless.words import say
 
@@ -126,16 +126,19 @@ class SignIn:
             return tokens
 
     def shown(self) -> str:
-        """The code and where to type it, while one is held."""
+        """The code and where to type it, while one is held, in a place kept
+        for them from the start, so Next does not move when they appear
+        (PRESS-0236)."""
         with self._lock:
             code = self._code
         if code is None:
-            return ""
+            return '<div class="sign-in-slot"></div>'
         e = html.escape
         link = (f'<a href="{e(code.address, quote=True)}" target="_blank" '
                 f'rel="noopener">{e(code.address)}</a>')
-        return (f'<p class="sign-in-code">{say("github_setup.code", code=e(code.user_code))}</p>'
-                f'<p>{say("github_setup.type_at", link=link)}</p>')
+        return ('<div class="sign-in-slot">'
+                f'<p class="sign-in-code">{say("github_setup.code", code=e(code.user_code))}</p>'
+                f'<p>{say("github_setup.type_at", link=link)}</p></div>')
 
     def _begin(self, state: _State) -> str:
         self._code = None
@@ -174,12 +177,12 @@ def _page(state: _State, request: Request) -> str | Reply:
                                   saved.credentials.github_account, pressed.refresh)
                 hold(pressed)
                 return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
-            above = f'<p class="hint">{html.escape(pressed)}</p>'
+            above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:
-            above = state.face.fail(exc, publishing=False)
+            above = message_box("failure", state.face.fail(exc, publishing=False))
         except _CREDENTIAL_FAILURES as exc:
-            above = state.face.fail(exc, publishing=False,
-                                    secret=say("failure.secret.github_sign_in"))
+            above = message_box("failure", state.face.fail(
+                exc, publishing=False, secret=say("failure.secret.github_sign_in")))
     return (shown + above + how() + state.again.shown()
             + f'<form method="post" action="{PAGE}">'
               f'<p><button type="submit">{say("wizard.next")}</button></p></form>' + back)
