@@ -4644,6 +4644,35 @@ owned by docs/standards/versioning-overrides.md.
   Progress (2026-10-08): spec accepted after one review round
   (37ba6f8, 8 findings fixed), docs/specs/PRESS-0242-screen-words.md.
   Build starts: words.py first, then one screen per commit.
+  Progress (2026-10-08): step 1 built, 1947010 (src/pressless/words.py,
+  tests/test_words.py, 6 tests; suite 997 passed). Build order, one
+  commit each, gate green after every one:
+  2. face.py: failure sentences (face.SENTENCES plus the additions in
+     editor, page_editor, publishing, undo, updating) hold KEYS named
+     failure.<module>.<Class>.what / .next / .link; _AGAIN becomes
+     failure.again; sentence_for looks them up (secret= filled by
+     format_map, replacing the .replace) and returns words. Site enum
+     values become keys site.unchanged/unknown/updated, read through a
+     new Site.words property; tests reading .value as words
+     (test_face UNCHANGED_WORDS, test_undo) switch to .words. Also
+     render_failure, NOTICE_NEXT, _UNFORESEEN_*, _UNNAMED_NOUN, LABEL,
+     and face._page's frame words plus the words block and JS say() in
+     <head>. page_editor.py reads said.what/said.next directly: check it.
+     Do the move with an ast script (string args of _say/Sentence ->
+     keys), never by hand.
+  3. Notices: StoreNotice/SettingsNotice/editor.LeftOut take key+slots,
+     str() is English; face.capture shows say().
+  4. pressing, editor, page_editor, undo: press and standing words under
+     script.*, written once; scripts read the words block.
+  5. setup, wizard, github_setup, google_setup (secret nouns KEY,
+     SIGN_IN become say() at call time).
+  6. dashboard (country family), insights display.
+  7. updating, restarting, report, cheatsheet (mark family), templates,
+     themes, shortcuts.
+  8. starter sample pages (keep {{...}} placeholders and data-nav).
+  9. __main__ console lines (not the self-check line).
+  10. INV-2, INV-3, INV-4 tests in tests/test_words.py.
+  11. Docs per spec section 11.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
