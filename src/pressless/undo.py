@@ -478,19 +478,19 @@ def _summary(result: Undone) -> str:
     """One clause each for `restored`, `demoted` and `kept` (§ 4.2)."""
     clauses = []
     if result.restored:
-        clauses.append(f"{_count(len(result.restored))} put back")
+        clauses.append(say("undo.restored", count=_count(len(result.restored))))
     if result.demoted:
-        clauses.append(f"{_count(len(result.demoted))} turned back into "
-                       + ("a draft" if len(result.demoted) == 1 else "drafts"))
+        one = len(result.demoted) == 1
+        clauses.append(say("undo.demoted_one" if one else "undo.demoted_many",
+                           count=_count(len(result.demoted))))
     if result.kept:
         many = len(result.kept) > 1
-        clauses.append(f"your own {'versions' if many else 'version'} of "
-                       f"{_count(len(result.kept))} kept as "
-                       + ("drafts" if many else "a draft"))
+        clauses.append(say("undo.kept_many" if many else "undo.kept_one",
+                           count=_count(len(result.kept))))
     if not clauses:
-        return "Your site was already as it was before the last publish."
-    return "Your site is back the way it was: " + ", ".join(clauses) + "."
+        return say("undo.unchanged")
+    return say("undo.summary", clauses=", ".join(clauses))
 
 
 def _count(number: int) -> str:
-    return "1 entry" if number == 1 else f"{number} entries"
+    return say("undo.one_entry") if number == 1 else say("undo.entries", count=str(number))

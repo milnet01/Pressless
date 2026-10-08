@@ -453,6 +453,36 @@ _WORDS: dict[str, str] = {
     "page_editor.newest": "Your newest entry",
     "page_editor.show_on": "Show it on:",
     "page_editor.standing": "Your changes stay on this computer until you publish this page.",
+    # What Undo the last press did (undo.py), one clause each.
+    "undo.summary": "Your site is back the way it was: {clauses}.",
+    "undo.unchanged": "Your site was already as it was before the last publish.",
+    "undo.restored": "{count} put back",
+    "undo.demoted_one": "{count} turned back into a draft",
+    "undo.demoted_many": "{count} turned back into drafts",
+    "undo.kept_one": "your own version of {count} kept as a draft",
+    "undo.kept_many": "your own versions of {count} kept as drafts",
+    "undo.one_entry": "1 entry",
+    "undo.entries": "{count} entries",
+    # Replacing a site already on GitHub (publishing.py, PRESS-0126 § 4.5).
+    "publishing.replace": "Replace the site on GitHub",
+    "publishing.replace.intro": (
+        "Your repository, {repository}, already holds a website. Publishing your starter "
+        "site replaces its pages with yours."
+    ),
+    "publishing.replace.confirm": "Type <strong>{repository}</strong> to confirm",
+    "publishing.replace.button": "Replace it",
+    "publishing.keep": (
+        "Pressless leaves these alone. Untick anything of the old site that should go:"
+    ),
+    "publishing.keep_none": "Nothing on it is marked to be left alone.",
+    "publishing.hint": "Type the repository's name exactly as it is shown above.",
+    "publishing.nothing.heading": "Nothing to replace",
+    "publishing.nothing": "Your site has been published already.",
+    "publishing.ready.heading": "Ready to replace your site",
+    "publishing.ready": (
+        "Now publish again from where you were. Your starter site will replace the site in "
+        "{repository}."
+    ),
 }
 
 def _literal(text: str) -> str:

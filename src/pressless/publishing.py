@@ -45,7 +45,7 @@ from pressless.face import (
 )
 from pressless.words import say
 
-MESSAGE ="Publish {slug}"     # the commit message; {slug} is the entry's address
+MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's address
 
 # The header marking a draft undo demoted (PRESS-0015 § 4.5). Nothing parses the
 # value -- it is the moment of the demotion, written so that a person reading his
@@ -98,7 +98,7 @@ def replace_link(failure: BaseException) -> str:
     Sentence is escaped text and cannot carry it."""
     if not isinstance(failure, WouldReplaceASite):
         return ""
-    return f'<p><a href="{REPLACE_ADDRESS}">Replace the site on GitHub</a></p>'
+    return f'<p><a href="{REPLACE_ADDRESS}">{say("publishing.replace")}</a></p>'
 
 
 @dataclass(frozen=True)
@@ -373,8 +373,8 @@ def _replace(face: Face, folder: Path, request: Request) -> str:
 def _replace_page(face: Face, folder: Path, request: Request) -> str:
     e = html.escape
     if not starter.unpublished(folder):
-        return ("<h1>Nothing to replace</h1><p>Your site has been published "
-                'already. <a href="/">Your writing</a></p>')
+        return (f"<h1>{say('publishing.nothing.heading')}</h1><p>{say('publishing.nothing')} "
+                f'<a href="/">{say("face.your_writing")}</a></p>')
     try:
         saved = settings.load(folder)
     except (settings.NotSetUp, settings.SettingsError) as exc:
@@ -393,22 +393,18 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
                 starter.published(folder)
             except (settings.SettingsError, OSError) as exc:
                 return face.fail(exc, publishing=False)
-            return ("<h1>Ready to replace your site</h1>"
-                    f"<p>Now publish again from where you were. Your starter site will "
-                    f"replace the site in {e(saved.repository)}.</p>"
-                    '<p><a href="/">Your writing</a></p>')
-        hint = ('<p class="hint" id="repository-hint">Type the repository\'s name '
-                "exactly as it is shown above.</p>")
+            return (f"<h1>{say('publishing.ready.heading')}</h1>"
+                    f"<p>{say('publishing.ready', repository=e(saved.repository))}</p>"
+                    f'<p><a href="/">{say("face.your_writing")}</a></p>')
+        hint = f'<p class="hint" id="repository-hint">{say("publishing.hint")}</p>'
     boxes = "".join(
         f'<li><label><input type="checkbox" name="keep" value="{e(entry, quote=True)}" '
         f"checked> {e(entry)}</label></li>" for entry in saved.untouchable)
-    left = (f"<p>Pressless leaves these alone. Untick anything of the old site that "
-            f"should go:</p><ul>{boxes}</ul>" if boxes
-            else "<p>Nothing on it is marked to be left alone.</p>")
-    return ("<h1>Replace the site on GitHub</h1>"
-            f"<p>Your repository, {e(saved.repository)}, already holds a website. "
-            "Publishing your starter site replaces its pages with yours.</p>"
+    left = (f"<p>{say('publishing.keep')}</p><ul>{boxes}</ul>" if boxes
+            else f"<p>{say('publishing.keep_none')}</p>")
+    return (f"<h1>{say('publishing.replace')}</h1>"
+            f"<p>{say('publishing.replace.intro', repository=e(saved.repository))}</p>"
             f'<form method="post" action="{REPLACE_ADDRESS}">{left}'
-            f"<p><label>Type <strong>{e(saved.repository)}</strong> to confirm "
+            f"<p><label>{say('publishing.replace.confirm', repository=e(saved.repository))} "
             '<input type="text" name="repository" autocomplete="off"></label></p>'
-            f"{hint}<p><button>Replace it</button></p></form>")
+            f"{hint}<p><button>{say('publishing.replace.button')}</button></p></form>")
