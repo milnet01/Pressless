@@ -4634,13 +4634,16 @@ owned by docs/standards/versioning-overrides.md.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).
   Lanes: publisher.
 
-- 📋 [PRESS-0242] **Every screen's words come from one place, ready to be translated.**
+- 🚧 [PRESS-0242] **Every screen's words come from one place, ready to be translated.**
   The prep half of PRESS-0241, which the user wants before 1.0.0
   while the translations themselves come after it (2026-10-07). The app
   still speaks English only when this ships. Every screen's words,
   including the page scripts', go through one lookup with English as its
   only table, and a test fails on a new English string written straight
   into a screen. Needs a spec: it touches every screen.
+  Progress (2026-10-08): spec accepted after one review round
+  (37ba6f8, 8 findings fixed), docs/specs/PRESS-0242-screen-words.md.
+  Build starts: words.py first, then one screen per commit.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
@@ -10189,6 +10192,12 @@ already-built code ships in whichever release comes next.
   the prep comes before it, as PRESS-0242 in 1.0.0.
   User 2026-10-08: when translating, use Chrome and Gemini to help
   settle the right wording.
+  Decided by the user 2026-10-08: Pressless picks the computer's
+  language at startup and switches to it; where it has no translation
+  for that language it uses English; where the language cannot be told
+  it offers a list of languages to choose from. The sample pages are
+  translated too. PRESS-0242's words.use() is the hook
+  (docs/specs/PRESS-0242-screen-words.md).
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.
