@@ -46,11 +46,10 @@ from pressless import (
     undo,
     updating,
 )
+from pressless.words import say
 
 _USAGE = "usage: pressless [--self-check]"
 _LOCK_NAME = "pressless.lock"
-_ALREADY = ("Pressless is already running. Use the browser tab it opened, or close its "
-            "window and start it again.")
 
 
 def main(argv: list[str]) -> int:
@@ -92,9 +91,7 @@ def main(argv: list[str]) -> int:
     except Exception as exc:  # noqa: BLE001 -- the last resort at launch
         # A traceback names full paths, which the console must not carry
         # (PRESS-0011 § 4.5's rule, reached before handle_error exists).
-        print(f"Pressless could not start ({type(exc).__name__}). Close this "
-              f"window and start Pressless again. If it keeps happening, send "
-              f"that name to whoever helps you.")
+        print(say("main.could_not_start", kind=type(exc).__name__))
         return 1
 
 
@@ -161,7 +158,7 @@ def _serve(folder: Path) -> int:
     """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
     held = _hold(folder)
     if held is None:
-        print(_ALREADY)
+        print(say("main.already"))
         return 3
     try:
         return _serve_held(folder)
@@ -171,7 +168,7 @@ def _serve(folder: Path) -> int:
 
 def _serve_held(folder: Path) -> int:
     while _serve_once(folder):
-        print("Pressless is restarting.")
+        print(say("restarting.going.title"))
     return 0
 
 
@@ -219,9 +216,8 @@ def _serve_once(folder: Path) -> bool:
         except Exception:  # noqa: BLE001 -- no browser is a case, not a failure
             opened = False
         if not opened:
-            print(f"Open this link in your browser: {link}")
-        print("Pressless is running. Keep this window open while you use it, "
-              "and close it to stop Pressless.")
+            print(say("main.open_link", link=link))
+        print(say("main.running"))
         try:
             again = _wait(restart)
         except KeyboardInterrupt:

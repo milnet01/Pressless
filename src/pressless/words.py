@@ -1124,6 +1124,20 @@ _WORDS: dict[str, str] = {
         "Questions about your information: replace this sentence with how to reach the "
         "person who runs this site."
     ),
+    # The console lines a person reads (__main__.py); the self-check report stays English.
+    "main.already": (
+        "Pressless is already running. Use the browser tab it opened, or close its window "
+        "and start it again."
+    ),
+    "main.could_not_start": (
+        "Pressless could not start ({kind}). Close this window and start Pressless again. If "
+        "it keeps happening, send that name to whoever helps you."
+    ),
+    "main.open_link": "Open this link in your browser: {link}",
+    "main.running": (
+        "Pressless is running. Keep this window open while you use it, and close it to stop "
+        "Pressless."
+    ),
 }
 
 def _literal(text: str) -> str:
