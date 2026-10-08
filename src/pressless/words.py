@@ -966,6 +966,24 @@ _WORDS: dict[str, str] = {
     "dashboard.people.one": "1 person",
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
+    # Updating (updating.py): the offer, the switch, Update now's pages and console line.
+    "updating.offer": "Pressless {version} is ready to install. Your writing stays where it is.",
+    "updating.update_now": "Update now",
+    "updating.later": "Later",
+    "updating.skip": "Skip this version",
+    "updating.checking": "Pressless looks for a new version each time it starts.",
+    "updating.stop_looking": "Stop looking",
+    "updating.not_checking": "Pressless does not look for new versions.",
+    "updating.look": "Look when Pressless starts",
+    "updating.installing": (
+        "Pressless is installing version {version} and will open again by itself in a "
+        "moment. You can close this tab."
+    ),
+    "updating.not_reopened": (
+        "Pressless is updated to version {version} but could not open again by itself. Close "
+        "its window and start it again."
+    ),
+    "updating.console": "Pressless is updating. You can close this window.",
 }
 
 def _literal(text: str) -> str:

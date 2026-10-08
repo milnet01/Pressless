@@ -19,6 +19,7 @@ from pathlib import Path
 
 from pressless import __version__, editor, installer, paths, updater
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site
+from pressless.words import say
 
 # § 4.10. The base carries the generic sentence; each type below it its own.
 SENTENCES[installer.UpdateError] = Sentence(
@@ -42,8 +43,6 @@ SENTENCES[installer.InstallFailed] = Sentence(
     "failure.installer.InstallFailed.what",
     Site.UNCHANGED,
     "failure.installer.InstallFailed.next")
-
-_UPDATING_CONSOLE = "Pressless is updating. You can close this window."
 
 # Replaced by the tests, which must not end the process running them.
 _exit = os._exit
@@ -140,22 +139,23 @@ def _offer_html(offer: updater.Offer | None) -> str:
         return ""
     buttons = "".join(
         f'<form method="post" action="{action}" style="display:inline">'
-        f"<button>{label}</button></form> "
-        for action, label in (("/update", "Update now"), ("/update/later", "Later"),
-                              ("/update/skip", "Skip this version")))
-    return (f'<section id="update"><p>Pressless {html.escape(offer.version)} is ready to '
-            f"install. Your writing stays where it is.</p>{buttons}</section>")
+        f"<button>{say(key)}</button></form> "
+        for action, key in (("/update", "updating.update_now"),
+                            ("/update/later", "updating.later"),
+                            ("/update/skip", "updating.skip")))
+    words = say("updating.offer", version=html.escape(offer.version))
+    return f'<section id="update"><p>{words}</p>{buttons}</section>'
 
 
 def _switch_html(checking: bool) -> str:
     words, value, label = (
-        ("Pressless looks for a new version each time it starts.", "false", "Stop looking")
+        ("updating.checking", "false", "updating.stop_looking")
         if checking else
-        ("Pressless does not look for new versions.", "true", "Look when Pressless starts"))
+        ("updating.not_checking", "true", "updating.look"))
     return ('<form method="post" action="/update/checking" id="update-switch" '
-            f'class="switch-row"><p>{words}</p>'
+            f'class="switch-row"><p>{say(words)}</p>'
             f'<input type="hidden" name="check" value="{value}">'
-            f"<button>{label}</button></form>")
+            f"<button>{say(label)}</button></form>")
 
 
 def _update_now(face: Face, folder: Path, offer: updater.Offer, artefact: Path,
@@ -185,11 +185,9 @@ def _update_now(face: Face, folder: Path, offer: updater.Offer, artefact: Path,
         raise
 
     if platform == "windows":
-        print(_UPDATING_CONSOLE, flush=True)
+        print(say("updating.console"), flush=True)
     face.after_reply(lambda: _exit(0))
     version = html.escape(offer.version)
     if not started:
-        return (f"<p>Pressless is updated to version {version} but could not open again "
-                "by itself. Close its window and start it again.</p>")
-    return (f"<p>Pressless is installing version {version} and will open again by itself "
-            "in a moment. You can close this tab.</p>")
+        return f'<p>{say("updating.not_reopened", version=version)}</p>'
+    return f'<p>{say("updating.installing", version=version)}</p>'
