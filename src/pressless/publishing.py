@@ -29,7 +29,6 @@ from pressless import (
     pressing,
     publisher,
     settings,
-    setup,
     starter,
     store,
 )
@@ -321,7 +320,8 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             result = publish(folder, saved, key, entry=written.slug, capture=face.capture,
                              notices=notices, transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
-            failure: str | None = (face.fail(exc, publishing=False, secret=setup.KEY)
+            failure: str | None = (face.fail(exc, publishing=False,
+                                             secret=say("failure.secret.publishing_key"))
                                    + replace_link(exc))
             published = False
         else:

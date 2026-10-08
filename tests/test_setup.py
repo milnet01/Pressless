@@ -36,6 +36,7 @@ from pressless import (
     shortcuts,
     starter,
     store,
+    words,
 )
 
 KEY_NOUN = "your publishing key"
@@ -852,15 +853,15 @@ def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
                          page), f"{name} has no help button"
         assert f'<dialog id="{name}-help"' in page, f"{name} has no help dialog"
     assert page.count('class="help"') == len(boxes)
-    assert setup._NEW_KEY in page and setup._NEW_KEY in setup._show_key({}, None)
+    assert setup._new_key() in page and setup._new_key() in setup._show_key({}, None)
 
 
 def test_the_key_steps_ask_for_administration(tmp_path, monkeypatch):
     """PRESS-0230: GitHub switches Pages on only for a key with Administration
     write, so the wizard's key step, Settings' help and the refusal name it."""
     assert "<b>Administration</b>" in setup._show_key({}, None)
-    assert "<b>Administration</b>" in setup._SETTINGS_HELP["key"]
-    assert "Administration" in setup._NO_PAGES_WRITE
+    assert "<b>Administration</b>" in setup._settings_help("key")
+    assert "Administration" in words.say("setup.hint.no_pages_write")
 
 
 def test_setup_links_the_sites_address(tmp_path):

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pressless import editor, github_setup, pressing, publisher, publishing, settings, setup, store
+from pressless import editor, github_setup, pressing, publisher, publishing, settings, store
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
 from pressless.words import say
 
@@ -460,7 +460,8 @@ def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
             # Steps 1 to 5 change nothing on GitHub and step 6 raises OutcomeUnknown
             # for every failure an upload can leave unknown, so an unforeseen
             # failure here left the site unchanged (§ 4.2).
-            failure: str | None = face.fail(exc, publishing=False, secret=setup.KEY)
+            failure: str | None = face.fail(exc, publishing=False,
+                                            secret=say("failure.secret.publishing_key"))
             summary: str | None = None
         else:
             failure = None

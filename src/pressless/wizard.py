@@ -52,7 +52,7 @@ class Done:
 @dataclass(frozen=True)
 class Step:
     name: str                                    # stable; the progress file names it
-    title: str
+    title: str                                   # a words key, looked up when shown
     fields: tuple[str, ...]                      # the answers this step's form posts
     show: Callable[[Answers, Hint | None], str]  # the step's body, fields filled from Answers
     check: Callable[[Answers], Answers | Hint | Stop | Done] | None = None
@@ -172,7 +172,7 @@ class Wizard:
         back = (f'<button type="submit" name="go" value="back">{say("wizard.back")}</button>'
                 if index > 0 else "")
         return (
-            f"<h1>{e(step.title)}</h1>"
+            f"<h1>{e(say(step.title))}</h1>"
             f'<p class="wizard-step">'
             f'{say("wizard.step", number=str(index + 1), total=str(len(self._steps)))}</p>'
             + above + loose

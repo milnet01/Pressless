@@ -26,9 +26,9 @@ def _show(name: str):
 
 def _steps(check=None) -> list[wizard.Step]:
     return [
-        wizard.Step("first", "The first", ("one",), _show("one")),
-        wizard.Step("second", "The second", ("two",), _show("two"), check),
-        wizard.Step("third", "The third", ("three",), _show("three"),
+        wizard.Step("first", "setup.step.welcome", ("one",), _show("one")),
+        wizard.Step("second", "setup.step.account", ("two",), _show("two"), check),
+        wizard.Step("third", "setup.step.repository", ("three",), _show("three"),
                     lambda answers: wizard.Done("<p>All done.</p>")),
     ]
 
@@ -148,8 +148,9 @@ def test_an_unreadable_progress_file_starts_over(tmp_path):
 
 def test_a_field_ending_in_key_is_never_kept(tmp_path):
     """§ 4.2: the progress file never holds a field whose name ends in key."""
-    steps = [wizard.Step("first", "The first", ("publishing_key",), _show("publishing_key")),
-             wizard.Step("second", "The second", (), lambda a, h: "")]
+    steps = [wizard.Step("first", "setup.step.welcome", ("publishing_key",),
+                         _show("publishing_key")),
+             wizard.Step("second", "setup.step.account", (), lambda a, h: "")]
     with _served(tmp_path, steps) as browser:
         _go(browser, "first", "next", publishing_key="plain words for a key")
     assert b"plain words" not in _progress(tmp_path).read_bytes()

@@ -39,7 +39,6 @@ from pressless.words import say
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
 GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
-KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
 
 # The answers a refused SettingsError can name; any other key is a failure.
 _ANSWERED = ("repository", "site_address", "measurement_id")
@@ -48,96 +47,56 @@ _FIELDS = ("repository", "site_name", "site_description", "site_address",
 # PRESS-0213 § 4.6: the two answers the Store keeps, by the field each is typed in.
 _IDENTITY_FIELDS = {"name": "site_name", "description": "site_description"}
 
-_HINTS = {
-    "repository": "Type it as owner/name, the way GitHub shows it.",
-    "site_name": "Type the site's name on one line.",
-    "site_description": "Write the description on one line, or leave it empty.",
-    "site_address": "Type the site's full address, starting with https://.",
-    # PRESS-0199 § 4.4.
-    "measurement_id": "Type the measurement id as Google shows it: G- and then "
-                      "capital letters and numbers, or leave it empty.",
+_HINTS = {          # the words key for each refused answer
+    "repository": "setup.hint.repository",
+    "site_name": "setup.hint.site_name",
+    "site_description": "setup.hint.site_description",
+    "site_address": "setup.hint.site_address",
+    "measurement_id": "setup.hint.measurement_id",     # PRESS-0199 § 4.4
 }
 
 
 def _new_repository(account: str) -> str:
     """How to make the repository, for the wizard's step and Settings' help.
     `account` is already escaped."""
-    return ("<ol><li>Open <a href=\"https://github.com/new\" target=\"_blank\" "
-            "rel=\"noopener\">github.com/new</a>. Or, on GitHub, click the <b>+</b> at "
-            "the top right, then <b>New repository</b>.</li>"
-            f"<li>Under <b>Repository name</b>, type <b>{account}.github.io</b>. Your "
-            f"site's address is then https://{account}.github.io. Any other name works "
-            f"too, and gives https://{account}.github.io/<i>the-name</i>/.</li>"
-            "<li>Choose <b>Public</b>. GitHub hosts sites for free only from public "
-            "repositories.</li>"
-            "<li>Click <b>Create repository</b>. Leave everything else as it is.</li></ol>")
+    return (f"<ol><li>{say('setup.new_repository.1')}</li>"
+            f"<li>{say('setup.new_repository.2', account=account)}</li>"
+            f"<li>{say('setup.new_repository.3')}</li>"
+            f"<li>{say('setup.new_repository.4')}</li></ol>")
 
 
-# How to make the publishing key, for the wizard's step and Settings' help.
-_NEW_KEY = (
-    "<ol><li>On GitHub, click your picture at the top right, then <b>Settings</b>.</li>"
-    "<li>At the bottom of the left-hand list, click <b>Developer settings</b>, "
-    "then <b>Personal access tokens</b>, then <b>Fine-grained tokens</b>.</li>"
-    "<li>Click <b>Generate new token</b>. Name it <b>Pressless</b>, and choose how "
-    "long it lasts. When it runs out, make a new one the same way and paste it "
-    "into Settings.</li>"
-    "<li>Under <b>Repository access</b>, choose <b>Only select repositories</b>, "
-    "then your site's repository.</li>"
-    "<li>Under <b>Repository permissions</b>, set <b>Contents</b>, <b>Pages</b> and "
-    "<b>Administration</b> each to <b>Read and write</b>. Pressless needs "
-    "Administration to switch your site on (PRESS-0230).</li>"
-    "<li>Click <b>Generate token</b>, then copy it. GitHub shows it only once.</li></ol>")
+def _new_key() -> str:
+    """How to make the publishing key, for the wizard's step and Settings' help."""
+    steps = "".join(f"<li>{say(key)}</li>" for key in (
+        "setup.new_key.1", "setup.new_key.2", "setup.new_key.3", "setup.new_key.4",
+        "setup.new_key.5", "setup.new_key.6"))
+    return f"<ol>{steps}</ol>"
 
-# Settings' "?" beside each box (PRESS-0228): where the answer comes from.
-_SETTINGS_HELP = {
-    "repository": (
-        "<p>Type the repository's owner and name with a slash between, as GitHub "
-        "shows them at the top of the repository's page: <b>owner/name</b>. They are "
-        "also the end of that page's address, after github.com/.</p>"
-        "<p>To make a new repository:</p>" + _new_repository("your-name")),
-    "site_name": (
-        "<p>Your own choice. Pressless puts it wherever your site's header and "
-        "footer have a place for the site's name.</p>"),
-    "site_description": (
-        "<p>One line about your site, in your own words. Pressless puts it wherever "
-        "your site's header and footer have a place for it. Leave it empty if you "
-        "do not want one.</p>"),
-    "site_address": (
-        "<p>The address people type to reach your site, starting with https://. "
-        "On GitHub, open your site's repository and click <b>Settings</b>, then "
-        "<b>Pages</b>: once the site is live, its address is shown there.</p>"
-        "<p>A repository named <b>your-name.github.io</b> is at "
-        "https://your-name.github.io. Any other name is at "
-        "https://your-name.github.io/<i>the-name</i>/. If you gave your site a "
-        "domain of your own under <b>Custom domain</b> on that page, type that "
-        "instead.</p>"),
-    "daily_prompt_filter": (
-        "<p>Pressless leaves off your site every entry with a tag that matches "
-        "this. A <b>*</b> stands for any letters, so <b>dailyprompt-*</b> matches "
-        "dailyprompt-1 and dailyprompt-2024. Capital letters must match too.</p>"
-        "<p>Leave it empty to keep every entry.</p>"),
-    "measurement_id": (
-        "<p>It tells Google Analytics which counter your visitors are counted on. "
-        "Leave it empty and Pressless adds no counting code to your site. "
-        "To find it:</p><ol>"
-        '<li>Open <a href="https://analytics.google.com" target="_blank" '
-        'rel="noopener">analytics.google.com</a> and sign in.</li>'
-        "<li>Click <b>Admin</b>, the gear at the bottom left.</li>"
-        "<li>Under <b>Data collection and modification</b>, click <b>Data "
-        "streams</b>, then your site's stream. If there is none, click <b>Add "
-        "stream</b>, then <b>Web</b>, and type your site's address.</li>"
-        "<li>Copy the <b>Measurement ID</b>. It starts G-.</li></ol>"),
-    "key": (
-        "<p>The key lets Pressless change your site's repository and its "
-        "settings, and no other repository. Leave the box empty to keep the key "
-        "Pressless already has. To make a new one:</p>" + _NEW_KEY),
+
+# The help paragraphs of the boxes whose help is paragraphs alone.
+_HELP_PARAGRAPHS = {
+    "site_name": ("setup.help.site_name",),
+    "site_description": ("setup.help.site_description",),
+    "site_address": ("setup.help.site_address", "setup.help.site_address.named"),
+    "daily_prompt_filter": ("setup.help.daily_prompt_filter",
+                            "setup.help.daily_prompt_filter.empty"),
 }
 
-_NO_SUCH_REPOSITORY = (
-    "GitHub has no repository by that name that this key can reach."
-)
-_KEY_MISSING = "Paste your publishing key."
-_KEY_MALFORMED = "A publishing key has no spaces or line breaks. Paste it again."
+
+def _settings_help(name: str) -> str:
+    """Settings' "?" beside each box (PRESS-0228): where the answer comes from."""
+    if name == "repository":
+        return (f"<p>{say('setup.help.repository')}</p>"
+                f"<p>{say('setup.help.repository.new')}</p>" + _new_repository("your-name"))
+    if name == "measurement_id":
+        steps = "".join(f"<li>{say(key)}</li>" for key in (
+            "setup.help.measurement_id.1", "setup.help.measurement_id.2",
+            "setup.help.measurement_id.3", "setup.help.measurement_id.4"))
+        return f"<p>{say('setup.help.measurement_id')}</p><ol>{steps}</ol>"
+    if name == "key":
+        return f"<p>{say('setup.help.key')}</p>" + _new_key()
+    return "".join(f"<p>{say(key)}</p>" for key in _HELP_PARAGRAPHS[name])
+
 
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
@@ -180,8 +139,8 @@ def _unpublished_starter(folder: Path) -> str:
     """Above the list until the starter site is first published."""
     if not starter.unpublished(folder):
         return ""
-    return ('<p id="starter-unpublished">Your starter site is not on the web yet. '
-            + _PUBLISH_STARTER.removeprefix("<p>"))
+    return (f'<p id="starter-unpublished">{say("setup.starter.unpublished")} '
+            f'{say("setup.starter.publish")}</p>')
 
 
 def _setup(face: Face, folder: Path, request: Request,
@@ -239,7 +198,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
 
     # § 4.4: the key. An empty box keeps the saved one.
     if typed_key and _malformed(typed_key):
-        hints["key"] = _KEY_MALFORMED
+        hints["key"] = say("setup.hint.key_malformed")
 
     # § 4.4: the rest, against the rules the next launch reads them with.
     candidate = _candidate(folder, saved, values)
@@ -248,11 +207,11 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
     except settings.SettingsError as exc:
         if exc.key not in _ANSWERED:
             return face.fail(exc, publishing=False)
-        hints[exc.key] = _HINTS[exc.key]
+        hints[exc.key] = say(_HINTS[exc.key])
     identity = _identity(values)
     refused_identity = _identity_hint(identity)
     if refused_identity is not None:
-        hints[refused_identity] = _HINTS[refused_identity]
+        hints[refused_identity] = say(_HINTS[refused_identity])
     if hints:
         return _form(values, hints, google_on=_google_on(saved), start=box,
                      signed_in=_signed_in(folder, saved))
@@ -272,7 +231,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
                           choice=None, where=None)
     if isinstance(done, publisher.RemoteStateMissing):
-        return _form(values, {"repository": _NO_SUCH_REPOSITORY},
+        return _form(values, {"repository": say("setup.hint.no_such_repository")},
                      google_on=_google_on(saved), start=box,
                      signed_in=_signed_in(folder, saved))
     return done
@@ -357,16 +316,12 @@ def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, s
             page, link = starter.add_privacy(folder, starter.privacy_name(folder))
         except StoreError as exc:
             return "", render_notices(notices) + (
-                "<p>Visitor counting is on, but the Privacy page or its link could "
-                "not be added. Saving again tries once more.</p>"
-                + face.fail(exc, publishing=False))
+                f"<p>{say('setup.privacy.failed')}</p>" + face.fail(exc, publishing=False))
     said = []
     if page:
-        said.append("<p>Your site now has a Privacy page saying that it counts "
-                    "visitors. Open it from Your pages and add how people can "
-                    "reach you.</p>")
+        said.append(f"<p>{say('setup.privacy.page')}</p>")
     if link:
-        said.append("<p>Your footer now links to the Privacy page.</p>")
+        said.append(f"<p>{say('setup.privacy.link')}</p>")
     return render_notices(notices) + "".join(said), ""
 
 
@@ -427,8 +382,7 @@ def carry_name_across(folder: Path) -> str | None:
         if store.read_identity(folder) is None:
             store.write_identity(folder, store.Identity(name))
     except StoreError as exc:
-        return ("Pressless could not move your site's name into your site's own "
-                f"files, and will try again next time it starts: {exc}")
+        return say("setup.name_not_moved", reason=str(exc))
     try:
         settings.save(folder, settings.load(folder), retire=("site_name",))
     except settings.SettingsError:
@@ -440,7 +394,7 @@ def _credential_failure(face: Face, failure: Exception,
                         noun: str = "failure.secret.publishing_key") -> str:
     fragment = face.fail(failure, publishing=False, secret=say(noun))
     if isinstance(failure, credentials.NoStore):
-        return "<p>Setup cannot finish on this computer.</p>" + fragment
+        return f"<p>{say('setup.cannot_finish')}</p>" + fragment
     return fragment
 
 
@@ -452,31 +406,24 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
     says the stored secret is a GitHub sign-in (PRESS-0231 § 4.4)."""
     def field(name: str, label: str, kind: str = "text") -> str:
         hint = wizard.Hint(name, hints[name]) if name in hints else None
-        return wizard.field(name, label, values, hint, kind, _SETTINGS_HELP[name])
+        return wizard.field(name, label, values, hint, kind, _settings_help(name))
 
     return (
-        "<h1>Settings</h1>"
+        f"<h1>{say('face.settings')}</h1>"
         '<form method="post" action="/setup">'
-        + field("repository", "Your site's repository on GitHub (owner/name)")
-        + field("site_name", "Your site's name")
-        + field("site_description", "A short description of your site (optional)")
-        + field("site_address", "Your site's address")
-        + field("daily_prompt_filter",
-                "Leave out entries with a tag matching (optional, for example dailyprompt-*)")
-        + field("measurement_id",
-                "Google's measurement id, to count your visitors (optional, starts G-)")
+        + field("repository", say("setup.field.repository"))
+        + field("site_name", say("setup.field.site_name"))
+        + field("site_description", say("setup.field.site_description"))
+        + field("site_address", say("setup.field.site_address"))
+        + field("daily_prompt_filter", say("setup.field.daily_prompt_filter"))
+        + field("measurement_id", say("setup.field.measurement_id"))
         + _starter_box(start)
-        + (_SIGNED_IN if signed_in else "")
-        + "<p>Leave the key box empty to keep the key Pressless already has.</p>"
-        + field("key", "Your publishing key", "password")
-        + '<p><button type="submit">Check the repository again and save</button></p></form>'
+        + (f'<p id="signed-in">{say("setup.signed_in")}</p>' if signed_in else "")
+        + f"<p>{say('setup.key_kept')}</p>"
+        + field("key", say("setup.field.key"), "password")
+        + f'<p><button type="submit">{say("setup.save")}</button></p></form>'
         + _google_link(google_on)
     )
-
-
-_SIGNED_IN = ('<p id="signed-in">Pressless is signed in to GitHub. Typing a key below '
-              'replaces the sign-in. <a href="/setup/github">Sign in to GitHub '
-              "again</a>.</p>")
 
 
 def _signed_in(folder: Path, saved: settings.Settings) -> bool:
@@ -497,16 +444,8 @@ def _starter_box(start: bool | None) -> str:
         return ""
     return ('<p><label><input type="checkbox" name="start" value="starter"'
             + (" checked" if start else "")
-            + "> Start with a plain site: a homepage, an About page, a menu, a header "
-              "and a footer, ready for you to change.</label></p>"
-              "<p>Leave it unticked if you will bring in a site you already have: "
-              "that needs an empty copy of Pressless.</p>")
-
-
-# How a starter site first reaches the web: there is no Publish on the list.
-_PUBLISH_STARTER = ("<p>To put it on the web, open <b>Home</b> under <b>Your pages</b> "
-                    "on your list, and press <b>Press to site</b>.</p>")
-_ONWARD = '<p><a href="/">Go to your list</a></p>'
+            + f"> {say('setup.starter.box')}</label></p>"
+              f"<p>{say('setup.starter.box.empty')}</p>")
 
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,
@@ -514,24 +453,21 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
-        f"<p>Pressless will leave these alone on your site:</p><ul>{kept}</ul>"
-        if kept else "<p>Pressless found nothing on your site it must leave alone.</p>"
+        f"<p>{say('setup.done.left_alone')}</p><ul>{kept}</ul>"
+        if kept else f"<p>{say('setup.done.nothing_left_alone')}</p>"
     )
     stored = ""
     if choice is not None:
-        kept = "Your GitHub sign-in is" if signed_in else "Your publishing key is"
-        stored = f"<p>{kept} kept in {e(choice.name)}.</p>"
+        held = "setup.done.kept_sign_in" if signed_in else "setup.done.kept_key"
+        stored = f"<p>{say(held, store=e(choice.name))}</p>"
         if choice.store == "file":
-            stored += (
-                "<p>No keyring was found on this computer, so it is kept in a "
-                "file only your account can read, in the Pressless-data folder.</p>"
-            )
-    started = ("<p>Your starter site is in place. It is not on the web until you "
-               "publish it.</p>" + _PUBLISH_STARTER if filled else "")
-    return ("<h1>Setup is done.</h1>"
-            + f"<p>Your site's address is {_site_link(final.site_address)}.</p>"
+            stored += f"<p>{say('setup.done.in_a_file')}</p>"
+    started = (f"<p>{say('setup.done.starter')}</p><p>{say('setup.starter.publish')}</p>"
+               if filled else "")
+    return (f"<h1>{say('setup.done')}</h1>"
+            + f"<p>{say('setup.done.address', link=_site_link(final.site_address))}</p>"
             + started + left_alone + stored + narrow
-            + _google_link(_google_on(final)) + _ONWARD)
+            + _google_link(_google_on(final)) + f'<p><a href="/">{say("setup.onward")}</a></p>')
 
 
 def _site_link(address: str) -> str:
@@ -557,17 +493,14 @@ def _google_link(on: bool) -> str:
     if not google_signin.available():
         return ""
     if on:
-        return ('<p>Visitor numbers are on: <a href="/setup/google">change the site '
-                "or turn them off</a>.</p>")
-    return ('<p>Optional: <a href="/setup/google">see how many people read your '
-            "site</a>, from Google Analytics.</p>")
+        return f"<p>{say('setup.google.on')}</p>"
+    return f"<p>{say('setup.google.offer')}</p>"
 
 
 def _shortcuts(face: Face, where: shortcuts.Places | None, request: Request) -> str:
     """PRESS-0183: make or remove the menu entry and the desktop icon, as ticked."""
     if where is None:
-        return ("<p>Pressless can add itself to the menu and the desktop only when "
-                "it runs from the file you downloaded.</p>")
+        return f"<p>{say('setup.shortcuts.unavailable')}</p>"
     parsed = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
     menu, desktop = parsed.get("menu") == ["on"], parsed.get("desktop") == ["on"]
     before = shortcuts.present(where)
@@ -578,25 +511,20 @@ def _shortcuts(face: Face, where: shortcuts.Places | None, request: Request) -> 
     after = shortcuts.present(where)
     said = []
     if after[0] and not before[0]:
-        said.append(_PINNING[where.windows])
+        said.append(f"<p>{say(_PINNING[where.windows])}</p>")
     elif before[0] and not after[0]:
-        said.append(f"<p>Pressless is no longer in {_MENU[where.windows]}.</p>")
+        said.append(f"<p>{say('setup.shortcuts.removed', menu=say(_MENU[where.windows]))}</p>")
     if after[1] and not before[1]:
-        said.append("<p>There is a Pressless icon on your desktop.</p>")
+        said.append(f"<p>{say('setup.shortcuts.icon_added')}</p>")
     elif before[1] and not after[1]:
-        said.append("<p>The Pressless icon is gone from your desktop.</p>")
-    return (("".join(said) or "<p>Nothing needed changing.</p>")
-            + '<p><a href="/">Go to your list</a></p>')
+        said.append(f"<p>{say('setup.shortcuts.icon_removed')}</p>")
+    return (("".join(said) or f"<p>{say('setup.shortcuts.unchanged')}</p>")
+            + f'<p><a href="/">{say("setup.onward")}</a></p>')
 
 
-_MENU = {True: "the Start Menu", False: "your app menu"}
-_PINNING = {
-    True: "<p>Pressless is in the Start Menu. To pin it to the taskbar, find it in the "
-          "Start Menu, right-click it and choose Pin to taskbar.</p>",
-    False: "<p>Pressless is in your app menu. To add it to your panel, find it in the "
-           "menu, right-click it and choose the option that pins it or adds it to the "
-           "panel. Its name differs between desktops.</p>",
-}
+# Keyed by whether this is Windows.
+_MENU = {True: "setup.shortcuts.start_menu", False: "setup.shortcuts.app_menu"}
+_PINNING = {True: "setup.shortcuts.pinning.windows", False: "setup.shortcuts.pinning"}
 
 
 def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
@@ -606,15 +534,16 @@ def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
         return (f'<p><label><input type="checkbox" name="{name}" value="on"'
                 + (" checked" if on else "") + f"> {html.escape(label)}</label></p>")
 
-    menu = _MENU[where.windows]
+    menu = say(_MENU[where.windows])
+    title = "setup.shortcuts.title.windows" if where.windows else "setup.shortcuts.title"
     return (
-        f"<h2>{'Start Menu' if where.windows else 'App menu'} and desktop</h2>"
+        f"<h2>{say(title)}</h2>"
         f'<form method="post" action="{SHORTCUTS}">'
-        + box("menu", ticked[0], f"Put Pressless in {menu}")
-        + (box("desktop", ticked[1], "Put a Pressless icon on the desktop")
+        + box("menu", ticked[0], say("setup.shortcuts.menu", menu=menu))
+        + (box("desktop", ticked[1], say("setup.shortcuts.desktop"))
            if where.desktop is not None else "")
-        + "<p>Untick a box and save to take that one away again.</p>"
-        + '<p><button type="submit">Save these</button></p></form>'
+        + f"<p>{say('setup.shortcuts.untick')}</p>"
+        + f'<p><button type="submit">{say("setup.shortcuts.save")}</button></p></form>'
     )
 
 
@@ -626,50 +555,16 @@ def _shortcut_form(where: shortcuts.Places, ticked: tuple[bool, bool]) -> str:
 _ACCOUNT = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
 _PLACEHOLDER_ADDRESS = "https://github.com"
 
-_TYPE_ACCOUNT = "Type your GitHub account name, as GitHub shows it."
-_NO_ACCOUNT = ("GitHub has no account by that name. Check the spelling, or finish "
-               "making it first.")
-_NOT_PUBLIC = ("GitHub shows no public repository by that name. Check the spelling, "
-               "and that you chose Public when you made it.")
-_KEY_NOT_GRANTED = ("This key cannot reach that repository. On GitHub, edit the key and "
-                    "choose your site's repository under Repository access.")
-_NO_PAGES_READ = ("This key cannot see GitHub Pages. On GitHub, edit the key and set "
-                  "Pages to Read and write under Repository permissions.")
-_NO_PAGES_WRITE = ("This key cannot switch GitHub Pages on. On GitHub, edit the key and "
-                   "set Pages and Administration to Read and write under Repository "
-                   "permissions, then press Next again.")
-_NAME_ALONE = ("Type the repository's name alone, as GitHub shows it after your "
-               "account name.")
-# PRESS-0231 § 4.3: the steps with sign-in.
-_NOT_INSTALLED = ("GitHub shows no Pressless app installed on your account yet. Follow "
-                  "the steps above, then press Next again.")
-_TAKEN = ("A repository by that name already exists in your account. Choose another "
-          "name.")
-
 
 def _add_to_app(repository: str) -> str:
     """The repository step's hint where the app reaches chosen repositories
     and not this one. A hint is text, escaped where it is shown."""
-    return ("Pressless made the repository, but the Pressless app cannot reach it yet. "
-            "On GitHub, click your picture, then Settings, then Applications. Click "
-            "Configure beside Pressless App, click Select repositories, pick "
-            f"{repository.partition('/')[2]}, and click Save. Then press Next again.")
-_APP_CANNOT_REACH = ("The Pressless app cannot reach this repository. On GitHub, click "
-                     "your picture, then Settings, then Applications, and check that "
-                     "Pressless App's installation includes it. Then press Next "
-                     "again.")
+    return say("setup.hint.add_to_app", repository=repository.partition("/")[2])
 
 
 def _other_account(signed_in: str, typed: str) -> str:
     """PRESS-0231 INV-14: the sign-in reached an account he did not name."""
-    return (f"You signed in to GitHub as {signed_in}, not {typed}. To use {typed}, "
-            f"switch to it on github.com, or correct the name above. Then press Next "
-            f"to sign in again.")
-# PRESS-0229: never advice to re-point Pages, which would take that site offline.
-_ELSEWHERE = ("This repository already puts a site on the web another way, so Pressless "
-              "cannot publish to it. Press Back and choose a different, new repository. "
-              "Leave this one's GitHub Pages settings as they are: changing them would "
-              "take the site already there offline.")
+    return say("setup.hint.other_account", signed_in=signed_in, typed=typed)
 
 
 def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport | None,
@@ -709,10 +604,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
     def check_account(answers: wizard.Answers):
         if not _ACCOUNT.fullmatch(answers["account"]):
-            return wizard.Hint("account", _TYPE_ACCOUNT)
+            return wizard.Hint("account", say("setup.hint.type_account"))
         try:
             if not publisher.account_exists(answers["account"], transport):
-                return wizard.Hint("account", _NO_ACCOUNT)
+                return wizard.Hint("account", say("setup.hint.no_account"))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
@@ -720,10 +615,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     def check_repository(answers: wizard.Answers):
         name = repository(answers)
         if refused(probe(name)) is not None:
-            return wizard.Hint("repository", _NAME_ALONE)
+            return wizard.Hint("repository", say("setup.hint.name_alone"))
         try:
             if not publisher.public_repository(name, transport):
-                return wizard.Hint("repository", _NOT_PUBLIC)
+                return wizard.Hint("repository", say("setup.hint.not_public"))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
@@ -734,13 +629,13 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         # Sub-step 1: the box.
         if not typed:
             if not store:
-                return wizard.Hint("key", _KEY_MISSING)
+                return wizard.Hint("key", say("setup.hint.key_missing"))
             held = key_for(answers)
             if isinstance(held, wizard.Stop):
                 return held
             key = held
         elif _malformed(typed):
-            return wizard.Hint("key", _KEY_MALFORMED)
+            return wizard.Hint("key", say("setup.hint.key_malformed"))
         else:
             key = typed
         name = repository(answers)
@@ -748,13 +643,13 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         try:
             publisher.root_entries(probe(name), key, transport)
         except publisher.RemoteStateMissing:
-            return wizard.Hint("key", _KEY_NOT_GRANTED)
+            return wizard.Hint("key", say("setup.hint.key_not_granted"))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         try:
             publisher.pages(name, key, transport)
         except publisher.Refused:
-            return wizard.Hint("key", _NO_PAGES_READ)
+            return wizard.Hint("key", say("setup.hint.no_pages_read"))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         if not typed:
@@ -778,11 +673,14 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         try:
             shown = publisher.pages(name, key, transport)
             if shown.on and not shown.serves_root:
-                return wizard.Hint("", _ELSEWHERE)
+                # PRESS-0229: never advice to re-point Pages, which would take
+                # that site offline.
+                return wizard.Hint("", say("setup.hint.elsewhere"))
             if not shown.on:
                 shown = publisher.switch_pages_on(name, key, transport)
         except publisher.Refused:
-            return wizard.Hint("", _APP_CANNOT_REACH if signing_in else _NO_PAGES_WRITE)
+            return wizard.Hint("", say("setup.hint.app_cannot_reach" if signing_in
+                                       else "setup.hint.no_pages_write"))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         address = shown.address or ""
@@ -796,7 +694,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                                   answers.get("site_description", ""))
         refused_identity = _identity_hint(identity)
         if refused_identity is not None:
-            return wizard.Hint(refused_identity, _HINTS[refused_identity])
+            return wizard.Hint(refused_identity, say(_HINTS[refused_identity]))
         candidate = _candidate(folder, None, {
             "repository": repository(answers),
             "site_address": answers.get("site_address", ""), "daily_prompt_filter": "",
@@ -831,7 +729,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         # he named (INV-14).
         typed = answers.get("account", "")
         if not _ACCOUNT.fullmatch(typed):
-            return wizard.Hint("account", _TYPE_ACCOUNT)
+            return wizard.Hint("account", say("setup.hint.type_account"))
         try:
             pressed = sign_in.press()
             if isinstance(pressed, str):
@@ -863,13 +761,13 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         if found is None:
-            return wizard.Hint("", _NOT_INSTALLED)
+            return wizard.Hint("", say("setup.hint.not_installed"))
         return {**answers, "all_repositories": "yes" if found.all_repositories else "no"}
 
     def check_new_repository(answers: wizard.Answers):
         name = repository(answers)
         if refused(probe(name)) is not None:
-            return wizard.Hint("repository", _NAME_ALONE)
+            return wizard.Hint("repository", say("setup.hint.name_alone"))
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key
@@ -880,79 +778,69 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not (github_signin.create_repository(key, answers["repository"], transport)
                     or (publisher.public_repository(name, transport)
                         and publisher.root_entries(probe(name), None, transport) == ())):
-                return wizard.Hint("repository", _TAKEN)
+                return wizard.Hint("repository", say("setup.hint.taken"))
             found = github_signin.installation(key, answers.get("account", ""), transport)
             if found is None:
-                return wizard.Hint("", _NOT_INSTALLED)
+                return wizard.Hint("", say("setup.hint.not_installed"))
             if not github_signin.reaches(key, found, name, transport):
                 return wizard.Hint("", _add_to_app(name))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
 
-    pages = wizard.Step("pages", "Switch the site on", (), _show_pages, check_pages)
-    site = wizard.Step("site", "Your site", ("site_name", "site_description", "start"),
+    pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
+    site = wizard.Step("site", "setup.step.site", ("site_name", "site_description", "start"),
                        lambda answers, hint: _show_site(folder, answers, hint), check_site)
     if signing_in:
         return wizard.Wizard("setup", (
-            wizard.Step("welcome", "Set up Pressless", (), _show_welcome_signing_in),
-            wizard.Step("signin", "Sign in to GitHub", ("account",),
+            wizard.Step("welcome", "setup.step.welcome", (), _show_welcome_signing_in),
+            wizard.Step("signin", "github_setup.title", ("account",),
                         lambda answers, hint: _show_signin(answers, hint, sign_in),
                         check_signin),
-            wizard.Step("install", "Let Pressless reach your site", (), _show_install,
+            wizard.Step("install", "setup.step.install", (), _show_install,
                         check_install),
-            wizard.Step("repository", "A home for your site", ("repository",),
+            wizard.Step("repository", "setup.step.repository", ("repository",),
                         _show_new_repository, check_new_repository),
             pages, site,
         ), folder, "/setup")
     return wizard.Wizard("setup", (
-        wizard.Step("welcome", "Set up Pressless", (), _show_welcome),
-        wizard.Step("account", "A GitHub account", ("account",), _show_account,
+        wizard.Step("welcome", "setup.step.welcome", (), _show_welcome),
+        wizard.Step("account", "setup.step.account", ("account",), _show_account,
                     check_account),
-        wizard.Step("repository", "A home for your site", ("repository",),
+        wizard.Step("repository", "setup.step.repository", ("repository",),
                     _show_repository, check_repository),
-        wizard.Step("key", "A key for Pressless", ("key",), _show_key, check_key),
+        wizard.Step("key", "setup.step.key", ("key",), _show_key, check_key),
         pages, site,
     ), folder, "/setup")
 
 
 def _show_welcome(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return ("<p>Pressless publishes your site on GitHub, which hosts it for free. "
-            "These steps take you through getting it ready, one screen at a time. "
-            "You need an email address and about fifteen minutes.</p>"
-            "<p>Some steps happen on GitHub's own pages. Keep this page open beside "
-            "them. If you close Pressless partway, it starts again where you left "
-            "off.</p>")
+    return f"<p>{say('setup.welcome')}</p><p>{say('setup.welcome.beside')}</p>"
 
 
-# How to make a GitHub account, for the wizard's first steps.
-_SIGN_UP = ("<ol>"
-            '<li>Open <a href="https://github.com/signup" target="_blank" '
-            'rel="noopener">github.com/signup</a>.</li>'
-            "<li>Type your email address, a password and a username, and follow "
-            "GitHub's steps. It sends a code to your email to check it is yours.</li>"
-            "<li>When GitHub asks which plan, the free one is all Pressless needs.</li>"
-            "</ol>")
+def _sign_up() -> str:
+    """How to make a GitHub account, for the wizard's first steps."""
+    steps = "".join(f"<li>{say(key)}</li>" for key in (
+        "setup.sign_up.1", "setup.sign_up.2", "setup.sign_up.3"))
+    return f"<ol>{steps}</ol>"
 
 
 def _show_account(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return ("<p>If you already have a GitHub account, type its name below.</p>"
-            "<p>If not, make one:</p>" + _SIGN_UP
-            + wizard.field("account", "Your GitHub account name", answers, hint))
+    return (f"<p>{say('setup.account.have')}</p><p>{say('setup.account.make')}</p>"
+            + _sign_up()
+            + wizard.field("account", say("setup.field.account"), answers, hint))
 
 
 def _show_welcome_signing_in(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     return (_show_welcome(answers, hint)
-            + "<p>You need a GitHub account. If you do not have one yet, make one "
-              "now:</p>" + _SIGN_UP)
+            + f"<p>{say('setup.account.need')}</p>" + _sign_up())
 
 
 def _show_signin(answers: wizard.Answers, hint: wizard.Hint | None,
                  sign_in: github_setup.SignIn) -> str:
     return (github_setup.how()
-            + "<p>Type the name of the GitHub account your site will live in. If you "
-              "have more than one, Pressless checks you sign in to this one.</p>"
-            + wizard.field("account", "Your GitHub account name", answers, hint)
+            + f"<p>{say('setup.signin.account')}</p>"
+            + wizard.field("account", say("setup.field.account"), answers, hint)
             + sign_in.shown())
 
 
@@ -962,65 +850,45 @@ def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     e = html.escape
     address = github_signin.INSTALL_URL.format(github_signin.APP_SLUG)
     account = e(answers.get("account", ""))
-    return ("<p>Pressless works through its own app on GitHub, Pressless App, which "
-            "reaches only the repositories you let it. Install it on your account:</p><ol>"
-            f'<li>Open <a href="{e(address, quote=True)}" target="_blank" '
-            f'rel="noopener">{e(address)}</a>.</li>'
-            "<li>If GitHub asks you to select a user, click <b>Continue</b> beside "
-            f"<b>{account}</b>.</li>"
-            "<li>Under <b>for these repositories</b>, leave <b>All repositories</b> "
-            "chosen. Pressless makes your site's repository next, and at the end "
-            "tells you how to let the app reach only that one.</li>"
-            "<li>Click <b>Install</b>, then come back here and press <b>Next</b>.</li>"
-            "</ol><p>If GitHub shows Pressless App's settings instead, with no "
-            "<b>Install</b> button, the app is already installed. Come back here and "
-            "press <b>Next</b>.</p>")
+    link = (f'<a href="{e(address, quote=True)}" target="_blank" '
+            f'rel="noopener">{e(address)}</a>')
+    return (f"<p>{say('setup.install')}</p><ol>"
+            f"<li>{say('setup.install.1', link=link)}</li>"
+            f"<li>{say('setup.install.2', account=account)}</li>"
+            f"<li>{say('setup.install.3')}</li>"
+            f"<li>{say('setup.install.4')}</li>"
+            f"</ol><p>{say('setup.install.already')}</p>")
 
 
 def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     account = answers.get("account", "")
     filled = {**answers, "repository": answers.get("repository") or f"{account}.github.io"}
     e = html.escape(account)
-    return ("<p>A repository is the folder on GitHub your site lives in. Pressless makes "
-            "it for you, as Public: GitHub hosts sites for free only from public "
-            "repositories.</p>"
-            f"<p>Named <b>{e}.github.io</b>, your site's address is "
-            f"https://{e}.github.io. Any other name works too, and gives "
-            f"https://{e}.github.io/<i>the-name</i>/.</p>"
-            + wizard.field("repository", "The repository's name", filled, hint))
+    return (f"<p>{say('setup.new_repository')}</p>"
+            f"<p>{say('setup.new_repository.named', account=e)}</p>"
+            + wizard.field("repository", say("setup.field.repository_name"), filled, hint))
 
 
 def _narrow(repository: str) -> str:
     """The done page's advice where the app reaches every repository (§ 4.3)."""
-    return ("<p>The Pressless app can reach every repository in your account. To let "
-            "it reach only your site's: on GitHub, click your picture, then "
-            "<b>Settings</b>, then <b>Applications</b>. Click <b>Configure</b> beside "
-            "<b>Pressless App</b>, choose <b>Only select repositories</b>, pick "
-            f"<b>{html.escape(repository)}</b>, and click <b>Save</b>.</p>")
+    return f"<p>{say('setup.narrow', repository=html.escape(repository))}</p>"
 
 
 def _show_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return ("<p>A repository is the folder on GitHub your site lives in. Make one:</p>"
+    return (f"<p>{say('setup.repository')}</p>"
             + _new_repository(html.escape(answers.get("account", "your-name")))
-            + wizard.field("repository", "The repository's name", answers, hint))
+            + wizard.field("repository", say("setup.field.repository_name"), answers, hint))
 
 
 def _show_key(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    kept = ("<p>Pressless already has the key you gave it. Leave the box empty to "
-            "keep it, or paste a new one.</p>" if answers.get("store") else "")
-    return ("<p>Pressless needs a key that reaches your site's repository and no "
-            "other. Make one:</p>" + _NEW_KEY + kept
-            + wizard.field("key", "Paste the key here", answers, hint, "password")
-            + "<p>Pressless keeps the key in your computer's own safe store, never in a "
-              "file it shows anyone.</p>")
+    kept = f"<p>{say('setup.key.kept')}</p>" if answers.get("store") else ""
+    return (f"<p>{say('setup.key')}</p>" + _new_key() + kept
+            + wizard.field("key", say("setup.field.paste_key"), answers, hint, "password")
+            + f"<p>{say('setup.key.safe')}</p>")
 
 
 def _show_pages(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return ("<p>GitHub Pages is what puts your repository on the web. Press Next and "
-            "Pressless checks it, and switches it on if it is off.</p>"
-            "<p>It also adds an empty file named .nojekyll to your repository, which "
-            "tells GitHub to show your site's files exactly as Pressless makes "
-            "them.</p>")
+    return f"<p>{say('setup.pages')}</p><p>{say('setup.pages.nojekyll')}</p>"
 
 
 def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) -> str:
@@ -1032,11 +900,10 @@ def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) 
     if offered:
         ticked = answers.get("start", "starter") == "starter"
         box = _starter_box(ticked)
-    return (f"<p>Your site's address is {_site_link(answers.get('site_address', ''))}. It can "
-            "take a few minutes after your first publish before it shows.</p>"
-            + wizard.field("site_name", "Your site's name", answers, hint)
-            + wizard.field("site_description",
-                           "A short description of your site (optional)", answers, hint)
+    link = _site_link(answers.get("site_address", ""))
+    return (f"<p>{say('setup.site', link=link)}</p>"
+            + wizard.field("site_name", say("setup.field.site_name"), answers, hint)
+            + wizard.field("site_description", say("setup.field.site_description"),
+                           answers, hint)
             + box
-            + "<p>Press Next to check everything with GitHub one last time and "
-              "finish.</p>")
+            + f"<p>{say('setup.site.finish')}</p>")

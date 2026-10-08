@@ -576,6 +576,340 @@ _WORDS: dict[str, str] = {
         "Pressless could not tell Google to forget its permission. You can remove it "
         "yourself at {link}."
     ),
+    # Setup: the first-run wizard, Settings and the shortcuts (setup.py).
+    "setup.step.welcome": "Set up Pressless",
+    "setup.step.account": "A GitHub account",
+    "setup.step.repository": "A home for your site",
+    "setup.step.key": "A key for Pressless",
+    "setup.step.install": "Let Pressless reach your site",
+    "setup.step.pages": "Switch the site on",
+    "setup.step.site": "Your site",
+    "setup.welcome": (
+        "Pressless publishes your site on GitHub, which hosts it for free. These steps take "
+        "you through getting it ready, one screen at a time. You need an email address and "
+        "about fifteen minutes."
+    ),
+    "setup.welcome.beside": (
+        "Some steps happen on GitHub's own pages. Keep this page open beside them. If you "
+        "close Pressless partway, it starts again where you left off."
+    ),
+    "setup.account.have": "If you already have a GitHub account, type its name below.",
+    "setup.account.make": "If not, make one:",
+    "setup.account.need": "You need a GitHub account. If you do not have one yet, make one now:",
+    "setup.sign_up.1": (
+        "Open <a href=\"https://github.com/signup\" target=\"_blank\" "
+        "rel=\"noopener\">github.com/signup</a>."
+    ),
+    "setup.sign_up.2": (
+        "Type your email address, a password and a username, and follow GitHub's steps. It "
+        "sends a code to your email to check it is yours."
+    ),
+    "setup.sign_up.3": "When GitHub asks which plan, the free one is all Pressless needs.",
+    "setup.signin.account": (
+        "Type the name of the GitHub account your site will live in. If you have more than "
+        "one, Pressless checks you sign in to this one."
+    ),
+    "setup.install": (
+        "Pressless works through its own app on GitHub, Pressless App, which reaches only "
+        "the repositories you let it. Install it on your account:"
+    ),
+    "setup.install.1": "Open {link}.",
+    "setup.install.2": (
+        "If GitHub asks you to select a user, click <b>Continue</b> beside <b>{account}</b>."
+    ),
+    "setup.install.3": (
+        "Under <b>for these repositories</b>, leave <b>All repositories</b> chosen. "
+        "Pressless makes your site's repository next, and at the end tells you how to let "
+        "the app reach only that one."
+    ),
+    "setup.install.4": "Click <b>Install</b>, then come back here and press <b>Next</b>.",
+    "setup.install.already": (
+        "If GitHub shows Pressless App's settings instead, with no <b>Install</b> button, "
+        "the app is already installed. Come back here and press <b>Next</b>."
+    ),
+    "setup.new_repository": (
+        "A repository is the folder on GitHub your site lives in. Pressless makes it for "
+        "you, as Public: GitHub hosts sites for free only from public repositories."
+    ),
+    "setup.new_repository.named": (
+        "Named <b>{account}.github.io</b>, your site's address is "
+        "https://{account}.github.io. Any other name works too, and gives "
+        "https://{account}.github.io/<i>the-name</i>/."
+    ),
+    "setup.repository": "A repository is the folder on GitHub your site lives in. Make one:",
+    "setup.new_repository.1": (
+        "Open <a href=\"https://github.com/new\" target=\"_blank\" "
+        "rel=\"noopener\">github.com/new</a>. Or, on GitHub, click the <b>+</b> at the top "
+        "right, then <b>New repository</b>."
+    ),
+    "setup.new_repository.2": (
+        "Under <b>Repository name</b>, type <b>{account}.github.io</b>. Your site's address "
+        "is then https://{account}.github.io. Any other name works too, and gives "
+        "https://{account}.github.io/<i>the-name</i>/."
+    ),
+    "setup.new_repository.3": (
+        "Choose <b>Public</b>. GitHub hosts sites for free only from public repositories."
+    ),
+    "setup.new_repository.4": "Click <b>Create repository</b>. Leave everything else as it is.",
+    "setup.key": (
+        "Pressless needs a key that reaches your site's repository and no other. Make one:"
+    ),
+    "setup.key.kept": (
+        "Pressless already has the key you gave it. Leave the box empty to keep it, or paste "
+        "a new one."
+    ),
+    "setup.key.safe": (
+        "Pressless keeps the key in your computer's own safe store, never in a file it shows "
+        "anyone."
+    ),
+    "setup.new_key.1": "On GitHub, click your picture at the top right, then <b>Settings</b>.",
+    "setup.new_key.2": (
+        "At the bottom of the left-hand list, click <b>Developer settings</b>, then "
+        "<b>Personal access tokens</b>, then <b>Fine-grained tokens</b>."
+    ),
+    "setup.new_key.3": (
+        "Click <b>Generate new token</b>. Name it <b>Pressless</b>, and choose how long it "
+        "lasts. When it runs out, make a new one the same way and paste it into Settings."
+    ),
+    "setup.new_key.4": (
+        "Under <b>Repository access</b>, choose <b>Only select repositories</b>, then your "
+        "site's repository."
+    ),
+    "setup.new_key.5": (
+        "Under <b>Repository permissions</b>, set <b>Contents</b>, <b>Pages</b> and "
+        "<b>Administration</b> each to <b>Read and write</b>. Pressless needs Administration "
+        "to switch your site on (PRESS-0230)."
+    ),
+    "setup.new_key.6": "Click <b>Generate token</b>, then copy it. GitHub shows it only once.",
+    "setup.pages": (
+        "GitHub Pages is what puts your repository on the web. Press Next and Pressless "
+        "checks it, and switches it on if it is off."
+    ),
+    "setup.pages.nojekyll": (
+        "It also adds an empty file named .nojekyll to your repository, which tells GitHub "
+        "to show your site's files exactly as Pressless makes them."
+    ),
+    "setup.site": (
+        "Your site's address is {link}. It can take a few minutes after your first publish "
+        "before it shows."
+    ),
+    "setup.site.finish": "Press Next to check everything with GitHub one last time and finish.",
+    "setup.narrow": (
+        "The Pressless app can reach every repository in your account. To let it reach only "
+        "your site's: on GitHub, click your picture, then <b>Settings</b>, then "
+        "<b>Applications</b>. Click <b>Configure</b> beside <b>Pressless App</b>, choose "
+        "<b>Only select repositories</b>, pick <b>{repository}</b>, and click <b>Save</b>."
+    ),
+    "setup.hint.repository": "Type it as owner/name, the way GitHub shows it.",
+    "setup.hint.site_name": "Type the site's name on one line.",
+    "setup.hint.site_description": "Write the description on one line, or leave it empty.",
+    "setup.hint.site_address": "Type the site's full address, starting with https://.",
+    "setup.hint.measurement_id": (
+        "Type the measurement id as Google shows it: G- and then capital letters and "
+        "numbers, or leave it empty."
+    ),
+    "setup.hint.no_such_repository": (
+        "GitHub has no repository by that name that this key can reach."
+    ),
+    "setup.hint.key_missing": "Paste your publishing key.",
+    "setup.hint.key_malformed": "A publishing key has no spaces or line breaks. Paste it again.",
+    "setup.hint.type_account": "Type your GitHub account name, as GitHub shows it.",
+    "setup.hint.no_account": (
+        "GitHub has no account by that name. Check the spelling, or finish making it first."
+    ),
+    "setup.hint.not_public": (
+        "GitHub shows no public repository by that name. Check the spelling, and that you "
+        "chose Public when you made it."
+    ),
+    "setup.hint.key_not_granted": (
+        "This key cannot reach that repository. On GitHub, edit the key and choose your "
+        "site's repository under Repository access."
+    ),
+    "setup.hint.no_pages_read": (
+        "This key cannot see GitHub Pages. On GitHub, edit the key and set Pages to Read and "
+        "write under Repository permissions."
+    ),
+    "setup.hint.no_pages_write": (
+        "This key cannot switch GitHub Pages on. On GitHub, edit the key and set Pages and "
+        "Administration to Read and write under Repository permissions, then press Next "
+        "again."
+    ),
+    "setup.hint.name_alone": (
+        "Type the repository's name alone, as GitHub shows it after your account name."
+    ),
+    "setup.hint.not_installed": (
+        "GitHub shows no Pressless app installed on your account yet. Follow the steps "
+        "above, then press Next again."
+    ),
+    "setup.hint.taken": (
+        "A repository by that name already exists in your account. Choose another name."
+    ),
+    "setup.hint.add_to_app": (
+        "Pressless made the repository, but the Pressless app cannot reach it yet. On "
+        "GitHub, click your picture, then Settings, then Applications. Click Configure "
+        "beside Pressless App, click Select repositories, pick {repository}, and click Save. "
+        "Then press Next again."
+    ),
+    "setup.hint.app_cannot_reach": (
+        "The Pressless app cannot reach this repository. On GitHub, click your picture, then "
+        "Settings, then Applications, and check that Pressless App's installation includes "
+        "it. Then press Next again."
+    ),
+    "setup.hint.other_account": (
+        "You signed in to GitHub as {signed_in}, not {typed}. To use {typed}, switch to it "
+        "on github.com, or correct the name above. Then press Next to sign in again."
+    ),
+    "setup.hint.elsewhere": (
+        "This repository already puts a site on the web another way, so Pressless cannot "
+        "publish to it. Press Back and choose a different, new repository. Leave this one's "
+        "GitHub Pages settings as they are: changing them would take the site already there "
+        "offline."
+    ),
+    "setup.field.account": "Your GitHub account name",
+    "setup.field.repository_name": "The repository's name",
+    "setup.field.paste_key": "Paste the key here",
+    "setup.field.repository": "Your site's repository on GitHub (owner/name)",
+    "setup.field.site_name": "Your site's name",
+    "setup.field.site_description": "A short description of your site (optional)",
+    "setup.field.site_address": "Your site's address",
+    "setup.field.daily_prompt_filter": (
+        "Leave out entries with a tag matching (optional, for example dailyprompt-*)"
+    ),
+    "setup.field.measurement_id": (
+        "Google's measurement id, to count your visitors (optional, starts G-)"
+    ),
+    "setup.field.key": "Your publishing key",
+    "setup.help.repository": (
+        "Type the repository's owner and name with a slash between, as GitHub shows them at "
+        "the top of the repository's page: <b>owner/name</b>. They are also the end of that "
+        "page's address, after github.com/."
+    ),
+    "setup.help.repository.new": "To make a new repository:",
+    "setup.help.site_name": (
+        "Your own choice. Pressless puts it wherever your site's header and footer have a "
+        "place for the site's name."
+    ),
+    "setup.help.site_description": (
+        "One line about your site, in your own words. Pressless puts it wherever your site's "
+        "header and footer have a place for it. Leave it empty if you do not want one."
+    ),
+    "setup.help.site_address": (
+        "The address people type to reach your site, starting with https://. On GitHub, open "
+        "your site's repository and click <b>Settings</b>, then <b>Pages</b>: once the site "
+        "is live, its address is shown there."
+    ),
+    "setup.help.site_address.named": (
+        "A repository named <b>your-name.github.io</b> is at https://your-name.github.io. "
+        "Any other name is at https://your-name.github.io/<i>the-name</i>/. If you gave your "
+        "site a domain of your own under <b>Custom domain</b> on that page, type that "
+        "instead."
+    ),
+    "setup.help.daily_prompt_filter": (
+        "Pressless leaves off your site every entry with a tag that matches this. A <b>*</b> "
+        "stands for any letters, so <b>dailyprompt-*</b> matches dailyprompt-1 and "
+        "dailyprompt-2024. Capital letters must match too."
+    ),
+    "setup.help.daily_prompt_filter.empty": "Leave it empty to keep every entry.",
+    "setup.help.measurement_id": (
+        "It tells Google Analytics which counter your visitors are counted on. Leave it "
+        "empty and Pressless adds no counting code to your site. To find it:"
+    ),
+    "setup.help.measurement_id.1": (
+        "Open <a href=\"https://analytics.google.com\" target=\"_blank\" "
+        "rel=\"noopener\">analytics.google.com</a> and sign in."
+    ),
+    "setup.help.measurement_id.2": "Click <b>Admin</b>, the gear at the bottom left.",
+    "setup.help.measurement_id.3": (
+        "Under <b>Data collection and modification</b>, click <b>Data streams</b>, then your "
+        "site's stream. If there is none, click <b>Add stream</b>, then <b>Web</b>, and type "
+        "your site's address."
+    ),
+    "setup.help.measurement_id.4": "Copy the <b>Measurement ID</b>. It starts G-.",
+    "setup.help.key": (
+        "The key lets Pressless change your site's repository and its settings, and no other "
+        "repository. Leave the box empty to keep the key Pressless already has. To make a "
+        "new one:"
+    ),
+    "setup.signed_in": (
+        "Pressless is signed in to GitHub. Typing a key below replaces the sign-in. <a "
+        "href=\"/setup/github\">Sign in to GitHub again</a>."
+    ),
+    "setup.key_kept": "Leave the key box empty to keep the key Pressless already has.",
+    "setup.save": "Check the repository again and save",
+    "setup.starter.box": (
+        "Start with a plain site: a homepage, an About page, a menu, a header and a footer, "
+        "ready for you to change."
+    ),
+    "setup.starter.box.empty": (
+        "Leave it unticked if you will bring in a site you already have: that needs an empty "
+        "copy of Pressless."
+    ),
+    "setup.starter.unpublished": "Your starter site is not on the web yet.",
+    "setup.starter.publish": (
+        "To put it on the web, open <b>Home</b> under <b>Your pages</b> on your list, and "
+        "press <b>Press to site</b>."
+    ),
+    "setup.done": "Setup is done.",
+    "setup.done.address": "Your site's address is {link}.",
+    "setup.done.starter": (
+        "Your starter site is in place. It is not on the web until you publish it."
+    ),
+    "setup.done.left_alone": "Pressless will leave these alone on your site:",
+    "setup.done.nothing_left_alone": "Pressless found nothing on your site it must leave alone.",
+    "setup.done.kept_key": "Your publishing key is kept in {store}.",
+    "setup.done.kept_sign_in": "Your GitHub sign-in is kept in {store}.",
+    "setup.done.in_a_file": (
+        "No keyring was found on this computer, so it is kept in a file only your account "
+        "can read, in the Pressless-data folder."
+    ),
+    "setup.onward": "Go to your list",
+    "setup.google.on": (
+        "Visitor numbers are on: <a href=\"/setup/google\">change the site or turn them "
+        "off</a>."
+    ),
+    "setup.google.offer": (
+        "Optional: <a href=\"/setup/google\">see how many people read your site</a>, from "
+        "Google Analytics."
+    ),
+    "setup.privacy.failed": (
+        "Visitor counting is on, but the Privacy page or its link could not be added. Saving "
+        "again tries once more."
+    ),
+    "setup.privacy.page": (
+        "Your site now has a Privacy page saying that it counts visitors. Open it from Your "
+        "pages and add how people can reach you."
+    ),
+    "setup.privacy.link": "Your footer now links to the Privacy page.",
+    "setup.cannot_finish": "Setup cannot finish on this computer.",
+    "setup.name_not_moved": (
+        "Pressless could not move your site's name into your site's own files, and will try "
+        "again next time it starts: {reason}"
+    ),
+    "setup.shortcuts.unavailable": (
+        "Pressless can add itself to the menu and the desktop only when it runs from the "
+        "file you downloaded."
+    ),
+    "setup.shortcuts.title.windows": "Start Menu and desktop",
+    "setup.shortcuts.title": "App menu and desktop",
+    "setup.shortcuts.start_menu": "the Start Menu",
+    "setup.shortcuts.app_menu": "your app menu",
+    "setup.shortcuts.menu": "Put Pressless in {menu}",
+    "setup.shortcuts.desktop": "Put a Pressless icon on the desktop",
+    "setup.shortcuts.untick": "Untick a box and save to take that one away again.",
+    "setup.shortcuts.save": "Save these",
+    "setup.shortcuts.pinning.windows": (
+        "Pressless is in the Start Menu. To pin it to the taskbar, find it in the Start "
+        "Menu, right-click it and choose Pin to taskbar."
+    ),
+    "setup.shortcuts.pinning": (
+        "Pressless is in your app menu. To add it to your panel, find it in the menu, "
+        "right-click it and choose the option that pins it or adds it to the panel. Its name "
+        "differs between desktops."
+    ),
+    "setup.shortcuts.removed": "Pressless is no longer in {menu}.",
+    "setup.shortcuts.icon_added": "There is a Pressless icon on your desktop.",
+    "setup.shortcuts.icon_removed": "The Pressless icon is gone from your desktop.",
+    "setup.shortcuts.unchanged": "Nothing needed changing.",
 }
 
 def _literal(text: str) -> str:
