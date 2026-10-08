@@ -910,6 +910,62 @@ _WORDS: dict[str, str] = {
     "setup.shortcuts.icon_added": "There is a Pressless icon on your desktop.",
     "setup.shortcuts.icon_removed": "The Pressless icon is gone from your desktop.",
     "setup.shortcuts.unchanged": "Nothing needed changing.",
+    # The visitor numbers page and its card on the list (dashboard.py).
+    "dashboard.title": "Who is reading",
+    "dashboard.window.7": "Last 7 days",
+    "dashboard.window.7.phrase": "the last 7 days",
+    "dashboard.window.28": "Last 4 weeks",
+    "dashboard.window.28.phrase": "the last 4 weeks",
+    "dashboard.window.365": "Last 12 months",
+    "dashboard.window.365.phrase": "the last 12 months",
+    "dashboard.card.ask": "<a href=\"{page}\">See who is reading your site</a>",
+    "dashboard.card.read": (
+        "{people} read your site in {window}, as of {when}. <a href=\"{page}\">See where they "
+        "are</a>"
+    ),
+    "dashboard.off": (
+        "Visitor numbers are off. Pressless can read them from Google Analytics if you sign "
+        "in with Google: <a href=\"{page}\">turn on visitor numbers</a>."
+    ),
+    "dashboard.sign_in_again": (
+        "If Google no longer accepts the sign-in, <a href=\"{page}\">sign in again</a>."
+    ),
+    "dashboard.stale": (
+        "Pressless could not reach Google just now, so these are the numbers from {when}."
+    ),
+    "dashboard.updated": "Last updated {when}.",
+    "dashboard.count.none": "Nobody read your site in {window}, as far as Google can tell.",
+    "dashboard.count.one": "<b>{count}</b> <span>person read your site in {window}.</span>",
+    "dashboard.count.many": "<b>{count}</b> <span>people read your site in {window}.</span>",
+    "dashboard.day": "{day}: {people}",
+    "dashboard.nobody": "nobody",
+    "dashboard.each_day": "People each day",
+    "dashboard.each_month": "People each month",
+    "dashboard.where": "Where they are",
+    "dashboard.country": "Country",
+    "dashboard.people": "People",
+    "dashboard.unknown_country": "Somewhere Google could not tell",
+    "dashboard.how": "How they found you",
+    "dashboard.came_from": "Came from",
+    "dashboard.visits": "Visits",
+    "dashboard.channel.organic_search": "A search engine",
+    "dashboard.channel.paid_search": "A search advert",
+    "dashboard.channel.direct": "Typed the address or used a bookmark",
+    "dashboard.channel.referral": "A link on another site",
+    "dashboard.channel.organic_social": "Social media",
+    "dashboard.channel.paid_social": "A social media advert",
+    "dashboard.channel.email": "An email",
+    "dashboard.channel.organic_video": "A video site",
+    "dashboard.channel.unassigned": "Google could not tell",
+    "dashboard.what": "What they read",
+    "dashboard.page": "Page",
+    "dashboard.views": "Views",
+    "dashboard.time_on_page": "Time on page",
+    "dashboard.minutes": "{minutes}m {seconds}s",
+    "dashboard.seconds": "{seconds}s",
+    "dashboard.people.one": "1 person",
+    "dashboard.people.many": "{count} people",
+    "dashboard.when": "{date} at {clock}",
 }
 
 def _literal(text: str) -> str:

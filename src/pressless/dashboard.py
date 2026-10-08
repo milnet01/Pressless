@@ -32,15 +32,14 @@ from pressless.words import say
 
 PAGE = "/visitors"
 
-# (days, the button's words, the sentence's words). 28 is Insights' default.
+# (days, the button's key, the sentence's key). 28 is Insights' default.
 WINDOWS = (
-    (7, "Last 7 days", "the last 7 days"),
-    (28, "Last 4 weeks", "the last 4 weeks"),
-    (365, "Last 12 months", "the last 12 months"),
+    (7, "dashboard.window.7", "dashboard.window.7.phrase"),
+    (28, "dashboard.window.28", "dashboard.window.28.phrase"),
+    (365, "dashboard.window.365", "dashboard.window.365.phrase"),
 )
 DEFAULT_DAYS = insights.DEFAULT_DAYS
 
-_UNKNOWN_NAME = "Somewhere Google could not tell"
 # Theme colours only, so the page follows whichever look he picked. One
 # movement: the bars grow in once, and not at all where motion is turned down.
 _STYLE = """<style>
@@ -93,9 +92,10 @@ _STYLE = """<style>
 @media (prefers-reduced-motion: reduce) {
   .face .strip li, .face .meter i { animation: none; } }
 </style>"""
-_BACK = '<p><a href="/">Back to your writing</a></p>'
-_SIGN_IN_AGAIN = (f'<p>If Google no longer accepts the sign-in, '
-                  f'<a href="{google_setup.PAGE}">sign in again</a>.</p>')
+
+
+def _sign_in_again() -> str:
+    return f'<p>{say("dashboard.sign_in_again", page=google_setup.PAGE)}</p>'
 
 
 def register(face: Face, folder: Path, *,
@@ -104,7 +104,8 @@ def register(face: Face, folder: Path, *,
     is the Transport double a test hands in, as `google_setup.register` takes."""
     folder = Path(folder)
     face.add_page("GET", PAGE,
-                  lambda request: _show(face, folder, request, client) + _BACK)
+                  lambda request: _show(face, folder, request, client)
+                  + f'<p><a href="/">{say("script.undo.back")}</a></p>')
     face.add_to_list(lambda: _card(face, folder), above=True)
 
 
@@ -117,7 +118,7 @@ def _days(raw: str) -> int:
 
 
 def _sentence(days: int) -> str:
-    return next(words for count, _, words in WINDOWS if count == days)
+    return say(next(key for count, _, key in WINDOWS if count == days))
 
 
 def _settings(face: Face, folder: Path) -> tuple[settings.Settings | None, str]:
@@ -155,12 +156,11 @@ def _card(face: Face, folder: Path) -> str:
         return ""
     kept = insights._cached(insights.cache_path(folder), DEFAULT_DAYS)
     if kept is None:
-        line = f'<a href="{PAGE}">See who is reading your site</a>'
+        line = say("dashboard.card.ask", page=PAGE)
     else:
-        line = (f"{_people(kept.people)} read your site in "
-                f"{_sentence(DEFAULT_DAYS)}, as of {_when(kept.fetched_at)}. "
-                f'<a href="{PAGE}">See where they are</a>')
-    return f'<section class="card"><h2>Who is reading</h2><p>{line}</p></section>'
+        line = say("dashboard.card.read", people=_people(kept.people),
+                   window=_sentence(DEFAULT_DAYS), when=_when(kept.fetched_at), page=PAGE)
+    return f'<section class="card"><h2>{say("dashboard.title")}</h2><p>{line}</p></section>'
 
 
 # ---------------------------------------------------------------- the page ----
@@ -170,14 +170,11 @@ def _show(face: Face, folder: Path, request: Request,
           client: insights.Transport | None) -> str:
     days = _days(request.query.get("days", ""))
     saved, shown = _settings(face, folder)
-    head = _STYLE + "<h1>Who is reading</h1>"
+    head = _STYLE + f'<h1>{say("dashboard.title")}</h1>'
     if saved is None:
-        return (shown + head + "<p>Set up Pressless first, "
-                '<a href="/setup">on the setup page</a>.</p>')
+        return shown + head + f'<p>{say("setup.first")}</p>'
     if not _set_up(saved):
-        return (shown + head + "<p>Visitor numbers are off. Pressless can read them "
-                "from Google Analytics if you sign in with Google: "
-                f'<a href="{google_setup.PAGE}">turn on visitor numbers</a>.</p>')
+        return shown + head + f'<p>{say("dashboard.off", page=google_setup.PAGE)}</p>'
     head += _windows(days)
     try:
         token = google_setup.token(folder)
@@ -188,14 +185,14 @@ def _show(face: Face, folder: Path, request: Request,
     except (insights.InsightsError, *google_setup._CREDENTIAL_FAILURES) as exc:
         return (shown + head
                 + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
-                + _SIGN_IN_AGAIN)
+                + _sign_in_again())
     else:
         try:
             report = insights.read(saved, token, folder, days=days, client=client)
         except insights.Refused as exc:
             return (shown + head
                     + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
-                    + _SIGN_IN_AGAIN)
+                    + _sign_in_again())
         except insights.InsightsError as exc:
             return shown + head + face.fail(exc, publishing=False)
     return shown + head + _report(report, saved.site_address)
@@ -203,7 +200,8 @@ def _show(face: Face, folder: Path, request: Request,
 
 def _windows(days: int) -> str:
     links = []
-    for count, label, _ in WINDOWS:
+    for count, key, _ in WINDOWS:
+        label = say(key)
         if count == days:
             links.append(f'<strong aria-current="page">{label}</strong>')
         else:
@@ -212,17 +210,17 @@ def _windows(days: int) -> str:
 
 
 def _report(report: insights.Report, address: str = "") -> str:
+    fetched = _when(report.fetched_at)
     if report.stale:
-        when = (f"<p>Pressless could not reach Google just now, so these are the "
-                f"numbers from {_when(report.fetched_at)}.</p>")
+        when = f'<p>{say("dashboard.stale", when=fetched)}</p>'
     else:
-        when = f"<p>Last updated {_when(report.fetched_at)}.</p>"
+        when = f'<p>{say("dashboard.updated", when=fetched)}</p>'
+    window = _sentence(report.days)
     if report.people == 0:
-        count = f"Nobody read your site in {_sentence(report.days)}, as far as Google can tell."
+        count = say("dashboard.count.none", window=window)
     else:
-        noun = "person" if report.people == 1 else "people"
-        count = (f"<b>{report.people:,}</b> <span>{noun} read your site in "
-                 f"{_sentence(report.days)}.</span>")
+        key = "dashboard.count.one" if report.people == 1 else "dashboard.count.many"
+        count = say(key, count=f"{report.people:,}", window=window)
     page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + when
     cards = [_countries(report.countries), _sources(report.sources),
              _pages(report.pages, address)]
@@ -236,13 +234,15 @@ def _strip(days: tuple[insights.Day, ...]) -> str:
     top = max(day.people for day in days) or 1
     bars = []
     for i, day in enumerate(days):
-        tip = f"{_day_name(day.label)}: {_people(day.people) if day.people else 'nobody'}"
+        tip = say("dashboard.day", day=_day_name(day.label),
+                  people=_people(day.people) if day.people else say("dashboard.nobody"))
         none = ' class="none"' if day.people == 0 else ""
         bars.append(f'<li{none} tabindex="0" data-tip="{html.escape(tip, quote=True)}" '
                     f'aria-label="{html.escape(tip, quote=True)}" '
                     f'style="--h:{100 * day.people / top:.1f}%;--d:{min(i, 60) * 12}ms"></li>')
-    by = "month" if len(days[0].label) == 7 else "day"
-    return (f'<ol class="strip" aria-label="People each {by}">{"".join(bars)}</ol>'
+    by = say("dashboard.each_month" if len(days[0].label) == 7 else "dashboard.each_day")
+    by = html.escape(by, quote=True)
+    return (f'<ol class="strip" aria-label="{by}">{"".join(bars)}</ol>'
             f'<p class="strip-ends"><span>{_day_name(days[0].label)}</span>'
             f"<span>{_day_name(days[-1].label)}</span></p>")
 
@@ -275,21 +275,23 @@ def _countries(countries: tuple[insights.Country, ...]) -> str:
         f"<tr><td>{_flag(country.code)}{html.escape(_name(country.code))}"
         f"{_meter(country.people, top)}</td><td class=\"num\">{country.people:,}</td></tr>"
         for country in countries)
-    return _panel("Where they are",
-                 '<th scope="col">Country</th><th scope="col" class="num">People</th>', rows)
+    return _panel(say("dashboard.where"),
+                 f'<th scope="col">{say("dashboard.country")}</th>'
+                 f'<th scope="col" class="num">{say("dashboard.people")}</th>', rows)
 
 
-# Google's channel groups, in his words. Anything new falls back to Google's.
+# Google's channel groups, and the keys of his words for them. Anything new
+# falls back to Google's.
 _CHANNELS = {
-    "Organic Search": "A search engine",
-    "Paid Search": "A search advert",
-    "Direct": "Typed the address or used a bookmark",
-    "Referral": "A link on another site",
-    "Organic Social": "Social media",
-    "Paid Social": "A social media advert",
-    "Email": "An email",
-    "Organic Video": "A video site",
-    "Unassigned": "Google could not tell",
+    "Organic Search": "dashboard.channel.organic_search",
+    "Paid Search": "dashboard.channel.paid_search",
+    "Direct": "dashboard.channel.direct",
+    "Referral": "dashboard.channel.referral",
+    "Organic Social": "dashboard.channel.organic_social",
+    "Paid Social": "dashboard.channel.paid_social",
+    "Email": "dashboard.channel.email",
+    "Organic Video": "dashboard.channel.organic_video",
+    "Unassigned": "dashboard.channel.unassigned",
 }
 
 
@@ -299,7 +301,8 @@ def _sources(sources: tuple[insights.Source, ...]) -> str:
     top = max(source.visits for source in sources)
     rows = []
     for source in sources:
-        how = html.escape(_CHANNELS.get(source.channel, source.channel))
+        key = _CHANNELS.get(source.channel)
+        how = html.escape(say(key) if key else source.channel)
         where = "" if source.source in ("(direct)", "(not set)", "") else source.source
         if source.channel.endswith("Search") and "." not in where:
             where = where.title()   # "google" is an engine's name, so "Google"
@@ -307,9 +310,10 @@ def _sources(sources: tuple[insights.Source, ...]) -> str:
         rows.append(f"<tr><td>{how}{detail}{_meter(source.visits, top)}</td>"
                     f'<td class="num">{source.visits:,}</td>'
                     f'<td class="num">{source.people:,}</td></tr>')
-    return _panel("How they found you",
-                 '<th scope="col">Came from</th><th scope="col" class="num">Visits</th>'
-                 '<th scope="col" class="num">People</th>', "".join(rows))
+    return _panel(say("dashboard.how"),
+                 f'<th scope="col">{say("dashboard.came_from")}</th>'
+                 f'<th scope="col" class="num">{say("dashboard.visits")}</th>'
+                 f'<th scope="col" class="num">{say("dashboard.people")}</th>', "".join(rows))
 
 
 def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
@@ -318,19 +322,23 @@ def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
     top = max(page.views for page in pages)
     base = address.rstrip("/")
     rows = []
+    views = html.escape(say("dashboard.views"), quote=True)
+    people = html.escape(say("dashboard.people"), quote=True)
+    spent = html.escape(say("dashboard.time_on_page"), quote=True)
     for page in pages:
         shown = html.escape(page.path)
         link = (f'<a href="{html.escape(base + page.path, quote=True)}" target="_blank" '
                 f'rel="noopener">{shown}</a>' if base and page.path.startswith("/") else shown)
         rows.append(f"<tr><td>{link}{_meter(page.views, top)}</td>"
-                    f'<td class="num" data-label="Views">{page.views:,}</td>'
-                    f'<td class="num" data-label="People">{page.people:,}</td>'
-                    f'<td class="num" data-label="Time on page">'
+                    f'<td class="num" data-label="{views}">{page.views:,}</td>'
+                    f'<td class="num" data-label="{people}">{page.people:,}</td>'
+                    f'<td class="num" data-label="{spent}">'
                     f"{_duration(page.seconds)}</td></tr>")
-    return _panel("What they read",
-                 '<th scope="col">Page</th><th scope="col" class="num">Views</th>'
-                 '<th scope="col" class="num">People</th>'
-                 '<th scope="col" class="num">Time on page</th>', "".join(rows), wide=True)
+    return _panel(say("dashboard.what"),
+                 f'<th scope="col">{say("dashboard.page")}</th>'
+                 f'<th scope="col" class="num">{views}</th>'
+                 f'<th scope="col" class="num">{people}</th>'
+                 f'<th scope="col" class="num">{spent}</th>', "".join(rows), wide=True)
 
 
 def _duration(seconds: float) -> str:
@@ -338,21 +346,27 @@ def _duration(seconds: float) -> str:
     if whole <= 0:
         return "–"
     minutes, rest = divmod(whole, 60)
-    return f"{minutes}m {rest:02d}s" if minutes else f"{rest}s"
+    if minutes:
+        return say("dashboard.minutes", minutes=str(minutes), seconds=f"{rest:02d}")
+    return say("dashboard.seconds", seconds=str(rest))
 
 
 def _people(count: int) -> str:
-    return "1 person" if count == 1 else f"{count:,} people"
+    if count == 1:
+        return say("dashboard.people.one")
+    return say("dashboard.people.many", count=f"{count:,}")
 
 
 def _when(moment: float) -> str:
-    return time.strftime("%d %b %Y at %H:%M", time.localtime(moment))
+    local = time.localtime(moment)
+    return say("dashboard.when", date=time.strftime("%d %b %Y", local),
+               clock=time.strftime("%H:%M", local))
 
 
 def _name(code: str) -> str:
     if code == insights.UNKNOWN_COUNTRY:
-        return _UNKNOWN_NAME
-    return _flag_data.NAMES.get(code, code)
+        return say("dashboard.unknown_country")
+    return say("country." + code) if code in _flag_data.NAMES else code
 
 
 def _flag(code: str) -> str:
