@@ -14,30 +14,39 @@ import re
 from pathlib import Path
 
 from pressless import builder, store, templates
+from pressless.words import say
 
 MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
 
 # Shipped to every install, so they name nobody and assume nothing about the
 # user (§ 4.3). The header and footer name the site by placeholder, so a
-# rename in the Store reaches every page (PRESS-0213 § 4.6).
-_HEADER = """<!-- The site's header: every page is built with it. -->
-<header class="site">
-  <a class="site-name" href="{{UP}}index.html">{{SITE_NAME}}</a>
-  <p class="site-description">{{SITE_DESCRIPTION}}</p>
-{{NAVIGATION}}
-</header>
-"""
+# rename in the Store reaches every page (PRESS-0213 § 4.6). Their words are
+# looked up when a site is filled; the {{...}} placeholders and the data-nav
+# names are the Builder's, and stay.
 
-_NAVIGATION = """  <nav class="primary" aria-label="Primary">
-    <a href="{{UP}}index.html" data-nav="Home">Home</a>
-    <a href="{{UP}}pages/about.html" data-nav="about">About</a>
-  </nav>"""
 
-_FOOTER = """<!-- The site's footer: every page is built with it. -->
-<footer class="site">
-  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>
-</footer>
-"""
+def _header() -> str:
+    return (f"<!-- {say('starter.header_note')} -->\n"
+            + '<header class="site">\n'
+            + '  <a class="site-name" href="{{UP}}index.html">{{SITE_NAME}}</a>\n'
+            + '  <p class="site-description">{{SITE_DESCRIPTION}}</p>\n'
+            + "{{NAVIGATION}}\n"
+            + "</header>\n")
+
+
+def _navigation() -> str:
+    primary = html.escape(say("starter.menu"), quote=True)
+    return (f'  <nav class="primary" aria-label="{primary}">\n'
+            + '    <a href="{{UP}}index.html" data-nav="Home">' + say("starter.home") + "</a>\n"
+            + '    <a href="{{UP}}pages/about.html" data-nav="about">' + say("starter.about")
+            + "</a>\n  </nav>")
+
+
+def _footer() -> str:
+    return (f"<!-- {say('starter.footer_note')} -->\n"
+            + '<footer class="site">\n'
+            + "  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>\n"
+            + "</footer>\n")
 
 _PAGE = """<!doctype html>
 <html lang="en">
@@ -63,8 +72,7 @@ _PAGE = """<!doctype html>
 # Large type, dark on light, underlined links and a visible focus ring: the
 # first user is partially sighted (§ 4.3). Contrast on #ffffff, by the WCAG
 # formula: #1a1a1a 17.4:1, #0b4fa8 7.8:1, #3a3a3a 11.4:1.
-_STYLE_CODE = """/* Your site's look. Change anything here; Pressless publishes it as it is. */
-
+_STYLE_RULES = """
 html { font-size: 112.5%; }
 body {
   margin: 0;
@@ -91,13 +99,18 @@ footer.site { border-top: 2px solid #1a1a1a; margin-top: 2rem; font-size: 0.95re
 h1, h2, h3 { line-height: 1.25; }
 img { max-width: 100%; height: auto; }
 
-/* The journal's pages, should you turn it on. */
-.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: #3a3a3a; }
+"""
+_JOURNAL_RULES = """.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: #3a3a3a; }
 .post-list, .comment-list { list-style: none; padding: 0; }
 .post-list li, .comment { margin-bottom: 1.25rem; }
 .chip { display: inline-block; margin: 0 0.5rem 0.5rem 0; }
 .pager, .back { margin-top: 2rem; }
 """
+
+
+def _style_code() -> str:
+    return (f"/* {say('starter.style_note')} */\n" + _STYLE_RULES
+            + f"/* {say('starter.journal_note')} */\n" + _JOURNAL_RULES)
 
 
 # PRESS-0199 § 4.5: the disclosure counting needs, in the starter pages'
@@ -107,27 +120,18 @@ _PRIVACY = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Privacy — {name}</title>
+  <title>{title}</title>
   {links}
 </head>
 <body>
   <!-- HEADER:START page="privacy" -->
   <!-- HEADER:END -->
   <main class="page">
-    <h1>Privacy</h1>
-    <p>This site counts its visits with Google Analytics, a service run by Google.
-    Google Analytics uses cookies, small files your browser keeps, to tell one
-    visit from another.</p>
-    <p>What is counted: the pages read, the country and region a visit comes
-    from, and the kind of device and browser used. The counts are used only to
-    see how the site is read.</p>
-    <p>Google's own privacy policy says what Google does with this information:
-    <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.
-    To stop Google Analytics counting your visits to any site, you can install
-    Google's <a href="https://tools.google.com/dlpage/gaoptout">opt-out browser
-    add-on</a>.</p>
-    <p>Questions about your information: replace this sentence with how to reach
-    the person who runs this site.</p>
+    <h1>{heading}</h1>
+    <p>{counting}</p>
+    <p>{counted}</p>
+    <p>{policy}</p>
+    <p>{questions}</p>
   </main>
   <!-- FOOTER:START -->
   <!-- FOOTER:END -->
@@ -135,7 +139,6 @@ _PRIVACY = """<!doctype html>
 </html>
 """
 
-PRIVACY_LINK = '<a href="{{UP}}pages/privacy.html">Privacy</a>'
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
 
 
@@ -143,14 +146,23 @@ def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
     """The Privacy page, linking each stylesheet from depth 1."""
     links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
                       for sheet in sheets)
-    return _PRIVACY.format(name=html.escape(site_name, quote=True), links=links)
+    return _PRIVACY.format(
+        title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
+        links=links, heading=say("starter.privacy"),
+        counting=say("starter.privacy.counting"), counted=say("starter.privacy.counted"),
+        policy=say("starter.privacy.policy"), questions=say("starter.privacy.questions"))
+
+
+def privacy_link() -> str:
+    """The footer's link to the Privacy page."""
+    return '<a href="{{UP}}pages/privacy.html">' + say("starter.privacy") + "</a>"
 
 
 def privacy_name(folder: Path) -> str:
     """The name the Privacy page carries: the Store's, else "this site"
     (PRESS-0213 § 4.6). A malformed identity file raises StoreError."""
     identity = store.read_identity(folder)
-    return identity.name if identity is not None else "this site"
+    return identity.name if identity is not None else say("starter.this_site")
 
 
 def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
@@ -173,7 +185,7 @@ def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
             end = _FOOTER_END.search(text)
             at = end.start() if end else len(text)
             store.write_html(folder, store.FURNITURE_FOLDER, "footer",
-                             text[:at] + PRIVACY_LINK + "\n" + text[at:])
+                             text[:at] + privacy_link() + "\n" + text[at:])
             added_link = True
     return added_page, added_link
 
@@ -205,21 +217,20 @@ def fill(folder: Path, site_name: str) -> None:
 
     name = html.escape(site_name, quote=True)
     files = (
-        (store.FURNITURE_FOLDER, "header", _HEADER),
-        (store.FURNITURE_FOLDER, "navigation", _NAVIGATION),
-        (store.FURNITURE_FOLDER, "footer", _FOOTER),
+        (store.FURNITURE_FOLDER, "header", _header()),
+        (store.FURNITURE_FOLDER, "navigation", _navigation()),
+        (store.FURNITURE_FOLDER, "footer", _footer()),
         (store.PAGES_FOLDER, "index", _PAGE.format(
-            title=name, up="", page="Home", heading=f"Welcome to {name}",
-            words="This is your homepage. Change these words to say what your "
-                  "site is about.")),
+            title=name, up="", page="Home", heading=say("starter.welcome", name=name),
+            words=say("starter.home.words"))),
         (store.PAGES_FOLDER, "about", _PAGE.format(
-            title=f"About — {name}", up="../", page="about", heading="About",
-            words="Say who you are and what this site is for.")),
+            title=say("starter.about.title", name=name), up="../", page="about",
+            heading=say("starter.about"), words=say("starter.about.words"))),
     )
     for kind, file_name, text in files:
         if not store.html_path_for(folder, kind, file_name).exists():
             store.write_html(folder, kind, file_name, text)
     if not store.style_code_path(folder).exists():
-        store.write_style_code(folder, _STYLE_CODE)
+        store.write_style_code(folder, _style_code())
     templates.seed(folder)
     store.write_journal(folder, False)

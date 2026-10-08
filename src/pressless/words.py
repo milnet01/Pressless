@@ -1085,6 +1085,45 @@ _WORDS: dict[str, str] = {
     "templates.journal.body": "What happened, in your own words.",
     # The desktop and menu shortcut's tooltip (shortcuts.py).
     "shortcuts.comment": "Write and publish your own site",
+    # The starter site and its Privacy page (starter.py).
+    "starter.header_note": "The site's header: every page is built with it.",
+    "starter.footer_note": "The site's footer: every page is built with it.",
+    "starter.menu": "Primary",
+    "starter.home": "Home",
+    "starter.about": "About",
+    "starter.welcome": "Welcome to {name}",
+    "starter.home.words": (
+        "This is your homepage. Change these words to say what your site is about."
+    ),
+    "starter.about.title": "About — {name}",
+    "starter.about.words": "Say who you are and what this site is for.",
+    "starter.style_note": (
+        "Your site's look. Change anything here; Pressless publishes it as it is."
+    ),
+    "starter.journal_note": "The journal's pages, should you turn it on.",
+    "starter.this_site": "this site",
+    "starter.privacy": "Privacy",
+    "starter.privacy.title": "Privacy — {name}",
+    "starter.privacy.counting": (
+        "This site counts its visits with Google Analytics, a service run by Google. Google "
+        "Analytics uses cookies, small files your browser keeps, to tell one visit from "
+        "another."
+    ),
+    "starter.privacy.counted": (
+        "What is counted: the pages read, the country and region a visit comes from, and the "
+        "kind of device and browser used. The counts are used only to see how the site is "
+        "read."
+    ),
+    "starter.privacy.policy": (
+        "Google's own privacy policy says what Google does with this information: <a "
+        "href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>. To stop "
+        "Google Analytics counting your visits to any site, you can install Google's <a "
+        "href=\"https://tools.google.com/dlpage/gaoptout\">opt-out browser add-on</a>."
+    ),
+    "starter.privacy.questions": (
+        "Questions about your information: replace this sentence with how to reach the "
+        "person who runs this site."
+    ),
 }
 
 def _literal(text: str) -> str:
