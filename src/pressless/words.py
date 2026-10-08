@@ -353,6 +353,96 @@ _WORDS: dict[str, str] = {
     "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
     "face.report": "Suggest or report a problem",
+    # The editor and the list (editor.py).
+    "editor.journal.on": (
+        "Your journal is on: each published entry has a page of its own on your site, and "
+        "your journal lists them, newest first."
+    ),
+    "editor.journal.on_published": (
+        "Turning it off takes your published entries off your site at your next publish; "
+        "turning it on again brings them back."
+    ),
+    "editor.journal.turn_off": "Turn the journal off",
+    "editor.journal.off": (
+        "Your journal is off. A journal is the dated part of a site, like a blog: each entry "
+        "gets a page of its own, and the journal lists them, newest first. While it is off, "
+        "your entries stay here and are not on your site. If your menu links to the journal, "
+        "that link stays until you remove it from the header or navigation in Your pages."
+    ),
+    "editor.journal.turn_on": "Turn the journal on",
+    "editor.site_line.unnamed": "Your site",
+    "editor.site_line": "Editing <b>{name}</b> at {address}",
+    "editor.list.pages_unreadable": "Pressless cannot open your pages folder.",
+    "editor.list.changed": "changes not on your site yet",
+    "editor.list.untitled": "untitled",
+    "editor.list.unreadable": "Pressless cannot open this file",
+    "editor.list.none": "None yet.",
+    "editor.list.new": "New entry",
+    "editor.list.drafts": "Drafts",
+    "editor.list.on_site": "On your site",
+    "editor.list.pages": "Your pages",
+    "editor.list.blank": "A blank entry",
+    "editor.list.start_from": "Start from",
+    "editor.pages.home": "Home",
+    "editor.pages.header": "Header",
+    "editor.pages.footer": "Footer",
+    "editor.pages.navigation": "Navigation",
+    "editor.title": "Title",
+    "editor.categories": "Categories",
+    "editor.tags": "Tags",
+    "editor.address": "Address",
+    "editor.change_address": "Change address",
+    "editor.press": "Press to site",
+    "editor.undo": "Undo the last press",
+    "editor.add_photograph": "Add a photograph",
+    "editor.throw_draft": "Throw this draft away",
+    "editor.proof_title": "Proof (preview)",
+    "editor.bin_proof": "Bin this proof",
+    "editor.standing.published": (
+        "This entry is on your site. Your changes stay on this computer until you publish it."
+    ),
+    "editor.standing.waiting": "These changes are not on your site yet.",
+    "editor.standing.draft": "A draft. It is not on your site.",
+    "editor.hint.gone": "This entry is not there any more.",
+    "editor.hint.proof": "A proof's address cannot be changed.",
+    "editor.hint.proof_waiting": (
+        "Press your changes to your site, or bin this proof, then change the address."
+    ),
+    "editor.hint.bad_address": "An address uses only the letters a to z, the digits 0 to 9 and -.",
+    "editor.hint.taken": "Another entry already uses that address.",
+    "editor.hint.forwarded": "Another entry's old address forwards from there.",
+    "script.standing.on_site": "On your site",
+    "script.standing.changes": "Changes not published yet",
+    "script.standing.off_site": "Not on your site yet",
+    "script.undo.back": "Back to your writing",
+    "script.undo.unreachable": "Pressless could not reach itself. Your site was not changed.",
+    "script.editor.throw_entry": "Throw this entry away",
+    "script.editor.not_saved": "Not saved",
+    "script.editor.missing_one": (
+        "Pressless does not have this photograph: {names}. Add it with Add a photograph, or "
+        "correct the name, before you press this entry to your site."
+    ),
+    "script.editor.missing_many": (
+        "Pressless does not have these photographs: {names}. Add each with Add a photograph, "
+        "or correct the name, before you press this entry to your site."
+    ),
+    "script.editor.saving": "Saving",
+    "script.editor.saved": "Saved",
+    "script.editor.adding_photograph": "Adding the photograph\u2026",
+    "script.editor.photograph_added": "Added {name}.",
+    "script.editor.confirm_address": (
+        "Change this entry's address? It moves now in your Pressless-data folder, and on "
+        "your site the next time you press to site. Links to the old address will still "
+        "reach it."
+    ),
+    "script.editor.confirm_throw_entry": (
+        "Throw this entry away? It moves to the bin in your Pressless-data folder now, and "
+        "leaves your site the next time you press to site. Undo the last press can bring it "
+        "back after that."
+    ),
+    "script.editor.confirm_throw_draft": (
+        "Throw this draft away? It moves to the bin in your Pressless-data folder."
+    ),
 }
 
 def _literal(text: str) -> str:

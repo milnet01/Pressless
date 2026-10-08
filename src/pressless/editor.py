@@ -35,6 +35,7 @@ from pressless.face import (
     render_notices,
     within,
 )
+from pressless.words import say
 
 PREVIEW_FOLDER = "preview"          # inside Pressless's own folder; the Face's alone
 REPLACES = "Replaces"               # the header naming the published entry a copy changes
@@ -264,19 +265,13 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
     if journal is None:
         return ""
     if journal:
-        said = ("Your journal is on: each published entry has a page of its own on "
-                "your site, and your journal lists them, newest first.")
+        said = say("editor.journal.on")
         if published:
-            said += (" Turning it off takes your published entries off your site "
-                     "at your next publish; turning it on again brings them back.")
-        button = "Turn the journal off"
+            said += " " + say("editor.journal.on_published")
+        button = say("editor.journal.turn_off")
     else:
-        said = ("Your journal is off. A journal is the dated part of a site, like a "
-                "blog: each entry gets a page of its own, and the journal lists them, "
-                "newest first. While it is off, your entries stay here and are not on "
-                "your site. If your menu links to the journal, that link stays until "
-                "you remove it from the header or navigation in Your pages.")
-        button = "Turn the journal on"
+        said = say("editor.journal.off")
+        button = say("editor.journal.turn_on")
     return (f'<form method="post" action="/journal" class="switch-row"><p>{said}</p>'
             f"<button>{button}</button></form>")
 
@@ -290,11 +285,12 @@ def _site_line(folder: Path) -> str:
     except (store.StoreError, settings.SettingsError, settings.NotSetUp):
         return ""
     e = html.escape
-    name = identity.name if identity is not None and identity.name else "Your site"
+    name = (identity.name if identity is not None and identity.name
+            else say("editor.site_line.unnamed"))
     shown = re.sub(r"^https?://", "", address).rstrip("/")
-    return (f'<p class="site-line">Editing <b>{e(name)}</b> at '
-            f'<a href="{e(address, quote=True)}" target="_blank" rel="noopener">'
-            f"{e(shown)}</a></p>")
+    link = (f'<a href="{e(address, quote=True)}" target="_blank" rel="noopener">'
+            f"{e(shown)}</a>")
+    return f'<p class="site-line">{say("editor.site_line", name=e(name), address=link)}</p>'
 
 
 def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -324,7 +320,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             pages = _pages(folder)
         except store.StoreError as exc:
             first_failure = first_failure or exc
-            pages = "<p>Pressless cannot open your pages folder.</p>"
+            pages = f"<p>{say('editor.list.pages_unreadable')}</p>"
         site = _site_line(folder)
         try:
             journal: bool | None = store.journal_on(folder)
@@ -343,40 +339,40 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                          key=lambda entry: entry.date, reverse=True)
         items = []
         for entry in ordered:
-            note = (" <em>changes not on your site yet</em>"
-                    if entry.slug in changed else "")
+            note = f" <em>{say('editor.list.changed')}</em>" if entry.slug in changed else ""
             items.append(
                 f'<li><a href="{html.escape(_edit_address(entry.slug), quote=True)}">'
-                f"{html.escape(entry.title or 'untitled')}</a> "
+                f"{html.escape(entry.title or say('editor.list.untitled'))}</a> "
                 f"<small>{entry.date:%d %b %Y}</small>{note}</li>")
-        items.extend(f"<li>{html.escape(slug)} <em>Pressless cannot open this file</em></li>"
+        items.extend(f"<li>{html.escape(slug)} <em>{say('editor.list.unreadable')}</em></li>"
                      for slug in broken)
-        return "<ul>" + "".join(items) + "</ul>" if items else "<p>None yet.</p>"
+        return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"
 
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
     # PRESS-0235 § 4.5: the list's press row is the undo line.
     said, running, ended = pressing.shown("")
     return (render_notices(notices) + failure +
-            '<h1>Your writing</h1>' + site
+            f"<h1>{say('face.your_writing')}</h1>" + site
             # PRESS-0023 § 4.9: what other parts show here, without this
             # module importing them.
             + "".join(face.list_pieces(above=True)) +
             f'<div id="undo-result">{ended or ""}</div>'
             '<div id="listing">'
-            '<form method="post" action="/new"><label>Title '
+            f'<form method="post" action="/new"><label>{say("editor.title")} '
             '<input name="title" autocomplete="off"></label> '
             f"{_template_choice(folder)}"
-            "<button>New entry</button></form>"
+            f"<button>{say('editor.list.new')}</button></form>"
             # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
             # showing it (§ 3 decision 3).
-            '<p><button type="button" data-undo>Undo the last press</button> '
+            f'<p><button type="button" data-undo>{say("editor.undo")}</button> '
             f'<span id="undo-status"{_RUNNING if running else ""}>{html.escape(said)}</span></p>'
             f"{_journal_switch(journal, bool(published))}"
             # PRESS-0189: each list is a card.
-            f'<section class="card"><h2>Drafts</h2>{rows(drafts, unreadable[True])}</section>'
-            '<section class="card"><h2>On your site</h2>'
+            f'<section class="card"><h2>{say("editor.list.drafts")}</h2>'
+            f"{rows(drafts, unreadable[True])}</section>"
+            f'<section class="card"><h2>{say("editor.list.on_site")}</h2>'
             f"{rows(readable[False], unreadable[False])}</section>"
-            f'<section class="card"><h2>Your pages</h2>{pages}</section>'
+            f'<section class="card"><h2>{say("editor.list.pages")}</h2>{pages}</section>'
             "</div>"
             + "".join(face.list_pieces(above=False)) +
             f"<script>{_UNDO_SCRIPT}</script>")
@@ -385,7 +381,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
 def _template_choice(folder: Path) -> str:
     """PRESS-0017 § 4.3: a blank entry first, then each template that reads,
     labelled with its title or, where that is empty, its name."""
-    options = ['<option value="">A blank entry</option>']
+    options = [f'<option value="">{say("editor.list.blank")}</option>']
     try:
         names = store.list_templates(folder)
     except store.StoreError:
@@ -397,21 +393,24 @@ def _template_choice(folder: Path) -> str:
             continue
         options.append(f'<option value="{html.escape(name, quote=True)}">'
                        f"{html.escape(label)}</option>")
-    return f'<label>Start from <select name="template">{"".join(options)}</select></label> '
+    return (f'<label>{say("editor.list.start_from")} <select name="template">'
+            f'{"".join(options)}</select></label> ')
 
 
 def _pages(folder: Path) -> str:
     """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
     saying where its changes are not on the site yet. Drawn from the Store
     alone, so this module imports nothing of page_editor.py."""
-    rows = [(store.PAGES_FOLDER, name, "Home" if name == "index" else name)
+    rows = [(store.PAGES_FOLDER, name, say("editor.pages.home") if name == "index" else name)
             for name in store.list_html(folder, store.PAGES_FOLDER)]
-    rows += [(store.FURNITURE_FOLDER, name, name.capitalize())
-             for name in ("header", "footer", "navigation")]
+    rows += [(store.FURNITURE_FOLDER, name, say(key))
+             for name, key in (("header", "editor.pages.header"),
+                               ("footer", "editor.pages.footer"),
+                               ("navigation", "editor.pages.navigation"))]
     items = []
     for kind, name, label in rows:
         address = "/page?" + urllib.parse.urlencode({"kind": kind, "name": name})
-        note = (" <em>changes not on your site yet</em>"
+        note = (f" <em>{say('editor.list.changed')}</em>"
                 if store.html_path_for(folder, kind, name, waiting=True).is_file() else "")
         items.append(f'<li><a href="{html.escape(address, quote=True)}">'
                      f"{html.escape(label)}</a>{note}</li>")
@@ -487,58 +486,58 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     # into a published entry's, without reloading it; the script shows the one
     # that holds and names the copy (PRESS-0162, PRESS-0185).
     standing = (f'<div id="standing"{"" if on_site else " hidden"}>'
-                f'<p data-when="0"{published}>This entry is on your site. Your changes stay on '
-                "this computer until you publish it.</p>"
-                f'<p data-when="1"{waiting}>These changes are not on your site yet.</p>'
+                f'<p data-when="0"{published}>{say("editor.standing.published")}</p>'
+                f'<p data-when="1"{waiting}>{say("editor.standing.waiting")}</p>'
                 f'<form data-when="1"{waiting} method="post" action="/discard">'
                 f'<input type="hidden" name="slug" value="{attr(entry.slug) if proof else ""}">'
                 f'<input type="hidden" name="base" value="{attr(base)}">'
-                "<button>Bin this proof</button></form></div>")
+                f"<button>{say('editor.bin_proof')}</button></form></div>")
     if not on_site:
-        standing = '<p id="draft-standing">A draft. It is not on your site.</p>' + standing
+        standing = f'<p id="draft-standing">{say("editor.standing.draft")}</p>' + standing
     # PRESS-0182: a published entry moves too; the script hides this once a
     # save makes a proof, whose address cannot change, and shows it again
     # once that proof is pressed (PRESS-0186).
     address = _address_field(named if proof else entry.slug, hidden=proof)
     # PRESS-0234: the press row's status line, between presses. The script
     # keeps it in step (its `standing`).
-    standing_word = ("On your site" if not draft else
-                     "Changes not published yet" if on_site else "Not on your site yet")
+    standing_word = say("script.standing.on_site" if not draft else
+                        "script.standing.changes" if on_site else "script.standing.off_site")
     said, running, ended = pressing.shown(standing_word)
     pressed = _RUNNING if running else ""
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
-<p><a href="/">Your writing</a> <span id="save-status"></span></p>
+<p><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
 {standing}
 <div id="notices"></div>
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
  data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}"
  data-on-site="{'1' if on_site else '0'}" onsubmit="return false">
-<label>Title <input name="title" value="{attr(entry.title)}"></label>
-<label>Categories <input name="categories"
+<label>{say("editor.title")} <input name="title" value="{attr(entry.title)}"></label>
+<label>{say("editor.categories")} <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
-<label>Tags <input name="tags" value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
+<label>{say("editor.tags")} <input name="tags"
+ value="{attr(store.LIST_SEPARATOR.join(entry.tags))}"></label>
 {address}
-<p><button type="button" data-editor="publish">Press to site</button>
+<p><button type="button" data-editor="publish">{say("editor.press")}</button>
  {visit}
- <button type="button" data-undo>Undo the last press</button></p>
+ <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-<p><button type="button" data-editor="photograph">Add a photograph</button>
+<p><button type="button" data-editor="photograph">{say("editor.add_photograph")}</button>
  <input type="file" id="photograph-file" hidden
  accept="image/jpeg,image/png,image/webp,image/gif">
  <span id="photograph-status"></span></p>
 <p id="photograph-missing" hidden></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
-<p><button type="button" data-editor="throw">Throw this {'entry' if on_site else 'draft'}
- away</button></p>
+<p><button type="button" data-editor="throw">{
+ say("script.editor.throw_entry" if on_site else "editor.throw_draft")}</button></p>
 </form>
 {cheatsheet.panel()}
 <div id="failure">{failure or ""}{ended or ""}</div>
 <div id="undo-result"></div>
 <div id="proof">{TRUE_COLOURS}
-<iframe id="preview" title="Proof (preview)" sandbox="allow-same-origin"
+<iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_EDITOR_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""
@@ -546,10 +545,10 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 
 def _address_field(slug: str, *, hidden: bool) -> str:
     value = html.escape(slug, quote=True)
-    return (f'<span id="address"{" hidden" if hidden else ""}><label>Address '
+    return (f'<span id="address"{" hidden" if hidden else ""}><label>{say("editor.address")} '
             f'<input name="address" value="{value}">'
             '</label> <button type="button" data-editor="address">'
-            'Change address</button> <span id="address-hint"></span></span>')
+            f'{say("editor.change_address")}</button> <span id="address-hint"></span></span>')
 
 
 def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
@@ -625,23 +624,22 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
             entry = (store.read(store.path_for(folder, slug, draft=draft))
                      if slug in store.list_slugs(folder, draft=draft) else None)
             if entry is None:
-                hint = "This entry is not there any more."
+                hint = say("editor.hint.gone")
             elif draft and _replaced(folder, entry) is not None:
-                hint = "A proof's address cannot be changed."
+                hint = say("editor.hint.proof")
             elif not draft and working_copy(folder, slug) is not None:
-                hint = ("Press your changes to your site, or bin this proof, "
-                        "then change the address.")
+                hint = say("editor.hint.proof_waiting")
             elif address != slug:
                 try:
                     taken = store.exists(folder, address)
                 except store.StoreError:
-                    hint = "An address uses only the letters a to z, the digits 0 to 9 and -."
+                    hint = say("editor.hint.bad_address")
                 else:
                     forwards = store.read_forwards(folder)
                     if taken:
-                        hint = "Another entry already uses that address."
+                        hint = say("editor.hint.taken")
                     elif forwards.get(address, slug) != slug:
-                        hint = "Another entry's old address forwards from there."
+                        hint = say("editor.hint.forwarded")
             if hint is None and entry is not None and address != slug:
                 path = store.path_for(folder, slug, draft=draft)
                 if _digest(path) != base:
@@ -765,7 +763,7 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
     const back = document.createElement("p");
     const link = document.createElement("a");
     link.href = "/";
-    link.textContent = "Back to your writing";
+    link.textContent = say("script.undo.back");
     back.appendChild(link);
     result.appendChild(back);
     for (const box of [document.getElementById("editor"),
@@ -791,7 +789,7 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
            reply.undone ? reply.summary : "");
     } catch (error) {
       said.textContent = "";
-      show("", "Pressless could not reach itself. Your site was not changed.");
+      show("", say("script.undo.unreachable"));
     } finally {
       button.disabled = window.presslessPress.asking();
     }
@@ -843,17 +841,17 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
       // PRESS-0186: and its address can change again.
       addressField.hidden = false;
       document.querySelector("button[data-editor=throw]").textContent =
-        "Throw this entry away";
+        say("script.editor.throw_entry");
     }
     document.getElementById("publish-status").textContent = standing();
   };
   // PRESS-0234: what the press row's status line says between presses.
-  const standing = () => state.draft === "0" ? "On your site"
-    : form.dataset.onSite === "1" ? "Changes not published yet" : "Not on your site yet";
+  const standing = () => say(state.draft === "0" ? "script.standing.on_site"
+    : form.dataset.onSite === "1" ? "script.standing.changes" : "script.standing.off_site");
   window.presslessPress.standing(standing);
   const stop = (text) => {
     stopped = true;
-    status.textContent = "Not saved";
+    status.textContent = say("script.editor.not_saved");
     document.getElementById("failure").innerHTML = text;
   };
 
@@ -863,16 +861,14 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
   function showMissing(names) {
     missingLine.hidden = names.length === 0;
     missingLine.textContent = names.length === 0 ? "" :
-      "Pressless does not have " + (names.length === 1 ? "this photograph: " :
-      "these photographs: ") + names.join(", ") + ". Add " +
-      (names.length === 1 ? "it" : "each") + " with Add a photograph, or correct " +
-      "the name, before you press this entry to your site.";
+      say(names.length === 1 ? "script.editor.missing_one" : "script.editor.missing_many",
+          {names: names.join(", ")});
   }
   showMissing(JSON.parse(form.dataset.missing));
 
   async function save() {
     if (stopped || inFlight || !dirty) return;
-    inFlight = true; dirty = false; status.textContent = "Saving";
+    inFlight = true; dirty = false; status.textContent = say("script.editor.saving");
     try {
       const answer = await fetch("/save", {method: "POST", body: fields()});
       const text = await answer.text();
@@ -883,7 +879,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
       if (reply.preview) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
-      status.textContent = "Saved";
+      status.textContent = say("script.editor.saved");
     } catch (error) {
       stop("");
     } finally {
@@ -965,7 +961,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
   picker.addEventListener("change", async () => {
     const file = picker.files[0];
     if (!file) return;
-    photoSaid.textContent = "Adding the photograph\u2026";
+    photoSaid.textContent = say("script.editor.adding_photograph");
     try {
       const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
                                  {method: "POST", body: file});
@@ -984,7 +980,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
       box.value = before + mark + after;
       box.focus();
       box.setSelectionRange(before.length + mark.length, before.length + mark.length);
-      photoSaid.textContent = "Added " + reply.name + ".";
+      photoSaid.textContent = say("script.editor.photograph_added", {name: reply.name});
       dirty = true; schedule();
     } catch (error) {
       photoSaid.textContent = "";
@@ -1002,10 +998,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
       if (dirty && !stopped) await save();
       if (stopped) return;
       // PRESS-0182: asked first, since links to it are out in the world.
-      if (state.draft === "0" && !window.confirm(
-          "Change this entry's address? It moves now in your Pressless-data folder, " +
-          "and on your site the next time you press to site. Links to the old " +
-          "address will still reach it.")) return;
+      if (state.draft === "0" && !window.confirm(say("script.editor.confirm_address"))) return;
       try {
         const data = new URLSearchParams();
         data.set("slug", state.slug); data.set("draft", state.draft);
@@ -1027,11 +1020,8 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
   // settle before, and none follows: the file it would write is in the bin.
   const throwAway = document.querySelector("button[data-editor=throw]");
   throwAway.addEventListener("click", async () => {
-    const question = form.dataset.onSite === "1"
-      ? "Throw this entry away? It moves to the bin in your Pressless-data folder " +
-        "now, and leaves your site the next time you press to site. Undo the last " +
-        "press can bring it back after that."
-      : "Throw this draft away? It moves to the bin in your Pressless-data folder.";
+    const question = say(form.dataset.onSite === "1"
+      ? "script.editor.confirm_throw_entry" : "script.editor.confirm_throw_draft");
     if (!window.confirm(question)) return;
     clearTimeout(timer);
     while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
