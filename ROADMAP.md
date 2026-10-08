@@ -3845,6 +3845,9 @@ it decides how pages, the menu and the look are held.
   other; buttons disable, the line asks then shows the outcome, the
   holding page reloads into the editor, a busy refusal keeps the typing,
   Undo the same), then the CHANGELOG Added entry.
+  Progress (2026-10-08): the user ran the two-tab browser check on
+  the test copy and it passed. Still owed: the CHANGELOG Added entry,
+  then the flip to shipped.
   **Layman:** If you click away while your site is publishing, the page you land on still says it is publishing, and then whether it worked.
   Kind: feature.
   Source: user-request-2026-10-05.
@@ -3908,6 +3911,8 @@ it decides how pages, the menu and the look are held.
   Shipped (2026-10-07, f169e4f): face._page links the icon inline;
   test_every_page_shows_the_app_icon_in_its_tab holds it equal to the
   packaged SVG. Not yet looked at in a browser.
+  Checked (2026-10-08): the user saw the icon in the browser tab on
+  the test copy.
   **Layman:** While Pressless is open in your browser, its tab shows the Pressless icon, so it is easy to find among other tabs.
   Kind: ux.
   Source: user-request-2026-10-07.
@@ -4708,6 +4713,14 @@ owned by docs/standards/versioning-overrides.md.
   were compared old against new directly. Step 11 also owes PRESS-0013
   and PRESS-0015 their setup.KEY mentions and PRESS-0122 its SIGN_IN
   ones. Next: step 6, dashboard (country family) and insights display.
+  Progress (2026-10-08): step 6 built, 135a789. The dashboard and
+  its card take their words from dashboard.*; country names from the
+  country.* family. Recorded pages identical (1202 strings, 137
+  tests); 243 helper cases old against new identical; gate green
+  (1012 Linux, 942 Windows box). Month and day names still come from
+  strftime %b/%a, as in the editor: PRESS-0241's. Next: step 7,
+  updating, restarting, report, cheatsheet, templates, themes,
+  shortcuts.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
