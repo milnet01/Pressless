@@ -4680,6 +4680,12 @@ owned by docs/standards/versioning-overrides.md.
   (1012 Linux, 942 Windows box). Step 11 owes PRESS-0011/PRESS-0012
   their LABEL and NOTICE_NEXT mentions (both constants are gone).
   Next: step 3, notices.
+  Progress (2026-10-08): step 3 built, 09de446. Notices take a key and
+  slots; str() is English; capture shows say(). publishing's kept-copy
+  and starter notices and page_editor's kept-copy notices moved too.
+  test_settings' import rule allows pressless.words and checks it
+  through. Step 4 also takes publishing.py's replace page and
+  replace_link, which no step named.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
