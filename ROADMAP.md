@@ -3274,6 +3274,9 @@ it decides how pages, the menu and the look are held.
   test_the_page_says_while_google_has_not_approved_pressless. Still owed:
   the privacy-policy page and the verification request itself, which
   need the user's Google Cloud console.
+  Decided (user, 2026-10-08): this item is done for 0.8.0 once the
+  verification request is sent. Setting google_signin.APPROVED true after
+  Google says yes is a later release's one-line change.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
@@ -3757,6 +3760,8 @@ it decides how pages, the menu and the look are held.
   (6f16962); the install step also covers an app already installed.
   Still owed: finishing that packaged run (pages, publish, View your
   site) and the Windows box run.
+  Decided (user, 2026-10-08): the Windows box run happens once, on the
+  0.8.0 release draft, together with PRESS-0133's rows.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
@@ -3876,11 +3881,14 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-05.
   Lanes: Face.
 
-- 📋 [PRESS-0237] **The list's Your pages names the starter's About page "about", beside Home, Header and Footer.**
+- ✅ [PRESS-0237] **The list's Your pages names the starter's About page "about", beside Home, Header and Footer.**
   Seen on PRESS-0231's packaged run (milnet02, plain site ticked):
   Your pages listed "about", "Home", "Header", "Footer", "Navigation".
   The fixed pages are labelled; a page's own name shows as its file
   name. Show a label for it too (its title, or the name capitalised).
+  Resolved (2026-10-08): a page's name is shown through builder.label,
+  the categories' own rule: each hyphen a space, the first letter upper
+  case. Test: test_your_pages_labels_each_page_like_the_fixed_ones.
   **Layman:** The list of your pages shows each name the same way, so About is not the odd one out in small letters.
   Kind: ux.
   Source: in-session-2026-10-05.
@@ -3898,6 +3906,9 @@ it decides how pages, the menu and the look are held.
   Requirement (2026-10-07, the user): every starter works on a phone
   and on a PC, rearranging itself to the screen's width rather than
   guessing the device, so one site serves both layouts.
+  Decided (user, 2026-10-08): three starters, each with its own colours
+  and layout, no spec. The user sees a preview of all three and says yes
+  before the choice is wired into setup.
   **Layman:** The sample pages a new site starts with should look finished and pleasant, so a newcomer is happy to publish them as they are.
   Kind: ux.
   Source: user-request-2026-10-07.

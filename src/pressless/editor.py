@@ -401,7 +401,8 @@ def _pages(folder: Path) -> str:
     """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
     saying where its changes are not on the site yet. Drawn from the Store
     alone, so this module imports nothing of page_editor.py."""
-    rows = [(store.PAGES_FOLDER, name, say("editor.pages.home") if name == "index" else name)
+    rows = [(store.PAGES_FOLDER, name,
+             say("editor.pages.home") if name == "index" else builder.label(name))
             for name in store.list_html(folder, store.PAGES_FOLDER)]
     rows += [(store.FURNITURE_FOLDER, name, say(key))
              for name, key in (("header", "editor.pages.header"),

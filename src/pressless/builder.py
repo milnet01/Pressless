@@ -597,7 +597,7 @@ class _Build:
         """The date line: the entry's own date, then a chip per category."""
         chips = " ".join(
             f'<a class="chip" href="{up}blog/category/{category}/index.html">'
-            f"{html.escape(_label(category))}</a>"
+            f"{html.escape(label(category))}</a>"
             for category in entry.categories)
         when = entry.date
         return f'<time datetime="{_iso_day(when)}">{_long_date(when)}</time> {chips}'
@@ -768,9 +768,9 @@ class _Build:
             for tag in entry.tags:
                 by_tag.setdefault(tag, []).append(entry)
         for category, entries in sorted(by_category.items()):
-            label = _label(category)
-            self.listing(f"blog/category/{category}", 3, label,
-                         f"{_entries(len(entries))} in {label.lower()}.", entries)
+            heading = label(category)
+            self.listing(f"blog/category/{category}", 3, heading,
+                         f"{_entries(len(entries))} in {heading.lower()}.", entries)
         for tag, entries in sorted(by_tag.items()):
             self.listing(f"blog/tag/{tag}", 3, f"#{tag}",
                          f"{_entries(len(entries))} tagged “{tag}”.", entries)
@@ -899,7 +899,7 @@ def _entry_path(entry: store.Entry) -> str:
     return f"blog/{when.year:04d}/{when.month:02d}/{when.day:02d}/{entry.slug}"
 
 
-def _label(category: str) -> str:
+def label(category: str) -> str:
     """Decision 7: each hyphen a space, the first letter upper case."""
     text = category.replace("-", " ")
     return text[:1].upper() + text[1:]

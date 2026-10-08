@@ -17,6 +17,7 @@ from test_setup import _saved
 
 from pressless import (
     _flag_data,
+    builder,
     cheatsheet,
     dashboard,
     editor,
@@ -409,6 +410,11 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
                 ("a template", "/template?name=poem"), ("restarting", restarting.PATH)):
             status, _, page = browser.request("GET", address)
             assert status == 200, (name, status)
+            if name == "the list":
+                # PRESS-0237: the site's own page names, shown as labels. They
+                # are file names, which stay English, not the app's words.
+                for own in store.list_html(folder, store.PAGES_FOLDER):
+                    page = page.replace(f">{builder.label(own)}</a>", f">{OWN}</a>")
             shown[name] = page
         monkeypatch.setattr(pressing, "_running", pressing.PUBLISH)
         shown["the holding page"] = browser.request("GET", f"/edit?slug={OWN}")[2]

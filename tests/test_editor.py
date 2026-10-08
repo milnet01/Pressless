@@ -790,3 +790,14 @@ def test_the_list_names_the_site_it_edits(tmp_path):
     line = editor._site_line(tmp_path)
     assert "<b>Field Notes</b>" in line
     assert 'href="https://example.org"' in line and ">example.org</a>" in line
+
+
+def test_your_pages_labels_each_page_like_the_fixed_ones(tmp_path):
+    """PRESS-0237: a page's name is shown as a label, as Home, Header and
+    Footer are, never as its file name."""
+    for name in ("index", "about", "my-shows"):
+        store.write_html(tmp_path, store.PAGES_FOLDER, name, "<p>Words.</p>")
+    listed = editor._pages(tmp_path)
+    for label in ("Home", "About", "My shows", "Header", "Footer"):
+        assert f">{label}</a>" in listed, label
+    assert ">about</a>" not in listed and ">my-shows</a>" not in listed

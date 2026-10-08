@@ -106,6 +106,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Your pages shows each page's name with a capital letter, so "about" reads "About", like Home, Header and Footer.** (PRESS-0237)
+
 - **A refused save in the page editor no longer pushes the buttons and the words box down.** (PRESS-0236)
 
 - **Setup's key steps ask for Administration too, without which GitHub refused to switch the site on.** (PRESS-0230)
