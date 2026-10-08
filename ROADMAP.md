@@ -4673,6 +4673,13 @@ owned by docs/standards/versioning-overrides.md.
   9. __main__ console lines (not the self-check line).
   10. INV-2, INV-3, INV-4 tests in tests/test_words.py.
   11. Docs per spec section 11.
+  Progress (2026-10-08): step 2 built, b37e309. Failure sentences,
+  Site words, Show details, notice next step, running page and frame
+  links come from the table; the words block and say() sit in every
+  page's head. 233 renders byte-identical before and after; gate green
+  (1012 Linux, 942 Windows box). Step 11 owes PRESS-0011/PRESS-0012
+  their LABEL and NOTICE_NEXT mentions (both constants are gone).
+  Next: step 3, notices.
   **Layman:** Behind the scenes, Pressless gathers all its on-screen words in one place, so adding another language later is a matter of translating them.
   Kind: refactor.
   Source: user-request-2026-10-07.
