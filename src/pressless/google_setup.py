@@ -25,17 +25,15 @@ from pressless import credentials, google_signin, insights, settings, starter
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.google_signin import AccessToken, Attempt, Property
 from pressless.store import StoreError
+from pressless.words import say
 
 GOOGLE_ACCOUNT = "google"                 # the account the refresh token is filed under
-SIGN_IN = "your Google sign-in"           # the {secret} noun (PRESS-0011 § 4.2)
 RETURN_PATH = "/setup/google/back"        # the redirect_uri's path
 
 PAGE = "/setup/google"
 _REFRESH_MARGIN = 60.0   # seconds before expiry a held token stops being handed out
 _PERMISSIONS = "https://myaccount.google.com/permissions"
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
-_NONE_FOUND = ("<h1>No Analytics site found</h1><p>This Google account can see no "
-               "Google Analytics property. Sign in with the account that can.</p>")
 
 
 @dataclass(frozen=True)
@@ -117,8 +115,7 @@ def _load(state: _State) -> tuple[settings.Settings | None, str]:
             saved = None
     shown = render_notices(notices)
     if saved is None:
-        return None, shown + ('<h1>Visitor numbers</h1><p>Set up Pressless first, '
-                              '<a href="/setup">on the setup page</a>.</p>')
+        return None, shown + f"<h1>{say('google_setup.title')}</h1><p>{say('setup.first')}</p>"
     return saved, shown
 
 
@@ -127,11 +124,10 @@ def _show(state: _State, hint: str = "") -> str:
     if saved is None:
         return shown
     e = html.escape
-    head = "<h1>Visitor numbers</h1>"
-    back = '<p><a href="/setup">Back to Settings</a></p>'
+    head = f"<h1>{say('google_setup.title')}</h1>"
+    back = f'<p><a href="/setup">{say("setup.back")}</a></p>'
     if not google_signin.available():
-        return (shown + head + "<p>This copy of Pressless cannot connect to Google, "
-                "so it cannot show your visitor numbers.</p>" + back)
+        return shown + head + f"<p>{say('google_setup.unavailable')}</p>" + back
     with state.lock:
         pending = state.pending
     if pending is not None:
@@ -141,31 +137,28 @@ def _show(state: _State, hint: str = "") -> str:
             for p in pending.properties
         )
         shown_hint = f'<p class="hint" id="property-hint">{e(hint)}</p>' if hint else ""
-        return (shown + head + "<p>Which site should Pressless show numbers for?</p>"
+        return (shown + head + f"<p>{say('google_setup.which')}</p>"
                 + f'<form method="post" action="{PAGE}/choose">{choices}{shown_hint}'
-                "<p><button type=\"submit\">Use this site</button></p></form>" + back)
+                f'<p><button type="submit">{say("google_setup.use")}</button></p></form>'
+                + back)
     if saved.credentials.google_account is not None:
         return (shown + head
-                + f"<p>Pressless reads visitor numbers for Analytics property "
-                  f"{e(saved.analytics_property_id or '')}.</p>"
-                + _button("/sites", "Choose a different site")
-                + _button("/start", "Sign in again")
-                + _button("/off", "Turn off visitor numbers") + back)
+                + "<p>" + say("google_setup.reading",
+                              property=e(saved.analytics_property_id or "")) + "</p>"
+                + _button("/sites", say("google_setup.choose_other"))
+                + _button("/start", say("google_setup.sign_in_again"))
+                + _button("/off", say("google_setup.turn_off")) + back)
     return (shown + head
-            + "<p>Pressless can show how many people read your site, and from which "
-              "countries, by reading them from Google Analytics. This is optional: "
-              "without it, only the visitor numbers are missing.</p>"
+            + f"<p>{say('google_setup.offer')}</p>"
             + _pending()
-            + _button("/start", "Sign in with Google") + back)
+            + _button("/start", say("google_setup.sign_in")) + back)
 
 
 def _pending() -> str:
     """Google's unverified-app warning, explained while its review runs (PRESS-0200)."""
     if google_signin.APPROVED:
         return ""
-    return ("<p>Google is still checking Pressless, so it will say it has not verified "
-            "this app. Pressless only reads your visitor numbers. To carry on, click "
-            "<strong>Advanced</strong>, then <strong>Go to Pressless</strong>.</p>")
+    return f"<p>{say('google_setup.unverified')}</p>"
 
 
 def _button(action: str, label: str) -> str:
@@ -200,12 +193,14 @@ def _back(state: _State, request: Request) -> str | Reply:
         access = google_signin.access_token(refresh, transport)
         found = google_signin.properties(access.value, transport)
     except insights.InsightsError as exc:
-        return state.face.fail(exc, publishing=False, secret=SIGN_IN) + _continue(moving=False)
+        return (state.face.fail(exc, publishing=False,
+                                secret=say("failure.secret.google_sign_in"))
+                + _continue(moving=False))
     if not found:
-        return _NONE_FOUND + _continue(moving=False)
+        return _none_found() + _continue(moving=False)
     with state.lock:
         state.pending = _Pending(found, refresh, access)
-    return "<h1>You are signed in to Google.</h1>" + _continue(moving=True)
+    return f"<h1>{say('google_setup.signed_in')}</h1>" + _continue(moving=True)
 
 
 def _sites(state: _State) -> str:
@@ -223,10 +218,11 @@ def _sites(state: _State) -> str:
         access = google_signin.access_token(refresh, transport)
         found = google_signin.properties(access.value, transport)
     except (insights.InsightsError, *_CREDENTIAL_FAILURES) as exc:
-        return shown + state.face.fail(exc, publishing=False, secret=SIGN_IN) \
-            + _continue(moving=False)
+        return (shown + state.face.fail(exc, publishing=False,
+                                        secret=say("failure.secret.google_sign_in"))
+                + _continue(moving=False))
     if not found:
-        return shown + _NONE_FOUND + _continue(moving=False)
+        return shown + _none_found() + _continue(moving=False)
     with state.lock:
         state.pending = _Pending(found, refresh, access)
     return _show(state)
@@ -237,7 +233,12 @@ def _continue(*, moving: bool) -> str:
     # cookie the redirect from Google could not carry (§ 4.3 step 4). Only a
     # success moves on by itself: a failure stays until he has read it (INV-17).
     refresh = f'<meta http-equiv="refresh" content="0; url={PAGE}">' if moving else ""
-    return refresh + f'<p><a href="{PAGE}">Continue</a></p>'
+    return refresh + f'<p><a href="{PAGE}">{say("google_setup.continue")}</a></p>'
+
+
+def _none_found() -> str:
+    return (f"<h1>{say('google_setup.none_found.title')}</h1>"
+            f"<p>{say('google_setup.none_found')}</p>")
 
 
 def _choose(state: _State, request: Request) -> str:
@@ -251,12 +252,13 @@ def _choose(state: _State, request: Request) -> str:
     if pending is None:
         return _show(state)
     if chosen not in {p.id for p in pending.properties}:
-        return _show(state, hint="Choose one of the sites in the list.")
+        return _show(state, hint=say("google_setup.choose_hint"))
     try:
         credentials.write(saved.credentials.store, state.folder, GOOGLE_ACCOUNT,
                           pending.refresh_token)
     except _CREDENTIAL_FAILURES as exc:
-        return shown + state.face.fail(exc, publishing=False, secret=SIGN_IN)
+        return shown + state.face.fail(exc, publishing=False,
+                                       secret=say("failure.secret.google_sign_in"))
     # PRESS-0199 § 4.3: the property's web streams, read with the token in
     # hand. A failure here keeps today's save and says counting is still off.
     found: tuple[str, ...] = ()
@@ -287,38 +289,30 @@ def _choose(state: _State, request: Request) -> str:
             try:
                 starter.add_privacy(state.folder, starter.privacy_name(state.folder))
             except StoreError as exc:
-                privacy = ("<p>Visitor counting is on, but the Privacy page or its link "
-                           "could not be added. Saving Settings tries once more.</p>"
+                privacy = (f"<p>{say('google_setup.privacy_failed')}</p>"
                            + state.face.fail(exc, publishing=False))
         privacy = render_notices(privacy_notices) + privacy
     return (shown + render_notices(notices) + lookup_failure
-            + "<h1>Visitor numbers are ready.</h1>"
+            + f"<h1>{say('google_setup.ready')}</h1>"
             + _counting(saved.measurement_id, found, lookup_failure != "") + privacy
-            + '<p><a href="/">Back to your writing</a></p>')
+            + f'<p><a href="/">{say("script.undo.back")}</a></p>')
 
 
 def _counting(kept: str | None, found: tuple[str, ...], failed: bool) -> str:
     """PRESS-0199 § 4.3: what became of the counting code."""
     e = html.escape
     if failed:
-        return ("<p>Pressless could not read this site's counting code from Google, "
-                "so counting is still off. You can type its measurement id on the "
-                'Settings page.</p>')
+        return f"<p>{say('google_setup.counting.failed')}</p>"
     if kept is not None:
         other = [i for i in found if i != kept]
-        extra = (f" Google also lists {e(', '.join(other))} for this site." if other else "")
-        return f"<p>Counting stays on with {e(kept)}.{extra}</p>"
+        extra = (" " + say("google_setup.counting.also", ids=e(", ".join(other)))
+                 if other else "")
+        return f"<p>{say('google_setup.counting.kept', id=e(kept))}{extra}</p>"
     if len(found) == 1:
-        return (f"<p>Pressless found this site's counting code ({e(found[0])}) and "
-                "will put it on every page you publish.</p>")
+        return f"<p>{say('google_setup.counting.found', id=e(found[0]))}</p>"
     if found:
-        return ("<p>Google lists several web streams for this site: "
-                f"{e(', '.join(found))}. Type the right measurement id on the Settings "
-                "page to start counting.</p>")
-    return ("<p>This site has no web stream in Google Analytics yet, so counting is "
-            "off. In Google Analytics open Admin, then Data streams, then Add stream, "
-            "choose Web and enter your site's address. Then type the measurement id it "
-            "shows on the Settings page.</p>")
+        return f"<p>{say('google_setup.counting.several', ids=e(', '.join(found)))}</p>"
+    return f"<p>{say('google_setup.counting.none')}</p>"
 
 
 def _off(state: _State) -> str:
@@ -343,8 +337,8 @@ def _off(state: _State) -> str:
     with state.lock:
         state.held = None
         state.pending = None
-    page = shown + render_notices(notices) + "<h1>Visitor numbers are off.</h1>"
+    page = shown + render_notices(notices) + f"<h1>{say('google_setup.off')}</h1>"
     if not told:
-        page += ("<p>Pressless could not tell Google to forget its permission. You can "
-                 f'remove it yourself at <a href="{_PERMISSIONS}">{_PERMISSIONS}</a>.</p>')
-    return page + '<p><a href="/setup">Back to Settings</a></p>'
+        link = f'<a href="{_PERMISSIONS}">{_PERMISSIONS}</a>'
+        page += f"<p>{say('google_setup.not_told', link=link)}</p>"
+    return page + f'<p><a href="/setup">{say("setup.back")}</a></p>'

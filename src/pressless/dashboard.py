@@ -28,6 +28,7 @@ from pathlib import Path
 
 from pressless import _flag_data, google_setup, insights, settings
 from pressless.face import Face, Request, render_notices
+from pressless.words import say
 
 PAGE = "/visitors"
 
@@ -185,13 +186,15 @@ def _show(face: Face, folder: Path, request: Request,
         if report is None:
             return shown + head + face.fail(exc, publishing=False)
     except (insights.InsightsError, *google_setup._CREDENTIAL_FAILURES) as exc:
-        return (shown + head + face.fail(exc, publishing=False, secret=google_setup.SIGN_IN)
+        return (shown + head
+                + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
                 + _SIGN_IN_AGAIN)
     else:
         try:
             report = insights.read(saved, token, folder, days=days, client=client)
         except insights.Refused as exc:
-            return (shown + head + face.fail(exc, publishing=False, secret=google_setup.SIGN_IN)
+            return (shown + head
+                    + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
                     + _SIGN_IN_AGAIN)
         except insights.InsightsError as exc:
             return shown + head + face.fail(exc, publishing=False)

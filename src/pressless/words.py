@@ -515,6 +515,67 @@ _WORDS: dict[str, str] = {
     # The secret a credential failure names (PRESS-0011 § 4.2).
     "failure.secret.publishing_key": "your publishing key",
     "failure.secret.github_sign_in": "your GitHub sign-in",
+    "failure.secret.google_sign_in": "your Google sign-in",
+    # Visitor numbers: signing in to Google (google_setup.py).
+    "google_setup.title": "Visitor numbers",
+    "google_setup.unavailable": (
+        "This copy of Pressless cannot connect to Google, so it cannot show your visitor "
+        "numbers."
+    ),
+    "google_setup.offer": (
+        "Pressless can show how many people read your site, and from which countries, by "
+        "reading them from Google Analytics. This is optional: without it, only the visitor "
+        "numbers are missing."
+    ),
+    "google_setup.unverified": (
+        "Google is still checking Pressless, so it will say it has not verified this app. "
+        "Pressless only reads your visitor numbers. To carry on, click "
+        "<strong>Advanced</strong>, then <strong>Go to Pressless</strong>."
+    ),
+    "google_setup.sign_in": "Sign in with Google",
+    "google_setup.signed_in": "You are signed in to Google.",
+    "google_setup.continue": "Continue",
+    "google_setup.none_found.title": "No Analytics site found",
+    "google_setup.none_found": (
+        "This Google account can see no Google Analytics property. Sign in with the account "
+        "that can."
+    ),
+    "google_setup.which": "Which site should Pressless show numbers for?",
+    "google_setup.use": "Use this site",
+    "google_setup.choose_hint": "Choose one of the sites in the list.",
+    "google_setup.reading": "Pressless reads visitor numbers for Analytics property {property}.",
+    "google_setup.choose_other": "Choose a different site",
+    "google_setup.sign_in_again": "Sign in again",
+    "google_setup.turn_off": "Turn off visitor numbers",
+    "google_setup.ready": "Visitor numbers are ready.",
+    "google_setup.privacy_failed": (
+        "Visitor counting is on, but the Privacy page or its link could not be added. Saving "
+        "Settings tries once more."
+    ),
+    "google_setup.counting.failed": (
+        "Pressless could not read this site's counting code from Google, so counting is "
+        "still off. You can type its measurement id on the Settings page."
+    ),
+    "google_setup.counting.kept": "Counting stays on with {id}.",
+    "google_setup.counting.also": "Google also lists {ids} for this site.",
+    "google_setup.counting.found": (
+        "Pressless found this site's counting code ({id}) and will put it on every page you "
+        "publish."
+    ),
+    "google_setup.counting.several": (
+        "Google lists several web streams for this site: {ids}. Type the right measurement "
+        "id on the Settings page to start counting."
+    ),
+    "google_setup.counting.none": (
+        "This site has no web stream in Google Analytics yet, so counting is off. In Google "
+        "Analytics open Admin, then Data streams, then Add stream, choose Web and enter your "
+        "site's address. Then type the measurement id it shows on the Settings page."
+    ),
+    "google_setup.off": "Visitor numbers are off.",
+    "google_setup.not_told": (
+        "Pressless could not tell Google to forget its permission. You can remove it "
+        "yourself at {link}."
+    ),
 }
 
 def _literal(text: str) -> str:
