@@ -13,7 +13,7 @@ import urllib.parse
 
 from _face_session import session_cookie
 
-from pressless import cheatsheet, face, marks
+from pressless import cheatsheet, face, marks, words
 
 PRINTABLE = "/cheat-sheet"
 
@@ -43,6 +43,11 @@ def test_a_new_mark_reaches_the_sheet_with_nothing_else_edited(monkeypatch):
     added = dataclasses.replace(removed, name="new", example="<b>&new",
                                 explains="A mark added to the table & nowhere else.")
     monkeypatch.setattr(marks, "MARKS", (*marks.MARKS[1:], added))
+    # The words table builds its mark entries from MARKS when it is imported
+    # (test_words holds that), so an edit to marks.py reaches it unasked.
+    # Swapping MARKS after import does not, so the test adds them itself.
+    monkeypatch.setitem(words.ENGLISH, "mark.new", added.explains)
+    monkeypatch.setitem(words.ENGLISH, "mark.new.example", added.example)
     panel = cheatsheet.panel()
     assert html.escape(added.example) in panel
     assert html.escape(added.explains) in panel

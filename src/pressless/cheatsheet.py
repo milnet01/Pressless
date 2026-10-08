@@ -11,28 +11,30 @@ import html
 
 from pressless import marks
 from pressless.face import Face, Request
+from pressless.words import say
 
 ADDRESS = "/cheat-sheet"
 
 
 def _table() -> str:
-    rows = "".join(f"<tr><td><code>{html.escape(row.example)}</code></td>"
-                   f"<td>{html.escape(row.explains)}</td></tr>"
+    rows = "".join(f"<tr><td><code>{html.escape(say('mark.' + row.name + '.example'))}"
+                   f"</code></td><td>{html.escape(say('mark.' + row.name))}</td></tr>"
                    for row in marks.MARKS)
-    return ('<table class="cheat-sheet"><thead><tr><th>You type</th>'
-            f"<th>What it does</th></tr></thead><tbody>{rows}</tbody></table>")
+    return (f'<table class="cheat-sheet"><thead><tr><th>{say("cheatsheet.you_type")}</th>'
+            f'<th>{say("cheatsheet.does")}</th></tr></thead><tbody>{rows}</tbody></table>')
 
 
 def panel() -> str:
     """The sheet as it sits below the box he writes in, folded until opened."""
-    return ('<details id="cheat-sheet"><summary>Cheat sheet: how to style your '
-            f"words</summary>{_table()}"
-            f'<p><a href="{ADDRESS}" target="_blank">A page to print</a></p></details>')
+    return (f'<details id="cheat-sheet"><summary>{say("cheatsheet.panel")}</summary>'
+            f"{_table()}"
+            f'<p><a href="{ADDRESS}" target="_blank">{say("cheatsheet.print")}</a></p>'
+            "</details>")
 
 
 def _printable(request: Request) -> str:
-    return ("<h1>Pressless cheat sheet</h1>"
-            "<p>Type these in the box where you write an entry.</p>" + _table())
+    return (f'<h1>{say("cheatsheet.title")}</h1>'
+            f'<p>{say("cheatsheet.where")}</p>' + _table())
 
 
 def register(face: Face) -> None:

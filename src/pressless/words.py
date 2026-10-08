@@ -1015,6 +1015,13 @@ _WORDS: dict[str, str] = {
         "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Open the report on "
         "GitHub</a>"
     ),
+    # The cheat sheet (cheatsheet.py); each mark's own row is the mark.* family.
+    "cheatsheet.you_type": "You type",
+    "cheatsheet.does": "What it does",
+    "cheatsheet.panel": "Cheat sheet: how to style your words",
+    "cheatsheet.print": "A page to print",
+    "cheatsheet.title": "Pressless cheat sheet",
+    "cheatsheet.where": "Type these in the box where you write an entry.",
 }
 
 def _literal(text: str) -> str:
