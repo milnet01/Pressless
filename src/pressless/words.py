@@ -489,6 +489,32 @@ _WORDS: dict[str, str] = {
     "wizard.back": "Back",
     "wizard.help": "Help: {label}",
     "wizard.close": "Close",
+    # Signing in to GitHub (github_setup.py), and the links its page shares with Google's.
+    "setup.back": "Back to Settings",
+    "setup.first": "Set up Pressless first, <a href=\"/setup\">on the setup page</a>.",
+    "github_setup.title": "Sign in to GitHub",
+    "github_setup.unavailable": (
+        "This copy of Pressless cannot sign in to GitHub. Paste a publishing key in Settings "
+        "instead."
+    ),
+    "github_setup.how": "Pressless signs in to GitHub with a short code rather than your password.",
+    "github_setup.how.1": "Press <b>Next</b>. Pressless shows a code and a link to GitHub.",
+    "github_setup.how.2": "Open the link, sign in to GitHub if it asks, and type the code.",
+    "github_setup.how.3": "Click <b>Authorize</b> on GitHub's page.",
+    "github_setup.how.4": "Come back here and press <b>Next</b> again.",
+    "github_setup.code": "Your code: <strong>{code}</strong>",
+    "github_setup.type_at": "Type it at {link}",
+    "github_setup.type_it": (
+        "Type this code on GitHub's page, click Authorize, then press Next here."
+    ),
+    "github_setup.not_heard": (
+        "GitHub has not heard from you yet. Type the code on GitHub's page, click Authorize, "
+        "then press Next here."
+    ),
+    "github_setup.cancelled": "The sign-in was cancelled on GitHub. Press Next to start again.",
+    # The secret a credential failure names (PRESS-0011 § 4.2).
+    "failure.secret.publishing_key": "your publishing key",
+    "failure.secret.github_sign_in": "your GitHub sign-in",
 }
 
 def _literal(text: str) -> str:

@@ -23,17 +23,12 @@ from pathlib import Path
 from pressless import credentials, github_signin, publisher, settings
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.github_signin import DeviceCode, Tokens
+from pressless.words import say
 
 PAGE = "/setup/github"
-SIGN_IN = "your GitHub sign-in"          # the {secret} noun (PRESS-0011 § 4.2)
 _REFRESH_PREFIX = "ghr_"                 # every GitHub refresh token; no key starts so
 _REFRESH_MARGIN = 60.0   # seconds before expiry a held pass stops being handed out
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
-
-_TYPE_IT = "Type this code on GitHub's page, click Authorize, then press Next here."
-_NOT_HEARD = ("GitHub has not heard from you yet. Type the code on GitHub's page, "
-              "click Authorize, then press Next here.")
-_CANCELLED = "The sign-in was cancelled on GitHub. Press Next to start again."
 
 
 class _State:
@@ -121,12 +116,12 @@ class SignIn:
             try:
                 tokens = github_signin.poll(self._code, state.transport)
             except github_signin.Pending:
-                return _NOT_HEARD
+                return say("github_setup.not_heard")
             except github_signin.Expired:
                 return self._begin(state)
             except github_signin.Declined:
                 self._code = None
-                return _CANCELLED
+                return say("github_setup.cancelled")
             self._code = None
             return tokens
 
@@ -137,24 +132,24 @@ class SignIn:
         if code is None:
             return ""
         e = html.escape
-        return (f'<p class="sign-in-code">Your code: <strong>{e(code.user_code)}</strong></p>'
-                f'<p>Type it at <a href="{e(code.address, quote=True)}" target="_blank" '
-                f'rel="noopener">{e(code.address)}</a></p>')
+        link = (f'<a href="{e(code.address, quote=True)}" target="_blank" '
+                f'rel="noopener">{e(code.address)}</a>')
+        return (f'<p class="sign-in-code">{say("github_setup.code", code=e(code.user_code))}</p>'
+                f'<p>{say("github_setup.type_at", link=link)}</p>')
 
     def _begin(self, state: _State) -> str:
         self._code = None
         asked = state.clock()
         code = github_signin.begin(state.transport)
         self._code, self._ends = code, asked + code.expires_in
-        return _TYPE_IT
+        return say("github_setup.type_it")
 
 
-HOW = ("<p>Pressless signs in to GitHub with a short code rather than your "
-       "password.</p><ol>"
-       "<li>Press <b>Next</b>. Pressless shows a code and a link to GitHub.</li>"
-       "<li>Open the link, sign in to GitHub if it asks, and type the code.</li>"
-       "<li>Click <b>Authorize</b> on GitHub's page.</li>"
-       "<li>Come back here and press <b>Next</b> again.</li></ol>")
+def how() -> str:
+    """How signing in goes, step by step."""
+    steps = "".join(f"<li>{say(key)}</li>" for key in (
+        "github_setup.how.1", "github_setup.how.2", "github_setup.how.3", "github_setup.how.4"))
+    return f"<p>{say('github_setup.how')}</p><ol>{steps}</ol>"
 
 
 def _page(state: _State, request: Request) -> str | Reply:
@@ -164,13 +159,12 @@ def _page(state: _State, request: Request) -> str | Reply:
             saved = settings.load(state.folder)
         except (settings.NotSetUp, settings.SettingsError):
             saved = None
-    shown = render_notices(notices) + "<h1>Sign in to GitHub</h1>"
-    back = '<p><a href="/setup">Back to Settings</a></p>'
+    shown = render_notices(notices) + f"<h1>{say('github_setup.title')}</h1>"
+    back = f'<p><a href="/setup">{say("setup.back")}</a></p>'
     if saved is None:
-        return shown + '<p>Set up Pressless first, <a href="/setup">on the setup page</a>.</p>'
+        return shown + f"<p>{say('setup.first')}</p>"
     if not github_signin.available():
-        return (shown + "<p>This copy of Pressless cannot sign in to GitHub. Paste a "
-                "publishing key in Settings instead.</p>" + back)
+        return shown + f"<p>{say('github_setup.unavailable')}</p>" + back
     above = ""
     if request.method == "POST":
         try:
@@ -184,7 +178,8 @@ def _page(state: _State, request: Request) -> str | Reply:
         except publisher.PublishError as exc:
             above = state.face.fail(exc, publishing=False)
         except _CREDENTIAL_FAILURES as exc:
-            above = state.face.fail(exc, publishing=False, secret=SIGN_IN)
-    return (shown + above + HOW + state.again.shown()
+            above = state.face.fail(exc, publishing=False,
+                                    secret=say("failure.secret.github_sign_in"))
+    return (shown + above + how() + state.again.shown()
             + f'<form method="post" action="{PAGE}">'
-              '<p><button type="submit">Next</button></p></form>' + back)
+              f'<p><button type="submit">{say("wizard.next")}</button></p></form>' + back)

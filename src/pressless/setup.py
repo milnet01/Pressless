@@ -35,6 +35,7 @@ from pressless import (
 )
 from pressless.face import Face, Request, render_notices
 from pressless.store import StoreError
+from pressless.words import say
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
 GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
@@ -435,8 +436,9 @@ def carry_name_across(folder: Path) -> str | None:
     return None
 
 
-def _credential_failure(face: Face, failure: Exception, noun: str = KEY) -> str:
-    fragment = face.fail(failure, publishing=False, secret=noun)
+def _credential_failure(face: Face, failure: Exception,
+                        noun: str = "failure.secret.publishing_key") -> str:
+    fragment = face.fail(failure, publishing=False, secret=say(noun))
     if isinstance(failure, credentials.NoStore):
         return "<p>Setup cannot finish on this computer.</p>" + fragment
     return fragment
@@ -693,7 +695,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     # PRESS-0231: where this copy carries a registered GitHub App, he signs in
     # rather than making a key, and Pressless makes the repository.
     signing_in = github_signin.available()
-    noun = github_setup.SIGN_IN if signing_in else KEY
+    noun = "failure.secret.github_sign_in" if signing_in else "failure.secret.publishing_key"
     sign_in = github_setup.SignIn()     # its device code, in memory only
 
     def key_for(answers: wizard.Answers) -> str | wizard.Stop:
@@ -947,7 +949,7 @@ def _show_welcome_signing_in(answers: wizard.Answers, hint: wizard.Hint | None) 
 
 def _show_signin(answers: wizard.Answers, hint: wizard.Hint | None,
                  sign_in: github_setup.SignIn) -> str:
-    return (github_setup.HOW
+    return (github_setup.how()
             + "<p>Type the name of the GitHub account your site will live in. If you "
               "have more than one, Pressless checks you sign in to this one.</p>"
             + wizard.field("account", "Your GitHub account name", answers, hint)
