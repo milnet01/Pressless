@@ -335,9 +335,22 @@ _WORDS: dict[str, str] = {
     "site.unchanged": "Your site has not changed.",
     "site.unknown": "Pressless cannot tell whether your site changed.",
     "site.updated": "Your site has been updated.",
+    # The press row's lines (PRESS-0235 § 4.3): Python and the scripts read
+    # these same keys.
+    "script.press.publishing": "Publishing… this can take a few minutes the first time.",
+    "script.press.undoing": "Putting your site back… this can take a few minutes.",
+    "script.press.published": "Published. Your site shows it within a few minutes.",
+    "script.press.paragraphs": (
+        "Not published, because the box holds a different number of paragraphs from your "
+        "page."
+    ),
+    "script.press.not_published": "Not published. The reason is below.",
+    "script.press.undone": "Your site was put back.",
+    "script.press.not_undone": "Your site was not put back. The reason is below.",
     # The Face's frame, on every screen.
     "face.running": "Pressless is running.",
     "face.view_site": "View your site",
+    "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
     "face.report": "Suggest or report a problem",
 }

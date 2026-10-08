@@ -776,7 +776,7 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
 
   button.addEventListener("click", async () => {
     button.disabled = true;
-    said.textContent = window.presslessPress.words.undoing;
+    said.textContent = say("script.press.undoing");
     try {
       const answer = await fetch("/undo", {method: "POST"});
       const text = await answer.text();
@@ -786,7 +786,7 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
       // PRESS-0235: another press runs; ask until it ends.
       if (reply.busy) { said.textContent = reply.said; window.presslessPress.ask(); return; }
       said.textContent = reply.undone
-        ? window.presslessPress.words.undone : window.presslessPress.words.notUndone;
+        ? say("script.press.undone") : say("script.press.not_undone");
       show((reply.notices || "") + (reply.undone ? "" : reply.failure || ""),
            reply.undone ? reply.summary : "");
     } catch (error) {
@@ -919,7 +919,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
     inFlight = true;
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = window.presslessPress.words.publishing;
+    said.textContent = say("script.press.publishing");
     try {
       const body = fields();
       dirty = false;
@@ -938,7 +938,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
-        ? window.presslessPress.words.published : window.presslessPress.words.notPublished;
+        ? say("script.press.published") : say("script.press.not_published");
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
       if (reply.published && view && view.dataset.viewSite) view.disabled = false;

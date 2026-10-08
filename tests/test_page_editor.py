@@ -25,7 +25,7 @@ import pytest
 from test_editor import _Browser
 from test_publisher import _listing, _reads, _Transport, _writes
 
-from pressless import credentials, editor, face, page_editor, settings, store
+from pressless import credentials, editor, face, page_editor, settings, store, words
 
 PAGES_WAITING = "pages-waiting"
 FURNITURE_WAITING = "furniture-waiting"
@@ -223,11 +223,11 @@ def test_a_refused_press_says_nothing_was_published():
     # A hand check pressed Press to site with a paragraph added to the box. The
     # publish was refused, yet the status line went back to "On your site", so
     # the press seemed to do nothing, or to have worked (PRESS-0234).
-    # PRESS-0235: the words come from pressing, so the anchor is their use.
-    after = page_editor._PAGE_SCRIPT.split(".words.published", 1)[1]
+    # PRESS-0235: the words come from the table, so the anchor is their use.
+    after = page_editor._PAGE_SCRIPT.split('say("script.press.published")', 1)[1]
     otherwise = after.split(";", 1)[0]
-    assert "reply.hint" in otherwise and ".words.paragraphs" in otherwise, otherwise
-    assert '"paragraphs": "Not published' in page_editor._PAGE_SCRIPT
+    assert 'reply.hint' in otherwise and 'say("script.press.paragraphs")' in otherwise, otherwise
+    assert words.say("script.press.paragraphs").startswith("Not published")
 
 
 # ------------------------------------------------------------------ INV-4 ---

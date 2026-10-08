@@ -532,12 +532,13 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
         try:
             new, _ = gathered(lambda: _write(folder, form))
         except PiecesChanged as exc:
-            told(pressing.Outcome(pressing.PARAGRAPHS))
+            told(pressing.Outcome(say("script.press.paragraphs")))
             return _json({"published": False, "waiting": form.get("waiting") == "1",
                           "base": form.get("base", ""), "failure": None, "hint": _hint(exc),
                           "notices": render_notices(notices), "busy": False})
         except (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped) as exc:
-            told(pressing.Outcome(pressing.NOT_PUBLISHED, face.fail(exc, publishing=False)))
+            told(pressing.Outcome(say("script.press.not_published"),
+                                  face.fail(exc, publishing=False)))
             return _failed(face, notices, exc)
 
         copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -578,8 +579,8 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             published = True
             if kept:
                 notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
-        told(pressing.Outcome(pressing.PUBLISHED, None) if published
-             else pressing.Outcome(pressing.NOT_PUBLISHED, failure))
+        told(pressing.Outcome(say("script.press.published"), None) if published
+             else pressing.Outcome(say("script.press.not_published"), failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
     return _json({"published": published, "waiting": waiting, "base": base,
@@ -700,7 +701,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
     inFlight = new Promise((resolve) => { published = resolve; });
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = window.presslessPress.words.publishing;
+    said.textContent = say("script.press.publishing");
     try {
       const body = fields();
       dirty = false;
@@ -719,9 +720,9 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       if (reply.published) form.dataset.offSite = "0";
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
-      said.textContent = reply.published ? window.presslessPress.words.published
-        : reply.hint ? window.presslessPress.words.paragraphs
-        : window.presslessPress.words.notPublished;
+      said.textContent = reply.published ? say("script.press.published")
+        : reply.hint ? say("script.press.paragraphs")
+        : say("script.press.not_published");
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
       if (reply.published && view && view.dataset.viewSite) view.disabled = false;

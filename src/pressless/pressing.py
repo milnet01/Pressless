@@ -14,22 +14,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from pressless.face import Face, Reply, Request
+from pressless.words import say
 
 PUBLISH, UNDO = "publish", "undo"
 
-# Every press-row line, so each sentence has one home (§ 4.3). The scripts take
-# them from SCRIPT's `words`.
-PUBLISHING = "Publishing… this can take a few minutes the first time."
-UNDOING = "Putting your site back… this can take a few minutes."
-PUBLISHED = "Published. Your site shows it within a few minutes."
-PARAGRAPHS = ("Not published, because the box holds a different number of paragraphs "
-              "from your page.")
-NOT_PUBLISHED = "Not published. The reason is below."
-UNDONE = "Your site was put back."
-NOT_UNDONE = "Your site was not put back. The reason is below."
-
-_RUNNING = {PUBLISH: PUBLISHING, UNDO: UNDOING}
-_FAILED = {PUBLISH: NOT_PUBLISHED, UNDO: NOT_UNDONE}
+# Every press-row line has one home, the words table's `script.press.` keys,
+# which Python and the scripts both read (§ 4.3, PRESS-0242).
+_RUNNING = {PUBLISH: "script.press.publishing", UNDO: "script.press.undoing"}
+_FAILED = {PUBLISH: "script.press.not_published", UNDO: "script.press.not_undone"}
 
 
 @dataclass(frozen=True)
@@ -76,7 +68,7 @@ def state() -> dict:
     """§ 4.2's JSON."""
     with _LOCK:
         if _running is not None:
-            return {"running": True, "kind": _running, "said": _RUNNING[_running],
+            return {"running": True, "kind": _running, "said": say(_RUNNING[_running]),
                     "failure": None}
         if _outcome is not None:
             return {"running": False, "kind": None, "said": _outcome.said,
@@ -92,7 +84,7 @@ def run(kind: str, busy: Callable[[str], Reply],
     it, with the failed words. Only a press that started ends it."""
     if not start(kind):
         return busy(state()["said"])
-    ended = [Outcome(_FAILED[kind])]
+    ended = [Outcome(say(_FAILED[kind]))]
     try:
         return press(lambda outcome: ended.append(outcome))
     finally:
@@ -122,7 +114,7 @@ def holding() -> str | None:
     now = state()
     if not now["running"]:
         return None
-    return ('<p><a href="/">Your writing</a></p>'
+    return (f'<p><a href="/">{say("face.your_writing")}</a></p>'
             '<p id="publish-status" class="press-status" role="status" data-press="hold">'
             f"{html.escape(now['said'])}</p><script>{SCRIPT}</script>")
 
@@ -133,7 +125,6 @@ def holding() -> str | None:
 # then writes how it ended (§ 4.5). A holding page reloads instead.
 SCRIPT = """
 window.presslessPress = window.presslessPress || (() => {
-  const words = WORDS;
   const line = document.getElementById("publish-status") ||
     document.getElementById("undo-status");
   const failure = document.getElementById("failure") ||
@@ -160,9 +151,6 @@ window.presslessPress = window.presslessPress || (() => {
     buttons().forEach((button) => { button.disabled = false; });
   };
   if (line && line.dataset.press) ask();
-  return {words, ask, asking: () => asking, standing: (given) => { standing = given; }};
+  return {ask, asking: () => asking, standing: (given) => { standing = given; }};
 })();
-""".replace("WORDS", json.dumps({
-    "publishing": PUBLISHING, "undoing": UNDOING, "published": PUBLISHED,
-    "paragraphs": PARAGRAPHS, "notPublished": NOT_PUBLISHED, "undone": UNDONE,
-    "notUndone": NOT_UNDONE}))
+"""

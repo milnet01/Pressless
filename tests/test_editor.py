@@ -774,8 +774,8 @@ def test_view_your_site_sits_by_press_to_site_in_both_editors(tmp_path):
     finally:
         served.stop()
     for name, script in (("entry", editor._EDITOR_SCRIPT), ("page", page_editor._PAGE_SCRIPT)):
-        # PRESS-0235: the words come from pressing, so the anchor is their use.
-        after = script.split(".words.published", 1)[1]
+        # PRESS-0235: the words come from the table, so the anchor is their use.
+        after = script.split('say("script.press.published")', 1)[1]
         added = after.split("} catch", 1)[0]
         assert 'document.querySelector("button[data-view-site]")' in added, name
         assert "view.disabled = false" in added, name
