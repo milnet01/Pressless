@@ -10287,6 +10287,13 @@ already-built code ships in whichever release comes next.
   it offers a list of languages to choose from. The sample pages are
   translated too. PRESS-0242's words.use() is the hook
   (docs/specs/PRESS-0242-screen-words.md).
+  Left for this item by PRESS-0242 (2026-10-08): month and day names
+  on the list and the dashboard still come from strftime's %b and %a,
+  so they stay English; the app's pages and the starter pages say
+  lang="en"; template file names (poem, lyric, photograph, journal)
+  and the shortcut's file names stay English, being file names.
+  tests/test_words.py's INV-2 test lets the month and day names
+  through until then.
   **Layman:** You can use Pressless in your own language, not only English.
   Kind: feature.
   Source: user-request-2026-10-07.

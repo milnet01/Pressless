@@ -192,7 +192,8 @@ client=None)`, called wherever `setup.register` is.
 
 ```python
 GOOGLE_ACCOUNT = "google"                 # the account the refresh token is filed under
-SIGN_IN = "your Google sign-in"           # the {secret} noun (PRESS-0011 § 4.2)
+# The {secret} noun (PRESS-0011 § 4.2) is the words entry
+# failure.secret.google_sign_in, looked up when shown (PRESS-0242).
 RETURN_PATH = "/setup/google/back"        # the redirect_uri's path
 
 def register(face: Face, folder: Path, *,
@@ -265,7 +266,7 @@ It carries no Face cookie (§2 item 2). So:
    no refresh. The page says his Google account can see no Analytics
    property, and to sign in with the account that can.
 
-A credential failure at choose passes `secret=SIGN_IN`. The code and the
+A credential failure at choose passes that noun as `secret`. The code and the
 state are in the address bar and the browser's history; both are useless
 once the attempt is spent, and the code is useless without the verifier,
 which never leaves memory.
@@ -489,7 +490,7 @@ with that double, a `credentials` double, and a real settings file.
   The next `token` raises `Refused`, whose sentence says to sign in again
   from Settings.
 - **The store cannot be written.** `credentials.write` raises, the page
-  shows it with `SIGN_IN`, and Settings is unchanged.
+  shows it with that noun, and Settings is unchanged.
 - **Offline at Turn off.** Settings is cleared anyway (INV-13), and the
   refresh token stays valid at Google until he removes it there.
 - **Google's lifetime user cap is reached, or the client is disabled.**

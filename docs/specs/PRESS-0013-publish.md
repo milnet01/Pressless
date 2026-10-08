@@ -158,7 +158,8 @@ at step 1 landed and the page needs its new address and `base`:
  "failure": "<fragment>", "notices": "<fragment>"}
 ```
 
-The fragment is `face.fail(failure, publishing=False, secret=setup.KEY)`.
+The fragment is `face.fail(failure, publishing=False,
+secret=say("failure.secret.publishing_key"))`.
 **`slug`, `draft` and `base` are read from disk after `publish` returns or
 raises**: the working copy of the published entry where one is left, else the
 published entry, else the draft. So the page's next save goes to a file that

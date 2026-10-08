@@ -71,8 +71,9 @@ A new Face module, `src/pressless/templates.py`, registered from
 its `base` check; `editor` does not import it back.
 
 ```python
-STARTERS: tuple[store.Entry, ...]   # the four, named poem, lyric,
-                                    # photograph, journal
+def starters() -> tuple[store.Entry, ...]: ...  # the four, named poem, lyric,
+                                    # photograph, journal; their words are
+                                    # looked up when called (PRESS-0242)
 def seed(folder: Path) -> bool: ... # §4.2; False where the folder existed
 def register(face: Face, folder: Path) -> None: ...
 ```
@@ -90,7 +91,7 @@ page:
 ### 4.2 The starters
 
 `register` calls `seed(folder)` once, at start. `seed` writes the four
-`STARTERS` with `store.write_template` when
+`starters()` with `store.write_template` when
 `folder / store.TEMPLATES_FOLDER` does not exist, and does nothing
 otherwise, returning `False`. A `StoreError` from a write propagates out
 of `seed`; `register` catches it and `face.note` records `templates:

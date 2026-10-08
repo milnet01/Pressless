@@ -387,7 +387,7 @@ Fields: `slug`, `draft` (`1` or `0`), `base`, `title`, `categories`, `tags`,
    Windows device name such as `con`), is dropped too, and a `LeftOut`
    warning names it as typed, so the reply's `notices` says it was left out.
    That notice's own words say to give it another name; like every notice it
-   carries `NOTICE_NEXT`. The page's boxes keep what he typed until he opens
+   carries the `notice.next` sentence. The page's boxes keep what he typed until he opens
    the entry again, because a save runs while he types. The body's `\r\n` and lone `\r` become `\n`, and
    nothing else about it changes. The date and extra fields come from the
    file. **For a published entry** the address is `free_address(folder, slug +

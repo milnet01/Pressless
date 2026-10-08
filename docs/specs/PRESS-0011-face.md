@@ -84,15 +84,15 @@ Every "(decided here)" is open to the writer's maintainer to overturn.
 ```python
 # src/pressless/face.py
 
-LABEL = "the Pressless-data folder, beside the program"
+# Every word below lives in words.py, looked up when shown (PRESS-0242).
 
-class Site(enum.Enum):
-    UNCHANGED = "Your site has not changed."
-    UNKNOWN = "Pressless cannot tell whether your site changed."
-    UPDATED = "Your site has been updated."      # a notice's only, § 4.4
+class Site(enum.Enum):              # each value a key; .words is its words
+    UNCHANGED = "site.unchanged"
+    UNKNOWN = "site.unknown"
+    UPDATED = "site.updated"        # a notice's only, § 4.4
 
 @dataclass(frozen=True)
-class Sentence:
+class Sentence:     # in SENTENCES each part is a key; sentence_for gives words
     what: str      # what happened, in his words; may hold the "{secret}" slot
     site: Site     # what it means for his site
     next: str      # what to do next
@@ -110,8 +110,6 @@ def render_notices(notices: list[str | Notice]) -> str: ...  # an HTML fragment
 class Notice:
     text: str
     site: Site = Site.UNCHANGED
-
-NOTICE_NEXT = "Nothing was lost. Send this to whoever helps you if you did not expect it."
 
 @dataclass(frozen=True)
 class Request:
@@ -199,7 +197,7 @@ not a frame's locals — for any failure.
 (PRESS-0003 § 4.4), so a log that cannot be written costs nothing on screen.
 
 **The details panel names the log file as `log.FILE_NAME`, its older half as
-`log.OLD_NAME`, and their folder as `LABEL`** (PRESS-0003 § 11), beside two
+`log.OLD_NAME`, and their folder in words** (PRESS-0003 § 11), beside two
 buttons:
 
 | Button | What happens |
@@ -227,7 +225,9 @@ Source: https://docs.python.org/3/library/warnings.html#warnings.catch_warnings
 
 **Each captured notice is shown through `render_notices` and noted in the
 log.** It is shown in the three parts `docs/design.md` § Errors requires: its
-own words, its site part, and `NOTICE_NEXT`. A captured notice is a plain
+own words, its site part, and the `notice.next` entry. A notice is raised
+with a key and slots, and `capture` shows `words.say` of them (PRESS-0242).
+A captured notice is a plain
 string, and its site part is `Site.UNCHANGED`: a Store or Settings call never
 touches the site. A part adding a notice about a publish passes a `Notice`
 naming its own (PRESS-0145): `UPDATED` after a publish that succeeded,
@@ -291,6 +291,8 @@ capture, it lands on that request's list.
   the page registered for its method and path, or gets 404. One page today:
   `/` says Pressless is running. PRESS-0012, PRESS-0013, PRESS-0018,
   PRESS-0020 and PRESS-0021 add theirs.
+- **A page's words come from `words.py` when it is shown** (PRESS-0242).
+  Every page's `<head>` carries the words block its scripts read.
 - **Every page runs inside one catch** that hands any exception to
   `Face.fail`, with the `publishing` its `add_page` call gave, and answers 500
   with the fragment it returns. That is `docs/design.md` § Errors' last-resort
@@ -382,8 +384,8 @@ capture, it lands on that request's list.
   holds `&lt;script&gt;` and no `<script>`.
   *Breaks when:* `render_failure` or `render_notices` inserts raw text.
 
-- **INV-7** — The page names the log by its file name and its folder by
-  `LABEL`, and never by its path.
+- **INV-7** — The page names the log by its file name and its folder in
+  words, and never by its path.
   *Test:* `tests/test_face.py::test_the_details_name_the_label_not_the_path`
   — on `serve(tmp_path)`, `fail` a typed failure: the
   fragment holds the label's words and `pressless.log`, each written out in
@@ -399,7 +401,7 @@ capture, it lands on that request's list.
   where a warning is raised, so only a repeat from one line tests it: each
   listing returns, two notices are on the
   captured list and in the log, and `render_notices` shows each with the words
-  "Your site has not changed." and `NOTICE_NEXT`'s sentence, written out in the
+  "Your site has not changed." and the `notice.next` sentence, written out in the
   test. A `Notice` carrying `UPDATED` shows "Your site has been updated." and
   not "Your site has not changed."
   *Breaks when:* a notice is left to the default warnings filter, which shows

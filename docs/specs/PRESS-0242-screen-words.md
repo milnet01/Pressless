@@ -117,7 +117,7 @@ each f-string does today. A literal brace in an entry is written `{{`.
   `settings.py` import `words` for this.
 - **Countries and the cheat sheet** look up the two families (§ 4.1).
   `marks.py` keeps its standard-library-only imports.
-- **Sample pages and templates** (`starter.py`, `templates.STARTERS`) take
+- **Sample pages and templates** (`starter.py`, `templates.starters()`) take
   their words when they are written into a site, so a site starts in the
   language in use that day.
 

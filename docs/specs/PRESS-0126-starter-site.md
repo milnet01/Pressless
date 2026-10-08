@@ -64,7 +64,7 @@ holds a site, until the user says in so many words to replace it.
    2026-10-02. This item turns the journal off with `store.write_journal`
    (PRESS-0214 § 4.1).
 4. **The starter set lives in code, as `src/pressless/starter.py`.**
-   *(decided here)* `templates.STARTERS` is the precedent; package data files
+   *(decided here)* `templates.starters()` is the precedent; package data files
    would need `--add-data` in both build scripts.
 5. **"Already holds a site" means an `index.html` or `index.md` at the
    repository root.** *(decided here)* GitHub Pages looks for `index.html`,
@@ -159,7 +159,7 @@ site on its own.
 
 The site's name is escaped with `html.escape(site_name, quote=True)`
 wherever it is written. The words are the implementer's. Like
-`templates.STARTERS`, they name nobody and assume nothing about the user.
+`templates.starters()`, they name nobody and assume nothing about the user.
 Body text and links have a contrast ratio of at least 4.5:1 against their
 background: the first user is partially sighted.
 

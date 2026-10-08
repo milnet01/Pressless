@@ -179,7 +179,7 @@ Success answers `"undone": true`, `"failure": null`, and a `summary` fragment
 naming what changed: `restored`, `demoted` and `kept`, one clause each.
 
 The failure fragment is `face.fail(failure, publishing=False,
-secret=setup.KEY)`, as on the Publish route (PRESS-0013 § 4.2). **An
+secret=say("failure.secret.publishing_key"))`, as on the Publish route (PRESS-0013 § 4.2). **An
 unforeseen failure left the site unchanged**: steps 1 to 5 of § 4.3 change
 nothing on GitHub, and step 6 raises `publisher.OutcomeUnknown` for every
 failure an upload can leave unknown (PRESS-0013 § 4.3). `publishing=True`

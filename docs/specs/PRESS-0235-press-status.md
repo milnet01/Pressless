@@ -96,7 +96,8 @@ It takes no `editor.LOCK`, so it answers during a press.
 
 ### 4.3 The words
 
-`pressing.py` holds every press-row line, and the scripts take them from it,
+`words.py` holds every press-row line under `script.press.` (PRESS-0242),
+and the scripts and `pressing.py` take them from it,
 so each sentence has one home:
 
 | When | Words |

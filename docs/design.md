@@ -34,6 +34,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, which countries, and which provinces or states within them. | Entries, pages, marks, HTML, GitHub |
 | **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
 | **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, the menu list, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Words** | Every word the screens show, in one table keyed by name, looked up when a page is shown (PRESS-0242). English is its only table so far. | Files, the network, GitHub, the browser |
 
 **Marks and Blocks are parts rather than details inside the editors**,
 and that is the least obvious decision in this document. Two different
@@ -114,6 +115,8 @@ which marks cannot express without becoming HTML.
     Face starts it and draws what it finds. Only a release whose signed
     list verifies against a key built into the program is ever offered
     (PRESS-0023).
+12. **Any part may ask Words for words.** Words touches no disk and no
+    network, and reads only Marks' table and the flag data (PRESS-0242).
 
 **Setup's three starts.** Setup fills an empty Store in one of three
 ways, and only one:
