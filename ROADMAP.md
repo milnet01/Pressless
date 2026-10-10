@@ -3524,6 +3524,11 @@ it decides how pages, the menu and the look are held.
   the entry editor (draft to published) and a save after it leave the
   press row where it was; the GitHub sign-in code appearing leaves Next
   where it was; a failure opens in a box with OK, in Edge and Chrome.
+  Owed (2026-10-10) for PRESS-0231, now shipped: the whole-wizard
+  GitHub sign-in run with the packaged build on the Windows box (the
+  user signs in to GitHub there). User decision 2026-10-10: tag 0.8.0,
+  then run every owed row on the release draft the same day, together
+  with the user, and sign the draft only if they pass.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -3714,7 +3719,7 @@ it decides how pages, the menu and the look are held.
   Source: by-hand run of PRESS-0212 § 7, 2026-10-05.
   Lanes: Setup.
 
-- 🚧 [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
+- ✅ [PRESS-0231] **Sign in with GitHub, so Pressless makes the repository and switches the site on itself.**
   Asked for by the user 2026-10-05 during the PRESS-0212 by-hand run,
   whose hardest step was making the fine-grained key by hand. Needs a
   spec: the choice between a GitHub OAuth app (device flow; the
@@ -3790,6 +3795,10 @@ it decides how pages, the menu and the look are held.
   site) and the Windows box run.
   Decided (user, 2026-10-08): the Windows box run happens once, on the
   0.8.0 release draft, together with PRESS-0133's rows.
+  Resolved (2026-10-10, user decision): shipped so 0.8.0 can be
+  tagged; the code is complete. Its last check, the whole-wizard run
+  with the packaged build on the Windows box, is owed on the 0.8.0
+  release draft and is tracked in PRESS-0133, which stays open.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
@@ -10388,6 +10397,24 @@ already-built code ships in whichever release comes next.
   Kind: chore.
   Source: PRESS-0200 resolution 2026-10-10.
   Lanes: Insights.
+
+- 📋 [PRESS-0244] **Post an early-access trailer on YouTube, with a donation request.**
+  User decision 2026-10-10: post the trailer now, labelled as an
+  in-progress app (early access, alpha or beta: Claude's choice of
+  term), and re-record it once the app is complete. Make it flashier,
+  to today's trailer standards. Add a donation request, with its links
+  on screen and in the YouTube description, plus the project page and
+  source links.
+  State: a first cut exists outside the repository, in the demoreel kit
+  the session memory note "Pressless video kit" names (trailer.txt is its
+  edit script). Open question for the user: no donation links exist
+  anywhere in the repository yet (no FUNDING.yml, none in README), so
+  which donation service and address to use. The channel is the user's
+  call: the personal channel or a new project channel (YouTube refused
+  "Ants Projects Hub" as a name on 2026-10-10).
+  **Layman:** A short video showing Pressless as it is today, labelled as early access, asking viewers to support the project.
+  Kind: marketing.
+  Source: user-decision-2026-10-10.
 
 ## Milestones
 
