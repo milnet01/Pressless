@@ -271,12 +271,12 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
     off = say("editor.journal.off")
     # PRESS-0236: both states' words in one place, the other one hidden, so
     # switching leaves the button and everything below where they were.
-    shut, open_ = (" hidden", "") if journal else ("", " hidden")
+    when_on, when_off = ("", " hidden") if journal else (" hidden", "")
     return ('<form method="post" action="/journal" class="switch-row">'
-            f'<div class="states"><p{open_}>{off}</p><p{shut}>{on}</p></div>'
+            f'<div class="states"><p{when_off}>{off}</p><p{when_on}>{on}</p></div>'
             '<button><span class="states">'
-            f'<span{open_}>{say("editor.journal.turn_on")}</span>'
-            f'<span{shut}>{say("editor.journal.turn_off")}</span></span></button></form>')
+            f'<span{when_off}>{say("editor.journal.turn_on")}</span>'
+            f'<span{when_on}>{say("editor.journal.turn_off")}</span></span></button></form>')
 
 
 def _site_line(folder: Path) -> str:

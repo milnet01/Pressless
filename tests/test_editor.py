@@ -24,6 +24,7 @@ from _face_session import Browser
 from test_setup import _saved
 
 from pressless import editor, face, marks, page_editor, settings, setup, starter, store
+from pressless.words import say
 
 PREVIEW = "preview"
 REPLACES = "Replaces"
@@ -723,10 +724,16 @@ def test_the_journal_button_switches_it(tmp_path):
         status, headers, _ = browser.request("POST", "/journal")
         assert status == 303 and headers.get("Location") == "/"
         assert json.loads(options.read_text(encoding="utf-8")) == {"journal": False}
+        _, _, off = browser.request("GET", "/")
         browser.request("POST", "/journal")
         assert json.loads(options.read_text(encoding="utf-8")) == {"journal": True}
         status, _, page = browser.request("GET", "/")
     assert status == 200 and 'action="/journal"' in page
+    # PRESS-0133's 0.8.0 run: both states are in the page, and the one shown
+    # must be the one the options file holds.
+    for shown, said, button in ((off, "editor.journal.off", "editor.journal.turn_on"),
+                                (page, "editor.journal.on", "editor.journal.turn_off")):
+        assert f"<p>{say(said)}" in shown and f"<span>{say(button)}</span>" in shown, said
 
 
 # PRESS-0126 INV-15 (docs/specs/PRESS-0126-starter-site.md § 4.6).

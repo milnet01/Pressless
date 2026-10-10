@@ -17,6 +17,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - A copy of Pressless moved to another folder publishes again. It kept
   building your site in the folder it was moved from, and the first press
   failed with "could not write the folder your site is built into".
+- The list says the right thing about your journal again. It said the
+  journal was on when it was off, and the other way round, and its button
+  offered the wrong one.
 
 ## [0.8.0] - 2026-10-10
 
