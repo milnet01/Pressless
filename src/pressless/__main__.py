@@ -200,6 +200,7 @@ def _serve_once(folder: Path) -> bool:
             moved = setup.carry_name_across(folder)          # PRESS-0213 § 4.3
             if moved is not None:
                 print(moved)
+            setup.follow_the_folder(folder)
             try:
                 settings.load(folder)
             except settings.NotSetUp:

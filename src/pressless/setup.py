@@ -391,6 +391,22 @@ def carry_name_across(folder: Path) -> str | None:
     return None
 
 
+def follow_the_folder(folder: Path) -> None:
+    """§ 4.5: the site folder is always `folder / SITE_FOLDER`, and the folder
+    moves with the program. Point a saved one back inside it at startup, so a
+    moved copy does not build into the old place (PRESS-0133)."""
+    try:
+        saved = settings.load(folder)
+    except (settings.NotSetUp, settings.SettingsError):
+        return
+    here = folder / SITE_FOLDER
+    if saved.site_folder != here:
+        try:
+            settings.save(folder, dataclasses.replace(saved, site_folder=here))
+        except (OSError, settings.SettingsError):
+            pass        # the press names the folder it cannot use
+
+
 def _credential_failure(face: Face, failure: Exception,
                         noun: str = "failure.secret.publishing_key") -> str:
     fragment = face.fail(failure, publishing=False, secret=say(noun))

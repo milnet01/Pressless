@@ -216,7 +216,9 @@ replaces it with `Choice.store` before anything is saved.
 
 **`site_folder` is rewritten in Settings too.** It is an absolute path, and
 Pressless's own folder moves with the program, so a saved one can name a
-folder that is no longer there.
+folder that is no longer there. Startup rewrites it as well
+(`setup.follow_the_folder`), so a moved copy publishes before Settings is
+saved again (PRESS-0133).
 
 ### 4.6 The sequence, once the answers are accepted
 

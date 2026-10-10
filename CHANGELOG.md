@@ -12,6 +12,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- A copy of Pressless moved to another folder publishes again. It kept
+  building your site in the folder it was moved from, and the first press
+  failed with "could not write the folder your site is built into".
+
 ## [0.8.0] - 2026-10-10
 
 **Theme:** a stranger can start from nothing

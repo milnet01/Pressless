@@ -1175,6 +1175,27 @@ def test_the_name_is_carried_across_once(tmp_path, monkeypatch):
     assert _settings_file(stuck).read_bytes() == before
 
 
+def test_a_moved_folder_takes_its_site_folder_along(tmp_path):
+    """PRESS-0133's 0.8.0 run: the program and its folder moved, and the first
+    press built into the old place. Breaks when startup leaves a site folder
+    outside Pressless's own folder."""
+    old = tmp_path / "old"
+    moved = tmp_path / "moved"
+    moved.mkdir()
+    _saved(moved, site_folder=old / "site")
+    setup.follow_the_folder(moved)
+    assert settings.load(moved).site_folder == moved / "site"
+
+    before = _settings_file(moved).read_bytes()
+    setup.follow_the_folder(moved)                        # already in place
+    assert _settings_file(moved).read_bytes() == before
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    setup.follow_the_folder(empty)                        # not set up: nothing
+    assert not _settings_file(empty).exists()
+
+
 # ------------------------------------------------- PRESS-0213 INV-8, INV-9 ----
 
 
