@@ -3284,6 +3284,11 @@ it decides how pages, the menu and the look are held.
   sent to the website session (message 531) to publish. Still owed: its
   address, then the user's verification request in the Google Cloud
   console.
+  Progress (2026-10-10): the privacy policy is live at
+  https://antsprojectshub.co.za/p/pressless/privacy.html (website
+  session, message 539; fetched, 200), linked from the project page.
+  Still owed: the user's verification request in the Google Cloud
+  console.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
