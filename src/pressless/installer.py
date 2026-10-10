@@ -195,7 +195,10 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
     """
     script = Path(staged).parent / f"pressless-update-{secrets.token_hex(4)}.ps1"
     log = Path(folder) / LOG_NAME
-    flags = (getattr(subprocess, "DETACHED_PROCESS", 0)
+    # A console of its own, never shown. Windows PowerShell started with none
+    # at all (DETACHED_PROCESS) exits before its first line: measured on the
+    # Windows box, where Update now closed Pressless and nothing came back.
+    flags = (getattr(subprocess, "CREATE_NO_WINDOW", 0)
              | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
     try:
         script.write_text(WINDOWS_SCRIPT, encoding="utf-8")

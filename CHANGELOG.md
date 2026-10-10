@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- On Windows, Update now installs the new version and opens Pressless
+  again. It closed Pressless and nothing came back, so the update never
+  happened. On an earlier version, update by downloading this release's
+  zip.
+
 ## [0.8.1] - 2026-10-10
 
 **Theme:** a stranger can start from nothing

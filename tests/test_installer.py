@@ -2,14 +2,16 @@
 #
 # The helpers' runtime is proved by hand (§ 7.1); what the suite holds is the
 # swap, and the command and environment each helper is handed. Popen is always
-# replaced, so no test starts a program -- except the one that runs the Linux
-# waiter itself against a process that has already ended.
+# replaced, so no test starts a program -- except the two that run a helper
+# itself: the Linux waiter against a process that has already ended, and the
+# Windows helper against a folder no process runs from.
 from __future__ import annotations
 
 import ntpath
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -190,6 +192,65 @@ def test_windows_helper(tmp_path, monkeypatch):
         installer.apply_windows(program, staged, folder)
     assert not staged.exists()
     assert {p for p in tmp_path.iterdir() if p.suffix == ".ps1"} == scripts
+
+
+def test_windows_helper_gets_a_hidden_console(tmp_path, monkeypatch):
+    """Windows PowerShell started with no console at all (DETACHED_PROCESS)
+    exits before running a line: measured on the Windows box 2026-10-10, where
+    Update now closed Pressless and nothing was installed or reopened. A
+    console of its own, never shown, is what it needs.
+
+    Breaks when the helper is started detached, or without a window of its
+    own being suppressed. The run itself is test_the_windows_helper_runs.
+    """
+    for name, value in (("DETACHED_PROCESS", 0x8), ("CREATE_NEW_PROCESS_GROUP", 0x200),
+                        ("CREATE_NO_WINDOW", 0x8000000)):
+        monkeypatch.setattr(installer.subprocess, name, value, raising=False)
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    staged = tmp_path / "Pressless.new-c"
+    (staged / "Pressless").mkdir(parents=True)
+    spawned = _Spawned(monkeypatch)
+    installer.apply_windows(program, staged, folder)
+    [(_, kwargs)] = spawned.calls
+    flags = kwargs.get("creationflags", 0)
+    assert flags & 0x8000000, hex(flags)
+    assert not flags & 0x8, hex(flags)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the helper is a Windows PowerShell script")
+def test_the_windows_helper_runs(tmp_path):
+    """The Windows twin of test_the_waiter_runs: the real helper, started as
+    apply_windows starts it, swaps a folder no process runs from and starts
+    the batch file beside it. It runs on the Windows box's gate.
+
+    Breaks when PowerShell cannot start the way it is spawned, or the
+    script stops before the restart.
+    """
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    (program / "old.txt").write_text("old", encoding="ascii")
+    staged = tmp_path / "Pressless.new-c"
+    (staged / "Pressless").mkdir(parents=True)
+    (staged / "Pressless" / "new.txt").write_text("new", encoding="ascii")
+    started = tmp_path / "started.txt"
+    (tmp_path / "Start Pressless.bat").write_text(
+        f'@echo off\r\necho started> "{started}"\r\n', encoding="ascii")
+
+    installer.apply_windows(program, staged, folder)
+    for _ in range(300):
+        if started.exists() and (folder / "update.log").exists() and \
+                _log(folder)[-1:] == ["started"]:
+            break
+        time.sleep(0.1)
+    assert (folder / "update.log").exists(), "the helper never wrote its first line"
+    assert _log(folder) == ["waiting", "swapped", "started"]
+    assert (program / "new.txt").exists() and not staged.exists()
+    assert started.exists()
 
 
 def test_windows_helper_starts_outside_the_folder_it_renames(tmp_path, monkeypatch):

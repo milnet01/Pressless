@@ -4032,6 +4032,26 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-07.
   Lanes: Face.
 
+- 🚧 [PRESS-0250] **On Windows, Update now closes Pressless and nothing is installed or reopened.**
+  Seen 2026-10-10 on the Windows box: the public 0.6.1, offered 0.7.1,
+  closed on Update now and never came back. The new version was
+  downloaded and the helper script written, but update.log was never
+  created and no PowerShell start was logged. installer.apply_windows
+  started the helper with DETACHED_PROCESS, and Windows PowerShell given
+  no console exits before its first line. Isolated on the box with the
+  gate Python, from the desktop session and over SSH: DETACHED_PROCESS
+  never ran the script; CREATE_NO_WINDOW ran it and outlived its parent.
+  Every release since PRESS-0023 carries it, so a Windows user on 0.8.1
+  or earlier updates by downloading the zip.
+  Fix: CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP. Tests:
+  test_windows_helper_gets_a_hidden_console (any system) and
+  test_the_windows_helper_runs (the Windows gate runs the real helper).
+  Both red before the fix on the Windows gate, green after.
+  **Layman:** On Windows, choosing Update now closed Pressless and it never came back; now it installs the new version and reopens.
+  Kind: fix.
+  Source: in-session-2026-10-10 PRESS-0133 Windows round, PRESS-0023 two-cycle row.
+  Lanes: updater.
+
 ## 0.9.0 — pages, menus and the homepage are theirs
 
 S14 and S15. Every page, the homepage included, is built and changed in a
@@ -10507,6 +10527,17 @@ already-built code ships in whichever release comes next.
   the undo took off the site (marked Undone). Both files are right
   and nothing is lost; only the list cannot tell them apart.
   **Layman:** After an undo, Drafts can show the same entry name twice; each line should say whether it is your later changes or the version taken off your site.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 Windows round.
+
+- 📋 [PRESS-0251] **After a failed press, its failure box reopens on every page until the next save.**
+  Seen 2026-10-10 on the 0.8.1 Windows build, and the same on Linux by
+  the code: PRESS-0235 4.5 shows a press outcome's failure on every
+  page until forget, which a save calls. PRESS-0236 made that failure a
+  box with OK, and OK only closes it in the page, so the list, the
+  editors and Settings each reopen it. Nothing is lost on disk.
+  Deciding whether OK should forget the outcome amends PRESS-0235 4.5.
+  **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
 

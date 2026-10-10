@@ -306,8 +306,10 @@ script:
 4. Starts `Start Pressless.bat` with the working directory set to its folder,
    appends `started`, then removes its own script file.
 
-`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
-the module loads on Linux. A spawn that fails removes the staged folder and
+`CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
+the module loads on Linux. Not `DETACHED_PROCESS`: Windows PowerShell given no
+console exits before its first line (measured on the Windows box 2026-10-10;
+`test_the_windows_helper_runs` fails if it comes back). A spawn that fails removes the staged folder and
 raises `InstallFailed`.
 
 **`update.log` is overwritten by each update, not appended**, so it stays one
@@ -640,7 +642,7 @@ over SSH cannot reach the credential vault).
 | INV-19 | `tests/test_sign_release.py` |
 | INV-20 | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | INV-21 | `tests/test_updater.py::test_a_full_disk_is_named` |
-| § 4.7 the helpers restart the new version | **nothing** automated — § 7.1 by hand, on each system |
+| § 4.7 the helpers restart the new version | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
 
 ## 11. Cross-doc impact
