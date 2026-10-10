@@ -12,6 +12,17 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-10
+
+**Theme:** a stranger can start from nothing
+
+0.8.0 was never published, so this is the first release carrying its
+changes, listed under 0.8.0 in
+[CHANGELOG.md](https://github.com/milnet01/Pressless/blob/main/CHANGELOG.md):
+a starter site in three looks, setup that walks you through GitHub and
+signs in with a short code, and buttons that stay where they are. This
+release also fixes what checking 0.8.0 by hand found.
+
 ### Fixed
 
 - A copy of Pressless moved to another folder publishes again. It kept
