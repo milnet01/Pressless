@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-10
+
+**Theme:** a stranger can start from nothing
+
 ### Added
 
 - **The starter site comes in three looks to choose from in setup: Sunrise, Meadow and Harbour.** (PRESS-0239)
