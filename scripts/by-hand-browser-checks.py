@@ -166,7 +166,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         page.select_option("select[name=template]", "poem")
         page.click("text=New entry")
         page.wait_for_load_state("networkidle")
-        poem = next(s for s in templates.STARTERS if s.slug == "poem").body
+        poem = next(s for s in templates.starters() if s.slug == "poem").body
         typed = page.locator("textarea").input_value()
         check("PRESS-0017 s7: picking the poem opens a draft holding it",
               typed == poem and "/edit?slug=rain" in page.url, page.url)
@@ -250,8 +250,8 @@ def run(origin: str, secret: str, folder: Path) -> None:
             check("PRESS-0013 s4.4: it shows the waiting message while publishing",
                   bool(waiting),
                   f"{len(waiting)} of {len(samples)} samples carried it")
-            check("PRESS-0013 s4.4: it says to keep the page open",
-                  any("Keep this page open" in x for x in waiting))
+            check("PRESS-0235: it no longer says to keep the page open",
+                  bool(waiting) and not any("Keep this page open" in x for x in waiting))
             check("PRESS-0013 s4.4: the button is disabled while that shows",
                   bool(disabled_while_waiting),
                   f"{len(disabled_while_waiting)} of {len(waiting)} waiting samples")
@@ -328,7 +328,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
             page.wait_for_timeout(4000)
             said = page.evaluate("() => window.__undo")
             check("PRESS-0015 s4.6: it shows the putting-back message",
-                  any("Putting your site back" in x and "Keep this page open" in x
+                  any("Putting your site back" in x
                       for x in said),
                   f"{len(said)} status changes: {said!r}"[:180])
             result = page.inner_text("#undo-result")
@@ -338,6 +338,16 @@ def run(origin: str, secret: str, folder: Path) -> None:
                   repr(result[:140]))
             check("PRESS-0015 s4.6: the page did not reload itself",
                   page.evaluate("() => window.__undo !== undefined"))
+
+            # PRESS-0235 decision 6: the refusal stays shown, in its box with
+            # OK (PRESS-0236), on every page until a save. Close it, then save.
+            page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+            check("PRESS-0235: the next page still shows how the undo ended",
+                  page.locator("dialog.message[open]").count() == 1)
+            page.locator("dialog.message[open]").get_by_role(
+                "button", name="OK", exact=True).click()
+            page.locator("textarea").type(" Again.", delay=10)
+            page.wait_for_timeout(2500)
 
         # ---- PRESS-0182: a published entry changes address, asked first ------
         # A fresh entry, so the seaside rows above keep their state.
@@ -455,7 +465,11 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     google = [v for v in violations if "googletagmanager" in v]
     player = [v for v in violations if "youtube" in v]
     own_script_ran = page.evaluate("() => window.__ran === true")
-    ok = bool(google) and bool(player) and own_script_ran
+    # The Builder refuses a preview folder holding files it did not make, so
+    # the probe pages go before the next preview is built.
+    (preview / "policycheck.html").unlink()
+    (preview / "ran.js").unlink()
+    ok =bool(google) and bool(player) and own_script_ran
     return ok, (f"csp={csp!r} google_blocked={bool(google)} "
                 f"player_blocked={bool(player)} same-origin script still ran="
                 f"{own_script_ran} violations={violations}")
