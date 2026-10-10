@@ -3529,6 +3529,24 @@ it decides how pages, the menu and the look are held.
   user signs in to GitHub there). User decision 2026-10-10: tag 0.8.0,
   then run every owed row on the release draft the same day, together
   with the user, and sign the draft only if they pass.
+  2026-10-10, 0.8.0 Linux round (draft AppImage, then rebuilt from the
+  fixes), as milnet02, new repository milnet02/pressless-test-080.
+  Passed: whole wizard with GitHub sign-in (an expired code is replaced
+  on the next Next); the code appearing leaves Next in place; the three
+  looks with pictures, one per row; "Your pages" reads About; menu entry
+  and desktop icon made, shown ticked in Settings, follow a moved
+  program, removed on untick; a press and a save after it leave the
+  press row in place from the page editor and the entry editor; a
+  failure opens in a box with OK; a starter site replacing a site asks
+  first. Each look built and went live: Harbour from first run, Sunrise
+  and Meadow from a copy holding only settings.json (no second sign-in).
+  by-hand-browser-checks.py 46 passed on the fixed code.
+  Defects found and fixed: a moved copy built into its old site folder
+  (1e18e79); the list's journal switch showed the opposite state
+  (64dba26, from PRESS-0236); the Meadow look laid out the editor in two
+  columns (cc7f71d). Filed: PRESS-0245, PRESS-0246, PRESS-0247.
+  The 0.8.0 draft predates the fixes, so it is not to be published.
+  Still owed: the Windows round on a build carrying them.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -10415,6 +10433,43 @@ already-built code ships in whichever release comes next.
   **Layman:** A short video showing Pressless as it is today, labelled as early access, asking viewers to support the project.
   Kind: marketing.
   Source: user-decision-2026-10-10.
+
+- 📋 [PRESS-0245] **Reopening Pressless's start link in the same browser shows a bare Forbidden.**
+  Seen on the 0.8.0 Linux run: a GET carrying the spent link token is
+  refused with 403 even from the browser already holding the session
+  cookie. That is what PRESS-0011 § 4.5 says ("refused ... whatever
+  cookie it carries"), so changing it amends that spec and needs its
+  gate. Likely shape: a cookie-holding browser is redirected to the
+  path; any other gets a short page saying to start Pressless again.
+  Reload, Back and a session restore all land on the token URL.
+  **Layman:** If you reload the first page Pressless opened, or go back to it, you get a blank page saying Forbidden instead of your list.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
+
+- 📋 [PRESS-0246] **A carried-over press outcome outlives the change that answers it.**
+  PRESS-0235 decision 6 keeps the last press's outcome until the next
+  save, and PRESS-0236 opens a failure in a box with OK. Together, a
+  refused press opens its box on every page opened afterwards. Seen on
+  the 0.8.0 run: "Your journal is off" kept opening after the journal
+  was switched on, and a missing-site-folder failure kept opening after
+  Settings was saved, because neither is a save. Decide which changes
+  forget the outcome (the journal switch, a Settings save at least),
+  and whether a box shown once should open again at all. Amends
+  PRESS-0235 § 4.4.
+  **Layman:** After a publish fails, the same message box pops up on every page, even after you fix what it asked you to fix.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
+
+- 📋 [PRESS-0247] **A changed look can show the old one for ten minutes.**
+  The stylesheet is always published as look/style.css, and GitHub
+  Pages serves it with max-age=600, as it does the pages. Seen on the
+  0.8.0 run: after replacing a Harbour site with Sunrise, a browser
+  that had visited showed the new pages with the old colours. A name
+  or query that changes with the stylesheet's content would end it for
+  the stylesheet; the pages themselves keep GitHub's ten minutes.
+  **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
 ## Milestones
 
