@@ -3258,7 +3258,7 @@ it decides how pages, the menu and the look are held.
   Kind: feature.
   Source: user-decision-2026-10-01.
 
-- 📋 [PRESS-0200] **Get the Google sign-in verified, and say in the app while it is pending.**
+- ✅ [PRESS-0200] **Get the Google sign-in verified, and say in the app while it is pending.**
   User decision 2026-10-01: releases do not wait for Google's review.
   Until Pressless's OAuth client is verified, the Google step tells the
   user plainly that Google's review is still pending, and what the
@@ -3289,6 +3289,14 @@ it decides how pages, the menu and the look are held.
   session, message 539; fetched, 200), linked from the project page.
   Still owed: the user's verification request in the Google Cloud
   console.
+  Resolved (2026-10-10): verification request sent. Branding verified
+  and published (home page and privacy policy on antsprojectshub.co.za,
+  domain verified in Search Console). analytics.readonly declared as a
+  sensitive scope with its justification and a demo video, unlisted at
+  https://youtu.be/fj0ICfnetsk; Verification Center says data access is
+  under review. The video kit is kept outside the repository. Still to
+  do in a later release: set google_signin.APPROVED true once Google
+  approves.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
@@ -10370,6 +10378,16 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
+
+- 📋 [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
+  The verification request went in on 2026-10-10 (PRESS-0200). When
+  Google's approval email arrives, set google_signin.APPROVED to True;
+  test_the_page_says_while_google_has_not_approved_pressless then needs
+  its expectation turned round. Blocked on Google's reply, not on code.
+  **Layman:** When Google says yes, the app stops warning that Google is still checking it.
+  Kind: chore.
+  Source: PRESS-0200 resolution 2026-10-10.
+  Lanes: Insights.
 
 ## Milestones
 
