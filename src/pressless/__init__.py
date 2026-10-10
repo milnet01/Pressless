@@ -5,4 +5,4 @@ in the bundle. It must equal that file's `version` (PRESS-0023 INV-17), and the
 Updater compares every release against it.
 """
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"
