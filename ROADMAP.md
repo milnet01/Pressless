@@ -3565,6 +3565,24 @@ it decides how pages, the menu and the look are held.
   - still owed on Windows: the Chrome start, PRESS-0199's visitor
     numbers, the console window, and the never-run rows (PRESS-0142,
     0146, 0169, 0023, 0173)
+  Windows round on the 0.8.1 draft zip, 2026-10-10, part 2 (driven
+  from Linux; the user was not at the box):
+  - passed: a second start in Chrome; an entry edited, pressed live in
+    11 s, and saved after, the press row in place
+  - passed: the console window shows the self-check and "Pressless is
+    running", keyring WinVaultKeyring
+  - passed: PRESS-0146, Open folder opens Explorer on Pressless-data
+  - passed: PRESS-0142, a fake key in Settings answers "GitHub would not
+    accept your publishing key"
+  - passed: PRESS-0169 in Chrome and Edge, a page's own Google script is
+    blocked on its /preview address while the site's own script loads
+  - FAILED: PRESS-0023 two-cycle, cycle 1 (public 0.6.1 offered 0.7.1):
+    Update now closed Pressless and nothing came back. Fixed as
+    PRESS-0250 (eeb2d55) for 0.8.2, so 0.8.1 is not to be published
+  - filed: PRESS-0251 (a failed press's box reopens on every page)
+  - still owed: PRESS-0199's visitor numbers with the user's Google
+    sign-in; the 0.8.2 draft's self-check on Windows; a real update from
+    a fixed version once one is published (PRESS-0023 and PRESS-0173)
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -4032,7 +4050,7 @@ it decides how pages, the menu and the look are held.
   Source: user-request-2026-10-07.
   Lanes: Face.
 
-- 🚧 [PRESS-0250] **On Windows, Update now closes Pressless and nothing is installed or reopened.**
+- ✅ [PRESS-0250] **On Windows, Update now closes Pressless and nothing is installed or reopened.**
   Seen 2026-10-10 on the Windows box: the public 0.6.1, offered 0.7.1,
   closed on Update now and never came back. The new version was
   downloaded and the helper script written, but update.log was never
@@ -4047,6 +4065,9 @@ it decides how pages, the menu and the look are held.
   test_windows_helper_gets_a_hidden_console (any system) and
   test_the_windows_helper_runs (the Windows gate runs the real helper).
   Both red before the fix on the Windows gate, green after.
+  Shipped 2026-10-10 (eeb2d55), for 0.8.2. A real update from a fixed
+  version still needs a newer published release; that is PRESS-0133's
+  two-cycle row.
   **Layman:** On Windows, choosing Update now closed Pressless and it never came back; now it installs the new version and reopens.
   Kind: fix.
   Source: in-session-2026-10-10 PRESS-0133 Windows round, PRESS-0023 two-cycle row.
