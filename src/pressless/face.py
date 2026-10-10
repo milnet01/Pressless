@@ -582,9 +582,11 @@ function say(key, slots = {}) {
 # dark. Every rule sits under `.face`, because the editor links his site's
 # stylesheets into this same document and a bare `body` or `a` rule of his
 # would otherwise restyle the Face. The box keeps his site's font, and takes its
-# colours only where his stylesheet sets none.
+# colours only where his stylesheet sets none. The body resets every property
+# first, because a rule of his can set one no `.face` rule does, as a
+# two-column `body { display: grid }` would (PRESS-0133).
 _SHAPES = """
-body.face { margin: 0; background: var(--paper); color: var(--ink);
+body.face { all: unset; display: block; margin: 0; background: var(--paper); color: var(--ink);
   font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
 .face .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center;
   flex-wrap: wrap;

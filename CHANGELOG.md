@@ -20,6 +20,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - The list says the right thing about your journal again. It said the
   journal was on when it was off, and the other way round, and its button
   offered the wrong one.
+- With the Meadow look, or any site whose own layout puts a menu beside
+  the page, the editor keeps its usual layout. Your site's styling had laid
+  out Pressless's own screen in two columns.
 
 ## [0.8.0] - 2026-10-10
 

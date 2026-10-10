@@ -591,6 +591,17 @@ def test_the_look_is_scoped_and_leaves_the_box_to_his_site(tmp_path: Path) -> No
             assert "textarea" not in re.sub(r":where\([^)]*\)", "", selector), selector
 
 
+def test_his_body_rule_cannot_lay_out_the_face(tmp_path: Path) -> None:
+    """PRESS-0133's 0.8.0 run: the Meadow look's `body { display: grid }` set a
+    property no `.face` rule sets, so it laid the editor out in two columns.
+    Breaks when the Face's body rule stops resetting every property first."""
+    _, style = _served_style(tmp_path)
+    body = re.search(r"body\.face\s*\{([^}]*)\}", style)
+    assert body is not None, "no body.face rule"
+    assert body.group(1).strip().startswith("all: unset;"), body.group(1)
+    assert "display: block;" in body.group(1), body.group(1)
+
+
 def test_the_look_reaches_only_the_faces_own_frame(tmp_path: Path) -> None:
     """PRESS-0187: a browser add-on injects its own iframe into every page.
 
