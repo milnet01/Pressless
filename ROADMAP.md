@@ -3547,6 +3547,24 @@ it decides how pages, the menu and the look are held.
   columns (cc7f71d). Filed: PRESS-0245, PRESS-0246, PRESS-0247.
   The 0.8.0 draft predates the fixes, so it is not to be published.
   Still owed: the Windows round on a build carrying them.
+  Windows round on the 0.8.1 draft zip, 2026-10-10, part 1 (driven Edge):
+  - passed: the wizard as milnet02 into a NEW repository with the
+    Harbour look, live with that look
+  - passed: "Your pages" reads About
+  - passed: page editor and entry editor, where a press and a save
+    after it leave the press row in place
+  - passed: the journal switch matches options.json
+  - passed: the Start Menu and desktop shortcuts are made, shown
+    ticked, and removed on untick
+  - passed: a failed press, caused by a draft file locked on Windows,
+    opens in a box with OK
+  - correct as specified: Undo is a toggle (PRESS-0015 decision 6),
+    so it never reaches the first-publish refusal
+  - filed: PRESS-0248 (looks have no dark version) and PRESS-0249
+    (Drafts shows two same-named entries)
+  - still owed on Windows: the Chrome start, PRESS-0199's visitor
+    numbers, the console window, and the never-run rows (PRESS-0142,
+    0146, 0169, 0023, 0173)
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -4224,6 +4242,17 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-decision-2026-10-03 PRESS-0213.
   Lanes: Store, Builder, Face.
+
+- 📋 [PRESS-0248] **The three starter looks get a dark version that follows the visitor's computer.**
+  Seen in the 0.8.1 Windows hand round (PRESS-0133): every starter
+  look in starter.py is light only. Nothing promised a dark one, so
+  this is new work, not a defect, and 0.8.1 ships without it.
+  Each look needs a prefers-color-scheme: dark block in its own
+  style.css, checked for contrast. Check the editor preview too:
+  it shows the site's look beside the editor (PRESS-0187).
+  **Layman:** A site made from Meadow, Harbour or Sunrise turns dark for a visitor whose computer is set to dark, the way Pressless's own screens already do.
+  Kind: enhancement.
+  Source: user-request-2026-10-10.
 
 ## 0.11.0 — anyone can bring their site in
 
@@ -10470,6 +10499,16 @@ already-built code ships in whichever release comes next.
   **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
+
+- 📋 [PRESS-0249] **Drafts can list two entries with the same title and no hint which is which.**
+  Seen 2026-10-10 on the 0.8.1 Windows build: publish an entry, edit
+  it (a -changes draft that Replaces it), then Undo the press. Drafts
+  lists "Windows test entry" twice: the changes copy, and the entry
+  the undo took off the site (marked Undone). Both files are right
+  and nothing is lost; only the list cannot tell them apart.
+  **Layman:** After an undo, Drafts can show the same entry name twice; each line should say whether it is your later changes or the version taken off your site.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 Windows round.
 
 ## Milestones
 
