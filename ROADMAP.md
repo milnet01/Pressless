@@ -3298,6 +3298,10 @@ it decides how pages, the menu and the look are held.
   under review. The video kit is kept outside the repository. Still to
   do in a later release: set google_signin.APPROVED true once Google
   approves.
+  Progress (2026-10-12): Google's review asked the policy to state data
+  access, use, sharing, protection and retention/deletion. New section
+  live on the Hub page (website commit b6d26b8, checked live). Owed by
+  the user: save/resubmit in Cloud Console and reply to Google's email.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
