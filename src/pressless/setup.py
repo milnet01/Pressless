@@ -26,6 +26,7 @@ from pressless import (
     github_signin,
     google_setup,
     google_signin,
+    pressing,
     publisher,
     restarting,
     settings,
@@ -299,6 +300,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
             failed = face.fail(exc, publishing=False)
         else:
             failed = None
+            pressing.forget()  # PRESS-0235 decision 6
     if failed is not None:
         return render_notices(filling) + render_notices(notices) + failed
     privacy, privacy_failure = _privacy(face, folder, final)

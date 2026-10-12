@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import threading
 import urllib.parse
 from collections.abc import Iterator
@@ -20,6 +21,7 @@ import pytest
 from _face_session import Browser
 from test_page_editor import _folder
 from test_publisher import _listing, _reads, _Transport, _writes
+from test_setup import _answers, _GitHub, _saved, _setup_page, _Store
 
 from pressless import (
     credentials,
@@ -258,3 +260,49 @@ def test_every_page_asks_about_the_press():
                          ("undo", editor._UNDO_SCRIPT), ("holding", held)):
         assert 'fetch("/press")' in script, name
         assert "Keep this page open." not in script, name
+
+
+# ------------------------------------------------------------------ INV-8 ---
+
+
+REASON = "The reason this press failed."
+
+
+def _failed() -> None:
+    """A publish that ended in a failure, as the record holds it."""
+    assert pressing.start(pressing.PUBLISH)
+    pressing.end(pressing.Outcome(NOT_PUBLISHED, f"<p>{REASON}</p>"))
+
+
+def test_ok_and_other_changes_forget_the_outcome(folder, monkeypatch, tmp_path):
+    """PRESS-0246, PRESS-0251: a failed press's box reopened on every page,
+    even after OK, after the journal was switched on and after Settings was
+    saved. Each of those now forgets it, as a save does."""
+    with _pressless(folder, _Held()) as browser:
+        for forgetting in (("POST", "/press/forget"), ("POST", "/journal")):
+            _failed()
+            assert REASON in browser.request("GET", "/")[2], forgetting
+            status, _, text = browser.request(*forgetting)
+            assert status in (204, 303), (forgetting, status, text)
+            assert REASON not in browser.request("GET", "/")[2], forgetting
+
+        _failed()
+        for path in ("/", "/edit?slug=seaside", "/page?kind=pages&name=about"):
+            page = browser.request("GET", path)[2]
+            marked = re.findall(r'<dialog class="message"[^>]*><div id="([\w-]+)">'
+                                r'(?:(?!</dialog>).)*?</div><p>'
+                                r'<button type="button" data-close data-forget>',
+                                page, re.DOTALL)
+            assert marked == ["failure"], (path, marked)
+            assert len(re.findall(r"<button[^>]*data-forget", page)) == 1, path
+            assert 'fetch("/press/forget"' in page, path
+
+    settings_folder = tmp_path / "settings-page"
+    settings_folder.mkdir()
+    _saved(settings_folder)
+    _Store(monkeypatch)
+    _failed()
+    with _setup_page(settings_folder, _GitHub()) as browser:
+        status, page = browser.post(_answers(key=""))
+    assert status == 200, page
+    assert pressing.state()["failure"] is None, "a Settings save keeps the outcome"

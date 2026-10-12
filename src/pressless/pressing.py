@@ -56,8 +56,9 @@ def end(outcome: Outcome) -> None:
 
 
 def forget() -> None:
-    """A save: an ended outcome stops being shown. Nothing while a press runs,
-    since every publish saves first."""
+    """An ended outcome stops being shown: a save, OK on its failure box, the
+    journal switch or a Settings save (§ 3 decision 6). Nothing while a press
+    runs, since every publish saves first."""
     global _outcome
     with _LOCK:
         if _running is None:
@@ -92,12 +93,19 @@ def run(kind: str, busy: Callable[[str], Reply],
 
 
 def register(face: Face) -> None:
-    """Add GET /press. It takes no editor.LOCK, so it answers during a press."""
+    """Add GET /press and POST /press/forget. Neither takes editor.LOCK, so
+    both answer during a press."""
     face.add_page("GET", "/press", _press)
+    face.add_page("POST", "/press/forget", _forget)
 
 
 def _press(request: Request) -> Reply:
     return Reply(json.dumps(state()).encode("utf-8"), "application/json")
+
+
+def _forget(request: Request) -> Reply:
+    forget()
+    return Reply(b"", "text/plain; charset=utf-8", status=204)
 
 
 def shown(standing: str) -> tuple[str, bool, str | None]:

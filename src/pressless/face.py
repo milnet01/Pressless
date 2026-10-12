@@ -528,7 +528,11 @@ document.addEventListener("click", (event) => {
   const opener = event.target.closest("button[data-help]");
   if (opener) document.getElementById(opener.dataset.help).showModal();
   const closer = event.target.closest("button[data-close]");
-  if (closer) closer.closest("dialog").close();
+  if (!closer) return;
+  // PRESS-0235 § 4.5: OK on a press's failure box forgets the outcome, or the
+  // box reopens on every page.
+  if (closer.hasAttribute("data-forget")) fetch("/press/forget", {method: "POST"});
+  closer.closest("dialog").close();
 });
 // PRESS-0236: a message box opens when its words change, so nothing beside a
 // control moves. A save writing the same words again leaves it shut; words
@@ -734,14 +738,17 @@ _STYLE = (
 )
 
 
-def message_box(inner_id: str, content: str = "", *, focus: str = "") -> str:
+def message_box(inner_id: str, content: str = "", *, focus: str = "",
+                forgets: bool = False) -> str:
     """PRESS-0236: a message that opens over the page, so nothing beside a
     control moves when it appears. Scripts write into `inner_id`; the Face's
     script opens the box whenever those words change, OK closes it, and
-    closing returns to the field named `focus`, where one is named."""
+    closing returns to the field named `focus`, where one is named. With
+    `forgets`, OK also forgets a press's outcome (PRESS-0235 § 4.5)."""
     to = f' data-focus="{html.escape(focus, quote=True)}"' if focus else ""
+    forget = " data-forget" if forgets else ""
     return (f'<dialog class="message"{to}><div id="{inner_id}">{content}</div>'
-            f'<p><button type="button" data-close>{say("face.message.ok")}</button></p>'
+            f'<p><button type="button" data-close{forget}>{say("face.message.ok")}</button></p>'
             "</dialog>")
 
 

@@ -436,7 +436,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
 </form>
-{message_box("failure", (failure or "") + (ended or ""))}
+{message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
 <div id="proof">{true_colours()}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"

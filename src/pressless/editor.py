@@ -304,6 +304,7 @@ def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -
             store.write_journal(folder, not store.journal_on(folder))
         except store.StoreError as exc:
             return _failed(face, notices, exc)
+    pressing.forget()  # PRESS-0235 decision 6
     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
 
 
@@ -368,7 +369,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             # module importing them.
             + "".join(face.list_pieces(above=True)) +
             # PRESS-0236: a press's failure opens over the list.
-            message_box("failure", ended or "") +
+            message_box("failure", ended or "", forgets=True) +
             '<div id="undo-result"></div>'
             '<div id="listing">'
             f'<form method="post" action="/new"><label>{say("editor.title")} '
@@ -549,7 +550,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  say("script.editor.throw_entry" if on_site else "editor.throw_draft")}</button></p>
 </form>
 {cheatsheet.panel()}
-{message_box("failure", (failure or "") + (ended or ""))}
+{message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 {message_box("address-hint", focus="address")}
 <div id="undo-result"></div>
 <div id="proof">{true_colours()}
