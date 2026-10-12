@@ -146,8 +146,8 @@ with the access token already in hand:
   id can then be typed on the Settings page;
 - several → the page lists them, and says to type the right one on the
   Settings page;
-- Settings already holding an id, with a property chosen other than the
-  one Settings held → the previous property's web stream ids are read
+- Settings already holding an id and a property id, with a different
+  property chosen → the previous property's web stream ids are read
   with the same token (`measurement_ids` with an empty `site_address`).
   Where the held id is one of them, Pressless found it, so it is treated
   as no id held: the one id found replaces it, and where none or several
@@ -249,12 +249,13 @@ the text `privacy_page` returns.
   `www.` handling.
 - **INV-6** — After a property is chosen and Google answers one id, Settings
   holds it, the Store holds `pages/privacy.html`, and the footer links it.
-  Where Settings already held a different id, it is kept, unless a
-  different property was chosen and the held id is one of the previous
-  property's web streams: then the found id replaces it, or it is removed
-  where none or several are found. *Test:*
+  Where Settings already held a different id, it is kept, unless Settings
+  held a property id, a different one was chosen, and the held id is one
+  of the previous property's web streams: then the found id replaces it,
+  or it is removed where none or several are found. *Test:*
   `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on`,
-  `tests/test_google_setup.py::test_switching_property_replaces_its_counting_code`.
+  `tests/test_google_setup.py::test_switching_property_replaces_its_counting_code`,
+  against a Google double answering each property its own streams.
   *Breaks when:* the found id is not saved, overwrites a typed one, the
   previous property's id survives a switch, or the Privacy page is not
   added.
@@ -273,8 +274,8 @@ the text `privacy_page` returns.
 ## 6. Failure modes
 
 - **Google unreachable after the property is chosen**: the property id is
-  saved as today, counting stays off, and the page says so; the id can be
-  typed on the Settings page.
+  saved as today, any held id is kept, and the page says the lookup
+  failed; the id can be typed on the Settings page.
 - **The Privacy page or link cannot be written**: the id is kept and
   counting is on; the page says what could not be added, and the next
   save retries it.
