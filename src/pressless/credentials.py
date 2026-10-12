@@ -89,11 +89,11 @@ def choose() -> Choice:
         raise CredentialError(
             "this machine's credential store could not be loaded "
             f"({type(exc).__name__})"
-        ) from exc
+        ) from None
 
     try:
         store.set_password(SERVICE, PROBE, _PROBE_VALUE)
-    except keyring.errors.NoKeyringError as exc:
+    except keyring.errors.NoKeyringError:
         # NoKeyringError is the discriminator and the only one (§4.2).
         # Absence and malfunction both arrive as a raised exception, so
         # without naming the type the fallback either never runs or runs
@@ -102,7 +102,7 @@ def choose() -> Choice:
             raise NoStore(
                 "this machine has no credential store Pressless can use, and "
                 "Pressless will not keep a secret in a file on Windows"
-            ) from exc
+            ) from None
         return Choice(_FILE, _FILE)
     except Exception as exc:
         raise CredentialError(
@@ -155,9 +155,8 @@ def write(store: str, folder: Path, account: str, secret: str) -> None:
             # This backend was just handed the secret as an argument, and
             # this module has no control over what it puts in its message --
             # so the TYPE is named and the message is not (INV-6). `from
-            # None` rather than `from exc` because __cause__ is formatted by
-            # a traceback and by PRESS-0011's rolling log, which would carry
-            # the value there instead (PRESS-0051).
+            # None` because a traceback prints a chained exception beneath the
+            # message, which would carry the value there instead (INV-13).
             raise CredentialError(
                 "this machine's credential store could not be written "
                 f"({type(exc).__name__})"
@@ -259,8 +258,8 @@ def _read_keyring(account: str) -> str:
         # a store describing what it failed to READ can quote it. INV-6 is
         # stated absolutely, so hardening one side and leaving this one left
         # it unheld on the side whose text the store itself writes
-        # (PRESS-0100). `from None` because __cause__ is formatted by a
-        # traceback and by PRESS-0011's rolling log.
+        # (PRESS-0100). `from None` because a traceback prints a chained
+        # exception beneath the message (INV-13).
         raise CredentialError(
             "this machine's credential store could not be read "
             f"({type(exc).__name__})"
@@ -379,7 +378,7 @@ def _save(target: Path, data: dict) -> None:
     except OSError as exc:
         raise CredentialError(
             f"the credentials file could not be written: {_why(exc)}"
-        ) from exc
+        ) from None
 
 
 def _refuse_a_wide_grant(handle: int) -> None:
@@ -449,18 +448,18 @@ def _read_mapping(target: Path) -> dict | None:
     except OSError as exc:
         raise CredentialError(
             f"the credentials file could not be read: {_why(exc)}"
-        ) from exc
-    except UnicodeDecodeError as exc:  # a ValueError, not an OSError (PRESS-0135)
+        ) from None
+    except UnicodeDecodeError:  # a ValueError, not an OSError (PRESS-0135)
         raise CredentialError(
             "the credentials file is not UTF-8 text"
-        ) from exc
+        ) from None
 
     try:
         raw = json.loads(text)
     except (ValueError, RecursionError) as exc:
         raise CredentialError(
             f"the credentials file is not valid JSON: {exc}"
-        ) from exc
+        ) from None
     if not isinstance(raw, dict):
         raise CredentialError(
             f"the credentials file holds {type(raw).__name__}, not an object"

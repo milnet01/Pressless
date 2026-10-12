@@ -22,6 +22,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   It does this even when Google cannot be reached, and leaves your
   publishing key alone. If either cannot be deleted, the page says so.
 
+### Security
+
+- **A failure reading or saving your keys no longer carries a file path from your home folder** (PRESS-0256)
+  When the password store would not start, or the credentials file
+  could not be read or saved, the error kept the original problem
+  attached. A crash report could then show the file's full path.
+  Pressless now drops it.
+
 ## [0.8.2] - 2026-10-10
 
 **Theme:** a stranger can start from nothing

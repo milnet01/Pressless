@@ -371,6 +371,80 @@ def test_no_failure_names_the_secret(tmp_path, monkeypatch):
     )
 
 
+def test_no_failure_chains_what_it_caught(tmp_path, monkeypatch):
+    """INV-13: no exception this module raises in place of one it caught lets
+    a traceback print that one, as its cause or its context (§4.3).
+
+    Forces every raise inside an `except`. INV-6's test reads messages, and a
+    stock OSError chained beneath a clean message still prints its path.
+
+    Breaks when an implementer writes `from exc` to keep the original for
+    diagnosis, or raises inside an `except` with no `from`.
+
+    Sets the platform BOTH ways: one route is choose()'s Windows refusal.
+    """
+    raised = []
+
+    def collect(kind, name, call, *args):
+        with pytest.raises(kind) as caught:
+            call(*args)
+        raised.append((name, caught.value))
+
+    def refuses():
+        raise ModuleNotFoundError("No module named 'keyrings.alt'")
+
+    monkeypatch.setattr(credentials_module.keyring, "get_keyring", refuses)
+    collect(CredentialError, "choose: store cannot load", choose)
+
+    _windows(monkeypatch)
+    _use(monkeypatch, _Store(raises=keyring.errors.NoKeyringError("none")))
+    collect(NoStore, "choose: Windows, no store", choose)
+
+    _not_windows(monkeypatch)
+    _use(monkeypatch, _Store(raises=keyring.errors.KeyringLocked("locked")))
+    collect(CredentialError, "choose: probe write fails", choose)
+    collect(CredentialError, "keyring read", read, "keyring", tmp_path, "publishing-key")
+    collect(CredentialError, "keyring write", write, "keyring", tmp_path,
+            "publishing-key", SENTINEL)
+
+    _use(monkeypatch, _Store(values={("Pressless", "publishing-key"): SENTINEL},
+                             delete_raises=keyring.errors.PasswordDeleteError("no")))
+    collect(CredentialError, "keyring delete", delete, "keyring", tmp_path,
+            "publishing-key")
+
+    garbled = {"not UTF-8": b"\xff\xfe{", "not JSON": b"{not json"}
+    for name, content in garbled.items():
+        folder = tmp_path / name.replace(" ", "-")
+        folder.mkdir()
+        (folder / FILE_NAME).write_bytes(content)
+        collect(CredentialError, f"file read: {name}", read, "file", folder,
+                "publishing-key")
+
+    collect(CredentialError, "file write: save fails", write, "file",
+            tmp_path / "no-such-folder", "publishing-key", SENTINEL)
+
+    (tmp_path / FILE_NAME).write_text('{"version": 1, "secrets": {}}',
+                                      encoding="utf-8")
+
+    def denied(*args, **kwargs):
+        raise PermissionError(13, "Permission denied", str(tmp_path / FILE_NAME))
+
+    monkeypatch.setattr(credentials_module.os, "open", denied)
+    collect(CredentialError, "file read: open fails", read, "file", tmp_path,
+            "publishing-key")
+    monkeypatch.undo()
+
+    printed = [
+        (name, type(exc.__cause__ or exc.__context__).__name__)
+        for name, exc in raised
+        if exc.__cause__ is not None or not exc.__suppress_context__
+    ]
+    assert not printed, (
+        f"a traceback would print the exception these caught: {printed!r}. "
+        f"A stock OSError there quotes the credentials file's full path."
+    )
+
+
 def test_delete_removes_one_secret_and_keeps_the_other(tmp_path, monkeypatch):
     """INV-12: delete() removes one account's secret and leaves every other
     one, and a store holding nothing there is not a failure.
