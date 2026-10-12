@@ -2,6 +2,9 @@
 # PRESS-0235 — Publishing status survives leaving the page
 
 **Status:** accepted (2026-10-07). One review round, the user's budget for a new spec; its fixes were read by no lane.
+**Amended 2026-10-12 by the user's decision** (PRESS-0246, PRESS-0251): OK on a
+press's failure box forgets the outcome, as do the journal switch and a Settings
+save (§ 3 decision 6, INV-8).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0235 (user request 2026-10-05, seen on PRESS-0231's
 packaged run; the user chose a short spec and one review round).
@@ -54,9 +57,12 @@ once instead of queuing behind it.
 5. **A page asks about the press only while one is running.** *(decided
    here)* A page loaded while none runs learns of a later one when its own
    press is refused (decision 3). No page asks forever.
-6. **How the last press ended is shown until the next save.** *(decided
-   here)* After a save the page has changes the press did not publish, so
-   "Published." beside them would mislead.
+6. **How the last press ended is shown until it is forgotten.** A save
+   forgets it *(decided here)*: after a save the page has changes the press
+   did not publish, so "Published." beside them would mislead. So do OK on
+   its failure box, the journal switch and a Settings save, decided by the
+   user 2026-10-12. Without them a failure's box reopened on every page,
+   even after the change that answered it.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -70,9 +76,9 @@ PUBLISH, UNDO = "publish", "undo"
 
 def start(kind: str) -> bool: ...        # False where a press is running
 def end(outcome: Outcome) -> None: ...   # the press has ended, with this outcome
-def forget() -> None: ...                # a save: an ended outcome stops being shown
+def forget() -> None: ...                # an ended outcome stops being shown (decision 6)
 def state() -> dict: ...                 # § 4.2's JSON
-def register(face: Face) -> None: ...    # GET /press
+def register(face: Face) -> None: ...    # GET /press, POST /press/forget
 ```
 
 One record per process, behind its own lock, held only to read or change the
@@ -93,6 +99,9 @@ Answers JSON `{"running", "kind", "said", "failure"}`:
 - **Nothing to say:** `running` false, `said` "", `failure` null.
 
 It takes no `editor.LOCK`, so it answers during a press.
+
+`POST /press/forget` calls `forget` and answers 204 with no body. It takes no
+`editor.LOCK` either.
 
 ### 4.3 The words
 
@@ -130,8 +139,9 @@ so each sentence has one home:
 Every other reply carries `"busy": false`. A `PiecesChanged` refusal ends the
 record with its own words (§ 4.3).
 
-`editor.save` and `page_editor._write` call `pressing.forget()` after writing,
-which ends what decision 6 shows.
+`editor.save`, `page_editor._write`, `editor._journal` and
+`setup._save_sequence` call `pressing.forget()` once they have written, which
+ends what decision 6 shows.
 
 ### 4.5 The pages
 
@@ -149,6 +159,9 @@ which ends what decision 6 shows.
   words. Undo's summary still shows only there.
 - **The list** has no press row; its `#undo-status` is the line, and its
   failure goes in its `#failure` box (PRESS-0236).
+- **OK on a box showing a press's failure**, on any page and on the starting
+  page too, posts `POST /press/forget`, then closes the box. A page left
+  without pressing OK shows the box again on the next page.
 - **`editor._edit` and `page_editor._open` during a press** answer at once,
   without taking `editor.LOCK`, with a holding page: the running words in a
   `press-status` line, and a script that asks `GET /press` and reloads the
@@ -191,6 +204,14 @@ which ends what decision 6 shows.
   page's script fetch `/press`, and none says "Keep this page open." *Test:*
   `tests/test_pressing.py::test_every_page_asks_about_the_press`, by script
   text. *Breaks when:* a script drops the ask or keeps the old words.
+- **INV-8** — After a failed publish, `GET /` opens its failure box until
+  one of `POST /press/forget`, `POST /journal` or a Settings save, and not
+  after it. Every box that shows a press's failure carries the forget
+  marker on its OK, and the Face's script posts `/press/forget` for it.
+  *Test:* `tests/test_pressing.py::test_ok_and_other_changes_forget_the_outcome`,
+  one case per route, and by script and page text for the marker.
+  *Breaks when:* a route does not call `forget`, or a press's failure box
+  lacks the marker.
 
 ## 6. Failure modes
 
@@ -206,8 +227,8 @@ which ends what decision 6 shows.
 
 ## 7. Tests
 
-`tests/test_pressing.py` gains INV-1, INV-2, INV-3, INV-4, INV-5, INV-6 and
-INV-7. Each is seen failing against
+`tests/test_pressing.py` gains INV-1, INV-2, INV-3, INV-4, INV-5, INV-6,
+INV-7 and INV-8. Each is seen failing against
 the code before this item, then mutation-probed once the code lands. The
 existing reply tests in `tests/test_publishing.py`, `tests/test_page_editor.py`
 and `tests/test_undo.py` gain the `busy` key.
@@ -241,6 +262,7 @@ and `tests/test_undo.py` gain the `busy` key.
 | INV-5 | `tests/test_pressing.py::test_an_editor_opened_mid_press_holds` |
 | INV-6 | `tests/test_pressing.py::test_the_outcome_shows_until_a_save` |
 | INV-7 | Partial: `tests/test_pressing.py::test_every_page_asks_about_the_press` reads script text; whether the scripts disable, ask and reload correctly is **nothing** — checked by hand in a browser |
+| INV-8 | Partial: `tests/test_pressing.py::test_ok_and_other_changes_forget_the_outcome`; that pressing OK in a browser sends the post is **nothing** — checked by hand |
 | § 4.3 the words | **nothing** — read on the page |
 
 ## 11. Cross-doc impact
