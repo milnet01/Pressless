@@ -3309,7 +3309,7 @@ it decides how pages, the menu and the look are held.
   Kind: chore.
   Source: user-decision-2026-10-01.
 
-- 📋 [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
+- ✅ [PRESS-0133] **By-hand checks three shipped items recorded as not run are owed before a release.**
   Each is a section 10 row in its own spec reading "nothing in CI -- by
   hand", and each item's shipped note says it was not run. PRESS-0120
   delivered the packaging and self-check evidence on the Windows box and
@@ -3603,6 +3603,21 @@ it decides how pages, the menu and the look are held.
     and PRESS-0253 (switching property keeps the old counting code). The
     test went on after clearing the held id by hand.
   Every row owed on the 0.8.2 draft has now run.
+  0.8.3, 2026-10-12, the last owed row (PRESS-0023 and PRESS-0173):
+  - passed: the 0.8.3 draft's --self-check, Linux AppImage (keyring
+    SecretService) and Windows zip in the desktop session (WinVault)
+  - passed: a real update, public 0.8.2 to public 0.8.3, on both systems.
+    0.8.2 offered 0.8.3; Update now swapped the file, closed, and opened
+    again by itself (update.log: swapped, waiting, started). The reopened
+    copy offered nothing and showed PRESS-0255's Privacy link, which only
+    0.8.3 has.
+  - harness note: started under cc-job, the Linux helper died before
+    "started", because the job's unit ends with its main process. Started
+    as a plain detached process, it passed. Not a defect.
+  - not re-run for 0.8.3: Edge and Chrome, the console window, the
+    keyring prompt, a real Publish. All passed on 0.8.2; 0.8.3 changed
+    only credential error paths, Turn off, and the Privacy link.
+  Every row this item tracked has now run.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
