@@ -79,7 +79,7 @@ def main(argv: list[str]) -> int:
 
     try:
         choice = credentials.choose()
-    except credentials.CredentialError as exc:
+    except (credentials.NoStore, credentials.CredentialError) as exc:
         print(f"store: unanswered -- {type(exc).__name__}")
         return 1
     print(f"store: {choice.store} {choice.name}")

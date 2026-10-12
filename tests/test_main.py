@@ -185,6 +185,21 @@ def test_a_store_that_raises_exits_non_zero(monkeypatch, tmp_path, capsys):
     assert main_module.main(["--self-check"]) != 0
 
 
+def test_no_store_is_a_report_line_not_a_traceback(monkeypatch, tmp_path, capsys):
+    """choose() raises NoStore on Windows with no store (PRESS-0002 § 4.2).
+    main reports it as it reports CredentialError: the type alone, non-zero,
+    and never an escaping exception, whose traceback prints full paths
+    (PRESS-0257)."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, main_module.credentials.NoStore(str(tmp_path)))
+
+    assert main_module.main(["--self-check"]) != 0
+    out = capsys.readouterr().out
+    assert out.splitlines()[2] == "store: unanswered -- NoStore", out
+    assert str(tmp_path) not in out, f"the report names a full path: {out!r}"
+
+
 def test_it_writes_nothing_but_the_folder(monkeypatch, tmp_path, capsys):
     """Beside the artefact there is the artefact and the empty folder, and
     nothing else (§ 4.5)."""
