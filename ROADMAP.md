@@ -4172,7 +4172,7 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-12 PRESS-0256 packet build.
   Lanes: main, credentials.
 
-- 📋 [PRESS-0258] **insights.py and publisher.py comments say the rolling log prints a chained cause; it does not.**
+- ✅ [PRESS-0258] **insights.py and publisher.py comments say the rolling log prints a chained cause; it does not.**
   insights.py (near the `from None` raise that cites PRESS-0011) says
   __cause__ "is formatted by a traceback and by PRESS-0011's rolling
   log". log.note writes one string with exc_info=None, and
@@ -4181,6 +4181,10 @@ it decides how pages, the menu and the look are held.
   corrected in credentials.py by PRESS-0256. Also check the sibling
   comment at publisher.py and insights.py about "a traceback prints every
   chained cause", which is true and stays. Comment-only.
+  Resolved (2026-10-12): only the insights.py comment near the
+  Unreachable raise was wrong; it now says a traceback prints __cause__.
+  publisher.py and insights.py "a traceback prints every chained cause"
+  are true and stay. No other "rolling log" claim in src/.
   **Layman:** Two code comments describe the app's log wrongly; fixing them changes nothing you see.
   Kind: doc-fix.
   Source: in-session-2026-10-12 PRESS-0256.

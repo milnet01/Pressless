@@ -461,9 +461,9 @@ def _fetch(transport: Transport, property_id: str, token: str,
         # The TYPE is named and the message is not, and `from None` rather
         # than `from exc`. Transport is a published seam and this call handed
         # it the token in an Authorization header, so nothing constrains what
-        # a substituted client's OSError says. __cause__ is formatted by a
-        # traceback and by PRESS-0011's rolling log, which would carry it
-        # there while str() and repr() stayed clean -- and INV-7 is stated
+        # a substituted client's OSError says. A traceback prints __cause__
+        # beneath the message, which would carry it there while str() and
+        # repr() stayed clean -- and INV-7 is stated
         # absolutely, not "absolutely, for the shipped client". The module's
         # own _Urllib never leaks: its OSError arm writes a fixed message
         # naming only the host, and an HTTPError is returned as a status
