@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **On a Windows PC with no password store, Pressless now stops with a one-line message instead of a wall of technical text naming folders** (PRESS-0257)
+
 ## [0.8.3] - 2026-10-12
 
 **Theme:** a stranger can start from nothing
