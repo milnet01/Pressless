@@ -166,6 +166,36 @@ def write(store: str, folder: Path, account: str, secret: str) -> None:
     raise CredentialError(f"{store!r} is not a store this Pressless knows")
 
 
+def delete(store: str, folder: Path, account: str) -> None:
+    """Remove the secret filed under `account`, leaving every other one.
+
+    Where nothing is filed there it returns, so a second call is not a
+    failure (§4.3). The keyring is asked before it is told: the KDE wallet
+    raises PasswordDeleteError for an absent entry and for a cancelled
+    unlock alike, so that error cannot mean "nothing to delete" (§4.6).
+    """
+    if store == _FILE:
+        _delete_file(Path(folder), account)
+        return
+    if store == _KEYRING:
+        try:
+            _read_keyring(account)
+        except NotStored:
+            return
+        try:
+            keyring.get_keyring().delete_password(SERVICE, account)
+        except Exception as exc:
+            # The type and not the message, and no cause, as write() does:
+            # this module cannot control what a backend says about the
+            # account it was handed (INV-6).
+            raise CredentialError(
+                "this machine's credential store could not remove that secret "
+                f"({type(exc).__name__})"
+            ) from None
+        return
+    raise CredentialError(f"{store!r} is not a store this Pressless knows")
+
+
 def _is_windows() -> bool:
     """Read at call time, so the platform is what a test patches (spec §7)."""
     return sys.platform.startswith("win")
@@ -253,6 +283,14 @@ def _read_file(folder: Path, account: str) -> str:
     if raw is None:
         raise NotStored("there is no credentials file")
 
+    value = _secrets(raw).get(account)
+    if not isinstance(value, str):
+        raise NotStored("the credentials file holds nothing for that secret")
+    return value
+
+
+def _secrets(raw: dict) -> dict:
+    """The file's secrets, refusing a file this build does not read (§4.3)."""
     version = raw.get("version")
     # Type-strict, as PRESS-0001 pins it: `true == 1` and `1.0 == 1` in
     # Python, so a plain != accepts both as this build's own version
@@ -268,11 +306,28 @@ def _read_file(folder: Path, account: str) -> str:
         raise CredentialError(
             "the credentials file is missing secrets, or it is not an object"
         )
+    return secrets
 
-    value = secrets.get(account)
-    if not isinstance(value, str):
-        raise NotStored("the credentials file holds nothing for that secret")
-    return value
+
+def _delete_file(folder: Path, account: str) -> None:
+    target = folder / FILE_NAME
+    raw = _read_mapping(target)
+    if raw is None:
+        return
+    # Judged as read() judges it before the entry is looked for (§4.3).
+    secrets = _secrets(raw)
+    if account not in secrets:
+        return
+    # Rewriting the file writes the other secret to a file (§3 decision 1).
+    if _is_windows():
+        raise NoStore(
+            "Pressless will not keep a secret in a file on Windows, so it will "
+            "not rewrite the credentials file there"
+        )
+    data = dict(raw)
+    data["secrets"] = {name: value for name, value in secrets.items()
+                       if name != account}
+    _save(target, data)
 
 
 def _write_file(folder: Path, account: str, secret: str) -> None:
@@ -309,7 +364,10 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
         **(existing if isinstance(existing, dict) else {}),
         account: secret,
     }
+    _save(target, data)
 
+
+def _save(target: Path, data: dict) -> None:
     # write_whole: atomic, and mkstemp creates its file owner-only, a mode
     # os.replace carries onto the target (§4.6). So the file is private from
     # the instant it exists, and no chmod follows a write that has already

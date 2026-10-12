@@ -1,4 +1,4 @@
-# INV-1..9 for PRESS-0002 (Credentials). One test per invariant, named in
+# INV-1..12 for PRESS-0002 (Credentials). One test per invariant, named in
 # that spec's §5 and tabulated in its §10. Unlabelled and needs nothing but a
 # temporary directory (spec §7).
 #
@@ -34,6 +34,7 @@ from pressless.credentials import (
     NoStore,
     NotStored,
     choose,
+    delete,
     read,
     write,
 )
@@ -73,10 +74,11 @@ class _Store:
     """A patchable stand-in for whatever keyring.get_keyring() returns."""
 
     def __init__(self, name="fake store", values=None, raises=None, events=None,
-                 backends=None):
+                 backends=None, delete_raises=None):
         self.name = name
         self._values = dict(values or {})
         self._raises = raises
+        self._delete_raises = delete_raises
         self.events = events if events is not None else []
         if backends is not None:
             self.backends = backends
@@ -94,7 +96,9 @@ class _Store:
         self._values[(service, account)] = secret
 
     def delete_password(self, service, account):
-        self.events.append(("delete", self.name))
+        self.events.append(("delete", self.name, service, account))
+        if self._delete_raises is not None:
+            raise self._delete_raises
         self._values.pop((service, account), None)
 
 
@@ -179,6 +183,17 @@ def test_windows_never_writes_a_file(tmp_path, monkeypatch):
         "Windows left a file behind; os.chmod there sets only the read-only "
         "flag, so that file is readable by anyone on the PC"
     )
+
+    # delete() rewrites the file to drop one entry, which writes the other
+    # secret to a file: the same refusal, however the file got there.
+    carried = tmp_path / FILE_NAME
+    carried.write_text(json.dumps({"version": 1, "secrets": {
+        "publishing-key": "the-github-one", "analytics": "the-google-one"}}),
+        encoding="utf-8")
+    before = carried.read_bytes()
+    with pytest.raises(NoStore):
+        delete("file", tmp_path, "analytics")
+    assert carried.read_bytes() == before, "delete() rewrote the file on Windows"
 
 
 def test_non_string_answer_is_absence(tmp_path, monkeypatch):
@@ -324,6 +339,18 @@ def test_no_failure_names_the_secret(tmp_path, monkeypatch):
     )
     collect(read, "file", later, "publishing-key")
 
+    # delete() is handed the account, and a store's delete may quote it.
+    quoting = keyring.errors.PasswordDeleteError(f"cannot delete publishing-key {tmp_path}")
+    _use(monkeypatch, _Store(values={("Pressless", "publishing-key"): SENTINEL},
+                             delete_raises=quoting))
+    with pytest.raises(CredentialError) as caught:
+        delete("keyring", tmp_path, "publishing-key")
+    messages.append(str(caught.value))
+    assert caught.value.__cause__ is None, (
+        "delete() chained the store's own error, which a formatted traceback "
+        "and the rolling log would print"
+    )
+
     leaked = [m for m in messages if SENTINEL in m]
     assert not leaked, f"a failure message carries the secret: {leaked!r}"
 
@@ -342,6 +369,50 @@ def test_no_failure_names_the_secret(tmp_path, monkeypatch):
         f"a failure message carries the folder handed in: {named_path!r}. "
         f"The credentials file is named by what it is, never by where it sits."
     )
+
+
+def test_delete_removes_one_secret_and_keeps_the_other(tmp_path, monkeypatch):
+    """INV-12: delete() removes one account's secret and leaves every other
+    one, and a store holding nothing there is not a failure.
+
+    Breaks when the file is rebuilt without the other secret, so Turn off for
+    the dashboard discards the publishing key; or when PasswordDeleteError is
+    read as 'nothing stored', so a locked store reports a key removed that is
+    still there.
+    """
+    _require_posix_modes(tmp_path)
+    _not_windows(monkeypatch)
+    write("file", tmp_path, "publishing-key", "the-github-one")
+    write("file", tmp_path, "analytics", "the-google-one")
+
+    delete("file", tmp_path, "analytics")
+    with pytest.raises(NotStored):
+        read("file", tmp_path, "analytics")
+    assert read("file", tmp_path, "publishing-key") == "the-github-one", (
+        "deleting one secret discarded the other"
+    )
+    delete("file", tmp_path, "analytics")  # nothing there: not a failure
+
+    # A store whose read answers a non-str holds nothing, and is never told.
+    absent = _Store(values={("Pressless", "analytics"): _Masking()})
+    _use(monkeypatch, absent)
+    delete("keyring", tmp_path, "analytics")
+    assert not [e for e in absent.events if e[0] == "delete"], absent.events
+
+    # A store holding it is told once, for this service and account.
+    holding = _Store(values={("Pressless", "analytics"): "the-google-one"})
+    _use(monkeypatch, holding)
+    delete("keyring", tmp_path, "analytics")
+    assert [e for e in holding.events if e[0] == "delete"] == [
+        ("delete", "fake store", "Pressless", "analytics")]
+
+    # The KDE wallet raises PasswordDeleteError for a cancelled unlock as
+    # well as for an absent entry (§4.6), so it is a failure, never absence.
+    locked = _Store(values={("Pressless", "analytics"): "the-google-one"},
+                    delete_raises=keyring.errors.PasswordDeleteError("Cancelled by user"))
+    _use(monkeypatch, locked)
+    with pytest.raises(CredentialError):
+        delete("keyring", tmp_path, "analytics")
 
 
 def test_choice_names_the_answering_store(monkeypatch):
@@ -386,7 +457,7 @@ def test_choice_names_the_answering_store(monkeypatch):
         f"choose() returned {result!r}; the name must be the member that "
         f"answered, not the chain the library nominates"
     )
-    kinds = [kind for kind, _ in events]
+    kinds = [event[0] for event in events]
     assert "delete" in kinds, "the probe was never deleted"
     assert kinds.index("delete") > max(
         i for i, kind in enumerate(kinds) if kind == "get"

@@ -656,6 +656,20 @@ def test_cache_is_one_file_with_the_agreed_name(tmp_path):
 # --------------------------------------------------------------- INV-9 ----
 
 
+def test_forget_removes_the_cache(tmp_path):
+    """insights.forget removes the cache file for Turn off (PRESS-0122 § 3
+    decision 5); a missing file is not a failure, and one it cannot remove
+    raises OSError for the Face to report."""
+    cache = tmp_path / "insights.json"
+    cache.write_text("{}", encoding="utf-8")
+    insights_module.forget(tmp_path)
+    assert not cache.exists()
+    insights_module.forget(tmp_path)  # nothing there: not a failure
+    cache.mkdir()
+    with pytest.raises(OSError):
+        insights_module.forget(tmp_path)
+
+
 def test_fresh_cache_answers_without_a_request(tmp_path):
     """INV-9: a cached reply younger than max_age_seconds answers with no
     request being made, and Report.stale is False.

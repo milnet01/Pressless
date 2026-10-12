@@ -310,6 +310,15 @@ def cache_path(folder: Path) -> Path:
     return Path(folder) / CACHE_NAME
 
 
+def forget(folder: Path) -> None:
+    """Remove the cache file, for Turn off (PRESS-0122 § 3 decision 5).
+
+    A missing file is not a failure. One that cannot be removed raises
+    OSError, which the Face reports.
+    """
+    cache_path(folder).unlink(missing_ok=True)
+
+
 def _within(target: Path, folder: Path) -> bool:
     """Whether `target` really sits inside `folder`, itself included.
 

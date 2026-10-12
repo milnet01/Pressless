@@ -12,6 +12,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Turning off visitor numbers now deletes the Google key and the saved figures from your computer** (PRESS-0254)
+  It does this even when Google cannot be reached, and leaves your
+  publishing key alone. If either cannot be deleted, the page says so.
+
 ## [0.8.2] - 2026-10-10
 
 **Theme:** a stranger can start from nothing

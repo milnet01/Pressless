@@ -86,10 +86,12 @@ class _Google:
 
 
 class _Store:
-    """Recording doubles for credentials.read and write."""
+    """Recording doubles for credentials.read, write and delete."""
 
-    def __init__(self, monkeypatch: pytest.MonkeyPatch, saved: str = OLD_REFRESH) -> None:
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, saved: str = OLD_REFRESH,
+                 delete_fails: bool = False) -> None:
         self.writes: list[tuple[str, str, str]] = []
+        self.deletes: list[tuple[str, str]] = []
         self.saved = saved
 
         def read(kind: str, folder: Path, account: str) -> str:
@@ -99,8 +101,14 @@ class _Store:
             self.writes.append((kind, account, secret))
             self.saved = secret
 
+        def delete(kind: str, folder: Path, account: str) -> None:
+            self.deletes.append((kind, account))
+            if delete_fails:
+                raise credentials.CredentialError("the store could not remove that secret")
+
         monkeypatch.setattr(credentials, "read", read)
         monkeypatch.setattr(credentials, "write", write)
+        monkeypatch.setattr(credentials, "delete", delete)
 
 
 class _Browser(Browser):
@@ -259,6 +267,58 @@ def test_turning_off_clears_both_fields(tmp_path: Path, monkeypatch: pytest.Monk
     assert saved.credentials.google_account is None
     assert saved.analytics_property_id is None
     assert (PERMISSIONS in page) == (revoke != 200)
+
+
+# -------------------------------------------------------------- INV-18 ----
+
+# The cache's documented name (PRESS-0019 § 4.2), written out rather than
+# imported, so the test does not compare the module against itself.
+CACHE = "insights.json"
+MAY_STILL_BE_HERE = "may still be on this computer"
+
+
+@pytest.mark.parametrize("revoke", [200, OSError("offline")])
+def test_turning_off_removes_the_key_and_the_figures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None, revoke
+) -> None:
+    """INV-18. Breaks when the delete runs only after a successful revoke, so
+    offline the key stays on disk while the privacy policy says it is gone;
+    or a failed delete or removal stops the save or goes unreported."""
+    held = _Store(monkeypatch)
+    _signed_in(tmp_path)
+    (tmp_path / CACHE).write_text("{}", encoding="utf-8")
+    with _served(tmp_path, _Google(revoke=revoke)) as browser:
+        _, _, page = browser.send("POST", "/setup/google/off")
+    assert held.deletes == [("keyring", "google")]
+    assert not (tmp_path / CACHE).exists()
+    assert MAY_STILL_BE_HERE not in page
+
+
+def test_a_failed_removal_is_reported_and_still_turns_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """INV-18, the failing half: a delete or a removal that fails stops
+    neither the other nor the save, and the page says what may remain."""
+    _Store(monkeypatch, delete_fails=True)
+    _signed_in(tmp_path)
+    (tmp_path / CACHE).write_text("{}", encoding="utf-8")
+    with _served(tmp_path, _Google()) as browser:
+        _, _, page = browser.send("POST", "/setup/google/off")
+    assert not (tmp_path / CACHE).exists(), "a failed delete stopped the removal"
+    saved = settings.load(tmp_path)
+    assert saved.credentials.google_account is None
+    assert saved.analytics_property_id is None
+    assert MAY_STILL_BE_HERE in page
+
+    _Store(monkeypatch)
+    _signed_in(tmp_path)
+    (tmp_path / CACHE).mkdir()   # a directory: unlink cannot remove it
+    with _served(tmp_path, _Google()) as browser:
+        _, _, page = browser.send("POST", "/setup/google/off")
+    saved = settings.load(tmp_path)
+    assert saved.credentials.google_account is None
+    assert saved.analytics_property_id is None
+    assert MAY_STILL_BE_HERE in page
 
 
 # -------------------------------------------------------------- INV-14 ----

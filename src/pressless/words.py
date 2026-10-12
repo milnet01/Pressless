@@ -577,6 +577,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not tell Google to forget its permission. You can remove it "
         "yourself at {link}."
     ),
+    "google_setup.not_removed": (
+        "Pressless could not remove the Google key or the visitor figures, so they may still "
+        "be on this computer."
+    ),
     # Setup: the first-run wizard, Settings and the shortcuts (setup.py).
     "setup.step.welcome": "Set up Pressless",
     "setup.step.account": "A GitHub account",

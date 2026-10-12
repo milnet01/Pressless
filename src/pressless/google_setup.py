@@ -327,6 +327,18 @@ def _off(state: _State) -> str:
             google_signin.revoke(refresh, state.transport())
         except (insights.InsightsError, *_CREDENTIAL_FAILURES):
             told = False
+    # Whatever the revoke did, delete what Pressless kept (§ 3 decision 5):
+    # the privacy policy promises Turn off removes both. Neither failure
+    # stops the other or the save; the page says what may remain.
+    removed = True
+    try:
+        credentials.delete(saved.credentials.store, state.folder, GOOGLE_ACCOUNT)
+    except _CREDENTIAL_FAILURES:
+        removed = False
+    try:
+        insights.forget(state.folder)
+    except OSError:
+        removed = False
     candidate = dataclasses.replace(
         saved,
         credentials=dataclasses.replace(saved.credentials, google_account=None),
@@ -341,4 +353,6 @@ def _off(state: _State) -> str:
     if not told:
         link = f'<a href="{_PERMISSIONS}">{_PERMISSIONS}</a>'
         page += f"<p>{say('google_setup.not_told', link=link)}</p>"
+    if not removed:
+        page += f"<p>{say('google_setup.not_removed')}</p>"
     return page + f'<p><a href="/setup">{say("setup.back")}</a></p>'
