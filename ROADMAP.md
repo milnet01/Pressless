@@ -10546,6 +10546,11 @@ already-built code ships in whichever release comes next.
   FUNDING.yml the user's other projects share (GitHub Sponsors, Patreon,
   a custom tip link). The trailer goes on the user's existing channel for
   all their projects; the Hub website session holds its details.
+  Progress (2026-10-12): five demo-data clips and notes.md delivered to
+  /mnt/Games/Trailers/incoming/pressless/ for the Hub website session's
+  trailer brief. That session builds the video, thumbnail and a
+  title/description file in /mnt/Games/Trailers/; the user uploads it.
+  Nothing here is owed until that session asks for changes.
   **Layman:** A short video showing Pressless as it is today, labelled as early access, asking viewers to support the project.
   Kind: marketing.
   Source: user-decision-2026-10-10.
