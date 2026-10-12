@@ -159,9 +159,11 @@ ends what decision 6 shows.
   words. Undo's summary still shows only there.
 - **The list** has no press row; its `#undo-status` is the line, and its
   failure goes in its `#failure` box (PRESS-0236).
-- **OK on a box showing a press's failure**, on any page and on the starting
-  page too, posts `POST /press/forget`, then closes the box. A page left
-  without pressing OK shows the box again on the next page.
+- **The failure box of the list, the entry editor and the page editor**
+  carries `data-forget` on its OK, whatever the box holds:
+  `face.message_box(..., forgets=True)`. No other box carries it. OK there
+  posts `POST /press/forget`, then closes the box. A page left without
+  pressing OK shows the box again on the next page.
 - **`editor._edit` and `page_editor._open` during a press** answer at once,
   without taking `editor.LOCK`, with a holding page: the running words in a
   `press-status` line, and a script that asks `GET /press` and reloads the
@@ -206,12 +208,13 @@ ends what decision 6 shows.
   text. *Breaks when:* a script drops the ask or keeps the old words.
 - **INV-8** — After a failed publish, `GET /` opens its failure box until
   one of `POST /press/forget`, `POST /journal` or a Settings save, and not
-  after it. Every box that shows a press's failure carries the forget
-  marker on its OK, and the Face's script posts `/press/forget` for it.
+  after it. The list's, the entry editor's and the page editor's failure
+  boxes carry `data-forget` on their OK, and the Face's script posts
+  `/press/forget` for it.
   *Test:* `tests/test_pressing.py::test_ok_and_other_changes_forget_the_outcome`,
   one case per route, and by script and page text for the marker.
-  *Breaks when:* a route does not call `forget`, or a press's failure box
-  lacks the marker.
+  *Breaks when:* a route does not call `forget`, or one of the three boxes
+  lacks `data-forget`.
 
 ## 6. Failure modes
 
