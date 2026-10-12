@@ -130,6 +130,9 @@ def _show(state: _State, hint: str = "") -> str:
         return shown + head + f"<p>{say('google_setup.unavailable')}</p>" + back
     with state.lock:
         pending = state.pending
+    if pending is None and hint:
+        # PRESS-0252: a choice from a list that has gone, said rather than dropped.
+        head += message_box("property-hint", e(hint))
     if pending is not None:
         choices = "".join(
             f'<p><label><input type="radio" name="property" value="{e(p.id, quote=True)}"> '
@@ -256,7 +259,7 @@ def _choose(state: _State, request: Request) -> str:
     with state.lock:
         pending = state.pending
     if pending is None:
-        return _show(state)
+        return _show(state, hint=say("google_setup.list_expired"))
     if chosen not in {p.id for p in pending.properties}:
         return _show(state, hint=say("google_setup.choose_hint"))
     try:

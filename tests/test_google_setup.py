@@ -247,7 +247,26 @@ def test_only_a_listed_property_is_saved(tmp_path: Path, monkeypatch: pytest.Mon
     assert saved.analytics_property_id == LISTED[1]
 
 
-# -------------------------------------------------------------- INV-13 ----
+def test_a_choice_from_an_expired_list_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                               registered: None) -> None:
+    """INV-12, PRESS-0252. Back to the list after a save, then a second
+    choice. Breaks when the second choice is saved, or dropped without a
+    word."""
+    store = _Store(monkeypatch)
+    _saved(tmp_path)
+    with _served(tmp_path, _Google()) as browser:
+        browser.come_back(browser.start())
+        browser.send("POST", "/setup/google/choose", {"property": LISTED[0]})
+        before = settings.path_for(tmp_path).read_bytes()
+        writes = list(store.writes)
+
+        status, _, page = browser.send("POST", "/setup/google/choose",
+                                       {"property": LISTED[1]})
+    assert status == 200
+    assert settings.path_for(tmp_path).read_bytes() == before
+    assert store.writes == writes
+    assert 'id="property-hint"' in page and "expired" in page
+    assert 'action="/setup/google/sites"' in page
 
 
 @pytest.mark.parametrize("revoke", [200, OSError("offline")])

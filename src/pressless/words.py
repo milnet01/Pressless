@@ -544,6 +544,9 @@ _WORDS: dict[str, str] = {
     "google_setup.which": "Which site should Pressless show numbers for?",
     "google_setup.use": "Use this site",
     "google_setup.choose_hint": "Choose one of the sites in the list.",
+    "google_setup.list_expired": (
+        "That list of sites has expired, so nothing was changed. Ask for a fresh list below."
+    ),
     "google_setup.reading": "Pressless reads visitor numbers for Analytics property {property}.",
     "google_setup.choose_other": "Choose a different site",
     "google_setup.sign_in_again": "Sign in again",
