@@ -171,11 +171,7 @@ reaches this call. **Its path and account clauses still bind both.**
 § Logging forbids three things and only the first turns on a secret, and §4.6
 records that the nominated chain includes a plaintext file backend, whose
 failures quote their own file under his home directory. So both rows name the
-exception type and drop the cause, as the load row already does. A chained
-cause reaches a formatted traceback and the rolling log, which is what
-§ Errors bans by name. The load row names
-the type in the sentence the writer sees, which is a different question from
-what the cause carries.
+exception type, and neither chains the exception it caught (§4.3).
 
 **`NoKeyringError` is the discriminator, and it is the only one.** Absence and
 malfunction both reach `choose()` as a raised exception, so without naming the
@@ -258,6 +254,13 @@ binds `choose()` and `delete()` as much as `read()` and `write()`. The credentia
 named by what it is, never by where it sits. **An `OSError` is reported by
 `strerror`, never by its own words** — a stock file error quotes the path it
 failed on, and `str(exc)` puts it straight back.
+
+**No exception this module raises carries the one it caught** — neither as
+its cause nor as its implicit context. Every raise inside an `except` is
+`from None`. A formatted traceback and PRESS-0011's rolling log print what is
+chained beneath the message, and a stock `OSError` there quotes its path, so
+a message naming the file by what it is would be undone one line below it.
+INV-13 holds it.
 
 **This module names no secret at all.** § Logging's stand-in list asks for
 *your publishing key* or *your Google sign-in*; §4.1 hands this module
@@ -490,8 +493,7 @@ once the code exists.
   **A backend's own message is never interpolated where a secret is in hand —
   `read()` and `write()`, both sides — nor where an account is, in
   `delete()`.** The type is named and the message is
-  not, and the cause is dropped rather than chained, because a chained cause is
-  printed by a formatted traceback and by PRESS-0011's rolling log. `choose()`
+  not, and nothing is chained (INV-13). `choose()`
   is outside this: it is never handed a secret, only the probe, so §4.2 says
   what its failures may carry.
   **The quoting store is forced on both sides** —
@@ -603,6 +605,21 @@ once the code exists.
   is read as *nothing stored*, so a locked store reports a key removed
   that is still there.
 
+- **INV-13** — No exception this module raises carries the one it caught,
+  as its cause or as its implicit context (§4.3).
+  *Test:* `tests/test_credentials.py::test_no_failure_chains_what_it_caught`
+  — force every raise inside an `except`: `choose()` when the store cannot
+  load, on Windows with no store, and when the probe write fails; a fallback
+  file whose open raises `OSError`, one that is not UTF-8, and one that is
+  not JSON; a fallback write whose save raises `OSError`; and the keyring's
+  read, write and delete failures. Assert each raises this module's own
+  type, with `__cause__` `None` and `__suppress_context__` true.
+  *Breaks when:* an implementer writes `from exc` to keep the original for
+  diagnosis, or a bare `raise` inside an `except`, and the log prints the
+  credentials file's full path beneath a message that left it out.
+  **INV-6's test cannot catch it:** it reads messages, and checks a cause on
+  `delete()` alone.
+
 ## 6. Failure modes
 
 - **No store, on Windows.** `choose()` raises `NoStore` and setup stops.
@@ -641,7 +658,7 @@ machine that runs this suite.
 
 **The file-store tests patch the platform check, and some of them need more
 than that.** INV-2 makes `write(store="file", ...)` raise on Windows however
-it is reached, and INV-5, INV-6, INV-8, INV-10, INV-11 and INV-12 all write through
+it is reached, and INV-5, INV-6, INV-8, INV-10, INV-11, INV-12 and INV-13 all write through
 the file store — so on Windows they would fail against a correct
 implementation. They set the platform to a non-Windows value, exactly as
 INV-2's own test sets it to Windows.
@@ -741,6 +758,7 @@ exit code.
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
 | INV-12 | `tests/test_credentials.py::test_delete_removes_one_secret_and_keeps_the_other` |
+| INV-13 | `tests/test_credentials.py::test_no_failure_chains_what_it_caught` |
 | `delete()`'s failures naming no path or account | `tests/test_credentials.py::test_no_failure_names_the_secret`, which also forces `delete()` against a store whose delete raises |
 | INV-11 | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on a filesystem where the request is honoured |
 | §4.3's refusal to save over a file a later Pressless wrote | `tests/test_credentials.py::test_writing_over_a_newer_credentials_file_is_refused` |
