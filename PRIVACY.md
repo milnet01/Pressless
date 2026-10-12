@@ -65,17 +65,12 @@ and it does not send Google user data to anyone else.
 - **Turning it off:** in Pressless, open Settings, follow the link to
   your visitor numbers, and choose **Turn off visitor numbers**.
   Pressless asks Google to cancel its key, so it can no longer read
-  anything, and forgets which property you chose. If Google cannot be
-  reached, Pressless says so and links you to Google's permissions page
-  below, where you can cancel it yourself.
-- **Deleting what is left:** two things stay on your computer until you
-  delete them. The visitor figures stay in the file `insights.json` in
-  the `Pressless-data` folder; delete that file to remove them. The
-  cancelled key, which no longer works, stays in your password store as
-  the entry "Pressless" / "google"; delete that entry to remove it (the
-  "Pressless" / "github" entry is your publishing key, so keep it). On a
-  Linux computer with no keyring, both keys are in `credentials.json` in
-  the same folder; the cancelled Google key there can no longer be used.
+  anything, and forgets which property you chose. It also deletes the
+  key and the visitor figures from your computer; your publishing key
+  is left alone. If Google cannot be reached, Pressless still deletes
+  them, says so, and links you to Google's permissions page below, where
+  you can cancel the key yourself. If either cannot be deleted, Pressless
+  says so.
 - You can also remove Pressless's access from Google's side at any time:
   <https://myaccount.google.com/permissions>.
 
