@@ -3302,6 +3302,9 @@ it decides how pages, the menu and the look are held.
   access, use, sharing, protection and retention/deletion. New section
   live on the Hub page (website commit b6d26b8, checked live). Owed by
   the user: save/resubmit in Cloud Console and reply to Google's email.
+  Progress (2026-10-12): the user replied to Google's email confirming
+  the fix. Nothing was resubmitted in Cloud Console: the policy address
+  is unchanged, so Save stays disabled. Waiting on Google.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
