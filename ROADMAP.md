@@ -10724,7 +10724,7 @@ already-built code ships in whichever release comes next.
   Kind: marketing.
   Source: user-decision-2026-10-10.
 
-- 📋 [PRESS-0245] **Reopening Pressless's start link in the same browser shows a bare Forbidden.**
+- ✅ [PRESS-0245] **Reopening Pressless's start link in the same browser shows a bare Forbidden.**
   Seen on the 0.8.0 Linux run: a GET carrying the spent link token is
   refused with 403 even from the browser already holding the session
   cookie. That is what PRESS-0011 § 4.5 says ("refused ... whatever
@@ -10736,11 +10736,16 @@ already-built code ships in whichever release comes next.
   is redirected from the spent token URL to the list; any other
   gets a short page saying to start Pressless again. Amends
   PRESS-0011 section 4.5 through its gate.
+  Resolved (2026-10-12, 1359ba8): a spent start link with the session
+  cookie redirects to the page with no new cookie; without it, a 403
+  saying to start Pressless again. PRESS-0011 amended and gated (loop 7,
+  converged). Test: INV-5 in test_face.py, red first; mutation_probe
+  3/3 killed. Not yet seen in a real browser.
   **Layman:** If you reload the first page Pressless opened, or go back to it, you get a blank page saying Forbidden instead of your list.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
-- 📋 [PRESS-0246] **A carried-over press outcome outlives the change that answers it.**
+- ✅ [PRESS-0246] **A carried-over press outcome outlives the change that answers it.**
   PRESS-0235 decision 6 keeps the last press's outcome until the next
   save, and PRESS-0236 opens a failure in a box with OK. Together, a
   refused press opens its box on every page opened afterwards. Seen on
@@ -10754,6 +10759,13 @@ already-built code ships in whichever release comes next.
   Pressing OK forgets the outcome, as do a save, switching the
   journal on and saving Settings. Done together with PRESS-0251 as
   one amendment to PRESS-0235 and one review gate.
+  Resolved (2026-10-12, dcf7085): OK on the list's and both editors'
+  failure boxes posts POST /press/forget; the journal switch and a
+  Settings save forget the outcome too. PRESS-0235 amended and gated
+  (loop 2, one fixed). Test:
+  test_pressing.py::test_ok_and_other_changes_forget_the_outcome, red
+  first; mutation_probe 5/5 killed. That a browser posts on OK is not
+  yet seen by hand.
   **Layman:** After a publish fails, the same message box pops up on every page, even after you fix what it asked you to fix.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
@@ -10775,7 +10787,7 @@ already-built code ships in whichever release comes next.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
-- 📋 [PRESS-0249] **Drafts can list two entries with the same title and no hint which is which.**
+- ✅ [PRESS-0249] **Drafts can list two entries with the same title and no hint which is which.**
   Seen 2026-10-10 on the 0.8.1 Windows build: publish an entry, edit
   it (a -changes draft that Replaces it), then Undo the press. Drafts
   lists "Windows test entry" twice: the changes copy, and the entry
@@ -10785,11 +10797,18 @@ already-built code ships in whichever release comes next.
   (2026-09-21, "neither page says anything about demoted entries").
   Each line says what it is: the later changes, or the entry Undo took
   off the site. Amends PRESS-0015 through its gate before the code.
+  Resolved (2026-10-12, 460ffb6): Drafts labels the draft Undo took off
+  ("taken off your site by Undo") and the draft whose Replaces names it
+  ("your later changes"); a draft a second undo keeps aside drops the
+  mark. PRESS-0015 amended and gated (loop 5, two fixed). Tests:
+  test_editor.py::test_the_list_says_which_draft_undo_took_off and
+  INV-13's new assertion, red first; mutation_probe 3/3 killed. Not yet
+  seen in a real browser.
   **Layman:** After an undo, Drafts can show the same entry name twice; each line should say whether it is your later changes or the version taken off your site.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
 
-- 📋 [PRESS-0251] **After a failed press, its failure box reopens on every page until the next save.**
+- ✅ [PRESS-0251] **After a failed press, its failure box reopens on every page until the next save.**
   Seen 2026-10-10 on the 0.8.1 Windows build, and the same on Linux by
   the code: PRESS-0235 4.5 shows a press outcome's failure on every
   page until forget, which a save calls. PRESS-0236 made that failure a
@@ -10798,6 +10817,8 @@ already-built code ships in whichever release comes next.
   Deciding whether OK should forget the outcome amends PRESS-0235 4.5.
   Decided (user, 2026-10-12): OK forgets the outcome, so the box
   is shown once. Done together with PRESS-0246.
+  Resolved (2026-10-12, dcf7085) with PRESS-0246: OK now forgets the
+  outcome, so the box does not come back.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.

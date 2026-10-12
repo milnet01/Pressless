@@ -14,6 +14,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **After an Undo, Drafts now says which of two same-named entries is which.** (PRESS-0249)
+  One line says the entry was taken off your site by Undo; the other
+  says it is your later changes.
+
+- **A failed publish's message box no longer comes back on every page.** (PRESS-0246)
+  Pressing OK closes it for good, and so does turning the journal on or
+  off, saving Settings, or saving your writing. Fixes PRESS-0251 too.
+
+- **Reloading or going back to the first page Pressless opened now shows your list, not a blank Forbidden page.** (PRESS-0245)
+  Any other browser is told the link has been used and to start
+  Pressless again.
+
 - **Choosing a different Analytics site now replaces the first site's counting code.** (PRESS-0253)
   If you switch Pressless to a different Google Analytics site, your pages stop counting visitors into the old one. A counting code you typed yourself is kept.
 
