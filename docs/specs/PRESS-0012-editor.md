@@ -286,8 +286,8 @@ row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
 
 - **A working copy is not listed as a draft.** Its published entry's row says
   its changes are not on the site yet.
-- **A draft Undo took off the site, and its working copy,** are each
-  labelled: [PRESS-0015](PRESS-0015-undo.md) § 4.6.
+- **A draft Undo took off the site, and a draft whose `Replaces` names it,**
+  are listed as drafts, each labelled: [PRESS-0015](PRESS-0015-undo.md) § 4.6.
 - **A file the Store cannot read** is listed by its address, marked as one
   Pressless cannot open. The first such failure is shown through `Face.fail`
   above the list. The list is still shown.

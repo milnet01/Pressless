@@ -293,8 +293,9 @@ dataclasses, so each compares by value.
   `Replaces` field (§ 3 decision 7). Then the fetched entry is written as
   published.
 - **A draft holds that slug.** His draft is written under
-  `editor.free_address(folder, slug + KEPT_SUFFIX)`, **keeping its own fields**
-  — so a draft that was a working copy of some other entry stays one — and the
+  `editor.free_address(folder, slug + KEPT_SUFFIX)`, **keeping its own fields
+  but `publishing.UNDONE`** — so a draft that was a working copy of some other
+  entry stays one, and the list does not call it taken off the site — and the
   old draft file is binned. Then the fetched entry is written as published.
   Otherwise one slug would name two files, which `docs/design.md` rules out.
   **Except where that draft carries `publishing.UNDONE` and equals the
@@ -522,9 +523,10 @@ does.
   different body, and one carries no `Undone` and equals the fetched
   entry. After undo, all three slugs are published, `result.kept` holds
   the free addresses the second and third were kept under, and no draft
-  holds the first one's slug or `<slug>-before-undo`.
-  *Breaks when:* `Undone` is not set aside before comparing, or an
-  unmarked draft equal to the fetched entry is binned too.
+  holds the first one's slug or `<slug>-before-undo`. The second one's
+  kept draft carries no `Undone`.
+  *Breaks when:* `Undone` is not set aside before comparing, an unmarked
+  draft equal to the fetched entry is binned too, or `_keep` keeps the mark.
 
 - **INV-14** — An unforeseen failure says the site is unchanged, and a
   failure emptying the fetch area at the end changes no outcome.
