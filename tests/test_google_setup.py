@@ -46,13 +46,14 @@ class _Google:
     sign-in a token came from."""
 
     def __init__(self, *, revoke: BaseException | int = 200, exchange: int = 200,
-                 listed: tuple[str, ...] = LISTED, streams: list | None = None) -> None:
+                 listed: tuple[str, ...] = LISTED, streams: list | dict | None = None) -> None:
         self.clock = 1000.0
         self.calls: list[tuple[str, str, dict[str, list[str]]]] = []
         self.revoke = revoke
         self.exchange = exchange
         self.listed = listed
         self.streams = streams     # PRESS-0199: a property's data streams
+        # PRESS-0253: a dict answers per property id; an int is a refusal.
 
     def request(self, method, url, body, headers):
         form = urllib.parse.parse_qs((body or b"").decode())
@@ -66,7 +67,12 @@ class _Google:
             return 200, {}, json.dumps({"access_token": f"access-{refresh}",
                                         "expires_in": 3600}).encode()
         if "/dataStreams" in url:
-            return 200, {}, json.dumps({"dataStreams": self.streams or []}).encode()
+            streams = self.streams
+            if isinstance(streams, dict):
+                streams = streams.get(url.split("/properties/")[1].split("/")[0], [])
+            if isinstance(streams, int):
+                return streams, {}, json.dumps({"error": {"status": "PERMISSION_DENIED"}}).encode()
+            return 200, {}, json.dumps({"dataStreams": streams or []}).encode()
         if url.startswith("https://analyticsadmin.googleapis.com/"):
             summaries = [{"property": f"properties/{p}", "displayName": f"Site {p}"}
                          for p in self.listed]
@@ -549,6 +555,48 @@ def test_choosing_a_property_switches_counting_on(tmp_path: Path,
         assert store.html_path_for(folder, store.PAGES_FOLDER, "privacy").is_file(), case
         footer = store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, "footer"))
         assert footer.count("pages/privacy.html") == 1, case
+
+
+def _web(measurement_id: str, address: str = "https://example.org") -> dict:
+    return {"type": "WEB_DATA_STREAM",
+            "webStreamData": {"measurementId": measurement_id, "defaultUri": address}}
+
+
+@pytest.mark.parametrize(("case", "previous", "held", "streams", "kept"), [
+    ("replaced", "999", "G-OLD999", {"999": [_web("G-OLD999")], "111": [_web("G-NEW111")]},
+     "G-NEW111"),
+    ("removed", "999", "G-OLD999", {"999": [_web("G-OLD999")], "111": []}, None),
+    ("several", "999", "G-OLD999",
+     {"999": [_web("G-OLD999")],
+      "111": [_web("G-NEW111", "https://a.example"), _web("G-NEW222", "https://b.example")]},
+     None),
+    ("typed", "999", "G-TYPED1", {"999": [_web("G-OLD999")], "111": [_web("G-NEW111")]},
+     "G-TYPED1"),
+    ("unreadable", "999", "G-OLD999", {"999": 403, "111": [_web("G-NEW111")]}, "G-OLD999"),
+    ("lookup failed", "999", "G-OLD999", {"999": [_web("G-OLD999")], "111": 403}, "G-OLD999"),
+    ("same property", "111", "G-SECOND",
+     {"111": [_web("G-NEW111"), _web("G-SECOND", "https://other.example")]}, "G-SECOND"),
+])
+def test_switching_property_replaces_its_counting_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None,
+    case: str, previous: str, held: str, streams: dict, kept: str | None,
+) -> None:
+    """INV-6, PRESS-0253. Breaks when the previous property's own id survives
+    a switch, or an id Pressless cannot trace to it is replaced."""
+    _Store(monkeypatch)
+    _saved(tmp_path, credentials=settings.Credentials(
+        store="keyring", github_account="github", google_account="google"),
+        analytics_property_id=previous, measurement_id=held)
+    with _served(tmp_path, _Google(streams=streams)) as browser:
+        browser.come_back(browser.start())
+        _, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+    saved = settings.load(tmp_path)
+    assert saved.analytics_property_id == "111", case
+    assert saved.measurement_id == kept, case
+    if kept is None:
+        assert held in page and "removed" in page, case
+    else:
+        assert kept in page, case
 
 
 # PRESS-0200: until Google approves the client, the page says so.

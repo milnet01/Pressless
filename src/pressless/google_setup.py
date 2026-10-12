@@ -269,7 +269,7 @@ def _choose(state: _State, request: Request) -> str:
         return shown + state.face.fail(exc, publishing=False,
                                        secret=say("failure.secret.google_sign_in"))
     # PRESS-0199 § 4.3: the property's web streams, read with the token in
-    # hand. A failure here keeps today's save and says counting is still off.
+    # hand. A failure here keeps today's save, and any id Settings held.
     found: tuple[str, ...] = ()
     lookup_failure = ""
     try:
@@ -278,6 +278,9 @@ def _choose(state: _State, request: Request) -> str:
     except insights.InsightsError as exc:
         lookup_failure = state.face.fail(exc, publishing=False)
     measurement_id = saved.measurement_id
+    removed = None
+    if not lookup_failure and _found_by_us(state, pending, saved, chosen):
+        removed, measurement_id = measurement_id, None   # PRESS-0253
     if measurement_id is None and len(found) == 1:
         measurement_id = found[0]
     candidate = dataclasses.replace(
@@ -303,15 +306,38 @@ def _choose(state: _State, request: Request) -> str:
         privacy = render_notices(privacy_notices) + privacy
     return (shown + render_notices(notices) + lookup_failure
             + f"<h1>{say('google_setup.ready')}</h1>"
-            + _counting(saved.measurement_id, found, lookup_failure != "") + privacy
+            + _counting(saved.measurement_id if removed is None else None, found,
+                        lookup_failure != "", removed)
+            + privacy
             + f'<p><a href="/">{say("script.undo.back")}</a></p>')
 
 
-def _counting(kept: str | None, found: tuple[str, ...], failed: bool) -> str:
+def _found_by_us(state: _State, pending: _Pending, saved: settings.Settings,
+                 chosen: str) -> bool:
+    """PRESS-0253: whether the held id is one of the previous property's own
+    web streams, so a switch replaces it. An id that cannot be traced, the
+    previous property unreadable included, is treated as typed."""
+    previous = saved.analytics_property_id
+    if saved.measurement_id is None or previous is None or previous == chosen:
+        return False
+    try:
+        streams = google_signin.measurement_ids(pending.access.value, previous, "",
+                                                state.client)
+    except insights.InsightsError:
+        return False
+    return saved.measurement_id in streams
+
+
+def _counting(kept: str | None, found: tuple[str, ...], failed: bool,
+              removed: str | None = None) -> str:
     """PRESS-0199 § 4.3: what became of the counting code."""
     e = html.escape
     if failed:
+        if kept is not None:
+            return f"<p>{say('google_setup.counting.failed_kept', id=e(kept))}</p>"
         return f"<p>{say('google_setup.counting.failed')}</p>"
+    gone = (say("google_setup.counting.removed", id=e(removed)) + " "
+            if removed is not None and len(found) != 1 else "")
     if kept is not None:
         other = [i for i in found if i != kept]
         extra = (" " + say("google_setup.counting.also", ids=e(", ".join(other)))
@@ -320,8 +346,8 @@ def _counting(kept: str | None, found: tuple[str, ...], failed: bool) -> str:
     if len(found) == 1:
         return f"<p>{say('google_setup.counting.found', id=e(found[0]))}</p>"
     if found:
-        return f"<p>{say('google_setup.counting.several', ids=e(', '.join(found)))}</p>"
-    return f"<p>{say('google_setup.counting.none')}</p>"
+        return f"<p>{gone}{say('google_setup.counting.several', ids=e(', '.join(found)))}</p>"
+    return f"<p>{gone}{say('google_setup.counting.none')}</p>"
 
 
 def _off(state: _State) -> str:

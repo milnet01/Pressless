@@ -561,6 +561,13 @@ _WORDS: dict[str, str] = {
         "still off. You can type its measurement id on the Settings page."
     ),
     "google_setup.counting.kept": "Counting stays on with {id}.",
+    "google_setup.counting.failed_kept": (
+        "Pressless could not read this site's counting code from Google, so counting "
+        "stays on with {id}. You can change it on the Settings page."
+    ),
+    "google_setup.counting.removed": (
+        "Pressless removed {id}, the previous site's counting code."
+    ),
     "google_setup.counting.also": "Google also lists {ids} for this site.",
     "google_setup.counting.found": (
         "Pressless found this site's counting code ({id}) and will put it on every page you "
