@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=255 -->
+<!-- ants-roadmap-id-high-water: PRESS=256 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4115,6 +4115,26 @@ it decides how pages, the menu and the look are held.
   **Layman:** A Privacy link in the app opens Pressless's privacy policy, so nobody has to hunt for it on the web.
   Kind: feature.
   Source: user-request-2026-10-12.
+
+- 📋 [PRESS-0256] **A keyring that cannot load no longer carries its own error text into the log.**
+  credentials.choose() raises CredentialError `from exc` when
+  keyring.get_keyring() fails (the load row). PRESS-0002 §4.2 says the
+  load row drops the cause, and gives the reason: a chained cause reaches
+  a formatted traceback and the rolling log, and a config-parse error can
+  quote its file's path. Change it to `from None`, as the probe-write row
+  already is, and lock it with a test that the raised error has no
+  __cause__. Found by the PRESS-0254 amendment's cold review.
+  Same review, lane B: the file store chains the OSError too.
+  _write_file and _read_mapping raise CredentialError `from exc`, and a
+  stock OSError quotes the path it failed on, so the chained cause
+  carries the credentials file's path into a traceback and the log.
+  PRESS-0002 §4.3 bans the path in the message and is silent on the
+  cause; §4.2 bans the chained cause for choose(). Decide one rule for
+  §4.3 (drop it, as §4.2 does), state it there, and have INV-6 assert no
+  __cause__ on the file-store failures as well.
+  **Layman:** If the computer's password store fails to start, the error Pressless records no longer risks including a file path from your home folder.
+  Kind: review-fix.
+  Source: review-contract PRESS-0002 2026-10-12 lane A Q1.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 

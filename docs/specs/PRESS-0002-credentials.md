@@ -6,7 +6,7 @@
 write steps. That changes direction, so the gate re-armed.
 **Amended 2026-10-12, before implementation** (PRESS-0254): `delete()`
 removes one secret, for Turn off in PRESS-0122. §4.3 holds its table and
-INV-12 holds it. That changes direction, so the gate re-armed.
+INV-12 holds it. Gated for one loop the same day, the user's budget.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -237,11 +237,12 @@ second call is not a failure.
 |---|---|
 | The store is the keyring, and `read()` would raise `NotStored` | returns; nothing is asked to delete |
 | The store is the keyring, and `read()` would raise `CredentialError` | `CredentialError` |
-| The store is the keyring and holds a secret there | the store's delete, addressed as `write()` addresses it; any failure is `CredentialError`, naming the exception type and not its message |
-| The fallback file is absent, or holds no entry for `account` | returns; the file is not written |
+| The store is the keyring and holds a secret there | the store's delete, addressed as `write()` addresses it; any failure is `CredentialError`, naming the exception type and not its message, with the cause dropped |
+| The fallback file is absent | returns; nothing is written |
+| The fallback file is one `read()`'s table refuses with `CredentialError` | `CredentialError`. This is decided before the entry is looked for |
+| The fallback file holds no entry for `account` | returns; the file is not written |
 | Windows, with `store == "file"`, and the file holds an entry for `account` | `NoStore` — rewriting the file writes the other secret to a file there |
 | The fallback file holds an entry for `account` | it is written again without that entry, by `write()`'s mechanism and with each of `write()`'s refusals |
-| The fallback file cannot be read, is not valid JSON, has a `version` this build does not read, or is not ours | `CredentialError`, as `read()` |
 
 **The keyring is asked before it is told.** The keyring library raises
 `PasswordDeleteError` both where nothing is stored and where the writer
@@ -389,7 +390,9 @@ once the code exists.
 - **A delete through the nominated chain reaches the member a write
   reaches.** Both go to the first member that does not raise
   `NotImplementedError`. The KDE wallet member raises `PasswordDeleteError`
-  for an absent entry and for a cancelled unlock alike. Read from the
+  for an absent entry and for a cancelled unlock alike; its
+  `get_password` raises `KeyringLocked` on a cancelled unlock, so `read()`
+  reports that as `CredentialError`. Read from the
   library's source on the development machine, 2026-10-12; refuted by a
   chain whose `delete_password` walks its members differently from
   `set_password`.
@@ -415,11 +418,14 @@ once the code exists.
 
 - **INV-2** — On Windows no code path writes a secret to a file. `choose()`
   raises `NoStore` where the write raises `NoKeyringError`, and
-  `write(store="file", ...)` raises `NoStore` however it was reached.
+  `write(store="file", ...)` raises `NoStore` however it was reached, as
+  does `delete(store="file", ...)` on a file holding an entry for `account`.
   *Test:* `tests/test_credentials.py::test_windows_never_writes_a_file` —
   patch the platform to Windows, make the store's write raise
   `NoKeyringError`, and assert both calls raise **`NoStore` specifically** and
-  that `folder` is empty afterwards.
+  that `folder` is empty afterwards. Then put a fallback file holding an
+  entry in `folder`, assert `delete()` raises `NoStore`, and assert the
+  file's bytes are unchanged.
   *Breaks when:* the fallback is written once and applied on both systems,
   which §4.6's `chmod` measurement makes unsafe.
   **Asserting the type is what makes it bite:** a *locked* store on Windows
@@ -482,7 +488,8 @@ once the code exists.
   whose delete raises. Assert the sentinel appears in no
   message, and that no message carries the account or the folder handed in.
   **A backend's own message is never interpolated where a secret is in hand —
-  `read()` and `write()`, both sides.** The type is named and the message is
+  `read()` and `write()`, both sides — nor where an account is, in
+  `delete()`.** The type is named and the message is
   not, and the cause is dropped rather than chained, because a chained cause is
   printed by a formatted traceback and by PRESS-0011's rolling log. `choose()`
   is outside this: it is never handed a secret, only the probe, so §4.2 says
@@ -781,3 +788,4 @@ exit code.
 | 6 | 2026-09-06 | 3, cold — identical brief, packet rebuilt from disk after the loop-5 code fixes landed, so the module in it was current with the document; Windows still unrunnable | 3 | 3 | 1 | 1 | **Seven verified, seven fixed. Cap reached (2 for a spec); the tail is empty and the document routes to implementation. A CALM cap** — about three of the seven landed on text this run wrote, and across both loops most findings predated the change being gated, so this gate was again an audit that also produced three code fixes. **All three lanes found the same defect**, and it is the one the loop-5 code fix walked past: both version rows describe a file *carrying* a version this build does not read or write, and the code refuses a well-formed file carrying **no** version at all — which PRESS-0001's own table states and this one dropped. A conformer would let `read()` return a secret from a versionless file and let `write()` merge into it. **Two lanes found INV-6's new sentence false of `choose()`**, which interpolates the backend's message and chains the cause: the rule is scoped to the calls handed a secret now, and §4.2 says what `choose()`'s two failures may carry and why that is safe — no secret is ever in its hands. **Two lanes found §7's *what runs everywhere*** contradicting the INV-10 carve-out five lines above it. **One lane found INV-5 crediting the wrong mechanism on Windows**: decision 1's refusal fires before the capability read is reached, so the capability read is not what holds those clauses back there — and loop 5's own §7 fix had the same error the other way round, attributing to the filesystem what Windows settles first. Both now name both refusals. **One lane found the read table silent on a well-formed file whose `secrets` is missing or not an object** — executed: `CredentialError`, where the table's remaining rows push a builder toward `NotStored`, and PRESS-0021 branches on exactly that pair. **One Q4: INV-7's fixture leaves its first member unconstrained**, so it may answer `None` — and §4.6 measured that the real chain never does, which is the whole reason the clause exists; the shipped fixture does answer `None`, filed to PRESS-0100. **Resolved clean, not counted:** PRESS-0001 §6's quotation is verbatim and correctly attributed, checked by all three lanes. |
 | 7 | 2026-09-09 | 3, cold — genre pinned `spec`; loop 1 of a new run, armed by PRESS-0117 giving §4.3 a message rule. Same packet as PRESS-0001's run, carrying § Errors and § Logging whole. **Its claim that the code was unwritten was false and two lanes disputed it.** One lane read the installed `keyring` beyond its stated grant and was right to | 3 | 5 | 0 | 0 | **Five verified, five fixed, none dismissed.** Stopped at loop 1 by instruction; surfaced-and-fixed, not converged. **Two lanes found §4.2 exempting `choose()` from the no-message rule on a warrant about secrets alone** — § Logging forbids three things, and §4.6 records that the chain includes a plaintext file backend whose errors quote a path under his home directory; the shipped `choose()` interpolated `{exc}` and chained the cause. **Two found §4.6's hierarchy claim false**, verified by executing it: `KeyringError` subclasses `Exception`, and `NoKeyringError` subclasses it and `RuntimeError` both, so `except RuntimeError` lets `KeyringLocked` past. **One found the module cannot satisfy its own new clause** — §4.1 hands it an opaque `account`, so it can never say *your publishing key*; §4.3 now says it names no secret and the Face supplies the noun. Also corrected §7's claim that §10 tabulates the non-invariant checks, and INV-5's Windows guard, which credited a refusal §7's own platform-patching prevents from firing |
 | 8 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the write code of six modules, the import and retry tests, and PRESS-0001 §4.4 / §11. Windows unrunnable | 0 | 0 | 0 | 0 | **Converged: no finding.** Five open questions resolved clean. One pre-existing one is noted, not filed: whether INV-6's path rule reaches an `OSError` chained under a file-store `CredentialError`. |
+| 9 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0254 (`delete()`). Packet: `credentials.py`, the off handler, PRESS-0122 §4.2, the keyring chain's delete source. User budget: one loop. Lane B read a copy frozen before lane A's fixes landed | 1 | 2 | 1 | 1 | **Five verified, three fixed, two filed to PRESS-0256 as outside the amendment.** Both lanes: §4.2 says the load row drops its cause, and the code chains it (filed). Fixed: the delete table let a refused file and a file with no entry both match, so it now judges the file as `read()` does first; `delete()`'s failures now drop the cause (INV-6); INV-2 now covers `delete()` on Windows. Filed: the file store chains a path-bearing `OSError`. Resolved clean, not counted: KWallet's read raises `KeyringLocked` on a cancelled unlock, so asking first does catch a locked store (executed). The fixes are read by no lane; implementation reads them |
