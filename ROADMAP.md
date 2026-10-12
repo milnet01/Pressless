@@ -4327,7 +4327,7 @@ removed, and the menu follows.
   Kind: fix.
   Source: hand-check-2026-10-12, 0.8.2 Windows round.
 
-- 📋 [PRESS-0253] **Choosing a different Analytics site keeps the first site's counting code.**
+- ✅ [PRESS-0253] **Choosing a different Analytics site keeps the first site's counting code.**
   Found on the Windows box, 0.8.2. PRESS-0199 spec INV-6 keeps any id
   Settings already holds, to protect one typed by hand. It cannot tell a
   typed id from one Pressless found itself, so after a switch the pages
@@ -4337,6 +4337,13 @@ removed, and the menu follows.
   of the previous property's own web streams; keep any other.
   Workaround today: empty the measurement id box in Settings, then
   choose the site again.
+  Resolved (2026-10-12): PRESS-0199 INV-6 amended
+  (docs/specs/PRESS-0199-counting-code.md, review loop 2: three found,
+  three fixed, one loop by the user's budget), then built. A switch reads
+  the previous property's streams; its own id is replaced, or removed
+  where none or several are found. Test:
+  tests/test_google_setup.py::test_switching_property_replaces_its_counting_code,
+  red first; mutation_probe 8/8 killed. Not yet seen against real Google.
   **Layman:** If you switch Pressless to a different Google Analytics site, your pages keep counting visitors into the old one.
   Kind: fix.
   Source: hand-check-2026-10-12, 0.8.2 Windows round.

@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Choosing a different Analytics site now replaces the first site's counting code.** (PRESS-0253)
+  If you switch Pressless to a different Google Analytics site, your pages stop counting visitors into the old one. A counting code you typed yourself is kept.
+
 - **Choosing a site from an expired visitor-numbers list now says the list expired, instead of ignoring the choice.** (PRESS-0252)
   If you go back to the list of sites and pick a different one, Pressless now says the list has expired and nothing changed.
 
