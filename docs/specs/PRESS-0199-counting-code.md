@@ -146,10 +146,17 @@ with the access token already in hand:
   id can then be typed on the Settings page;
 - several → the page lists them, and says to type the right one on the
   Settings page;
-- Settings already holding an id → it is kept, and a different id found
-  is shown beside it;
+- Settings already holding an id, with a property chosen other than the
+  one Settings held → the previous property's web stream ids are read
+  with the same token (`measurement_ids` with an empty `site_address`).
+  Where the held id is one of them, Pressless found it, so it is treated
+  as no id held: the one id found replaces it, and where none or several
+  are found it is removed and the page says so (PRESS-0253);
+- Settings otherwise holding an id → it is kept, and a different id found
+  is shown beside it. A failure reading the previous property keeps it
+  too: an id that cannot be traced is treated as typed;
 - a failure reaching Google → shown through `Face.fail`; the property id
-  is saved as today.
+  is saved as today, and any held id is kept.
 
 ### 4.4 The Settings page
 
@@ -242,10 +249,15 @@ the text `privacy_page` returns.
   `www.` handling.
 - **INV-6** — After a property is chosen and Google answers one id, Settings
   holds it, the Store holds `pages/privacy.html`, and the footer links it.
-  Where Settings already held a different id, it is kept. *Test:*
-  `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on`.
-  *Breaks when:* the found id is not saved, overwrites a typed one, or the
-  Privacy page is not added.
+  Where Settings already held a different id, it is kept, unless a
+  different property was chosen and the held id is one of the previous
+  property's web streams: then the found id replaces it, or it is removed
+  where none or several are found. *Test:*
+  `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on`,
+  `tests/test_google_setup.py::test_switching_property_replaces_its_counting_code`.
+  *Breaks when:* the found id is not saved, overwrites a typed one, the
+  previous property's id survives a switch, or the Privacy page is not
+  added.
 - **INV-7** — Saving the Settings page with an id adds the Privacy page
   and footer link where absent; saving again adds neither twice; a Store
   already holding `pages/privacy.html` keeps its own; a Store holding no
@@ -318,7 +330,7 @@ a visit to a page published with the tag.
 | INV-3 | `tests/test_builder.py::test_the_counting_code_finds_its_place` |
 | INV-4 | `tests/test_builder.py::test_a_preview_is_never_counted` |
 | INV-5 | `tests/test_google_signin.py::test_measurement_ids_reads_the_web_streams` |
-| INV-6 | `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on` |
+| INV-6 | `tests/test_google_setup.py::test_choosing_a_property_switches_counting_on`, `tests/test_google_setup.py::test_switching_property_replaces_its_counting_code` |
 | INV-7 | `tests/test_setup.py::test_switching_counting_on_adds_privacy_once` |
 | INV-8 | `tests/test_setup.py::test_a_malformed_measurement_id_is_a_refused_answer` |
 | § 4.5 the Privacy page's words | **Partial:** the leak sweep catches the names it holds; whether the words are accurate is read |
