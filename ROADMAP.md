@@ -1,5 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
+<!-- ants-roadmap-id-high-water: PRESS=253 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3583,6 +3584,18 @@ it decides how pages, the menu and the look are held.
   - still owed: PRESS-0199's visitor numbers with the user's Google
     sign-in; the 0.8.2 draft's self-check on Windows; a real update from
     a fixed version once one is published (PRESS-0023 and PRESS-0173)
+  0.8.2 draft, Windows box (2026-10-12):
+  - passed: the draft's zip --self-check in the desktop session: ok,
+    folder Pressless-data, keyring WinVaultKeyring
+  - passed: PRESS-0199. The user's Google sign-in in Edge (over VNC),
+    then a property chosen; Pressless read its one web stream and saved
+    its measurement id. A press from driven Chrome published; the live
+    home page carried that id and the footer's Privacy link; a visit from
+    the box's Chrome showed in Google's Realtime report as the test site.
+  - found: PRESS-0252 (a choice from a stale list is dropped silently)
+    and PRESS-0253 (switching property keeps the old counting code). The
+    test went on after clearing the held id by hand.
+  Every row owed on the 0.8.2 draft has now run.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -4141,6 +4154,35 @@ removed, and the menu follows.
   Kind: feature.
   Source: user-request-2026-10-05.
   Lanes: Face.
+
+- 📋 [PRESS-0252] **Choosing a site from a stale visitor-numbers list saves nothing and says nothing.**
+  Found on the Windows box, 0.8.2, in Edge. The user chose a property,
+  pressed Use this site (saved), went Back, and the browser showed the
+  old list with the radio still ticked. A second choice there landed on
+  `_choose` in `src/pressless/google_setup.py` with `state.pending`
+  already None, so it returned `_show(state)`: the summary page naming
+  the first property, with no word that the choice was dropped.
+  Fix: say the list has expired and offer Choose a different site; and
+  consider no-store on the list page so Back reloads it.
+  Test first: POST /setup/google/choose with no pending list and a
+  property id; today it saves nothing and the page carries no message.
+  **Layman:** If you go back to the list of sites and pick a different one, Pressless quietly ignores the choice; it should tell you to choose again.
+  Kind: fix.
+  Source: hand-check-2026-10-12, 0.8.2 Windows round.
+
+- 📋 [PRESS-0253] **Choosing a different Analytics site keeps the first site's counting code.**
+  Found on the Windows box, 0.8.2. PRESS-0199 spec INV-6 keeps any id
+  Settings already holds, to protect one typed by hand. It cannot tell a
+  typed id from one Pressless found itself, so after a switch the pages
+  still carry the first property's id while the visitor page reads the
+  second: the numbers read nothing, and visits count elsewhere.
+  Fix needs INV-6 amended (rule 14 gate): replace a held id that was one
+  of the previous property's own web streams; keep any other.
+  Workaround today: empty the measurement id box in Settings, then
+  choose the site again.
+  **Layman:** If you switch Pressless to a different Google Analytics site, your pages keep counting visitors into the old one.
+  Kind: fix.
+  Source: hand-check-2026-10-12, 0.8.2 Windows round.
 
 ## 0.10.0 — their own look, and any file
 
