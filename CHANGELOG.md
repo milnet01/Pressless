@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-12
+
+**Theme:** a stranger can start from nothing
+
 ### Added
 
 - **A Privacy link on the visitor-numbers page and in Settings opens Pressless's privacy policy** (PRESS-0255)
