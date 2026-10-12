@@ -10558,7 +10558,7 @@ already-built code ships in whichever release comes next.
   Source: PRESS-0200 resolution 2026-10-10.
   Lanes: Insights.
 
-- 📋 [PRESS-0244] **Post an early-access trailer on YouTube, with a donation request.**
+- ✅ [PRESS-0244] **Post an early-access trailer on YouTube, with a donation request.**
   User decision 2026-10-10: post the trailer now, labelled as an
   in-progress app (early access, alpha or beta: Claude's choice of
   term), and re-record it once the app is complete. Make it flashier,
@@ -10581,6 +10581,9 @@ already-built code ships in whichever release comes next.
   trailer brief. That session builds the video, thumbnail and a
   title/description file in /mnt/Games/Trailers/; the user uploads it.
   Nothing here is owed until that session asks for changes.
+  Resolved (2026-10-12): the user uploaded the trailer:
+  https://www.youtube.com/watch?v=7rGs9YZk52M (public; oEmbed answers).
+  Re-recording once the app is complete stays with the video-kit memory.
   **Layman:** A short video showing Pressless as it is today, labelled as early access, asking viewers to support the project.
   Kind: marketing.
   Source: user-decision-2026-10-10.
