@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Choosing a site from an expired visitor-numbers list now says the list expired, instead of ignoring the choice.** (PRESS-0252)
+  If you go back to the list of sites and pick a different one, Pressless now says the list has expired and nothing changed.
+
 - **On a Windows PC with no password store, Pressless now stops with a one-line message instead of a wall of technical text naming folders** (PRESS-0257)
 
 ## [0.8.3] - 2026-10-12

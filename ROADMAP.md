@@ -4306,7 +4306,7 @@ removed, and the menu follows.
   Source: user-request-2026-10-05.
   Lanes: Face.
 
-- 📋 [PRESS-0252] **Choosing a site from a stale visitor-numbers list saves nothing and says nothing.**
+- ✅ [PRESS-0252] **Choosing a site from a stale visitor-numbers list saves nothing and says nothing.**
   Found on the Windows box, 0.8.2, in Edge. The user chose a property,
   pressed Use this site (saved), went Back, and the browser showed the
   old list with the radio still ticked. A second choice there landed on
@@ -4317,6 +4317,12 @@ removed, and the menu follows.
   consider no-store on the list page so Back reloads it.
   Test first: POST /setup/google/choose with no pending list and a
   property id; today it saves nothing and the page carries no message.
+  Resolved (2026-10-12, 4faa8eb): a choice with no pending list now
+  opens the message box saying the list expired and nothing changed.
+  no-store was already sent on every Face page, so Edge's Back restores
+  the list from history regardless; the message is the fix. Test:
+  tests/test_google_setup.py::test_a_choice_from_an_expired_list_says_so,
+  red first; mutation_probe 3/3 killed. Not yet seen in a real browser.
   **Layman:** If you go back to the list of sites and pick a different one, Pressless quietly ignores the choice; it should tell you to choose again.
   Kind: fix.
   Source: hand-check-2026-10-12, 0.8.2 Windows round.
