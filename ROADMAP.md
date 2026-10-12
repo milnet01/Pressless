@@ -4205,7 +4205,7 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-12 PRESS-0256.
   Lanes: insights, publisher.
 
-- 📋 [PRESS-0259] **Record trailer clips 6 to 11 for the Hub's remade Pressless trailer.**
+- ✅ [PRESS-0259] **Record trailer clips 6 to 11 for the Hub's remade Pressless trailer.**
   Asked by the ants-projects-hub-website session on the user's behalf.
   Clips of 4-8 s, same setup as the first trailer (memory
   pressless-video-kit; record-demo skill), saved as clip6... in
@@ -4222,6 +4222,12 @@ it decides how pages, the menu and the look are held.
   Only features in the RELEASED build (0.8.2), never PRESS-0254 or later
   work. Check each against the 0.8.2 tag first, and say which cannot be
   shown honestly yet rather than faking it.
+  Resolved (2026-10-12): clips 6 to 11 delivered to the trailer inbox
+  with notes.md lines, and the Hub session told. All from release 0.8.3,
+  all demo data: a made-up GitHub code, a drawn demo picture, made-up
+  visitor figures from a stand-in Google. Every requested feature was in
+  the release, so none was skipped. Clip 8 skips the file dialog, which
+  does not open on the recording display; notes.md says so.
   **Layman:** New short video clips showing what Pressless can do, for the trailer on the website.
   Kind: marketing.
   Source: ants-projects-hub-website request 2026-10-12.
