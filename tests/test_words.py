@@ -194,7 +194,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Search": "the end of Google's channel names, matched against its answer",
         "card wide": "CSS class names", "ranked pages": "CSS class names",
     },
-    "editor.py": {"REPLACES": _FIELDS},
+    "editor.py": {"REPLACES": _FIELDS, "UNDONE": _FIELDS},
     "face.py": {
         "_STYLE": _CSS, "_SHAPES": _CSS,
         "FILES_POLICY": "a Content-Security-Policy value",
@@ -210,8 +210,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "Location", "Host", "Origin", "Cookie", "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
     },
-    "publishing.py": {"MESSAGE": "a git commit message (decision 4)",
-                      "UNDONE": "a git commit message (decision 4)"},
+    "publishing.py": {"MESSAGE": "a git commit message (decision 4)"},
     "report.py": {"body": _ISSUE, "query": _ISSUE, "Windows": _ISSUE, "Linux": _ISSUE,
                   "Linux (": _ISSUE, "an unknown system": _ISSUE},
     "shortcuts.py": {

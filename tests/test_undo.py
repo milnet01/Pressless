@@ -263,6 +263,10 @@ def test_a_second_undo_keeps_no_copy_of_the_demoted_draft(tmp_path):
     assert sorted(store.list_slugs(folder, draft=False)) == ["edited", "plain", "untouched"]
     drafts = store.list_slugs(folder, draft=True)
     assert "untouched" not in drafts and "untouched-before-undo" not in drafts
+    # PRESS-0249: the kept draft drops the mark, or the list calls an entry
+    # that is back on the site taken off it.
+    kept = store.read(store.path_for(folder, "edited-before-undo", draft=True))
+    assert UNDONE not in dict(kept.extra)
 
 
 # ------------------------------------------------------------------ INV-7 ---

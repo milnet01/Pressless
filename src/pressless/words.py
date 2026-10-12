@@ -374,6 +374,8 @@ _WORDS: dict[str, str] = {
     "editor.site_line": "Editing <b>{name}</b> at {address}",
     "editor.list.pages_unreadable": "Pressless cannot open your pages folder.",
     "editor.list.changed": "changes not on your site yet",
+    "editor.list.undone": "taken off your site by Undo",
+    "editor.list.later_changes": "your later changes",
     "editor.list.untitled": "untitled",
     "editor.list.unreadable": "Pressless cannot open this file",
     "editor.list.none": "None yet.",

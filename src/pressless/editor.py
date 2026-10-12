@@ -40,6 +40,7 @@ from pressless.words import say
 
 PREVIEW_FOLDER = "preview"          # inside Pressless's own folder; the Face's alone
 REPLACES = "Replaces"               # the header naming the published entry a copy changes
+UNDONE = "Undone"                   # publishing.UNDONE, the mark undo leaves (PRESS-0015 § 4.5)
 UNTITLED = "untitled"
 COPY_SUFFIX = "-changes"
 LONGEST_ADDRESS = 60
@@ -336,13 +337,20 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     published = {entry.slug for entry in readable[False]} | set(unreadable[False])
     changed = {_replaces(entry) for entry in readable[True]} & published
     drafts = [entry for entry in readable[True] if _replaces(entry) not in published]
+    # PRESS-0015 § 4.6: the draft undo took off the site, and a draft whose
+    # `Replaces` names it -- the copy publishing._move publishes over it.
+    undone = {entry.slug for entry in drafts if any(name == UNDONE for name, _ in entry.extra)}
+    notes = {entry.slug: say("editor.list.undone") for entry in drafts if entry.slug in undone}
+    notes.update({entry.slug: say("editor.list.later_changes") for entry in drafts
+                  if _replaces(entry) in undone})
 
     def rows(entries: list[store.Entry], broken: list[str]) -> str:
         ordered = sorted(sorted(entries, key=lambda entry: entry.slug),
                          key=lambda entry: entry.date, reverse=True)
         items = []
         for entry in ordered:
-            note = f" <em>{say('editor.list.changed')}</em>" if entry.slug in changed else ""
+            said = say("editor.list.changed") if entry.slug in changed else notes.get(entry.slug)
+            note = f" <em>{said}</em>" if said else ""
             items.append(
                 f'<li><a href="{html.escape(_edit_address(entry.slug), quote=True)}">'
                 f"{html.escape(entry.title or say('editor.list.untitled'))}</a> "

@@ -49,8 +49,9 @@ MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's addre
 
 # The header marking a draft undo demoted (PRESS-0015 § 4.5). Nothing parses the
 # value -- it is the moment of the demotion, written so that a person reading his
-# own file can see what happened. Presence is what is read.
-UNDONE = "Undone"
+# own file can see what happened. Presence is what is read. Spelled in editor,
+# whose list labels it (PRESS-0015 § 4.6) and which this module imports.
+UNDONE = editor.UNDONE
 
 _T = TypeVar("_T")
 

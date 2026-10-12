@@ -23,7 +23,7 @@ import pytest
 from _face_session import Browser
 from test_setup import _saved
 
-from pressless import editor, face, marks, page_editor, settings, setup, starter, store
+from pressless import editor, face, marks, page_editor, publishing, settings, setup, starter, store
 from pressless.words import say
 
 PREVIEW = "preview"
@@ -476,6 +476,30 @@ def test_the_editor_offers_the_previews_true_colours(tmp_path):
         status, _, page = browser.request("GET", "/edit?slug=seaside")
     assert status == 200
     assert re.search(r'<input type="checkbox" data-true-colours>', page), page
+
+
+def test_the_list_says_which_draft_undo_took_off(tmp_path):
+    """PRESS-0015 INV-15 (PRESS-0249): after an undo, the entry it took off
+    the site and his later changes to it were listed under one title with
+    nothing to tell them apart. A copy naming an unmarked draft is no copy."""
+    folder = _folder(tmp_path)
+    mark = ((publishing.UNDONE, "2026-10-10 09:00:00"),)
+    store.write(folder, _entry("test-entry", title="Windows test entry", extra=mark),
+                draft=True)
+    store.write(folder, _entry("test-entry-changes", title="Windows test entry",
+                               extra=((REPLACES, "test-entry"),)), draft=True)
+    store.write(folder, _entry("plain", title="Windows test entry"), draft=True)
+    store.write(folder, _entry("plain-changes", title="Windows test entry",
+                               extra=((REPLACES, "plain"),)), draft=True)
+    with _editor(folder) as browser:
+        status, _, page = browser.request("GET", "/")
+    assert status == 200
+    rows = {slug: row for row in re.findall(r"<li>.*?</li>", page)
+            for slug in re.findall(r'/edit\?slug=([\w-]+)"', row)}
+    assert "taken off your site by Undo" in rows["test-entry"]
+    assert "your later changes" in rows["test-entry-changes"]
+    for slug in ("plain", "plain-changes"):
+        assert "taken off" not in rows[slug] and "later changes" not in rows[slug], slug
 
 
 def test_a_copy_of_an_unreadable_entry_is_not_listed_as_a_draft(tmp_path):
