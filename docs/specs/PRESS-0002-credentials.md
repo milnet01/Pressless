@@ -4,6 +4,9 @@
 **Amended 2026-10-03, before implementation** (PRESS-0141): INV-1 lets
 `credentials.py` import `pressless.safe_write`, the one copy of the
 write steps. That changes direction, so the gate re-armed.
+**Amended 2026-10-12, before implementation** (PRESS-0254): `delete()`
+removes one secret, for Turn off in PRESS-0122. §4.3 holds its table and
+INV-12 holds it. That changes direction, so the gate re-armed.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -18,7 +21,7 @@ anywhere a stranger on the same computer could read.
 
 After this ships, one small module answers two questions and nothing else:
 *where can a secret be kept on this machine*, and *what is the secret filed
-under this account*. Setup uses it to decide and record; the Face reads a
+under this account*. It also files a secret and removes one. Setup uses it to decide and record; the Face reads a
 secret and hands it to the Publisher or Insights as an argument
 (`docs/design.md` rule 10). It owns ADR-0003's two paths — the operating
 system's own store, and the fallback file — and it is the only code that
@@ -114,6 +117,7 @@ class Choice:
 def choose() -> Choice: ...
 def read(store: str, folder: Path, account: str) -> str: ...
 def write(store: str, folder: Path, account: str, secret: str) -> None: ...
+def delete(store: str, folder: Path, account: str) -> None: ...
 
 class NoStore(Exception): ...           # nowhere safe to keep it -- setup stops
 class NotStored(Exception): ...         # the store works and holds nothing here
@@ -225,10 +229,31 @@ strictness**: the stored version must be the integer this build writes, so
 | The existing file parses to a non-empty mapping carrying no `version`, or one that is not the integer this build writes | `CredentialError` — saving over it would relabel a file this build did not write, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
+`delete(store, folder, account)` removes the secret filed under `account`
+and leaves every other one. Where nothing is filed there it returns, so a
+second call is not a failure.
+
+| What it meets | What it does |
+|---|---|
+| The store is the keyring, and `read()` would raise `NotStored` | returns; nothing is asked to delete |
+| The store is the keyring, and `read()` would raise `CredentialError` | `CredentialError` |
+| The store is the keyring and holds a secret there | the store's delete, addressed as `write()` addresses it; any failure is `CredentialError`, naming the exception type and not its message |
+| The fallback file is absent, or holds no entry for `account` | returns; the file is not written |
+| Windows, with `store == "file"`, and the file holds an entry for `account` | `NoStore` — rewriting the file writes the other secret to a file there |
+| The fallback file holds an entry for `account` | it is written again without that entry, by `write()`'s mechanism and with each of `write()`'s refusals |
+| The fallback file cannot be read, is not valid JSON, has a `version` this build does not read, or is not ours | `CredentialError`, as `read()` |
+
+**The keyring is asked before it is told.** The keyring library raises
+`PasswordDeleteError` both where nothing is stored and where the writer
+cancelled the store's unlock prompt (§4.6). So that error cannot mean
+*nothing to delete*: reading it so reports a locked store as an empty
+one, which §4.2's discriminator exists to prevent. `delete()` decides
+absence the way `read()` does, then asks the store to delete.
+
 **No message this module raises names the path, the account, or the
 secret.** `docs/design.md` § Logging puts that on the part that RAISES rather
 than on the Face, so it is this module's rule and not a downstream one. It
-binds `choose()` as much as `read()` and `write()`. The credentials file is
+binds `choose()` and `delete()` as much as `read()` and `write()`. The credentials file is
 named by what it is, never by where it sits. **An `OSError` is reported by
 `strerror`, never by its own words** — a stock file error quotes the path it
 failed on, and `str(exc)` puts it straight back.
@@ -361,6 +386,13 @@ once the code exists.
 - **`os.chmod` on Windows sets only the read-only flag.** All other bits are
   ignored, so no `chmod` can make a file private to one user there.
   Source: https://docs.python.org/3/library/os.html#os.chmod
+- **A delete through the nominated chain reaches the member a write
+  reaches.** Both go to the first member that does not raise
+  `NotImplementedError`. The KDE wallet member raises `PasswordDeleteError`
+  for an absent entry and for a cancelled unlock alike. Read from the
+  library's source on the development machine, 2026-10-12; refuted by a
+  chain whose `delete_password` walks its members differently from
+  `set_password`.
 
 ## 5. Invariants
 
@@ -446,7 +478,8 @@ once the code exists.
   *Test:* `tests/test_credentials.py::test_no_failure_names_the_secret` — with
   a sentinel as the secret, force every failure that has one in hand as well as
   every row of §4.3's table: `write()` into an unwritable folder, `write()`
-  refused on Windows, and each read failure. Assert the sentinel appears in no
+  refused on Windows, each read failure, and `delete()` against a store
+  whose delete raises. Assert the sentinel appears in no
   message, and that no message carries the account or the folder handed in.
   **A backend's own message is never interpolated where a secret is in hand —
   `read()` and `write()`, both sides.** The type is named and the message is
@@ -549,6 +582,20 @@ once the code exists.
   **INV-5 cannot catch it:** that clause reads the mode back where the request
   is honoured, which is the case this one is not about.
 
+- **INV-12** — `delete()` removes one account's secret and leaves every
+  other one, and a store holding nothing there is not a failure.
+  *Test:* `tests/test_credentials.py::test_delete_removes_one_secret_and_keeps_the_other`
+  — through the file store, write two accounts, delete one, and assert
+  `read()` raises `NotStored` for it and returns the other; delete it
+  again and assert it returns. Through a patched keyring: a store whose
+  read answers a non-`str` is never asked to delete; a store holding the
+  secret records one delete for `SERVICE` and the account; a store whose
+  delete raises `PasswordDeleteError` raises `CredentialError`.
+  *Breaks when:* the file is rebuilt without the other secret, so Turn off
+  for the dashboard discards the publishing key; or `PasswordDeleteError`
+  is read as *nothing stored*, so a locked store reports a key removed
+  that is still there.
+
 ## 6. Failure modes
 
 - **No store, on Windows.** `choose()` raises `NoStore` and setup stops.
@@ -587,7 +634,7 @@ machine that runs this suite.
 
 **The file-store tests patch the platform check, and some of them need more
 than that.** INV-2 makes `write(store="file", ...)` raise on Windows however
-it is reached, and INV-5, INV-6, INV-8, INV-10 and INV-11 all write through
+it is reached, and INV-5, INV-6, INV-8, INV-10, INV-11 and INV-12 all write through
 the file store — so on Windows they would fail against a correct
 implementation. They set the platform to a non-Windows value, exactly as
 INV-2's own test sets it to Windows.
@@ -650,9 +697,6 @@ exit code.
 - **Record the fallback file's path in Settings.** Rejected: PRESS-0001 §4.5
   owns this and refuses it — the path follows the program file, so a recorded
   one is invalidated by the move Settings must survive.
-- **A `forget()` for removing a secret.** Rejected as unneeded now. Declining
-  the dashboard after granting it is PRESS-0021's, and `write()` already
-  replaces.
 - **Refusing the fallback file on its MODE as well as its owner** (§3
   decision 6). Rejected: a file carried from another machine is what recovery
   reads, and its mode did not survive the journey while its ownership became
@@ -689,6 +733,8 @@ exit code.
 | INV-10's ownership refusal against a file really owned by another user | **half** — the suite cannot create one without a second account, so that clause patches the owner the descriptor reports. The symlink refusal and the permissive-mode acceptance both run for real |
 | ADR-0003's promise that the store protects the secret as well as the writer's other passwords | **nothing** — INV-7 makes the store *nameable*, which is all this module can do. Whether a named store is good enough is not decidable here, and §3 decision 2 is the reason the question reaches the writer at all |
 | INV-2's rule on the machine it protects | **half** — the test patches the platform, and no Windows runs this suite. PRESS-0022 stages the built executable to a Windows box before release, which is the only place the real behaviour is observed; it schedules no check of its own |
+| INV-12 | `tests/test_credentials.py::test_delete_removes_one_secret_and_keeps_the_other` |
+| `delete()`'s failures naming no path or account | `tests/test_credentials.py::test_no_failure_names_the_secret`, which also forces `delete()` against a store whose delete raises |
 | INV-11 | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on a filesystem where the request is honoured |
 | §4.3's refusal to save over a file a later Pressless wrote | `tests/test_credentials.py::test_writing_over_a_newer_credentials_file_is_refused` |
 | INV-5's file mode on Windows | **nothing, and nothing can** — §4.6's measurement is that the mode is unenforceable there. INV-2 removes the case rather than checking it |
@@ -719,6 +765,7 @@ exit code.
   capability test is the shape the read's checks take rather than something
   they depart from.
 - `CHANGELOG.md` — an entry when it ships.
+- PRESS-0122 calls `delete()` at Turn off (§3 decision 5 there).
 - PRESS-0001 is unchanged. This fills the hole its §4.5 names rather than
   moving anything it holds.
 

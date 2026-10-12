@@ -4,6 +4,10 @@
 Amended 2026-10-01 after registration measured Google requiring the client
 secret: §3 decision 3, §4.7 and INV-16 by the user's decision, and INV-17
 from the first real sign-in. Re-gated for one loop the same day; every verified finding fixed.
+Amended 2026-10-12, before implementation (PRESS-0254): Turn off also
+deletes the stored refresh token and the visitor-numbers cache (§3
+decision 5, INV-18), after Google's review asked the privacy policy to
+state deletion. That changes direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0122 (split from PRESS-0021 by the user
 2026-09-17; the route and the property list chosen by the user
@@ -72,10 +76,11 @@ turn it off again, and Google is told.
 4. **(decided here) The Face's own server is the loopback redirect.**
    Google accepts `http://127.0.0.1:<port>/<path>` with any port for a
    desktop client (same source), and the Face already listens there.
-5. **(decided here) Turning it off revokes at Google and clears both
-   settings fields.** The stored value is left in the store, dead, and the
-   next sign-in writes over it. Credentials has no delete, and adding one
-   would amend PRESS-0002 for a value that no longer opens anything.
+5. **(decided here, amended 2026-10-12) Turning it off revokes at Google,
+   clears both settings fields, and deletes what Pressless kept**: the
+   refresh token, through `credentials.delete` (PRESS-0002), and the
+   visitor-numbers cache, `insights.cache_path(folder)`. The privacy
+   policy promises the writer that Turn off removes both.
 6. **(decided here) The code that talks to Google belongs to Insights**
    (`docs/design.md` rule 8), in its own module. The pages are the Face's,
    in their own module beside `setup.py`.
@@ -219,7 +224,7 @@ its own load.
 | `GET RETURN_PATH` | §4.3. |
 | `POST /setup/google/sites` | PRESS-0206. Where `available()` is false or `google_account` is `None`, the same page as `GET`. Otherwise `credentials.read` the stored refresh token, `access_token`, then `properties`; their answer becomes the pending list, with that refresh token and access token, and the page is the list as `GET` shows it. Nothing is written until `choose`. A failure, or an empty list, stays on screen with a link back and writes nothing. |
 | `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. Only then does the pending access token become the held token, and the pending list is cleared. The page says the dashboard is ready. |
-| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Whatever `revoke` does, save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`, and drop the held token and the pending list. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. |
+| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Then, whether or not `google_account` was set and whatever `revoke` did: `credentials.delete(saved store, folder, GOOGLE_ACCOUNT)`; remove the cache file, where there is one; save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`; and drop the held token and the pending list. A failed delete or removal stops neither the other nor the save. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. Where the delete or the removal failed, the page says that the key or the visitor figures may still be on this computer. |
 
 **`token(folder)`** uses the `client` `register` was given, and its
 clock; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
@@ -335,7 +340,7 @@ It writes the value with `repr`, and prints nothing that carries it.
 
 `tests/test_google_signin.py` holds INV-1 to INV-8, driving a
 `Transport` double that records each request and answers from a script.
-`tests/test_google_setup.py` holds INV-10 to INV-15 and INV-17, through `face.serve(tmp_path)`
+`tests/test_google_setup.py` holds INV-10 to INV-15, INV-17 and INV-18, through `face.serve(tmp_path)`
 with that double, a `credentials` double, and a real settings file.
 
 - **INV-1** — `google_signin` imports no Pressless module but `insights`
@@ -480,6 +485,20 @@ with that double, a `credentials` double, and a real settings file.
   flashes past before it can be read — which the first real sign-in
   measured.
 
+- **INV-18** — Turning off deletes the stored refresh token and the cache
+  file whether or not Google answered the revoke, and says so when either
+  could not be removed.
+  *Test:* `test_turning_off_removes_the_key_and_the_figures` — with a
+  cache file present, once with `revoke` answering 200 and once raising
+  `OSError`: the `credentials` double records one delete for the store
+  and `GOOGLE_ACCOUNT`, and the cache file is gone. Then with the double's
+  delete raising `CredentialError`: the cache file is still removed, both
+  fields are saved `None`, and the page carries the may-still-be-here
+  sentence, which neither earlier page carries.
+  *Breaks when:* the delete runs only after a successful revoke, so
+  offline the key stays on disk while the privacy policy says it is gone;
+  or a failed delete stops the save.
+
 ## 6. Failure modes
 
 - **He closes Google's page.** The attempt stays pending until it is
@@ -491,8 +510,9 @@ with that double, a `credentials` double, and a real settings file.
   from Settings.
 - **The store cannot be written.** `credentials.write` raises, the page
   shows it with that noun, and Settings is unchanged.
-- **Offline at Turn off.** Settings is cleared anyway (INV-13), and the
-  refresh token stays valid at Google until he removes it there.
+- **Offline at Turn off.** Settings is cleared and the stored token
+  deleted anyway (INV-13, INV-18), and the refresh token stays valid at
+  Google until he removes it there.
 - **Google's lifetime user cap is reached, or the client is disabled.**
   Google's page shows its own error and returns `error=…`; he sees an
   `InsightsError` carrying Google's reason. Pressless cannot fix either.
@@ -503,7 +523,7 @@ with that double, a `credentials` double, and a real settings file.
 `tests/test_google_signin.py` covers INV-1, INV-2, INV-3, INV-4, INV-5,
 INV-6, INV-7 and INV-8; `tests/test_face.py` covers INV-9;
 `tests/test_google_setup.py` covers INV-10, INV-11, INV-12, INV-13,
-INV-14, INV-15 and INV-17; `tests/test_write_google_secret.py` covers
+INV-14, INV-15, INV-17 and INV-18; `tests/test_write_google_secret.py` covers
 INV-16. Each is seen failing against a stub before the code it
 locks is written. INV-1's pattern already exists in
 `tests/test_insights.py`.
@@ -526,7 +546,6 @@ carries the cookie (§4.3 step 4), and a packaged release's sign-in
 | **A second listener for the redirect** | The Face already listens on `127.0.0.1`; a second server is a second boundary to defend. |
 | **Relaxing the cookie to `SameSite=Lax`** | Every GET on the Face would then carry the cookie from any site's link, for the sake of one path. |
 | **Saving the first property automatically** | Most people have one, but one account can see many, and a wrong property shows someone else's numbers without saying so. |
-| **Deleting the stored token at Turn off** | Needs a delete in Credentials, amending PRESS-0002, for a value the revoke has already made useless. |
 | **A lazy token passed into `insights.read`** | Would let a fresh cache answer offline without a refresh, but it amends PRESS-0019's contract. It is PRESS-0020's choice, with the facts in §9. |
 
 ## 9. Out of scope
@@ -564,6 +583,7 @@ carries the cookie (§4.3 step 4), and a packaged release's sign-in
 | INV-15 | `tests/test_google_setup.py::test_an_unregistered_copy_offers_no_sign_in` |
 | INV-16 | `tests/test_write_google_secret.py` |
 | INV-17 | `tests/test_google_setup.py::test_a_failed_return_stays_on_screen` |
+| INV-18 | `tests/test_google_setup.py::test_turning_off_removes_the_key_and_the_figures` |
 | §4.4's two new sentences | `tests/test_face.py`'s PRESS-0011 INV-1 test, which fails on a failure type with no entry |
 | §4.3 step 4, the cookie arriving on the continue navigation | **nothing automatic** — browser behaviour; the hand check in §7 |
 | §4.7, a packaged release carrying the secret | **Partial:** INV-16 holds the step and the script; that the frozen program imported the module is seen only by §7's hand check on a release |
@@ -583,6 +603,8 @@ it.
   never touches …; PRESS-0122's pages do"*.
 - **PRESS-0019** — §9's first bullet names PRESS-0122 as the owner of
   obtaining and refreshing the token.
+- **PRESS-0002** — gains `delete()` (2026-10-12), which Turn off calls.
+- **`PRIVACY.md`** — its deletion bullet says what Turn off removes.
 - **`docs/design.md` rule 10** — unchanged: the Face still fetches the
   secret and hands a token to Insights.
 - **`docs/working-here.md`** — a section *Registering the Google client*,
