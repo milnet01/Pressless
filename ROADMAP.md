@@ -10542,6 +10542,10 @@ already-built code ships in whichever release comes next.
   which donation service and address to use. The channel is the user's
   call: the personal channel or a new project channel (YouTube refused
   "Ants Projects Hub" as a name on 2026-10-10).
+  Answered (user, 2026-10-12): donations use every sponsor route in the
+  FUNDING.yml the user's other projects share (GitHub Sponsors, Patreon,
+  a custom tip link). The trailer goes on the user's existing channel for
+  all their projects; the Hub website session holds its details.
   **Layman:** A short video showing Pressless as it is today, labelled as early access, asking viewers to support the project.
   Kind: marketing.
   Source: user-decision-2026-10-10.
