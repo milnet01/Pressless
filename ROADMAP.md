@@ -10758,13 +10758,19 @@ already-built code ships in whichever release comes next.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
-- 📋 [PRESS-0247] **A changed look can show the old one for ten minutes.**
+- 💭 [PRESS-0247] **A changed look can show the old one for ten minutes.**
   The stylesheet is always published as look/style.css, and GitHub
   Pages serves it with max-age=600, as it does the pages. Seen on the
   0.8.0 run: after replacing a Harbour site with Sunrise, a browser
   that had visited showed the new pages with the old colours. A name
   or query that changes with the stylesheet's content would end it for
   the stylesheet; the pages themselves keep GitHub's ten minutes.
+  Decided (user, 2026-10-12): left for now. It clears itself in ten
+  minutes, and a whole fix must rewrite the stylesheet link inside his
+  fixed pages on the way out, which PRESS-0126 section 4.6 rules out
+  ("A fixed page is unchanged ... byte for byte"), so it costs that
+  spec an amendment and a gate. A link tag on built pages alone would
+  leave the homepage stale, where it was seen.
   **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
@@ -10775,6 +10781,10 @@ already-built code ships in whichever release comes next.
   lists "Windows test entry" twice: the changes copy, and the entry
   the undo took off the site (marked Undone). Both files are right
   and nothing is lost; only the list cannot tell them apart.
+  Decided (user, 2026-10-12): reverse PRESS-0015 section 3 decision 9
+  (2026-09-21, "neither page says anything about demoted entries").
+  Each line says what it is: the later changes, or the entry Undo took
+  off the site. Amends PRESS-0015 through its gate before the code.
   **Layman:** After an undo, Drafts can show the same entry name twice; each line should say whether it is your later changes or the version taken off your site.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
