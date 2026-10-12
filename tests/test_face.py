@@ -207,6 +207,9 @@ def test_a_return_page_is_the_only_door_without_the_cookie(tmp_path: Path) -> No
         served.stop()
 
 
+SPENT = "This link has already been used. Close this tab and start Pressless again."
+
+
 def test_the_server_answers_only_its_own_origin(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -237,9 +240,15 @@ def test_the_server_answers_only_its_own_origin(
 
         client.cookie = f"{name}={value}"
         assert client.request("GET", "/")[0] == 200
-        # The link is spent, and its secret is never a session.
+        # The link is spent, and its secret is never a session. A reload or Back
+        # lands on it: with the session it goes on to the page, without it he
+        # is told to start Pressless again (PRESS-0245).
         assert follow_link(served.url)[0] == 403
-        assert client.request("GET", f"/?t={client.secret}")[0] == 403
+        status, _, body = client.request("GET", "/?t=spent", cookie=False)
+        assert status == 403 and body == SPENT, body
+        status, headers, _ = client.request("GET", f"/?t={client.secret}")
+        assert (status, headers.get("Location")) == (303, "/")
+        assert "Set-Cookie" not in headers
         secret_as_cookie = _Client(served, follow=False)
         secret_as_cookie.cookie = f"{name}={client.secret}"
         assert secret_as_cookie.request("GET", "/")[0] == 403

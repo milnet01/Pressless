@@ -1169,6 +1169,7 @@ _WORDS: dict[str, str] = {
     # The Face: the preview's true-colours box, and the plain 403 and 404 replies.
     "face.true_colours": "Show the preview in its true colours",
     "face.forbidden": "Forbidden",
+    "face.link_spent": "This link has already been used. Close this tab and start Pressless again.",
     "face.not_found": "Not found",
 }
 

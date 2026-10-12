@@ -900,7 +900,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 honoured = not face._link_spent and _is_secret(query["t"], face._secret)
                 face._link_spent = face._link_spent or honoured
             if not honoured:
-                self._refuse()
+                # PRESS-0245: a reload, Back or a restored session lands on the
+                # spent link. The session already lets this browser in, so it
+                # goes on to the page, with no new cookie; any other is told
+                # to start Pressless again.
+                if self._has_cookie(face):
+                    self._send(303, "", "text/plain", (("Location", parts.path or "/"),))
+                else:
+                    self._drain()
+                    self._send(403, say("face.link_spent"), "text/plain")
                 return
             cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"
             self._send(
