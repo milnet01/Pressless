@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=258 -->
+<!-- ants-roadmap-id-high-water: PRESS=259 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4185,6 +4185,27 @@ it decides how pages, the menu and the look are held.
   Kind: doc-fix.
   Source: in-session-2026-10-12 PRESS-0256.
   Lanes: insights, publisher.
+
+- 📋 [PRESS-0259] **Record trailer clips 6 to 11 for the Hub's remade Pressless trailer.**
+  Asked by the ants-projects-hub-website session on the user's behalf.
+  Clips of 4-8 s, same setup as the first trailer (memory
+  pressless-video-kit; record-demo skill), saved as clip6... in
+  /mnt/Games/Trailers/incoming/pressless/ with one line each in
+  notes.md. Then message ants-projects-hub-website.
+  6. Setup from no website: GitHub sign-in with the short code. Blur it,
+     or use a throwaway account; no real codes or emails visible.
+  7. Undo the last publish in one step.
+  8. Adding a photograph to an entry, landing where you were typing.
+  9. The "Who is reading" visitor card with made-up or demo numbers,
+     never the user's real Google Analytics figures.
+  10. Editing the site's header, footer or menu.
+  11. If cheap: the game/film/TV looks and a high-contrast look.
+  Only features in the RELEASED build (0.8.2), never PRESS-0254 or later
+  work. Check each against the 0.8.2 tag first, and say which cannot be
+  shown honestly yet rather than faking it.
+  **Layman:** New short video clips showing what Pressless can do, for the trailer on the website.
+  Kind: marketing.
+  Source: ants-projects-hub-website request 2026-10-12.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
