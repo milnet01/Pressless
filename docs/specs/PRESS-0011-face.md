@@ -8,6 +8,9 @@ changes a declared surface, so the gate re-armed.
 **Amended 2026-10-02, before implementation** (PRESS-0202): `serve`
 takes an optional `port`, which only the practice copy's start script
 names (§ 3 decision 2, § 4.5, INV-11).
+**Amended 2026-10-12 by the user's decision** (PRESS-0245): a spent link
+followed by a browser holding the session goes to the page; any other is
+told to start Pressless again (§ 3 decision 3, § 4.5, INV-5).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0011 (`docs/design.md` § The parts, § Errors,
 § Logging).
@@ -65,6 +68,9 @@ server they sit on and the error contract every page keeps.
    secret is honoured once and traded for a session cookie of its own. The
    link reaches the browser on its command line, where another account on a
    shared machine can read it, so it must not stay the key for the whole run.
+   **Amended 2026-10-12 (PRESS-0245, decided by the user):** a reload, Back
+   or session restore lands on the spent link. A browser holding the session
+   is sent on to the page; any other is told to start Pressless again.
 7. **(decided 2026-09-26, PRESS-0151) No other origin may frame a Face page.**
    A page on another `127.0.0.1` port is the same site, so a frame of a Face
    page carries the cookie and its clicks carry the Face's own `Origin`.
@@ -254,9 +260,12 @@ capture, it lands on that request's list.
   secret. A GET carrying `t` is checked against the secret: the right one,
   the first time, gets `Set-Cookie: pressless-<port>=<session>; HttpOnly;
   SameSite=Strict; Path=/` and a redirect to the same path without the query.
-  **The link is then spent**: a later GET carrying the right `t` is refused
-  with 403, as a wrong one is, whatever cookie it carries. The check and the
-  spending happen under one lock, so two racing requests cannot both win.
+  **The link is then spent**: it never sets the cookie again. A later GET
+  carrying `t`, right or wrong, that also carries the session cookie gets a
+  redirect to the same path without the query and no `Set-Cookie`. Without
+  the cookie it is refused with 403, whose words say to start Pressless
+  again (`face.link_spent` in `words.py`). The check and the spending happen
+  under one lock, so two racing requests cannot both win.
   Every other request must carry the session cookie, or it is refused with
   403, except a GET to a path registered with `add_return_page`
   (PRESS-0122 §4.3). The secret itself is never accepted as a cookie.
@@ -360,13 +369,15 @@ capture, it lands on that request's list.
   without the cookie is 403; the `url` link is a redirect setting the cookie,
   whose value is not the link's secret; `/` with that cookie is 200; `/` with
   the link's secret as the cookie is 403; following `url` a second time is
-  403; with the cookie and `Host: pressless.example` it is 403;
+  403 with the start-again words, and with the cookie is a redirect to `/`
+  carrying no `Set-Cookie`; with the cookie and `Host: pressless.example` it
+  is 403;
   `POST /folder/open` with the cookie and `Origin: http://127.0.0.1:1` is
   403 and opens nothing.
   *Breaks when:* the server binds `0.0.0.0`, skips the `Host` or `Origin`
   check, takes the query secret on every request instead of trading it for
-  the cookie, sets the secret itself as the cookie, or honours the link more
-  than once.
+  the cookie, sets the secret itself as the cookie, honours the link more
+  than once, or sends a second following on without the cookie.
 
 - **INV-10** — No other origin can frame a Face answer.
   *Test:* `tests/test_face.py::test_no_other_origin_can_frame_the_face` — on
@@ -441,7 +452,7 @@ capture, it lands on that request's list.
 | The log cannot be written | Nothing on screen: the log never raises (PRESS-0003 § 4.4) |
 | A request lacks the cookie, names a foreign `Host`, or is a POST from a foreign `Origin` | 403, with a plain body |
 | He opens another page served on `127.0.0.1` | That page's server receives the session cookie, since cookies are not separated by port. Accepted: only a program already serving on his own machine can receive it, and only when he opens its page. It cannot frame a Face page (§ 4.5) |
-| The opening link is followed a second time | 403. Accepted: the launcher opens it once, and a new launch makes a new link |
+| The opening link is followed a second time | With the session cookie, a redirect to the page; without it, 403 saying to start Pressless again. A new launch makes a new link |
 | Pressless is launched twice on one folder | The second start says Pressless is already running and exits; the folder's lock is PRESS-0023 § 4.11's |
 | The port a caller named is already held | `serve` raises the bind's `OSError` and binds nothing; the caller says so (§ 4.5) |
 | The local web-server manager opens `http://localhost:<port>/` | 403: its `Host` is not `127.0.0.1:<port>`, and it carries no cookie and no link. Accepted by the user 2026-10-02; the practice copy is reached through the tab the launcher's start-up opens, and neither check is relaxed for the manager |
