@@ -4113,11 +4113,15 @@ it decides how pages, the menu and the look are held.
   Kind: fix.
   Source: google-verification-review-2026-10-12.
 
-- 📋 [PRESS-0255] **The privacy policy can be opened from inside Pressless.**
+- ✅ [PRESS-0255] **The privacy policy can be opened from inside Pressless.**
   At least on the Google step (next to the sign-in, where Google's
   review expects it) and in Settings. Link to
   https://antsprojectshub.co.za/p/pressless/privacy.html, the address
   registered with Google, so there is one copy to keep true.
+  Shipped 2026-10-12. google_signin.PRIVACY_URL holds the registered
+  address; google_setup.privacy() puts the link on the Google step (signed
+  in or not) and setup._google_link puts it in Settings and on setup's done
+  page. Test: test_the_privacy_policy_is_linked_where_google_is_offered.
   **Layman:** A Privacy link in the app opens Pressless's privacy policy, so nobody has to hunt for it on the web.
   Kind: feature.
   Source: user-request-2026-10-12.

@@ -577,6 +577,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not tell Google to forget its permission. You can remove it "
         "yourself at {link}."
     ),
+    "google_setup.privacy": (
+        "<a href=\"{url}\" target=\"_blank\" rel=\"noopener\">Privacy: how Pressless "
+        "handles your Google data</a>"
+    ),
     "google_setup.not_removed": (
         "Pressless could not remove the Google key or the visitor figures, so they may still "
         "be on this computer."

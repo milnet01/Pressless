@@ -147,11 +147,17 @@ def _show(state: _State, hint: str = "") -> str:
                               property=e(saved.analytics_property_id or "")) + "</p>"
                 + _button("/sites", say("google_setup.choose_other"))
                 + _button("/start", say("google_setup.sign_in_again"))
-                + _button("/off", say("google_setup.turn_off")) + back)
+                + _button("/off", say("google_setup.turn_off")) + privacy() + back)
     return (shown + head
             + f"<p>{say('google_setup.offer')}</p>"
             + _pending()
-            + _button("/start", say("google_setup.sign_in")) + back)
+            + _button("/start", say("google_setup.sign_in")) + privacy() + back)
+
+
+def privacy() -> str:
+    """The privacy policy, beside the sign-in and in Settings (PRESS-0255)."""
+    url = html.escape(google_signin.PRIVACY_URL, quote=True)
+    return f"<p>{say('google_setup.privacy', url=url)}</p>"
 
 
 def _pending() -> str:

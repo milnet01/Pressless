@@ -24,6 +24,7 @@ from pressless import (
     credentials,
     github_setup,
     github_signin,
+    google_setup,
     google_signin,
     publisher,
     restarting,
@@ -529,8 +530,8 @@ def _google_link(on: bool) -> str:
     if not google_signin.available():
         return ""
     if on:
-        return f"<p>{say('setup.google.on')}</p>"
-    return f"<p>{say('setup.google.offer')}</p>"
+        return f"<p>{say('setup.google.on')}</p>" + google_setup.privacy()
+    return f"<p>{say('setup.google.offer')}</p>" + google_setup.privacy()
 
 
 def _shortcuts(face: Face, where: shortcuts.Places | None, request: Request) -> str:

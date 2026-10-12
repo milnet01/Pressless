@@ -381,6 +381,32 @@ def test_an_unregistered_copy_offers_no_sign_in(
     assert [url for _m, url, _f in google.calls] == []
 
 
+# ------------------------------------------------------------ PRESS-0255 ----
+
+# The address registered with Google as the privacy policy, written out here
+# so the test does not compare the module against itself.
+PRIVACY = "https://antsprojectshub.co.za/p/pressless/privacy.html"
+
+
+def test_the_privacy_policy_is_linked_where_google_is_offered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """PRESS-0255. The Google step, before and after sign-in, and Settings
+    each link to the policy, opening it outside the app. Breaks when the
+    link is dropped from a page, or points somewhere Google did not
+    register."""
+    link = f'<a href="{PRIVACY}" target="_blank" rel="noopener">'
+    _Store(monkeypatch)
+    _saved(tmp_path)
+    with _served(tmp_path, _Google(), with_setup=True) as browser:
+        assert link in browser.send("GET", "/setup/google")[2]
+        assert link in browser.send("GET", "/setup")[2]
+    _signed_in(tmp_path)
+    with _served(tmp_path, _Google(), with_setup=True) as browser:
+        assert link in browser.send("GET", "/setup/google")[2]
+        assert link in browser.send("GET", "/setup")[2]
+
+
 # -------------------------------------------------------------- INV-17 ----
 
 

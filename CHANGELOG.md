@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A Privacy link on the visitor-numbers page and in Settings opens Pressless's privacy policy** (PRESS-0255)
+
 ### Changed
 
 - **Turning off visitor numbers now deletes the Google key and the saved figures from your computer** (PRESS-0254)

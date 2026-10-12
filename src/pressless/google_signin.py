@@ -39,6 +39,9 @@ CLIENT_ID = "407838712240-ioic610gg2obnav839qe4pdk07ar1gki.apps.googleuserconten
 # has, the Google step says the review is pending and how to get past the
 # unverified-app warning.
 APPROVED = False
+# The privacy policy registered on Google's consent screen (PRESS-0255).
+# One copy to keep true, so the app links here rather than carrying its own.
+PRIVACY_URL = "https://antsprojectshub.co.za/p/pressless/privacy.html"
 SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 -- an address, not a secret
