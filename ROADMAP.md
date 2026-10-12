@@ -4287,6 +4287,8 @@ removed, and the menu follows.
   and renaming unqueued. Touches the Store's page set, the menu, the
   builder and what a publish deletes, so it likely needs a spec
   (spec-format.md section 1: a contract other parts bind to).
+  Decided (user, 2026-10-12): the first 0.9.0 feature, after the
+  five backlog ux defects (0245, 0246, 0247, 0249, 0251).
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
@@ -10730,6 +10732,10 @@ already-built code ships in whichever release comes next.
   gate. Likely shape: a cookie-holding browser is redirected to the
   path; any other gets a short page saying to start Pressless again.
   Reload, Back and a session restore all land on the token URL.
+  Decided (user, 2026-10-12): a browser holding the session cookie
+  is redirected from the spent token URL to the list; any other
+  gets a short page saying to start Pressless again. Amends
+  PRESS-0011 section 4.5 through its gate.
   **Layman:** If you reload the first page Pressless opened, or go back to it, you get a blank page saying Forbidden instead of your list.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
@@ -10744,6 +10750,10 @@ already-built code ships in whichever release comes next.
   forget the outcome (the journal switch, a Settings save at least),
   and whether a box shown once should open again at all. Amends
   PRESS-0235 § 4.4.
+  Decided (user, 2026-10-12): the failure box is shown once.
+  Pressing OK forgets the outcome, as do a save, switching the
+  journal on and saving Settings. Done together with PRESS-0251 as
+  one amendment to PRESS-0235 and one review gate.
   **Layman:** After a publish fails, the same message box pops up on every page, even after you fix what it asked you to fix.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
@@ -10776,6 +10786,8 @@ already-built code ships in whichever release comes next.
   box with OK, and OK only closes it in the page, so the list, the
   editors and Settings each reopen it. Nothing is lost on disk.
   Deciding whether OK should forget the outcome amends PRESS-0235 4.5.
+  Decided (user, 2026-10-12): OK forgets the outcome, so the box
+  is shown once. Done together with PRESS-0246.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
