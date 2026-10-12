@@ -4172,7 +4172,7 @@ it decides how pages, the menu and the look are held.
   Kind: review-fix.
   Source: review-contract PRESS-0002 2026-10-12 lane A Q1.
 
-- 📋 [PRESS-0257] **Starting on a Windows PC with no credential store prints a traceback instead of the store line.**
+- ✅ [PRESS-0257] **Starting on a Windows PC with no credential store prints a traceback instead of the store line.**
   __main__.main catches credentials.CredentialError around choose() and
   not credentials.NoStore, which choose() raises on Windows when the write
   raises NoKeyringError (PRESS-0002 §4.2). The NoStore escapes main, and
@@ -4182,6 +4182,11 @@ it decides how pages, the menu and the look are held.
   report, not a crash. Read from source 2026-10-12, not run on the box.
   Fix: catch NoStore beside CredentialError and print the type, as the
   CredentialError branch does; test it with choose() patched to raise.
+  Resolved 2026-10-12 (2c53194): main catches NoStore beside
+  CredentialError and prints the type. Red run first; test
+  tests/test_main.py::test_no_store_is_a_report_line_not_a_traceback;
+  mutation probe killed 3 of 3. Gate green on Linux and the Windows
+  box. Not yet seen on a real Windows PC with no store.
   **Layman:** On a Windows PC without a password store, Pressless crashes at start with a wall of technical text that includes folder paths, instead of a one-line message.
   Kind: fix.
   Source: in-session-2026-10-12 PRESS-0256 packet build.
