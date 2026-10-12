@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=257 -->
+<!-- ants-roadmap-id-high-water: PRESS=258 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4126,7 +4126,7 @@ it decides how pages, the menu and the look are held.
   Kind: feature.
   Source: user-request-2026-10-12.
 
-- 📋 [PRESS-0256] **A keyring that cannot load no longer carries its own error text into the log.**
+- ✅ [PRESS-0256] **A keyring that cannot load no longer carries its own error text into the log.**
   credentials.choose() raises CredentialError `from exc` when
   keyring.get_keyring() fails (the load row). PRESS-0002 §4.2 says the
   load row drops the cause, and gives the reason: a chained cause reaches
@@ -4146,6 +4146,13 @@ it decides how pages, the menu and the look are held.
   next release (it carries PRESS-0254 and PRESS-0255). On the day it
   publishes, message the ants-projects-hub-website session so it swaps
   the privacy page's Turn off text; it holds that text until then.
+  Resolved 2026-10-12: every raise in credentials.py that replaces a
+  caught exception is `from None` (six were `from exc`). The rule is
+  docs/specs/PRESS-0002-credentials.md §4.3, held by INV-13 and
+  tests/test_credentials.py::test_no_failure_chains_what_it_caught.
+  Gated one loop (loop 10), four findings fixed. Gate green: Linux 1030
+  passed, Windows box 960 passed. The insights.py comment repeating the
+  false rolling-log claim is filed as PRESS-0258.
   **Layman:** If the computer's password store fails to start, the error Pressless records no longer risks including a file path from your home folder.
   Kind: review-fix.
   Source: review-contract PRESS-0002 2026-10-12 lane A Q1.
@@ -4164,6 +4171,20 @@ it decides how pages, the menu and the look are held.
   Kind: fix.
   Source: in-session-2026-10-12 PRESS-0256 packet build.
   Lanes: main, credentials.
+
+- 📋 [PRESS-0258] **insights.py and publisher.py comments say the rolling log prints a chained cause; it does not.**
+  insights.py (near the `from None` raise that cites PRESS-0011) says
+  __cause__ "is formatted by a traceback and by PRESS-0011's rolling
+  log". log.note writes one string with exc_info=None, and
+  face.details_for takes the type and message, so no Pressless surface
+  prints a chain; only an uncaught traceback does. Same comment class
+  corrected in credentials.py by PRESS-0256. Also check the sibling
+  comment at publisher.py and insights.py about "a traceback prints every
+  chained cause", which is true and stays. Comment-only.
+  **Layman:** Two code comments describe the app's log wrongly; fixing them changes nothing you see.
+  Kind: doc-fix.
+  Source: in-session-2026-10-12 PRESS-0256.
+  Lanes: insights, publisher.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
