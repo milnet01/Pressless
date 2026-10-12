@@ -4093,7 +4093,7 @@ it decides how pages, the menu and the look are held.
   Source: in-session-2026-10-10 PRESS-0133 Windows round, PRESS-0023 two-cycle row.
   Lanes: updater.
 
-- 📋 [PRESS-0254] **Turn off visitor numbers deletes the stored Google key and the visitor-numbers file.**
+- ✅ [PRESS-0254] **Turn off visitor numbers deletes the stored Google key and the visitor-numbers file.**
   Today google_setup._off revokes the refresh token at Google and
   clears the account and property from Settings, but leaves the
   revoked token in the credential store (keyring or the file store)
@@ -4103,6 +4103,12 @@ it decides how pages, the menu and the look are held.
   hand. Delete both on Turn off, even when the revoke fails, then
   shorten the policy's deletion bullets (PRIVACY.md and the Hub page,
   via the website session) to say Turn off removes everything.
+  Shipped 2026-10-12. credentials.delete() (PRESS-0002 INV-12, amended and
+  gated one loop) and insights.forget(); Turn off calls both whatever the
+  revoke did (PRESS-0122 INV-18, gated one loop). PRIVACY.md's Turn off
+  bullet rewritten and cold-checked against the code. Two pre-existing
+  findings from the gate filed as PRESS-0256. The Hub page's copy of the
+  section goes to the website session.
   **Layman:** When you switch off visitor numbers, Pressless also wipes the Google key and the saved numbers from your computer, not just cancels the key.
   Kind: fix.
   Source: google-verification-review-2026-10-12.
