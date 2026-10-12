@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=253 -->
+<!-- ants-roadmap-id-high-water: PRESS=255 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4085,6 +4085,29 @@ it decides how pages, the menu and the look are held.
   Kind: fix.
   Source: in-session-2026-10-10 PRESS-0133 Windows round, PRESS-0023 two-cycle row.
   Lanes: updater.
+
+- 📋 [PRESS-0254] **Turn off visitor numbers deletes the stored Google key and the visitor-numbers file.**
+  Today google_setup._off revokes the refresh token at Google and
+  clears the account and property from Settings, but leaves the
+  revoked token in the credential store (keyring or the file store)
+  and insights.json in Pressless-data. Google's OAuth review
+  (2026-10-12) asked the privacy policy to state retention and
+  deletion; the policy now tells the user to delete insights.json by
+  hand. Delete both on Turn off, even when the revoke fails, then
+  shorten the policy's deletion bullets (PRIVACY.md and the Hub page,
+  via the website session) to say Turn off removes everything.
+  **Layman:** When you switch off visitor numbers, Pressless also wipes the Google key and the saved numbers from your computer, not just cancels the key.
+  Kind: fix.
+  Source: google-verification-review-2026-10-12.
+
+- 📋 [PRESS-0255] **The privacy policy can be opened from inside Pressless.**
+  At least on the Google step (next to the sign-in, where Google's
+  review expects it) and in Settings. Link to
+  https://antsprojectshub.co.za/p/pressless/privacy.html, the address
+  registered with Google, so there is one copy to keep true.
+  **Layman:** A Privacy link in the app opens Pressless's privacy policy, so nobody has to hunt for it on the web.
+  Kind: feature.
+  Source: user-request-2026-10-12.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
