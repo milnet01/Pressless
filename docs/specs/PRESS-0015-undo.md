@@ -7,6 +7,8 @@ loop: two verified, two fixed, not converged.
 **Amended 2026-09-27, before implementation** (PRESS-0172): an unforeseen
 failure says the site is unchanged, and emptying the fetch area at the end
 never fails an undo. That changes direction, so the gate re-armed.
+**Amended 2026-10-12 by the user's decision** (PRESS-0249): the list labels a
+demoted draft and its working copy (§ 3 decision 9, § 4.6, INV-15).
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0015 (`docs/design.md` § What undo actually does;
 discovery S9).
@@ -82,12 +84,13 @@ puts his files back as they were before the press.
    Decided by the user 2026-09-21. A demoted entry's comments are not built,
    because the Builder writes `content/comments/<slug>.json` for published
    entries only (PRESS-0008 § 4.7); publish it again and they return.
-9. **(decided here) Publishing honours a copy of a demoted entry, and neither
-   page says anything about demoted entries.** Decided by the user 2026-09-21.
-   Decision 4 is met in `publishing._move` alone. The list and the edit page
-   keep today's wording about working copies, which talks about published
-   entries. **Both pages still gain decision 2's Undo button** (§ 4.6); that is
-   the only change either one takes.
+9. **(decided here) Publishing honours a copy of a demoted entry, and only
+   the list says which draft is which.** Decided by the user 2026-09-21;
+   the list's labels decided by the user 2026-10-12 (PRESS-0249). Decision 4
+   is met in `publishing._move` alone. Without labels, the demoted draft and
+   its copy are listed under one title with nothing to tell them apart. The
+   edit page keeps today's wording about working copies. **Both pages gain
+   decision 2's Undo button** (§ 4.6).
 10. **(decided here) The sequence lives in the Face, as
     `src/pressless/undo.py`.** Only the Face knows the order (`docs/design.md`
     rule 1), and only the Face may copy from the fetch area into the Store
@@ -366,6 +369,17 @@ The pages' words and asking during a press: [PRESS-0235](PRESS-0235-press-status
 **The front page** (`editor._list`) gains an **Undo the last press** button.
 It always shows (§ 3 decision 3).
 
+**Its Drafts list labels two kinds of draft** (§ 3 decision 9), each with a
+note after the date, as the list already notes a published entry's changes:
+
+- A draft carrying `UNDONE`: *taken off your site by Undo*.
+- A draft whose `Replaces` names a draft carrying `UNDONE`: *your later
+  changes*. This is the test § 4.5 change 2 applies, so the label marks
+  exactly the draft that publishing treats as the copy.
+
+Both words come from `words.py` (PRESS-0242). A draft whose `Replaces` names
+an unmarked draft gets no label, as it is no copy (INV-5).
+
 **The editor page** gains the same button beside the Published message its
 script shows after a publish (PRESS-0013 § 4.4).
 
@@ -523,6 +537,15 @@ does.
   *Breaks when:* the route passes `publishing=True`, or step 7's failure
   escapes and replaces what the sequence did.
 
+- **INV-15** — The Drafts list labels a demoted draft and its working copy,
+  and no other draft.
+  *Test:* `tests/test_editor.py::test_the_list_says_which_draft_undo_took_off`.
+  Three drafts sharing one title: one carries `Undone`, one's `Replaces`
+  names it, and one's `Replaces` names an unmarked draft. `GET /` shows the
+  undone label on the first row, the later-changes label on the second, and
+  neither on the third.
+  *Breaks when:* the copy is recognised by `Replaces` alone, without the mark.
+
 `NothingToUndo` gets a sentence.
 `tests/test_face.py::test_every_failure_type_has_a_sentence` finds it.
 
@@ -559,6 +582,8 @@ INV-8, INV-9, INV-10, INV-11, INV-12, INV-13 and INV-14.
 
 `tests/test_publishing.py` gains INV-3, INV-4 and INV-5.
 
+`tests/test_editor.py` gains INV-15.
+
 Each test is seen failing against stubs that raise `NotImplementedError`, then
 mutation-probed once the code lands, one mutation per route each invariant's
 *Breaks when* names.
@@ -572,9 +597,10 @@ mutation-probed once the code lands, one mutation per route each invariant's
 - **Move a demoted entry's comments to the bin.** Rejected by the user
   2026-09-21. The Builder already holds a draft's comments back, and binning
   them would lose them from a later republish unless he moved the file back.
-- **Widen `editor.working_copy` and the editor's pages to know about demoted
-  entries.** Rejected by the user 2026-09-21: it reopens PRESS-0012 for
-  wording, and decision 4 is met in `publishing._move` alone.
+- **Widen `editor.working_copy` and the edit page to know about demoted
+  entries.** Rejected by the user 2026-09-21: decision 4 is met in
+  `publishing._move` alone. The list's labels (decision 9) are the one
+  exception, decided 2026-10-12.
 - **Copy the fetched bytes into the Store.** Rejected: the Store's own writers
   carry the atomic write and the owner-only mode (PRESS-0005 § 4.5), and a
   direct copy would reintroduce the wide-permission defect PRESS-0075 closed.
@@ -614,6 +640,7 @@ mutation-probed once the code lands, one mutation per route each invariant's
 | INV-12 | `tests/test_undo.py::test_the_key_is_never_shown` |
 | INV-13 | `tests/test_undo.py::test_a_second_undo_keeps_no_copy_of_the_demoted_draft` |
 | INV-14 | `tests/test_undo.py::test_an_unforeseen_failure_says_the_site_is_unchanged` and `::test_a_failed_final_empty_keeps_the_outcome` |
+| INV-15 | `tests/test_editor.py::test_the_list_says_which_draft_undo_took_off` |
 | `NothingToUndo` has a sentence | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | The buttons, and that neither page reloads (§ 4.6) | **nothing** in CI — by hand, in a browser; PRESS-0133 carries the by-hand rows |
 | A real undo against GitHub | **nothing** in CI — by hand, against the maintainer's test repository |
@@ -629,7 +656,8 @@ mutation-probed once the code lands, one mutation per route each invariant's
   this item is `publishing.UNDONE`; the decision points here.
 - `docs/specs/PRESS-0012-editor.md` § 4.5 and § 4.7 — the list and the editor
   page each gain the Undo button (§ 4.6), as PRESS-0013 § 11 pointed them at
-  the Press to site button. Nothing else on either page changes (§ 3 decision 9).
+  the Press to site button. The list also labels a demoted draft and its copy
+  (§ 4.6); § 4.5 there points here. Nothing else on either page changes.
 - `docs/specs/PRESS-0013-publish.md` § 4.5 step 3 — the launch registers
   `undo.register` beside the other three, and `pressless.__main__` gains that
   line. PRESS-0013's INV-8 asserts which routes are registered, so its test
