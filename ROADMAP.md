@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=256 -->
+<!-- ants-roadmap-id-high-water: PRESS=257 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4149,6 +4149,21 @@ it decides how pages, the menu and the look are held.
   **Layman:** If the computer's password store fails to start, the error Pressless records no longer risks including a file path from your home folder.
   Kind: review-fix.
   Source: review-contract PRESS-0002 2026-10-12 lane A Q1.
+
+- 📋 [PRESS-0257] **Starting on a Windows PC with no credential store prints a traceback instead of the store line.**
+  __main__.main catches credentials.CredentialError around choose() and
+  not credentials.NoStore, which choose() raises on Windows when the write
+  raises NoKeyringError (PRESS-0002 §4.2). The NoStore escapes main, and
+  Python's default hook prints a traceback to the console: every frame's
+  full path, plus anything chained. design.md § Logging forbids full paths
+  there, and main's own docstring says choose() raising is a non-zero
+  report, not a crash. Read from source 2026-10-12, not run on the box.
+  Fix: catch NoStore beside CredentialError and print the type, as the
+  CredentialError branch does; test it with choose() patched to raise.
+  **Layman:** On a Windows PC without a password store, Pressless crashes at start with a wall of technical text that includes folder paths, instead of a one-line message.
+  Kind: fix.
+  Source: in-session-2026-10-12 PRESS-0256 packet build.
+  Lanes: main, credentials.
 
 ## 0.9.0 — pages, menus and the homepage are theirs
 
