@@ -4142,6 +4142,10 @@ it decides how pages, the menu and the look are held.
   cause; §4.2 bans the chained cause for choose(). Decide one rule for
   §4.3 (drop it, as §4.2 does), state it there, and have INV-6 assert no
   __cause__ on the file-store failures as well.
+  Order agreed with the user 2026-10-12: this item next, then cut the
+  next release (it carries PRESS-0254 and PRESS-0255). On the day it
+  publishes, message the ants-projects-hub-website session so it swaps
+  the privacy page's Turn off text; it holds that text until then.
   **Layman:** If the computer's password store fails to start, the error Pressless records no longer risks including a file path from your home folder.
   Kind: review-fix.
   Source: review-contract PRESS-0002 2026-10-12 lane A Q1.
