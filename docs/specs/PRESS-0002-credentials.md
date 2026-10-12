@@ -7,6 +7,9 @@ write steps. That changes direction, so the gate re-armed.
 **Amended 2026-10-12, before implementation** (PRESS-0254): `delete()`
 removes one secret, for Turn off in PRESS-0122. §4.3 holds its table and
 INV-12 holds it. Gated for one loop the same day, the user's budget.
+**Amended 2026-10-12, before implementation** (PRESS-0256): §4.3 says no
+failure lets a traceback print the exception it caught, and INV-13
+holds it.
 **Kind:** security.
 **Source:** ROADMAP PRESS-0002 (`docs/design.md` § Where everything sits on disk; ADR-0003, ADR-0005).
 
@@ -171,7 +174,8 @@ reaches this call. **Its path and account clauses still bind both.**
 § Logging forbids three things and only the first turns on a secret, and §4.6
 records that the nominated chain includes a plaintext file backend, whose
 failures quote their own file under his home directory. So both rows name the
-exception type, and neither chains the exception it caught (§4.3).
+exception type, and neither lets a traceback print the exception it caught
+(§4.3).
 
 **`NoKeyringError` is the discriminator, and it is the only one.** Absence and
 malfunction both reach `choose()` as a raised exception, so without naming the
@@ -255,12 +259,14 @@ named by what it is, never by where it sits. **An `OSError` is reported by
 `strerror`, never by its own words** — a stock file error quotes the path it
 failed on, and `str(exc)` puts it straight back.
 
-**No exception this module raises carries the one it caught** — neither as
-its cause nor as its implicit context. Every raise inside an `except` is
-`from None`. A formatted traceback and PRESS-0011's rolling log print what is
-chained beneath the message, and a stock `OSError` there quotes its path, so
-a message naming the file by what it is would be undone one line below it.
-INV-13 holds it.
+**No exception this module raises lets a traceback print the one it
+caught.** One raised in place of a caught exception is raised `from None`,
+which empties `__cause__` and suppresses the context. A bare `raise` passes
+the caught exception on unchanged and is not this case. A formatted
+traceback prints what is chained beneath the message, and a stock `OSError`
+there quotes its path. The Face formats none (`face.details_for` takes the
+type and the message), so the rule is for a failure nothing catches and for
+any surface that later prints one. INV-13 holds it.
 
 **This module names no secret at all.** § Logging's stand-in list asks for
 *your publishing key* or *your Google sign-in*; §4.1 hands this module
@@ -493,7 +499,7 @@ once the code exists.
   **A backend's own message is never interpolated where a secret is in hand —
   `read()` and `write()`, both sides — nor where an account is, in
   `delete()`.** The type is named and the message is
-  not, and nothing is chained (INV-13). `choose()`
+  not, and no traceback prints what was caught (INV-13). `choose()`
   is outside this: it is never handed a secret, only the probe, so §4.2 says
   what its failures may carry.
   **The quoting store is forced on both sides** —
@@ -605,8 +611,8 @@ once the code exists.
   is read as *nothing stored*, so a locked store reports a key removed
   that is still there.
 
-- **INV-13** — No exception this module raises carries the one it caught,
-  as its cause or as its implicit context (§4.3).
+- **INV-13** — No exception this module raises in place of one it caught
+  lets a traceback print that one, as its cause or its context (§4.3).
   *Test:* `tests/test_credentials.py::test_no_failure_chains_what_it_caught`
   — force every raise inside an `except`: `choose()` when the store cannot
   load, on Windows with no store, and when the probe write fails; a fallback
@@ -615,8 +621,8 @@ once the code exists.
   read, write and delete failures. Assert each raises this module's own
   type, with `__cause__` `None` and `__suppress_context__` true.
   *Breaks when:* an implementer writes `from exc` to keep the original for
-  diagnosis, or a bare `raise` inside an `except`, and the log prints the
-  credentials file's full path beneath a message that left it out.
+  diagnosis, or raises inside an `except` with no `from`, and a traceback prints
+  the credentials file's full path beneath a message that left it out.
   **INV-6's test cannot catch it:** it reads messages, and checks a cause on
   `delete()` alone.
 
@@ -663,9 +669,9 @@ the file store — so on Windows they would fail against a correct
 implementation. They set the platform to a non-Windows value, exactly as
 INV-2's own test sets it to Windows.
 
-**INV-6 sets it both ways inside one test**, because one of the failures it
-must force is the Windows refusal itself, and the rest need the file store to
-work. **And every clause needing a file-store write to succeed is held back
+**INV-6 and INV-13 each set it both ways inside one test**, because one of
+the failures each must force is a Windows refusal, and the rest need the
+file store to work. **And every clause needing a file-store write to succeed is held back
 twice over, by two different refusals** — not INV-5's mode read-back alone. On
 a real Windows host §3 decision 1 refuses first, before any mode is read.
 Everywhere else §4.6's capability read refuses wherever the mount does not
@@ -807,3 +813,4 @@ exit code.
 | 7 | 2026-09-09 | 3, cold — genre pinned `spec`; loop 1 of a new run, armed by PRESS-0117 giving §4.3 a message rule. Same packet as PRESS-0001's run, carrying § Errors and § Logging whole. **Its claim that the code was unwritten was false and two lanes disputed it.** One lane read the installed `keyring` beyond its stated grant and was right to | 3 | 5 | 0 | 0 | **Five verified, five fixed, none dismissed.** Stopped at loop 1 by instruction; surfaced-and-fixed, not converged. **Two lanes found §4.2 exempting `choose()` from the no-message rule on a warrant about secrets alone** — § Logging forbids three things, and §4.6 records that the chain includes a plaintext file backend whose errors quote a path under his home directory; the shipped `choose()` interpolated `{exc}` and chained the cause. **Two found §4.6's hierarchy claim false**, verified by executing it: `KeyringError` subclasses `Exception`, and `NoKeyringError` subclasses it and `RuntimeError` both, so `except RuntimeError` lets `KeyringLocked` past. **One found the module cannot satisfy its own new clause** — §4.1 hands it an opaque `account`, so it can never say *your publishing key*; §4.3 now says it names no secret and the Face supplies the noun. Also corrected §7's claim that §10 tabulates the non-invariant checks, and INV-5's Windows guard, which credited a refusal §7's own platform-patching prevents from firing |
 | 8 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the write code of six modules, the import and retry tests, and PRESS-0001 §4.4 / §11. Windows unrunnable | 0 | 0 | 0 | 0 | **Converged: no finding.** Five open questions resolved clean. One pre-existing one is noted, not filed: whether INV-6's path rule reaches an `OSError` chained under a file-store `CredentialError`. |
 | 9 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0254 (`delete()`). Packet: `credentials.py`, the off handler, PRESS-0122 §4.2, the keyring chain's delete source. User budget: one loop. Lane B read a copy frozen before lane A's fixes landed | 1 | 2 | 1 | 1 | **Five verified, three fixed, two filed to PRESS-0256 as outside the amendment.** Both lanes: §4.2 says the load row drops its cause, and the code chains it (filed). Fixed: the delete table let a refused file and a file with no entry both match, so it now judges the file as `read()` does first; `delete()`'s failures now drop the cause (INV-6); INV-2 now covers `delete()` on Windows. Filed: the file store chains a path-bearing `OSError`. Resolved clean, not counted: KWallet's read raises `KeyringLocked` on a cancelled unlock, so asking first does catch a locked store (executed). The fixes are read by no lane; implementation reads them |
+| 10 | 2026-10-12 | 2, cold, one at a time — genre pinned `spec`; armed by PRESS-0256 (INV-13). Packet: `credentials.py`, `face.details_for`, `log.note`, the INV-6 test, design.md § Logging, a probe of INV-13's routes. User budget: one loop | 2 | 2 | 0 | 0 | **Four verified, four fixed, none dismissed.** Both lanes: `from None` suppresses the context and does not clear `__context__`, so "carries" overstated what INV-13 tests; the rule now says no traceback prints it. Both: "a bare `raise`" named a harmless re-raise as the defect. One: §7 let INV-13 skip its Windows route. Mine, before dispatch: the rolling log does not print a chain (`log.note` takes a string), so that reason was false. Calm cap; all four inside the armed span. The fixes are read by no lane; implementation reads them |
