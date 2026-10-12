@@ -90,7 +90,7 @@ does not reopen them.
 
 ### 4.1 The public surface
 
-`src/pressless/insights.py` exports `read`, `cache_path`, the `Report`,
+`src/pressless/insights.py` exports `read`, `cache_path`, `forget`, the `Report`,
 `Country`, `Day`, `Page` and `Source` results, `UNKNOWN_COUNTRY`, the
 `Transport` seam, and the failure types
 `InsightsError`, `NotConfigured`, `Unreachable`, `Refused` and `RateLimited`.
@@ -101,7 +101,10 @@ def read(settings: Settings, token: str, folder: Path, *,
          max_age_seconds: float = DEFAULT_MAX_AGE,
          client: Transport | None = None) -> Report
 def cache_path(folder: Path) -> Path
+def forget(folder: Path) -> None
 ```
+
+`forget` removes the cache file for Turn off (PRESS-0122 §3 decision 5).
 
 `DEFAULT_DAYS` is 28 and `DEFAULT_MAX_AGE` is 3600.0 — four weeks of
 readership, and an hour between fetches. §4.4 says why the second is the

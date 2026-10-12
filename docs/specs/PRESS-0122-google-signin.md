@@ -7,7 +7,7 @@ from the first real sign-in. Re-gated for one loop the same day; every verified 
 Amended 2026-10-12, before implementation (PRESS-0254): Turn off also
 deletes the stored refresh token and the visitor-numbers cache (§3
 decision 5, INV-18), after Google's review asked the privacy policy to
-state deletion. That changes direction, so the gate re-armed.
+state deletion. Gated for one loop the same day, the user's budget.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0122 (split from PRESS-0021 by the user
 2026-09-17; the route and the property list chosen by the user
@@ -79,7 +79,9 @@ turn it off again, and Google is told.
 5. **(decided here, amended 2026-10-12) Turning it off revokes at Google,
    clears both settings fields, and deletes what Pressless kept**: the
    refresh token, through `credentials.delete` (PRESS-0002), and the
-   visitor-numbers cache, `insights.cache_path(folder)`. The privacy
+   visitor-numbers cache, through `insights.forget(folder)`: the cache is
+   Insights' file, and `docs/design.md` rule 7 keeps a part's insides
+   private. The privacy
    policy promises the writer that Turn off removes both.
 6. **(decided here) The code that talks to Google belongs to Insights**
    (`docs/design.md` rule 8), in its own module. The pages are the Face's,
@@ -224,7 +226,7 @@ its own load.
 | `GET RETURN_PATH` | §4.3. |
 | `POST /setup/google/sites` | PRESS-0206. Where `available()` is false or `google_account` is `None`, the same page as `GET`. Otherwise `credentials.read` the stored refresh token, `access_token`, then `properties`; their answer becomes the pending list, with that refresh token and access token, and the page is the list as `GET` shows it. Nothing is written until `choose`. A failure, or an empty list, stays on screen with a link back and writes nothing. |
 | `POST /setup/google/choose` | The body's `property` must equal one pending `Property.id`, or the list is shown again with a hint and nothing is written. Then `credentials.write(saved store, folder, GOOGLE_ACCOUNT, pending refresh token)`. Then the candidate is the loaded `Settings` with `credentials.google_account = GOOGLE_ACCOUNT` and `analytics_property_id` the chosen id; `settings.check`, then `settings.save`, inside `face.capture()`. Only then does the pending access token become the held token, and the pending list is cleared. The page says the dashboard is ready. |
-| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Then, whether or not `google_account` was set and whatever `revoke` did: `credentials.delete(saved store, folder, GOOGLE_ACCOUNT)`; remove the cache file, where there is one; save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`; and drop the held token and the pending list. A failed delete or removal stops neither the other nor the save. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. Where the delete or the removal failed, the page says that the key or the visitor figures may still be on this computer. |
+| `POST /setup/google/off` | Where `google_account` is set: `credentials.read` it, then `revoke`. A failed read is a failed revoke. Then, whether or not `google_account` was set and whatever `revoke` did: `credentials.delete(saved store, folder, GOOGLE_ACCOUNT)`; `insights.forget(folder)`, which removes the cache file where there is one and raises `OSError` where it cannot; save the loaded `Settings` with `google_account` and `analytics_property_id` both `None`; and drop the held token and the pending list. A failed delete or removal stops neither the other nor the save. Where the revoke failed, the page says so and names Google's own page for removing access, <https://myaccount.google.com/permissions>. Where the delete or the removal failed, the page says that the key or the visitor figures may still be on this computer. |
 
 **`token(folder)`** uses the `client` `register` was given, and its
 clock; so `register` runs first, as it does at every launch. It loads Settings, raises `insights.NotConfigured` where
@@ -494,10 +496,12 @@ with that double, a `credentials` double, and a real settings file.
   and `GOOGLE_ACCOUNT`, and the cache file is gone. Then with the double's
   delete raising `CredentialError`: the cache file is still removed, both
   fields are saved `None`, and the page carries the may-still-be-here
-  sentence, which neither earlier page carries.
+  sentence, which neither earlier page carries. Then with the cache path
+  made a directory, so it cannot be removed: both fields are saved `None`
+  and the page carries that sentence.
   *Breaks when:* the delete runs only after a successful revoke, so
   offline the key stays on disk while the privacy policy says it is gone;
-  or a failed delete stops the save.
+  or a failed delete or removal stops the save or goes unreported.
 
 ## 6. Failure modes
 
@@ -604,7 +608,11 @@ it.
 - **PRESS-0019** — §9's first bullet names PRESS-0122 as the owner of
   obtaining and refreshing the token.
 - **PRESS-0002** — gains `delete()` (2026-10-12), which Turn off calls.
-- **`PRIVACY.md`** — its deletion bullet says what Turn off removes.
+- **PRESS-0019** — Insights gains `forget(folder)`, removing its cache
+  file; a missing file is not a failure.
+- **`PRIVACY.md`** — the *Turning it off* bullet says what Turn off
+  removes and that a failure is shown on the page; the *Deleting what is
+  left* bullet, its `credentials.json` sentence included, goes.
 - **`docs/design.md` rule 10** — unchanged: the Face still fetches the
   secret and hands a token to Insights.
 - **`docs/working-here.md`** — a section *Registering the Google client*,
