@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=263 -->
+<!-- ants-roadmap-id-high-water: PRESS=265 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4538,6 +4538,10 @@ documents go on the site beside the photographs.
   Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
   handled (PRESS-0016). Which file kinds, size limits for the GitHub
   API, and how a page links to a file are still to be decided.
+  Note (2026-10-13): PRESS-0260's video, music and download sections
+  take a typed address until this ships; uploading their files here
+  should let the visual editor's side panel choose one, as it chooses a
+  photograph (docs/specs/PRESS-0260-visual-editor.md § 9).
   **Layman:** He can put music, downloads and documents on his site, not only photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
@@ -10967,6 +10971,24 @@ already-built code ships in whichever release comes next.
   Kind: enhancement.
   Source: user-decision-2026-10-13.
   Lanes: Face, Settings.
+
+- 📋 [PRESS-0264] **The visual editor moves a section between columns, or out of them.**
+  Left out of PRESS-0260 by the user 2026-10-13 to keep the first
+  version small: there, Move up and Move down work within one list.
+  See docs/specs/PRESS-0260-visual-editor.md § 9.
+  **Layman:** They can move a paragraph or picture from one column to another, or out of the columns altogether.
+  Kind: feature.
+  Source: user-decision-2026-10-13 PRESS-0260.
+  Lanes: Face.
+
+- 📋 [PRESS-0265] **Sections in the visual editor can be dragged into place.**
+  PRESS-0260 moves sections with buttons only, which keyboard users
+  and the partially sighted can use; dragging is an extra way, never
+  the only one. See docs/specs/PRESS-0260-visual-editor.md § 9.
+  **Layman:** They can drag a section up or down the page with the mouse, as well as using the Move buttons.
+  Kind: feature.
+  Source: in-session-2026-10-13 PRESS-0260.
+  Lanes: Face.
 
 ## Milestones
 

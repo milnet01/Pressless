@@ -394,10 +394,9 @@ Each test is seen failing before the code it locks exists.
 - The header, footer and menu in this editor — PRESS-0216.
 - Interactive sections — PRESS-0217.
 - Colours in the code box — PRESS-0261.
-- Moving a section between columns, or out of them — deferred; not yet
-  queued.
-- Uploading video, music and download files — deferred; not yet queued.
-- Dragging sections — deferred; not yet queued.
+- Moving a section between columns, or out of them — PRESS-0264.
+- Uploading video, music and download files — PRESS-0197.
+- Dragging sections — PRESS-0265.
 
 ## 10. What checks this
 
