@@ -715,6 +715,16 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .mini-harbour { grid-template-rows: 1rem 1fr .9rem; }
 .face .mini-harbour > :nth-child(1), .face .mini-harbour > :nth-child(3) { background: #14213d; }
 .face .mini-harbour > :nth-child(2) { background: #ffffff; }
+.face #panel { flex-basis: 100%; box-sizing: border-box; height: 60vh; overflow-y: auto;
+  padding: .5rem 1rem; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--sheet); }
+.face #panel [hidden] { display: none; }
+.face #panel #picked, .face #panel #panel-said { min-height: 3.1em; }
+.face #panel .panel-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+.face :where(#panel textarea) { min-height: 12rem; font: .9em/1.4 ui-monospace, Consolas,
+  "DejaVu Sans Mono", monospace; }
+.face #panel .panel-add { border-top: 1px solid var(--line); margin-top: .75rem;
+  padding-top: .5rem; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
 .face main > #undo-result { order: -1; }
 @media (min-width: 70rem) {

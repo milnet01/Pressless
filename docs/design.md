@@ -34,7 +34,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, which countries, and which provinces or states within them. | Entries, pages, marks, HTML, GitHub |
 | **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
 | **Usage** | Sending the anonymous usage reports the user agreed to, to a Google Analytics property kept for Pressless alone, and keeping the last ones sent for them to read (PRESS-0262). | The site, the user's writing, Settings' values, the Store |
-| **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, visual and code, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
 | **Words** | Every word the screens show, in one table keyed by name, looked up when a page is shown (PRESS-0242). English is its only table so far. | Files, the network, GitHub, the browser |
 
 **Marks and Blocks are parts rather than details inside the editors**,

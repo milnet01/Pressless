@@ -158,6 +158,10 @@ def register(face: Face, folder: Path) -> None:
     # styled before any preview is built. The longest prefix wins.
     face.add_files(LOOK_ADDRESS, within(folder / store.LOOK_FOLDER))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
+    # PRESS-0260 § 4.6: a page's picture names its photograph as the site
+    # will, so the preview serves the Store's originals there and copies none.
+    face.add_files(PREVIEW_ADDRESS + store.PHOTOGRAPHS_FOLDER + "/",
+                   lambda name: store.photograph_path_for(folder, name))
     face.add_files(ORIGINALS_ADDRESS, lambda name: store.photograph_path_for(folder, name))
 
 

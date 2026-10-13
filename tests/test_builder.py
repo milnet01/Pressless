@@ -1395,3 +1395,47 @@ def test_marks_never_reach_the_site(tmp_path):
         relative = builder.preview_html(folder, _settings(), preview, change, show=show,
                                         photo_src=lambda name: name)
         assert "pressless:" not in (preview / relative).read_text(encoding="utf-8"), show
+
+
+# PRESS-0260 INV-6 and INV-7 (docs/specs/PRESS-0260-visual-editor.md § 5).
+
+SECTIONED = ("<html><body>\n<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main>"
+             "<!-- pressless:page -->\n"
+             "<!-- pressless:text --><p>Kept</p><!-- /pressless:text -->\n"
+             "<!-- /pressless:page --></main>\n</body></html>\n")
+
+
+def test_only_the_visual_preview_keeps_marks(tmp_path):
+    """INV-6. Breaks when `marks=True` reaches `fixed_page` on a site build."""
+    folder = _store(tmp_path, pages={"index": SECTIONED})
+    change = builder.Html(store.PAGES_FOLDER, "index", SECTIONED)
+    shown = {}
+    for marked in (True, False):
+        into = tmp_path / f"preview-{marked}"
+        relative = builder.preview_html(folder, _settings(), into, change, show="index",
+                                        photo_src=lambda name: name, marks=marked)
+        shown[marked] = (into / relative).read_text(encoding="utf-8")
+    for mark in ("<!-- pressless:page -->", "<!-- pressless:text -->",
+                 "<!-- /pressless:text -->", "<!-- /pressless:page -->"):
+        assert mark in shown[True], mark
+    assert "pressless:" not in shown[False]
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    assert "pressless:" not in (into / "index.html").read_text(encoding="utf-8")
+
+
+def test_a_page_picture_is_published(tmp_path):
+    """INV-7, first half. Breaks when only entries' photographs are copied."""
+    picture = ('<!-- pressless:picture --><img src="../photographs/my%20boat.jpg" '
+               'alt="A boat"><!-- /pressless:picture -->')
+    typed = ('<!-- pressless:picture --><img src="https://example.org/far.jpg" '
+             'alt="Far"><!-- /pressless:picture -->')
+    page = SECTIONED.replace("<!-- pressless:text -->", picture + typed
+                             + "<!-- pressless:text -->")
+    folder = _store(tmp_path, pages={"index": SECTIONED, "about": page})
+    _photograph(folder, "my boat.jpg", _image("JPEG"))
+    _photograph(folder, "unused.jpg", _image("JPEG"))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    held = [name for name in _files(into) if name.startswith("photographs/")]
+    assert held == ["photographs/my boat.jpg"], held

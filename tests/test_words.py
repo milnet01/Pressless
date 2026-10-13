@@ -211,6 +211,12 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "Location", "Host", "Origin", "Cookie", "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
     },
+    "page_editor.py": {
+        "Enter": "a key's name, as the browser reports it",
+        "Backspace": "a key's name, as the browser reports it",
+        "video music": "the section kinds a panel control serves",
+        "button download": "the section kinds a panel control serves",
+    },
     "publishing.py": {"MESSAGE": "a git commit message (decision 4)"},
     "report.py": {"body": _ISSUE, "query": _ISSUE},
     "shortcuts.py": {

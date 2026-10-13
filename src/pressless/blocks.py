@@ -26,7 +26,7 @@ __all__ = [
     "BUTTON", "CODE", "COLUMNS", "DOWNLOAD", "HEADING", "KINDS", "MUSIC", "PICTURE",
     "PICTURES", "TEXT", "VIDEO",
     "Page", "Section", "SectionRefused",
-    "adopt", "read", "section_html", "unmarked", "write",
+    "adopt", "inline", "read", "section_html", "unmarked", "write",
 ]
 
 TEXT, HEADING, PICTURE, PICTURES, BUTTON = "text", "heading", "picture", "pictures", "button"
@@ -190,7 +190,14 @@ def _inline_from(events) -> str | None:
 
 
 def _is_inline(markup: str) -> bool:
-    return _inline_from(_scan(markup)) == markup
+    return inline(markup) == markup
+
+
+def inline(markup: str) -> str | None:
+    """`markup` as `section_html` writes <inline> (§4.4), or None where it holds
+    anything else. The visual editor's typed words pass through it (PRESS-0260
+    § 4.5)."""
+    return _inline_from(_scan(markup))
 
 
 _FIELDS = {

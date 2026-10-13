@@ -6,6 +6,8 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0012 s10 (Chrome half only): the policies block Google's script
   PRESS-0018: the cheat sheet folds open below the box, and prints
   PRESS-0017 s7: picking the poem opens a draft holding it
+  PRESS-0260 s10: INV-5's no-script half, INV-9, and the visual view's keys
+    and buttons (s 4.3, s 4.4)
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -36,11 +38,13 @@ import test_publishing as tp  # noqa: E402
 from PIL import Image  # noqa: E402
 
 from pressless import (  # noqa: E402
+    blocks,
     cheatsheet,
     credentials,
     editor,
     face,
     marks,
+    page_editor,
     publishing,
     store,
     templates,
@@ -69,6 +73,7 @@ def main() -> int:
         templates.register(served, folder)
         publishing.register(served, folder, transport=tp._github())
         undo.register(served, folder, transport=tp._github())
+        page_editor.register(served, folder, transport=tp._github())
         parts = urllib.parse.urlsplit(served.url)
         secret = urllib.parse.parse_qs(parts.query)["t"][0]
         origin = f"http://{parts.netloc}"
@@ -427,10 +432,176 @@ def run(origin: str, secret: str, folder: Path) -> None:
               "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
               f"{binned!r} {page.url}")
 
+        visual_editor(page, origin, folder)
+
         print("\n  console during the run:")
         for line in console[-12:]:
             print(f"    {line[:160]}")
         browser.close()
+
+
+# PRESS-0260: a page whose code section would set the frame's title if a
+# script ran there (INV-5).
+VISUAL_PAGE = (
+    "<!doctype html><html><head><title>Visual</title></head><body>\n"
+    "<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main><!-- pressless:page -->\n"
+    "<!-- pressless:heading --><h1>Title words</h1><!-- /pressless:heading -->\n"
+    "<!-- pressless:text --><p>First paragraph.</p><!-- /pressless:text -->\n"
+    "<!-- pressless:code --><script>document.title = 'RAN';</script>"
+    "<div>code part</div><!-- /pressless:code -->\n"
+    "<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
+    "</body></html>\n")
+
+
+def visual_editor(page, origin: str, folder: Path) -> None:
+    """PRESS-0260 s10: the rows no test without a browser reaches."""
+    store.write_html(folder, store.PAGES_FOLDER, "visual", VISUAL_PAGE)
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "visual", waiting=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+
+    def sections() -> list[tuple[str, str]]:
+        """The waiting copy's sections, as (kind, html or code) pairs."""
+        read = blocks.read("visual", store.read_html(waiting))
+        return [(s.kind, s.fields.get("html", s.source)) for s in read.sections]
+
+    def saved() -> None:
+        page.wait_for_timeout(1600)
+        page.wait_for_function("document.getElementById('save-status').textContent !== "
+                               "'Saving'", timeout=5000)
+
+    page.goto(f"{origin}/page?kind=pages&name=visual", wait_until="networkidle")
+    frame = page.frame_locator("#preview")
+    sandbox = page.locator("#preview").get_attribute("sandbox") or ""
+    title = page.evaluate("document.getElementById('preview').contentDocument.title")
+    check("PRESS-0260 INV-5: the frame runs no script of the page's",
+          sandbox.split() == ["allow-same-origin"] and title == "Visual",
+          f"sandbox={sandbox!r} title={title!r}")
+
+    paragraph = frame.locator("p", has_text="First paragraph.")
+    paragraph.click()
+    picked = page.locator("#picked").text_content()
+    check("PRESS-0260 s4.3: a click picks the section and the panel names it",
+          picked == "Changing: Paragraph", picked)
+    page.keyboard.press("End")
+    page.keyboard.type(" More ")
+    page.keyboard.press("Control+b")
+    page.keyboard.type("bold")
+    page.keyboard.press("Control+b")
+    saved()
+    check("PRESS-0260 INV-9: typed words with Ctrl+B save as a text section",
+          ("text", "First paragraph. More <strong>bold</strong>") in sections(), str(sections()))
+
+    page.keyboard.press("Enter")
+    page.keyboard.type("Second")
+    page.keyboard.press("Shift+Enter")
+    page.keyboard.type("line")
+    saved()
+    texts = [words for kind, words in sections() if kind == "text"]
+    check("PRESS-0260 s4.4: Enter splits, Shift+Enter writes a br",
+          texts == ["First paragraph. More <strong>bold</strong>", "Second<br>line"], str(texts))
+
+    page.evaluate("""() => {
+      const doc = document.getElementById('preview').contentDocument;
+      const data = new DataTransfer();
+      data.setData('text/html', '<span style="color:red">styled&nbsp;words</span>');
+      data.setData('text/plain', ' pasted words');
+      doc.activeElement.dispatchEvent(new ClipboardEvent('paste',
+        {clipboardData: data, bubbles: true, cancelable: true}));
+    }""")
+    page.once("dialog", lambda dialog: dialog.accept("https://example.org/"))
+    page.keyboard.press("Control+k")
+    saved()
+    texts = [words for kind, words in sections() if kind == "text"]
+    check("PRESS-0260 INV-9: pasting takes the plain text, and Ctrl+K links",
+          texts[1:] == ['Second<br>line pasted words<a href="https://example.org/">'
+                        'https://example.org/</a>'], str(texts))
+
+    second = frame.locator("p", has_text="pasted words")
+    second.click()
+    page.evaluate("""() => {
+      const doc = document.getElementById('preview').contentDocument;
+      const element = doc.activeElement;
+      doc.getSelection().collapse(element, 0);
+    }""")
+    page.keyboard.press("Backspace")
+    saved()
+    joined = [words for kind, words in sections() if kind == "text"]
+    check("PRESS-0260 s4.4: Backspace at the start joins it to the text above",
+          joined == ["".join(texts)], str(joined))
+
+    page.select_option("#add-kind", "button")
+    page.fill("#add-address", "contact.html")
+    page.locator("[data-act=add]").click()
+    saved()
+    kinds = [kind for kind, _ in sections()]
+    check("PRESS-0260 s4.3: Add below puts a button under the picked section",
+          kinds == ["heading", "text", "button", "code"], str(kinds))
+    up = page.locator("[data-act=up]")
+    up.click()
+    saved()
+    kinds = [kind for kind, _ in sections()]
+    check("PRESS-0260 s4.3: Move up moves it", kinds == ["heading", "button", "text", "code"],
+          str(kinds))
+    up.click()
+    disabled = up.is_disabled()
+    check("PRESS-0260 s4.3: at the top, Move up is shown disabled, not hidden",
+          disabled and up.is_visible(), f"disabled={disabled}")
+    page.locator("[data-act=remove]").click()
+    saved()
+    kinds = [kind for kind, _ in sections()]
+    check("PRESS-0260 s4.3: Remove takes it away", kinds == ["heading", "text", "code"],
+          str(kinds))
+
+    frame.locator("div", has_text="code part").click()
+    code = page.locator("[data-field=code]")
+    shown = code.input_value()
+    check("PRESS-0260 s4.5: the panel shows a code section's HTML without its marks",
+          shown == "<script>document.title = 'RAN';</script><div>code part</div>", shown)
+    code.fill("<div>new code</div>")
+    saved()
+    check("PRESS-0260 s3 decision 5: a code section is changed in the panel",
+          ("code", "<!-- pressless:code --><div>new code</div><!-- /pressless:code -->")
+          in sections(), str(sections()))
+
+    frame.locator("h2, h1", has_text="Title words").first.click()
+    page.select_option("[data-field=level]", "3")
+    saved()
+    heading = blocks.read("visual", store.read_html(waiting)).sections[0]
+    check("PRESS-0260 s4.3: a heading's size is changed in the panel",
+          heading.kind == "heading" and heading.fields["level"] == "3", str(heading))
+
+    boat = store.photograph_path_for(folder, "my boat.jpg")
+    boat.parent.mkdir(exist_ok=True)
+    Image.new("RGB", (40, 30), (20, 90, 160)).save(boat, "JPEG")
+    page.select_option("#add-kind", "picture")
+    page.fill("#add-address", "../photographs/my%20boat.jpg")
+    page.locator("[data-act=add]").click()
+    saved()
+    page.wait_for_timeout(800)
+    shown = page.evaluate("""() => {
+      const img = document.getElementById('preview').contentDocument.querySelector('img');
+      return img ? img.naturalWidth : -1;
+    }""")
+    check("PRESS-0260 s4.6: a held photograph shows in the preview",
+          [kind for kind, _ in sections()][:2] == ["heading", "picture"] and shown == 40,
+          f"{[kind for kind, _ in sections()]} naturalWidth={shown}")
+
+    page.select_option("#add-kind", "columns")
+    page.locator("[data-act=add]").click()
+    page.select_option("[data-field=count]", "3")
+    page.select_option("#add-kind", "text")
+    page.locator("[data-act=add-to][data-column='2']").click()
+    saved()
+    columns = blocks.read("visual", store.read_html(waiting)).sections[2]
+    check("PRESS-0260 s4.3: columns are added, widened, and given a section",
+          columns.kind == "columns" and [len(part) for part in columns.parts] == [0, 0, 1],
+          str(columns))
+    page.select_option("[data-field=count]", "2")
+    said = page.locator("#panel-said").text_content()
+    check("PRESS-0260 s4.3: fewer columns is refused while the last holds a section",
+          page.locator("[data-field=count]").input_value() == "3" and bool(said), said)
+    check("PRESS-0260: the visual view raised no script error", not errors, str(errors))
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

@@ -39,6 +39,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **Pages are edited on the page itself, and the words box is gone.** (PRESS-0260)
+  Click a heading or paragraph on your page, shown as it will look, and
+  type there. A panel beside it adds pictures, buttons, video, music,
+  downloads, columns and code, and moves or removes them. Show me the
+  code still opens the page's code.
+
 - **Pages are now held as sections**, such as a heading, a paragraph or
   a picture, ready for the visual editor. (PRESS-0215) New pages are
   written this way. Nothing you see changes, and published pages look

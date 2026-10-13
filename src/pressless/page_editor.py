@@ -1,11 +1,12 @@
-"""The fixed pages and the furniture: the words in a box, the code behind a
-button (PRESS-0014).
+"""The fixed pages and the furniture: a page edited on the page itself, the
+code behind a button (PRESS-0014, PRESS-0260).
 
 His changes wait in a copy of their own, beside the live file, until he
 publishes that page, so a publish of anything else never sends out a
 half-typed footer (docs/specs/PRESS-0014-fixed-pages.md § 3 decision 1). The
-words view replaces pieces of text in place and the code view writes what he
-typed; neither parses a file to regenerate it (§ 4.9).
+visual view saves a page as its Blocks sections, keeping every section he did
+not change byte for byte (docs/specs/PRESS-0260-visual-editor.md § 4.5); the
+code view writes what he typed.
 
 Nothing is held between requests: every route reads the Store afresh, and a
 save refuses a file this window did not see, as the entry editor's does.
@@ -20,11 +21,10 @@ import re
 import threading
 import urllib.parse
 from collections.abc import Callable
-from dataclasses import dataclass
-from html.parser import HTMLParser
 from pathlib import Path
 
 from pressless import (
+    blocks,
     builder,
     editor,
     github_setup,
@@ -46,26 +46,26 @@ from pressless.face import (
     Site,
     message_box,
     render_notices,
-    sentence_for,
     true_colours,
 )
 from pressless.words import say
 
-WORDS = "words"
+VISUAL = "visual"
 CODE = "code"
 HOME = "index"                      # the fixed page furniture previews first
 NEWEST = "_newest"                  # a `show` naming his newest entry; no page name holds "_"
 
 
-class PiecesChanged(Exception):
-    """The box holds a different number of paragraphs from the page (§ 4.2)."""
+class SectionsUnreadable(Exception):
+    """A visual save names the page's sections wrongly, or would write a file
+    that does not read back as them (PRESS-0260 § 4.5)."""
 
 
 # Added here rather than in face.py, which cannot import this module back.
-SENTENCES[PiecesChanged] = Sentence(
-    "failure.page_editor.PiecesChanged.what",
+SENTENCES[SectionsUnreadable] = Sentence(
+    "failure.page_editor.SectionsUnreadable.what",
     Site.UNCHANGED,
-    "failure.page_editor.PiecesChanged.next",
+    "failure.page_editor.SectionsUnreadable.next",
 )
 
 # PRESS-0195 § 4.2: caught where a menu is edited and said as a notice, but
@@ -76,208 +76,119 @@ SENTENCES[menu.Unusual] = Sentence(
     "failure.menu.Unusual.next",
 )
 
-_HIDDEN = frozenset(("script", "style", "template"))
-# PRESS-0238 § 4.1: the elements a paragraph may be added after or removed as.
-_BLOCKS = frozenset(("p", "h1", "h2", "h3", "h4", "h5", "h6", "li"))
 _LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
            "navigation": "editor.pages.navigation"}
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
 
 
-@dataclass(frozen=True)
-class Piece:
-    start: int          # offsets into the file's text
-    end: int
-    shown: str          # what the box shows for it
+# ------------------------------------------- the sections (PRESS-0260 § 4.5) ---
 
 
-@dataclass(frozen=True)
-class _Block:
-    tag: str
-    start: int          # the start tag's first byte
-    end: int            # one past the end tag's last byte
+def _paths(page: blocks.Page) -> dict[tuple[int, ...], blocks.Section]:
+    """Every section of `page` by its path: (i,) at the top, (i, c, j) inside."""
+    found: dict[tuple[int, ...], blocks.Section] = {}
+    for at, section in enumerate(page.sections):
+        found[(at,)] = section
+        for column, part in enumerate(section.parts):
+            for inside, child in enumerate(part):
+                found[(at, column, inside)] = child
+    return found
 
 
-# ------------------------------------------------------ the words (§ 4.2) ---
+def _marked(section: blocks.Section) -> bool:
+    """Whether the section sits between two marks; an unmarked code run does not."""
+    if section.kind != blocks.CODE:
+        return True
+    opening = re.match(r"<!-- pressless:([a-z]+) -->", section.source)
+    return bool(opening) and section.source.endswith(f"<!-- /pressless:{opening.group(1)} -->")
 
 
-class _Runs(HTMLParser):
-    """Every run of text between two markup constructs, as offsets, and
-    whether it sits inside an element the box leaves out."""
-
-    def __init__(self, text: str) -> None:
-        super().__init__(convert_charrefs=False)
-        self.text = text
-        self.starts = [0] + [at + 1 for at, char in enumerate(text) if char == "\n"]
-        self.runs: list[list[int | bool]] = []     # [start, end, hidden]
-        self.hidden = 0
-        self.open: list[tuple[str, int]] = []      # start tags not yet ended
-        self.blocks: list[_Block] = []
-
-    def _at(self) -> int:
-        line, column = self.getpos()
-        return self.starts[line - 1] + column
-
-    def _text(self, length: int) -> None:
-        start = self._at()
-        if self.runs and self.runs[-1][1] == start:
-            self.runs[-1][1] = start + length
-        else:
-            self.runs.append([start, start + length, self.hidden > 0])
-
-    def _reference(self, raw: str) -> None:
-        start = self._at()
-        self._text(len(raw) + (self.text.startswith(";", start + len(raw))))
-
-    def handle_data(self, data: str) -> None:
-        self._text(len(data))
-
-    def handle_entityref(self, name: str) -> None:
-        self._reference(f"&{name}")
-
-    def handle_charref(self, name: str) -> None:
-        self._reference(f"&#{name}")
-
-    def handle_starttag(self, tag: str, attrs: object) -> None:
-        if tag in _HIDDEN:
-            self.hidden += 1
-        self.open.append((tag, self._at()))
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in _HIDDEN and self.hidden:
-            self.hidden -= 1
-        # PRESS-0238 § 4.1: an end tag ends the nearest open start tag of its
-        # name; one never ended is no block.
-        for at in range(len(self.open) - 1, -1, -1):
-            if self.open[at][0] == tag:
-                _, start = self.open.pop(at)
-                if tag in _BLOCKS:
-                    self.blocks.append(_Block(tag, start, self.text.index(">", self._at()) + 1))
-                break
+def outline(page: blocks.Page) -> list[dict]:
+    """§ 4.2: every section's path, kind and fields, in order, marked or not. A
+    marked code section carries its HTML without its two marks."""
+    shown = []
+    for path, section in _paths(page).items():
+        item = {"path": list(path), "kind": section.kind, "marked": _marked(section),
+                "fields": dict(section.fields), "parts": len(section.parts)}
+        if section.kind == blocks.CODE and item["marked"]:
+            opening = section.source.index("-->") + 3
+            item["code"] = section.source[opening:section.source.rindex("<!--")]
+        shown.append(item)
+    return shown
 
 
-def pieces(name: str, html_text: str) -> tuple[Piece, ...]:
-    """The pieces the box shows, in file order (§ 4.2)."""
-    return _parse(name, html_text)[0]
+def _area(name: str, text: str) -> str | None:
+    """The file with a sections area: as it is, or adopted in memory (§ 4.1
+    step 2). None where Blocks finds no area to make; BuildStopped where the
+    furniture markers do not pair."""
+    if blocks.read(name, text) is not None:
+        return text
+    return blocks.adopt(text, builder.furniture_spans(name, text))
 
 
-def _parse(name: str, html_text: str) -> tuple[tuple[Piece, ...], tuple[_Block, ...]]:
-    """The pieces, and the blocks around them (PRESS-0238 § 4.1)."""
-    spans = builder.furniture_spans(name, html_text)
-    parser = _Runs(html_text)
-    parser.feed(html_text)
-    parser.close()
-    found = []
-    for start, end, hidden in parser.runs:
-        if hidden or any(inside <= start < closing for inside, closing in spans):
-            continue
-        shown = re.sub(r"\s+", " ", html.unescape(html_text[start:end])).strip()
-        if shown:
-            found.append(Piece(start, end, shown))
-    return tuple(found), tuple(parser.blocks)
+def _path(value: object, held: dict) -> tuple[int, ...]:
+    if (not isinstance(value, list) or len(value) not in (1, 3)
+            or not all(isinstance(at, int) and not isinstance(at, bool) for at in value)
+            or tuple(value) not in held):
+        raise SectionsUnreadable(f"{value!r} names no section of the page")
+    return tuple(value)
 
 
-def words(name: str, html_text: str) -> str:
-    """The box's text: every piece's shown form, a blank line between each."""
-    return "\n\n".join(piece.shown for piece in pieces(name, html_text))
+def put_sections(name: str, text: str, posted: object, removed: object) -> str:
+    """§ 4.5 steps 3 to 5: the page written from the posted sections. Raises
+    SectionsUnreadable, or blocks.SectionRefused from a section built anew."""
+    page = blocks.read(name, text)
+    if page is None or not isinstance(posted, list) or not isinstance(removed, list):
+        raise SectionsUnreadable(f"the save of {name} does not name its sections")
+    held = _paths(page)
+    kept: list[tuple[int, ...]] = []
 
+    def built(item: object) -> blocks.Section:
+        if not isinstance(item, dict):
+            raise SectionsUnreadable(f"{item!r} is not a section")
+        if "keep" in item:
+            path = _path(item["keep"], held)
+            kept.append(path)
+            return held[path]
+        if "code" in item:
+            if not isinstance(item["code"], str):
+                raise SectionsUnreadable("a code section's HTML is not text")
+            return blocks.Section(blocks.CODE, source="<!-- pressless:code -->" + item["code"]
+                                  + "<!-- /pressless:code -->")
+        fields, parts = item.get("fields", {}), item.get("parts", [])
+        if (not isinstance(fields, dict) or not isinstance(parts, list)
+                or not all(isinstance(part, list) for part in parts)):
+            raise SectionsUnreadable(f"{item!r} is not a section")
+        fields = dict(fields)
+        for field in ("html", "caption"):
+            if field in fields:
+                written = blocks.inline(fields[field]) if isinstance(fields[field], str) else None
+                if written is None:
+                    raise blocks.SectionRefused(f"a section's {field} is not plain words and links")
+                fields[field] = written
+        return blocks.Section(str(item.get("kind", "")), fields,
+                              tuple(tuple(built(child) for child in part) for part in parts))
 
-def put_words(name: str, html_text: str, box: str) -> str:
-    """The file with each changed paragraph written into its own piece, every
-    other byte as it was (§ 4.2)."""
-    lines = box.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    parts, current = [], []
-    for line in lines:
-        if line.strip():
-            current.append(line)
-        else:
-            parts.append("\n".join(current).strip())
-            current = []
-    parts.append("\n".join(current).strip())
-    # Every empty part goes, so a run of blank lines is one gap (PRESS-0143).
-    parts = [part for part in parts if part]
-
-    found, blocks = _parse(name, html_text)
-    if len(parts) == len(found):
-        changes = [_edit(html_text, piece, part)
-                   for piece, part in zip(found, parts, strict=True) if part != piece.shown]
-    else:
-        changes = _placed(html_text, found, blocks, parts)
-    out = html_text
-    for start, end, written in sorted(changes, reverse=True):
-        out = out[:start] + written + out[end:]
-    return out
-
-
-def _edit(html_text: str, piece: Piece, part: str) -> tuple[int, int, str]:
-    """Step 4: the piece's own leading and trailing whitespace around the part."""
-    raw = html_text[piece.start:piece.end]
-    leading = raw[:len(raw) - len(raw.lstrip())]
-    trailing = raw[len(raw.rstrip()):]
-    return piece.start, piece.end, leading + html.escape(part, quote=False) + trailing
-
-
-def _placed(html_text: str, found: tuple[Piece, ...], blocks: tuple[_Block, ...],
-            parts: list[str]) -> list[tuple[int, int, str]]:
-    """PRESS-0238 § 4.2: a box whose count differs, aligned to the pieces.
-    Raises PiecesChanged where a change cannot be placed."""
-    if not parts:
-        raise PiecesChanged("the box holds no paragraph")  # § 4.4
-    shown = [piece.shown for piece in found]
-
-    def block_of(piece: Piece) -> _Block | None:
-        around = [block for block in blocks if block.start < piece.start < block.end]
-        return min(around, key=lambda block: block.end - block.start, default=None)
-
-    def inside(block: _Block) -> list[Piece]:
-        return [piece for piece in found if block.start < piece.start < block.end]
-
-    def beside(sides: tuple[int, int], words: list[str]) -> bool:
-        """§ 4.5: the piece just outside, on either side, reads the same."""
-        return any(0 <= where < len(found) and shown[where] in words for where in sides)
-
-    changes = []
-    matcher = difflib.SequenceMatcher(None, shown, parts, autojunk=False)
-    for tag, first, last, part_first, part_last in matcher.get_opcodes():
-        if tag == "equal":
-            continue
-        if tag == "replace":
-            if last - first != part_last - part_first:
-                raise PiecesChanged("a paragraph was split or joined")
-            changes += [_edit(html_text, found[at], parts[part_first + at - first])
-                        for at in range(first, last)
-                        if parts[part_first + at - first] != shown[at]]
-        elif tag == "delete":
-            if beside((first - 1, last), shown[first:last]):
-                raise PiecesChanged("a removed paragraph reads like its neighbour")
-            for piece in found[first:last]:
-                block = block_of(piece)
-                if block is None or inside(block) != [piece]:
-                    raise PiecesChanged("a removed paragraph shares its block")
-                changes.append((menu._before(html_text, block.start), block.end, ""))
-        else:  # insert
-            added = parts[part_first:part_last]
-            if beside((first - 1, first), added):
-                raise PiecesChanged("an added paragraph reads like its neighbour")
-            block = block_of(found[first - 1]) if first else None
-            if block is None or inside(block)[-1] != found[first - 1]:
-                raise PiecesChanged("an added paragraph has no block to follow")
-            changes.append((block.end, block.end, _new_blocks(html_text, block, added)))
-    return changes
-
-
-def _new_blocks(html_text: str, block: _Block, added: list[str]) -> str:
-    """PRESS-0238 § 4.3: the new elements, as they go after `block`."""
-    element = "li" if block.tag == "li" else "p"
-    line = max(html_text.rfind("\n", 0, block.start), html_text.rfind("\r", 0, block.start)) + 1
-    indent = html_text[line:block.start]
-    lead = ""
-    if not indent.strip():
-        ending = re.search(r"\r\n|\n|\r", html_text[block.end:])
-        lead = (ending.group(0) if ending else "\n") + indent
-    return "".join(f"{lead}<{element}>{html.escape(part, quote=False)}</{element}>"
-                   for part in added)
+    sections = tuple(built(item) for item in posted)
+    gone = [_path(path, held) for path in removed]
+    named = kept + gone
+    if len(set(named)) != len(named):
+        raise SectionsUnreadable(f"the save of {name} names a section twice")
+    for path in held:
+        top = path[:1]
+        if path in named:
+            if len(path) == 3 and top in kept:
+                raise SectionsUnreadable(f"the save of {name} names a section twice")
+        elif not (len(path) == 3 and top in named):
+            raise SectionsUnreadable(f"the save of {name} leaves out section {list(path)}")
+    gaps = tuple(page.gaps[item["keep"][0]] if isinstance(item, dict) and "keep" in item
+                 and len(item["keep"]) == 1 else "\n" for item in posted) + (page.gaps[-1],)
+    wanted = blocks.Page(page.before, sections, gaps, page.after)
+    new = blocks.write(wanted)
+    if blocks.read(name, new) != wanted:
+        raise SectionsUnreadable(f"the save of {name} would not read back as its sections")
+    return new
 
 
 # ------------------------------------------------------- the code (§ 4.3) ---
@@ -357,10 +268,12 @@ def _page_address(kind: str, name: str, **more: str) -> str:
 
 
 def _view(kind: str, asked: str) -> str:
-    """§ 4.4: the furniture always opens in the code view (§ 3 decision 5)."""
+    """§ 4.4: the furniture always opens in the code view (§ 3 decision 5); a
+    page in the visual view unless the code was asked for (PRESS-0260 § 4.1),
+    so an old `view=words` address opens the visual view."""
     if kind == store.FURNITURE_FOLDER:
         return CODE
-    return CODE if asked == CODE else WORDS
+    return CODE if asked == CODE else VISUAL
 
 
 def _show(folder: Path, kind: str, name: str, asked: str) -> str | None:
@@ -391,21 +304,24 @@ def _read(folder: Path, kind: str, name: str) -> tuple[Path, bool]:
 
 
 def _preview(face: Face, folder: Path, kind: str, name: str, text: str,
-             show: str | None) -> tuple[str | None, str | None]:
-    """§ 4.6 step 5: the preview's address, or the failure in its place."""
+             show: str | None, *, marks: bool = False) -> tuple[str | None, str | None]:
+    """§ 4.6 step 5: the preview's address, or the failure in its place.
+    `marks` keeps the page's section marks, for the visual view (PRESS-0260
+    § 4.2)."""
     try:
         saved = settings.load(folder)
         relative = builder.preview_html(folder, saved, folder / editor.PREVIEW_FOLDER,
                                         builder.Html(kind, name, text), show=show,
-                                        photo_src=editor.photo_src)
+                                        photo_src=editor.photo_src, marks=marks)
     except Exception as exc:  # noqa: BLE001 -- a preview failure never undoes the save
         return None, face.fail(exc, publishing=False)
     return editor.PREVIEW_ADDRESS + relative, None
 
 
 def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
-    """§ 4.6 steps 1 to 4: write the box to the waiting copy, and return the
-    file written and its digest. Takes no lock; the caller holds LOCK."""
+    """§ 4.6 steps 1 to 4, and PRESS-0260 § 4.5 for the visual view: write the
+    waiting copy, and return the file written and its digest. Takes no lock;
+    the caller holds LOCK."""
     kind, name = form.get("kind", ""), form.get("name", "")
     waiting = form.get("waiting") == "1"
     copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -417,17 +333,26 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     if not waiting and copy.is_file():
         raise editor.ChangedElsewhere(f"the {kind} file {name} gained a waiting copy")
     text = store.read_html(path)
-    posted = form.get("text", "")
-    new = (put_code(text, posted) if _view(kind, form.get("view", "")) == CODE
-           else put_words(name, text, posted))
+    if _view(kind, form.get("view", "")) == CODE:
+        new = put_code(text, form.get("text", ""))
+    else:
+        adopted = _area(name, text)
+        if adopted is None:
+            raise SectionsUnreadable(f"the page {name} has no sections area to save into")
+        try:
+            posted, removed = json.loads(form.get("sections", "")), json.loads(
+                form.get("removed", "[]"))
+        except ValueError:
+            raise SectionsUnreadable(f"the save of {name} does not name its sections") from None
+        new = put_sections(name, adopted, posted, removed)
     digest = _digest(store.write_html(folder, kind, name, new, waiting=True))
     pressing.forget()  # PRESS-0235 decision 6
     return new, digest
 
 
-def _hint(failure: PiecesChanged) -> str:
-    said = sentence_for(failure, publishing=False)
-    return f"{said.what} {said.next}"
+# What a save refuses with, writing nothing (PRESS-0260 § 4.5).
+_REFUSED = (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped,
+            SectionsUnreadable, blocks.SectionRefused)
 
 
 def _failed(face: Face, notices: list[str], failure: Exception) -> Reply:
@@ -463,24 +388,38 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
             view = _view(kind, request.query.get("view", ""))
+            shown, sections, photographs = text, None, ()
             try:
                 builder.furniture_spans(name, text)
             except builder.BuildStopped as exc:
                 view, broken = CODE, face.fail(exc, publishing=False)
-            preview, preview_failure = _preview(face, folder, kind, name, text, show)
+            if view == VISUAL:
+                # PRESS-0260 § 4.1: adopted in memory only; nothing is written.
+                shown = _area(name, text)
+                if shown is None:
+                    view, shown = CODE, text
+                    notices.append(say("notice.page_editor.code_only"))
+                else:
+                    sections = outline(blocks.read(name, shown))
+                    try:
+                        photographs = store.list_photographs(folder)
+                    except store.StoreError as exc:
+                        broken = face.fail(exc, publishing=False)
+            preview, preview_failure = _preview(face, folder, kind, name, shown, show,
+                                                marks=view == VISUAL)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
-    box = words(name, text) if view == WORDS else text
     return render_notices(notices) + _page(
-        kind, name, view, show, waiting, base, box, held, bool(entries), broken,
+        kind, name, view, show, waiting, base, text, held, bool(entries), broken,
         preview, preview_failure, builder.stylesheets(folder),
-        face.view_site(), starter.unpublished(folder))
+        face.view_site(), starter.unpublished(folder), sections, photographs)
 
 
 def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
           box: str, held: tuple[str, ...], has_entries: bool, broken: str | None,
           preview: str | None, failure: str | None, sheets: tuple[str, ...],
-          visit: str, off_site: bool) -> str:
+          visit: str, off_site: bool, sections: list[dict] | None = None,
+          photographs: tuple[str, ...] = ()) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -495,8 +434,8 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
         title = say(_LABELS[name]) if name in _LABELS else name
     switch = ""
     if kind == store.PAGES_FOLDER and broken is None:
-        other, label = ((CODE, say("page_editor.show_code")) if view == WORDS
-                        else (WORDS, say("page_editor.show_words")))
+        other, label = ((CODE, say("page_editor.show_code")) if view == VISUAL
+                        else (VISUAL, say("page_editor.show_visual")))
         switch = f"<p>{link(label, _page_address(kind, name, view=other))}</p>"
     picker = ""
     if kind == store.FURNITURE_FOLDER:
@@ -514,7 +453,6 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
                    f'{say("page_editor.rename")}</button> '
                    f'<button type="button" data-pages="remove">'
                    f'{say("page_editor.remove")}</button></p>')
-    box_class = f' class="{attr(builder.BODY_CLASS)}"' if view == WORDS else ""
     # PRESS-0234: the press row's status line, between presses. The script
     # keeps it in step (its `standing`).
     standing_word = say("script.standing.off_site" if off_site else
@@ -547,8 +485,8 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-{reshape}<textarea name="text"{box_class} rows="24">
-{html.escape(box)}</textarea>
+{reshape}{_panel(name, sections, photographs) if view == VISUAL else
+          f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>'}
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
@@ -556,38 +494,109 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>
+{f"<script>{_VISUAL_SCRIPT}</script>" if view == VISUAL else ""}
 <script>{editor._UNDO_SCRIPT}</script>"""
+
+
+_KINDS = (blocks.TEXT, blocks.HEADING, blocks.PICTURE, blocks.PICTURES, blocks.BUTTON,
+          blocks.VIDEO, blocks.MUSIC, blocks.DOWNLOAD, blocks.COLUMNS)
+# Each kind's name on the screen; the script reads the same keys by kind.
+_KIND_WORDS = {
+    blocks.TEXT: "script.visual.kind.text", blocks.HEADING: "script.visual.kind.heading",
+    blocks.PICTURE: "script.visual.kind.picture", blocks.PICTURES: "script.visual.kind.pictures",
+    blocks.BUTTON: "script.visual.kind.button", blocks.VIDEO: "script.visual.kind.video",
+    blocks.MUSIC: "script.visual.kind.music", blocks.DOWNLOAD: "script.visual.kind.download",
+    blocks.COLUMNS: "script.visual.kind.columns", blocks.CODE: "script.visual.kind.code",
+}
+
+
+def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...]) -> str:
+    """PRESS-0260 § 4.3: the side panel, every control in place from the
+    start; the script shows the ones the picked section's kind uses, inside a
+    panel of fixed size, so nothing beside it moves."""
+    def attr(value: str) -> str:
+        return html.escape(value, quote=True)
+
+    def field(key: str, name: str, kinds: str, more: str = "") -> str:
+        return (f'<label data-for="{kinds}">{say(key)} '
+                f'<input data-field="{name}" autocomplete="off"{more}></label>')
+
+    up = "../" if name != HOME else ""
+    # § 4.6: a held photograph is offered by the address the site will use.
+    choices = "".join(
+        f'<option value="{attr(up + builder.web_photograph(photo))}">{html.escape(photo)}</option>'
+        for photo in photographs)
+    kinds = "".join(f'<option value="{kind}">{say(_KIND_WORDS[kind])}</option>'
+                    for kind in _KINDS)
+    columns = "".join(f'<button type="button" data-act="add-to" data-column="{number}">'
+                      f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
+                      "</button>" for number in range(4))
+    data = json.dumps({"sections": sections or [], "up": up}).replace("</", "<\\/")
+    return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}">
+<script type="application/json" id="sections">{data}</script>
+<p id="picked" role="status">{say("script.visual.nothing")}</p>
+<div class="panel-row" data-for="text heading">
+<button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
+<button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
+<button type="button" data-act="link">{say("page_editor.panel.link")}</button></div>
+<label data-for="heading">{say("page_editor.panel.level")} <select data-field="level">{
+    "".join(f'<option value="{level}">{level}</option>' for level in range(1, 7))}</select></label>
+<datalist id="photograph-list">{choices}</datalist>
+<p data-for="picture"><button type="button" data-act="photograph">{
+    say("editor.add_photograph")}</button>
+<input type="file" id="photograph-file" hidden
+ accept="image/jpeg,image/png,image/webp,image/gif"></p>
+{field("page_editor.panel.photograph", "src", "picture", ' list="photograph-list"')}
+{field("page_editor.panel.address", "src", "video music")}
+{field("page_editor.panel.address", "href", "button download")}
+{field("page_editor.panel.alt", "alt", "picture")}
+{field("page_editor.panel.caption", "caption", "picture")}
+{field("page_editor.panel.label", "label", "button download")}
+<p data-for="pictures"><button type="button" data-act="add-picture">{
+    say("page_editor.panel.add_picture")}</button></p>
+<label data-for="columns">{say("page_editor.panel.columns")} <select data-field="count">{
+    "".join(f'<option value="{count}">{count}</option>' for count in range(2, 5))}</select></label>
+<p class="panel-row" data-for="columns">{columns}</p>
+<label data-for="code">{say("page_editor.panel.code")}
+<textarea data-field="code" rows="10" spellcheck="false"></textarea></label>
+<div class="panel-add"><label>{say("page_editor.panel.add")}
+ <select id="add-kind">{kinds}</select></label>
+<label>{say("page_editor.panel.address")} <input id="add-address" autocomplete="off"
+ list="photograph-list"></label>
+<button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
+<p id="add-where">{say("script.visual.end")}</p></div>
+<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
+<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
+<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p id="panel-said" role="status"></p>
+</aside>"""
 
 
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
     form = editor._form(request)
     kind, name = form.get("kind", ""), form.get("name", "")
-    changed: PiecesChanged | None = None
+    visual = _view(kind, form.get("view", "")) == VISUAL
     with lock, face.capture() as notices:
         try:
             new, base = _write(folder, form)
-        except PiecesChanged as exc:
-            # Answered after the block: capture fills `notices` only on exit,
-            # so a reply built in here dropped every notice (PRESS-0162).
-            changed, failure = exc, None
-        except (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped) as exc:
+        except _REFUSED as exc:
             failure: Exception | None = exc
         else:
             failure = None
-            if (kind == store.PAGES_FOLDER and _view(kind, form.get("view", "")) == CODE
-                    and stray_furniture(name, new)):
+            if kind == store.PAGES_FOLDER and not visual and stray_furniture(name, new):
                 notices.append(say("notice.page_editor.stray"))
             preview, preview_failure = _preview(
-                face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")))
-    if changed is not None:
-        return _json({"waiting": form.get("waiting") == "1", "base": form.get("base", ""),
-                      "preview": None, "failure": None, "hint": _hint(changed),
-                      "notices": render_notices(notices)})
+                face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")),
+                marks=visual)
     if failure is not None:
         return _failed(face, notices, failure)
-    return _json({"waiting": True, "base": base, "preview": preview, "failure": preview_failure,
-                  "hint": None, "notices": render_notices(notices)})
+    reply = {"waiting": True, "base": base, "preview": preview, "failure": preview_failure,
+             "notices": render_notices(notices)}
+    if visual:
+        # § 4.5: after a save the posted list is the file's.
+        reply["sections"] = outline(blocks.read(name, new))
+    return _json(reply)
 
 
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
@@ -622,7 +631,7 @@ def _publish(face: Face, folder: Path, request: Request,
     def busy(said: str) -> Reply:
         """Nothing saved: the page keeps the file it posted (PRESS-0235 § 4.4)."""
         return _json({"published": False, "waiting": form.get("waiting") == "1",
-                      "base": form.get("base", ""), "failure": None, "hint": None,
+                      "base": form.get("base", ""), "failure": None,
                       "notices": "", "busy": True, "said": said})
 
     return pressing.run(pressing.PUBLISH, busy,
@@ -640,12 +649,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     with editor.LOCK:
         try:
             new, _ = gathered(lambda: _write(folder, form))
-        except PiecesChanged as exc:
-            told(pressing.Outcome(say("script.press.paragraphs")))
-            return _json({"published": False, "waiting": form.get("waiting") == "1",
-                          "base": form.get("base", ""), "failure": None, "hint": _hint(exc),
-                          "notices": render_notices(notices), "busy": False})
-        except (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped) as exc:
+        except _REFUSED as exc:
             told(pressing.Outcome(say("script.press.not_published"),
                                   face.fail(exc, publishing=False)))
             return _failed(face, notices, exc)
@@ -703,9 +707,12 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              else pressing.Outcome(say("script.press.not_published"), failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
-    return _json({"published": published, "waiting": waiting, "base": base,
-                  "failure": failure, "hint": None, "notices": render_notices(notices),
-                  "busy": False})
+    reply = {"published": published, "waiting": waiting, "base": base,
+             "failure": failure, "notices": render_notices(notices), "busy": False}
+    if _view(kind, form.get("view", "")) == VISUAL:
+        # Live or waiting, the file the next save reads holds what was written.
+        reply["sections"] = outline(blocks.read(name, new))
+    return _json(reply)
 
 
 def _gatherer(face: Face, notices: list):
@@ -976,7 +983,9 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 # The page's script (§ 4.5), PRESS-0012 § 4.7's with this page's fields. A
 # change saves about a second after the last one, never two saves at once, and
 # on leaving only where a change is unsaved. A switch of view or a picker link
-# waits for a save in flight and saves an unsaved change first.
+# waits for a save in flight and saves an unsaved change first. In the visual
+# view, _VISUAL_SCRIPT supplies what is posted and is told what was saved
+# (PRESS-0260 § 4.5).
 _PAGE_SCRIPT = pressing.SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
@@ -986,12 +995,19 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
   const hint = document.getElementById("save-hint");
   let timer = null, inFlight = null, dirty = false, stopped = false;
 
-  const fields = () => {
+  // The visual view's snapshot of the page, or null in the code view.
+  const posting = () => window.presslessVisual ? window.presslessVisual.post() : null;
+  const fields = (posted = posting()) => {
     const data = new URLSearchParams();
     for (const name of ["kind", "name", "view", "show", "waiting", "base"]) {
       data.set(name, state[name]);
     }
-    data.set("text", form.elements.text.value);
+    if (posted) {
+      data.set("sections", posted.sections);
+      data.set("removed", posted.removed);
+    } else {
+      data.set("text", form.elements.text.value);
+    }
     return data;
   };
   const adopt = (reply) => {
@@ -1001,7 +1017,6 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       part.hidden = part.dataset.when !== state.waiting;
     });
     document.getElementById("notices").innerHTML = reply.notices;
-    hint.textContent = reply.hint || "";
     document.getElementById("publish-status").textContent = standing();
   };
   // PRESS-0234: what the press row's status line says between presses.
@@ -1017,14 +1032,16 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
   async function send() {
     dirty = false; status.textContent = say("script.editor.saving");
     try {
-      const answer = await fetch("/page/save", {method: "POST", body: fields()});
+      const posted = posting();
+      const answer = await fetch("/page/save", {method: "POST", body: fields(posted)});
       const text = await answer.text();
       if (answer.status !== 200) { stop(text); return; }
       const reply = JSON.parse(text);
       adopt(reply);
-      if (reply.hint) { status.textContent = say("script.editor.not_saved"); return; }
       document.getElementById("failure").innerHTML = reply.failure || "";
-      if (reply.preview) {
+      if (posted) {
+        posted.saved(reply);
+      } else if (reply.preview) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
       status.textContent = say("script.editor.saved");
@@ -1047,7 +1064,10 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(save, 1000); }
 
-  form.addEventListener("input", () => { dirty = true; schedule(); });
+  const changed = () => { dirty = true; schedule(); };
+  form.addEventListener("input", changed);
+  // The visual view's changes happen in the frame and the panel.
+  window.presslessPage = {changed};
   window.addEventListener("pagehide", () => {
     if (stopped || inFlight || !dirty) return;
     fetch("/page/save", {method: "POST", body: fields(), keepalive: true}).catch(() => {});
@@ -1080,7 +1100,8 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
     publish.disabled = true;
     said.textContent = say("script.press.publishing");
     try {
-      const body = fields();
+      const posted = posting();
+      const body = fields(posted);
       dirty = false;
       const answer = await fetch("/page/publish", {method: "POST", body: body});
       const text = await answer.text();
@@ -1096,9 +1117,9 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       }
       if (reply.published) form.dataset.offSite = "0";
       adopt(reply);
+      if (posted) posted.saved(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published ? say("script.press.published")
-        : reply.hint ? say("script.press.paragraphs")
         : say("script.press.not_published");
       // PRESS-0234: there is now something to see.
       const view = document.querySelector("button[data-view-site]");
@@ -1159,5 +1180,549 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       }
     });
   });
+})();
+"""
+
+
+# PRESS-0260 § 4.2 to § 4.5: the visual view. The frame runs no script of its
+# own, so this one, on the Face's page, reaches into it (§ 3 decision 9). It
+# keeps a model of the page: per section its kind, its fields, its path in the
+# file at `base` (null for one not saved yet), and whether he changed it.
+_VISUAL_SCRIPT = r"""
+(() => {
+  const frame = document.getElementById("preview");
+  const panel = document.getElementById("panel");
+  const given = JSON.parse(document.getElementById("sections").textContent);
+  const up = given.up;
+  const KINDS = ["text", "heading", "picture", "pictures", "button", "video", "music",
+                 "download", "columns"];
+  const IN_COLUMN = KINDS.filter((kind) => kind !== "columns" && kind !== "pictures");
+  const ADDRESSED = ["picture", "pictures", "button", "video", "music", "download"];
+  const YOUTUBE = new RegExp("^\\s*(?:https?:)?//(?:(?:www\\.|m\\.)?youtube(?:-nocookie)?\\.com/"
+                             + "(?:watch\\?(?:.*&)?v=|embed/|shorts/)|youtu\\.be/)"
+                             + "([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])", "i");
+  const key = (path) => JSON.stringify(path);
+
+  // ---- the model -------------------------------------------------------
+  let rev = 0;
+  const node = (kind, fields, path, marked, code, parts, parent) => ({
+    kind, fields: {...fields}, path, marked, code, parts, parent,
+    changed: path === null, rev: 0, start: null, end: null, el: null});
+  const model = [];
+  const byPath = new Map();
+  for (const item of given.sections) {
+    const parent = item.path.length === 1 ? null : byPath.get(key(item.path.slice(0, 1)));
+    const made = node(item.kind, item.fields, item.path, item.marked, item.code,
+                      Array.from({length: item.parts}, () => []), parent);
+    made.changed = false;
+    byPath.set(key(item.path), made);
+    if (parent) {
+      made.column = item.path[1];
+      parent.parts[item.path[1]].push(made);
+    } else {
+      model.push(made);
+    }
+  }
+  let removed = [];
+  let picked = null;
+  let editing = null;
+  let frameSections = given.sections;
+  let waitingPreview = null;
+
+  const listOf = (item) => item.parent ? item.parent.parts[item.column] : model;
+  const each = (list, visit) => list.forEach((item) => {
+    visit(item);
+    item.parts.forEach((part) => each(part, visit));
+  });
+  const touch = (item) => {
+    for (let at = item; at; at = at.parent) { at.changed = true; at.rev = ++rev; }
+    window.presslessPage.changed();
+  };
+
+  // ---- § 4.4: the words, read from the element's nodes ----------------
+  const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/ /g, " ");
+  const allowed = (href) => /^(https?:|mailto:)/i.test(href.trim())
+    || !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href.trim());
+  function inline(element) {
+    let out = "";
+    const walk = (parent, linked) => {
+      for (const child of parent.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) { out += text(child.data); continue; }
+        if (child.nodeType !== Node.ELEMENT_NODE) continue;
+        const tag = child.localName;
+        const href = child.getAttribute("href");
+        if (tag === "br") {
+          out += "<br>";
+        } else if (tag === "b" || tag === "strong" || tag === "i" || tag === "em") {
+          const written = tag === "b" || tag === "strong" ? "strong" : "em";
+          wrap("<" + written + ">", "</" + written + ">", child, linked);
+        } else if (tag === "a" && !linked && href && allowed(href)) {
+          wrap('<a href="' + text(href).replace(/"/g, "&quot;") + '">', "</a>", child, true);
+        } else {
+          walk(child, linked);
+        }
+      }
+    };
+    // An emptied Bold or Italic, as a split at its edge leaves, is dropped.
+    const wrap = (opening, closing, child, linked) => {
+      const at = out.length;
+      walk(child, linked);
+      out = out.length === at ? out : out.slice(0, at) + opening + out.slice(at) + closing;
+    };
+    walk(element, false);
+    return out.replace(/<br>$/, "");
+  }
+
+  // ---- what is posted (§ 4.5) ------------------------------------------
+  const synced = () => each(model, (item) => {
+    if (item.el && item.changed) item.fields.html = inline(item.el);
+  });
+  function item(of) {
+    if (!of.changed && of.path) return {keep: of.path};
+    if (of.kind === "code") return {code: of.code};
+    return {kind: of.kind, fields: {...of.fields},
+            parts: of.parts.map((part) => part.map(item))};
+  }
+  function post() {
+    synced();
+    // Where each section sits in the posted list, which becomes the file's.
+    const places = new Map(), revs = new Map();
+    model.forEach((top, at) => {
+      places.set(top, [at]);
+      top.parts.forEach((part, column) => part.forEach((child, inside) => {
+        places.set(child, [at, column, inside]);
+      }));
+    });
+    each(model, (item) => revs.set(item, item.rev));
+    const sections = model.map(item);
+    const gone = removed.filter((item) => item.path).map((item) => item.path);
+    each(model, (item) => { if (item.changed && item.path) gone.push(item.path); });
+    const sent = new Set(removed.filter((item) => item.path));
+    return {
+      sections: JSON.stringify(sections),
+      removed: JSON.stringify(gone),
+      saved(reply) {
+        // § 4.5: each posted section's path is its place in the posted list.
+        for (const [item, path] of places) {
+          item.path = path;
+          if (revs.get(item) === item.rev) item.changed = false;
+        }
+        removed = removed.filter((item) => !sent.has(item));
+        if (reply.sections) frameSections = reply.sections;
+        if (reply.preview) rebuild(reply.preview + "?n=" + Date.now());
+      },
+    };
+  }
+  window.presslessVisual = {post};
+
+  // ---- the frame (§ 4.2) -----------------------------------------------
+  const STYLE = "[data-pressless-picked]{box-shadow:0 0 0 3px #e9a23b}"
+    + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}";
+  function pair() {
+    const doc = frame.contentDocument;
+    if (!doc || !doc.body) return;
+    const style = doc.createElement("style");
+    style.textContent = STYLE;
+    doc.head.appendChild(style);
+    const marks = [];
+    const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_COMMENT);
+    while (walker.nextNode()) {
+      const found = /^ (\/?)pressless:([a-z]+) $/.exec(walker.currentNode.data);
+      if (found) marks.push({at: walker.currentNode, closing: found[1] === "/", name: found[2]});
+    }
+    const partner = (from) => {
+      let depth = 0;
+      for (let at = from + 1; at < marks.length; at++) {
+        if (marks[at].name !== marks[from].name) continue;
+        if (!marks[at].closing) depth++;
+        else if (depth === 0) return at;
+        else depth--;
+      }
+      return -1;
+    };
+    each(model, (item) => { item.start = item.end = item.el = null; });
+    const order = frameSections.filter((entry) => entry.marked);
+    let next = 0, skip = -1;
+    marks.forEach((mark, at) => {
+      if (at <= skip || mark.closing || mark.name === "page" || mark.name === "column") return;
+      const closing = partner(at);
+      if (closing < 0 || next >= order.length) return;
+      const entry = order[next++];
+      const item = byPathNow().get(key(entry.path));
+      if (entry.kind !== "columns" && entry.kind !== "pictures") skip = closing;
+      if (!item || item.kind !== entry.kind) return;
+      item.start = mark.at; item.end = marks[closing].at;
+      if (item.kind === "text" || item.kind === "heading") {
+        item.el = item.start.nextSibling;
+        if (item.changed && item.fields.html !== undefined) item.el.innerHTML = item.fields.html;
+      }
+    });
+    doc.addEventListener("click", clicked, true);
+    doc.addEventListener("keydown", keyed);
+    doc.addEventListener("input", typed);
+    doc.addEventListener("paste", pasted);
+    doc.addEventListener("focusout", () => { editing = null; setTimeout(settled, 0); });
+    doc.addEventListener("focusin", (event) => {
+      editing = picked && picked.el && picked.el.contains(event.target) ? picked : null;
+    });
+    if (picked) show(picked, false);
+  }
+  const byPathNow = () => {
+    const found = new Map();
+    each(model, (item) => { if (item.path) found.set(key(item.path), item); });
+    return found;
+  };
+  const between = (item) => {
+    const nodes = [];
+    let at = item.start && item.start.nextSibling;
+    for (; at && at !== item.end; at = at.nextSibling) nodes.push(at);
+    return nodes;
+  };
+  const inside = (item, target) => item.start && item.end
+    && (item.start.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING)
+    && (item.end.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_PRECEDING);
+
+  // § 4.5: never rebuilt while the caret is in a section.
+  function rebuild(address) {
+    waitingPreview = address;
+    settled();
+  }
+  function settled() {
+    if (editing || !waitingPreview) return;
+    synced();  // the words typed since the save outlive the old frame
+    const scrolled = frame.contentWindow ? frame.contentWindow.scrollY : 0;
+    frame.addEventListener("load", () => {
+      frame.contentWindow.scrollTo(0, scrolled);
+    }, {once: true});
+    frame.src = waitingPreview;
+    waitingPreview = null;
+  }
+  frame.addEventListener("load", pair);
+  if (frame.contentDocument && frame.contentDocument.readyState === "complete"
+      && frame.contentDocument.body) pair();
+
+  // ---- picking, and the side panel (§ 4.3) -----------------------------
+  function clicked(event) {
+    event.preventDefault();
+    let found = null;
+    each(model, (item) => { if (item.marked && inside(item, event.target)) found = item; });
+    if (found && found !== picked) show(found, true);
+  }
+  function mark(item, on) {
+    for (const at of item ? between(item) : []) {
+      if (at.nodeType === Node.ELEMENT_NODE) {
+        if (on) at.setAttribute("data-pressless-picked", "");
+        else at.removeAttribute("data-pressless-picked");
+      }
+    }
+  }
+  function show(item, focus) {
+    if (picked && picked.el) picked.el.removeAttribute("contenteditable");
+    mark(picked, false);
+    picked = item;
+    mark(picked, true);
+    if (picked && picked.el) {
+      picked.el.setAttribute("contenteditable", "true");
+      picked.el.setAttribute("data-pressless-empty", say("script.visual.kind." + picked.kind));
+      if (focus) picked.el.focus();
+    }
+    fill();
+  }
+  const field = (name) => panel.querySelector("[data-field=" + name + "]");
+  const act = (name) => panel.querySelector("[data-act=" + name + "]");
+  function fill() {
+    const kind = picked ? picked.kind : "";
+    panel.querySelectorAll("[data-for]").forEach((part) => {
+      part.hidden = !part.dataset.for.split(" ").includes(kind);
+    });
+    document.getElementById("picked").textContent = picked
+      ? say("script.visual.picked", {kind: say("script.visual.kind." + kind)})
+      : say("script.visual.nothing");
+    document.getElementById("panel-said").textContent = "";
+    if (picked) {
+      const fields = picked.fields;
+      panel.querySelectorAll("[data-for]:not([hidden]) [data-field]").forEach((input) => {
+        const name = input.dataset.field;
+        input.value = name === "code" ? picked.code || ""
+          : name === "count" ? String(picked.parts.length)
+          : name === "src" && fields.youtube ? "https://www.youtube.com/watch?v=" + fields.youtube
+          : name === "caption" ? (fields.caption || "").replace(/<[^>]*>/g, "")
+              .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+          : fields[name] || "";
+      });
+      panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
+        button.hidden = kind !== "columns" || Number(button.dataset.column) >= picked.parts.length;
+      });
+    }
+    const list = picked ? listOf(picked) : model;
+    const at = picked ? list.indexOf(picked) : -1;
+    act("up").disabled = !picked || at <= 0;
+    act("down").disabled = !picked || at >= list.length - 1;
+    act("remove").disabled = !picked;
+    const fits = !picked ? KINDS : picked.parent && picked.parent.kind === "pictures" ? ["picture"]
+      : picked.parent ? IN_COLUMN : KINDS;
+    document.querySelectorAll("#add-kind option").forEach((option) => {
+      option.disabled = !fits.includes(option.value);
+    });
+    const choice = document.getElementById("add-kind");
+    if (choice.selectedOptions[0] && choice.selectedOptions[0].disabled) choice.value = fits[0];
+    document.getElementById("add-where").textContent =
+      say(picked ? "script.visual.below" : "script.visual.end");
+  }
+
+  panel.addEventListener("input", (event) => {
+    const input = event.target;
+    const name = input.dataset.field;
+    if (!picked || !name || name === "count") return;
+    const value = input.value;
+    if (name === "code") {
+      picked.code = value;
+    } else if (name === "caption") {
+      if (value.trim()) picked.fields.caption = text(value);
+      else delete picked.fields.caption;
+    } else if (name === "src" && picked.kind === "video") {
+      const id = YOUTUBE.exec(value);
+      picked.fields = id ? {youtube: id[1]} : {src: value};
+    } else {
+      picked.fields[name] = value;
+    }
+    touch(picked);
+  });
+  panel.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!picked || input.dataset.field !== "count") return;
+    const count = Number(input.value);
+    if (picked.parts.slice(count).some((column) => column.length)) {
+      input.value = String(picked.parts.length);
+      document.getElementById("panel-said").textContent = say("script.visual.fewer_columns");
+      return;
+    }
+    while (picked.parts.length < count) picked.parts.push([]);
+    picked.parts.length = count;
+    touch(picked);
+    fill();
+  });
+  document.getElementById("add-address").addEventListener("input", (event) => {
+    event.stopPropagation();  // typing an address to add is not yet a change
+  });
+
+  // Bold, Italic and Link keep the caret in the frame.
+  ["bold", "italic", "link"].forEach((name) => {
+    act(name).addEventListener("mousedown", (event) => event.preventDefault());
+    act(name).addEventListener("click", () => format(name));
+  });
+  function format(name) {
+    if (!picked || !picked.el) return;
+    const doc = frame.contentDocument;
+    if (name === "link") {
+      const address = window.prompt(say("script.visual.ask_link"), "https://");
+      if (!address || !allowed(address)) return;
+      doc.execCommand("createLink", false, address);
+    } else {
+      doc.execCommand(name);
+    }
+    touch(picked);
+  }
+
+  // ---- adding, moving, removing ----------------------------------------
+  function made(kind, address, parent, column) {
+    const fields = kind === "text" ? {html: ""} : kind === "heading" ? {level: "2", html: ""}
+      : kind === "picture" ? {src: address, alt: ""}
+      : kind === "button" || kind === "download" ? {href: address, label: address}
+      : kind === "video" ? (YOUTUBE.exec(address) ? {youtube: YOUTUBE.exec(address)[1]}
+                            : {src: address})
+      : kind === "music" ? {src: address} : {};
+    const parts = kind === "columns" ? [[], []] : kind === "pictures" ? [[]] : [];
+    const item = node(kind, fields, null, true, undefined, parts, parent);
+    item.column = column;
+    if (kind === "pictures") item.parts[0].push(made("picture", address, item, 0));
+    return item;
+  }
+  function place(item, list, at) {
+    list.splice(at, 0, item);
+    if (item.kind !== "text" && item.kind !== "heading") return;
+    const doc = frame.contentDocument;
+    const before = list[at - 1], after = list[at + 1];
+    let anchor = null, where = null;
+    if (before && before.end) { anchor = before.end; where = "after"; }
+    else if (after && after.start) { anchor = after.start; where = "before"; }
+    else if (!item.parent && doc) {
+      const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_COMMENT);
+      while (walker.nextNode()) {
+        if (walker.currentNode.data === " /pressless:page ") anchor = walker.currentNode;
+      }
+      where = "before";
+    }
+    if (!anchor) return;
+    item.start = doc.createComment(" pressless:" + item.kind + " ");
+    item.end = doc.createComment(" /pressless:" + item.kind + " ");
+    item.el = doc.createElement(item.kind === "text" ? "p" : "h" + item.fields.level);
+    const fragment = doc.createDocumentFragment();
+    fragment.append(item.start, item.el, item.end);
+    if (where === "after") anchor.after(fragment); else anchor.before(fragment);
+  }
+  act("add").addEventListener("click", () => {
+    const kind = document.getElementById("add-kind").value;
+    const address = document.getElementById("add-address").value.trim();
+    if (ADDRESSED.includes(kind) && !address) {
+      document.getElementById("panel-said").textContent = say("script.visual.needs_address");
+      return;
+    }
+    const parent = picked ? picked.parent : null;
+    const list = picked ? listOf(picked) : model;
+    const item = made(kind, address, parent, picked ? picked.column : undefined);
+    place(item, list, picked ? list.indexOf(picked) + 1 : list.length);
+    document.getElementById("add-address").value = "";
+    touch(parent || item);
+    item.changed = true;
+    show(item, true);
+  });
+  panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = document.getElementById("add-kind").value;
+      const address = document.getElementById("add-address").value.trim();
+      if (!picked || !IN_COLUMN.includes(kind)) return;
+      if (ADDRESSED.includes(kind) && !address) {
+        document.getElementById("panel-said").textContent = say("script.visual.needs_address");
+        return;
+      }
+      const column = Number(button.dataset.column);
+      const item = made(kind, address, picked, column);
+      picked.parts[column].push(item);
+      document.getElementById("add-address").value = "";
+      touch(picked);
+    });
+  });
+  act("add-picture").addEventListener("click", () => {
+    const address = document.getElementById("add-address").value.trim()
+      || (field("src") && field("src").value.trim());
+    if (!picked || picked.kind !== "pictures") return;
+    if (!address) {
+      document.getElementById("panel-said").textContent = say("script.visual.needs_address");
+      return;
+    }
+    picked.parts[0].push(made("picture", address, picked, 0));
+    document.getElementById("add-address").value = "";
+    touch(picked);
+  });
+  function move(by) {
+    if (!picked) return;
+    const list = listOf(picked);
+    const at = list.indexOf(picked), to = at + by;
+    if (to < 0 || to >= list.length) return;
+    const other = list[to];
+    list.splice(at, 1);
+    list.splice(to, 0, picked);
+    if (picked.start && other.start) {
+      const nodes = [picked.start, ...between(picked), picked.end];
+      if (by < 0) other.start.before(...nodes); else other.end.after(...nodes);
+    }
+    if (picked.parent) touch(picked.parent); else window.presslessPage.changed();
+    fill();
+  }
+  act("up").addEventListener("click", () => move(-1));
+  act("down").addEventListener("click", () => move(1));
+  function drop(item) {
+    const list = listOf(item);
+    list.splice(list.indexOf(item), 1);
+    removed.push(item);
+    if (item.start) [item.start, ...between(item), item.end].forEach((at) => at.remove());
+    if (item.parent) touch(item.parent); else window.presslessPage.changed();
+  }
+  act("remove").addEventListener("click", () => {
+    if (!picked) return;
+    const gone = picked;
+    show(null, false);
+    drop(gone);
+    fill();
+  });
+
+  // ---- typing (§ 4.4) --------------------------------------------------
+  function typed(event) {
+    if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
+  }
+  function pasted(event) {
+    if (!picked || !picked.el) return;
+    event.preventDefault();
+    const words = (event.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " ");
+    frame.contentDocument.execCommand("insertText", false, words);
+  }
+  function keyed(event) {
+    if (!picked || !picked.el || !picked.el.contains(event.target)) return;
+    const doc = frame.contentDocument;
+    const selection = doc.getSelection();
+    if ((event.ctrlKey || event.metaKey) && ["b", "i", "k"].includes(event.key.toLowerCase())) {
+      event.preventDefault();
+      format({b: "bold", i: "italic", k: "link"}[event.key.toLowerCase()]);
+      return;
+    }
+    if (event.key === "Enter" && event.shiftKey) {
+      event.preventDefault();
+      doc.execCommand("insertLineBreak");
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const rest = doc.createRange();
+      rest.setStart(range.startContainer, range.startOffset);
+      rest.setEnd(picked.el, picked.el.childNodes.length);
+      const after = rest.extractContents();
+      const list = listOf(picked);
+      const item = made("text", "", picked.parent, picked.column);
+      touch(picked);
+      place(item, list, list.indexOf(picked) + 1);
+      if (item.el) item.el.append(after);
+      item.fields.html = item.el ? inline(item.el) : "";
+      touch(picked.parent || item);
+      item.changed = true;
+      show(item, true);
+      if (item.el) selection.collapse(item.el, 0);
+      return;
+    }
+    if (event.key === "Backspace" && picked.kind === "text" && selection.isCollapsed
+        && selection.rangeCount) {
+      const head = doc.createRange();
+      head.setStart(picked.el, 0);
+      head.setEnd(selection.anchorNode, selection.anchorOffset);
+      if (head.toString() !== "" || head.cloneContents().querySelector("br, img")) return;
+      event.preventDefault();
+      const list = listOf(picked);
+      const above = list[list.indexOf(picked) - 1];
+      if (!above || above.kind !== "text" || !above.el) return;
+      const joined = above.el.childNodes.length;
+      above.el.append(...picked.el.childNodes);
+      const gone = picked;
+      touch(above);
+      show(above, true);
+      drop(gone);
+      selection.collapse(above.el, joined);
+    }
+  }
+
+  // ---- a photograph Pressless holds (§ 4.6) ------------------------------
+  const chooser = document.getElementById("photograph-file");
+  act("photograph").addEventListener("click", () => { chooser.value = ""; chooser.click(); });
+  chooser.addEventListener("change", async () => {
+    const file = chooser.files[0];
+    if (!file || !picked || picked.kind !== "picture") return;
+    const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
+                               {method: "POST", body: file});
+    const reply = await answer.text();
+    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
+    const name = JSON.parse(reply).name;
+    const address = up + "photographs/" + encodeURIComponent(name);
+    const option = document.createElement("option");
+    option.value = address; option.textContent = name;
+    document.getElementById("photograph-list").append(option);
+    picked.fields.src = address;
+    field("src").value = address;
+    touch(picked);
+  });
+
+  fill();
 })();
 """

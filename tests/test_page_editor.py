@@ -1,7 +1,8 @@
-# Editing a fixed page: the words in a box, the code behind a button (PRESS-0014).
+# Editing a fixed page: on the page itself, or its code (PRESS-0014, PRESS-0260).
 #
 # Each test names the invariant it holds, from
-# docs/specs/PRESS-0014-fixed-pages.md § 5. The folder names, the notice and
+# docs/specs/PRESS-0014-fixed-pages.md § 5, or from
+# docs/specs/PRESS-0260-visual-editor.md § 5 under its own heading. The folder names, the notice and
 # the field names are written out here rather than imported from the modules:
 # shared, they would compare a module against itself (the trap CLAUDE.md
 # records for test_settings.py).
@@ -16,7 +17,6 @@ import hashlib
 import html
 import json
 import re
-import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -25,7 +25,18 @@ import pytest
 from test_editor import _Browser
 from test_publisher import _listing, _reads, _Transport, _writes
 
-from pressless import credentials, editor, face, page_editor, settings, store, words
+from pressless import (
+    blocks,
+    builder,
+    credentials,
+    editor,
+    face,
+    page_editor,
+    settings,
+    starter,
+    store,
+    words,
+)
 
 PAGES_WAITING = "pages-waiting"
 FURNITURE_WAITING = "furniture-waiting"
@@ -56,7 +67,12 @@ ABOUT = (
     "<!-- FOOTER:END -->\r\n"
     "</body></html>\r\n"
 )
-ABOUT_WORDS = "Hello\n\nTea & toast, it’s late.\n\nSecond one."
+# What the code view posts: the browser sends a textarea's lines with "\n".
+ABOUT_CODE = ABOUT.replace("\r\n", "\n")
+# A page Pressless never marked, with a main to take into sections.
+UNMARKED = ("<html><body>\n<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main>\n"
+            "  <h1>Hi</h1>\n  <p>One &amp; two</p>\n  <div>loose</div>\n</main>\n"
+            "<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n</body></html>\n")
 INDEX = ("<html><body>\n<!-- HEADER:START nonav -->\n<!-- HEADER:END -->\n"
          "<p>Home words.</p>\n</body></html>\n")
 
@@ -112,6 +128,23 @@ def _save(browser: _Browser, kind: str, name: str, view: str, text: str, *,
         "base": base, "text": text}, **request)
 
 
+def _visual(browser: _Browser, name: str, sections: list, removed: list | None = None, *,
+            waiting: bool, base: str, route: str = "/page/save"
+            ) -> tuple[int, dict[str, str], str]:
+    """A save from the visual view (PRESS-0260 § 4.5)."""
+    return browser.request("POST", route, {
+        "kind": "pages", "name": name, "view": "visual", "show": "",
+        "waiting": "1" if waiting else "0", "base": base,
+        "sections": json.dumps(sections), "removed": json.dumps(removed or [])})
+
+
+def _kept(text: str) -> list:
+    """Every top-level section of `text`, adopted where it has no area, kept."""
+    page = blocks.read("page", text) or blocks.read("page", blocks.adopt(
+        text, builder.furniture_spans("page", text)))
+    return [{"keep": [at]} for at in range(len(page.sections))]
+
+
 def _binned(folder: Path) -> list[str]:
     found = folder / "bin"
     return sorted(p.relative_to(found).as_posix().split("/", 1)[1]
@@ -122,83 +155,6 @@ def _said(kind: type[Exception]) -> str:
     return face.sentence_for(kind("x"), publishing=False).what
 
 
-# ------------------------------------------------------------------ INV-1 ---
-
-
-def test_words_change_only_their_own_bytes(tmp_path):
-    folder = _folder(tmp_path)
-    with _pages(folder) as browser:
-        status, _, text = _save(browser, "pages", "about", "words",
-                                ABOUT_WORDS.replace("Hello", "Welcome", 1),
-                                waiting=False, base=_digest(_live(folder, "pages", "about")))
-    assert status == 200, text
-    expected = ABOUT.replace(">Hello<", ">Welcome<")
-    assert expected != ABOUT
-    assert _waiting(folder, "pages", "about").read_bytes() == expected.encode("utf-8")
-
-
-# ------------------------------------------------------------------ INV-2 ---
-
-
-def test_the_box_leaves_out_what_is_not_words():
-    page = (
-        "<html><head><style>p { color: red }</style>"
-        '<script>var shown = "Script words";</script></head>\n'
-        "<body>\n"
-        "<!-- HEADER:START -->\n<p>Header words</p>\n<!-- HEADER:END -->\n"
-        "<template><p>Template words</p></template>\n"
-        "<!-- Comment words -->\n"
-        "   \t\n"
-        "<h1>A heading</h1>\n"
-        "<p>A paragraph.</p>\n"
-        "</body></html>\n"
-    )
-    assert page_editor.words("about", page) == "A heading\n\nA paragraph."
-
-
-# ------------------------------------------------------------------ INV-3 ---
-
-
-def test_a_changed_paragraph_count_writes_nothing(tmp_path):
-    folder = _folder(tmp_path)
-    base = _digest(_live(folder, "pages", "about"))
-    # PRESS-0238: a new first paragraph and a split one are still refused.
-    added = "Another.\n\n" + ABOUT_WORDS
-    split = ABOUT_WORDS.replace("Hello", "Hel\n\nlo")
-    with _pages(folder) as browser:
-        for box in (added, split):
-            status, _, text = _save(browser, "pages", "about", "words", box,
-                                    waiting=False, base=base)
-            assert status == 200, text
-            reply = json.loads(text)
-            assert _said(page_editor.PiecesChanged) in (reply["hint"] or ""), reply
-            assert reply["base"] == base
-            assert reply["waiting"] is False
-            assert not _waiting(folder, "pages", "about").exists()
-
-    # PRESS-0162 (review-code L4.1): the hint reply was built inside the
-    # capture, which fills its list only on exit, so a notice raised before
-    # the refusal never reached the reply.
-    def notice_then_refuse(folder, form):
-        warnings.warn(store.StoreNotice("notice.store.passed_over", file="pages/early.html",
-                                        reason="a notice before the refusal"), stacklevel=1)
-        raise page_editor.PiecesChanged("the paragraphs changed")
-
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(page_editor, "_write", notice_then_refuse)
-        with _pages(folder) as browser:
-            _, _, text = _save(browser, "pages", "about", "words", added,
-                               waiting=False, base=base)
-    assert ("pages/early.html was passed over: a notice before the refusal"
-            in json.loads(text)["notices"]), text
-
-    # PRESS-0143: a run of blank lines is one gap. Its refusal half is
-    # PRESS-0238 INV-4 (a).
-    spaced = ABOUT_WORDS.replace("Hello\n\n", "Hello\n\n\n  \n")
-    assert (page_editor.put_words("about", ABOUT, spaced)
-            == page_editor.put_words("about", ABOUT, ABOUT_WORDS))
-
-
 def test_the_refusal_moves_nothing():
     # A hand check found the refusal pushing the press row and the box down:
     # the hint's spot above them was empty, so it took no room until it was
@@ -207,35 +163,6 @@ def test_the_refusal_moves_nothing():
     held = re.search(r"\.face #save-hint \{ min-height: ([\d.]+)em; \}", face._STYLE)
     assert held, "the hint's spot is not held open"
     assert float(held.group(1)) >= 4.65, held.group(0)  # three lines at 1.55
-
-
-def test_the_refusal_fits_its_lines_on_a_phone():
-    # At phone width the old hint wrapped to a fourth line and pushed the
-    # press row down. Measured 2026-10-07 in headless Chrome, the page in a
-    # 320px frame: 97 characters fill the three held lines, 99 take four.
-    hint = page_editor._hint(page_editor.PiecesChanged())
-    assert len(hint) <= 97, (len(hint), hint)
-
-
-def test_a_refused_press_says_nothing_was_published():
-    # A hand check pressed Press to site with a paragraph added to the box. The
-    # publish was refused, yet the status line went back to "On your site", so
-    # the press seemed to do nothing, or to have worked (PRESS-0234).
-    # PRESS-0235: the words come from the table, so the anchor is their use.
-    after = page_editor._PAGE_SCRIPT.split('say("script.press.published")', 1)[1]
-    otherwise = after.split(";", 1)[0]
-    assert 'reply.hint' in otherwise and 'say("script.press.paragraphs")' in otherwise, otherwise
-    assert words.say("script.press.paragraphs").startswith("Not published")
-
-
-# ------------------------------------------------------------------ INV-4 ---
-
-
-def test_typed_markup_is_written_as_text():
-    box = ABOUT_WORDS.replace("Second one.", "a <b>bold</b> & more")
-    written = page_editor.put_words("about", ABOUT, box)
-    assert "  <p>a &lt;b&gt;bold&lt;/b&gt; &amp; more</p>\r\n" in written
-    assert "<b>" not in written
 
 
 # ------------------------------------------------------------------ INV-5 ---
@@ -257,8 +184,8 @@ def test_edits_wait_in_a_copy(tmp_path):
             for kind, name in (("pages", "about"), ("furniture", "footer"))}
     with _pages(folder) as browser:
         for kind, name, view, texts in (
-                ("pages", "about", "words",
-                 (ABOUT_WORDS.replace("Hello", "One"), ABOUT_WORDS.replace("Hello", "Two"))),
+                ("pages", "about", "code",
+                 (ABOUT_CODE.replace(">Hello<", ">One<"), ABOUT_CODE.replace(">Hello<", ">Two<"))),
                 ("furniture", "footer", "code",
                  ("<footer>One</footer>\n", "<footer>Two</footer>\n"))):
             waiting, base = False, _digest(_live(folder, kind, name))
@@ -283,13 +210,13 @@ def test_edits_wait_in_a_copy(tmp_path):
 def test_a_stale_page_window_writes_nothing(tmp_path):
     folder = _folder(tmp_path)
     with _pages(folder) as browser:
-        status, _, text = _save(browser, "pages", "about", "words", ABOUT_WORDS,
+        status, _, text = _save(browser, "pages", "about", "code", ABOUT_CODE,
                                 waiting=False, base=_digest(_live(folder, "pages", "about")))
         assert status == 200, text
         first = json.loads(text)["base"]
         for box, expected in (("One", 200), ("Two", 409)):
-            status, _, text = _save(browser, "pages", "about", "words",
-                                    ABOUT_WORDS.replace("Hello", box),
+            status, _, text = _save(browser, "pages", "about", "code",
+                                    ABOUT_CODE.replace(">Hello<", f">{box}<"),
                                     waiting=True, base=first)
             assert status == expected, text
         assert html.escape(_said(editor.ChangedElsewhere)) in text
@@ -321,12 +248,12 @@ def _uploaded(transport: _Transport) -> list[bytes]:
 
 def test_publishing_a_page(tmp_path, monkeypatch):
     _key(monkeypatch)
-    changed = ABOUT_WORDS.replace("Hello", "Published")
+    changed = ABOUT_CODE.replace(">Hello<", ">Published<")
 
     def publish(root: Path, transport: _Transport) -> tuple[Path, dict]:
         folder = _folder(root)
         with _pages(folder, transport) as browser:
-            status, _, text = _save(browser, "pages", "about", "words", changed,
+            status, _, text = _save(browser, "pages", "about", "code", changed,
                                     waiting=False, base=_digest(_live(folder, "pages", "about")),
                                     route="/page/publish")
         assert status == 200, text
@@ -371,7 +298,7 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
         raise store.StoreError("the bin is not writable")
 
     monkeypatch.setattr(store, "move_to_bin", cannot_bin)
-    changed = ABOUT_WORDS.replace("Hello", "Published")
+    changed = ABOUT_CODE.replace(">Hello<", ">Published<")
     for name, transport, left, site in (
         ("published", _Transport(reads=_reads(_listing([])), writes=_writes()),
          "Your changes were published, but their waiting copy was left in place.",
@@ -382,7 +309,7 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
     ):
         folder = _folder(tmp_path / name)
         with _pages(folder, transport) as browser:
-            status, _, text = _save(browser, "pages", "about", "words", changed,
+            status, _, text = _save(browser, "pages", "about", "code", changed,
                                     waiting=False,
                                     base=_digest(_live(folder, "pages", "about")),
                                     route="/page/publish")
@@ -402,8 +329,8 @@ def test_a_copy_left_behind_is_said(tmp_path, monkeypatch):
 
 def test_stray_furniture_is_warned_about(tmp_path):
     folder = _folder(tmp_path)
-    store.write_html(folder, store.PAGES_FOLDER, "music", ABOUT.replace(
-        "<!-- FOOTER:START -->\r\n", "<!-- FOOTER:START -->\r\nAlready there\r\n"))
+    music = UNMARKED.replace("<!-- FOOTER:START -->\n", "<!-- FOOTER:START -->\nAlready there\n")
+    store.write_html(folder, store.PAGES_FOLDER, "music", music)
     with _pages(folder) as browser:
         waiting, base = False, _digest(_live(folder, "pages", "about"))
         for between, warned in (("Stray", True), (" \r\n  ", False)):
@@ -416,9 +343,9 @@ def test_stray_furniture_is_warned_about(tmp_path):
             assert (STRAY in reply["notices"]) is warned, (between, reply["notices"])
             waiting, base = reply["waiting"], reply["base"]
 
-        status, _, answer = _save(browser, "pages", "music", "words",
-                                  ABOUT_WORDS.replace("Hello", "Hi"), waiting=False,
-                                  base=_digest(_live(folder, "pages", "music")))
+        # PRESS-0260: the visual view writes no furniture, so it warns of none.
+        status, _, answer = _visual(browser, "music", _kept(music), waiting=False,
+                                    base=_digest(_live(folder, "pages", "music")))
     assert status == 200, answer
     assert STRAY not in json.loads(answer)["notices"]
     assert b"Already there" in _waiting(folder, "pages", "music").read_bytes()
@@ -433,7 +360,7 @@ def test_furniture_has_no_words_view(tmp_path):
         status, _, text = browser.request("GET", "/page?kind=furniture&name=footer&view=words")
     assert status == 200, text
     assert f">\n{html.escape(FOOTER)}</textarea>" in text
-    assert "Show me the code" not in text and "Back to the words" not in text
+    assert "Show me the code" not in text and "Back to the page" not in text
 
 
 # ----------------------------------------------------------------- INV-14 ---
@@ -449,8 +376,8 @@ def test_throwing_away_page_changes(tmp_path):
         assert html.escape(_said(editor.ChangedElsewhere)) in text
         assert _binned(folder) == []
 
-        status, _, text = _save(browser, "pages", "about", "words",
-                                ABOUT_WORDS.replace("Hello", "Gone"), waiting=False,
+        status, _, text = _save(browser, "pages", "about", "code",
+                                ABOUT_CODE.replace(">Hello<", ">Gone<"), waiting=False,
                                 base=_digest(_live(folder, "pages", "about")))
         assert status == 200, text
         status, headers, text = browser.request("POST", "/page/discard", {
@@ -471,11 +398,11 @@ def test_the_page_editor_sits_behind_the_faces_boundary(tmp_path):
         status, _, _ = browser.request("GET", "/page?kind=pages&name=about", cookie=False)
         assert status == 403
         for request in ({"cookie": False}, {"origin": "http://elsewhere.example"}):
-            status, _, _ = _save(browser, "pages", "about", "words", ABOUT_WORDS,
+            status, _, _ = _save(browser, "pages", "about", "code", ABOUT_CODE,
                                  waiting=False, base=base, **request)
             assert status == 403, request
             assert not _waiting(folder, "pages", "about").exists()
-        status, _, text = _save(browser, "pages", "about", "words", ABOUT_WORDS,
+        status, _, text = _save(browser, "pages", "about", "code", ABOUT_CODE,
                                 waiting=False, base=base)
     assert status == 200, text
     assert _waiting(folder, "pages", "about").exists()
@@ -520,93 +447,164 @@ def test_no_newest_entry_choice_with_the_journal_off(tmp_path):
     assert "Your newest entry" not in off
 
 
-# ------------------------------------------------- PRESS-0238 INV-1 to INV-7 ---
-# docs/specs/PRESS-0238-add-remove-paragraphs.md § 5: a paragraph added to or
-# deleted from the words box.
+# ----------------------------------------------- PRESS-0260 INV-1 to INV-10 ---
+# docs/specs/PRESS-0260-visual-editor.md § 5: the visual view.
 
-TEA = "\r\n      <p>Tea &amp; toast, it&#8217;s late.</p>"
-SECOND = "\r\n  <p>Second one.</p>"
-LINKED = '<p>Go <a href="x">here</a> now</p>'
-
-
-def test_a_new_paragraph_follows_its_own():
-    written = page_editor.put_words("about", ABOUT, ABOUT_WORDS + "\n\nThird & last.")
-    assert written == ABOUT.replace(SECOND, SECOND + "\r\n  <p>Third &amp; last.</p>")
-
-
-def test_a_new_paragraph_takes_the_right_element():
-    box = "Hello\n\nNew\n\n" + ABOUT_WORDS.split("\n\n", 1)[1]
-    written = page_editor.put_words("about", ABOUT, box)
-    assert written == ABOUT.replace("Hello</h1>", "Hello</h1>\r\n   <p>New</p>")
-    listed = "<ul>\n  <li>One</li>\n</ul>\n"
-    assert (page_editor.put_words("about", listed, "One\n\nTwo")
-            == "<ul>\n  <li>One</li>\n  <li>Two</li>\n</ul>\n")
+AREA_BEFORE = ("<html><body>\n<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main>"
+               "<!-- pressless:page -->")
+AREA_AFTER = "<!-- /pressless:page --></main>\n</body></html>\n"
+TEXT = "<!-- pressless:text --><p>Hello</p><!-- /pressless:text -->"
+LOOSE = "<aside>loose</aside>"
+HAND = "<!-- pressless:code -->  <div class=x>hand</div>\n<!-- /pressless:code -->"
+# Odd gaps on purpose: each kept section keeps the gap before it.
+CODED = AREA_BEFORE + "\n  " + TEXT + "\n  " + LOOSE + "\n\n" + HAND + "\n" + AREA_AFTER
 
 
-def test_a_deleted_paragraph_takes_its_block():
-    written = page_editor.put_words("about", ABOUT, "Hello\n\nSecond one.")
-    assert written == ABOUT.replace(TEA, "")
+def _starter(tmp_path: Path) -> Path:
+    folder = _folder(tmp_path / "plain")
+    starter_folder = tmp_path / "starter"
+    starter_folder.mkdir()
+    starter.fill(starter_folder, "A Site")
+    (starter_folder / "settings.json").write_bytes((folder / "settings.json").read_bytes())
+    return starter_folder
 
 
-def test_unplaceable_changes_are_refused(tmp_path):
-    # Each fixture isolates one rule (§ 5 INV-4); the letters are the spec's.
-    cases = [
-        ("a", LINKED, "Go\n\n\nhere"),
-        ("a", LINKED, "Go\n\n\n\nhere"),
-        ("b", LINKED, "Go\n\nNew\n\nhere\n\nnow"),
-        ("c", "<div>Loose</div>", "Loose\n\nNew"),
-        ("d", ABOUT, "New\n\n" + ABOUT_WORDS),
-        ("e", ABOUT, ABOUT_WORDS.replace("Hello", "Hel\n\nlo")),
-        ("f", "<p>Same</p><h2>Same</h2>", "Same"),
-        ("g", ABOUT, ""),
-        ("h", "<p>a<p>b</p>", "b"),
-    ]
-    for letter, page, box in cases:
-        with pytest.raises(page_editor.PiecesChanged):
-            page_editor.put_words("about", page, box)
-            pytest.fail(f"({letter}) was placed")
+def test_a_save_of_nothing_changed_keeps_every_byte(tmp_path):
+    """INV-1. Breaks when a kept section gets a new gap, or is written
+    through section_html."""
+    folder = _starter(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    store.write_html(folder, store.PAGES_FOLDER, "plain", UNMARKED)
+    names = store.list_html(folder, store.PAGES_FOLDER)
+    assert {"index", "about", "coded", "plain"} <= set(names), names
+    with _pages(folder) as browser:
+        for name in names:
+            live = _live(folder, "pages", name).read_text(encoding="utf-8")
+            status, _, text = _visual(browser, name, _kept(live), waiting=False,
+                                      base=_digest(_live(folder, "pages", name)))
+            assert status == 200, (name, text)
+            expected = blocks.adopt(live, builder.furniture_spans(name, live))
+            assert _waiting(folder, "pages", name).read_text(encoding="utf-8") == expected, name
+    assert _waiting(folder, "pages", "coded").read_bytes() == CODED.encode("utf-8")
 
+
+def test_unchanged_sections_keep_their_bytes(tmp_path):
+    """INV-2. Breaks when a kept section is rebuilt from its fields."""
     folder = _folder(tmp_path)
-    base = _digest(_live(folder, "pages", "about"))
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    sections = [{"keep": [2]},
+                {"kind": "text", "fields": {"html": "Changed &amp; new"}, "parts": []},
+                {"keep": [1]},
+                {"kind": "button", "fields": {"href": "go.html", "label": "Go"}, "parts": []}]
     with _pages(folder) as browser:
-        status, _, text = _save(browser, "pages", "about", "words", "New\n\n" + ABOUT_WORDS,
-                                waiting=False, base=base)
+        status, _, text = _visual(browser, "coded", sections, [[0]], waiting=False,
+                                  base=_digest(_live(folder, "pages", "coded")))
     assert status == 200, text
-    assert json.loads(text)["hint"].startswith(
-        "Not saved: Pressless could not place that change."), text
-    assert not _waiting(folder, "pages", "about").exists()
+    expected = (AREA_BEFORE + "\n\n" + HAND
+                + "\n<!-- pressless:text --><p>Changed &amp; new</p><!-- /pressless:text -->"
+                + "\n  " + LOOSE
+                + '\n<!-- pressless:button --><p class="pressless-button"><a href="go.html">Go'
+                  "</a></p><!-- /pressless:button -->"
+                + "\n" + AREA_AFTER)
+    assert _waiting(folder, "pages", "coded").read_text(encoding="utf-8") == expected
 
 
-def test_one_save_adds_and_removes():
-    box = "Hello\n\nSecond one.\n\nThird.\n\nFourth."
-    expected = ABOUT.replace(TEA, "").replace(
-        SECOND, SECOND + "\r\n  <p>Third.</p>\r\n  <p>Fourth.</p>")
-    assert page_editor.put_words("about", ABOUT, box) == expected
-
-
-def test_a_new_paragraph_saves_and_publishes(tmp_path, monkeypatch):
-    _key(monkeypatch)
-    box = ABOUT_WORDS + "\n\nThird & last."
-    folder = _folder(tmp_path / "saved")
+def test_a_save_that_would_not_read_back_writes_nothing(tmp_path):
+    """INV-3. Breaks when step 5's read-back is skipped."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
     with _pages(folder) as browser:
-        status, _, text = _save(browser, "pages", "about", "words", box, waiting=False,
-                                base=_digest(_live(folder, "pages", "about")))
-    assert status == 200 and json.loads(text)["hint"] is None, text
-    assert b"<p>Third &amp; last.</p>" in _waiting(folder, "pages", "about").read_bytes()
+        status, _, text = _visual(browser, "coded", _kept(CODED), waiting=False,
+                                  base=_digest(_live(folder, "pages", "coded")))
+        assert status == 200, text
+        base = json.loads(text)["base"]
+        held = _waiting(folder, "pages", "coded").read_bytes()
+        for sections, removed, said in (
+                (_kept(CODED) + [{"code": "<p>x</p><!-- /pressless:page -->"}], [],
+                 page_editor.SectionsUnreadable),
+                (_kept(CODED)[1:] + [{"kind": "text", "fields": {"html": "<span>x</span>"},
+                                      "parts": []}], [[0]], blocks.SectionRefused),
+                (_kept(CODED)[1:], [], page_editor.SectionsUnreadable)):
+            status, _, text = _visual(browser, "coded", sections, removed, waiting=True,
+                                      base=base)
+            assert status == 409, (sections, text)
+            assert html.escape(_said(said)) in text, (sections, text)
+            assert _waiting(folder, "pages", "coded").read_bytes() == held, sections
 
-    github = _Transport(reads=_reads(_listing([])), writes=_writes())
-    folder = _folder(tmp_path / "pressed")
-    with _pages(folder, github) as browser:
-        status, _, text = _save(browser, "pages", "about", "words", box, waiting=False,
-                                base=_digest(_live(folder, "pages", "about")),
-                                route="/page/publish")
-    assert status == 200 and json.loads(text)["published"] is True, text
-    assert any(b"<p>Third &amp; last.</p>" in blob for blob in _uploaded(github))
+
+def test_a_page_is_adopted_at_its_first_save(tmp_path):
+    """INV-4. Breaks when `_open` writes the adopted text."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "plain", UNMARKED)
+    live = _live(folder, "pages", "plain")
+    before = _digest(live)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=plain")
+        assert status == 200, text
+        assert 'data-view="visual"' in text, text
+        assert _digest(live) == before
+        assert not _waiting(folder, "pages", "plain").exists()
+        status, _, text = _visual(browser, "plain", _kept(UNMARKED), waiting=False,
+                                  base=before)
+    assert status == 200, text
+    assert _digest(live) == before
+    assert "<!-- pressless:page -->" in _waiting(folder, "pages", "plain").read_text(
+        encoding="utf-8")
 
 
-def test_a_same_count_box_is_read_in_order():
-    box = "Tea & toast, it’s late.\n\nSecond one.\n\nFourth."
-    expected = (ABOUT.replace(SECOND, "\r\n  <p>Fourth.</p>")
-                .replace(TEA, "\r\n      <p>Second one.</p>")
-                .replace(">Hello</h1>", ">Tea &amp; toast, it’s late.</h1>"))
-    assert page_editor.put_words("about", ABOUT, box) == expected
+def test_a_page_that_cannot_be_adopted_opens_in_the_code_view(tmp_path):
+    """§ 4.1 step 3: no main, so no sections; the code view, and why."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=about")
+    assert status == 200, text
+    assert 'data-view="code"' in text
+    assert html.escape(words.say("notice.page_editor.code_only")) in text
+
+
+def test_the_frame_runs_no_script(tmp_path):
+    """INV-5, first half. Breaks when allow-scripts is added to the frame."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=coded")
+    assert status == 200, text
+    assert 'data-view="visual"' in text, text
+    frames = re.findall(r"<iframe\b[^>]*>", text)
+    assert len(frames) == 1, frames
+    assert re.findall(r'\bsandbox="([^"]*)"', frames[0]) == ["allow-same-origin"], frames[0]
+
+
+def test_the_preview_serves_held_photographs(tmp_path):
+    """INV-7, second half. Breaks when only entries' photographs reach the preview."""
+    folder = _folder(tmp_path)
+    original = store.photograph_path_for(folder, "my boat.jpg")
+    original.parent.mkdir(exist_ok=True)
+    original.write_bytes(b"a picture, as far as this test is concerned")
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/preview/photographs/my%20boat.jpg")
+    assert status == 200, text
+    assert text == "a picture, as far as this test is concerned"
+
+
+def test_a_visual_save_over_a_changed_file_writes_nothing(tmp_path):
+    """INV-8. Breaks when the visual branch of `_write` skips the base check."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    base = _digest(_live(folder, "pages", "coded"))
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED.replace("Hello", "Elsewhere"))
+    with _pages(folder) as browser:
+        status, _, text = _visual(browser, "coded", _kept(CODED), waiting=False, base=base)
+    assert status == 409, text
+    assert html.escape(_said(editor.ChangedElsewhere)) in text
+    assert not _waiting(folder, "pages", "coded").exists()
+
+
+def test_the_words_view_is_retired():
+    """INV-10. Breaks when a name or word of § 4.7 is left behind."""
+    gone = ("WORDS", "Piece", "_Block", "_Runs", "pieces", "_parse", "words", "put_words",
+            "_edit", "_placed", "_new_blocks", "_BLOCKS", "PiecesChanged", "_hint")
+    assert [name for name in gone if hasattr(page_editor, name)] == []
+    keys = ("page_editor.show_words", "script.press.paragraphs",
+            "failure.page_editor.PiecesChanged.what", "failure.page_editor.PiecesChanged.next")
+    assert [key for key in keys if key in words.ENGLISH] == []

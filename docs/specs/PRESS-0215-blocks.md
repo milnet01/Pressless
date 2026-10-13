@@ -102,6 +102,7 @@ def write(page: Page) -> str: ...
 def section_html(section: Section) -> str: ...
 def adopt(html: str, furniture: tuple[tuple[int, int], ...]) -> str | None: ...
 def unmarked(name: str, html: str) -> str: ...
+def inline(markup: str) -> str | None: ...   # amended by PRESS-0260 § 4.5
 ```
 
 `read` returns `None` for a file with no sections area. `adopt` returns
@@ -245,6 +246,10 @@ The Builder's `_Build.fixed_page` passes each page through `unmarked`
 before `_fill_fixed_page`, for the site folder and for `preview_html`
 alike. The Store's file is never written by the Builder.
 
+*Amended by PRESS-0260:* the visual view's preview keeps the marks;
+`preview_html(..., marks=True)` is the one call that does (PRESS-0260
+§ 4.2).
+
 ### 4.8 New pages
 
 `starter._PAGE`, `starter.new_page` and `starter.privacy_page` write
@@ -324,6 +329,8 @@ since marks are comments and `page_editor.pieces` skips markup.
   file outside `content/`, which keeps the Store's own bytes, for
   `pressless:`; a page with no area builds byte-identical to today.
   *Breaks when:* `fixed_page` skips `unmarked` on one path.
+  *Amended by PRESS-0260:* the visual view's preview keeps the marks,
+  and no other (PRESS-0260 INV-6).
 
 - **INV-8** — `section_html` writes no address but a relative path or
   an `http:`, `https:` or `mailto:` one, and no text unescaped.

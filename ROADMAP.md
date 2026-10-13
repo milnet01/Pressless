@@ -4414,7 +4414,7 @@ removed, and the menu follows.
   Kind: fix.
   Source: hand-check-2026-10-12, 0.8.2 Windows round.
 
-- 📋 [PRESS-0260] **Edit a page by typing on it as it will look, adding ready-made sections.**
+- ✅ [PRESS-0260] **Edit a page by typing on it as it will look, adding ready-made sections.**
   S15. Split from PRESS-0215 by the user 2026-10-13, so each spec is
   reviewed at a size that converges. Needs a spec, built on
   PRESS-0215's Blocks; it replaces the words view of PRESS-0014 and
@@ -4422,6 +4422,13 @@ removed, and the menu follows.
   Decided by the user 2026-10-13: editing happens on the page itself,
   in the preview frame, with a side panel for a picked section's
   settings, not as a list of section cards.
+  Shipped 2026-10-13: built to its spec. Gate green on Linux (1121 passed,
+  4 skipped) and the Windows box (1050 passed, 75 skipped);
+  scripts/by-hand-browser-checks.py passes its PRESS-0260 rows in Chrome
+  (INV-5's no-script half, INV-9, the § 4.3 and § 4.4 keys and buttons,
+  columns, a held photograph in the preview). Still owed by hand before
+  the next release: Firefox on this machine and Edge on the Windows box
+  (spec § 7).
   **Layman:** They click a heading or paragraph on the real-looking page and type there, and add, move or remove sections such as a picture or a button; this replaces the words box.
   Kind: feature.
   Source: split-from-PRESS-0215 user-decision-2026-10-13.

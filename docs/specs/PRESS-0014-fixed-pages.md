@@ -133,6 +133,9 @@ is imported, as `editor.py` does. `Piece` is a frozen dataclass of `start`,
 
 ### 4.2 The words view
 
+**Withdrawn by PRESS-0260 (2026-10-13).** The visual view replaced the
+words view; this section records what it was.
+
 **A piece** is a run of text between two markup constructs, as the file holds
 it: character references undecoded, whitespace included. A tag, a comment, a
 doctype and a processing instruction are markup. Each piece is found with
@@ -337,7 +340,7 @@ route tests run through `face.serve(tmp_path)`, as
 `tests/test_editor.py` does, over furniture and pages made with
 `store.write_html`.
 
-- **INV-1** — A words save changes only the pieces he changed.
+- **INV-1** — *Withdrawn by PRESS-0260 (2026-10-13), with the words view; its test went with it.* A words save changes only the pieces he changed.
   *Test:* `test_words_change_only_their_own_bytes`. A page carrying CRLF
   endings, `&amp;` and `&#8217;` in text, an attribute holding a word that is
   also a piece, a comment, and irregular indentation. One paragraph changes.
@@ -346,7 +349,7 @@ route tests run through `face.serve(tmp_path)`, as
   *Breaks when:* the file is re-serialised by a parser, or a replace-by-value
   hits the attribute's copy of the word.
 
-- **INV-2** — The words view shows only visible text.
+- **INV-2** — *Withdrawn by PRESS-0260 (2026-10-13), with the words view; its test went with it.* The words view shows only visible text.
   *Test:* `test_the_box_leaves_out_what_is_not_words`. Text inside `script`,
   `style` and `template`, between a `HEADER:START` and `HEADER:END`, in a
   comment, and whitespace alone, is absent from `words`. A heading and a
@@ -354,7 +357,7 @@ route tests run through `face.serve(tmp_path)`, as
   *Breaks when:* script or style text is treated as data, or the marker span is
   not skipped.
 
-- **INV-3** — A box whose paragraph count changed writes nothing and keeps the
+- **INV-3** — *Withdrawn by PRESS-0260 (2026-10-13), with the words view; its test went with it.* A box whose paragraph count changed writes nothing and keeps the
   page saving.
   *Narrowed by PRESS-0238 §4.2; read it there.*
   *Test:* `test_a_changed_paragraph_count_writes_nothing`. A box with one
@@ -367,7 +370,7 @@ route tests run through `face.serve(tmp_path)`, as
   *Breaks when:* extra paragraphs are appended to the last piece, the
   refusal answers 409, or a run of blank lines is read as an empty paragraph.
 
-- **INV-4** — Words go back as words.
+- **INV-4** — *Withdrawn by PRESS-0260 (2026-10-13), with the words view; its test went with it.* Words go back as words.
   *Test:* `test_typed_markup_is_written_as_text`. A paragraph changed to
   `a <b>bold</b> & more` is written `a &lt;b&gt;bold&lt;/b&gt; &amp; more`.
   *Breaks when:* the part is written unescaped.
@@ -479,8 +482,7 @@ a change.
 
 ## 7. Tests
 
-`tests/test_page_editor.py` — new, in CI. It carries INV-1, INV-2, INV-3,
-INV-4, INV-5, INV-6, INV-7, INV-9, INV-12, INV-13, INV-14 and INV-15.
+`tests/test_page_editor.py` — new, in CI. It carries INV-5, INV-6, INV-7, INV-9, INV-12, INV-13, INV-14 and INV-15.
 
 `tests/test_builder.py` gains INV-8, INV-10 and INV-11.
 `tests/test_store_extras.py` gains INV-16.
@@ -517,10 +519,10 @@ then mutation-probed once the code lands, one mutation per route its
 
 | Rule | What catches a breach |
 |------|----------------------|
-| INV-1 | `tests/test_page_editor.py::test_words_change_only_their_own_bytes` |
-| INV-2 | `tests/test_page_editor.py::test_the_box_leaves_out_what_is_not_words` |
-| INV-3 | `tests/test_page_editor.py::test_a_changed_paragraph_count_writes_nothing` |
-| INV-4 | `tests/test_page_editor.py::test_typed_markup_is_written_as_text` |
+| INV-1 | withdrawn by PRESS-0260 |
+| INV-2 | withdrawn by PRESS-0260 |
+| INV-3 | withdrawn by PRESS-0260 |
+| INV-4 | withdrawn by PRESS-0260 |
 | INV-5 | `tests/test_page_editor.py::test_code_keeps_untouched_line_endings` |
 | INV-6 | `tests/test_page_editor.py::test_edits_wait_in_a_copy` |
 | INV-7 | `tests/test_page_editor.py::test_a_stale_page_window_writes_nothing` |

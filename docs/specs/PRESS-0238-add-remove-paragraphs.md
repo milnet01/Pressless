@@ -7,6 +7,8 @@
 hand check; the three decisions in §3, the user 2026-10-13).
 
 **Amends:** PRESS-0014 (§4.2 step 3, INV-3). §11 lists each edit.
+**Superseded by:** PRESS-0260 (2026-10-13), which retired the words box.
+Every invariant below is withdrawn, and its test went with it.
 
 Layman: a new paragraph can be started, or one deleted, straight in the
 words box, without opening the page's code.
@@ -131,7 +133,7 @@ The tests are in `tests/test_page_editor.py`, over its `ABOUT` page:
 an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
 "Second one.", with CRLF endings and their own indents.
 
-- **INV-1** — A paragraph added after a paragraph is a new `p` right
+- **INV-1** — *Withdrawn by PRESS-0260.* A paragraph added after a paragraph is a new `p` right
   after it, every other byte as it was.
   *Test:* `test_a_new_paragraph_follows_its_own`. `put_words` with
   `ABOUT_WORDS + "\n\nThird & last."` returns `ABOUT` with
@@ -140,7 +142,7 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   *Breaks when:* the words are appended to the last piece, the line
   ending or indent is not the block's own, or the text is not escaped.
 
-- **INV-2** — A paragraph added after a heading is a `p`, and one added
+- **INV-2** — *Withdrawn by PRESS-0260.* A paragraph added after a heading is a `p`, and one added
   after a list item is an `li`.
   *Test:* `test_a_new_paragraph_takes_the_right_element`. After "Hello",
   the new element is `<p>`, on its own line with `h1`'s indent. On a
@@ -149,14 +151,14 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   *Breaks when:* the heading's own tag is copied, or a list's new item
   lands after `</ul>`.
 
-- **INV-3** — Deleting a paragraph's words removes its block and the
+- **INV-3** — *Withdrawn by PRESS-0260.* Deleting a paragraph's words removes its block and the
   whitespace before it.
   *Test:* `test_a_deleted_paragraph_takes_its_block`. A box without
   "Tea & toast, it’s late." returns `ABOUT` without
   `"\r\n      <p>Tea &amp; toast, it&#8217;s late.</p>"`.
   *Breaks when:* only the words go and an empty `<p></p>` is left.
 
-- **INV-4** — A change that cannot be placed writes nothing.
+- **INV-4** — *Withdrawn by PRESS-0260.* A change that cannot be placed writes nothing.
   *Test:* `test_unplaceable_changes_are_refused`. Each raises
   `PiecesChanged` from `put_words`, and the save route answers §4.6's
   sentence as its hint, with no waiting copy:
@@ -177,14 +179,14 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   tag, else closing `<p>a` where HTML implies it deletes it.
   *Breaks when:* any of those rules is missing.
 
-- **INV-5** — One save may add and remove in different places.
+- **INV-5** — *Withdrawn by PRESS-0260.* One save may add and remove in different places.
   *Test:* `test_one_save_adds_and_removes`. A box without "Tea & toast,
   it’s late." and with "Third." and "Fourth." after "Second one."
   returns `ABOUT` with the one block gone and the two new `p` elements
   in order.
   *Breaks when:* a later change is made on offsets an earlier one moved.
 
-- **INV-6** — The save route and the press route read a new paragraph
+- **INV-6** — *Withdrawn by PRESS-0260.* The save route and the press route read a new paragraph
   the same way.
   *Test:* `test_a_new_paragraph_saves_and_publishes`. `POST /page/save`
   with INV-1's box answers 200 with `hint` null and a waiting copy
@@ -192,7 +194,7 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   *Breaks when:* a route still refuses a count that differs before
   `put_words` runs.
 
-- **INV-7** — A box with the page's own count is read in order, never
+- **INV-7** — *Withdrawn by PRESS-0260.* A box with the page's own count is read in order, never
   aligned.
   *Test:* `test_a_same_count_box_is_read_in_order`. `put_words` with
   "Tea & toast, it’s late.\n\nSecond one.\n\nFourth." returns `ABOUT`

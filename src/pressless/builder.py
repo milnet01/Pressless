@@ -25,7 +25,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
 
@@ -160,11 +160,12 @@ def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
 
 def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
                  show: str | None, photo_src: marks.PhotoSrc,
-                 today: date | None = None) -> str:
+                 today: date | None = None, marks: bool = False) -> str:
     """PRESS-0014 § 4.1: the one page `build` would write for `show` with
     `change` in place, into `into` by §4.8's order. `show` names a fixed page;
     None names his newest entry the Daily Prompt filter keeps. Returns its path
-    relative to `into`."""
+    relative to `into`. `marks` keeps the shown page's section marks, for the
+    visual editor alone (PRESS-0260 § 4.2)."""
     folder = Path(folder)
 
     def write(new: Path) -> str:
@@ -178,7 +179,7 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
                 page.refuse_an_unusable_name(shown[0], name)
             page.entry_page(shown[0])
         elif show in pages:
-            page.fixed_page(show, pages[show])
+            page.fixed_page(show, pages[show], marks=marks)
         else:
             raise BuildStopped(f"there is no page {show} to show the change on")
         return page.files[0]
@@ -418,6 +419,35 @@ def _fill_fixed_page(name: str, text: str, depth: int, furniture: _Furniture) ->
 # --------------------------------------------------------------- the build --
 
 
+def _held_pictures(folder: Path, relative: str, text: str) -> list[str]:
+    """PRESS-0260 § 4.6: the photographs the Store holds that the page's
+    picture sections name, by `src` read from the page's place."""
+    page = blocks.read(relative, text)
+    if page is None:
+        return []
+    held = set(store.list_photographs(folder))
+    found = []
+
+    def walk(sections) -> None:
+        for section in sections:
+            for part in section.parts:
+                walk(part)
+            if section.kind != blocks.PICTURE:
+                continue
+            # A made-up host, since urljoin resolves only the schemes it knows.
+            address = urlsplit(urljoin(f"http://pages.invalid/{relative}",
+                                       section.fields["src"]))
+            if (address.scheme, address.netloc) != ("http", "pages.invalid") or address.query:
+                continue
+            place = unquote(address.path)
+            prefix = f"/{store.PHOTOGRAPHS_FOLDER}/"
+            if place.startswith(prefix) and place[len(prefix):] in held:
+                found.append(place[len(prefix):])
+
+    walk(page.sections)
+    return found
+
+
 class _Build:
     def __init__(self, folder: Path, settings: Settings, root: Path,
                  photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None,
@@ -529,13 +559,17 @@ class _Build:
             self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
 
-    def fixed_page(self, name: str, text: str) -> None:
+    def fixed_page(self, name: str, text: str, *, marks: bool = False) -> None:
         """Published without its section marks (PRESS-0215 § 4.7), for the
-        site folder and a preview alike."""
+        site folder and a preview alike; `marks` keeps them, for the visual
+        editor's preview alone (PRESS-0260 § 4.2)."""
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
+        if self.photo_src is None:
+            for held in _held_pictures(self.folder, relative, text):
+                self.web_copy(held)
         self.write_text(relative, self.counted(_fill_fixed_page(
-            name, blocks.unmarked(name, text), depth, self.furniture)))
+            name, text if marks else blocks.unmarked(name, text), depth, self.furniture)))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug

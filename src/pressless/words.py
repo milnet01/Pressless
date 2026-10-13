@@ -235,10 +235,12 @@ _WORDS: dict[str, str] = {
         "That file is not a picture Pressless can put on your site, so it was not added."
     ),
     "failure.photographs.NotAPhotograph.next": "Choose a JPEG, PNG, WebP or GIF photograph.",
-    "failure.page_editor.PiecesChanged.what": (
-        "Not saved: Pressless could not place that change."
+    "failure.page_editor.SectionsUnreadable.what": (
+        "Not saved: Pressless could not keep your page's sections as you left them."
     ),
-    "failure.page_editor.PiecesChanged.next": "Put it back, or use Show me the code.",
+    "failure.page_editor.SectionsUnreadable.next": (
+        "Open this page again to carry on, or use Show me the code."
+    ),
     "failure.menu.Unusual.what": "Pressless does not edit a menu laid out like yours.",
     "failure.menu.Unusual.next": "Change the link in the Navigation's code.",
     "failure.undo.NothingToUndo.what": "Pressless cannot undo your very first publish.",
@@ -343,10 +345,6 @@ _WORDS: dict[str, str] = {
     "script.press.publishing": "Publishing… this can take a few minutes the first time.",
     "script.press.undoing": "Putting your site back… this can take a few minutes.",
     "script.press.published": "Published. Your site shows it within a few minutes.",
-    "script.press.paragraphs": (
-        "Not published, because the box holds a different number of paragraphs from your "
-        "page."
-    ),
     "script.press.not_published": "Not published. The reason is below.",
     "script.press.undone": "Your site was put back.",
     "script.press.not_undone": "Your site was not put back. The reason is below.",
@@ -455,7 +453,48 @@ _WORDS: dict[str, str] = {
         "Header or Footer when your site is built. Edit the Header or Footer instead."
     ),
     "page_editor.show_code": "Show me the code",
-    "page_editor.show_words": "Back to the words",
+    "page_editor.show_visual": "Back to the page",
+    "notice.page_editor.code_only": (
+        "Pressless cannot find the main part of this page to edit on the page, so it opens "
+        "as code."
+    ),
+    # The visual view's side panel (PRESS-0260 § 4.3).
+    "page_editor.panel.title": "This section",
+    "page_editor.panel.bold": "Bold",
+    "page_editor.panel.italic": "Italic",
+    "page_editor.panel.link": "Link",
+    "page_editor.panel.level": "Heading size, 1 the largest",
+    "page_editor.panel.photograph": "A photograph you have, or an address",
+    "page_editor.panel.address": "Address",
+    "page_editor.panel.alt": "Words that describe it",
+    "page_editor.panel.caption": "Caption, if any",
+    "page_editor.panel.label": "Words on it",
+    "page_editor.panel.add_picture": "Add a picture",
+    "page_editor.panel.columns": "How many columns",
+    "page_editor.panel.add_to_column": "Add to column {number}",
+    "page_editor.panel.code": "Its code",
+    "page_editor.panel.add": "Add:",
+    "page_editor.panel.add_button": "Add",
+    "page_editor.panel.move_up": "Move up",
+    "page_editor.panel.move_down": "Move down",
+    "page_editor.panel.remove": "Remove",
+    "script.visual.nothing": "Click a heading, paragraph or any section on the page to change it.",
+    "script.visual.picked": "Changing: {kind}",
+    "script.visual.below": "It goes below the section you picked.",
+    "script.visual.end": "It goes at the end of the page.",
+    "script.visual.needs_address": "Type its address first.",
+    "script.visual.fewer_columns": "Move or remove what is in the last column first.",
+    "script.visual.ask_link": "The address to link to:",
+    "script.visual.kind.text": "Paragraph",
+    "script.visual.kind.heading": "Heading",
+    "script.visual.kind.picture": "Picture",
+    "script.visual.kind.pictures": "Row of pictures",
+    "script.visual.kind.button": "Button",
+    "script.visual.kind.video": "Video",
+    "script.visual.kind.music": "Music",
+    "script.visual.kind.download": "Download",
+    "script.visual.kind.columns": "Columns",
+    "script.visual.kind.code": "Code",
     "page_editor.newest": "Your newest entry",
     "page_editor.show_on": "Show it on:",
     "page_editor.standing": "Your changes stay on this computer until you publish this page.",
