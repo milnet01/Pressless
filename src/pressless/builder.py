@@ -29,7 +29,7 @@ from urllib.parse import quote
 
 from PIL import Image, ImageOps, ImageSequence
 
-from pressless import marks, store
+from pressless import blocks, marks, store
 from pressless.settings import Settings
 
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
@@ -530,10 +530,12 @@ class _Build:
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
 
     def fixed_page(self, name: str, text: str) -> None:
+        """Published without its section marks (PRESS-0215 § 4.7), for the
+        site folder and a preview alike."""
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
-        self.write_text(relative, self.counted(_fill_fixed_page(name, text, depth,
-                                                                self.furniture)))
+        self.write_text(relative, self.counted(_fill_fixed_page(
+            name, blocks.unmarked(name, text), depth, self.furniture)))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug

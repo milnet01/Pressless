@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pressless import (
+    blocks,
     builder,
     credentials,
     github_signin,
@@ -113,6 +114,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
         "failure.store.DanglingReply.what",
         "failure.store.DanglingReply.next",
     ),
+    blocks.SectionRefused: _say("failure.blocks.SectionRefused.what", "failure.again"),
     builder.BuildStopped: _say(
         "failure.builder.BuildStopped.what",
         "failure.builder.BuildStopped.next",

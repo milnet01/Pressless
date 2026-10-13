@@ -321,8 +321,8 @@ since marks are comments and `page_editor.pieces` skips markup.
   preview, and a page holding none is built as before.
   *Test:* `tests/test_builder.py::test_marks_never_reach_the_site`
   builds a starter site and an adopted page, and searches every built
-  file for `pressless:`; a page with no area builds byte-identical to
-  today.
+  file outside `content/`, which keeps the Store's own bytes, for
+  `pressless:`; a page with no area builds byte-identical to today.
   *Breaks when:* `fixed_page` skips `unmarked` on one path.
 
 - **INV-8** — `section_html` writes no address but a relative path or

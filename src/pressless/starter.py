@@ -14,7 +14,7 @@ import html
 import re
 from pathlib import Path
 
-from pressless import builder, store, templates
+from pressless import blocks, builder, store, templates
 from pressless.words import say
 
 MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
@@ -61,14 +61,29 @@ _PAGE = """<!doctype html>
   <!-- HEADER:START page="{page}" -->
   <!-- HEADER:END -->
   <main class="page">
-    <h1>{heading}</h1>
-    <p>{words}</p>
+{area}
   </main>
   <!-- FOOTER:START -->
   <!-- FOOTER:END -->
 </body>
 </html>
 """
+
+
+def _area(heading: str, *paragraphs: str) -> str:
+    """PRESS-0215 § 4.8: a page's words as a sections area, the heading and
+    each paragraph a section. `heading` is text; each paragraph is inline
+    HTML, so a caller escapes plain words before passing them."""
+    sections = [blocks.Section(blocks.HEADING, {"level": "1",
+                                                "html": html.escape(heading, quote=False)})]
+    sections += [blocks.Section(blocks.TEXT, {"html": words}) for words in paragraphs]
+    return "\n".join(f"    {line}" for line in ("<!-- pressless:page -->",
+                                                  *map(blocks.section_html, sections),
+                                                  "<!-- /pressless:page -->"))
+
+
+def _words(key: str) -> str:
+    return html.escape(say(key), quote=False)
 
 # PRESS-0239: three looks to start from, each with large type, underlined
 # links and a visible focus ring, and each rearranging itself to the screen's
@@ -281,11 +296,7 @@ _PRIVACY = """<!doctype html>
   <!-- HEADER:START page="privacy" -->
   <!-- HEADER:END -->
   <main class="page">
-    <h1>{heading}</h1>
-    <p>{counting}</p>
-    <p>{counted}</p>
-    <p>{policy}</p>
-    <p>{questions}</p>
+{area}
   </main>
   <!-- FOOTER:START -->
   <!-- FOOTER:END -->
@@ -293,13 +304,7 @@ _PRIVACY = """<!doctype html>
 </html>
 """
 
-_NEW_PAGE = _PRIVACY.replace('page="privacy"', 'page="{page}"').replace(
-    """    <p>{counting}</p>
-    <p>{counted}</p>
-    <p>{policy}</p>
-    <p>{questions}</p>
-""", """    <p>{words}</p>
-""")
+_NEW_PAGE = _PRIVACY.replace('page="privacy"', 'page="{page}"')
 
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
 
@@ -310,9 +315,9 @@ def new_page(name: str, title: str, sheets: tuple[str, ...]) -> str:
     as the title and heading, and one paragraph to replace."""
     links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
                         for sheet in sheets)
-    heading = html.escape(title)
-    return _NEW_PAGE.format(title=heading, links=links, page=html.escape(name, quote=True),
-                            heading=heading, words=say("starter.new_page.words"))
+    return _NEW_PAGE.format(title=html.escape(title), links=links,
+                            page=html.escape(name, quote=True),
+                            area=_area(title, _words("starter.new_page.words")))
 
 
 def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
@@ -321,9 +326,11 @@ def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
                       for sheet in sheets)
     return _PRIVACY.format(
         title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
-        links=links, heading=say("starter.privacy"),
-        counting=say("starter.privacy.counting"), counted=say("starter.privacy.counted"),
-        policy=say("starter.privacy.policy"), questions=say("starter.privacy.questions"))
+        links=links,
+        # The policy's words hold links, so they go in as HTML; the rest are text.
+        area=_area(say("starter.privacy"), _words("starter.privacy.counting"),
+                   _words("starter.privacy.counted"), say("starter.privacy.policy"),
+                   _words("starter.privacy.questions")))
 
 
 def privacy_link() -> str:
@@ -398,11 +405,11 @@ def fill(folder: Path, site_name: str, look: str = LOOKS[0]) -> None:
         (store.FURNITURE_FOLDER, "navigation", _navigation()),
         (store.FURNITURE_FOLDER, "footer", _footer()),
         (store.PAGES_FOLDER, "index", _PAGE.format(
-            title=name, up="", page="Home", heading=say("starter.welcome", name=name),
-            words=say("starter.home.words"))),
+            title=name, up="", page="Home",
+            area=_area(say("starter.welcome", name=site_name), _words("starter.home.words")))),
         (store.PAGES_FOLDER, "about", _PAGE.format(
             title=say("starter.about.title", name=name), up="../", page="about",
-            heading=say("starter.about"), words=say("starter.about.words"))),
+            area=_area(say("starter.about"), _words("starter.about.words")))),
     )
     for kind, file_name, text in files:
         if not store.html_path_for(folder, kind, file_name).exists():

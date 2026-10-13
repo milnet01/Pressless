@@ -29,7 +29,7 @@ import pytest
 from PIL import Image
 
 import pressless.builder as builder
-from pressless import marks, store
+from pressless import blocks, marks, starter, store
 from pressless.builder import (
     LONGEST_SIDE,
     PER_PAGE,
@@ -658,7 +658,7 @@ _ALLOWED_IMPORTS = {
     "dataclasses", "datetime", "fnmatch", "html", "os", "pathlib", "re", "shutil",
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
-    "pressless", "pressless.marks", "pressless.settings", "pressless.store",
+    "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
 }
 
 
@@ -1356,3 +1356,42 @@ def test_content_carries_the_identity(tmp_path):
     build(folder, _settings(), tmp_path / "with", today=REPRODUCIBLE_TODAY)
     assert (tmp_path / "with" / "content" / "identity" / "identity.json").read_bytes() == \
         store.identity_path_for(folder).read_bytes()
+
+
+# PRESS-0215 INV-7 (docs/specs/PRESS-0215-blocks.md § 4.7).
+
+
+def test_marks_never_reach_the_site(tmp_path):
+    """INV-7: no section mark reaches a built page or a preview, and a page
+    holding none is built as before. `content/` is the Store's own bytes,
+    marks included. Breaks when `fixed_page` skips `unmarked` on one path."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    starter.fill(folder, "A Site")
+    adopted = ("<html><body>\n<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main>\n"
+               "  <p>Kept</p>\n  <aside>code</aside>\n</main>\n</body></html>\n")
+    adopted = blocks.adopt(adopted, builder.furniture_spans("adopted", adopted))
+    store.write_html(folder, store.PAGES_FOLDER, "adopted", adopted)
+    plain = "<html><body><main><p>No area {{UP}}</p></main></body></html>\n"
+    store.write_html(folder, store.PAGES_FOLDER, "plain", plain)
+    assert "pressless:" in adopted
+
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    pages = [path for path in into.rglob("*")
+             if path.is_file() and "content" not in path.relative_to(into).parts]
+    assert {"index.html", "pages/about.html", "pages/adopted.html"} <= {
+        path.relative_to(into).as_posix() for path in pages}
+    for path in pages:
+        assert b"pressless:" not in path.read_bytes(), path
+    assert "<main>\n  <p>Kept</p>\n  <aside>code</aside>\n</main>" in (
+        into / "pages/adopted.html").read_text(encoding="utf-8")
+    assert (into / "pages/plain.html").read_bytes().decode("utf-8") == plain
+
+    for show in ("index", "about", "adopted"):
+        preview = tmp_path / f"preview-{show}"
+        change = builder.Html(store.PAGES_FOLDER, show, store.read_html(
+            store.html_path_for(folder, store.PAGES_FOLDER, show)))
+        relative = builder.preview_html(folder, _settings(), preview, change, show=show,
+                                        photo_src=lambda name: name)
+        assert "pressless:" not in (preview / relative).read_text(encoding="utf-8"), show

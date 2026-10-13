@@ -29,7 +29,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Import** | Turning a site from elsewhere — a WordPress export with its media download, or a folder of web pages — into Store files, and listing, item by item, what could not come across (S13). Runs into an empty Store only (rule 9). | GitHub, the browser, the Face |
 | **Marks** | The entries' small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
 | **Blocks** | The pages' language. Owns the table of ready-made sections a page is built from, the interactive pieces included; reads a stored page into its sections, and turns sections into HTML. Anything it cannot read as a section is a code section, kept byte-for-byte. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
-| **Builder** | Turning the Store plus Settings into a finished site folder: every page through Blocks, every entry through Marks, the menu, the stylesheet the look gives, the counting code, and the photographs, files and scripts the site uses. This is `build_blog.py` re-homed and separated from its first writer. | GitHub, the browser, where the writing came from |
+| **Builder** | Turning the Store plus Settings into a finished site folder: every page through Blocks, without its marks, every entry through Marks, the menu, the stylesheet the look gives, the counting code, and the photographs, files and scripts the site uses. This is `build_blog.py` re-homed and separated from its first writer. | GitHub, the browser, where the writing came from |
 | **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a state of it, current or previous, when asked. For first-run setup, also checking that an account and a public repository exist, and switching GitHub Pages on (PRESS-0212). With a GitHub App sign-in, also signing in to GitHub, making the repository and adding it to the app's installation (PRESS-0231). | Entries, pages, what a draft is |
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, which countries, and which provinces or states within them. | Entries, pages, marks, HTML, GitHub |
 | **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
@@ -169,7 +169,8 @@ address that forwards to the new one, as an entry's rename does
 **A page is stored as HTML with each section marked**, the way WordPress
 marks its blocks. The visual editor works on the sections, showing the
 page as it will look; the code editor edits the file entire (S15).
-PRESS-0215's spec decides the marking, and owes an ADR for it.
+[ADR-0006](decisions/ADR-0006-page-section-marks.md) records how the
+sections are marked.
 
 **The round-trip rule, without which the two editors fight: a section
 whose stored HTML is not exactly what Blocks would write for it is a
@@ -178,7 +179,8 @@ user writes in the code editor is reformatted by the visual one. A
 section they change by hand becomes a code section, shown in the visual
 editor as code, as WordPress's custom-HTML block is. A page taken in
 from elsewhere arrives the same way: whatever no section fits is a code
-section, and still editable.
+section, and still editable. A section in a form an earlier Pressless
+wrote reads as its kind, and keeps its bytes until it is changed.
 
 **Pages have drafts** — decided with the user 2026-10-02. A change to a
 page is held as that page's draft until the user publishes the page, so
@@ -696,7 +698,7 @@ about.
 | [ADR-0003](decisions/ADR-0003-where-the-key-lives.md) | The publishing key lives in the operating system's keyring |
 | [ADR-0004](decisions/ADR-0004-windows-build-in-ci.md) | The Windows executable is built in CI, because it cannot be built here |
 | [ADR-0005](decisions/ADR-0005-dashboard-is-optional-and-separate.md) | The dashboard is a separate part that publishing never depends on |
-| Owed by PRESS-0215 | How a page's sections are marked in its HTML |
+| [ADR-0006](decisions/ADR-0006-page-section-marks.md) | A page's sections are marked by comments naming the kind, inside its `main` |
 
 ## Review loop log
 

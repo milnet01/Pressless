@@ -50,6 +50,7 @@ _WORDS: dict[str, str] = {
         "A reply points at a comment that is not there, so nothing was saved."
     ),
     "failure.store.DanglingReply.next": "Send the details below to whoever helps you.",
+    "failure.blocks.SectionRefused.what": "Pressless could not write that part of your page.",
     "failure.builder.BuildStopped.what": (
         "Pressless could not build your site from one of your files."
     ),

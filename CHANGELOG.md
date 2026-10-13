@@ -37,6 +37,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   reaches it. Your menu stays your own: where it is laid out in a way
   Pressless does not change, Pressless says so and leaves it alone.
 
+### Changed
+
+- **Pages are now held as sections**, such as a heading, a paragraph or
+  a picture, ready for the visual editor. (PRESS-0215) New pages are
+  written this way. Nothing you see changes, and published pages look
+  exactly as before.
+
 ### Fixed
 
 - **After an Undo, Drafts now says which of two same-named entries is which.** (PRESS-0249)

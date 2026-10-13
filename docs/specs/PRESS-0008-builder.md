@@ -527,6 +527,7 @@ Sitemap: <the address>/sitemap.xml
   *Test:* `tests/test_builder.py::test_the_builder_imports_only_what_it_may`
   — walks `builder.py`'s imports against an allowlist of full dotted names,
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
+  `pressless.blocks` (PRESS-0215),
   `pressless.settings`, `PIL` and named standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.
