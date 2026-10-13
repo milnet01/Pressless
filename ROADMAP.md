@@ -4429,7 +4429,7 @@ removed, and the menu follows.
   Source: split-from-PRESS-0215 user-request-2026-10-05.
   Lanes: Face.
 
-- 📋 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
+- 🚧 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
   Decided by the user 2026-10-13. Off until the user says yes on one
   plain screen, and switchable off in Settings. Counts only: screens
   used, where setup stops, crashes, the Pressless version and system.
@@ -4449,6 +4449,15 @@ removed, and the menu follows.
   each press and whether it worked, and an error's kind and where in
   Pressless, with the version and system. Settings lists the last
   reports sent, word for word, kept on the computer only.
+  Progress (2026-10-13): built to its spec in 7ae50ce and pushed; the
+  gate passed on Linux and the Windows box. Not yet shipped: no report
+  reaches Google until the user makes the Pressless property and sets the
+  Actions secrets PRESSLESS_USAGE_MEASUREMENT_ID and
+  PRESSLESS_USAGE_API_SECRET (docs/working-here.md § Registering the
+  usage-report property). The next release fails at its usage-key step
+  until both are set. Still owed: one real report seen arriving, the
+  custom dimensions made, and a look at the setup step, the question
+  above the list and the Usage reports screen in a browser.
   **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
   Kind: feature.
   Source: user-decision-2026-10-13.
