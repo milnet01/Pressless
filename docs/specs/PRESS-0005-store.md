@@ -414,6 +414,7 @@ Every single newline is a line break.
     published/<slug>.txt
     drafts/<slug>.txt
     forwards/forwards.json        PRESS-0182 § 4.1
+    forwards/pages.json           PRESS-0195 § 4.1
     bin/<stamp>/<the relative path it was moved from>
 ```
 

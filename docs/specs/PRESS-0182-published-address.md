@@ -328,7 +328,7 @@ published entry's address and press.
 
 ## 9. Out of scope
 
-- **Renaming a fixed page.** PRESS-0014 does not rename them.
+- **Renaming a fixed page.** PRESS-0195.
 - **Insights joining an old address's history to the new one.** Deferred;
   not yet queued.
 - **A forward from an address that was never published.** A draft's

@@ -293,7 +293,8 @@ row shows the title, or *untitled*, and the date, and opens `/edit?slug=`.
   above the list. The list is still shown.
 - A New entry form with one field, the title.
 - After the entries, his fixed pages and the furniture:
-  `docs/specs/PRESS-0014-fixed-pages.md` § 4.4.
+  `docs/specs/PRESS-0014-fixed-pages.md` § 4.4; the New page box:
+  `docs/specs/PRESS-0195-add-remove-rename-pages.md` § 4.3.
 - Whatever other parts registered through `Face.add_to_list`, above and
   below the list (`docs/specs/PRESS-0023-self-update.md` § 4.9).
 

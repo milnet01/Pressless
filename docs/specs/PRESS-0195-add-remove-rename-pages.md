@@ -433,8 +433,6 @@ checked by hand, in a browser.
 - `docs/specs/PRESS-0012-editor.md` §4.5 — the pages card's New page box.
 - `docs/design.md` § The menu follows the pages, and § A site need not
   have a journal — written back after this spec's gate.
-- `docs/standards/versioning-overrides.md` § The writer's own files —
-  `forwards/pages.json` joins the Store.
 - `docs/specs/PRESS-0235-press-status.md` §4.4 — the two new press
   routes, and `/page/new` among the writes that call `pressing.forget`.
 - `tests/test_main.py::test_the_double_click_opens_pressless` — its route

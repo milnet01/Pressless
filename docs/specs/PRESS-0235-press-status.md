@@ -124,7 +124,8 @@ so each sentence has one home:
 
 ### 4.4 The press routes
 
-`publishing._publish`, `page_editor._publish` and `undo._undo` each:
+`publishing._publish`, `page_editor._publish` and `undo._undo` each, and
+PRESS-0195 § 4.4's Remove and Rename:
 
 1. call `pressing.start(kind)` before taking `editor.LOCK`. Where it returns
    False, answer at once with the route's usual keys: `published` (or
@@ -139,8 +140,8 @@ so each sentence has one home:
 Every other reply carries `"busy": false`. A `PiecesChanged` refusal ends the
 record with its own words (§ 4.3).
 
-`editor.save`, `page_editor._write`, `editor._journal` and
-`setup._save_sequence` call `pressing.forget()` once they have written, which
+`editor.save`, `page_editor._write`, `editor._journal`,
+`setup._save_sequence` and PRESS-0195 § 4.3's New page call `pressing.forget()` once they have written, which
 ends what decision 6 shows.
 
 ### 4.5 The pages

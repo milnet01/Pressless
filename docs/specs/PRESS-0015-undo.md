@@ -280,6 +280,7 @@ paths. Each kind is read and written through the Store's own calls:
 | `content/furniture/<name>.html` | `store.read_html` | `store.write_html(…, "furniture", …)` |
 | `content/templates/<name>.txt` | `store.read` | `store.write_template` |
 | `content/forwards/forwards.json` | `store.read_forwards` | `store.write_forwards` (PRESS-0182 § 4.4) |
+| `content/forwards/pages.json` | `store.read_page_forwards` | `store.write_page_forwards` (PRESS-0195 § 4.6) |
 
 **Differs** means differs as the Store holds it — the value its reader
 returns, not the bytes. `store.Entry` and `store.Comment` are frozen

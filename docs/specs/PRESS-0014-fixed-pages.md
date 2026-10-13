@@ -317,6 +317,7 @@ the live file.
 Fields: `kind`, `name`, `base`. Under the lock, `editor.ChangedElsewhere`
 unless a waiting copy exists and its digest equals `base`, answered as § 4.6's
 failures are. Then `store.move_to_bin` on it. The live file is not touched.
+A page with no live file goes back to the list: PRESS-0195 § 4.3.
 
 ### 4.9 What this item never does
 
@@ -325,7 +326,7 @@ failures are. Then `store.move_to_bin` on it. The live file is not touched.
 - It never parses a file to regenerate it. The words view replaces pieces in
   place, and the code view writes what he typed.
 - It never builds into `settings.site_folder` for a preview.
-- It never adds, removes or renames a fixed page.
+- It never adds, removes or renames a fixed page; PRESS-0195 does.
 - It never unlinks a file; the bin is how anything goes.
 
 ## 5. Invariants
@@ -505,7 +506,7 @@ then mutation-probed once the code lands, one mutation per route its
 
 ## 9. Out of scope
 
-- Adding, removing or renaming a fixed page — not queued.
+- Adding, removing or renaming a fixed page — PRESS-0195.
 - Styling in the words view — `docs/design.md` rules it out.
 - Choosing a template — PRESS-0017.
 - The photographs a page shows — PRESS-0016.

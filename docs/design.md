@@ -33,7 +33,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Publisher** | Making GitHub match the folder it was handed — leaving Settings' untouchable list alone — listing what sits at its root, and fetching back a state of it, current or previous, when asked. For first-run setup, also checking that an account and a public repository exist, and switching GitHub Pages on (PRESS-0212). With a GitHub App sign-in, also signing in to GitHub, making the repository and adding it to the app's installation (PRESS-0231). | Entries, pages, what a draft is |
 | **Insights** | Asking Google Analytics how the site is being read, and handing back plain numbers: how many people, which countries, and which provinces or states within them. | Entries, pages, marks, HTML, GitHub |
 | **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
-| **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, the menu list, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Face** | The local web server and the pages the user sees in their browser — the entry editor, the page editor, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
 | **Words** | Every word the screens show, in one table keyed by name, looked up when a page is shown (PRESS-0242). English is its only table so far. | Files, the network, GitHub, the browser |
 
 **Marks and Blocks are parts rather than details inside the editors**,
@@ -154,9 +154,9 @@ live site is unchanged. Both checks run before the build.
   it whatever of the old site should go.
 
 **A site need not have a journal** (PRESS-0214). Entries are one thing
-a site can hold. Where it has none, the Builder makes no journal pages
-and the menu offers none (once PRESS-0195 makes the menu a list; until
-then, PRESS-0214 § 4.5).
+a site can hold. Where it has none, the Builder makes no journal pages,
+and a journal link in the menu stays until the user removes it
+(PRESS-0214 § 4.5).
 
 **Pages, and how they are held.** A page is anything the site serves
 that is not a dated entry: the homepage, About, Privacy, and every page
@@ -196,12 +196,12 @@ needs no outside service. **The user's own script** goes in a code
 section on one page, or in the Store's site-wide script, which the
 Builder includes on every page.
 
-**The menu follows the pages** (S14). It is a list the Store holds, not
-HTML: every published page is on it, in the order the user sets, unless
-they hide it, plus any links to other sites they add. A new page joins
-the end; a removed one leaves; a renamed one keeps its place under its
-new name. The Builder renders it, through Blocks, wherever the header or
-footer holds the menu section.
+**The menu follows the pages** (S14). It is the user's own HTML, the
+navigation file, decided by the user 2026-10-13. A new page's link joins
+it at its first press, a removed page's link leaves, and a renamed page's
+link points at the new address. Where the menu is laid out in a way
+Pressless cannot edit safely, it says so and leaves it alone. Reordering
+and hiding wait for PRESS-0216. PRESS-0195 § 4.2 owns the edit.
 
 **The header and footer are the Store's, and there is exactly one copy
 of each.** Every page is built from them, and the user edits them in
@@ -392,7 +392,7 @@ publish. **What could not come across is listed item by item** (S13).
   at the site the user is leaving.
 - **The pages, as HTML.** Whatever no section fits, Blocks reads as a
   code section, still editable (§ Pages, and how they are held). The
-  site's menu becomes the menu list.
+  site's menu becomes the navigation file.
 - **From a folder of web pages** (PRESS-0210): each page becomes a page,
   the header and footer the pages share are parted out into the single
   copy, the stylesheet becomes the style code, and every other file

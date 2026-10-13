@@ -157,9 +157,9 @@ button that posts to a new `POST /journal`, which `editor.register` adds.
   that the published entries leave the site at the next publish and come
   back when the journal is turned on again.
 
-**The menu is the navigation furniture file until PRESS-0195** makes it a
-list, so turning the journal off says that a journal link in the menu stays
-until the user removes it in the page editor.
+**The menu is the navigation furniture file** (PRESS-0195 keeps it so), so
+turning the journal off says that a journal link in the menu stays until the
+user removes it in the page editor.
 
 `page_editor`'s "Your newest entry" choice is offered only where
 `store.journal_on(folder)` holds as well as where an entry is published.
@@ -247,8 +247,8 @@ mutation-probed once the code lands.
 
 ## 9. Out of scope
 
-- The menu as a list the Store holds, which drops a journal link by itself —
-  PRESS-0195.
+- A menu that drops a journal link by itself — not planned: the menu stays
+  the user's HTML (PRESS-0195).
 - The starter site turning the journal off — PRESS-0126.
 - Other site-wide options in `options.json` — deferred; not yet queued.
 
@@ -278,8 +278,9 @@ Each edit below is a pointer to this spec beside the clause it changes.
   and `JournalOff` precedes the move.
 - `docs/specs/PRESS-0015-undo.md` § 4.4 — undo restores the options file,
   and a fetched state without one resets it.
-- `docs/design.md` § A site need not have a journal — the menu drops the
-  journal once PRESS-0195 makes it a list.
+- `docs/design.md` § A site need not have a journal — a journal link in
+  the menu stays until the user removes it (PRESS-0195 keeps the menu his
+  HTML).
 - `docs/specs/PRESS-0005-store.md` § 4.1 — `move_to_bin` takes `options/`.
 - `CHANGELOG.md` — an Added entry when it ships.
 

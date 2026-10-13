@@ -162,7 +162,7 @@ raises passes through unchanged, so the Face's sentences for them apply.
 - **Order.** Newest first by `date`, then by slug ascending where two dates
   are equal. Every listing takes this order.
 - **Nothing else is read**, beyond `store.read_forwards` (PRESS-0182
-  § 4.3): not the drafts folder, not the bin, not the site folder's
+  § 4.3) and `store.read_page_forwards` (PRESS-0195 § 4.5): not the drafts folder, not the bin, not the site folder's
   previous contents.
 
 ### 4.3 Where each page goes
@@ -337,6 +337,7 @@ content/pages/<name>.html
 content/furniture/<name>.html
 content/templates/<name>.txt
 content/forwards/forwards.json   where the Store holds one (PRESS-0182 § 4.3)
+content/forwards/pages.json      where the Store holds one (PRESS-0195 § 4.5)
 ```
 
 The bytes are read from the paths the Store's own calls return. Nothing is
