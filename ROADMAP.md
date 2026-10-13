@@ -3305,6 +3305,13 @@ it decides how pages, the menu and the look are held.
   Progress (2026-10-12): the user replied to Google's email confirming
   the fix. Nothing was resubmitted in Cloud Console: the policy address
   is unchanged, so Save stays disabled. Waiting on Google.
+  Progress (2026-10-13): Google's automated verification checklist
+  arrived, asking for a reply confirming an audit. Audited: one scope,
+  analytics.readonly, read-only and sensitive (no CASA); the policy covers
+  the five disclosures; test access needs only free GitHub and Google
+  accounts. A reply was drafted for the user. Owed by the user: confirm the
+  demo video shows the scope expanded and Cloud Console lists only that
+  scope, then send the reply. Still waiting on Google.
   **Layman:** Ask Google to approve Pressless's sign-in, and meanwhile tell users in the app that the approval is still on its way.
   Kind: chore.
   Source: user-decision-2026-10-01.
