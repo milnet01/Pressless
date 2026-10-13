@@ -4329,6 +4329,12 @@ removed, and the menu follows.
   element. Likely needs a short spec first: it amends PRESS-0014's rule
   that the count must match, and it decides what happens beside
   headings, lists and links.
+  Decided by the user 2026-10-13: a short spec with one review round.
+  A new paragraph matches what it follows (a paragraph after a
+  paragraph, a list item after a list item, a plain paragraph after a
+  heading). Deleting removes a whole block (paragraph, heading or list
+  item) whose text is all that piece; a piece sharing its block with a
+  link or other markup is refused.
   **Layman:** You can start a new paragraph, or delete one, straight in the words box, without opening the code.
   Kind: feature.
   Source: user-request-2026-10-05.

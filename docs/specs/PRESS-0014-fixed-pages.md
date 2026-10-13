@@ -159,6 +159,7 @@ whitespace made one space, and stripped.
    stripped, and every empty part is dropped, so a run of blank lines is one
    gap (PRESS-0143).
 3. **A count that differs from `pieces(name, html)`'s raises `PiecesChanged`.**
+   PRESS-0238 §4.2 narrows this step; read it there.
 4. A part equal to its piece's shown form leaves the piece's bytes as they
    are. Any other part replaces the piece with the piece's own leading
    whitespace, then `html.escape(part, quote=False)`, then its own trailing
@@ -355,6 +356,7 @@ route tests run through `face.serve(tmp_path)`, as
 
 - **INV-3** — A box whose paragraph count changed writes nothing and keeps the
   page saving.
+  *Narrowed by PRESS-0238 §4.2; read it there.*
   *Test:* `test_a_changed_paragraph_count_writes_nothing`. A box with one
   paragraph added, and one with a paragraph emptied, each answer 200 with
   `PiecesChanged`'s sentence as `hint`, the old `base`, `waiting` false, and no
