@@ -4264,6 +4264,10 @@ removed, and the menu follows.
   paragraphs, headings and pictures recognised as sections, everything
   else kept as code sections, and the file reshaped at its first save;
   the Builder strips the marks from what it publishes.
+  2026-10-13: spec drafted, docs/specs/PRESS-0215-blocks.md, and its
+  review-contract round (one round, the user's budget) not yet run. It
+  was paused because the user put PRESS-0262 first; run it after
+  PRESS-0262's review.
   **Layman:** Every page, the homepage and imported ones included, is held as sections such as text, a picture or a button, so the visual editor can change them; anything else stays as code, untouched.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
