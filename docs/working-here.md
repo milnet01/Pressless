@@ -214,14 +214,15 @@ key, Pressless never asks. The steps, as the user first walks them:
    other half. Never paste either into a session.
 3. Under the property's custom definitions, one event-scoped custom
    dimension per parameter in `usage.EVENTS` and `usage.COMMON`, except
-   `engagement_time_msec`. `docs/usage-reports.md` lists them.
+   `engagement_time_msec` and `session_id`, which Google reads itself;
+   it refused `session_id` as a custom dimension on 2026-10-13. `docs/usage-reports.md` lists them.
 4. The repository's Actions secrets `PRESSLESS_USAGE_MEASUREMENT_ID` and
    `PRESSLESS_USAGE_API_SECRET`. The release jobs run
    `scripts/write_usage_key.py`, which fails the release where either is
    missing. On a development machine, run it by hand: it asks without
    showing what is typed.
 
-Google's menu names above are unchecked until the user's first walk.
+The user walked these steps on 2026-10-13; Google's menu names matched.
 
 ## Windows and browser checks
 

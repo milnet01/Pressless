@@ -24,9 +24,11 @@ parameters are `src/pressless/usage.py`'s `EVENTS` and `COMMON`.
 Each is event-scoped, named after its parameter:
 
 `screen`, `wizard`, `step`, `kind`, `ended`, `error`, `publishing`,
-`app_version`, `system`, `session_id`.
+`app_version`, `system`.
 
-`engagement_time_msec` is not one: Google reads it to count a user.
+`engagement_time_msec` and `session_id` are not: Google reads both
+itself, to count users and sessions. It refused `session_id` as a custom
+dimension on 2026-10-13.
 
 ## The four questions
 
