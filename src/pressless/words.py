@@ -238,6 +238,8 @@ _WORDS: dict[str, str] = {
         "Not saved: the paragraph count no longer matches your page."
     ),
     "failure.page_editor.PiecesChanged.next": "Put it back, or use Show me the code.",
+    "failure.menu.Unusual.what": "Pressless does not edit a menu laid out like yours.",
+    "failure.menu.Unusual.next": "Change the link in the Navigation's code.",
     "failure.undo.NothingToUndo.what": "Pressless cannot undo your very first publish.",
     "failure.undo.NothingToUndo.next": "There is no earlier version of your site to go back to.",
     "failure.installer.UpdateError.what": "Pressless could not update itself.",
@@ -455,6 +457,47 @@ _WORDS: dict[str, str] = {
     "page_editor.newest": "Your newest entry",
     "page_editor.show_on": "Show it on:",
     "page_editor.standing": "Your changes stay on this computer until you publish this page.",
+    # Adding, removing and renaming a page (PRESS-0195).
+    "page_editor.rename": "Rename this page",
+    "page_editor.remove": "Remove this page",
+    "editor.list.page_name": "Page name",
+    "editor.list.new_page": "New page",
+    "starter.new_page.words": "Write this page's words here.",
+    "page_hint.empty": "Give the page a name with at least one letter or number in it.",
+    "page_hint.taken": "You already have a page with that name.",
+    "page_hint.forwarded": (
+        "A renamed page's old address forwards from there. Choose another name."
+    ),
+    "page_hint.unusable": "That name cannot be a page's address. Choose another name.",
+    "page_hint.home": "The homepage cannot be removed or renamed.",
+    "page_hint.not_on_site": (
+        "This page is not on your site yet. Throw away its changes to remove it."
+    ),
+    "page_hint.privacy_remove": "The Privacy page stays while your site counts visitors.",
+    "page_hint.privacy_rename": (
+        "The Privacy page keeps its name: Pressless looks for it by that name."
+    ),
+    "page_hint.changes": (
+        "Press your changes to your site, or throw them away, then rename this page."
+    ),
+    "notice.pages.menu_unusual": (
+        "Your menu is laid out in a way Pressless does not edit, so it was left as it is. "
+        "Change the link to this page in the Navigation's code."
+    ),
+    "notice.pages.no_link": (
+        "Pressless found no link to this page in your menu. Check the Navigation's code."
+    ),
+    "notice.pages.other_links": (
+        "Your header or footer still links to this page. Remove that link in its code."
+    ),
+    "script.pages.confirm_remove": (
+        "Remove this page? It goes to the bin in your Pressless-data folder, with any "
+        "changes you have not published. It leaves your site and your menu now."
+    ),
+    "script.pages.ask_rename": (
+        "What should this page be called? Your site changes now, and the old address "
+        "will still reach the page."
+    ),
     # What Undo the last press did (undo.py), one clause each.
     "undo.summary": "Your site is back the way it was: {clauses}.",
     "undo.unchanged": "Your site was already as it was before the last publish.",

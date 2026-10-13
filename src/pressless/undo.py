@@ -133,6 +133,16 @@ def _empty(fetch: Path) -> None:
 # --------------------------------------------------------------- reading ---
 
 
+# Each forwards file the Store holds, by its name: where it sits, its reader
+# and its writer (PRESS-0182 § 4.4, PRESS-0195 § 4.6).
+_FORWARDS = {
+    store.FORWARDS_FILE: (store.forwards_path_for, store.read_forwards,
+                          store.write_forwards),
+    store.PAGE_FORWARDS_FILE: (store.page_forwards_path_for, store.read_page_forwards,
+                               store.write_page_forwards),
+}
+
+
 @dataclass(frozen=True)
 class _State:
     """The fetched state, read through the Store's own reader for each kind
@@ -143,8 +153,8 @@ class _State:
     pages: dict[str, str] = field(default_factory=dict)
     furniture: dict[str, str] = field(default_factory=dict)
     templates: dict[str, store.Entry] = field(default_factory=dict)
-    # PRESS-0182: the fetched forwards file, keyed by its name like the other
-    # kinds; empty where the fetched state has none.
+    # PRESS-0182, PRESS-0195: the fetched forwards files, keyed by name like
+    # the other kinds; empty where the fetched state has none.
     forwards: dict[str, dict[str, str]] = field(default_factory=dict)
     # PRESS-0214: the fetched options; {} where the fetched state has none,
     # which is every option at its default.
@@ -188,9 +198,10 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             stem = _stem(name, store.FILE_SUFFIX)
             store.template_path_for(fetch, stem)
             state.templates[stem] = store.read(path)
-        elif kind == store.FORWARDS_FOLDER and name == store.FORWARDS_FILE:
-            # The fetch area's content/ is laid out as the Store is (PRESS-0182 § 4.4).
-            state.forwards[name] = store.read_forwards(fetch / prefix)
+        elif kind == store.FORWARDS_FOLDER and name in _FORWARDS:
+            # The fetch area's content/ is laid out as the Store is (PRESS-0182
+            # § 4.4); a renamed page's forwards sit beside (PRESS-0195 § 4.6).
+            state.forwards[name] = _FORWARDS[name][1](fetch / prefix)
         elif kind == store.OPTIONS_FOLDER and name == store.OPTIONS_FILE:
             state.options.update(store.read_options(fetch / prefix))
         elif kind == store.IDENTITY_FOLDER and name == store.IDENTITY_FILE:
@@ -319,14 +330,15 @@ def _restore_other_kinds(folder: Path, state: _State,
         if remembered is None:
             reversals.append(lambda p=path: store.move_to_bin(folder, p))
 
-    for forwards in state.forwards.values():
-        path = store.forwards_path_for(folder)
-        remembered = store.read_forwards(folder) if path.is_file() else None
+    for name, forwards in sorted(state.forwards.items()):
+        path_for, read, write = _FORWARDS[name]
+        path = path_for(folder)
+        remembered = read(folder) if path.is_file() else None
         if remembered != forwards:
             if remembered is not None:
                 store.move_to_bin(folder, path)
-                reversals.append(lambda f=remembered: store.write_forwards(folder, f))
-            store.write_forwards(folder, forwards)
+                reversals.append(lambda f=remembered, w=write: w(folder, f))
+            write(folder, forwards)
             if remembered is None:
                 reversals.append(lambda p=path: store.move_to_bin(folder, p))
 

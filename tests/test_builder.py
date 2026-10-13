@@ -1096,6 +1096,35 @@ def test_content_carries_the_forwards(tmp_path):
     assert (into / "content/forwards/forwards.json").read_bytes() == b'{"a":   "b"}\n'
 
 
+def test_a_renamed_page_forwards(tmp_path):
+    """PRESS-0195 INV-12: a page at pages/<old>.html for a forward to a page
+    the build writes, sending readers to the new name; none where the old name
+    is itself a page or the new one is not; no sitemap line for it; and
+    content/ carries the page forwards byte for byte.
+
+    Breaks when a forward overwrites a real page, or links to nothing."""
+    page = "<html><body>\n<p>{}</p>\n</body></html>\n"
+    folder = _store(tmp_path, pages={"index": page.format("Home"),
+                                     "live-shows": page.format("Shows"),
+                                     "about": page.format("The real about")})
+    store.write_page_forwards(folder, {"gigs": "live-shows", "about": "live-shows",
+                                       "old": "missing"})
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+
+    text = (into / "pages/gigs.html").read_text(encoding="utf-8")
+    assert '<meta http-equiv="refresh" content="0; url=live-shows.html">' in text
+    assert ('<link rel="canonical" '
+            'href="https://example.org/pages/live-shows.html">') in text
+    assert '<a href="live-shows.html">Live shows</a>' in text
+    assert "pages/gigs.html" in built.files
+    assert "The real about" in (into / "pages/about.html").read_text(encoding="utf-8")
+    assert not (into / "pages/old.html").exists()
+    assert "gigs" not in (into / "sitemap.xml").read_text(encoding="utf-8")
+    assert ((into / "content/forwards/pages.json").read_bytes()
+            == store.page_forwards_path_for(folder).read_bytes())
+
+
 # ------------------------------------------------ PRESS-0123 INV-4, INV-5 ---
 
 

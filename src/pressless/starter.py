@@ -293,7 +293,26 @@ _PRIVACY = """<!doctype html>
 </html>
 """
 
+_NEW_PAGE = _PRIVACY.replace('page="privacy"', 'page="{page}"').replace(
+    """    <p>{counting}</p>
+    <p>{counted}</p>
+    <p>{policy}</p>
+    <p>{questions}</p>
+""", """    <p>{words}</p>
+""")
+
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
+
+
+def new_page(name: str, title: str, sheets: tuple[str, ...]) -> str:
+    """PRESS-0195 § 4.3: a page he adds, in the Privacy page's shape -- the
+    site's stylesheets from depth 1, a header pair naming the page, his title
+    as the title and heading, and one paragraph to replace."""
+    links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
+                        for sheet in sheets)
+    heading = html.escape(title)
+    return _NEW_PAGE.format(title=heading, links=links, page=html.escape(name, quote=True),
+                            heading=heading, words=say("starter.new_page.words"))
 
 
 def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:

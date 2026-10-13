@@ -114,6 +114,7 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
     for route in (("GET", "/setup"), ("GET", "/"), ("POST", "/save"), ("POST", "/publish"),
                   ("POST", "/undo"), ("GET", "/page"), ("POST", "/page/save"),
                   ("POST", "/page/discard"), ("POST", "/page/publish"),
+                  ("POST", "/page/new"), ("POST", "/page/remove"), ("POST", "/page/rename"),
                   ("POST", "/update"), ("POST", "/update/checking")):
         assert route in pages, route
     assert urllib.parse.urlsplit(opened.links[0]).path == "/setup"

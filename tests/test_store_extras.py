@@ -844,6 +844,8 @@ _PRESS_0214_SURFACE = {"OPTIONS_FOLDER", "OPTIONS_FILE", "options_path_for",
                        "read_options", "write_options", "journal_on", "write_journal"}
 _PRESS_0213_SURFACE = {"IDENTITY_FOLDER", "IDENTITY_FILE", "Identity", "identity_path_for",
                        "identity_problem", "read_identity", "write_identity"}
+_PRESS_0195_SURFACE = {"PAGE_FORWARDS_FILE", "page_forwards_path_for",
+                       "read_page_forwards", "write_page_forwards"}
 _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
                        "read_style_code", "write_style_code", "holds_a_site"}
 
@@ -946,11 +948,12 @@ def test_photographs_stay_where_they_are(tmp_path):
     surface = _public_names(store_module)
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
-                        | _PRESS_0213_SURFACE)
+                        | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
-        f"PRESS-0214 §4.1's, PRESS-0126 §4.1's and PRESS-0213 §4.1's. "
+        f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's and "
+        f"PRESS-0195 §4.1's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"
@@ -1200,3 +1203,42 @@ def test_a_comment_field_of_the_wrong_type_is_refused(tmp_path, field, value):
     with pytest.raises(StoreError) as raised:
         read_comments(written)
     assert field in str(raised.value) and written.name in str(raised.value), raised.value
+
+
+# ------------------------------------------------------------ PRESS-0195 ----
+# docs/specs/PRESS-0195-add-remove-rename-pages.md § 4.1.
+
+
+def test_page_forwards_follow_the_name_rule(tmp_path):
+    """INV-13: the page forwards round-trip as sorted JSON in their own file,
+    and a name html_path_for refuses, `index`, a self-map, a non-object and
+    bad JSON each raise StoreError naming the file.
+
+    Breaks when a hand-edited key such as ../x reaches the Builder as a page
+    name, or when the page forwards share the entries' file."""
+    assert store_module.read_page_forwards(tmp_path) == {}
+    store_module.write_page_forwards(tmp_path, {"gigs": "shows", "a": "b"})
+    path = store_module.page_forwards_path_for(tmp_path)
+    assert path == tmp_path / "forwards" / "pages.json"
+    assert path.read_bytes() == b'{\n  "a": "b",\n  "gigs": "shows"\n}\n'
+    assert store_module.read_page_forwards(tmp_path) == {"a": "b", "gigs": "shows"}
+    assert store_module.read_forwards(tmp_path) == {}
+
+    for text in ('{"../x": "shows"}', '{"index": "home"}', '{"gigs": "index"}',
+                 '{"a": "a"}', '["a"]', '{"a": 1}', "not json"):
+        path.write_text(text, encoding="utf-8")
+        with pytest.raises(store_module.StoreError, match="pages.json"):
+            store_module.read_page_forwards(tmp_path)
+
+
+def test_a_waiting_page_is_listed_apart(tmp_path):
+    """PRESS-0195 § 4.1: list_html with waiting=True lists the waiting copies
+    by the same rule, and the default still lists the live pages alone.
+
+    Breaks when the waiting listing reads the live folder, or the default
+    starts listing waiting copies."""
+    store_module.write_html(tmp_path, "pages", "about", "<p>live</p>")
+    store_module.write_html(tmp_path, "pages", "gigs", "<p>new</p>", waiting=True)
+    assert store_module.list_html(tmp_path, "pages") == ("about",)
+    assert store_module.list_html(tmp_path, "pages", waiting=True) == ("gigs",)
+    assert store_module.list_html(tmp_path, "furniture", waiting=True) == ()

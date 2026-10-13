@@ -28,6 +28,7 @@ from pressless import (
     builder,
     editor,
     github_setup,
+    menu,
     pressing,
     publisher,
     publishing,
@@ -65,6 +66,14 @@ SENTENCES[PiecesChanged] = Sentence(
     "failure.page_editor.PiecesChanged.what",
     Site.UNCHANGED,
     "failure.page_editor.PiecesChanged.next",
+)
+
+# PRESS-0195 § 4.2: caught where a menu is edited and said as a notice, but
+# every failure type carries its sentence (docs/design.md § Errors).
+SENTENCES[menu.Unusual] = Sentence(
+    "failure.menu.Unusual.what",
+    Site.UNCHANGED,
+    "failure.menu.Unusual.next",
 )
 
 _HIDDEN = frozenset(("script", "style", "template"))
@@ -239,6 +248,12 @@ def register(face: Face, folder: Path, *,
     face.add_page("POST", "/page/discard", route(_discard))
     face.add_page("POST", "/page/publish",
                   lambda request: _publish(face, folder, request, transport))
+    # PRESS-0195: a new page, and removing or renaming one.
+    face.add_page("POST", "/page/new", route(_new))
+    face.add_page("POST", "/page/remove",
+                  lambda request: _reshape(face, folder, request, transport, renaming=False))
+    face.add_page("POST", "/page/rename",
+                  lambda request: _reshape(face, folder, request, transport, renaming=True))
 
 
 def _digest(path: Path) -> str:
@@ -400,6 +415,13 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
             choices.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
                                 show is None))
         picker = f"<p>{say('page_editor.show_on')} " + " ".join(choices) + "</p>"
+    # PRESS-0195 § 4.4: every fixed page but the homepage.
+    reshape = ""
+    if kind == store.PAGES_FOLDER and name != HOME:
+        reshape = (f'<p><button type="button" data-pages="rename">'
+                   f'{say("page_editor.rename")}</button> '
+                   f'<button type="button" data-pages="remove">'
+                   f'{say("page_editor.remove")}</button></p>')
     box_class = f' class="{attr(builder.BODY_CLASS)}"' if view == WORDS else ""
     # PRESS-0234: the press row's status line, between presses. The script
     # keeps it in step (its `standing`).
@@ -433,7 +455,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-<textarea name="text"{box_class} rows="24">
+{reshape}<textarea name="text"{box_class} rows="24">
 {html.escape(box)}</textarea>
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
@@ -493,8 +515,11 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
             failure = None
     if failure is not None:
         return _failed(face, notices, failure)
+    # PRESS-0195 § 4.3: a page never pressed had only this copy, so its editor
+    # has nothing left to open.
+    live = store.html_path_for(folder, kind, name)
     return Reply(b"", "text/plain; charset=utf-8", status=303,
-                 location=_page_address(kind, name))
+                 location=_page_address(kind, name) if live.is_file() else "/")
 
 
 def _publish(face: Face, folder: Path, request: Request,
@@ -517,15 +542,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              told: Callable[[pressing.Outcome], None]) -> Reply:
     kind, name = form.get("kind", ""), form.get("name", "")
     notices: list[str] = []
-
-    def gathered(step):
-        caught: list[str] | None = None
-        try:
-            with face.capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                notices.extend(caught)
+    gathered = _gatherer(face, notices)
 
     with editor.LOCK:
         try:
@@ -554,8 +571,16 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             saved = gathered(lambda: settings.load(folder))
             key = github_setup.token(folder, saved.credentials.store,
                                      saved.credentials.github_account)
-            remembered = gathered(lambda: store.read_html(store.html_path_for(folder, kind, name)))
-            gathered(lambda: store.write_html(folder, kind, name, new))
+            changes = _Changes(folder)
+            # PRESS-0195 § 4.3: a new page's first press, with no live file.
+            first = (kind == store.PAGES_FOLDER
+                     and not store.html_path_for(folder, kind, name).is_file())
+            gathered(lambda: changes.write(kind, name, new))
+            if first:
+                words = _title(new) or builder.label(name)
+                if not gathered(lambda: _edit_menu(folder, changes,
+                                                   lambda text: menu.add(text, name, words))):
+                    notices.append(say("notice.pages.menu_unusual"))
             try:
                 publishing.publish(folder, saved, key, entry=None, capture=face.capture,
                                    notices=notices, transport=transport)
@@ -566,7 +591,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
                 raise
             except BaseException:
                 # A failure here is raised in place of the original (§ 4.7).
-                gathered(lambda: store.write_html(folder, kind, name, remembered))
+                gathered(changes.put_back)
                 raise
             kept = finish()
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
@@ -586,6 +611,250 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     return _json({"published": published, "waiting": waiting, "base": base,
                   "failure": failure, "hint": None, "notices": render_notices(notices),
                   "busy": False})
+
+
+def _gatherer(face: Face, notices: list):
+    """A step's notices, captured and added to `notices` whatever it does."""
+    def gathered(step):
+        caught: list[str] | None = None
+        try:
+            with face.capture() as caught:
+                return step()
+        finally:
+            if caught is not None:
+                notices.extend(caught)
+    return gathered
+
+
+# ------------------------------------------- adding, removing, renaming ---
+# PRESS-0195 (docs/specs/PRESS-0195-add-remove-rename-pages.md).
+
+
+class _Changes:
+    """Every file a press writes or bins, remembered first, so a failed
+    publish puts each back in reverse order (§ 4.4)."""
+
+    def __init__(self, folder: Path) -> None:
+        self.folder = folder
+        self._back: list[Callable[[], object]] = []
+
+    def write(self, kind: str, name: str, text: str, *, waiting: bool = False) -> None:
+        path = store.html_path_for(self.folder, kind, name, waiting=waiting)
+        before = store.read_html(path) if path.is_file() else None
+        store.write_html(self.folder, kind, name, text, waiting=waiting)
+        self._back.append(
+            (lambda: store.move_to_bin(self.folder, path)) if before is None else
+            (lambda: store.write_html(self.folder, kind, name, before, waiting=waiting)))
+
+    def bin(self, kind: str, name: str, *, waiting: bool = False) -> None:
+        path = store.html_path_for(self.folder, kind, name, waiting=waiting)
+        if not path.is_file():
+            return
+        before = store.read_html(path)
+        store.move_to_bin(self.folder, path)
+        self._back.append(
+            lambda: store.write_html(self.folder, kind, name, before, waiting=waiting))
+
+    def forwards(self, forwards: dict[str, str]) -> None:
+        path = store.page_forwards_path_for(self.folder)
+        before = store.read_page_forwards(self.folder) if path.is_file() else None
+        if forwards == (before or {}):
+            return
+        store.write_page_forwards(self.folder, forwards)
+        self._back.append(
+            (lambda: store.move_to_bin(self.folder, path)) if before is None else
+            (lambda: store.write_page_forwards(self.folder, before)))
+
+    def put_back(self) -> None:
+        for step in reversed(self._back):
+            step()
+
+
+def _title(text: str) -> str:
+    """A page's <title> text, unescaped; "" where it has none."""
+    found = re.search(r"<title\b[^>]*>(.*?)</title\s*>", text, re.IGNORECASE | re.DOTALL)
+    return html.unescape(found.group(1)).strip() if found else ""
+
+
+def _edit_menu(folder: Path, changes: _Changes, edit: Callable[[str], str]) -> bool:
+    """`edit` applied to the live navigation and its waiting copy (§ 4.2).
+    False where one of them is a menu Pressless does not edit; that copy is
+    left as it is."""
+    usual = True
+    for waiting in (False, True):
+        path = store.html_path_for(folder, store.FURNITURE_FOLDER, "navigation",
+                                   waiting=waiting)
+        if not path.is_file():
+            continue
+        text = store.read_html(path)
+        try:
+            edited = edit(text)
+        except menu.Unusual:
+            usual = False
+            continue
+        if edited != text:
+            changes.write(store.FURNITURE_FOLDER, "navigation", edited, waiting=waiting)
+    return usual
+
+
+def _name_refused(folder: Path, page: str, moving: str = "") -> str | None:
+    """Why `page` cannot be a new page's name, as an editor.PAGE_HINTS code;
+    None where it can. `moving` is the page a rename moves (§ 4.3, § 4.4)."""
+    if not page:
+        return "empty"
+    try:
+        store.html_path_for(folder, store.PAGES_FOLDER, page)
+    except store.StoreError:
+        return "unusable"
+    held = (set(store.list_html(folder, store.PAGES_FOLDER))
+            | set(store.list_html(folder, store.PAGES_FOLDER, waiting=True)))
+    if page == HOME or page == moving or page in held:
+        return "taken"
+    forwards = store.read_page_forwards(folder)
+    if page in forwards and forwards[page] != moving:
+        return "forwarded"
+    return None
+
+
+def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """§ 4.3: the page's waiting copy, and nothing else."""
+    named = editor._form(request).get("name", "").strip()
+    page = editor.name_address(named)
+    with lock, face.capture() as notices:
+        try:
+            refused = _name_refused(folder, page)
+            if refused is None:
+                store.write_html(folder, store.PAGES_FOLDER, page,
+                                 starter.new_page(page, named, builder.stylesheets(folder)),
+                                 waiting=True)
+                pressing.forget()
+        except store.StoreError as exc:
+            return _failed(face, notices, exc)
+    location = ("/?" + urllib.parse.urlencode({"page_hint": refused}) if refused
+                else _page_address(store.PAGES_FOLDER, page))
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
+
+
+def _refused(folder: Path, form: dict[str, str], renaming: bool,
+             saved: settings.Settings) -> str | None:
+    """§ 4.4's refusals, as a words key; None where the change may go ahead."""
+    name = form.get("name", "")
+    if name == HOME:
+        return "page_hint.home"
+    if not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
+        return "page_hint.not_on_site"
+    if not renaming:
+        if name == "privacy" and saved.measurement_id is not None:
+            return "page_hint.privacy_remove"
+        return None
+    if name == "privacy":
+        return "page_hint.privacy_rename"
+    if store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True).is_file():
+        return "page_hint.changes"
+    refused = _name_refused(folder, editor.name_address(form.get("to", "")), moving=name)
+    return editor.PAGE_HINTS[refused] if refused else None
+
+
+def _removed(folder: Path, name: str, changes: _Changes, notices: list) -> None:
+    """§ 4.4 Remove: the page and its waiting copy to the bin, its link out of
+    the menu, and the forwards to it dropped."""
+    live = store.html_path_for(folder, store.FURNITURE_FOLDER, "navigation")
+    linked = live.is_file() and bool(menu.links_to(store.read_html(live), name))
+    changes.bin(store.PAGES_FOLDER, name)
+    changes.bin(store.PAGES_FOLDER, name, waiting=True)
+    if not _edit_menu(folder, changes, lambda text: menu.remove(text, name)):
+        notices.append(say("notice.pages.menu_unusual"))
+    elif not linked:
+        notices.append(say("notice.pages.no_link"))
+    changes.forwards({old: new for old, new in store.read_page_forwards(folder).items()
+                      if new != name})
+    for part in ("header", "footer"):
+        path = store.html_path_for(folder, store.FURNITURE_FOLDER, part)
+        if path.is_file() and f"pages/{name}{store.HTML_SUFFIX}" in store.read_html(path):
+            notices.append(say("notice.pages.other_links"))
+            break
+
+
+def _renamed(folder: Path, name: str, to: str, changes: _Changes) -> None:
+    """§ 4.4 Rename: the page byte for byte at its new name, the old one
+    binned, its old name forwarded, and its menu link pointed on."""
+    new = editor.name_address(to)
+    text = store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name))
+    changes.write(store.PAGES_FOLDER, new, text)
+    changes.bin(store.PAGES_FOLDER, name)
+    forwards = {old: (new if target == name else target)
+                for old, target in store.read_page_forwards(folder).items() if old != new}
+    forwards[name] = new
+    changes.forwards(forwards)
+    title = _title(text)
+    old_words = (builder.label(name),) + ((title,) if title else ())
+    _edit_menu(folder, changes, lambda menu_text: menu.rename(menu_text, name, new,
+                                                              old_words, to))
+
+
+def _reshape(face: Face, folder: Path, request: Request,
+             transport: publisher.Transport | None, *, renaming: bool) -> Reply:
+    """§ 4.4, run as a press (PRESS-0235 § 4.4)."""
+    form = editor._form(request)
+
+    def busy(said: str) -> Reply:
+        """Nothing written (PRESS-0235 § 4.4)."""
+        return _json({"published": False, "failure": None, "hint": None, "notices": "",
+                      "busy": True, "said": said,
+                      "address": _page_address(store.PAGES_FOLDER, form.get("name", ""))})
+
+    return pressing.run(pressing.PUBLISH, busy,
+                        lambda told: _reshaped(face, folder, form, transport, told,
+                                               renaming))
+
+
+def _reshaped(face: Face, folder: Path, form: dict[str, str],
+              transport: publisher.Transport | None,
+              told: Callable[[pressing.Outcome], None], renaming: bool) -> Reply:
+    name, to = form.get("name", ""), form.get("to", "").strip()
+    notices: list = []
+    gathered = _gatherer(face, notices)
+    hint: str | None = None
+    failure: str | None = None
+    with editor.LOCK:
+        try:
+            saved = gathered(lambda: settings.load(folder))
+            hint = gathered(lambda: _refused(folder, form, renaming, saved))
+            if hint is None:
+                key = github_setup.token(folder, saved.credentials.store,
+                                         saved.credentials.github_account)
+                changes = _Changes(folder)
+                if renaming:
+                    gathered(lambda: _renamed(folder, name, to, changes))
+                else:
+                    gathered(lambda: _removed(folder, name, changes, notices))
+                try:
+                    publishing.publish(folder, saved, key, entry=None, capture=face.capture,
+                                       notices=notices, transport=transport)
+                except publisher.OutcomeUnknown:
+                    raise
+                except BaseException:
+                    # A failure here is raised in place of the original.
+                    gathered(changes.put_back)
+                    raise
+        except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
+            failure = (face.fail(exc, publishing=False,
+                                 secret=say("failure.secret.publishing_key"))
+                       + publishing.replace_link(exc))
+        # Where he goes next, read from disk: the page where it still is.
+        if store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
+            address = _page_address(store.PAGES_FOLDER, name)
+        elif renaming and hint is None and store.html_path_for(
+                folder, store.PAGES_FOLDER, editor.name_address(to)).is_file():
+            address = _page_address(store.PAGES_FOLDER, editor.name_address(to))
+        else:
+            address = "/"
+    published = hint is None and failure is None
+    told(pressing.Outcome(say("script.press.published") if published
+                          else say("script.press.not_published"), failure))
+    return _json({"published": published, "failure": failure,
+                  "hint": say(hint) if hint else None,
+                  "notices": render_notices(notices), "busy": False, "address": address})
 
 
 def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
@@ -734,6 +1003,46 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       published();
       if (dirty && !stopped) schedule();
     }
+  });
+
+  // PRESS-0195 § 4.4: Remove and Rename ask first, save what is unsaved, then
+  // press at once. Published, the page goes where the reply says, unless a
+  // notice needs reading first.
+  document.querySelectorAll("button[data-pages]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      let to = "";
+      if (button.dataset.pages === "rename") {
+        to = window.prompt(say("script.pages.ask_rename"), "") || "";
+        if (!to.trim()) return;
+      } else if (!window.confirm(say("script.pages.confirm_remove"))) {
+        return;
+      }
+      await settle();
+      if (stopped) return;
+      const said = document.getElementById("publish-status");
+      said.textContent = say("script.press.publishing");
+      try {
+        const body = new URLSearchParams({kind: state.kind, name: state.name, to: to});
+        const answer = await fetch("/page/" + button.dataset.pages,
+                                   {method: "POST", body: body});
+        const text = await answer.text();
+        if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
+        const reply = JSON.parse(text);
+        if (reply.busy) {
+          said.textContent = reply.said;
+          window.presslessPress.ask();
+          return;
+        }
+        document.getElementById("notices").innerHTML = reply.notices;
+        hint.textContent = reply.hint || "";
+        document.getElementById("failure").innerHTML = reply.failure || "";
+        said.textContent = reply.published ? say("script.press.published")
+          : reply.hint ? standing() : say("script.press.not_published");
+        if (reply.published && !reply.notices) window.location.href = reply.address;
+      } catch (error) {
+        said.textContent = standing(); stop("");
+      }
+    });
   });
 })();
 """

@@ -632,6 +632,7 @@ COMMENTS_FOLDER = "comments"
 PHOTOGRAPHS_FOLDER = "photographs"
 FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it forwards to
 FORWARDS_FILE = "forwards.json"
+PAGE_FORWARDS_FILE = "pages.json"    # PRESS-0195: a renamed page's old name -> its new one
 OPTIONS_FOLDER = "options"           # PRESS-0214: site-wide switches; absent means every default
 OPTIONS_FILE = "options.json"
 LOOK_FOLDER = "look"                 # PRESS-0126: the site's own style code
@@ -694,8 +695,9 @@ def html_path_for(folder: Path, kind: str, name: str, *,
     return Path(folder) / subfolder / f"{name}{HTML_SUFFIX}"
 
 
-def list_html(folder: Path, kind: str) -> tuple[str, ...]:
+def list_html(folder: Path, kind: str, *, waiting: bool = False) -> tuple[str, ...]:
     """The names in one HTML folder, sorted, read off the file names (§4.4).
+    With `waiting`, the names that have a waiting copy (PRESS-0195 § 4.1).
 
     Opens nothing, as list_slugs does. The fixed-page set is open (§3 decision
     8): Import creates the pages the site has, and a fifth page later costs a
@@ -708,11 +710,12 @@ def list_html(folder: Path, kind: str) -> tuple[str, ...]:
     handed = Path(folder)
     if not handed.is_dir():
         raise StoreError("the folder handed to the Store is not a folder")
-    subfolder = handed / _html_subfolder(kind)
+    subfolder = handed / (WAITING_FOLDERS[_html_subfolder(kind)] if waiting
+                          else _html_subfolder(kind))
     return _only_usable(
         _raw_names(subfolder, HTML_SUFFIX),
         subfolder,
-        lambda name: html_path_for(handed, kind, name),
+        lambda name: html_path_for(handed, kind, name, waiting=waiting),
     )
 
 
@@ -914,7 +917,41 @@ def read_forwards(folder: Path) -> dict[str, str]:
     Every key becomes a folder name on his site and he may open the file, so
     each slug is put to the same rule path_for uses.
     """
-    target = forwards_path_for(folder)
+    return _read_mapping(forwards_path_for(folder),
+                              lambda name: _refuse_illegal_slug(name, "an address"))
+
+
+def write_forwards(folder: Path, forwards: dict[str, str]) -> Path:
+    """Replace the forwards file whole, keys sorted (PRESS-0182 § 4.1)."""
+    return _write_mapping(folder, forwards_path_for(folder), forwards)
+
+
+def page_forwards_path_for(folder: Path) -> Path:
+    """Where a renamed page's forwards sit (PRESS-0195 § 4.1): beside the
+    entries' file, apart from it, because a page and an entry may share a
+    name."""
+    return Path(folder) / FORWARDS_FOLDER / PAGE_FORWARDS_FILE
+
+
+def read_page_forwards(folder: Path) -> dict[str, str]:
+    """Each renamed page's old name mapped to its new one; {} where there is
+    no file (PRESS-0195 § 4.1). The homepage is never renamed, so `index` is
+    refused on either side."""
+    def check(name: str) -> None:
+        html_path_for(folder, PAGES_FOLDER, name)
+        if name == "index":
+            raise StoreError("the homepage is never renamed")
+    return _read_mapping(page_forwards_path_for(folder), check)
+
+
+def write_page_forwards(folder: Path, forwards: dict[str, str]) -> Path:
+    """Replace the page forwards file whole, keys sorted (PRESS-0195 § 4.1)."""
+    return _write_mapping(folder, page_forwards_path_for(folder), forwards)
+
+
+def _read_mapping(target: Path, check) -> dict[str, str]:
+    """A forwards file: a JSON object of names, each put to `check`, none
+    mapped to itself."""
     try:
         data = target.read_bytes()
     except FileNotFoundError:
@@ -930,8 +967,8 @@ def read_forwards(folder: Path) -> dict[str, str]:
         raise StoreError(f"{target.name} is not an object of addresses")
     for old, new in carried.items():
         try:
-            _refuse_illegal_slug(old, "an address")
-            _refuse_illegal_slug(new, "an address")
+            check(old)
+            check(new)
         except StoreError as exc:
             raise StoreError(f"{target.name}: {exc}") from None
         if old == new:
@@ -939,9 +976,7 @@ def read_forwards(folder: Path) -> dict[str, str]:
     return carried
 
 
-def write_forwards(folder: Path, forwards: dict[str, str]) -> Path:
-    """Replace the forwards file whole, keys sorted (PRESS-0182 § 4.1)."""
-    target = forwards_path_for(folder)
+def _write_mapping(folder: Path, target: Path, forwards: dict[str, str]) -> Path:
     text = json.dumps(forwards, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".forwards-", newline="\n")
     return target

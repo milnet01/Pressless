@@ -322,7 +322,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                     first_failure = first_failure or exc
                     unreadable[draft].append(slug)
         try:
-            pages = _pages(folder)
+            pages = _pages(folder, request.query.get("page_hint", ""))
         except store.StoreError as exc:
             first_failure = first_failure or exc
             pages = f"<p>{say('editor.list.pages_unreadable')}</p>"
@@ -412,13 +412,23 @@ def _template_choice(folder: Path) -> str:
             f'{"".join(options)}</select></label> ')
 
 
-def _pages(folder: Path) -> str:
+# PRESS-0195 § 4.3: why a new page's name was refused, by the code its route
+# sends back, so the list shows a sentence and never the query's own text.
+PAGE_HINTS = {"empty": "page_hint.empty", "taken": "page_hint.taken",
+              "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable"}
+
+
+def _pages(folder: Path, hint: str = "") -> str:
     """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
-    saying where its changes are not on the site yet. Drawn from the Store
-    alone, so this module imports nothing of page_editor.py."""
+    saying where its changes are not on the site yet; a page only waiting to
+    be pressed is listed too, and the New page box follows (PRESS-0195 § 4.3).
+    Drawn from the Store alone, so this module imports nothing of
+    page_editor.py."""
+    names = sorted(set(store.list_html(folder, store.PAGES_FOLDER))
+                   | set(store.list_html(folder, store.PAGES_FOLDER, waiting=True)))
     rows = [(store.PAGES_FOLDER, name,
              say("editor.pages.home") if name == "index" else builder.label(name))
-            for name in store.list_html(folder, store.PAGES_FOLDER)]
+            for name in names]
     rows += [(store.FURNITURE_FOLDER, name, say(key))
              for name, key in (("header", "editor.pages.header"),
                                ("footer", "editor.pages.footer"),
@@ -430,7 +440,12 @@ def _pages(folder: Path) -> str:
                 if store.html_path_for(folder, kind, name, waiting=True).is_file() else "")
         items.append(f'<li><a href="{html.escape(address, quote=True)}">'
                      f"{html.escape(label)}</a>{note}</li>")
-    return "<ul>" + "".join(items) + "</ul>"
+    said = say(PAGE_HINTS[hint]) if hint in PAGE_HINTS else ""
+    return ("<ul>" + "".join(items) + "</ul>"
+            f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
+            '<input name="name" autocomplete="off"></label> '
+            f"<button>{say('editor.list.new_page')}</button></form>"
+            f'<p id="page-hint" role="status">{html.escape(said)}</p>')
 
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:

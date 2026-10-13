@@ -687,6 +687,27 @@ def test_undo_keeps_forwards_the_fetched_state_lacks(tmp_path):
     assert "forwards.json" not in _binned(folder)
 
 
+def test_undo_restores_page_forwards(tmp_path):
+    """PRESS-0195 INV-14: a fetched state holding pages.json leaves the
+    Store's page forwards equal to it, and one without it keeps the Store's.
+
+    Breaks when _read skips the page forwards, or content() leaves them out."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_page_forwards(folder, {"gigs": "shows"})
+    scratch = tmp_path / "previous-page-forwards"
+    scratch.mkdir()
+    fetched = store.write_page_forwards(scratch, {"old": "about"}).read_bytes()
+    base = {**_furnished(tmp_path), **_content(tmp_path, published=(_entry("seaside"),))}
+
+    _undo(folder, _previous(base))
+    assert store.read_page_forwards(folder) == {"gigs": "shows"}
+
+    _undo(folder, _previous({**base, "content/forwards/pages.json": fetched}))
+    assert store.read_page_forwards(folder) == {"old": "about"}
+    assert "pages.json" in _binned(folder)
+
+
 # PRESS-0214 INV-7 (docs/specs/PRESS-0214-journal-switch.md § 4.4): absence
 # means on, so a fetched state without the options file resets the switch.
 

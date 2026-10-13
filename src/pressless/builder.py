@@ -521,6 +521,7 @@ class _Build:
             self.archive(shown)
         for name, text in pages.items():
             self.fixed_page(name, text)
+        self.page_forwards(pages)
         self.content()
         self.sitemap(sorted(pages), shown, journal)
         style_code = store.read_style_code(self.folder)
@@ -830,6 +831,29 @@ class _Build:
 </html>
 """)
 
+    def page_forwards(self, pages: dict[str, str]) -> None:
+        """PRESS-0195 § 4.5: a page at each renamed page's old address,
+        sending readers on. None where the new name has no page, or where a
+        page holds the old name itself: its own page wins."""
+        address = self.settings.site_address.rstrip("/")
+        for old, new in sorted(store.read_page_forwards(self.folder).items()):
+            if new not in pages or old in pages:
+                continue
+            title = html.escape(label(new))
+            self.write_text(f"pages/{old}{store.HTML_SUFFIX}", f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="canonical" href="{html.escape(address)}/pages/{new}.html">
+<meta http-equiv="refresh" content="0; url={new}.html">
+</head>
+<body>
+<p>This page has moved to <a href="{new}.html">{title}</a>.</p>
+</body>
+</html>
+""")
+
     # -- content/ (§4.7) --
 
     def content(self) -> None:
@@ -847,6 +871,8 @@ class _Build:
                      for name in store.list_templates(self.folder))
         if store.forwards_path_for(self.folder).is_file():
             paths.append(store.forwards_path_for(self.folder))   # PRESS-0182, for undo
+        if store.page_forwards_path_for(self.folder).is_file():
+            paths.append(store.page_forwards_path_for(self.folder))  # PRESS-0195, for undo
         if store.options_path_for(self.folder).is_file():
             paths.append(store.options_path_for(self.folder))    # PRESS-0214, for undo
         if store.identity_path_for(self.folder).is_file():

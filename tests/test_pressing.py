@@ -173,6 +173,10 @@ def test_a_second_press_is_refused(folder):
         with _held_publish(browser, folder, transport):
             for path, form in (("/publish", _entry_form(folder)),
                                ("/page/publish", _page_form(folder)),
+                               # PRESS-0195 § 4.4: Remove and Rename are presses.
+                               ("/page/remove", {"kind": "pages", "name": "about"}),
+                               ("/page/rename", {"kind": "pages", "name": "about",
+                                                 "to": "Our story"}),
                                ("/undo", {})):
                 status, _, text = browser.request("POST", path, form)
                 assert status == 200, (path, text)
