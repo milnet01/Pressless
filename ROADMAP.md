@@ -4486,6 +4486,33 @@ removed, and the menu follows.
   Source: user-decision-2026-10-13.
   Lanes: Face, Settings.
 
+- 📋 [PRESS-0263] **Remember the user's choices on their own computer.**
+  Decided by the user 2026-10-13, as the useful half of "can the
+  app learn". Stored on this computer only and never sent anywhere.
+  Needs no spec.
+  **Layman:** Pressless remembers things like the page they last opened and the page they like to preview, kept only on their computer.
+  Kind: enhancement.
+  Source: user-decision-2026-10-13.
+  Lanes: Face, Settings.
+
+- 📋 [PRESS-0264] **The visual editor moves a section between columns, or out of them.**
+  Left out of PRESS-0260 by the user 2026-10-13 to keep the first
+  version small: there, Move up and Move down work within one list.
+  See docs/specs/PRESS-0260-visual-editor.md § 9.
+  **Layman:** They can move a paragraph or picture from one column to another, or out of the columns altogether.
+  Kind: feature.
+  Source: user-decision-2026-10-13 PRESS-0260.
+  Lanes: Face.
+
+- 📋 [PRESS-0265] **Sections in the visual editor can be dragged into place.**
+  PRESS-0260 moves sections with buttons only, which keyboard users
+  and the partially sighted can use; dragging is an extra way, never
+  the only one. See docs/specs/PRESS-0260-visual-editor.md § 9.
+  **Layman:** They can drag a section up or down the page with the mouse, as well as using the Move buttons.
+  Kind: feature.
+  Source: in-session-2026-10-13 PRESS-0260.
+  Lanes: Face.
+
 ## 0.10.0 — their own look, and any file
 
 S16 and S17. The site's colours, fonts and layout are picked from choices,
@@ -4789,6 +4816,19 @@ it can then be changed.
   Kind: enhancement.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
+
+- 📋 [PRESS-0222] **A wizard puts the site on his own domain name.**
+  Chosen under PRESS-0220. GitHub Pages serves a site at its own address
+  until a domain is set up, which takes a CNAME file in the repository,
+  records at the domain seller, and a wait for HTTPS. Pressless can
+  write the CNAME file and check each step; the records at the seller
+  are shown exactly, to copy.
+  No version yet. Recommendation: soon after 0.8.0's setup wizard, since
+  a stranger with a domain wants it soon after starting.
+  **Layman:** If you own a web address, a guided step-by-step shows exactly what to type at your domain seller so your site appears at that address.
+  Kind: feature.
+  Source: user-request-2026-10-03.
+  Lanes: face, publisher.
 
 ## 0.12.0 — more figures, and likes
 
@@ -5262,6 +5302,81 @@ owned by docs/standards/versioning-overrides.md.
   Kind: refactor.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
+
+- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
+  browser is closed the only way back is the console window, and the
+  opening link is spent, so reopening means a restart. A tray icon would
+  offer open, restart and quit. Must work on Windows and Linux (Windows
+  parity is the priority), and adds a dependency and packaging work.
+  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  Recommendation for the user (2026-10-02), not yet asked: leave the tray
+  icon until after 1.0. Why: it adds a dependency and packaging work on
+  both systems, the user called it a "perhaps", and PRESS-0203's Restart
+  covers the most common need.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. The tray icon waits until after 1.0; move it out of
+  0.8.0 when next touching the section.
+  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher, Package.
+
+- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+  Asked for by the user 2026-10-02. LWSM (the user's local web-server
+  manager) manages every app that runs a web server: start, stop,
+  restart, and open the page in the browser of choice. Where LWSM runs
+  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
+  open: LWSM sets PORT in the environment it starts Pressless with
+  (PRESS-0202 records its contract), which is one candidate signal.
+  Depends on PRESS-0204.
+  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
+  this item applies on Linux only. On Windows the tray icon always shows
+  as PRESS-0204 has it, and the check need not run there.
+  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher.
+
+- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
+  The user, 2026-10-07, asked whether the app has multilanguage
+  support. It has none: every screen's words are English strings in the
+  Python modules and the page scripts, with no translation layer. Still
+  to settle with the user: which languages first, whether the published
+  site's own words (the starter pages, dates) are in scope or only the
+  app's screens, and how a language is chosen. Touches every screen, so
+  it needs a spec before building.
+  Timing (2026-10-07, the user): the languages come after 1.0.0;
+  the prep comes before it, as PRESS-0242 in 1.0.0.
+  User 2026-10-08: when translating, use Chrome and Gemini to help
+  settle the right wording.
+  Decided by the user 2026-10-08: Pressless picks the computer's
+  language at startup and switches to it; where it has no translation
+  for that language it uses English; where the language cannot be told
+  it offers a list of languages to choose from. The sample pages are
+  translated too. PRESS-0242's words.use() is the hook
+  (docs/specs/PRESS-0242-screen-words.md).
+  Left for this item by PRESS-0242 (2026-10-08): month and day names
+  on the list and the dashboard still come from strftime's %b and %a,
+  so they stay English; the app's pages and the starter pages say
+  lang="en"; template file names (poem, lyric, photograph, journal)
+  and the shortcut's file names stay English, being file names.
+  tests/test_words.py's INV-2 test lets the month and day names
+  through until then.
+  **Layman:** You can use Pressless in your own language, not only English.
+  Kind: feature.
+  Source: user-request-2026-10-07.
+  Lanes: Face, Editor, Setup.
+
+- 📋 [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
+  The verification request went in on 2026-10-10 (PRESS-0200). When
+  Google's approval email arrives, set google_signin.APPROVED to True;
+  test_the_page_says_while_google_has_not_approved_pressless then needs
+  its expectation turned round. Blocked on Google's reply, not on code.
+  **Layman:** When Google says yes, the app stops warning that Google is still checking it.
+  Kind: chore.
+  Source: PRESS-0200 resolution 2026-10-10.
+  Lanes: Insights.
 
 ## Backlog — no version yet
 
@@ -10746,94 +10861,6 @@ already-built code ships in whichever release comes next.
   Source: LocalWebServerManager session message 401, 2026-10-02.
   Lanes: Launcher.
 
-- 📋 [PRESS-0222] **A wizard puts the site on his own domain name.**
-  Chosen under PRESS-0220. GitHub Pages serves a site at its own address
-  until a domain is set up, which takes a CNAME file in the repository,
-  records at the domain seller, and a wait for HTTPS. Pressless can
-  write the CNAME file and check each step; the records at the seller
-  are shown exactly, to copy.
-  No version yet. Recommendation: soon after 0.8.0's setup wizard, since
-  a stranger with a domain wants it soon after starting.
-  **Layman:** If you own a web address, a guided step-by-step shows exactly what to type at your domain seller so your site appears at that address.
-  Kind: feature.
-  Source: user-request-2026-10-03.
-  Lanes: face, publisher.
-
-- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
-  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
-  browser is closed the only way back is the console window, and the
-  opening link is spent, so reopening means a restart. A tray icon would
-  offer open, restart and quit. Must work on Windows and Linux (Windows
-  parity is the priority), and adds a dependency and packaging work.
-  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
-  Recommendation for the user (2026-10-02), not yet asked: leave the tray
-  icon until after 1.0. Why: it adds a dependency and packaging work on
-  both systems, the user called it a "perhaps", and PRESS-0203's Restart
-  covers the most common need.
-  Settled 2026-10-03: the user said to go ahead with the
-  recommendations. The tray icon waits until after 1.0; move it out of
-  0.8.0 when next touching the section.
-  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher, Package.
-
-- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
-  Asked for by the user 2026-10-02. LWSM (the user's local web-server
-  manager) manages every app that runs a web server: start, stop,
-  restart, and open the page in the browser of choice. Where LWSM runs
-  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
-  open: LWSM sets PORT in the environment it starts Pressless with
-  (PRESS-0202 records its contract), which is one candidate signal.
-  Depends on PRESS-0204.
-  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
-  this item applies on Linux only. On Windows the tray icon always shows
-  as PRESS-0204 has it, and the check need not run there.
-  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher.
-
-- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
-  The user, 2026-10-07, asked whether the app has multilanguage
-  support. It has none: every screen's words are English strings in the
-  Python modules and the page scripts, with no translation layer. Still
-  to settle with the user: which languages first, whether the published
-  site's own words (the starter pages, dates) are in scope or only the
-  app's screens, and how a language is chosen. Touches every screen, so
-  it needs a spec before building.
-  Timing (2026-10-07, the user): the languages come after 1.0.0;
-  the prep comes before it, as PRESS-0242 in 1.0.0.
-  User 2026-10-08: when translating, use Chrome and Gemini to help
-  settle the right wording.
-  Decided by the user 2026-10-08: Pressless picks the computer's
-  language at startup and switches to it; where it has no translation
-  for that language it uses English; where the language cannot be told
-  it offers a list of languages to choose from. The sample pages are
-  translated too. PRESS-0242's words.use() is the hook
-  (docs/specs/PRESS-0242-screen-words.md).
-  Left for this item by PRESS-0242 (2026-10-08): month and day names
-  on the list and the dashboard still come from strftime's %b and %a,
-  so they stay English; the app's pages and the starter pages say
-  lang="en"; template file names (poem, lyric, photograph, journal)
-  and the shortcut's file names stay English, being file names.
-  tests/test_words.py's INV-2 test lets the month and day names
-  through until then.
-  **Layman:** You can use Pressless in your own language, not only English.
-  Kind: feature.
-  Source: user-request-2026-10-07.
-  Lanes: Face, Editor, Setup.
-
-- 📋 [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
-  The verification request went in on 2026-10-10 (PRESS-0200). When
-  Google's approval email arrives, set google_signin.APPROVED to True;
-  test_the_page_says_while_google_has_not_approved_pressless then needs
-  its expectation turned round. Blocked on Google's reply, not on code.
-  **Layman:** When Google says yes, the app stops warning that Google is still checking it.
-  Kind: chore.
-  Source: PRESS-0200 resolution 2026-10-10.
-  Lanes: Insights.
-
 - ✅ [PRESS-0244] **Post an early-access trailer on YouTube, with a donation request.**
   User decision 2026-10-10: post the trailer now, labelled as an
   in-progress app (early access, alpha or beta: Claude's choice of
@@ -10962,33 +10989,6 @@ already-built code ships in whichever release comes next.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
-
-- 📋 [PRESS-0263] **Remember the user's choices on their own computer.**
-  Decided by the user 2026-10-13, as the useful half of "can the
-  app learn". Stored on this computer only and never sent anywhere.
-  Needs no spec.
-  **Layman:** Pressless remembers things like the page they last opened and the page they like to preview, kept only on their computer.
-  Kind: enhancement.
-  Source: user-decision-2026-10-13.
-  Lanes: Face, Settings.
-
-- 📋 [PRESS-0264] **The visual editor moves a section between columns, or out of them.**
-  Left out of PRESS-0260 by the user 2026-10-13 to keep the first
-  version small: there, Move up and Move down work within one list.
-  See docs/specs/PRESS-0260-visual-editor.md § 9.
-  **Layman:** They can move a paragraph or picture from one column to another, or out of the columns altogether.
-  Kind: feature.
-  Source: user-decision-2026-10-13 PRESS-0260.
-  Lanes: Face.
-
-- 📋 [PRESS-0265] **Sections in the visual editor can be dragged into place.**
-  PRESS-0260 moves sections with buttons only, which keyboard users
-  and the partially sighted can use; dragging is an extra way, never
-  the only one. See docs/specs/PRESS-0260-visual-editor.md § 9.
-  **Layman:** They can drag a section up or down the page with the mouse, as well as using the Move buttons.
-  Kind: feature.
-  Source: in-session-2026-10-13 PRESS-0260.
-  Lanes: Face.
 
 ## Milestones
 
