@@ -4289,6 +4289,17 @@ removed, and the menu follows.
   (spec-format.md section 1: a contract other parts bind to).
   Decided (user, 2026-10-12): the first 0.9.0 feature, after the
   five backlog ux defects (0245, 0246, 0247, 0249, 0251).
+  Decided (user, 2026-10-13): the menu stays his own HTML; Pressless
+  adds, removes or renames the page's link inside it, and says so where
+  a menu is too unusual to edit safely. Reordering and hiding wait for
+  PRESS-0216. This reverses design.md's "the menu is a list the Store
+  holds"; the spec's gate reviews it and design.md is written back.
+  Decided (user, 2026-10-13): Remove and Rename confirm, then publish at
+  once, as a press; a new page waits for its own Press to site.
+  Settled by design.md and earlier specs, not asked: a removed page goes
+  to the bin; a renamed one forwards its old address (as PRESS-0182);
+  the homepage cannot be removed or renamed; the Privacy page cannot be
+  removed while counting is on (PRESS-0199 section 9).
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
