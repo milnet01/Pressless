@@ -4300,6 +4300,10 @@ removed, and the menu follows.
   to the bin; a renamed one forwards its old address (as PRESS-0182);
   the homepage cannot be removed or renamed; the Privacy page cannot be
   removed while counting is on (PRESS-0199 section 9).
+  Spec: docs/specs/PRESS-0195-add-remove-rename-pages.md
+  Progress (2026-10-13): spec accepted after one review round (the
+  user's budget); five verified findings fixed. design.md and the specs
+  it amends were updated. Next: build it with write-code.
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
