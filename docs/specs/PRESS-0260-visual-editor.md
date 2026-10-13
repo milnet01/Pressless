@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0260 — The visual editor: typing on the page as it will look
 
-**Status:** spec draft (2026-10-13).
+**Status:** accepted (2026-10-13). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0260 (S15; split from PRESS-0215 by the user
 2026-10-13; the user's answers 2026-10-13).
