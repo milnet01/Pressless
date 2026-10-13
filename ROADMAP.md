@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=261 -->
+<!-- ants-roadmap-id-high-water: PRESS=263 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -10890,6 +10890,32 @@ already-built code ships in whichever release comes next.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
+
+- 📋 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
+  Decided by the user 2026-10-13. Off until the user says yes on one
+  plain screen, and switchable off in Settings. Counts only: screens
+  used, where setup stops, crashes, the Pressless version and system.
+  Never writing, page names, site addresses or paths. Sent to a
+  separate Google Analytics property kept for the app alone, not to
+  the site's own.
+  Needs a spec and a design.md change: today report.py promises
+  nothing is sent but what the user reads and sends. The key is public
+  in a public repository, so the figures are a guide, never exact.
+  The user asked for it straight after PRESS-0215's spec.
+  Give the user step-by-step help to make the property.
+  **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
+  Kind: feature.
+  Source: user-decision-2026-10-13.
+  Lanes: Face, Settings.
+
+- 📋 [PRESS-0263] **Remember the user's choices on their own computer.**
+  Decided by the user 2026-10-13, as the useful half of "can the
+  app learn". Stored on this computer only and never sent anywhere.
+  Needs no spec.
+  **Layman:** Pressless remembers things like the page they last opened and the page they like to preview, kept only on their computer.
+  Kind: enhancement.
+  Source: user-decision-2026-10-13.
+  Lanes: Face, Settings.
 
 ## Milestones
 
