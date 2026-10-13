@@ -73,6 +73,8 @@ save. The words view is retired; the code view stays.
     typed address.** One Pressless holds is published with the page.
 12. **(decided here) The header, footer and menu stay in the code
     view** until PRESS-0216.
+13. **(decided here) The preview keeps the Face's content policy**, so
+    a video or picture from elsewhere is not shown there (§ 4.2).
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -107,11 +109,23 @@ is true, `_Build.fixed_page` writes the shown page without calling
 `blocks.unmarked`. Only the visual view passes it.
 
 The frame keeps `sandbox="allow-same-origin"` and gains nothing.
+The editor page carries the outline `blocks.read` gives: every
+section's path (§ 4.5) and kind, in order, each marked or not. An
+unmarked code run (PRESS-0215 § 4.3 step 3) has no marks, so it shows
+in the frame but cannot be picked; the code view changes it.
+
 The Face page's script, `page_editor._VISUAL_SCRIPT`, waits for the
-frame's `load`, then walks its `contentDocument` for comment nodes.
+frame's `load`, then walks its `contentDocument` for comment nodes,
+pairing each marked section with the outline's next marked entry.
 Between an opening mark and its closing mark lie the section's nodes.
 The script keeps a model of the page: per section its kind, its fields
-as shown, its path (§ 4.5), and whether the user changed it.
+as shown, its path, and whether the user changed it.
+
+**The preview loads nothing from elsewhere, and this item keeps it
+so.** `face.FILES_POLICY` blocks a YouTube frame, and a picture, video
+or music at a typed `http:` or `https:` address. There the frame shows
+the browser's empty or broken box, and the side panel shows the
+address.
 
 It adds one `style` element to the frame's `head`: an outline round
 the picked section, a placeholder for an empty text or heading, and
@@ -145,7 +159,11 @@ frame, at a fixed place and size. It shows:
   sits in: the page's, a column's, or a row of pictures'. At an end of
   its list, the button it cannot use is shown disabled, never hidden.
 
-Fewer columns is refused while a column to go still holds a section.
+A picked columns section's panel also offers **Add to column N** for
+each column, and a picked row of pictures **Add a picture**. A row of
+pictures is added with its first picture, since Blocks refuses an
+empty row. Fewer columns is refused while a column to go still holds a
+section.
 
 ### 4.4 Typing
 
@@ -179,31 +197,44 @@ sections := [item, ...]
 item     := {"keep": path}                       a section of the file at `base`, unchanged
           | {"kind": k, "fields": {...},
              "parts": [[item, ...], ...]}         a section built anew
-          | {"code": "<html>"}                    a code section with these bytes
+          | {"code": "<html>"}                    a code section: the HTML between its marks
+removed  := [path, ...]                          sections of the file at `base` the user removed
 path     := [i] | [i, c, j]                      top-level section i; or section j of part c of section i
 ```
+
+The form carries `removed` beside `sections`. The panel shows a code
+section's HTML without its two marks, and posts it so.
 
 `page_editor._write`, for the visual view, under `editor.LOCK`:
 
 1. Check the file against `base`, as today.
 2. Where it has no area, `blocks.adopt` it (§ 4.1 step 2).
 3. `blocks.read` it, and resolve each `keep` to the `Section` read at
-   that path.
+   that path. Every path of the file must be kept or removed exactly
+   once, or `SectionsUnreadable` is raised.
 4. Build the page: `before` and `after` as read; each kept top-level
    section keeps the gap before it, and every other one has `"\n"`;
    the last gap as read. A section built anew is a `blocks.Section`
-   with no `source`; a `code` item is a `CODE` section whose `source`
-   is its bytes.
+   with no `source`; its `html` and `caption` are first rewritten by
+   `blocks.inline`, new beside `blocks.read`, which returns markup as
+   `section_html` writes `<inline>`, or `None`, which raises
+   `SectionRefused`. A `code` item is a `CODE` section whose `source`
+   is its HTML inside `<!-- pressless:code -->` and
+   `<!-- /pressless:code -->`.
 5. Write `blocks.write(page)` to the waiting copy, but only where
    `blocks.read` of it gives back the posted list: the same kinds at
    the same paths, each kept section's bytes unchanged. Otherwise raise
    `page_editor.SectionsUnreadable` and write nothing.
 
-`blocks.SectionRefused` from step 4 writes nothing either. Both answer
-like any failed save (`_failed`): the page says it was not saved, and
-why. `SectionsUnreadable` gets its `face.SENTENCES` entry and
+`blocks.SectionRefused` from step 4 writes nothing either. `_save` and
+`_pressed` catch both beside the failures they catch today, and answer
+as for those: not saved, and not published. `SectionsUnreadable` gets its `face.SENTENCES` entry and
 `words.py` keys, as every failure type does; every new word on the
 screen is a `words.py` key.
+
+**After a save, the posted list is the file's**: each section's path
+is its place in that list, which step 5 makes true, and the reply's
+`base` is the next save's.
 
 **After a save the frame is rebuilt** from the reply's preview, with
 the same section picked by path — **except while the caret is in a
@@ -218,8 +249,8 @@ with `../` before it on a page in `pages/`.
 
 - **The Builder publishes it.** `_Build.fixed_page`, building the site
   folder, calls `web_copy` for each picture section of the page whose
-  `src`, read from the page's place, is `photographs/<name>` for a
-  photograph the Store holds.
+  `src`, read from the page's place and percent-decoded, is
+  `photographs/<name>` for a photograph the Store holds.
 - **The preview shows it.** `editor.register` adds
   `face.add_files(PREVIEW_ADDRESS + "photographs/", ...)` serving the
   Store's originals, so the preview copies nothing.
@@ -239,9 +270,8 @@ only they used: `page_editor.show_words`, `script.press.paragraphs`,
 - It runs no script in the frame (§ 3 decision 9).
 - It writes a page only at a save, never at opening.
 - It re-spells no section the user did not change.
-- It adds no dependency and loads nothing from elsewhere; a YouTube
-  section loads its video only in the published site and the preview,
-  as PRESS-0215 § 4.4 writes it.
+- It adds no dependency, and the preview loads nothing from elsewhere
+  (§ 4.2).
 
 ## 5. Invariants
 
@@ -257,17 +287,18 @@ only they used: `page_editor.show_words`, `script.press.paragraphs`,
 - **INV-2** — A section the save does not change keeps its bytes when
   others are changed, added, moved or removed, a code section included.
   *Test:* `tests/test_page_editor.py::test_unchanged_sections_keep_their_bytes`:
-  a page holding a hand-spelled code section, a section in an earlier
-  form and a text section; one save changes the text, adds a button
-  and moves the code section up.
+  a page holding a hand-spelled code section, an unmarked code run and
+  a text section; one save changes the text, adds a button and moves
+  the code section up.
   *Breaks when:* a kept section is rebuilt from its fields.
 
 - **INV-3** — A save writes nothing unless the file it would write
   reads back as the posted sections.
   *Test:* `tests/test_page_editor.py::test_a_save_that_would_not_read_back_writes_nothing`:
-  a code item holding `<!-- /pressless:page -->`, and a text item whose
-  `html` holds a `span`; each leaves the waiting copy as it was and
-  answers 409.
+  a code item holding `<!-- /pressless:page -->`, a text item whose
+  `html` holds a `span`, and a list leaving out a section it does not
+  name as removed; each leaves the waiting copy as it was and answers
+  409.
   *Breaks when:* step 5's read-back is skipped, so the first item ends
   the area early.
 
@@ -330,6 +361,7 @@ only they used: `page_editor.show_words`, `script.press.paragraphs`,
 | The file changed elsewhere | Not saved, as today (`editor.ChangedElsewhere`) |
 | A hand-edited section in the code view | It shows as a code section next time (PRESS-0215 § 4.3) |
 | A browser where the frame cannot be edited | Not seen in Chrome; Edge and Firefox are by-hand rows (§ 7) |
+| A YouTube video, or media at a typed address | An empty or broken box in the preview; the address in the side panel (§ 4.2) |
 | The preview fails to build | The failure shows where the frame was, as today; the save stands |
 
 ## 7. Tests
@@ -393,8 +425,9 @@ build settles under this spec's reviewed direction.
   words-view half of § 4.2 marked withdrawn, citing PRESS-0260.
 - `docs/specs/PRESS-0238-add-remove-paragraphs.md`: **Superseded by:**
   PRESS-0260, and each invariant marked withdrawn.
-- `docs/specs/PRESS-0215-blocks.md`: INV-7 annotated *amended by
-  PRESS-0260*: the visual view's preview keeps the marks (§ 4.2).
+- `docs/specs/PRESS-0215-blocks.md`: INV-7 and § 4.7 annotated
+  *amended by PRESS-0260*: the visual view's preview keeps the marks
+  (§ 4.2); § 4.1 gains `inline` (§ 4.5).
 
 Also:
 
