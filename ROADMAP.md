@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=259 -->
+<!-- ants-roadmap-id-high-water: PRESS=261 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4243,7 +4243,7 @@ S14 and S15. Every page, the homepage included, is built and changed in a
 visual editor with a code editor beside it; pages are added, renamed and
 removed, and the menu follows.
 
-- 📋 [PRESS-0215] **A visual page editor like WordPress's, but simpler, with a code editor beside it.**
+- 📋 [PRESS-0215] **Blocks: a page is held as ready-made sections, as WordPress's are, with code kept wherever no section fits.**
   S15. Decided by the user 2026-10-02: as WordPress does it, a visual
   editor and a code editor, but friendlier. Ready-made sections such
   as text, a heading, a picture, a row of pictures, a button, a video,
@@ -4256,7 +4256,15 @@ removed, and the menu follows.
   rather than to today's plain textarea, which this item replaces. The
   Face's policy allows only its own scripts, so a highlighter is bundled
   or written here, never loaded from elsewhere.
-  **Layman:** They build and change any page, the homepage included, by working on the page as it will look, adding ready-made sections; the code is there for anyone who wants it.
+  2026-10-13: split by the user. This item is now Blocks: how a page is
+  held as marked sections, the section table, reading a page into
+  sections and writing them back, and the Builder. The visual editor is
+  PRESS-0260; code-box highlighting is PRESS-0261.
+  Decided by the user 2026-10-13: a page with no marks has its plain
+  paragraphs, headings and pictures recognised as sections, everything
+  else kept as code sections, and the file reshaped at its first save;
+  the Builder strips the marks from what it publishes.
+  **Layman:** Every page, the homepage and imported ones included, is held as sections such as text, a picture or a button, so the visual editor can change them; anything else stays as code, untouched.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Face, Store, Builder.
@@ -4386,6 +4394,29 @@ removed, and the menu follows.
   **Layman:** If you switch Pressless to a different Google Analytics site, your pages keep counting visitors into the old one.
   Kind: fix.
   Source: hand-check-2026-10-12, 0.8.2 Windows round.
+
+- 📋 [PRESS-0260] **Edit a page by typing on it as it will look, adding ready-made sections.**
+  S15. Split from PRESS-0215 by the user 2026-10-13, so each spec is
+  reviewed at a size that converges. Needs a spec, built on
+  PRESS-0215's Blocks; it replaces the words view of PRESS-0014 and
+  PRESS-0238.
+  Decided by the user 2026-10-13: editing happens on the page itself,
+  in the preview frame, with a side panel for a picked section's
+  settings, not as a list of section cards.
+  **Layman:** They click a heading or paragraph on the real-looking page and type there, and add, move or remove sections such as a picture or a button; this replaces the words box.
+  Kind: feature.
+  Source: split-from-PRESS-0215 user-decision-2026-10-13.
+  Lanes: Face.
+
+- 📋 [PRESS-0261] **Colour highlighting for HTML and CSS in the code box.**
+  Split from PRESS-0215 by the user 2026-10-13; needs no spec.
+  The user asked for it 2026-10-05. Decided by the user 2026-10-13:
+  a small highlighter written here, not a bundled editor, because the
+  Face's policy allows only its own scripts and it adds no dependency.
+  **Layman:** The page's code shows tags, attributes and text in different colours, so it is easier to read and change.
+  Kind: feature.
+  Source: split-from-PRESS-0215 user-request-2026-10-05.
+  Lanes: Face.
 
 ## 0.10.0 — their own look, and any file
 
