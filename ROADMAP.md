@@ -4418,6 +4418,31 @@ removed, and the menu follows.
   Source: split-from-PRESS-0215 user-request-2026-10-05.
   Lanes: Face.
 
+- 📋 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
+  Decided by the user 2026-10-13. Off until the user says yes on one
+  plain screen, and switchable off in Settings. Counts only: screens
+  used, where setup stops, crashes, the Pressless version and system.
+  Never writing, page names, site addresses or paths. Sent to a
+  separate Google Analytics property kept for the app alone, not to
+  the site's own.
+  Needs a spec and a design.md change: today report.py promises
+  nothing is sent but what the user reads and sends. The key is public
+  in a public repository, so the figures are a guide, never exact.
+  The user asked for it straight after PRESS-0215's spec.
+  Give the user step-by-step help to make the property.
+  2026-10-13, the user: now, before PRESS-0215's review, as more people
+  download each release; it may be switched off later, and it is always
+  opt-in, never on by default. Asked once in setup and once, on first
+  opening an updated Pressless, for current users; closing the question
+  counts as no. Contents: screens opened, setup steps reached or skipped,
+  each press and whether it worked, and an error's kind and where in
+  Pressless, with the version and system. Settings lists the last
+  reports sent, word for word, kept on the computer only.
+  **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
+  Kind: feature.
+  Source: user-decision-2026-10-13.
+  Lanes: Face, Settings.
+
 ## 0.10.0 — their own look, and any file
 
 S16 and S17. The site's colours, fonts and layout are picked from choices,
@@ -10890,23 +10915,6 @@ already-built code ships in whichever release comes next.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
-
-- 📋 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
-  Decided by the user 2026-10-13. Off until the user says yes on one
-  plain screen, and switchable off in Settings. Counts only: screens
-  used, where setup stops, crashes, the Pressless version and system.
-  Never writing, page names, site addresses or paths. Sent to a
-  separate Google Analytics property kept for the app alone, not to
-  the site's own.
-  Needs a spec and a design.md change: today report.py promises
-  nothing is sent but what the user reads and sends. The key is public
-  in a public repository, so the figures are a guide, never exact.
-  The user asked for it straight after PRESS-0215's spec.
-  Give the user step-by-step help to make the property.
-  **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
-  Kind: feature.
-  Source: user-decision-2026-10-13.
-  Lanes: Face, Settings.
 
 - 📋 [PRESS-0263] **Remember the user's choices on their own computer.**
   Decided by the user 2026-10-13, as the useful half of "can the
