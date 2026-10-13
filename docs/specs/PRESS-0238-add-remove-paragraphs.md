@@ -234,8 +234,6 @@ How the box looks after a save is checked by hand, in a browser.
 - Splitting or joining paragraphs — deferred; not yet queued.
 - A new paragraph before the page's first — refused (§4.3); the code
   view does it.
-- Styling a new paragraph — `docs/design.md` rules styling out of the
-  words view.
 
 ## 10. What checks this
 
