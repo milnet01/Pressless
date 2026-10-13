@@ -452,8 +452,9 @@ window and start it again."* and exits 3, serving nothing.
   `tests/test_updater.py::test_redirect_to_http_is_refused` — the redirect
   handler raises on an `http://` target and passes an `https://` one.
   *Breaks when:* the default redirect handler is used.
-- **INV-8** — Only `publisher.py`, `insights.py` and `updater.py` import a
-  network module. *Test:* `tests/test_network_confined.py::test_only_three_modules_reach_the_network`,
+- **INV-8** — Only `publisher.py`, `insights.py`, `updater.py` and
+  `usage.py` import a network module; PRESS-0262 INV-9 replaced the three
+  this named. *Test:* `tests/test_network_confined.py::test_only_four_modules_reach_the_network`,
   plus a planted `import socket` in a temporary file under a copy of the
   package being caught. *Breaks when:* `installer.py`, `updating.py` or any
   other module imports one.
@@ -628,7 +629,7 @@ over SSH cannot reach the credential vault).
 | INV-5 | `tests/test_updater.py::test_a_failed_check_is_silent` |
 | INV-6 | `tests/test_updater.py::test_download_rows` |
 | INV-7 | `tests/test_updater.py::test_redirect_to_http_is_refused` |
-| INV-8 | `tests/test_network_confined.py::test_only_three_modules_reach_the_network` |
+| INV-8 | `tests/test_network_confined.py::test_only_four_modules_reach_the_network` (PRESS-0262 INV-9) |
 | INV-9 | `tests/test_updater.py::test_a_stray_zip_member_writes_nothing` |
 | INV-10 | `tests/test_installer.py::test_linux_swap` |
 | INV-11 | `tests/test_installer.py::test_linux_helper` |

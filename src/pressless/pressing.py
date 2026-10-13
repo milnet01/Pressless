@@ -13,6 +13,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from pressless import usage
 from pressless.face import Face, Reply, Request
 from pressless.words import say
 
@@ -90,6 +91,8 @@ def run(kind: str, busy: Callable[[str], Reply],
         return press(lambda outcome: ended.append(outcome))
     finally:
         end(ended[-1])
+        done = ended[-1].said in (say("script.press.published"), say("script.press.undone"))
+        usage.report("press", kind=kind, ended="done" if done else "failed")
 
 
 def register(face: Face) -> None:

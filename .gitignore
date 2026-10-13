@@ -104,6 +104,9 @@ token.txt
 # The Google client secret, written at packaging by
 # scripts/write_google_secret.py (PRESS-0122 § 4.7). Never committed.
 src/pressless/_google_secret.py
+# The usage-report property's key, written at packaging by
+# scripts/write_usage_key.py (PRESS-0262 § 4.1). Never committed.
+src/pressless/_usage_key.py
 
 # Generated site output. The built site is published to the writer's OWN repo, not
 # committed here, or the two copies drift.

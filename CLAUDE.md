@@ -100,6 +100,8 @@ a time (`read_region` with `section=`). A comment or spec saying
   `google_signin.CLIENT_ID` or touching the Google sign-in's setup.
 - *Registering the GitHub App* — before filling `github_signin.CLIENT_ID`
   or `APP_SLUG`, or touching the GitHub sign-in's setup.
+- *Registering the usage-report property* — before writing the usage
+  key or touching the usage-report property's setup.
 - *Windows and browser checks* — before checking anything on the Windows
   box or in a browser.
 - *Editing the roadmap* — before changing a `Layman:` line or a section

@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless import safe_write
+from pressless import safe_write, usage
 from pressless.face import Face, Request, message_box
 from pressless.words import say
 
@@ -127,6 +127,7 @@ class Wizard:
             if isinstance(result, Stop):
                 return self._show(index, merged, above=result.fragment)
             if isinstance(result, Done):
+                usage.report("wizard_done", wizard=self._name)
                 self._forget(face)
                 return result.fragment
             if index + 1 == len(self._steps):
@@ -170,6 +171,7 @@ class Wizard:
               above: str = "") -> str:
         e = html.escape
         step = self._steps[index]
+        usage.report("wizard_step", wizard=self._name, step=step.name)
         loose = (message_box("step-hint", e(hint.text))
                  if hint is not None and hint.field not in step.fields else "")
         back = (f'<button type="submit" name="go" value="back">{say("wizard.back")}</button>'

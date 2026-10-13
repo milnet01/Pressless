@@ -355,6 +355,7 @@ _WORDS: dict[str, str] = {
     "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
     "face.report": "Suggest or report a problem",
+    "face.usage": "Usage reports",
     # The editor and the list (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "
@@ -1085,6 +1086,27 @@ _WORDS: dict[str, str] = {
     "report.open": (
         "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Open the report on "
         "GitHub</a>"
+    ),
+    # Usage reports (usage.py), and their step in setup (PRESS-0262).
+    "usage.title": "Usage reports",
+    "usage.explain": (
+        "Pressless can send anonymous reports of which screens you use, where setup stops and "
+        "what goes wrong, with its version and your system. They help us fix what gets in "
+        "people's way. They never hold your writing, your pages' names, your site's address "
+        "or your files. You can see every report sent, and turn them off at any time, under "
+        "Usage reports."
+    ),
+    "usage.agree": "Send anonymous usage reports",
+    "usage.yes": "Yes, send them",
+    "usage.no": "No thanks",
+    "usage.on": "Usage reports are on.",
+    "usage.off": "Usage reports are off. Nothing is sent.",
+    "usage.turn_on": "Turn usage reports on",
+    "usage.turn_off": "Turn usage reports off",
+    "usage.sent": "Reports sent, newest first",
+    "usage.none_sent": "No reports have been sent.",
+    "usage.unavailable": (
+        "Usage reports are not available in this copy of Pressless, so nothing is sent."
     ),
     # The cheat sheet (cheatsheet.py); each mark's own row is the mark.* family.
     "cheatsheet.you_type": "You type",

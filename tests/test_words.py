@@ -156,7 +156,8 @@ def _asked() -> dict[str, str]:
         for node in _strings(tree, _docstrings(tree)):
             found = [node.value] if KEY.fullmatch(node.value) else QUOTED_KEY.findall(node.value)
             for key in found:
-                if key.split(".", 1)[0] in prefixes:
+                # usage.json is a file's name, not a key (PRESS-0262).
+                if key.split(".", 1)[0] in prefixes and not key.endswith(".json"):
                     asked.setdefault(key, f"{path.name}:{node.lineno}")
     return asked
 
@@ -211,8 +212,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "length", "left", "jar"), _HTTP_HEADERS),
     },
     "publishing.py": {"MESSAGE": "a git commit message (decision 4)"},
-    "report.py": {"body": _ISSUE, "query": _ISSUE, "Windows": _ISSUE, "Linux": _ISSUE,
-                  "Linux (": _ISSUE, "an unknown system": _ISSUE},
+    "report.py": {"body": _ISSUE, "query": _ISSUE},
     "shortcuts.py": {
         "lines": _LAUNCHER, "wanted": _LAUNCHER, "found": _LAUNCHER, "done": _LAUNCHER,
         "_LINK": _LAUNCHER, "_BATCH": _LAUNCHER, "Desktop": "a folder's name",
@@ -231,6 +231,12 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "extra name", "already holds"), _MESSAGE),
     },
     "updating.py": {"The update check stopped at step": "a log line"},
+    "usage.py": {
+        **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
+                        "the system's name, sent in a report and the issue form"),
+        "Content-Type": _HTTP_HEADERS,
+        "usage report": "a log line", "not sent:": "a log line",
+    },
 }
 
 _SELECTOR = re.compile(r"[#.]?[\w-]+(?:\[[^\]]*\])?(?: [#.]?[\w-]+(?:\[[^\]]*\])?)*")

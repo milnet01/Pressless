@@ -202,6 +202,27 @@ permission pages on 2026-10-05.
    page from an account with no repositories. Before a release, § 7's
    whole-wizard run on both systems.
 
+## Registering the usage-report property
+
+Usage reports (PRESS-0262) go to a Google Analytics property kept for
+Pressless alone, never the site's own. Until a release is built with its
+key, Pressless never asks. The steps, as the user first walks them:
+
+1. In Google Analytics, a new property for Pressless, and in it a web
+   data stream. Its measurement id, `G-…`, is half the key.
+2. Under that stream, a Measurement Protocol API secret. That is the
+   other half. Never paste either into a session.
+3. Under the property's custom definitions, one event-scoped custom
+   dimension per parameter in `usage.EVENTS` and `usage.COMMON`, except
+   `engagement_time_msec`. `docs/usage-reports.md` lists them.
+4. The repository's Actions secrets `PRESSLESS_USAGE_MEASUREMENT_ID` and
+   `PRESSLESS_USAGE_API_SECRET`. The release jobs run
+   `scripts/write_usage_key.py`, which fails the release where either is
+   missing. On a development machine, run it by hand: it asks without
+   showing what is typed.
+
+Google's menu names above are unchecked until the user's first walk.
+
 ## Windows and browser checks
 
 **Windows is testable, and that is not obvious from anything else here.**

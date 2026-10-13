@@ -43,6 +43,7 @@ from pressless import (
     shortcuts,
     store,
     themes,
+    usage,
     words,
 )
 from pressless.words import say
@@ -802,7 +803,9 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         f'{themes.picker(theme)}{visit}<a href="/setup">{say("face.settings")}</a>'
         # PRESS-0179: on every screen, failure pages included.
-        f'<a href="/report">{say("face.report")}</a></header>'
+        f'<a href="/report">{say("face.report")}</a>'
+        # PRESS-0262 § 4.3: beside Report a problem.
+        f'<a href="{usage.ADDRESS}">{say("face.usage")}</a></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 
@@ -994,6 +997,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         try:
             body = page(request)
         except Exception as exc:  # noqa: BLE001 -- § Errors' last-resort catch
+            # PRESS-0262 § 4.4: the class name and the registered path, never
+            # the message, which can hold paths and names.
+            usage.report("failure", error=type(exc).__name__, screen=request.path,
+                         publishing="yes" if publishing else "no")
             self._send(500, _page(face.fail(exc, publishing=publishing), face._theme,
                                   face.live_address()), "text/html",
                        (("Content-Security-Policy", _FRAMES_POLICY),))
@@ -1002,6 +1009,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             location = (("Location", body.location),) if body.location is not None else ()
             self._send_bytes(body.status, body.body, body.content_type, location)
             return
+        if request.method == "GET":
+            usage.report("screen", screen=request.path)   # the registered path, no query
         self._send(200, _page(body, face._theme, face.live_address()), "text/html",
                    (("Content-Security-Policy", _FRAMES_POLICY),))
 

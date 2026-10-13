@@ -33,6 +33,7 @@ from pressless import (
     shortcuts,
     starter,
     store,
+    usage,
     wizard,
 )
 from pressless.face import Face, Request, render_notices
@@ -827,6 +828,16 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
 
+    def check_reports(answers: wizard.Answers):
+        try:
+            usage.set_answer(folder, answers.get("reports") == "yes")
+        except OSError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        return answers
+
+    # PRESS-0262 § 4.3: straight after welcome, in a copy that can send.
+    reports = ((wizard.Step("reports", "usage.title", ("reports",), _show_reports,
+                            check_reports),) if usage.can_send() else ())
     pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
     site = wizard.Step("site", "setup.step.site",
                        ("site_name", "site_description", "start", "look"),
@@ -834,6 +845,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     if signing_in:
         return wizard.Wizard("setup", (
             wizard.Step("welcome", "setup.step.welcome", (), _show_welcome_signing_in),
+            *reports,
             wizard.Step("signin", "github_setup.title", ("account",),
                         lambda answers, hint: _show_signin(answers, hint, sign_in),
                         check_signin),
@@ -845,6 +857,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         ), folder, "/setup")
     return wizard.Wizard("setup", (
         wizard.Step("welcome", "setup.step.welcome", (), _show_welcome),
+        *reports,
         wizard.Step("account", "setup.step.account", ("account",), _show_account,
                     check_account),
         wizard.Step("repository", "setup.step.repository", ("repository",),
@@ -856,6 +869,14 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
 def _show_welcome(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     return f"<p>{say('setup.welcome')}</p><p>{say('setup.welcome.beside')}</p>"
+
+
+def _show_reports(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+    """PRESS-0262 § 4.3: the explanation and one box, unticked."""
+    ticked = " checked" if answers.get("reports") == "yes" else ""
+    return (f"<p>{say('usage.explain')}</p>"
+            f'<p><label><input type="checkbox" name="reports" value="yes"{ticked}> '
+            f"{say('usage.agree')}</label></p>")
 
 
 def _sign_up() -> str:

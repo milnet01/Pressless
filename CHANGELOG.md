@@ -14,6 +14,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless asks whether it may send anonymous usage reports.** (PRESS-0262)
+  Setup asks once, and so does the list of your writing if you set up
+  before this. Nothing is sent unless you say yes. A report says which
+  screen you opened, which setup step you reached, how a press ended or
+  what kind of error happened, with Pressless's version and your system.
+  It never holds your writing, your pages' names, your site's address or
+  your files. The new Usage reports screen, linked from the top of every
+  screen, lists every report sent and turns them on or off.
+
 - **Start or delete a paragraph straight in a page's words box.** (PRESS-0238)
   A blank line and new words save as a new paragraph after the one
   they follow, or a new list item after a list item. Deleting a

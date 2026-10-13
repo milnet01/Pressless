@@ -145,6 +145,11 @@ you pressed, what you expected, and what Pressless showed you. A security
 problem is different: report it privately, as [SECURITY.md](SECURITY.md)
 explains.
 
+Pressless also asks once whether it may send anonymous usage reports:
+which screens are used, where setup stops, and what goes wrong. Nothing is
+sent unless you say yes, never your writing, names, addresses or files,
+and the Usage reports screen shows every report sent and turns them off.
+
 ## For the curious
 
 | Document | What it tells you |

@@ -51,6 +51,14 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: python scripts/write_google_secret.py
 
+      # PRESS-0262 § 4.1: the usage-report property's key, beside the
+      # secret above and for the same reason.
+      - name: The usage-report key
+        env:
+          PRESSLESS_USAGE_MEASUREMENT_ID: ${{ secrets.PRESSLESS_USAGE_MEASUREMENT_ID }}
+          PRESSLESS_USAGE_API_SECRET: ${{ secrets.PRESSLESS_USAGE_API_SECRET }}
+        run: python scripts/write_usage_key.py
+
       - name: Tools for the AppImage and the session
         run: |
           sudo apt-get update
@@ -147,6 +155,14 @@ jobs:
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: python scripts/write_google_secret.py
+
+      # PRESS-0262 § 4.1: the usage-report property's key, beside the
+      # secret above and for the same reason.
+      - name: The usage-report key
+        env:
+          PRESSLESS_USAGE_MEASUREMENT_ID: ${{ secrets.PRESSLESS_USAGE_MEASUREMENT_ID }}
+          PRESSLESS_USAGE_API_SECRET: ${{ secrets.PRESSLESS_USAGE_API_SECRET }}
+        run: python scripts/write_usage_key.py
 
       - name: Build
         run: ./scripts/build-windows.sh

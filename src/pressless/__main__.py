@@ -45,6 +45,7 @@ from pressless import (
     templates,
     undo,
     updating,
+    usage,
 )
 from pressless.words import say
 
@@ -186,6 +187,7 @@ def _serve_once(folder: Path) -> bool:
         editor.register(served, folder)
         cheatsheet.register(served)
         report.register(served)
+        usage.register(served, folder)
         templates.register(served, folder)
         publishing.register(served, folder)
         undo.register(served, folder)

@@ -1,4 +1,5 @@
-"""Only three modules reach the network (PRESS-0023 INV-8).
+"""Only four modules reach the network (PRESS-0262 INV-9, which replaced
+PRESS-0023 INV-8).
 
 "Network module" is the set test_network_timeouts.py names, and the import
 test is that file's own, so the two cannot disagree about what counts.
@@ -11,7 +12,7 @@ from pathlib import Path
 
 from test_network_timeouts import _SRC, _imports_network_machinery
 
-_ALLOWED = {"publisher.py", "insights.py", "updater.py"}
+_ALLOWED = {"publisher.py", "insights.py", "updater.py", "usage.py"}
 
 
 def _reaching(package: Path) -> set[str]:
@@ -19,11 +20,11 @@ def _reaching(package: Path) -> set[str]:
             if _imports_network_machinery(ast.parse(source.read_text(encoding="utf-8")))}
 
 
-def test_only_three_modules_reach_the_network(tmp_path):
+def test_only_four_modules_reach_the_network(tmp_path):
     """Breaks when installer.py, updating.py or any other module imports one.
 
     The planted copy proves the walk can see a new module at all: a check
-    that found only the three it already knew would pass against anything.
+    that found only the four it already knew would pass against anything.
     """
     assert _reaching(_SRC) == _ALLOWED
 
