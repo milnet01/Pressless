@@ -1,15 +1,15 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0195 — Adding, removing and renaming a page, with the menu following
 
-**Status:** spec draft (2026-10-13).
+**Status:** accepted (2026-10-13). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0195 (part of PRESS-0194, the user 2026-10-01;
 the menu and timing decisions 2026-10-13).
 
-**Amends:** PRESS-0014 (§4.9, §9), PRESS-0182 (§9), PRESS-0199 (§9),
-PRESS-0214 (§4.5, §9), PRESS-0005 (§4.3), PRESS-0006 (§4.1), PRESS-0008 (§4.2, §4.7),
-PRESS-0015 (§4.4), PRESS-0012 (§4.5), PRESS-0235 (§4.4) and
-`docs/design.md`. §11 lists
+**Amends:** PRESS-0014 (§4.8, §4.9, §9), PRESS-0182 (§9), PRESS-0199 (§9),
+PRESS-0214 (§4.5, §9), PRESS-0005 (§4.3), PRESS-0006 (§4.1),
+PRESS-0008 (§4.2, §4.7), PRESS-0015 (§4.4), PRESS-0012 (§4.5),
+PRESS-0235 (§4.4) and `docs/design.md`. §11 lists
 each edit.
 
 Layman: he can make a new page such as Gigs, delete one, or rename it,
@@ -55,8 +55,9 @@ new address. A renamed page's old address forwards to the new one.
    address; the homepage cannot be removed or renamed.** Settled by
    `docs/design.md` § Pages, and how they are held, and PRESS-0182.
 4. **The Privacy page cannot be removed while counting is on.**
-   PRESS-0199 §9. **(decided here)** Nor renamed: `starter.add_privacy`
-   keys on `pages/privacy.html` and would write a second one.
+   PRESS-0199 §9. **(decided here)** It is never renamed:
+   `starter.add_privacy` keys on `pages/privacy.html`, and would write a
+   second one when counting is next switched on.
 5. **(decided here) A page with unpublished changes cannot be renamed.**
    He presses or throws them away first, as PRESS-0182 decision 3 has
    it for an entry. Remove takes the changes to the bin with the page.
@@ -107,7 +108,8 @@ class Unusual(Exception): ...   # the menu is laid out in a way Pressless does n
 def links_to(text: str, name: str) -> tuple[tuple[int, int], ...]: ...
 def add(text: str, name: str, words: str) -> str: ...
 def remove(text: str, name: str) -> str: ...
-def rename(text: str, old: str, new: str, old_words: str, new_words: str) -> str: ...
+def rename(text: str, old: str, new: str, old_words: tuple[str, ...],
+           new_words: str) -> str: ...
 ```
 
 **A link** is an `<a` start tag up to the next `</a>`, case-insensitive.
@@ -130,8 +132,8 @@ write nothing. Every menu in §5 INV-5's fixtures is plain; a menu of
   immediately before it. No link to `name` returns `text` unchanged.
 - **`rename`** never raises. In each link to `old` it replaces the
   `href` value with `{{UP}}pages/<new>.html`. Where the link's text,
-  unescaped and stripped, equals `old_words`, it becomes `new_words`
-  through `html.escape`. `data-nav` is left alone: the page's own
+  unescaped and stripped, equals one of `old_words`, it becomes
+  `new_words` through `html.escape`. `data-nav` is left alone: the page's own
   marker still names it.
 
 Every byte outside the changed links is kept.
@@ -157,8 +159,8 @@ it, a box and a New page button post `name` to `POST /page/new`. Under
 4. **Answer 303** to the page editor for `page`.
 
 The live page and the menu are untouched. **Throw away changes**
-(PRESS-0014 §4.8) on a page with no live file bins its only copy, and it
-leaves the list.
+(PRESS-0014 §4.8) on a page with no live file bins its only copy, and
+its 303 goes to the list instead of the page editor.
 
 **Its first press** is PRESS-0014 §4.7 with these changes, where the
 live file is absent at step 3:
@@ -180,14 +182,13 @@ The page editor shows Remove and Rename on a fixed page other than
 new name too. Remove's question says unpublished changes go with the
 page. Each posts `kind`, `name` and, for Rename, `to`, to
 `POST /page/remove` or `POST /page/rename`. Both run as a press
-(PRESS-0235 §4.4). A `busy` answer echoes `kind` and `name`, with
-`published` false, and writes nothing.
+(PRESS-0235 §4.4); a `busy` answer writes nothing.
 
 **Refused, writing nothing and pressing nothing**, with a hint:
 
 - `name` is `index`, or is not a live page;
-- `name` is `privacy` and `settings.measurement_id` is set (§3
-  decision 4);
+- Remove, where `name` is `privacy` and `settings.measurement_id` is
+  set; Rename, where `name` is `privacy` (§3 decision 4);
 - Rename, where a waiting copy of `name` exists;
 - Rename, where `editor.name_address(to)` is empty, `index`, equal to
   `name`, a live or waiting page, a page-forwards key whose value is not
@@ -206,18 +207,22 @@ forwards without each pair whose value is `name`.
 byte for byte at `new` and bins `name`. It rewrites the page forwards
 as PRESS-0182 §4.2 step 4 does: drop the key `new`, re-point each value
 `name` to `new`, add `name` → `new`. It writes `menu.rename(…, name,
-new, builder.label(name), to.strip())` of the live navigation and its
-waiting copy.
+new, old_words, to.strip())` of the live navigation and its waiting
+copy. `old_words` holds `builder.label(name)` and, where the live page
+has one, its `<title>` text, unescaped: §4.3 gives a page Pressless
+added the typed name as its link words, and an imported page's link
+reads as its label.
 
 **A failure while publishing puts each remembered file back**, in
 reverse order: text is written, absent is binned. An
 `publisher.OutcomeUnknown` is not put back, as PRESS-0014 §4.7 has it.
 
-The reply is JSON: `published`, `failure`, `notices`, `busy`, and
-`address` — the list after a Remove, the editor for `new` after a
-Rename, the page's own editor after a failure. Its notices say where
-`menu.remove` raised `Unusual` or found no link to `name`, and where
-the header or footer still holds `pages/<name>.html`.
+The reply is JSON: `published`, `failure`, `hint`, `notices`, `busy`,
+and `address` — the list after a Remove, the editor for `new` after a
+Rename, the page's own editor otherwise. `hint` is null except on a
+refusal. A `busy` reply adds `said`, the running press's words. Its
+notices say where `menu.remove` raised `Unusual` or found no link to
+`name`, and where the header or footer still holds `pages/<name>.html`.
 
 ### 4.5 The Builder
 
@@ -299,7 +304,7 @@ and a four-link menu whose last link is `{{UP}}blog/index.html`.
   *Test:* `tests/test_menu.py::test_remove_takes_only_that_pages_links`.
   *Breaks when:* the match is a substring rather than the whole value.
 - **INV-7** — `menu.rename` changes the `href`, and the text only where
-  it equals `old_words`, on a `<ul><li>` menu as well.
+  it equals one of `old_words`, on a `<ul><li>` menu as well.
   *Test:* `tests/test_menu.py::test_rename_repoints_any_menu`.
   *Breaks when:* rename checks for a plain menu, or rewrites
   `data-nav`.
@@ -319,9 +324,11 @@ and a four-link menu whose last link is `{{UP}}blog/index.html`.
   *Breaks when:* the bin is not reversed, or the forwards are not.
 - **INV-11** — Rename writes the page byte-identical at the new name,
   bins the old, re-points the menu, and leaves the forwards with no
-  loop when a page moves back.
+  loop when a page moves back. A page added as "Live Shows" has its
+  link words changed too.
   *Test:* `tests/test_pages.py::test_renaming_a_page_and_back`.
-  *Breaks when:* moving back leaves `a` → `a`.
+  *Breaks when:* moving back leaves `a` → `a`, or `old_words` holds the
+  label alone.
 - **INV-12** — The build writes `pages/<old>.html` for a forward to a
   written page, none where `<old>` is itself a page, and no sitemap
   line for it.
@@ -357,6 +364,8 @@ Each is seen failing against code without the change.
 - `tests/test_pages.py`, new: the routes — INV-1, INV-2, INV-3, INV-4,
   INV-8, INV-9, INV-10, INV-11.
 - `tests/test_menu.py`, new: the text functions — INV-5, INV-6, INV-7.
+- `tests/test_pressing.py::test_a_second_press_is_refused` gains
+  `/page/remove` and `/page/rename`.
 - `tests/test_builder.py`: INV-12. `tests/test_store_extras.py`: INV-13.
   `tests/test_undo.py`: INV-14.
 
@@ -406,8 +415,8 @@ checked by hand, in a browser.
 
 ## 11. Cross-doc impact
 
-- `docs/specs/PRESS-0014-fixed-pages.md` §4.9 and §9 — adding, removing
-  and renaming point here.
+- `docs/specs/PRESS-0014-fixed-pages.md` §4.8, §4.9 and §9 — the
+  throw-away redirect, and adding, removing and renaming, point here.
 - `docs/specs/PRESS-0182-published-address.md` §9 — renaming a page
   points here.
 - `docs/specs/PRESS-0199-counting-code.md` §9 — the Privacy refusal
