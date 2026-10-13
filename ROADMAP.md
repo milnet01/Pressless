@@ -4458,6 +4458,14 @@ removed, and the menu follows.
   until both are set. Still owed: one real report seen arriving, the
   custom dimensions made, and a look at the setup step, the question
   above the list and the Usage reports screen in a browser.
+  Progress (2026-10-13): the user made the "Pressless app" property,
+  its web stream, the API secret, both Actions secrets and nine custom
+  dimensions; Google refused session_id as one. The Analytics
+  connector's service account was given Viewer on the property. A test
+  screen and wizard_step event, sent through usage.py with the real key,
+  passed Google's validation endpoint and showed in the property's
+  realtime report. Still owed: a look at the setup step, the question
+  above the list and the Usage reports screen in a browser.
   **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
   Kind: feature.
   Source: user-decision-2026-10-13.
