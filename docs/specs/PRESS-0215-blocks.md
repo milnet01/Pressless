@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0215 — Blocks: a page held as ready-made sections
 
-**Status:** spec draft (2026-10-13).
+**Status:** accepted (2026-10-13). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0215 (S15; `docs/design.md` § What may depend
 on what, under *Pages, and how they are held*; the user 2026-10-02 and
@@ -87,7 +87,8 @@ class Section:
     kind: str                                   # one of KINDS, or CODE
     fields: Mapping[str, str] = {}              # § 4.4, per kind
     parts: tuple[tuple["Section", ...], ...] = ()   # PICTURES: one; COLUMNS: one per column
-    source: str = ""                            # CODE only: its bytes, marks included
+    source: str = ""                            # the bytes it was read from, marks included,
+                                                # for CODE and an earlier form (§4.5); else empty
 
 @dataclass(frozen=True)
 class Page:
@@ -142,20 +143,22 @@ whitespace (which goes into `gaps`):
 2. **A section's bytes are read as its kind only where
    `section_html(<the section read>)` returns exactly those bytes.**
    Any other bytes, and a kind not in `KINDS`, make it a `CODE` section
-   whose `source` is the bytes.
+   whose `source` is the bytes. An optional field a section does not
+   carry is absent from `fields`, never `""`.
 3. **An opening mark with no matching closing mark, a closing mark
    with no opening one, and any other content** start an unmarked code
    run. It runs to the next opening section mark at this depth, or to
    the area's end, with trailing whitespace left to `gaps`. It is a
-   `CODE` section whose `source` holds no marks.
+   `CODE` section whose `source` is those bytes as they stand, a stray
+   mark included, with no `code` marks round them.
 
 A columns section reads each `pressless:column` pair inside it by the
 same three rules, one depth down; a column holds no columns or row of
 pictures. A row of pictures reads its pictures the same way.
 
 **`write(page)`** is `before`, then each gap followed by its section's
-bytes, then the last gap and `after`. A section's bytes are `source`
-for `CODE`, else `section_html(section)`.
+bytes, then the last gap and `after`. A section's bytes are its
+`source` where that is not empty, else `section_html(section)`.
 
 ### 4.4 The kinds
 
@@ -186,16 +189,19 @@ section, so a hand-spaced one reads as `CODE` (§4.3 step 2).
 and `CODE`, a missing field, an `html` or `caption` that is not
 `<inline>`, a `level` outside `1`–`6`, a `youtube` id outside
 `[A-Za-z0-9_-]{11}`, columns with fewer than two or more than four
-parts, and any address (`src`, `href`) that is not a relative path or
-an `http:`, `https:` or (for `href` only) `mailto:` address. For `CODE`
+parts, and any address that is not a relative path or an `http:`,
+`https:` or (for an `href` only) `mailto:` address: every `src` and
+`href` it would write, an inline `a`'s included. For `CODE`
 it returns `source`.
 
 ### 4.5 Earlier forms
 
 `blocks` keeps, per kind, every form `section_html` has ever written,
 as a reader beside the current writer. Step 2 of § 4.3 accepts a
-section whose bytes are any recorded form of its kind; the section read
-is then written in the current form at the next save. **A change to a
+section whose bytes are any recorded form of its kind, keeping them as
+its `source`, so `write` gives them back unchanged. A section built anew
+from its fields, as an editor does when it changes one, carries no
+`source` and is written in the current form. **A change to a
 kind's HTML adds a form, and never removes one.** This item ships one
 form per kind.
 
@@ -211,9 +217,10 @@ has an area. Otherwise:
 2. **Its top-level nodes are sorted.** A `p` with no attributes whose
    content is `<inline>` is a text section. An `h1` to `h6` with no
    attributes whose content is `<inline>` is a heading. An `img` with
-   `src` and any of `alt`, `width` and `height` and nothing else is a
-   picture. Every other run of nodes between two of these is one code
-   section, its bytes as they were.
+   `src` and `alt`, optionally `width` and `height`, and nothing else
+   is a picture. A node `section_html` would refuse (§4.4) is code.
+   Every other run of nodes between two of these is one code section,
+   its bytes as they were.
 3. **The file is rewritten:** the area's marks just inside `main`'s
    tags, each recognised node as `section_html` writes it, each code
    run in `code` marks round its own bytes, and the whitespace between
@@ -226,11 +233,13 @@ after (INV-5).
 
 ### 4.7 Publishing without the marks
 
-**`unmarked(name, html)`** returns `html` with every mark `read` finds
-removed: the area's two, each section's two and each column's two. A
-mark alone on its line takes its line, the line ending included; any
-other mark takes only its own bytes. A file `read` finds no area in is
-returned as it is.
+**`unmarked(name, html)`** returns `html` with every mark-shaped
+comment removed: each comment `HTMLParser` reports whose bytes are
+`<!-- pressless:<name> -->` or `<!-- /pressless:<name> -->`, `<name>`
+being lower-case letters, whatever `read` makes of it, so a stray or
+unknown mark inside a code run goes too. A mark alone on its line takes
+its line, the line ending included; any other mark takes only its own
+bytes. A file holding none is returned as it is.
 
 The Builder's `_Build.fixed_page` passes each page through `unmarked`
 before `_fill_fixed_page`, for the site folder and for `preview_html`
@@ -240,9 +249,11 @@ alike. The Store's file is never written by the Builder.
 
 `starter._PAGE`, `starter.new_page` and `starter.privacy_page` write
 their `main`'s content as a sections area: the heading as a heading
-section and each paragraph as a text section. The words those
-functions write are unchanged, and PRESS-0014's words view still finds
-them, since marks are comments and `page_editor.pieces` skips markup.
+section and each paragraph as a text section, each written by
+`section_html`, so its text is escaped as §4.4 says rather than with
+`quote=True`. The `<title>` keeps its own escaping. The words are
+otherwise unchanged, and PRESS-0014's words view still finds them,
+since marks are comments and `page_editor.pieces` skips markup.
 
 ### 4.9 What this item never does
 
@@ -288,12 +299,13 @@ them, since marks are comments and `page_editor.pieces` skips markup.
   form it replaced.
 
 - **INV-5** — `adopt` changes no node's meaning: the `HTMLParser`
-  events of `unmarked(name, adopt(html, furniture))`, with text decoded and
-  attributes compared as sets, equal those of `html`.
+  events of `unmarked(name, adopt(html, furniture))`, with text decoded,
+  attributes compared as sets, and a self-closed tag (`<br/>`) counted as
+  its start tag, equal those of `html`.
   *Test:* `tests/test_blocks.py::test_adopting_keeps_what_the_page_shows`,
   over fixtures holding character references, single-quoted and
   unquoted attributes, a `p` with a class, a `b`, a `figure`, a
-  `script` and a comment; and over the archive's pages.
+  `<br/>`, a `script` and a comment; and over the archive's pages.
   *Breaks when:* a recognised node loses an attribute, or whitespace
   inside it is collapsed.
 
@@ -305,8 +317,8 @@ them, since marks are comments and `page_editor.pieces` skips markup.
   *Breaks when:* the header markers or the `head` are re-spelled, or a
   second call adds a second area.
 
-- **INV-7** — No mark `read` finds reaches the site folder or a
-  preview, and a page `read` finds no area in is built as before.
+- **INV-7** — No mark-shaped comment reaches the site folder or a
+  preview, and a page holding none is built as before.
   *Test:* `tests/test_builder.py::test_marks_never_reach_the_site`
   builds a starter site and an adopted page, and searches every built
   file for `pressless:`; a page with no area builds byte-identical to
@@ -332,7 +344,8 @@ them, since marks are comments and `page_editor.pieces` skips markup.
 - **INV-10** — A starter page and an added page read with every
   section a kind, none `CODE`.
   *Test:* `tests/test_blocks.py::test_new_pages_are_all_sections`, over
-  each starter page, `new_page` and `privacy_page`.
+  each starter page, `new_page` and `privacy_page`, with a site name
+  and a page title each holding `'` and `"`.
   *Breaks when:* the starter's HTML drifts from `section_html`'s.
 
 ## 6. Failure modes
@@ -411,6 +424,9 @@ Each test is seen failing before the code it locks exists.
   ADR table replaces its *Owed by PRESS-0215* row with it.
 - `docs/design.md` § The parts: the Builder row gains "without the
   marks".
+- `docs/design.md`'s round-trip rule, under *Pages, and how they are
+  held*: a section in a recorded earlier form (§4.5) reads as its kind
+  and keeps its bytes until changed.
 - PRESS-0126 § 9's "Starter pages written as Blocks sections" row is
   done by this item.
 - `CHANGELOG.md`: one line, saying pages are now held as sections and
