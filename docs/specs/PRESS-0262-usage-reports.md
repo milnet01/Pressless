@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0262 — Usage reports, sent only when the user says yes
 
-**Status:** spec draft (2026-10-13).
+**Status:** accepted (2026-10-13). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0262 (the user 2026-10-13: whether the app could
 learn, whether usage reports would help, and how to read them).
@@ -80,16 +80,25 @@ EVENTS: Mapping[str, tuple[str, ...]] = {
     "wizard_step": ("wizard", "step"),
     "wizard_done": ("wizard",),
     "press":       ("kind", "ended"),
-    "error":       ("error", "screen", "publishing"),
+    "failure":     ("error", "screen", "publishing"),
 }
 COMMON = ("app_version", "system", "session_id", "engagement_time_msec")
 
 def can_send() -> bool: ...                 # this build carries the key
 def answer(folder: Path) -> bool | None: ...  # None: never asked
 def set_answer(folder: Path, yes: bool) -> None: ...
-def report(folder: Path, name: str, **params: str) -> None: ...
-def register(face: Face, folder: Path) -> None: ...
+def system() -> str: ...                    # moved here from report._system
+def report(name: str, **params: str) -> None: ...
+def register(face: Face, folder: Path, *,
+             transport: insights.Transport | None = None) -> None: ...
 ```
+
+`register` keeps `folder`, Pressless's own folder (the Face's), and the
+transport, which defaults to one built as § 4.5 says; `report` uses
+both, and does nothing before `register` has run. Tests hand in a
+double, as `insights.read` takes one as `client`. `usage` imports the Face for
+typing only, so the Face may call `report`; `report.py` calls
+`usage.system()`.
 
 ```python
 # src/pressless/_usage_key.py -- written by scripts/write_usage_key.py,
@@ -114,15 +123,18 @@ new `client`, `uuid.uuid4().hex`; `set_answer(folder, False)` writes
 through `safe_write`, as Settings does.
 
 **A report is sent only where `can_send()` and `answer(folder)` are both
-true.** Every other case returns from `report` before anything is built.
+true.** Every other case returns from `report`, once § 4.4's check of
+the call has passed, before anything is built.
 
 ### 4.3 Asking
 
-- **Setup** gains a step `reports`, before `site`, in both of
-  `setup.py`'s step lists, where `can_send()` holds. It shows the
+- **Setup** gains a step `reports`, straight after `welcome`, in both
+  of `setup.py`'s step lists, where `can_send()` holds. Every step
+  before it is unanswered, so § 4.7's funnel starts at `reports`. It shows the
   explanation (§ 4.6) and one checkbox, unticked. Its check calls
   `set_answer` with the box's state.
-- **A current user** — Settings loads and `answer(folder)` is `None` —
+- **A current user** — Settings loads, `can_send()` holds and
+  `answer(folder)` is `None` —
   sees the same explanation above the list at `/`, with **Yes, send
   them** and **No thanks**, through `face.add_to_list(..., above=True)`.
   Showing it calls `set_answer(folder, False)` first, so leaving it
@@ -137,25 +149,28 @@ true.** Every other case returns from `report` before anything is built.
 Each event is one `POST` to `ENDPOINT` with
 `?measurement_id=<id>&api_secret=<secret>` and a JSON body
 `{"client_id": <client>, "events": [{"name": <name>, "params": {...}}]}`.
-`params` holds exactly the event's names in `EVENTS` plus `COMMON`.
-`report` raises `ValueError` for a name not in `EVENTS` or a missing or
-extra parameter, and drops any value longer than 100 characters to its
-first 100.
+Callers pass only the event's names in `EVENTS`; `report` adds
+`COMMON`, so `params` holds exactly both. **`report` checks the call
+first, whatever the answer**: it raises `ValueError` for a name not in
+`EVENTS` or a missing or extra parameter, so a bad call fails in every
+test. It cuts any value longer than 100 characters to its first 100.
 
 | Event | Sent from | Values |
 |---|---|---|
-| `screen` | the Face's `_dispatch`, for a `GET` it answers from `_pages` | `screen`: the registered path, never the query |
+| `screen` | the Face's `_answer`, for a `GET` whose page returns HTML rather than a `Reply` | `screen`: the registered path, never the query |
 | `wizard_step` | `wizard.Wizard` when it shows a step | `wizard`: the wizard's name; `step`: the step's name |
-| `wizard_done` | `wizard.Wizard` when its last step's check passes | `wizard`: the wizard's name |
-| `press` | `pressing.run`, once the record ends | `kind`: the press's kind; `ended`: `done` where the outcome carries no failure, else `failed` |
-| `error` | the Face's `_answer`, in its last-resort catch | `error`: `type(exc).__name__`; `screen`: the registered path; `publishing`: `yes` or `no` |
+| `wizard_done` | `wizard.Wizard` when a step's check returns `Done` | `wizard`: the wizard's name |
+| `press` | `pressing.run`, once the record ends | `kind`: the press's kind; `ended`: `done` where the outcome's words are `script.press.published`'s or `script.press.undone`'s, else `failed` |
+| `failure` | the Face's `_answer`, in its last-resort catch | `error`: `type(exc).__name__`; `screen`: the registered path; `publishing`: `yes` or `no` |
 
-`app_version` is `pressless.__version__`. `system` is `report._system()`.
-`session_id` is one random number per start of Pressless.
-`engagement_time_msec` is `"1"`, which Google needs to count a user.
+`app_version` is `pressless.__version__`. `system` is `system()`.
+`session_id` is one random integer per start of Pressless, and
+`engagement_time_msec` the integer `1`, which Google needs to count a
+user; both are sent as JSON numbers, every other value as a string.
 
-**Every value is one Pressless chose** — a path it registered, a name in
-its code, a class name or one of the fixed words above. No value is
+**Every value in `params` is one Pressless chose** — a path it
+registered, a name in its code, a class name or one of the fixed words
+above. None but `system`, which reads the operating system's name, is
 read from a request's query or body, a file, Settings or the Store.
 
 ### 4.5 Sending
@@ -185,7 +200,7 @@ turn the reports into decisions, through the Google Analytics connector
 
 1. **Where setup stops**: a funnel over `wizard_step` with `wizard`
    `setup`, in step order, split by `system`.
-2. **What goes wrong**: `error` counted by `error`, `screen`,
+2. **What goes wrong**: `failure` counted by `error`, `screen`,
    `app_version` and `system`.
 3. **How presses end**: `press` counted by `kind` and `ended`, by
    `app_version`.
@@ -225,14 +240,14 @@ custom dimension; the document lists them.
   unknown name each raise `ValueError`.
   *Breaks when:* a caller passes a new parameter and it is sent.
 
-- **INV-4** — No value sent is taken from a request's query or body, a
-  file, Settings or the Store.
+- **INV-4** — No value in an event's `params` but `system` is taken
+  from a request's query or body, a file, Settings or the Store.
   *Test:* `tests/test_usage.py::test_no_users_words_are_sent`: a session
   through setup, the page editor and a failing press, with a site name,
   page name, repository and folder of plain marker words; no sent body
   holds any marker.
-  *Breaks when:* `screen` takes `self.path`, or `error` takes the
-  exception's message.
+  *Breaks when:* `screen` takes `self.path`, or `failure`'s `error`
+  takes the exception's message.
 
 - **INV-5** — A report never delays a reply.
   *Test:* `tests/test_usage.py::test_a_slow_endpoint_holds_nothing`: a
