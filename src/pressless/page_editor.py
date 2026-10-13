@@ -542,6 +542,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              told: Callable[[pressing.Outcome], None]) -> Reply:
     kind, name = form.get("kind", ""), form.get("name", "")
     notices: list[str] = []
+    said: list[str] = []
     gathered = _gatherer(face, notices)
 
     with editor.LOCK:
@@ -580,7 +581,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
                 words = _title(new) or builder.label(name)
                 if not gathered(lambda: _edit_menu(folder, changes,
                                                    lambda text: menu.add(text, name, words))):
-                    notices.append(say("notice.pages.menu_unusual"))
+                    said.append(say("notice.pages.menu_unusual"))
             try:
                 publishing.publish(folder, saved, key, entry=None, capture=face.capture,
                                    notices=notices, transport=transport)
@@ -599,9 +600,11 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
                                              secret=say("failure.secret.publishing_key"))
                                    + publishing.replace_link(exc))
             published = False
+            notices.extend(_menu_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
         else:
             failure = None
             published = True
+            notices.extend(_menu_said(said, True, False))
             if kept:
                 notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
         told(pressing.Outcome(say("script.press.published"), None) if published
@@ -695,6 +698,15 @@ def _edit_menu(folder: Path, changes: _Changes, edit: Callable[[str], str]) -> b
         if edited != text:
             changes.write(store.FURNITURE_FOLDER, "navigation", edited, waiting=waiting)
     return usual
+
+
+def _menu_said(said: list[str], published: bool, unknown: bool) -> list[Notice]:
+    """§ 4.3, § 4.4: a press's menu notices, saying what became of the site.
+    None where the press failed and everything was put back."""
+    if not (published or unknown):
+        return []
+    site = Site.UPDATED if published else Site.UNKNOWN
+    return [Notice(text, site) for text in said]
 
 
 def _name_refused(folder: Path, page: str, moving: str = "") -> str | None:
@@ -813,9 +825,11 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
               told: Callable[[pressing.Outcome], None], renaming: bool) -> Reply:
     name, to = form.get("name", ""), form.get("to", "").strip()
     notices: list = []
+    said: list[str] = []
     gathered = _gatherer(face, notices)
     hint: str | None = None
     failure: str | None = None
+    unknown = False
     with editor.LOCK:
         try:
             saved = gathered(lambda: settings.load(folder))
@@ -827,7 +841,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                 if renaming:
                     gathered(lambda: _renamed(folder, name, to, changes))
                 else:
-                    gathered(lambda: _removed(folder, name, changes, notices))
+                    gathered(lambda: _removed(folder, name, changes, said))
                 try:
                     publishing.publish(folder, saved, key, entry=None, capture=face.capture,
                                        notices=notices, transport=transport)
@@ -838,6 +852,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                     gathered(changes.put_back)
                     raise
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
+            unknown = isinstance(exc, publisher.OutcomeUnknown)
             failure = (face.fail(exc, publishing=False,
                                  secret=say("failure.secret.publishing_key"))
                        + publishing.replace_link(exc))
@@ -850,6 +865,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
         else:
             address = "/"
     published = hint is None and failure is None
+    notices.extend(_menu_said(said, published, unknown))
     told(pressing.Outcome(say("script.press.published") if published
                           else say("script.press.not_published"), failure))
     return _json({"published": published, "failure": failure,
@@ -1039,6 +1055,13 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
         said.textContent = reply.published ? say("script.press.published")
           : reply.hint ? standing() : say("script.press.not_published");
         if (reply.published && !reply.notices) window.location.href = reply.address;
+        // Read first, then on: this page's own editor may name a page that
+        // has gone, and a save there would bring it back.
+        else if (reply.published) {
+          stopped = true;
+          document.getElementById("notices").closest("dialog").addEventListener(
+            "close", () => { window.location.href = reply.address; }, {once: true});
+        }
       } catch (error) {
         said.textContent = standing(); stop("");
       }

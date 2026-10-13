@@ -25,6 +25,7 @@ from test_page_editor import (
 from test_publisher import _listing, _reads, _Transport, _writes
 
 from pressless import settings, store
+from pressless.words import say
 
 MENU = ('<nav><a href="{{UP}}index.html" data-nav="Home">Home</a> '
         '<a href="{{UP}}pages/about.html" data-nav="about">About</a> '
@@ -184,7 +185,9 @@ def test_an_unusual_menu_is_left_and_said(tmp_path, monkeypatch):
                                  base=_digest(copy), route="/page/publish")[2])
     assert reply["published"] is True, reply
     assert _menu(folder) == UNUSUAL
-    assert "laid out in a way Pressless does not edit" in html.unescape(reply["notices"])
+    notices = html.unescape(reply["notices"])
+    assert "laid out in a way Pressless does not edit" in notices
+    assert say("site.updated") in notices and say("site.unchanged") not in notices
 
 
 def test_throwing_away_a_new_page_returns_to_the_list(tmp_path):
@@ -256,6 +259,25 @@ def test_remove_and_rename_refusals(tmp_path, monkeypatch):
             assert reply["published"] is False and reply["hint"], (route, name, to, reply)
     assert _held(folder) == before
     assert github.requests == []
+
+
+@pytest.mark.parametrize("published", [True, False])
+def test_a_removes_menu_notice_follows_the_press(tmp_path, monkeypatch, published):
+    """§ 4.4: a Remove's menu notice says the site changed where the press
+    published, and is not shown where it failed and everything was put back.
+
+    Breaks when it says "Your site has not changed" beside a page that left."""
+    _key(monkeypatch)
+    folder = _folder_with_menu(tmp_path, UNUSUAL)
+    with _pages(folder, _github("pages/about.html") if published else _refusing()) as browser:
+        reply = _reshape(browser, "remove", "about")
+    notices = html.unescape(reply["notices"])
+    assert reply["published"] is published, reply
+    if published:
+        assert say("notice.pages.menu_unusual") in notices
+        assert say("site.updated") in notices and say("site.unchanged") not in notices
+    else:
+        assert say("notice.pages.menu_unusual") not in notices
 
 
 @pytest.mark.parametrize("route", ["remove", "rename"])
