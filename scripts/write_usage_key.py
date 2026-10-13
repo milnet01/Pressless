@@ -34,7 +34,8 @@ def _value(variable: str, prompt: str) -> str:
     value = os.environ.get(variable)
     if value is None:
         value = getpass.getpass(prompt) if _asks() else ""
-    return value
+    # A value pasted into GitHub's secret box keeps a trailing line break.
+    return value.strip()
 
 
 def main(argv: list[str]) -> int:

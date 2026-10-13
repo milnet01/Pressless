@@ -81,3 +81,15 @@ def test_each_release_job_writes_the_key_before_building(job: str):
     assert key[0] < build[0]
     for name in VARIABLES:
         assert f"{name}: ${{{{ secrets.{name} }}}}" in steps[key[0]], name
+
+
+def test_space_around_a_value_is_ignored(tmp_path: Path):
+    """Breaks when a value pasted into GitHub with a trailing line break fails
+    the release, or is written with the break in it."""
+    target = tmp_path / "_usage_key.py"
+    ran = _run(target, f" {MEASUREMENT_ID}\n", f"{SENTINEL}\r\n")
+    assert ran.returncode == 0, ran.stderr
+    spec = importlib.util.spec_from_file_location("_usage_key_spaced", target)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert (module.MEASUREMENT_ID, module.API_SECRET) == (MEASUREMENT_ID, SENTINEL)
