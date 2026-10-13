@@ -4250,7 +4250,7 @@ S14 and S15. Every page, the homepage included, is built and changed in a
 visual editor with a code editor beside it; pages are added, renamed and
 removed, and the menu follows.
 
-- 📋 [PRESS-0215] **Blocks: a page is held as ready-made sections, as WordPress's are, with code kept wherever no section fits.**
+- ✅ [PRESS-0215] **Blocks: a page is held as ready-made sections, as WordPress's are, with code kept wherever no section fits.**
   S15. Decided by the user 2026-10-02: as WordPress does it, a visual
   editor and a code editor, but friendlier. Ready-made sections such
   as text, a heading, a picture, a row of pictures, a button, a video,
@@ -4275,6 +4275,14 @@ removed, and the menu follows.
   review-contract round (one round, the user's budget) not yet run. It
   was paused because the user put PRESS-0262 first; run it after
   PRESS-0262's review.
+  Shipped 2026-10-13 (94bce96): built to docs/specs/PRESS-0215-blocks.md.
+  src/pressless/blocks.py reads, writes, adopts and unmarks pages; the
+  Builder publishes through unmarked; starter, added and Privacy pages
+  are written in sections. ADR-0006 records the marks. Gate green on
+  Linux and the Windows box; each INV seen red by a hand-made breach.
+  Nothing on screen changes, so no browser check is owed. Adopting the
+  live site's four pages gives one code section each: their main holds
+  wrappers, and recognising more is the spec's deferred § 9 row.
   **Layman:** Every page, the homepage and imported ones included, is held as sections such as text, a picture or a button, so the visual editor can change them; anything else stays as code, untouched.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
