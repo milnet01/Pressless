@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0238 — Adding and removing a paragraph in the words box
 
-**Status:** spec draft (2026-10-13).
+**Status:** accepted (2026-10-13). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0238 (the user 2026-10-05, after the PRESS-0234
 hand check; the three decisions in §3, the user 2026-10-13).
@@ -158,9 +158,10 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
 
 - **INV-4** — A change that cannot be placed writes nothing.
   *Test:* `test_unplaceable_changes_are_refused`. Each raises
-  `PiecesChanged` from `put_words`, and the save route answers its hint
-  with no waiting copy:
-  (a) deleting "now" from `<p>Go <a href="x">here</a> now</p>`;
+  `PiecesChanged` from `put_words`, and the save route answers §4.6's
+  sentence as its hint, with no waiting copy:
+  (a) deleting "now" from `<p>Go <a href="x">here</a> now</p>`, with
+  two blank lines left and with three;
   (b) adding a paragraph between "Go" and "here" there;
   (c) adding one after `<div>Loose</div>`;
   (d) a new first paragraph;
@@ -168,10 +169,12 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   (f) deleting one of `<p>Same</p><h2>Same</h2>`;
   (g) an empty box;
   (h) deleting "a" from `<p>a<p>b</p>`.
-  Each fixture is refused by the rule its letter names alone: without
-  that rule, (a) and (h) delete a block, (b) and (c) write a new one,
-  (d) writes before the first, (e) writes two edits, (f) deletes one of
-  two, and (g) empties the page.
+  Each fixture isolates one rule, and fails without it: (a) §4.4's own
+  block, else its `<p>` is deleted; (b), (c) and (d) §4.3's last piece,
+  no block and no `P`, else a new element is written; (e) §4.2 step 5,
+  else two edits are written; (f) §4.5, else one of the two goes; (g)
+  §4.4's empty box, else the page is emptied; (h) §4.1's unmatched start
+  tag, else closing `<p>a` where HTML implies it deletes it.
   *Breaks when:* any of those rules is missing.
 
 - **INV-5** — One save may add and remove in different places.
@@ -188,6 +191,15 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
   holding the new `p`. `POST /page/publish` with that box publishes it.
   *Breaks when:* a route still refuses a count that differs before
   `put_words` runs.
+
+- **INV-7** — A box with the page's own count is read in order, never
+  aligned.
+  *Test:* `test_a_same_count_box_is_read_in_order`. `put_words` with
+  "Tea & toast, it’s late.\n\nSecond one.\n\nFourth." returns `ABOUT`
+  with those three in its three pieces, in order, and no element added
+  or removed.
+  *Breaks when:* every box is aligned (§8): then the `h1` is deleted and
+  a `p` added.
 
 ## 6. Failure modes
 
@@ -208,10 +220,10 @@ an `h1` "Hello", then two `p` elements, "Tea & toast, it’s late." and
 Each is seen failing against code without the change.
 
 - `tests/test_page_editor.py`: INV-1, INV-2, INV-3, INV-4, INV-5,
-  INV-6.
+  INV-6, INV-7.
 - `tests/test_page_editor.py::test_a_changed_paragraph_count_writes_nothing`
-  keeps its emptied-paragraph case and loses its added one, which now
-  saves (INV-1).
+  loses its added and emptied boxes, which now save (INV-1, INV-3). Its
+  blank-line check moves to INV-4 (a).
 
 How the box looks after a save is checked by hand, in a browser.
 
@@ -245,8 +257,7 @@ How the box looks after a save is checked by hand, in a browser.
 | INV-4 | `tests/test_page_editor.py::test_unplaceable_changes_are_refused` |
 | INV-5 | `tests/test_page_editor.py::test_one_save_adds_and_removes` |
 | INV-6 | `tests/test_page_editor.py::test_a_new_paragraph_saves_and_publishes` |
-| A box with the page's count is read as today | `tests/test_page_editor.py::test_words_change_only_their_own_bytes` (PRESS-0014 INV-1) |
-| The new refusal words | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
+| INV-7 | `tests/test_page_editor.py::test_a_same_count_box_is_read_in_order` |
 | The box and the preview after a save, on screen | **nothing** in CI — by hand, in a browser |
 
 ## 11. Cross-doc impact
