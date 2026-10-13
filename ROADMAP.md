@@ -4281,7 +4281,7 @@ removed, and the menu follows.
   Source: user-request-2026-10-02.
   Lanes: Face, Builder.
 
-- 📋 [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
+- ✅ [PRESS-0195] **He can add, remove and rename pages, and the menu follows.**
   Part of PRESS-0194 (user, 2026-10-01). Today only the existing
   fixed pages can be edited; PRESS-0014 section 9 left adding, removing
   and renaming unqueued. Touches the Store's page set, the menu, the
@@ -4304,6 +4304,9 @@ removed, and the menu follows.
   Progress (2026-10-13): spec accepted after one review round (the
   user's budget); five verified findings fixed. design.md and the specs
   it amends were updated. Next: build it with write-code.
+  Shipped (2026-10-13): built to the spec in 91516ce. Local gate green on
+  Linux and the Windows box. Not yet seen in a real browser or pressed
+  against GitHub; the spec's by-hand rows are owed before a release.
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.

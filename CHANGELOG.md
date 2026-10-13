@@ -12,6 +12,16 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **You can add, remove and rename your site's pages, and the menu keeps up.** (PRESS-0195)
+  Your pages list has a New page box. A new page waits on your computer
+  until you press it to your site, and that press adds it to your menu.
+  A page's editor has Remove and Rename buttons. Each asks first, then
+  changes your site straight away. A renamed page's old address still
+  reaches it. Your menu stays your own: where it is laid out in a way
+  Pressless does not change, Pressless says so and leaves it alone.
+
 ### Fixed
 
 - **After an Undo, Drafts now says which of two same-named entries is which.** (PRESS-0249)
