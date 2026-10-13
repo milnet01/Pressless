@@ -4429,7 +4429,7 @@ removed, and the menu follows.
   Source: split-from-PRESS-0215 user-request-2026-10-05.
   Lanes: Face.
 
-- 🚧 [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
+- ✅ [PRESS-0262] **Ask-first, anonymous usage reports, so we learn where people get stuck.**
   Decided by the user 2026-10-13. Off until the user says yes on one
   plain screen, and switchable off in Settings. Counts only: screens
   used, where setup stops, crashes, the Pressless version and system.
@@ -4466,6 +4466,13 @@ removed, and the menu follows.
   passed Google's validation endpoint and showed in the property's
   realtime report. Still owed: a look at the setup step, the question
   above the list and the Usage reports screen in a browser.
+  Resolved (2026-10-13): the user looked at the three screens in
+  throwaway copies carrying the real key: setup's reports step (step 2),
+  the question above the list, and the Usage reports screen while off. The
+  screen's on state and its list were not opened by hand;
+  tests/test_usage.py::test_the_screen_lists_what_was_sent covers them.
+  The preview script is claude-scratch/press-0262-preview.py; it marks
+  app_version "-preview".
   **Layman:** If the user agrees, Pressless tells us which screens are used, where setup stops and when it crashes, so it can be improved; it never sends their writing, names, addresses or file paths.
   Kind: feature.
   Source: user-decision-2026-10-13.
