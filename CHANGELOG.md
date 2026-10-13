@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Start or delete a paragraph straight in a page's words box.** (PRESS-0238)
+  A blank line and new words save as a new paragraph after the one
+  they follow, or a new list item after a list item. Deleting a
+  paragraph's words removes that paragraph. Anything Pressless cannot
+  place, such as a paragraph split in two, is refused and the box says so.
+
 - **You can add, remove and rename your site's pages, and the menu keeps up.** (PRESS-0195)
   Your pages list has a New page box. A new page waits on your computer
   until you press it to your site, and that press adds it to your menu.

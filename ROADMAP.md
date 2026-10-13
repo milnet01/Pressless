@@ -4319,7 +4319,7 @@ removed, and the menu follows.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
 
-- 📋 [PRESS-0238] **The words box lets the writer add or remove a paragraph on a fixed page.**
+- ✅ [PRESS-0238] **The words box lets the writer add or remove a paragraph on a fixed page.**
   Today a fixed page's words box ties each paragraph to one spot in
   the page's code (PRESS-0014), so pressing Enter twice to start a new
   paragraph is refused: "did not save it ... press Show me the code".
@@ -4335,6 +4335,11 @@ removed, and the menu follows.
   heading). Deleting removes a whole block (paragraph, heading or list
   item) whose text is all that piece; a piece sharing its block with a
   link or other markup is refused.
+  Shipped 2026-10-13 in 8769cd0, under docs/specs/PRESS-0238-add-remove-paragraphs.md
+  (accepted after one review round, five findings fixed). Gate: Linux
+  1079 passed, Windows box 1009 passed. The spec's by-hand row passed in
+  driven headless Chrome (add a list item, delete a paragraph, a refused
+  new first paragraph; box, hint and preview all right).
   **Layman:** You can start a new paragraph, or delete one, straight in the words box, without opening the code.
   Kind: feature.
   Source: user-request-2026-10-05.
