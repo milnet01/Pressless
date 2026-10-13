@@ -235,7 +235,7 @@ _WORDS: dict[str, str] = {
     ),
     "failure.photographs.NotAPhotograph.next": "Choose a JPEG, PNG, WebP or GIF photograph.",
     "failure.page_editor.PiecesChanged.what": (
-        "Not saved: the paragraph count no longer matches your page."
+        "Not saved: Pressless could not place that change."
     ),
     "failure.page_editor.PiecesChanged.next": "Put it back, or use Show me the code.",
     "failure.menu.Unusual.what": "Pressless does not edit a menu laid out like yours.",

@@ -121,8 +121,8 @@ removes.
 ### 4.6 The words
 
 `failure.page_editor.PiecesChanged.what` becomes *"Not saved: Pressless
-could not tell where that change goes on your page."* and `.next`
-becomes *"Put it back, or make it in Show me the code."*.
+could not place that change."* `.next` stays, so the hint keeps within
+the three lines `test_the_refusal_fits_its_lines_on_a_phone` holds.
 `script.press.paragraphs` stays: it is still true of every refusal.
 
 ## 5. Invariants

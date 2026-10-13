@@ -77,6 +77,8 @@ SENTENCES[menu.Unusual] = Sentence(
 )
 
 _HIDDEN = frozenset(("script", "style", "template"))
+# PRESS-0238 § 4.1: the elements a paragraph may be added after or removed as.
+_BLOCKS = frozenset(("p", "h1", "h2", "h3", "h4", "h5", "h6", "li"))
 _LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
            "navigation": "editor.pages.navigation"}
 _JSON = "application/json"
@@ -88,6 +90,13 @@ class Piece:
     start: int          # offsets into the file's text
     end: int
     shown: str          # what the box shows for it
+
+
+@dataclass(frozen=True)
+class _Block:
+    tag: str
+    start: int          # the start tag's first byte
+    end: int            # one past the end tag's last byte
 
 
 # ------------------------------------------------------ the words (§ 4.2) ---
@@ -103,6 +112,8 @@ class _Runs(HTMLParser):
         self.starts = [0] + [at + 1 for at, char in enumerate(text) if char == "\n"]
         self.runs: list[list[int | bool]] = []     # [start, end, hidden]
         self.hidden = 0
+        self.open: list[tuple[str, int]] = []      # start tags not yet ended
+        self.blocks: list[_Block] = []
 
     def _at(self) -> int:
         line, column = self.getpos()
@@ -131,14 +142,28 @@ class _Runs(HTMLParser):
     def handle_starttag(self, tag: str, attrs: object) -> None:
         if tag in _HIDDEN:
             self.hidden += 1
+        self.open.append((tag, self._at()))
 
     def handle_endtag(self, tag: str) -> None:
         if tag in _HIDDEN and self.hidden:
             self.hidden -= 1
+        # PRESS-0238 § 4.1: an end tag ends the nearest open start tag of its
+        # name; one never ended is no block.
+        for at in range(len(self.open) - 1, -1, -1):
+            if self.open[at][0] == tag:
+                _, start = self.open.pop(at)
+                if tag in _BLOCKS:
+                    self.blocks.append(_Block(tag, start, self.text.index(">", self._at()) + 1))
+                break
 
 
 def pieces(name: str, html_text: str) -> tuple[Piece, ...]:
     """The pieces the box shows, in file order (§ 4.2)."""
+    return _parse(name, html_text)[0]
+
+
+def _parse(name: str, html_text: str) -> tuple[tuple[Piece, ...], tuple[_Block, ...]]:
+    """The pieces, and the blocks around them (PRESS-0238 § 4.1)."""
     spans = builder.furniture_spans(name, html_text)
     parser = _Runs(html_text)
     parser.feed(html_text)
@@ -150,7 +175,7 @@ def pieces(name: str, html_text: str) -> tuple[Piece, ...]:
         shown = re.sub(r"\s+", " ", html.unescape(html_text[start:end])).strip()
         if shown:
             found.append(Piece(start, end, shown))
-    return tuple(found)
+    return tuple(found), tuple(parser.blocks)
 
 
 def words(name: str, html_text: str) -> str:
@@ -173,19 +198,86 @@ def put_words(name: str, html_text: str, box: str) -> str:
     # Every empty part goes, so a run of blank lines is one gap (PRESS-0143).
     parts = [part for part in parts if part]
 
-    found = pieces(name, html_text)
-    if len(parts) != len(found):
-        raise PiecesChanged(f"the box holds {len(parts)} paragraphs and the page {len(found)}")
+    found, blocks = _parse(name, html_text)
+    if len(parts) == len(found):
+        changes = [_edit(html_text, piece, part)
+                   for piece, part in zip(found, parts, strict=True) if part != piece.shown]
+    else:
+        changes = _placed(html_text, found, blocks, parts)
     out = html_text
-    for piece, part in reversed(tuple(zip(found, parts, strict=True))):
-        if part == piece.shown:
-            continue
-        raw = html_text[piece.start:piece.end]
-        leading = raw[:len(raw) - len(raw.lstrip())]
-        trailing = raw[len(raw.rstrip()):]
-        out = (out[:piece.start] + leading + html.escape(part, quote=False) + trailing
-               + out[piece.end:])
+    for start, end, written in sorted(changes, reverse=True):
+        out = out[:start] + written + out[end:]
     return out
+
+
+def _edit(html_text: str, piece: Piece, part: str) -> tuple[int, int, str]:
+    """Step 4: the piece's own leading and trailing whitespace around the part."""
+    raw = html_text[piece.start:piece.end]
+    leading = raw[:len(raw) - len(raw.lstrip())]
+    trailing = raw[len(raw.rstrip()):]
+    return piece.start, piece.end, leading + html.escape(part, quote=False) + trailing
+
+
+def _placed(html_text: str, found: tuple[Piece, ...], blocks: tuple[_Block, ...],
+            parts: list[str]) -> list[tuple[int, int, str]]:
+    """PRESS-0238 § 4.2: a box whose count differs, aligned to the pieces.
+    Raises PiecesChanged where a change cannot be placed."""
+    if not parts:
+        raise PiecesChanged("the box holds no paragraph")  # § 4.4
+    shown = [piece.shown for piece in found]
+
+    def block_of(piece: Piece) -> _Block | None:
+        around = [block for block in blocks if block.start < piece.start < block.end]
+        return min(around, key=lambda block: block.end - block.start, default=None)
+
+    def inside(block: _Block) -> list[Piece]:
+        return [piece for piece in found if block.start < piece.start < block.end]
+
+    def beside(sides: tuple[int, int], words: list[str]) -> bool:
+        """§ 4.5: the piece just outside, on either side, reads the same."""
+        return any(0 <= where < len(found) and shown[where] in words for where in sides)
+
+    changes = []
+    matcher = difflib.SequenceMatcher(None, shown, parts, autojunk=False)
+    for tag, first, last, part_first, part_last in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "replace":
+            if last - first != part_last - part_first:
+                raise PiecesChanged("a paragraph was split or joined")
+            changes += [_edit(html_text, found[at], parts[part_first + at - first])
+                        for at in range(first, last)
+                        if parts[part_first + at - first] != shown[at]]
+        elif tag == "delete":
+            if beside((first - 1, last), shown[first:last]):
+                raise PiecesChanged("a removed paragraph reads like its neighbour")
+            for piece in found[first:last]:
+                block = block_of(piece)
+                if block is None or inside(block) != [piece]:
+                    raise PiecesChanged("a removed paragraph shares its block")
+                changes.append((menu._before(html_text, block.start), block.end, ""))
+        else:  # insert
+            added = parts[part_first:part_last]
+            if beside((first - 1, first), added):
+                raise PiecesChanged("an added paragraph reads like its neighbour")
+            block = block_of(found[first - 1]) if first else None
+            if block is None or inside(block)[-1] != found[first - 1]:
+                raise PiecesChanged("an added paragraph has no block to follow")
+            changes.append((block.end, block.end, _new_blocks(html_text, block, added)))
+    return changes
+
+
+def _new_blocks(html_text: str, block: _Block, added: list[str]) -> str:
+    """PRESS-0238 § 4.3: the new elements, as they go after `block`."""
+    element = "li" if block.tag == "li" else "p"
+    line = max(html_text.rfind("\n", 0, block.start), html_text.rfind("\r", 0, block.start)) + 1
+    indent = html_text[line:block.start]
+    lead = ""
+    if not indent.strip():
+        ending = re.search(r"\r\n|\n|\r", html_text[block.end:])
+        lead = (ending.group(0) if ending else "\n") + indent
+    return "".join(f"{lead}<{element}>{html.escape(part, quote=False)}</{element}>"
+                   for part in added)
 
 
 # ------------------------------------------------------- the code (§ 4.3) ---

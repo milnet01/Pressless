@@ -162,10 +162,11 @@ def test_the_box_leaves_out_what_is_not_words():
 def test_a_changed_paragraph_count_writes_nothing(tmp_path):
     folder = _folder(tmp_path)
     base = _digest(_live(folder, "pages", "about"))
-    added = ABOUT_WORDS + "\n\nAnother."
-    emptied = ABOUT_WORDS.replace("Tea & toast, it’s late.", "")
+    # PRESS-0238: a new first paragraph and a split one are still refused.
+    added = "Another.\n\n" + ABOUT_WORDS
+    split = ABOUT_WORDS.replace("Hello", "Hel\n\nlo")
     with _pages(folder) as browser:
-        for box in (added, emptied):
+        for box in (added, split):
             status, _, text = _save(browser, "pages", "about", "words", box,
                                     waiting=False, base=base)
             assert status == 200, text
@@ -191,14 +192,11 @@ def test_a_changed_paragraph_count_writes_nothing(tmp_path):
     assert ("pages/early.html was passed over: a notice before the refusal"
             in json.loads(text)["notices"]), text
 
-    # PRESS-0143: a run of blank lines is one gap, and an emptied paragraph is
-    # refused however many blank lines it leaves behind.
+    # PRESS-0143: a run of blank lines is one gap. Its refusal half is
+    # PRESS-0238 INV-4 (a).
     spaced = ABOUT_WORDS.replace("Hello\n\n", "Hello\n\n\n  \n")
     assert (page_editor.put_words("about", ABOUT, spaced)
             == page_editor.put_words("about", ABOUT, ABOUT_WORDS))
-    for gap in ("\n\n\n", "\n\n\n\n"):
-        with pytest.raises(page_editor.PiecesChanged):
-            page_editor.put_words("about", ABOUT, f"Hello{gap}Second one.")
 
 
 def test_the_refusal_moves_nothing():
@@ -520,3 +518,95 @@ def test_no_newest_entry_choice_with_the_journal_off(tmp_path):
         _, _, off = browser.request("GET", address)
     assert "Your newest entry" in on
     assert "Your newest entry" not in off
+
+
+# ------------------------------------------------- PRESS-0238 INV-1 to INV-7 ---
+# docs/specs/PRESS-0238-add-remove-paragraphs.md § 5: a paragraph added to or
+# deleted from the words box.
+
+TEA = "\r\n      <p>Tea &amp; toast, it&#8217;s late.</p>"
+SECOND = "\r\n  <p>Second one.</p>"
+LINKED = '<p>Go <a href="x">here</a> now</p>'
+
+
+def test_a_new_paragraph_follows_its_own():
+    written = page_editor.put_words("about", ABOUT, ABOUT_WORDS + "\n\nThird & last.")
+    assert written == ABOUT.replace(SECOND, SECOND + "\r\n  <p>Third &amp; last.</p>")
+
+
+def test_a_new_paragraph_takes_the_right_element():
+    box = "Hello\n\nNew\n\n" + ABOUT_WORDS.split("\n\n", 1)[1]
+    written = page_editor.put_words("about", ABOUT, box)
+    assert written == ABOUT.replace("Hello</h1>", "Hello</h1>\r\n   <p>New</p>")
+    listed = "<ul>\n  <li>One</li>\n</ul>\n"
+    assert (page_editor.put_words("about", listed, "One\n\nTwo")
+            == "<ul>\n  <li>One</li>\n  <li>Two</li>\n</ul>\n")
+
+
+def test_a_deleted_paragraph_takes_its_block():
+    written = page_editor.put_words("about", ABOUT, "Hello\n\nSecond one.")
+    assert written == ABOUT.replace(TEA, "")
+
+
+def test_unplaceable_changes_are_refused(tmp_path):
+    # Each fixture isolates one rule (§ 5 INV-4); the letters are the spec's.
+    cases = [
+        ("a", LINKED, "Go\n\n\nhere"),
+        ("a", LINKED, "Go\n\n\n\nhere"),
+        ("b", LINKED, "Go\n\nNew\n\nhere\n\nnow"),
+        ("c", "<div>Loose</div>", "Loose\n\nNew"),
+        ("d", ABOUT, "New\n\n" + ABOUT_WORDS),
+        ("e", ABOUT, ABOUT_WORDS.replace("Hello", "Hel\n\nlo")),
+        ("f", "<p>Same</p><h2>Same</h2>", "Same"),
+        ("g", ABOUT, ""),
+        ("h", "<p>a<p>b</p>", "b"),
+    ]
+    for letter, page, box in cases:
+        with pytest.raises(page_editor.PiecesChanged):
+            page_editor.put_words("about", page, box)
+            pytest.fail(f"({letter}) was placed")
+
+    folder = _folder(tmp_path)
+    base = _digest(_live(folder, "pages", "about"))
+    with _pages(folder) as browser:
+        status, _, text = _save(browser, "pages", "about", "words", "New\n\n" + ABOUT_WORDS,
+                                waiting=False, base=base)
+    assert status == 200, text
+    assert json.loads(text)["hint"].startswith(
+        "Not saved: Pressless could not place that change."), text
+    assert not _waiting(folder, "pages", "about").exists()
+
+
+def test_one_save_adds_and_removes():
+    box = "Hello\n\nSecond one.\n\nThird.\n\nFourth."
+    expected = ABOUT.replace(TEA, "").replace(
+        SECOND, SECOND + "\r\n  <p>Third.</p>\r\n  <p>Fourth.</p>")
+    assert page_editor.put_words("about", ABOUT, box) == expected
+
+
+def test_a_new_paragraph_saves_and_publishes(tmp_path, monkeypatch):
+    _key(monkeypatch)
+    box = ABOUT_WORDS + "\n\nThird & last."
+    folder = _folder(tmp_path / "saved")
+    with _pages(folder) as browser:
+        status, _, text = _save(browser, "pages", "about", "words", box, waiting=False,
+                                base=_digest(_live(folder, "pages", "about")))
+    assert status == 200 and json.loads(text)["hint"] is None, text
+    assert b"<p>Third &amp; last.</p>" in _waiting(folder, "pages", "about").read_bytes()
+
+    github = _Transport(reads=_reads(_listing([])), writes=_writes())
+    folder = _folder(tmp_path / "pressed")
+    with _pages(folder, github) as browser:
+        status, _, text = _save(browser, "pages", "about", "words", box, waiting=False,
+                                base=_digest(_live(folder, "pages", "about")),
+                                route="/page/publish")
+    assert status == 200 and json.loads(text)["published"] is True, text
+    assert any(b"<p>Third &amp; last.</p>" in blob for blob in _uploaded(github))
+
+
+def test_a_same_count_box_is_read_in_order():
+    box = "Tea & toast, it’s late.\n\nSecond one.\n\nFourth."
+    expected = (ABOUT.replace(SECOND, "\r\n  <p>Fourth.</p>")
+                .replace(TEA, "\r\n      <p>Second one.</p>")
+                .replace(">Hello</h1>", ">Tea &amp; toast, it’s late.</h1>"))
+    assert page_editor.put_words("about", ABOUT, box) == expected
