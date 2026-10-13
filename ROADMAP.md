@@ -4307,6 +4307,14 @@ removed, and the menu follows.
   Shipped (2026-10-13): built to the spec in 91516ce. Local gate green on
   Linux and the Windows box. Not yet seen in a real browser or pressed
   against GitHub; the spec's by-hand rows are owed before a release.
+  Hand check (2026-10-13): spec § 10's on-screen row PASSED in driven
+  headless Chrome on a throwaway site with the fake publisher: the New
+  page box and its hints, Remove's confirm and Rename's prompt (real
+  dialogs), each menu notice, and the Privacy refusal. It found two
+  defects, fixed in 647e231: a menu notice said "Your site has not
+  changed" after a press that changed it, and OK on a notice left the
+  writer on a removed page's editor. Still owed: a real Remove and Rename
+  pressed to a GitHub test repository.
   **Layman:** He can make a new page such as Gigs, delete one, or rename it, and the site menu keeps up.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
