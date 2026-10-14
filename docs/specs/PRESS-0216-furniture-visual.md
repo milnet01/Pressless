@@ -1,14 +1,15 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0216 — The header, footer and menu in the visual editor
 
-**Status:** spec draft (2026-10-14).
+**Status:** accepted (2026-10-14). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0216 (S15; the user's decision 2026-10-02
 under PRESS-0198; a short spec and one review round, the user
 2026-10-14).
 
 **Blocked by:** PRESS-0260, shipped. **Changes:** PRESS-0014 § 3
-decision 5 and § 4.4, and PRESS-0215 § 3 decision 6 and § 4.6 (§ 11).
+decision 5 and § 4.4; PRESS-0215 § 3 decision 6, § 4.6 and § 4.7;
+PRESS-0260 § 4.1 and § 4.2 (§ 11).
 
 Layman: they change the top and bottom of every page, and the menu, the
 same way they change a page, with no code.
@@ -33,7 +34,7 @@ all three.
    filled values, so text typed over a filled value would write the
    value into the file and the placeholder would be gone from every
    page.
-3. **Blocks finds an area only inside `main`.** `blocks.adopt` takes the
+3. **Blocks makes an area only inside `main`.** `blocks.adopt` takes the
    content of the first `main`; a header or footer file has none.
 4. **The menu may not be regenerated.** `menu.py` edits one link's
    bytes and keeps every other byte, because PRESS-0014 § 4.9 forbids
@@ -52,7 +53,8 @@ all three.
    their filled value (§ 4.2).
 5. **(decided here) The furniture opens in the visual view**, as a page
    does, unless the code was asked for. PRESS-0263's remembered view
-   applies to it.
+   applies to it, and `_open` records a view asked for on the furniture
+   as it does on a page.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -68,8 +70,8 @@ content, and a file with none opens in the code view with
 `notice.page_editor.code_only`, as a page does (PRESS-0260 § 4.1).
 
 The starter's header and footer adopt as they are written today: each
-line inside `header` or `footer` that is not a plain `p`, heading or
-picture becomes a code section.
+run of nodes inside `header` or `footer` that is not a plain `p`,
+heading or picture becomes one code section.
 
 ### 4.2 Placeholders
 
@@ -84,7 +86,7 @@ This holds for every page, not only the furniture: a page's own words
 rarely hold `{{`, and where they do, the code box is the safe place for
 them.
 
-**Addresses keep `{{UP}}`.** In the furniture's panel the `up` the script
+**Addresses keep `{{UP}}`.** For the furniture, the `up` `page_editor._panel`
 puts before a held photograph's address is `{{UP}}` rather than `../`,
 since one header serves pages at every depth. A picture's `src` or a
 button's `href` holding `{{UP}}` is not a placeholder in words and does
@@ -118,18 +120,26 @@ a plain menu, raising `menu.Unusual` on any other (`menu._plain`). A
 menu that is not plain opens in the code view, with a notice saying
 why.
 
-A save posts `links`, a JSON list in the new order. Each entry is
-`{"at": <the link's place in the file read>, "words": ..., "href": ...}`,
-with `at` `null` for a new link. `menu.arranged(text, posted)` writes
-the file:
+A save posts `view=visual` and `links`, a JSON list in the new order;
+`page_editor._write` sends a navigation save with `links` to
+`menu.arranged(text, posted)` rather than to `put_sections`. Each entry
+is `{"at": ..., "words": ..., "href": ...}`: `at` is the link's 0-based
+place in `menu.links(text)` of the file read, `null` for a new link, and
+`words` and `href` are as `menu.links` gave them, words decoded and
+trimmed. An entry posted back as it was given is unchanged.
+`menu.arranged` writes the file:
 
 - The text before the first link and after the last stays as it is.
 - Each kept link keeps its own bytes, and the whitespace before it, in
   its new place. Where its words or address changed, only those bytes
-  change, as `menu.rename` changes them.
+  change, as `menu.rename` changes them; an address changed to a fixed
+  page also sets `data-nav` to that page's, and one changed to any other
+  address removes it.
 - A new link is written as `menu.add` writes one, with `data-nav` where
   its address is a fixed page, after the whitespace the first link has
-  before it.
+  before it. The home page is the exception: its address is
+  `{{UP}}index.html` and its `data-nav` is `Home`, as the starter's menu
+  writes it.
 - A link not posted is gone, with the whitespace before it.
 
 A posted entry naming an `at` that is not a link, or naming one twice,
@@ -153,11 +163,13 @@ unchanged.
 
 ## 5. Invariants
 
-- **INV-1** — A visual save of the header or footer that changes
-  nothing writes the file byte for byte as it was.
+- **INV-1** — A visual save of a header or footer already holding a
+  sections area, that changes nothing, writes the file byte for byte as
+  it was. The first save of one without an area writes it adopted, as
+  for a page (PRESS-0260 § 4.1).
   *Test:* `tests/test_page_editor.py::test_a_furniture_save_of_nothing_changed_keeps_every_byte`.
-  *Breaks when:* adopting or writing the header's area re-spells a byte
-  outside a changed section.
+  *Breaks when:* writing a marked header's area re-spells a byte outside
+  a changed section.
 
 - **INV-2** — A text or heading section holding `{{` is offered as code,
   and a save can never replace a placeholder with its filled value.
@@ -269,7 +281,11 @@ spec:
   "the furniture always opens in `code`" annotated *amended by
   PRESS-0216*.
 - `docs/specs/PRESS-0215-blocks.md`: § 3 decision 6 and § 4.6 annotated:
-  `adopt` takes the element, `header` and `footer` for the furniture.
+  `adopt` takes the element, `header` and `footer` for the furniture;
+  § 4.7 annotated: a furniture preview keeps that file's marks (§ 4.3).
+- `docs/specs/PRESS-0260-visual-editor.md`: § 4.1 and § 4.2 annotated
+  *amended by PRESS-0216*: the furniture opens in the visual view, and
+  its preview keeps its own marks and not the page's.
 - `CHANGELOG.md`: one entry.
 
 ## 12. Cold-eyes loop log
