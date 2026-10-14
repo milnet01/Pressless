@@ -379,7 +379,7 @@ def test_the_secret_is_never_printed_or_logged(
 
 FILES_POLICY_WORDS = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-    "font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'none'; "
+    "font-src 'self'; script-src 'none'; connect-src 'self'; frame-src 'none'; "
     "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
 )
 FRAMES_POLICY_WORDS = "frame-src 'self'; frame-ancestors 'self'"

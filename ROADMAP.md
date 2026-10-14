@@ -4622,19 +4622,26 @@ removed, and the menu follows.
   Source: ci-windows-2026-10-14.
   Lanes: tests.
 
-- 📋 [PRESS-0268] **A script file the Face serves never runs in the Face's origin, even on a page opened outside the preview frame.**
+- ✅ [PRESS-0268] **A script file the Face serves never runs in the Face's origin, even on a page opened outside the preview frame.**
   Found building PRESS-0217. face.FILES_POLICY gives every served file
   `script-src 'self'`. Inside the preview frame nothing runs (sandbox
   without allow-scripts), but a /preview/ page opened as its own tab runs
-  any same-origin script it links. /assets/ serves preview-assets, the
-  live site's assets/ copied by Import, and /look/ the Store's look
-  folder; a .js file in either, linked from a code section, would run in
+  any same-origin script it links. /preview/assets/ serves preview-assets,
+  the live site's assets/ copied by Import, and /preview/look/ the
+  Store's look folder; a .js file in either, linked from a code section, would run in
   the Face's origin with the session cookie and pass the Origin check on
   a POST. PRESS-0217 itself adds no such path: pieces.js is never put in
   a preview, and a script piece is inline, which the policy blocks.
   Likely fix: `script-src 'none'` in FILES_POLICY, since nothing the Face
   serves as a file needs to run; that changes PRESS-0012 § 4.3 and its
   INV-8, so it is a contract change and owes that spec's gate.
+  Spec: docs/specs/PRESS-0012-editor.md, amended 2026-10-14 (ced86f8)
+  and gated for one round (loop-log row 6).
+  Shipped 2026-10-14: FILES_POLICY's script-src is 'none'. Measured in
+  Chrome before and after, on a /preview/ page opened in its own tab:
+  before, its own .js and one under /preview/assets/ both ran; after,
+  all three probes (those two and an inline script) are blocked.
+  Edge on the box is owed by hand with the other release checks.
   **Layman:** A script that came with an imported site could run inside Pressless if someone opened a preview page on its own; this closes that door.
   Kind: security.
   Source: in-session-2026-10-14 PRESS-0217 build.

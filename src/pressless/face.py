@@ -384,9 +384,11 @@ class Reply:
 Page = Callable[[Request], "str | Reply"]  # a str is the page's HTML body
 Locate = Callable[[str], Path]
 
+# PRESS-0268: no served file runs a script, so a preview page opened outside
+# its sandboxed frame runs none of a site's scripts in the Face's origin.
 FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
                 "style-src 'self' 'unsafe-inline'; font-src 'self'; "
-                "script-src 'self'; connect-src 'self'; frame-src 'none'; "
+                "script-src 'none'; connect-src 'self'; frame-src 'none'; "
                 "object-src 'none'; base-uri 'none'; form-action 'none'; "
                 "frame-ancestors 'self'")
 

@@ -109,6 +109,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 - **On a Windows PC with no password store, Pressless now stops with a one-line message instead of a wall of technical text naming folders** (PRESS-0257)
 
+### Security
+
+- **A script that came with your site never runs inside Pressless** (PRESS-0268)
+  A preview page opened on its own, outside the editor's frame, could
+  run a script file from your site with Pressless's own access. No file
+  Pressless serves runs a script now; your published site is unchanged.
+
 ## [0.8.3] - 2026-10-12
 
 **Theme:** a stranger can start from nothing

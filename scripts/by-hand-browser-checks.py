@@ -223,7 +223,8 @@ def run(origin: str, secret: str, folder: Path) -> None:
 
         # ---- PRESS-0012 s10: the policy blocks Google's script ---------------
         csp = google_blocked(page, origin, folder)
-        check("PRESS-0012 s10 (Chrome): the preview policy blocks Google's script and the player",
+        check("PRESS-0012 s10 (Chrome): the preview policy blocks Google's script, the player "
+              "and every script of the page's own, opened outside the frame (PRESS-0268)",
               csp[0], csp[1])
 
         # ---- PRESS-0013 s4.4: the Press to site button, its message and the switch --
@@ -939,8 +940,11 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     """A PREVIEW page carrying Google's script and a player, loaded as the frame
     loads it, so FILES_POLICY is the policy under test (not the editor page's
     frames-only policy). PRESS-0012 s10 row: "the policies block Google's
-    script, the players and a followed outside link in a browser"."""
+    script, the players and a followed outside link in a browser". Since
+    PRESS-0268 the page's own scripts are blocked too: a same-origin file, one
+    under /preview/assets/ (the live site's copied assets), and an inline one."""
     from pressless import editor as ed
+    from pressless import paths
 
     preview = folder / ed.PREVIEW_FOLDER
     preview.mkdir(parents=True, exist_ok=True)
@@ -950,8 +954,13 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
         "</head><body><p>probe</p>"
         "<iframe src='https://www.youtube.com/embed/dQw4w9WgXcQ'></iframe>"
         "<script src='ran.js'></script>"
+        "<script src='/preview/assets/ran-assets.js'></script>"
+        "<script>window.__inline = true;</script>"
         "</body></html>", encoding="utf-8")
     (preview / "ran.js").write_text("window.__ran = true;", encoding="utf-8")
+    assets = folder / paths.PREVIEW_ASSETS
+    assets.mkdir(parents=True, exist_ok=True)
+    (assets / "ran-assets.js").write_text("window.__assets = true;", encoding="utf-8")
 
     violations: list[str] = []
     page.goto("about:blank")
@@ -966,15 +975,17 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     violations = page.evaluate("() => window.__v || []")
     google = [v for v in violations if "googletagmanager" in v]
     player = [v for v in violations if "youtube" in v]
-    own_script_ran = page.evaluate("() => window.__ran === true")
+    ran = page.evaluate("() => [window.__ran === true, window.__assets === true,"
+                        " window.__inline === true]")
     # The Builder refuses a preview folder holding files it did not make, so
     # the probe pages go before the next preview is built.
     (preview / "policycheck.html").unlink()
     (preview / "ran.js").unlink()
-    ok =bool(google) and bool(player) and own_script_ran
+    (assets / "ran-assets.js").unlink()
+    ok = bool(google) and bool(player) and ran == [False, False, False]
     return ok, (f"csp={csp!r} google_blocked={bool(google)} "
-                f"player_blocked={bool(player)} same-origin script still ran="
-                f"{own_script_ran} violations={violations}")
+                f"player_blocked={bool(player)} ran (own, assets, inline)={ran} "
+                f"violations={violations}")
 
 
 def _snip(text: str, needle: str) -> str:
