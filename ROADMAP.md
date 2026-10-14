@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=270 -->
+<!-- ants-roadmap-id-high-water: PRESS=271 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3625,6 +3625,17 @@ it decides how pages, the menu and the look are held.
     keyring prompt, a real Publish. All passed on 0.8.2; 0.8.3 changed
     only credential error paths, Turn off, and the Privacy link.
   Every row this item tracked has now run.
+  2026-10-14, 0.9.0 pre-release browser round, driven rather than by
+  hand (7159894): scripts/by-hand-browser-checks.py passed 86/86 in
+  Chrome 155, Firefox 146 (Playwright's build) and Edge 155 on the
+  Windows box over CDP. Firefox found PRESS-0269 and PRESS-0270, both
+  fixed; both fixes also checked in the installed Firefox 157 through
+  Selenium. That covers the Firefox and Edge rows owed by PRESS-0216,
+  0217, 0260, 0261, 0263, 0264 and 0265. Still owed, on the 0.9.0
+  draft before sign-release.py: the Windows console window, the real
+  keyring prompt in the desktop session, a real publish through Press
+  to site, and PRESS-0195's real Remove and Rename to a GitHub test
+  repo.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -11147,6 +11158,16 @@ already-built code ships in whichever release comes next.
   **Layman:** When publishing fails, the message box keeps coming back on every page, even after you press OK, until you save something.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
+
+- 📋 [PRESS-0271] **The browser-check script leaves its temp folder in /tmp after every run.**
+  scripts/by-hand-browser-checks.py makes its folder with
+  tempfile.mkdtemp() and never removes it; 25 had built up on
+  2026-10-14 (deleted by hand). /tmp is RAM on the maintainer's
+  machine. Remove the folder in main()'s finally, or make it on a disk.
+  **Layman:** A test tool leaves a small folder behind each time it runs, in memory-backed storage on this machine.
+  Kind: fix.
+  Source: in-session-2026-10-14.
+  Lanes: scripts.
 
 ## Milestones
 
