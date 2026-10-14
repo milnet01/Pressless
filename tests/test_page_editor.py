@@ -666,3 +666,44 @@ def test_a_style_is_coloured_as_css(tmp_path):
     assert inner == [("p a", "tag"), (":", "tag"), ("hover ", "tag"), ("{", ""),
                      (" color", "attr"), (":", ""), (" red", ""), (";", ""), ("}", ""),
                      ("/* c */", "note")]
+
+
+# ------------------------------------------------------------- PRESS-0264 ---
+
+
+def _text(words: str) -> str:
+    return f"<!-- pressless:text --><p>{words}</p><!-- /pressless:text -->"
+
+
+def _columns(*columns: str) -> str:
+    return ('<!-- pressless:columns --><div class="pressless-columns">' + "".join(
+        f'<!-- pressless:column --><div class="pressless-column">{inner}</div>'
+        "<!-- /pressless:column -->" for inner in columns) + "</div><!-- /pressless:columns -->")
+
+
+@pytest.mark.parametrize(("posted", "written"), [
+    # Out of a column, to just below the columns.
+    ([{"kind": "columns", "fields": {}, "parts": [[], [{"keep": [0, 1, 0]}]]},
+      {"keep": [0, 0, 0]}, {"keep": [1]}],
+     [_columns("", _text("Right")), _text("Left"), _text("Loose")]),
+    # Into a column, from just below the columns.
+    ([{"kind": "columns", "fields": {}, "parts": [[{"keep": [0, 0, 0]}],
+                                                  [{"keep": [0, 1, 0]}, {"keep": [1]}]]}],
+     [_columns(_text("Left"), _text("Right") + _text("Loose"))]),
+])
+def test_a_section_moves_between_columns_and_the_page(tmp_path, posted, written):
+    """PRESS-0264. Breaks when a section kept by its path is refused, or lost,
+    in a list other than the one it was read from."""
+    folder = _folder(tmp_path)
+    page = (AREA_BEFORE + "\n" + _columns(_text("Left"), _text("Right")) + "\n"
+            + _text("Loose") + "\n" + AREA_AFTER)
+    store.write_html(folder, store.PAGES_FOLDER, "split", page)
+    with _pages(folder) as browser:
+        status, _, text = _visual(browser, "split", posted, [[0]], waiting=False,
+                                  base=_digest(_live(folder, "pages", "split")))
+    assert status == 200, text
+    saved = _waiting(folder, "pages", "split").read_text(encoding="utf-8")
+
+    def gapless(html_text: str) -> str:  # the gaps between sections are not at issue
+        return re.sub(r"\s+(?=<!-- /?pressless)", "", html_text)
+    assert gapless(saved) == gapless(AREA_BEFORE + "".join(written) + AREA_AFTER), saved

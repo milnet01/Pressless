@@ -10,6 +10,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
     and buttons (s 4.3, s 4.4)
   PRESS-0261: the code boxes' colours line up with the letters typed over them
   PRESS-0263: the true-colours switch is kept, and the preview starts undimmed
+  PRESS-0264: Move to takes a section between columns, out of them and back
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -437,6 +438,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         visual_editor(page, origin, folder)
         code_colours(page, origin)
         true_colours_kept(page, origin)
+        move_between_columns(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -669,6 +671,61 @@ def true_colours_kept(page, origin: str) -> None:
         page.evaluate(flip, False)
     check("PRESS-0263: the true-colours switch is kept, and the preview starts undimmed",
           sent.value.status == 204 and seen == [True, True], f"{sent.value.status} {seen}")
+
+
+def _column_page(*columns: str, after: str) -> str:
+    text = "<!-- pressless:text --><p>{}</p><!-- /pressless:text -->".format
+    held = ('<!-- pressless:columns --><div class="pressless-columns">' + "".join(
+        f'<!-- pressless:column --><div class="pressless-column">{text(words)}</div>'
+        "<!-- /pressless:column -->" for words in columns) + "</div><!-- /pressless:columns -->")
+    return VISUAL_PAGE.replace(VISUAL_PAGE[VISUAL_PAGE.index("<!-- pressless:heading"):
+                                          VISUAL_PAGE.index("<!-- /pressless:page")],
+                               held + "\n" + text(after) + "\n")
+
+
+def move_between_columns(page, origin: str, folder: Path) -> None:
+    """PRESS-0264: the Move to list, in the frame at once and in the file."""
+    store.write_html(folder, store.PAGES_FOLDER, "split", _column_page("Left", "Right",
+                                                                       after="Loose"))
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "split", waiting=True)
+
+    def layout() -> list:
+        """The waiting copy's top-level kinds, and each column's words."""
+        read = blocks.read("split", store.read_html(waiting))
+        return [[[c.fields["html"] for c in part] for part in s.parts] if s.parts
+                else s.fields.get("html") for s in read.sections]
+
+    def move(words: str, choice: str) -> list[str]:
+        page.frame_locator("#preview").locator("p", has_text=words).click()
+        offered = page.locator("#move-to option").all_text_contents()
+        if choice:
+            page.select_option("#move-to", label=choice)
+            page.locator("[data-act=move-to]").click()
+            page.wait_for_timeout(1600)
+            page.wait_for_function("document.getElementById('save-status').textContent "
+                                   "!== 'Saving'", timeout=5000)
+            page.wait_for_timeout(800)
+        return offered
+
+    page.goto(f"{origin}/page?kind=pages&name=split&view=visual", wait_until="networkidle")
+    offered = move("Right", "Column 1")
+    moved = page.evaluate("""() => [...document.getElementById('preview').contentDocument
+      .querySelectorAll('.pressless-column')].map(c => c.textContent)""")
+    check("PRESS-0264: a section in a column is offered the other columns and below them",
+          offered == ["Column 1", "Below the columns"], str(offered))
+    check("PRESS-0264: Move to moves it to another column, on the page and in the file",
+          moved == ["LeftRight", ""] and layout() == [[["Left", "Right"], []], "Loose"],
+          f"{moved} {layout()}")
+    move("Right", "Below the columns")
+    check("PRESS-0264: Below the columns takes it out, just under them",
+          layout() == [[["Left"], []], "Right", "Loose"], str(layout()))
+    nowhere = move("Loose", "")
+    disabled = page.locator("[data-act=move-to]").is_disabled()
+    offered = move("Right", "Column 2")
+    check("PRESS-0264: a section under the columns moves back in; one further down cannot",
+          nowhere == ["No other place"] and disabled
+          and offered == ["Column 1", "Column 2"]
+          and layout() == [[["Left"], ["Right"]], "Loose"], f"{nowhere} {offered} {layout()}")
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Move a section between columns, or out of them.** (PRESS-0264)
+  The side panel's new Move to list offers the other columns, or Below
+  the columns. A section just below some columns can move back into
+  one of them.
+
 - **Pressless remembers your choices between visits.** (PRESS-0263)
   Your list of pages offers the last page you opened, under "Carry on
   with". A page opens in the view you last switched to. The header,

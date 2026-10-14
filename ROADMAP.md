@@ -4527,13 +4527,22 @@ removed, and the menu follows.
   Source: user-decision-2026-10-13.
   Lanes: Face, Settings.
 
-- 📋 [PRESS-0264] **The visual editor moves a section between columns, or out of them.**
+- ✅ [PRESS-0264] **The visual editor moves a section between columns, or out of them.**
   Left out of PRESS-0260 by the user 2026-10-13 to keep the first
   version small: there, Move up and Move down work within one list.
   See docs/specs/PRESS-0260-visual-editor.md § 9.
   Decided by the user 2026-10-14: a Move to list in the side panel,
   naming each column and Below the columns. Move up and Move down keep
   working within one list.
+  Shipped 2026-10-14: the panel's Move to list and Move button
+  (page_editor._VISUAL_SCRIPT, places and holder). A section in a column
+  is offered the other columns of the same columns and Below the columns;
+  a section on the page, the columns right above it, so the two undo each
+  other. It lands at the end of a column, and moves in the frame at once.
+  The save already kept a section by its path in another list; two tests
+  now lock that. Checked in Chrome by scripts/by-hand-browser-checks.py.
+  Owed by hand before the release: Firefox here and Edge on the Windows
+  box.
   **Layman:** They can move a paragraph or picture from one column to another, or out of the columns altogether.
   Kind: feature.
   Source: user-decision-2026-10-13 PRESS-0260.

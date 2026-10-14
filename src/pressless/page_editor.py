@@ -582,6 +582,9 @@ def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...])
 <p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
 <button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
 <button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p class="panel-row"><label>{say("page_editor.panel.move_to")}
+ <select id="move-to"></select></label>
+<button type="button" data-act="move-to">{say("page_editor.panel.move")}</button></p>
 <p id="panel-said" role="status"></p>
 </aside>"""
 
@@ -1378,6 +1381,7 @@ _VISUAL_SCRIPT = r"""
   }
   let removed = [];
   let picked = null;
+  let destinations = [];  // where the picked section may be moved to (PRESS-0264)
   let editing = null;
   let frameSections = given.sections;
   let waitingPreview = null;
@@ -1614,6 +1618,13 @@ _VISUAL_SCRIPT = r"""
     act("up").disabled = !picked || at <= 0;
     act("down").disabled = !picked || at >= list.length - 1;
     act("remove").disabled = !picked;
+    destinations = places(picked);
+    const where = document.getElementById("move-to");
+    where.replaceChildren(...(destinations.length ? destinations.map((place, at) => new Option(
+      place.below ? say("script.visual.move.below")
+        : say("script.visual.move.column", {number: String(place.column + 1)}), String(at)))
+      : [new Option(say("script.visual.move.nowhere"), "")]));
+    where.disabled = act("move-to").disabled = !destinations.length;
     const fits = !picked ? KINDS : picked.parent && picked.parent.kind === "pictures" ? ["picture"]
       : picked.parent ? IN_COLUMN : KINDS;
     document.querySelectorAll("#add-kind option").forEach((option) => {
@@ -1777,6 +1788,51 @@ _VISUAL_SCRIPT = r"""
   }
   act("up").addEventListener("click", () => move(-1));
   act("down").addEventListener("click", () => move(1));
+
+  // PRESS-0264: a section in a column moves to another column of the same
+  // columns, or below them; one on the page moves into a column of the
+  // columns right above it, so the two moves undo each other. It goes at the
+  // end of a column.
+  function places(item) {
+    if (!item || !IN_COLUMN.includes(item.kind)) return [];
+    if (item.parent && item.parent.kind === "columns") {
+      return [...item.parent.parts.map((_, column) => ({columns: item.parent, column}))
+        .filter((place) => place.column !== item.column), {below: item.parent}];
+    }
+    if (item.parent) return [];
+    const above = model[model.indexOf(item) - 1];
+    return above && above.kind === "columns"
+      ? above.parts.map((_, column) => ({columns: above, column})) : [];
+  }
+  // The element a column's sections sit in, in the frame.
+  function holder(columns, column) {
+    const box = between(columns).find((at) => at.nodeType === Node.ELEMENT_NODE);
+    const opening = box ? [...box.childNodes].filter((at) => at.nodeType === Node.COMMENT_NODE
+      && at.data === " pressless:column ") : [];
+    return opening[column] ? opening[column].nextSibling : null;
+  }
+  act("move-to").addEventListener("click", () => {
+    const place = destinations[Number(document.getElementById("move-to").value)];
+    if (!picked || !place) return;
+    const item = picked;
+    const nodes = item.start ? [item.start, ...between(item), item.end] : [];
+    const list = listOf(item);
+    list.splice(list.indexOf(item), 1);
+    if (place.below) {
+      model.splice(model.indexOf(place.below) + 1, 0, item);
+      item.parent = null;
+      item.column = undefined;
+      if (nodes.length && place.below.end) place.below.end.after(...nodes);
+    } else {
+      place.columns.parts[place.column].push(item);
+      item.parent = place.columns;
+      item.column = place.column;
+      const inside = holder(place.columns, place.column);
+      if (nodes.length && inside) inside.append(...nodes);
+    }
+    touch(place.columns || place.below);
+    fill();
+  });
   function drop(item) {
     const list = listOf(item);
     list.splice(list.indexOf(item), 1);
