@@ -243,6 +243,10 @@ _WORDS: dict[str, str] = {
     ),
     "failure.menu.Unusual.what": "Pressless does not edit a menu laid out like yours.",
     "failure.menu.Unusual.next": "Change the link in the Navigation's code.",
+    "failure.menu.Refused.what": (
+        "Not saved: Pressless could not keep your menu's links as you left them."
+    ),
+    "failure.menu.Refused.next": "Open the menu again to carry on, or use Show me the code.",
     "failure.undo.NothingToUndo.what": "Pressless cannot undo your very first publish.",
     "failure.undo.NothingToUndo.next": "There is no earlier version of your site to go back to.",
     "failure.installer.UpdateError.what": "Pressless could not update itself.",
@@ -455,6 +459,14 @@ _WORDS: dict[str, str] = {
     ),
     "page_editor.show_code": "Show me the code",
     "page_editor.show_visual": "Back to the page",
+    "notice.page_editor.furniture_code_only": (
+        "Pressless cannot find where this part of your site starts and ends, so it opens "
+        "as code."
+    ),
+    "notice.page_editor.menu_code_only": (
+        "Pressless edits a menu that is one list of links. Yours is laid out another way, "
+        "so it opens as code."
+    ),
     "notice.page_editor.code_only": (
         "Pressless cannot find the main part of this page to edit on the page, so it opens "
         "as code."
@@ -481,6 +493,10 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.remove": "Remove",
     "page_editor.panel.move_to": "Move to",
     "page_editor.panel.move": "Move",
+    "page_editor.menu.title": "The menu's links",
+    "page_editor.menu.words": "Words",
+    "page_editor.menu.address": "Goes to",
+    "page_editor.menu.add": "Add a link",
     "page_editor.drag": "Drag",
     "script.visual.nothing": "Click a heading, paragraph or any section on the page to change it.",
     "script.visual.picked": "Changing: {kind}",

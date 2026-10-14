@@ -85,7 +85,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 `page_editor.WORDS` becomes `page_editor.VISUAL = "visual"`.
 `page_editor._view` gives `CODE` for the furniture, and for a page
 `CODE` where `view=code` was asked, else `VISUAL`; an old `view=words`
-address opens the visual view.
+address opens the visual view. *Amended by PRESS-0216:* the furniture
+takes the same rule as a page.
 
 **Opening a page in the visual view** (`page_editor._open`):
 
@@ -106,7 +107,9 @@ The switch link offers *Show me the code* in the visual view and
 
 `builder.preview_html` gains a keyword `marks: bool = False`. Where it
 is true, `_Build.fixed_page` writes the shown page without calling
-`blocks.unmarked`. Only the visual view passes it.
+`blocks.unmarked`. Only the visual view passes it. *Amended by
+PRESS-0216:* for a furniture file the shown page loses its marks and
+that file keeps its own (PRESS-0216 § 4.3).
 
 The frame keeps `sandbox="allow-same-origin"` and gains nothing.
 The editor page carries the outline `blocks.read` gives: every

@@ -159,7 +159,7 @@ unchanged.
 
 - It never writes a placeholder's filled value into the file.
 - It never rewrites a menu link it was not asked to change.
-- It never publishes a mark.
+- It never puts a mark on a page the site serves.
 
 ## 5. Invariants
 
@@ -179,11 +179,12 @@ unchanged.
   *Breaks when:* `outline` offers that section as text, so the frame's
   filled words are posted back.
 
-- **INV-3** — No mark reaches the site folder, from the furniture or a
-  page.
+- **INV-3** — No mark reaches a page the site serves, from the furniture
+  or a page. `content/` carries the Store's own files, marks included, as
+  it does for a page today (design.md § Where everything sits on disk).
   *Test:* `tests/test_builder.py::test_furniture_marks_are_never_published`
-  builds a site whose header holds marks and finds no `pressless:` in
-  any written file.
+  builds a site whose header and footer hold marks and finds no
+  `pressless:` in any written file outside `content/`.
   *Breaks when:* `_Furniture.fill` is given the header's text without
   `blocks.unmarked`.
 

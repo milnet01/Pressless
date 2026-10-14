@@ -1,5 +1,6 @@
 """The menu is the user's own HTML, the navigation furniture file; these edit
-one page's link in it and keep every other byte (PRESS-0195 § 4.2).
+one page's link in it and keep every other byte (PRESS-0195 § 4.2), or move
+its links' own bytes for the menu view (PRESS-0216 § 4.4).
 
 Pure text in and out: the page editor reads and writes the file. Nothing here
 parses the menu to write it back, which PRESS-0014 § 4.9 forbids, so a
@@ -10,6 +11,8 @@ from __future__ import annotations
 
 import html
 import re
+
+from pressless import blocks
 
 _LINK = re.compile(r"<a\b[^>]*>(.*?)</a\s*>", re.IGNORECASE | re.DOTALL)
 _HREF = re.compile(r"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
@@ -109,3 +112,110 @@ def rename(text: str, old: str, new: str, old_words: tuple[str, ...],
         value = 1 if found.group(1) is not None else 2
         text = text[:found.start(value)] + _address(new) + text[found.end(value):]
     return text
+
+
+# ------------------------------------------------- the menu view (PRESS-0216) --
+
+_HOME = "{{UP}}index.html"
+_PAGE = re.compile(r"\{\{UP\}\}pages/([a-z0-9-]+)\.html")
+_NAV = re.compile(r"""\s+data-nav\s*=\s*(?:"[^"]*"|'[^']*')""", re.IGNORECASE)
+
+
+class Refused(ValueError):
+    """A menu save names a link the menu does not hold, or one it may not write."""
+
+
+def _words(text: str, link: re.Match) -> str:
+    return html.unescape(_TAG.sub("", text[link.start(1):link.end(1)])).strip()
+
+
+def links(text: str) -> list[tuple[str, str]]:
+    """Each link of a plain menu as its words, decoded and trimmed, and its
+    address, decoded, in order. Raises Unusual on any other menu (§ 4.4)."""
+    return [(_words(text, link), html.unescape(_href_value(link) or ""))
+            for link in _plain(text)]
+
+
+def _nav(address: str) -> str | None:
+    """The data-nav the Builder marks the current page by, for an address
+    naming a fixed page; None for any other."""
+    if address == _HOME:
+        return "Home"
+    page = _PAGE.fullmatch(address)
+    return page.group(1) if page else None
+
+
+def _changed(text: str, link: re.Match, words: str, address: str) -> str:
+    """The link's own bytes with only its words or its address changed."""
+    own = text[link.start():link.end()]
+    at = link.start()
+    if words != _words(text, link):
+        inside = text[link.start(1):link.end(1)]
+        lead = inside[:len(inside) - len(inside.lstrip())]
+        trail = inside[len(inside.rstrip()):]
+        own = (own[:link.start(1) - at] + lead + html.escape(words, quote=False) + trail
+               + own[link.end(1) - at:])
+    if address != html.unescape(_href_value(link) or ""):
+        tag_end = link.start(1) - at
+        start_tag = own[:tag_end]
+        found = _HREF.search(start_tag)
+        if found is None:
+            raise Refused("a menu link with no address cannot be given one")
+        value = 1 if found.group(1) is not None else 2
+        start_tag = (start_tag[:found.start(value)] + html.escape(address)
+                     + start_tag[found.end(value):])
+        start_tag = _NAV.sub("", start_tag)
+        nav = _nav(address)
+        if nav is not None:
+            close = start_tag.rindex(">")
+            start_tag = f'{start_tag[:close]} data-nav="{html.escape(nav)}"{start_tag[close:]}'
+        own = start_tag + own[tag_end:]
+    return own
+
+
+def arranged(text: str, posted: object) -> str:
+    """The menu with its links as `posted` lists them (§ 4.4). Each kept link
+    keeps its bytes and the whitespace before it; the text outside the links
+    stays where it is. Raises Refused on a post it cannot write, and Unusual
+    on a menu that is not plain."""
+    held = _plain(text)
+    read = links(text)
+    starts = [_before(text, link.start()) for link in held]
+    gaps = [text[held[at].end():starts[at + 1]] for at in range(len(held) - 1)]
+    space = text[starts[0]:held[0].start()]
+    if not isinstance(posted, list):
+        raise Refused("the menu save does not list its links")
+    pieces, seen = [], set()
+    for entry in posted:
+        if not isinstance(entry, dict):
+            raise Refused(f"{entry!r} is not a menu link")
+        at, words, address = entry.get("at"), entry.get("words"), entry.get("href")
+        if not isinstance(words, str) or not words.strip() or not isinstance(address, str):
+            raise Refused("a menu link needs words and an address")
+        if not blocks.address_allowed(address, mailto=True):
+            raise Refused(f"a menu link may not go to {address!r}")
+        if at is None:
+            nav = _nav(address)
+            marked = f' data-nav="{html.escape(nav)}"' if nav is not None else ""
+            pieces.append(f'{space}<a href="{html.escape(address)}"{marked}>'
+                          f"{html.escape(words.strip(), quote=False)}</a>")
+            continue
+        if (not isinstance(at, int) or isinstance(at, bool) or not 0 <= at < len(held)
+                or at in seen):
+            raise Refused(f"the menu save names link {at!r} wrongly")
+        seen.add(at)
+        link = held[at]
+        own = text[starts[at]:link.start()]
+        if (words.strip(), address) == read[at]:
+            own += text[link.start():link.end()]
+        else:
+            own += _changed(text, link, words.strip(), address)
+        pieces.append(own)
+    out = [text[:starts[0]]]
+    for number, piece in enumerate(pieces):
+        out.append(piece)
+        if number < len(gaps):
+            out.append(gaps[number])
+    out.extend(gaps[len(pieces):])
+    out.append(text[held[-1].end():])
+    return "".join(out)

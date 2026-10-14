@@ -49,7 +49,8 @@ that page, and a publish of anything else leaves them waiting.
 5. **(decided here) The furniture has the code view only.** It carries the
    Builder's placeholders, `{{NAVIGATION}}` and `{{YEAR}}` among them, as
    text. A words view would show them as words, and a changed one would break
-   every page.
+   every page. *Amended by PRESS-0216:* the furniture opens in the visual
+   view, words holding a placeholder shown as code (PRESS-0216 § 4.2).
 6. **(decided here) The code view keeps each untouched line's own line
    ending.** A browser hands a form's text back with `\n` alone, and PRESS-0006
    § 4.2 forbids translating his line endings. Import leaves some pages with
@@ -203,7 +204,7 @@ runs under `editor.LOCK`. Every page is registered with `publishing=False`.
 
 `kind` is `pages` or `furniture`. `view` is `words` or `code`, and defaults to
 `words` for a fixed page. **The furniture always opens in `code`** (§ 3
-decision 5). `show` defaults to `HOME` where the Store holds it, else the
+decision 5; *amended by PRESS-0216*, which opens it in the visual view). `show` defaults to `HOME` where the Store holds it, else the
 first fixed page `list_html` gives, else the newest entry.
 
 **The list at `/`** (PRESS-0012 § 4.5) gains a section after the entries: each

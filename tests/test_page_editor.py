@@ -33,6 +33,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    menu,
     page_editor,
     settings,
     starter,
@@ -131,11 +132,11 @@ def _save(browser: _Browser, kind: str, name: str, view: str, text: str, *,
 
 
 def _visual(browser: _Browser, name: str, sections: list, removed: list | None = None, *,
-            waiting: bool, base: str, route: str = "/page/save"
+            waiting: bool, base: str, route: str = "/page/save", kind: str = "pages"
             ) -> tuple[int, dict[str, str], str]:
     """A save from the visual view (PRESS-0260 § 4.5)."""
     return browser.request("POST", route, {
-        "kind": "pages", "name": name, "view": "visual", "show": "",
+        "kind": kind, "name": name, "view": "visual", "show": "",
         "waiting": "1" if waiting else "0", "base": base,
         "sections": json.dumps(sections), "removed": json.dumps(removed or [])})
 
@@ -356,13 +357,17 @@ def test_stray_furniture_is_warned_about(tmp_path):
 # ----------------------------------------------------------------- INV-13 ---
 
 
-def test_furniture_has_no_words_view(tmp_path):
+def test_furniture_opens_in_the_visual_view(tmp_path):
+    """PRESS-0216 § 3 decision 5, amending § 3 decision 5 here. Breaks when the
+    header, footer or menu is held to the code view."""
     folder = _folder(tmp_path)
     with _pages(folder) as browser:
-        status, _, text = browser.request("GET", "/page?kind=furniture&name=footer&view=words")
-    assert status == 200, text
-    assert f">\n{html.escape(FOOTER)}</textarea>" in text
-    assert "Show me the code" not in text and "Back to the page" not in text
+        footer = browser.request("GET", "/page?kind=furniture&name=footer")[2]
+        menu_view = browser.request("GET", "/page?kind=furniture&name=navigation")[2]
+        code = browser.request("GET", "/page?kind=furniture&name=footer&view=code")[2]
+    assert 'id="sections"' in footer and "Show me the code" in footer
+    assert 'id="menu-links"' in menu_view and '"Journal"' in menu_view
+    assert f">\n{html.escape(FOOTER)}</textarea>" in code and "Back to the page" in code
 
 
 # ----------------------------------------------------------------- INV-14 ---
@@ -707,3 +712,84 @@ def test_a_section_moves_between_columns_and_the_page(tmp_path, posted, written)
     def gapless(html_text: str) -> str:  # the gaps between sections are not at issue
         return re.sub(r"\s+(?=<!-- /?pressless)", "", html_text)
     assert gapless(saved) == gapless(AREA_BEFORE + "".join(written) + AREA_AFTER), saved
+
+
+# ------------------------------------------------------------- PRESS-0216 ---
+# docs/specs/PRESS-0216-furniture-visual.md § 5: the header, footer and menu.
+
+MARKED_FOOTER = ("<footer><!-- pressless:page -->\n"
+                 "<!-- pressless:text --><p>Words &amp; more</p><!-- /pressless:text -->\n"
+                 "<!-- pressless:code --><p class=x>{{YEAR}}</p><!-- /pressless:code -->\n"
+                 "<!-- /pressless:page --></footer>\n")
+
+
+def test_a_furniture_save_of_nothing_changed_keeps_every_byte(tmp_path):
+    """INV-1. Breaks when a header or footer save re-spells a byte outside a
+    changed section."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer", MARKED_FOOTER)
+    with _pages(folder) as browser:
+        status, _, text = _visual(browser, "footer", [{"keep": [0]}, {"keep": [1]}],
+                                  waiting=False, kind="furniture",
+                                  base=_digest(_live(folder, "furniture", "footer")))
+    assert status == 200, text
+    assert _waiting(folder, "furniture", "footer").read_bytes() == MARKED_FOOTER.encode()
+
+
+def test_words_holding_a_placeholder_are_code(tmp_path):
+    """INV-2. Breaks when a text section holding {{ is offered as text, so the
+    frame's filled words would be posted back."""
+    adopted = blocks.adopt("<footer><p>&copy; {{YEAR}} {{SITE_NAME}}</p></footer>\n", (),
+                           "footer")
+    assert adopted is not None and "<!-- pressless:text -->" in adopted
+    shown = page_editor.outline(blocks.read("footer", adopted))
+    assert [(item["kind"], item["code"]) for item in shown] == [
+        ("code", "<p>© {{YEAR}} {{SITE_NAME}}</p>")]
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer", adopted)
+    with _pages(folder) as browser:
+        page = browser.request("GET", "/page?kind=furniture&name=footer")[2]
+    assert '"kind": "code"' in page and '"kind": "text"' not in page
+
+
+def _links(browser: _Browser, folder: Path, links) -> tuple[int, dict[str, str], str]:
+    return browser.request("POST", "/page/save", {
+        "kind": "furniture", "name": "navigation", "view": "visual", "show": "",
+        "waiting": "0", "base": _digest(_live(folder, "furniture", "navigation")),
+        "links": json.dumps(links)})
+
+
+def test_a_menu_save_that_names_no_link_writes_nothing(tmp_path):
+    """INV-6. Breaks when a menu save skips a bad entry and writes the rest."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        status, _, text = _links(browser, folder, [{"at": 3, "words": "x", "href": "x.html"}])
+        bad_href = _links(browser, folder, [{"at": None, "words": "Run",
+                                            "href": "javascript:go()"}])[0]
+        good, _, reply = _links(browser, folder, [
+            {"at": None, "words": "About", "href": "{{UP}}pages/about.html"},
+            {"at": 0, "words": "Journal", "href": "{{UP}}blog/index.html"}])
+    assert (status, bad_href) == (409, 409), text
+    assert html.escape(_said(menu.Refused)) in text
+    assert good == 200, reply
+    assert json.loads(reply)["links"] == [["About", "{{UP}}pages/about.html"],
+                                          ["Journal", "{{UP}}blog/index.html"]]
+    assert _waiting(folder, "furniture", "navigation").read_text(encoding="utf-8") == (
+        '<nav><a href="{{UP}}pages/about.html" data-nav="about">About</a>'
+        '<a href="{{UP}}blog/index.html" data-nav="Journal">Journal</a></nav>')
+
+
+def test_an_unusual_menu_opens_in_the_code_view(tmp_path):
+    """INV-7. Breaks when the menu view lists, and a save rewrites, a menu
+    that is not one <nav> of links."""
+    unusual = '<ul><li><a href="{{UP}}index.html">Home</a></li></ul>'
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation", unusual)
+    with _pages(folder) as browser:
+        page = browser.request("GET", "/page?kind=furniture&name=navigation")[2]
+        status = _links(browser, folder, [{"at": 0, "words": "Home",
+                                           "href": "{{UP}}index.html"}])[0]
+    assert 'id="menu-links"' not in page and "</textarea>" in page
+    assert html.escape(words.say("notice.page_editor.menu_code_only")) in page
+    assert status == 409
+    assert not _waiting(folder, "furniture", "navigation").exists()

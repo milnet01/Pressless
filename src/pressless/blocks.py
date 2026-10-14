@@ -151,7 +151,7 @@ def _wrap(name: str, inner: str) -> str:
 # ------------------------------------------------------------- checking ----
 
 
-def _address_allowed(value: str, *, mailto: bool) -> bool:
+def address_allowed(value: str, *, mailto: bool) -> bool:
     """§4.4: a relative path, or http:, https: or (for an href) mailto:. The
     scheme is read as a browser reads it: outer spaces and controls stripped,
     tabs and line breaks removed, case folded."""
@@ -181,7 +181,7 @@ def _inline_from(events) -> str | None:
             out.append(f"<{event.tag}>")
         elif (event.tag == "a" and "a" not in open_tags and len(event.attrs) == 1
               and event.attrs[0][0] == "href" and event.attrs[0][1] is not None
-              and _address_allowed(event.attrs[0][1], mailto=True)):
+              and address_allowed(event.attrs[0][1], mailto=True)):
             open_tags.append("a")
             out.append(f'<a href="{_html.escape(event.attrs[0][1], quote=True)}">')
         else:
@@ -234,7 +234,7 @@ def _check(section: Section) -> None:
     if kind == VIDEO and "youtube" in fields and not _YOUTUBE_ID.fullmatch(fields["youtube"]):
         raise SectionRefused(f"{fields['youtube']!r} is not a YouTube video's id")
     for name, mailto in (("src", False), ("href", True)):
-        if name in fields and not _address_allowed(fields[name], mailto=mailto):
+        if name in fields and not address_allowed(fields[name], mailto=mailto):
             raise SectionRefused(f"a {kind} section may not link to {fields[name]!r}")
     _check_parts(section)
 
@@ -552,10 +552,13 @@ def _recognised(events) -> Section | None:
     return Section(TEXT, {"html": inline})
 
 
-def adopt(html: str, furniture: tuple[tuple[int, int], ...]) -> str | None:
+def adopt(html: str, furniture: tuple[tuple[int, int], ...], element: str = "main"
+          ) -> str | None:
     """§4.6: the page with its `main`'s content taken into sections; the page
     unchanged where it already has an area; None where there is no `main` to
-    make one in. `furniture` is `builder.furniture_spans(name, html)`."""
+    make one in. `furniture` is `builder.furniture_spans(name, html)`.
+    `element` names another element to make the area in: `header` or `footer`
+    for the furniture files (PRESS-0216 § 4.1)."""
     if read("", html) is not None:
         return html
     events = _scan(html)
@@ -564,10 +567,10 @@ def adopt(html: str, furniture: tuple[tuple[int, int], ...]) -> str | None:
         return any(start <= at < end for start, end in furniture)
 
     for first, event in enumerate(events):
-        if event.kind != "start" or event.tag != "main" or in_furniture(event.start):
+        if event.kind != "start" or event.tag != element or in_furniture(event.start):
             continue
         last = _node_end(events, first) - 1
-        if (events[last].kind != "end" or events[last].tag != "main"
+        if (events[last].kind != "end" or events[last].tag != element
                 or in_furniture(events[last].start)):
             continue
         start, end = event.end, events[last].start

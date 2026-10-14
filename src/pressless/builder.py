@@ -170,6 +170,10 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
 
     def write(new: Path) -> str:
         page = _Build(folder, settings, new, photo_src, change, today or date.today())
+        # PRESS-0216 § 4.3: a furniture file's own preview keeps its marks,
+        # and the shown page's go.
+        if marks and change.kind == store.FURNITURE_FOLDER:
+            page.marked = change.name
         pages = page.read_html()
         if show is None:
             shown = page.shown(page.read_entries())
@@ -179,7 +183,7 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
                 page.refuse_an_unusable_name(shown[0], name)
             page.entry_page(shown[0])
         elif show in pages:
-            page.fixed_page(show, pages[show], marks=marks)
+            page.fixed_page(show, pages[show], marks=marks and not page.marked)
         else:
             raise BuildStopped(f"there is no page {show} to show the change on")
         return page.files[0]
@@ -460,6 +464,7 @@ class _Build:
         self.today = today
         self.files: list[str] = []
         self.copied: set[str] = set()
+        self.marked = ""  # the furniture file whose marks stay, for its preview alone
 
     # -- writing --
 
@@ -488,8 +493,18 @@ class _Build:
 
     def set_furniture(self, furniture: dict[str, str]) -> None:
         identity = store.read_identity(self.folder) or store.Identity("")
-        self.furniture = _Furniture(furniture["header"], furniture["navigation"],
-                                    furniture["footer"], self.today.year, identity)
+        held = {}
+        for name in ("header", "footer"):
+            text = furniture[name]
+            # PRESS-0216 § 4.2: its held photographs are published as a
+            # page's are, {{UP}} being the site's root.
+            if self.photo_src is None:
+                for photograph in _held_pictures(self.folder, "index.html",
+                                                 text.replace("{{UP}}", "")):
+                    self.web_copy(photograph)
+            held[name] = text if self.marked == name else blocks.unmarked(name, text)
+        self.furniture = _Furniture(held["header"], furniture["navigation"],
+                                    held["footer"], self.today.year, identity)
 
     def read_entries(self) -> dict[str, store.Entry]:
         entries = {slug: store.read(store.path_for(self.folder, slug, draft=False))

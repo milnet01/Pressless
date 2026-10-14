@@ -4288,11 +4288,21 @@ removed, and the menu follows.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Face, Store, Builder.
 
-- 📋 [PRESS-0216] **The header, footer and menu are changed in the same visual editor.**
+- ✅ [PRESS-0216] **The header, footer and menu are changed in the same visual editor.**
   S15. Today these are edited only as code. One edit reaches every
   page, so the preview and undo rules design.md gives the furniture
   still hold.
   Decided by the user 2026-10-14: a short spec first, one review round.
+  2026-10-14: spec accepted, docs/specs/PRESS-0216-furniture-visual.md,
+  after one review round (nine findings fixed).
+  Shipped 2026-10-14: built to docs/specs/PRESS-0216-furniture-visual.md.
+  Header and footer adopt into their own element and open in the visual
+  view; words holding {{ are offered as code; the menu view edits a plain
+  menu's links in place (menu.links, menu.arranged). INV-3 was narrowed
+  while building: content/ keeps the Store's marks, as for a page. Each
+  INV seen red against the code before it. Gate green on Linux; the
+  Windows box was unreachable, so its suite is owed. Chrome rows in
+  scripts/by-hand-browser-checks.py pass; Firefox and Edge owed by hand.
   **Layman:** They change the top and bottom of every page, and the menu, the same way they change a page, with no code.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.

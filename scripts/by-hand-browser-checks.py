@@ -12,6 +12,8 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0263: the true-colours switch is kept, and the preview starts undimmed
   PRESS-0264: Move to takes a section between columns, out of them and back
   PRESS-0265: a section is dragged into place with the mouse
+  PRESS-0216: the header is typed in on the page; the menu's links are
+    changed, moved and added in its list
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -441,6 +443,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         true_colours_kept(page, origin)
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
+        furniture_views(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -768,6 +771,49 @@ def drag_sections(page, origin: str, folder: Path) -> None:
     shown = drag("Right", "Left")
     check("PRESS-0265: dragged from one column to another",
           shown and layout() == [[["Right", "Left"], ["Loose"]]], f"line={shown} {layout()}")
+
+
+def furniture_views(page, origin: str, folder: Path) -> None:
+    """PRESS-0216: the header in the visual view, and the menu view."""
+    header = ('<header><!-- pressless:page -->\n<!-- pressless:text --><p>Header words</p>'
+              "<!-- /pressless:text -->\n<!-- /pressless:page --></header>\n")
+    store.write_html(folder, store.FURNITURE_FOLDER, "header", header)
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation",
+                     '<nav>\n  <a href="{{UP}}index.html" data-nav="Home">Home</a>\n'
+                     '  <a href="{{UP}}pages/visual.html" data-nav="visual">Visual</a>\n</nav>')
+
+    def saved() -> None:
+        page.wait_for_timeout(1600)
+        page.wait_for_function("document.getElementById('save-status').textContent !== "
+                               "'Saving'", timeout=5000)
+
+    def waiting(name: str) -> str:
+        return store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, name,
+                                                   waiting=True))
+
+    page.goto(f"{origin}/page?kind=furniture&name=header&view=visual&show=visual",
+              wait_until="networkidle")
+    page.frame_locator("#preview").locator("p", has_text="Header words").click()
+    page.keyboard.press("End")
+    page.keyboard.type(" more")
+    saved()
+    check("PRESS-0216: the header is typed in on the page and saved as its section",
+          "<p>Header words more</p>" in waiting("header"), waiting("header"))
+
+    page.goto(f"{origin}/page?kind=furniture&name=navigation&view=visual",
+              wait_until="networkidle")
+    rows = page.locator("#menu-links li")
+    rows.nth(0).locator("[data-link=words]").fill("Start")
+    rows.nth(0).locator("[data-act=down]").click()
+    page.locator("[data-act=add-link]").click()
+    rows.nth(2).locator("[data-link=words]").fill("Shop")
+    rows.nth(2).locator("[data-link=href]").fill("https://example.org/")
+    saved()
+    check("PRESS-0216: a menu link is renamed, moved down and a new one added",
+          waiting("navigation") == (
+              '<nav>\n  <a href="{{UP}}pages/visual.html" data-nav="visual">Visual</a>\n'
+              '  <a href="{{UP}}index.html" data-nav="Home">Start</a>\n'
+              '  <a href="https://example.org/">Shop</a>\n</nav>'), waiting("navigation"))
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

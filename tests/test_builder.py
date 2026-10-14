@@ -1439,3 +1439,66 @@ def test_a_page_picture_is_published(tmp_path):
     build(folder, _settings(), into)
     held = [name for name in _files(into) if name.startswith("photographs/")]
     assert held == ["photographs/my boat.jpg"], held
+
+
+# ------------------------------------------------------------- PRESS-0216 ---
+# docs/specs/PRESS-0216-furniture-visual.md § 5: the furniture's sections.
+
+MARKED_HEADER = ('<header class="site"><!-- pressless:page -->\n'
+                 "<!-- pressless:button --><p class=\"pressless-button\"><a href=\"{{UP}}"
+                 'index.html">Home</a></p><!-- /pressless:button -->\n'
+                 "<!-- /pressless:page --></header>\n")
+MARKED_FOOTER = ("<footer><!-- pressless:page -->\n<!-- pressless:heading --><h2>Bye</h2>"
+                 "<!-- /pressless:heading -->\n<!-- /pressless:page --></footer>\n")
+BOTH_ENDS = SECTIONED.replace("</main>\n", "</main>\n<!-- FOOTER:START -->\n"
+                              "<!-- FOOTER:END -->\n")
+
+
+def _marked_store(tmp_path: Path) -> Path:
+    folder = _store(tmp_path, pages={"index": BOTH_ENDS})
+    store.write_html(folder, store.FURNITURE_FOLDER, "header", MARKED_HEADER)
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer", MARKED_FOOTER)
+    return folder
+
+
+def test_furniture_marks_are_never_published(tmp_path):
+    """INV-3. Breaks when the header's or footer's text reaches a served page
+    without blocks.unmarked."""
+    folder = _marked_store(tmp_path)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    # content/ is the Store's own files, marks and all, for undo to fetch back.
+    written = [name for name in _files(into) if not name.startswith("content/")
+               and "pressless:" in (into / name).read_text(encoding="utf-8", errors="replace")]
+    assert written == [], written
+    assert "Bye</h2>" in (into / "index.html").read_text(encoding="utf-8")
+
+
+def test_a_furniture_preview_keeps_its_own_marks_alone(tmp_path):
+    """INV-4. Breaks when the shown page or the other furniture file keeps its
+    marks in a furniture file's visual preview."""
+    folder = _marked_store(tmp_path)
+    change = builder.Html(store.FURNITURE_FOLDER, "header", MARKED_HEADER)
+    into = tmp_path / "preview"
+    relative = builder.preview_html(folder, _settings(), into, change, show="index",
+                                    photo_src=lambda name: name, marks=True)
+    shown = (into / relative).read_text(encoding="utf-8")
+    assert "<!-- pressless:button -->" in shown
+    assert "pressless:text" not in shown, "the shown page kept its marks"
+    assert "pressless:heading" not in shown, "the footer kept its marks"
+
+
+def test_a_furniture_picture_is_published(tmp_path):
+    """INV-8. Breaks when only a page's own picture sections are read for the
+    photographs a build copies."""
+    picture = ('<!-- pressless:picture --><img src="{{UP}}photographs/my%20boat.jpg" '
+               'alt="A boat"><!-- /pressless:picture -->\n')
+    folder = _marked_store(tmp_path)
+    store.write_html(folder, store.FURNITURE_FOLDER, "header",
+                     MARKED_HEADER.replace("<!-- /pressless:page -->", picture
+                                           + "<!-- /pressless:page -->"))
+    _photograph(folder, "my boat.jpg", _image("JPEG"))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    held = [name for name in _files(into) if name.startswith("photographs/")]
+    assert held == ["photographs/my boat.jpg"], held

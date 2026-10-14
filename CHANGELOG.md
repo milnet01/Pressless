@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Change the header, footer and menu without code.** (PRESS-0216)
+  The header and footer open on the page, as a page does: click their
+  words and type, or add a picture or a button. Words the site fills in
+  for you, such as its name or the year, show as code so they are never
+  overwritten. The menu opens as a list of its links: change a link's
+  words or where it goes, move it up or down, remove it, or add one.
+
 - **Drag a section into place with the mouse.** (PRESS-0265)
   The section you picked shows a Drag handle at its top right. Drag it,
   and a line shows where the section will land. The Move buttons still

@@ -101,3 +101,57 @@ def test_a_commented_out_link_is_not_a_link():
     text = ONE_LINE.replace("</nav>", '<!-- <a href="{{UP}}pages/about.html">x</a> --></nav>')
     assert menu.links_to(text, "about") == (menu.links_to(ONE_LINE, "about")[0],)
     assert "<!-- <a href" in menu.remove(text, "about")
+
+
+# ------------------------------------------------------------- PRESS-0216 ---
+
+# A comment between links, a link with markup in its words, odd spacing.
+ODD = ('<!-- top -->\n<nav class="m">\n  <a href="{{UP}}index.html" data-nav="Home">Home</a>'
+       '\n   <!-- between -->\n\t<a href="{{UP}}pages/about.html" data-nav="about"><b>About</b>'
+       ' us</a>\n  <a href="https://example.org/?a=1&amp;b=2">Shop</a>\n</nav>\n')
+
+
+def _as_read(text: str) -> list[dict]:
+    return [{"at": at, "words": words, "href": href}
+            for at, (words, href) in enumerate(menu.links(text))]
+
+
+def test_an_arranged_menu_keeps_every_other_byte():
+    """PRESS-0216 INV-5. Breaks when the menu is written from its list of
+    links rather than by moving each link's own bytes."""
+    read = _as_read(ODD)
+    assert read[1]["words"] == "About us" and read[2]["href"] == "https://example.org/?a=1&b=2"
+    assert menu.arranged(ODD, read) == ODD
+    moved = menu.arranged(ODD, [read[2], read[0], read[1]])
+    assert moved == ('<!-- top -->\n<nav class="m">\n  <a href="https://example.org/?a=1&amp;b=2">'
+                     'Shop</a>\n   <!-- between -->\n  <a href="{{UP}}index.html" data-nav="Home">'
+                     'Home</a>\n\t<a href="{{UP}}pages/about.html" data-nav="about"><b>About</b>'
+                     ' us</a>\n</nav>\n')
+
+
+def test_a_changed_or_new_link_carries_its_page_name():
+    """PRESS-0216 § 4.4. Breaks when a link sent to another page keeps the old
+    page's data-nav, or Home is written under pages/."""
+    read = _as_read(ODD)
+    read[1] = {"at": 1, "words": "Contact", "href": "{{UP}}pages/contact.html"}
+    read[2] = {"at": 2, "words": "Shop", "href": "https://example.org/"}
+    new = {"at": None, "words": "Start", "href": "{{UP}}index.html"}
+    written = menu.arranged(ODD, [*read, new])
+    assert '<a href="{{UP}}pages/contact.html" data-nav="contact"><b>Contact</b></a>' not in written
+    assert '<a href="{{UP}}pages/contact.html" data-nav="contact">Contact</a>' in written
+    assert '<a href="https://example.org/">Shop</a>' in written
+    assert '\n  <a href="{{UP}}index.html" data-nav="Home">Start</a>\n</nav>' in written
+
+
+@pytest.mark.parametrize("posted", [
+    [{"at": 7, "words": "Home", "href": "{{UP}}index.html"}],
+    [{"at": 0, "words": "Home", "href": "{{UP}}index.html"},
+     {"at": 0, "words": "Home", "href": "{{UP}}index.html"}],
+    [{"at": None, "words": "  ", "href": "{{UP}}index.html"}],
+    [{"at": None, "words": "Run", "href": "javascript:alert(1)"}],
+    "not a list",
+])
+def test_a_menu_post_naming_no_link_is_refused(posted):
+    """PRESS-0216 § 4.4. Breaks when a bad entry is skipped and the rest written."""
+    with pytest.raises(menu.Refused):
+        menu.arranged(ODD, posted)

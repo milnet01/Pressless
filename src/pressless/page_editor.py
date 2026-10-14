@@ -76,6 +76,11 @@ SENTENCES[menu.Unusual] = Sentence(
     Site.UNCHANGED,
     "failure.menu.Unusual.next",
 )
+SENTENCES[menu.Refused] = Sentence(
+    "failure.menu.Refused.what",
+    Site.UNCHANGED,
+    "failure.menu.Refused.next",
+)
 
 _LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
            "navigation": "editor.pages.navigation"}
@@ -112,20 +117,37 @@ def outline(page: blocks.Page) -> list[dict]:
     for path, section in _paths(page).items():
         item = {"path": list(path), "kind": section.kind, "marked": _marked(section),
                 "fields": dict(section.fields), "parts": len(section.parts)}
-        if section.kind == blocks.CODE and item["marked"]:
-            opening = section.source.index("-->") + 3
-            item["code"] = section.source[opening:section.source.rindex("<!--")]
+        # PRESS-0216 § 4.2: words holding a Builder placeholder are shown as
+        # the code they are, since the frame shows them filled.
+        if section.kind in (blocks.TEXT, blocks.HEADING) and "{{" in section.fields["html"]:
+            item.update(kind=blocks.CODE, fields={})
+        if item["kind"] == blocks.CODE and item["marked"]:
+            source = section.source or blocks.section_html(section)
+            item["code"] = source[source.index("-->") + 3:source.rindex("<!--")]
         shown.append(item)
     return shown
 
 
-def _area(name: str, text: str) -> str | None:
+# PRESS-0216 § 4.1: the element a furniture file's sections area is made in.
+_AREAS = {"header": "header", "footer": "footer"}
+
+
+def _area(kind: str, name: str, text: str) -> str | None:
     """The file with a sections area: as it is, or adopted in memory (§ 4.1
     step 2). None where Blocks finds no area to make; BuildStopped where the
     furniture markers do not pair."""
     if blocks.read(name, text) is not None:
         return text
-    return blocks.adopt(text, builder.furniture_spans(name, text))
+    element = _AREAS.get(name, "") if kind == store.FURNITURE_FOLDER else "main"
+    if not element:
+        return None
+    return blocks.adopt(text, builder.furniture_spans(name, text), element)
+
+
+def _menu(kind: str, name: str) -> bool:
+    """Whether the file is the menu, whose visual view is its list of links
+    (PRESS-0216 § 4.4)."""
+    return kind == store.FURNITURE_FOLDER and name == "navigation"
 
 
 def _path(value: object, held: dict) -> tuple[int, ...]:
@@ -269,11 +291,9 @@ def _page_address(kind: str, name: str, **more: str) -> str:
 
 
 def _view(kind: str, asked: str) -> str:
-    """§ 4.4: the furniture always opens in the code view (§ 3 decision 5); a
-    page in the visual view unless the code was asked for (PRESS-0260 § 4.1),
-    so an old `view=words` address opens the visual view."""
-    if kind == store.FURNITURE_FOLDER:
-        return CODE
+    """A page or a furniture file opens in the visual view unless the code was
+    asked for (PRESS-0260 § 4.1, PRESS-0216 § 3 decision 5), so an old
+    `view=words` address opens the visual view."""
     return CODE if asked == CODE else VISUAL
 
 
@@ -336,8 +356,14 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     text = store.read_html(path)
     if _view(kind, form.get("view", "")) == CODE:
         new = put_code(text, form.get("text", ""))
+    elif _menu(kind, name):
+        try:
+            posted = json.loads(form.get("links", ""))
+        except ValueError:
+            raise menu.Refused("the menu save does not list its links") from None
+        new = menu.arranged(text, posted)
     else:
-        adopted = _area(name, text)
+        adopted = _area(kind, name, text)
         if adopted is None:
             raise SectionsUnreadable(f"the page {name} has no sections area to save into")
         try:
@@ -353,7 +379,7 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
 
 # What a save refuses with, writing nothing (PRESS-0260 § 4.5).
 _REFUSED = (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped,
-            SectionsUnreadable, blocks.SectionRefused)
+            SectionsUnreadable, blocks.SectionRefused, menu.Refused, menu.Unusual)
 
 
 def _failed(face: Face, notices: list[str], failure: Exception) -> Reply:
@@ -394,17 +420,25 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
             view = _view(kind, asked_view)
-            shown, sections, photographs = text, None, ()
+            shown, sections, photographs, links = text, None, (), None
             try:
                 builder.furniture_spans(name, text)
             except builder.BuildStopped as exc:
                 view, broken = CODE, face.fail(exc, publishing=False)
-            if view == VISUAL:
+            if view == VISUAL and _menu(kind, name):
+                try:
+                    links = menu.links(text)
+                except menu.Unusual:
+                    view = CODE
+                    notices.append(say("notice.page_editor.menu_code_only"))
+            elif view == VISUAL:
                 # PRESS-0260 § 4.1: adopted in memory only; nothing is written.
-                shown = _area(name, text)
+                shown = _area(kind, name, text)
                 if shown is None:
                     view, shown = CODE, text
-                    notices.append(say("notice.page_editor.code_only"))
+                    notices.append(say("notice.page_editor.furniture_code_only"
+                                       if kind == store.FURNITURE_FOLDER
+                                       else "notice.page_editor.code_only"))
                 else:
                     sections = outline(blocks.read(name, shown))
                     try:
@@ -412,11 +446,11 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                     except store.StoreError as exc:
                         broken = face.fail(exc, publishing=False)
             preview, preview_failure = _preview(face, folder, kind, name, shown, show,
-                                                marks=view == VISUAL)
+                                                marks=sections is not None)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
     changes: dict[str, object] = {"page": (kind, name)}
-    if kind == store.PAGES_FOLDER and "view" in request.query:
+    if "view" in request.query:
         changes["view"] = _view(kind, request.query["view"])
     if kind == store.FURNITURE_FOLDER and "show" in request.query:
         changes["shown_on"] = request.query["show"]
@@ -425,14 +459,15 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         kind, name, view, show, waiting, base, text, held, bool(entries), broken,
         preview, preview_failure, builder.stylesheets(folder),
         face.view_site(), starter.unpublished(folder), sections, photographs,
-        remembered.true_colours)
+        remembered.true_colours, links)
 
 
 def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
           box: str, held: tuple[str, ...], has_entries: bool, broken: str | None,
           preview: str | None, failure: str | None, sheets: tuple[str, ...],
           visit: str, off_site: bool, sections: list[dict] | None = None,
-          photographs: tuple[str, ...] = (), undimmed: bool = False) -> str:
+          photographs: tuple[str, ...] = (), undimmed: bool = False,
+          links: list[tuple[str, str]] | None = None) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -446,7 +481,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
     else:
         title = say(_LABELS[name]) if name in _LABELS else name
     switch = ""
-    if kind == store.PAGES_FOLDER and broken is None:
+    if broken is None:
         other, label = ((CODE, say("page_editor.show_code")) if view == VISUAL
                         else (VISUAL, say("page_editor.show_visual")))
         switch = f"<p>{link(label, _page_address(kind, name, view=other))}</p>"
@@ -498,17 +533,19 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-{reshape}{_panel(name, sections, photographs) if view == VISUAL else
+{reshape}{_menu_panel(links, held) if links is not None
+          else _panel(kind, name, sections, photographs) if view == VISUAL else
           _code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>')}
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
 <div id="proof">{true_colours(undimmed)}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
- src="{attr(preview or 'about:blank')}"></iframe>{_drag() if view == VISUAL else ""}</div>
+ src="{attr(preview or 'about:blank')}"></iframe>{_drag() if sections is not None else ""}</div>
 <script>{_PAGE_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
-{f"<script>{_VISUAL_SCRIPT}</script>" if view == VISUAL else ""}
+{f"<script>{_VISUAL_SCRIPT}</script>" if sections is not None else ""}
+{f"<script>{_MENU_SCRIPT}</script>" if links is not None else ""}
 <script>{editor._UNDO_SCRIPT}</script>"""
 
 
@@ -532,7 +569,8 @@ _KIND_WORDS = {
 }
 
 
-def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...]) -> str:
+def _panel(kind: str, name: str, sections: list[dict] | None,
+           photographs: tuple[str, ...]) -> str:
     """PRESS-0260 § 4.3: the side panel, every control in place from the
     start; the script shows the ones the picked section's kind uses, inside a
     panel of fixed size, so nothing beside it moves."""
@@ -543,7 +581,9 @@ def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...])
         return (f'<label data-for="{kinds}">{say(key)} '
                 f'<input data-field="{name}" autocomplete="off"{more}></label>')
 
-    up = "../" if name != HOME else ""
+    # PRESS-0216 § 4.2: one header serves every depth, so its addresses start
+    # at the site's root by the Builder's own placeholder.
+    up = "{{UP}}" if kind == store.FURNITURE_FOLDER else "../" if name != HOME else ""
     # § 4.6: a held photograph is offered by the address the site will use.
     choices = "".join(
         f'<option value="{attr(up + builder.web_photograph(photo))}">{html.escape(photo)}</option>'
@@ -597,6 +637,44 @@ def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...])
 </aside>"""
 
 
+def _shape(kind: str, name: str, text: str) -> dict:
+    """What a visual view's script holds of the file just written: the menu's
+    links, or the sections."""
+    if _menu(kind, name):
+        return {"links": menu.links(text)}
+    return {"sections": outline(blocks.read(name, text))}
+
+
+def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...]) -> str:
+    """PRESS-0216 § 4.4: the menu's links, in order, each with its words and
+    where it goes; the script fills the list from the links it is given."""
+    def attr(value: str) -> str:
+        return html.escape(value, quote=True)
+
+    def place(page: str) -> str:
+        address = "{{UP}}index.html" if page == HOME else f"{{{{UP}}}}pages/{page}.html"
+        label = say("editor.pages.home") if page == HOME else builder.label(page)
+        return f'<option value="{attr(address)}">{html.escape(label)}</option>'
+
+    places = "".join(place(page) for page in pages)
+    data = json.dumps({"links": links}).replace("</", "<\\/")
+    row = (f'<li class="panel-row"><label>{say("page_editor.menu.words")} '
+           '<input data-link="words" autocomplete="off"></label>'
+           f'<label>{say("page_editor.menu.address")} '
+           '<input data-link="href" list="page-list" autocomplete="off"></label>'
+           f'<button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>'
+           f'<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>'
+           f'<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button>'
+           "</li>")
+    return f"""<aside id="panel" aria-label="{attr(say("page_editor.menu.title"))}">
+<script type="application/json" id="links">{data}</script>
+<datalist id="page-list">{places}</datalist>
+<template id="link-row">{row}</template>
+<ol id="menu-links"></ol>
+<p><button type="button" data-act="add-link">{say("page_editor.menu.add")}</button></p>
+</aside>"""
+
+
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
     form = editor._form(request)
@@ -620,7 +698,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
              "notices": render_notices(notices)}
     if visual:
         # § 4.5: after a save the posted list is the file's.
-        reply["sections"] = outline(blocks.read(name, new))
+        reply.update(_shape(kind, name, new))
     return _json(reply)
 
 
@@ -736,7 +814,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              "failure": failure, "notices": render_notices(notices), "busy": False}
     if _view(kind, form.get("view", "")) == VISUAL:
         # Live or waiting, the file the next save reads holds what was written.
-        reply["sections"] = outline(blocks.read(name, new))
+        reply.update(_shape(kind, name, new))
     return _json(reply)
 
 
@@ -1028,8 +1106,9 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       data.set(name, state[name]);
     }
     if (posted) {
-      data.set("sections", posted.sections);
-      data.set("removed", posted.removed);
+      for (const key of ["sections", "removed", "links"]) {
+        if (key in posted) data.set(key, posted[key]);
+      }
     } else {
       data.set("text", form.elements.text.value);
     }
@@ -1344,6 +1423,87 @@ _CODE_SCRIPT = r"""
   }
   // A script that sets a box's value repaints it here.
   window.presslessCode = {colour, paint: () => boxes.forEach(paint)};
+})();
+"""
+
+
+# PRESS-0216 § 4.4: the menu view. It keeps the menu's links in order, each
+# with the place it held in the file last read (`at`, null for a new one), and
+# posts them as the save's `links`. A new link is posted once it has words and
+# an address; a kept link emptied is posted with what it last saved.
+_MENU_SCRIPT = r"""
+(() => {
+  const list = document.getElementById("menu-links");
+  const row = document.getElementById("link-row");
+  const frame = document.getElementById("preview");
+  const given = JSON.parse(document.getElementById("links").textContent).links;
+  const links = given.map(([words, href], at) => ({at, words, href, kept: {words, href}}));
+
+  function draw(link, act) {
+    list.replaceChildren(...links.map((each, at) => {
+      const item = row.content.firstElementChild.cloneNode(true);
+      item.querySelector("[data-link=words]").value = each.words;
+      item.querySelector("[data-link=href]").value = each.href;
+      item.querySelector("[data-act=up]").disabled = at === 0;
+      item.querySelector("[data-act=down]").disabled = at === links.length - 1;
+      item.link = each;
+      return item;
+    }));
+    const shown = [...list.children].find((item) => item.link === link);
+    if (shown) shown.querySelector(act ? "[data-act=" + act + "]" : "input").focus();
+  }
+  const changed = () => window.presslessPage.changed();
+
+  list.addEventListener("input", (event) => {
+    const item = event.target.closest("li");
+    if (!item || !event.target.dataset.link) return;
+    item.link[event.target.dataset.link] = event.target.value;
+    changed();
+  });
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-act]");
+    if (!button) return;
+    const link = button.closest("li").link;
+    const at = links.indexOf(link);
+    const act = button.dataset.act;
+    if (act === "remove") {
+      links.splice(at, 1);
+      draw(links[Math.min(at, links.length - 1)], "remove");
+    } else {
+      const to = at + (act === "up" ? -1 : 1);
+      if (to < 0 || to >= links.length) return;
+      links.splice(at, 1);
+      links.splice(to, 0, link);
+      draw(link, links.indexOf(link) === (act === "up" ? 0 : links.length - 1)
+        ? (act === "up" ? "down" : "up") : act);
+    }
+    changed();
+  });
+  document.querySelector("[data-act=add-link]").addEventListener("click", () => {
+    const link = {at: null, words: "", href: "", kept: null};
+    links.push(link);
+    draw(link, "");
+  });
+
+  function post() {
+    const sent = links.filter((link) => link.kept
+      || (link.words.trim() && link.href.trim()));
+    const entries = sent.map((link) => ({
+      at: link.at,
+      words: link.words.trim() || link.kept.words,
+      href: link.href.trim() || link.kept.href,
+    }));
+    return {
+      links: JSON.stringify(entries),
+      saved(reply) {
+        // The file now holds the links as they were posted, in that order.
+        sent.forEach((link, at) => { link.at = at; link.kept = entries[at]; });
+        if (reply.preview) frame.src = reply.preview + "?n=" + Date.now();
+      },
+    };
+  }
+  window.presslessVisual = {post};
+  draw(null, "");
 })();
 """
 

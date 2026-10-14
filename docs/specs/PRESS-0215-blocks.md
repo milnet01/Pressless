@@ -61,7 +61,9 @@ written in sections from the start.
    so nothing is stored twice (§8).
 6. **(decided here) A page has one sections area, inside its `main`.**
    Everything outside it, the header and footer markers included, is
-   the page's frame and is changed only in the code view.
+   the page's frame and is changed only in the code view. *Amended by
+   PRESS-0216:* a header or footer file has its area in its `header` or
+   `footer` element.
 7. **(decided here) A video is the user's own file or a YouTube
    address.** A YouTube video is shown through
    `www.youtube-nocookie.com`.
@@ -208,7 +210,7 @@ form per kind.
 
 ### 4.6 Taking a page into sections
 
-**`adopt(html, furniture)`** returns `html` unchanged where it already
+**`adopt(html, furniture, element="main")`** returns `html` unchanged where it already
 has an area. Otherwise:
 
 1. **The area to make** is the content of the first `main` element
@@ -248,7 +250,8 @@ alike. The Store's file is never written by the Builder.
 
 *Amended by PRESS-0260:* the visual view's preview keeps the marks;
 `preview_html(..., marks=True)` is the one call that does (PRESS-0260
-§ 4.2).
+§ 4.2). *Amended by PRESS-0216:* with a furniture change it keeps that
+file's marks and drops the shown page's (PRESS-0216 § 4.3).
 
 ### 4.8 New pages
 
