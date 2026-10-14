@@ -742,7 +742,7 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .code-box > pre { position: absolute; inset: 0; margin: 0; box-sizing: border-box;
   overflow: hidden; pointer-events: none; border-style: solid; border-color: transparent;
   border-radius: 10px; color: var(--ink); background: var(--paper); }
-.face .code-box > :last-child { position: relative; display: block; overflow-y: auto;
+.face .code-box > :last-child { position: relative; display: block; margin: 0; overflow-y: auto;
   color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink);
   background: transparent; }
 .face .code-box > * { white-space: pre-wrap; overflow-wrap: break-word;
