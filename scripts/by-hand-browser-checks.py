@@ -22,20 +22,33 @@ true: it needs a browser on the machine, which local-ci.sh does not assume.
 Run it by hand before a release:
 
     python3 scripts/by-hand-browser-checks.py
+    python3 scripts/by-hand-browser-checks.py --browser firefox
+    python3 scripts/by-hand-browser-checks.py --cdp http://127.0.0.1:19222 \
+        --port 47501 --site-port 47502
+
+Firefox is Playwright's own build (`playwright install firefox`); it cannot
+drive the system Firefox. `--cdp` drives a browser already started with a
+debugging port -- Edge on the Windows box, through an SSH tunnel -- which
+reaches this machine only where both ports are forwarded back to it
+(`ssh -R 47501:127.0.0.1:47501 -R 47502:127.0.0.1:47502 <box>`).
 
 It drives a throwaway instance -- temp folder, recording transport double --
 so it reaches no network, no keyring and none of the writer's own files.
 
 What it does NOT cover, and what still needs a person (PRESS-0133):
-Edge, the Windows box's console window, the real keyring prompt, and a real
+the Windows box's console window, the real keyring prompt, and a real
 publish to GitHub.
 """
 from __future__ import annotations
 
+import argparse
+import functools
 import sys
 import tempfile
+import threading
 import time
 import urllib.parse
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,6 +75,7 @@ from pressless import (  # noqa: E402
 )
 
 RESULTS: list[tuple[str, bool, str]] = []
+OPTIONS = argparse.Namespace(browser="chrome", cdp=None, port=0, site_port=0)
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -70,13 +84,19 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="PRESS-0133's browser rows, driven.")
+    parser.add_argument("--browser", choices=("chrome", "firefox"), default="chrome")
+    parser.add_argument("--cdp", help="drive the browser at this debugging address instead")
+    parser.add_argument("--port", type=int, default=0, help="the Face's port")
+    parser.add_argument("--site-port", type=int, default=0, help="the built site's port")
+    parser.parse_args(namespace=OPTIONS)
     tmp = Path(tempfile.mkdtemp(prefix="pressless-browser-check-"))
     folder = tp._folder(tmp)
     store.write(folder, tp._entry("seaside", body="Words."), draft=True)
     credentials.read = lambda kind, folder, account: tp.KEY
     publishing._now = lambda: tp.NOW
 
-    served = face.serve(folder)
+    served = face.serve(folder, OPTIONS.port)
     try:
         editor.register(served, folder)
         cheatsheet.register(served)
@@ -101,8 +121,21 @@ def run(origin: str, secret: str, folder: Path) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome", headless=True)
-        page = browser.new_page()
+        if OPTIONS.cdp:
+            browser = pw.chromium.connect_over_cdp(OPTIONS.cdp)
+            page = browser.contexts[0].new_page()
+            # A real window's size is the desktop's; the rows were measured at
+            # the launched browsers' default, and PRESS-0261's needs the code
+            # box to overflow it.
+            page.set_viewport_size({"width": 1280, "height": 720})
+        elif OPTIONS.browser == "firefox":
+            browser = pw.firefox.launch(headless=True)
+            page = browser.new_page()
+        else:
+            browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome",
+                                         headless=True)
+            page = browser.new_page()
+        print("  browser:", browser.browser_type.name, browser.version)
         console: list[str] = []
         page.on("console", lambda m: console.append(f"{m.type}: {m.text}"))
 
@@ -151,7 +184,9 @@ def run(origin: str, secret: str, folder: Path) -> None:
         box.evaluate("b => b.setSelectionRange(3, 3)")       # Wor|ds.
         with page.expect_file_chooser() as picker:
             page.get_by_role("button", name="Add a photograph", exact=True).click()
-        picker.value.set_files(str(chosen))
+        # The bytes rather than the path, which a browser on another machine lacks.
+        picker.value.set_files({"name": chosen.name, "mimeType": "image/jpeg",
+                                "buffer": chosen.read_bytes()})
         page.wait_for_timeout(2500)
         typed = box.input_value()
         check("PRESS-0016: the mark goes on its own line where he was typing",
@@ -454,7 +489,10 @@ def run(origin: str, secret: str, folder: Path) -> None:
         print("\n  console during the run:")
         for line in console[-12:]:
             print(f"    {line[:160]}")
-        browser.close()
+        if OPTIONS.cdp:
+            page.close()  # the browser is the person's; leave it running
+        else:
+            browser.close()
 
 
 # PRESS-0260: a page whose code section would set the frame's title if a
@@ -518,14 +556,22 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     check("PRESS-0260 s4.4: Enter splits, Shift+Enter writes a br",
           texts == ["First paragraph. More <strong>bold</strong>", "Second<br>line"], str(texts))
 
-    page.evaluate("""() => {
-      const doc = document.getElementById('preview').contentDocument;
-      const data = new DataTransfer();
-      data.setData('text/html', '<span style="color:red">styled&nbsp;words</span>');
-      data.setData('text/plain', ' pasted words');
-      doc.activeElement.dispatchEvent(new ClipboardEvent('paste',
-        {clipboardData: data, bubbles: true, cancelable: true}));
-    }""")
+    if page.context.browser.browser_type.name == "firefox":
+        # Firefox drops a made-up paste event's clipboardData, so paste for real.
+        page.evaluate("""() => navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob(['<span style="color:red">styled&nbsp;words</span>'],
+                                {type: 'text/html'}),
+          'text/plain': new Blob([' pasted words'], {type: 'text/plain'})})])""")
+        page.keyboard.press("Control+v")
+    else:
+        page.evaluate("""() => {
+          const doc = document.getElementById('preview').contentDocument;
+          const data = new DataTransfer();
+          data.setData('text/html', '<span style="color:red">styled&nbsp;words</span>');
+          data.setData('text/plain', ' pasted words');
+          doc.activeElement.dispatchEvent(new ClipboardEvent('paste',
+            {clipboardData: data, bubbles: true, cancelable: true}));
+        }""")
     page.once("dialog", lambda dialog: dialog.accept("https://example.org/"))
     page.keyboard.press("Control+k")
     saved()
@@ -862,7 +908,23 @@ def pieces(page, origin: str, folder: Path) -> None:
     # ---- the published site: each piece behaves -----------------------------
     site = folder.parent / "pieces-site"
     builder.build(folder, settings.load(folder), site)
-    page.goto((site / "pages" / "pieces.html").as_uri(), wait_until="load")
+    # Served over http as GitHub Pages serves it, so a browser on another
+    # machine reaches it through the same tunnel as the Face.
+    handler = functools.partial(SimpleHTTPRequestHandler, directory=str(site))
+    handler.log_message = lambda *args: None
+    hosted = ThreadingHTTPServer(("127.0.0.1", OPTIONS.site_port), handler)
+    threading.Thread(target=hosted.serve_forever, daemon=True).start()
+    try:
+        page.goto(f"http://127.0.0.1:{hosted.server_port}/pages/pieces.html",
+                  wait_until="load")
+        _published_pieces(page, errors)
+    finally:
+        hosted.shutdown()
+        hosted.server_close()
+
+
+def _published_pieces(page, errors: list[str]) -> None:
+    """PRESS-0217 s4.3 and s4.4, on the built site."""
     page.wait_for_timeout(1300)
     slides = page.locator(".pressless-slideshow > *:visible").count()
     page.locator(".pressless-slideshow-turn button").last.click()
