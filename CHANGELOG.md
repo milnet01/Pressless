@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **The code box shows a page's code in colour.** (PRESS-0261)
+  Tags, attributes and the words between them each take their own
+  colour, and so do the selectors and settings in a page's style.
+  Notes are dimmed. The colours come from the theme you chose, so they
+  stay readable in every one. Typing and selecting work as before.
+
 - **Pressless asks whether it may send anonymous usage reports.** (PRESS-0262)
   Setup asks once, and so does the list of your writing if you set up
   before this. Nothing is sent unless you say yes. A report says which

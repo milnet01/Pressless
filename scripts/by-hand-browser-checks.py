@@ -8,6 +8,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0017 s7: picking the poem opens a draft holding it
   PRESS-0260 s10: INV-5's no-script half, INV-9, and the visual view's keys
     and buttons (s 4.3, s 4.4)
+  PRESS-0261: the code boxes' colours line up with the letters typed over them
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -433,6 +434,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
               f"{binned!r} {page.url}")
 
         visual_editor(page, origin, folder)
+        code_colours(page, origin)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -564,6 +566,13 @@ def visual_editor(page, origin: str, folder: Path) -> None:
           ("code", "<!-- pressless:code --><div>new code</div><!-- /pressless:code -->")
           in sections(), str(sections()))
 
+    painted = page.evaluate("""() => {
+      const copy = document.querySelector('#panel .code-box > pre');
+      return [copy.textContent, copy.querySelectorAll('.k-tag').length];
+    }""")
+    check("PRESS-0261: the panel's code box is coloured, and follows a change",
+          painted[0] == "<div>new code</div>" and painted[1] == 4, str(painted))
+
     frame.locator("h2, h1", has_text="Title words").first.click()
     page.select_option("[data-field=level]", "3")
     saved()
@@ -602,6 +611,40 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     check("PRESS-0260 s4.3: fewer columns is refused while the last holds a section",
           page.locator("[data-field=count]").input_value() == "3" and bool(said), said)
     check("PRESS-0260: the visual view raised no script error", not errors, str(errors))
+
+
+def code_colours(page, origin: str) -> None:
+    """PRESS-0261: the coloured copy behind the code box wraps, scrolls and
+    reads as the box does, so each colour sits on its own letter."""
+    page.goto(f"{origin}/page?kind=pages&name=visual&view=code", wait_until="networkidle")
+    box = page.locator("textarea[name=text]")
+    box.click()
+    page.keyboard.press("Control+End")
+    page.keyboard.type("\n<p class=\"late\">" + "long words " * 40 + "</p>")
+    box.evaluate("area => { area.scrollTop = area.scrollHeight; }")
+    page.wait_for_timeout(300)
+    seen = page.evaluate("""() => {
+      const area = document.querySelector('textarea[name=text]');
+      const copy = area.previousElementSibling;
+      const a = getComputedStyle(area), c = getComputedStyle(copy);
+      const same = ['fontFamily', 'fontSize', 'lineHeight', 'paddingLeft', 'paddingTop',
+                    'borderLeftWidth', 'whiteSpace', 'overflowWrap'].filter(n => a[n] !== c[n]);
+      return {text: copy.textContent.replace(/ $/, '') === area.value, same,
+              width: [area.clientWidth, copy.clientWidth],
+              height: [area.scrollHeight, copy.scrollHeight],
+              top: [area.scrollTop, copy.scrollTop],
+              tags: copy.querySelectorAll('.k-tag').length,
+              attrs: copy.querySelectorAll('.k-attr').length,
+              letters: getComputedStyle(area).webkitTextFillColor};
+    }""")
+    check("PRESS-0261: the copy holds the box's text, coloured, as he types",
+          seen["text"] and seen["tags"] > 4 and seen["attrs"] > 0, str(seen))
+    check("PRESS-0261: the copy wraps and scrolls with the box",
+          not seen["same"] and seen["width"][0] == seen["width"][1]
+          and seen["height"][0] == seen["height"][1] and seen["top"][0] == seen["top"][1] > 0,
+          str(seen))
+    check("PRESS-0261: the box's own letters are transparent over the copy",
+          seen["letters"] == "rgba(0, 0, 0, 0)", seen["letters"])
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

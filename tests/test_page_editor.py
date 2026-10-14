@@ -17,6 +17,8 @@ import hashlib
 import html
 import json
 import re
+import shutil
+import subprocess
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -608,3 +610,59 @@ def test_the_words_view_is_retired():
     keys = ("page_editor.show_words", "script.press.paragraphs",
             "failure.page_editor.PiecesChanged.what", "failure.page_editor.PiecesChanged.next")
     assert [key for key in keys if key in words.ENGLISH] == []
+
+
+# ------------------------------------------------------------- PRESS-0261 ---
+
+# The colouring runs in a browser; Node runs the same script with no page, so
+# it finds no boxes and leaves its `colour` to call.
+_NODE = shutil.which("node")
+_HARNESS = """const window = {};
+const document = {querySelectorAll: () => []};
+%s
+const text = require("fs").readFileSync(0, "utf8");
+process.stdout.write(JSON.stringify(window.presslessCode.colour(text)));
+"""
+
+
+def _coloured(text: str, tmp_path: Path) -> list[tuple[str, str]]:
+    script = tmp_path / "colour.js"
+    script.write_text(_HARNESS % page_editor._CODE_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(script)], input=text.encode("utf-8"),  # noqa: S603
+                         capture_output=True, check=True, timeout=30)
+    return [tuple(piece) for piece in json.loads(run.stdout)]
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("text", [
+    "", "<", "<<a", 'a < b > c', '<a href="x', "<a href='x' b=c d/>", "<!-- open",
+    "<style>a{color:", "<STYLE>p { margin: 0 }</STYLE>", "<script>if (a<b) go()</script>",
+    "<p title='it\"s'>é 😀</p>\n", "<div\nclass=x>t</div>", "</>", "<a =>", "<p>&amp;</p>",
+])
+def test_the_colours_cover_every_letter_once(text, tmp_path):
+    """PRESS-0261. Breaks when a piece is dropped or doubled, which would put
+    the colours out of step with the letters typed over them."""
+    assert "".join(words for words, _ in _coloured(text, tmp_path)) == text
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_tags_attributes_text_and_notes_take_their_own_colours(tmp_path):
+    """PRESS-0261. Breaks when a tag, an attribute or a note is coloured as
+    something else, or a script's code is coloured as HTML."""
+    pieces = _coloured('<a href="x">Hi</a><!-- n --><script>a<b</script>', tmp_path)
+    assert pieces == [("<a", "tag"), (" ", ""), ("href", "attr"), ("=", ""), ('"x"', ""),
+                      (">", "tag"), ("Hi", ""), ("</a", "tag"), (">", "tag"),
+                      ("<!-- n -->", "note"), ("<script", "tag"), (">", "tag"),
+                      ("a<b", ""), ("</script", "tag"), (">", "tag")]
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_style_is_coloured_as_css(tmp_path):
+    """PRESS-0261. Breaks when a selector, a property or a value takes
+    another's colour, a colon in a selector included."""
+    pieces = _coloured("<style>p a:hover { color: red; } /* c */</style>", tmp_path)
+    # A space shows no colour, so its own is not asserted.
+    inner = [piece for piece in pieces[2:-2] if piece[0].strip()]
+    assert inner == [("p a", "tag"), (":", "tag"), ("hover ", "tag"), ("{", ""),
+                     (" color", "attr"), (":", ""), (" red", ""), (";", ""), ("}", ""),
+                     ("/* c */", "note")]

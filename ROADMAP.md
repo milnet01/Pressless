@@ -4434,11 +4434,20 @@ removed, and the menu follows.
   Source: split-from-PRESS-0215 user-decision-2026-10-13.
   Lanes: Face.
 
-- 📋 [PRESS-0261] **Colour highlighting for HTML and CSS in the code box.**
+- ✅ [PRESS-0261] **Colour highlighting for HTML and CSS in the code box.**
   Split from PRESS-0215 by the user 2026-10-13; needs no spec.
   The user asked for it 2026-10-05. Decided by the user 2026-10-13:
   a small highlighter written here, not a bundled editor, because the
   Face's policy allows only its own scripts and it adds no dependency.
+  Shipped 2026-10-14: page_editor._CODE_SCRIPT paints a coloured copy
+  behind both code boxes (the code view and the panel's code section),
+  whose own letters are transparent. Colours are the theme's ink, soft
+  and amber-ink, already tested readable in every theme. A site's own
+  textarea rule cannot cover it: the box is reached as
+  `.code-box > :last-child`. Tested in Node (every letter covered once;
+  tags, attributes, notes and a style's CSS) and in Chrome by
+  scripts/by-hand-browser-checks.py. Owed by hand before the release:
+  Firefox here and Edge on the Windows box.
   **Layman:** The page's code shows tags, attributes and text in different colours, so it is easier to read and change.
   Kind: feature.
   Source: split-from-PRESS-0215 user-request-2026-10-05.

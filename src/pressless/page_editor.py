@@ -486,7 +486,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 {reshape}{_panel(name, sections, photographs) if view == VISUAL else
-          f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>'}
+          _code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>')}
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
@@ -494,6 +494,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>
+<script>{_CODE_SCRIPT}</script>
 {f"<script>{_VISUAL_SCRIPT}</script>" if view == VISUAL else ""}
 <script>{editor._UNDO_SCRIPT}</script>"""
 
@@ -558,7 +559,7 @@ def _panel(name: str, sections: list[dict] | None, photographs: tuple[str, ...])
     "".join(f'<option value="{count}">{count}</option>' for count in range(2, 5))}</select></label>
 <p class="panel-row" data-for="columns">{columns}</p>
 <label data-for="code">{say("page_editor.panel.code")}
-<textarea data-field="code" rows="10" spellcheck="false"></textarea></label>
+{_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
 <div class="panel-add"><label>{say("page_editor.panel.add")}
  <select id="add-kind">{kinds}</select></label>
 <label>{say("page_editor.panel.address")} <input id="add-address" autocomplete="off"
@@ -1184,6 +1185,145 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
 """
 
 
+def _code_box(textarea: str) -> str:
+    """PRESS-0261: a code box, with the coloured copy _CODE_SCRIPT paints."""
+    return f'<div class="code-box"><pre aria-hidden="true"></pre>{textarea}</div>'
+
+
+# PRESS-0261: colour in the code boxes. A coloured copy of the code sits behind
+# each box, whose own letters are transparent, so typing, the caret and a
+# selection stay the browser's own. Colour is the only difference, since a bold
+# or italic letter would be wider than the one above it. The colours are the
+# theme's ink, soft and amber-ink, which every theme is tested to keep readable.
+# HTML is coloured as tags, attributes and text; a <style> holds CSS, coloured
+# as selectors, properties and values; a <script> stays plain.
+_CODE_SCRIPT = r"""
+(() => {
+  const COPIED = ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight",
+    "letterSpacing", "wordSpacing", "tabSize", "paddingTop", "paddingRight", "paddingBottom",
+    "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth"];
+  const NAME = /<\/?([A-Za-z][\w:.-]*)/y;
+  const ATTRIBUTE = /(\s+)|([^\s"'>\/=]+)(?:(\s*=\s*)("[^"]*"?|'[^']*'?|[^\s>]*))?|(\/)|(>)/y;
+  const CSS = new RegExp(String.raw`/\*[\s\S]*?(?:\*/|$)|"(?:[^"\\\n]|\\.)*"?|` +
+                         String.raw`'(?:[^'\\\n]|\\.)*'?|[{}:;]|[^{}:;"'/]+|/`, "g");
+
+  // The pieces of `text` as [words, kind] pairs, kind "" for plain. Joined
+  // they are `text` exactly, whatever it holds, or the colours would drift
+  // from the letters typed over them.
+  function colour(text) {
+    const pieces = [];
+    const put = (words, kind = "") => { if (words) pieces.push([words, kind]); };
+    let at = 0;
+    while (at < text.length) {
+      const open = text.indexOf("<", at);
+      if (open < 0) { put(text.slice(at)); break; }
+      put(text.slice(at, open));
+      if (text.startsWith("<!--", open)) {
+        const end = text.indexOf("-->", open + 4);
+        at = end < 0 ? text.length : end + 3;
+        put(text.slice(open, at), "note");
+        continue;
+      }
+      NAME.lastIndex = open;
+      const name = NAME.exec(text);
+      if (!name) { put("<"); at = open + 1; continue; }
+      put(name[0], "tag");
+      at = NAME.lastIndex;
+      let closed = false;
+      while (at < text.length && !closed) {
+        ATTRIBUTE.lastIndex = at;
+        const part = ATTRIBUTE.exec(text);
+        if (!part) { put(text[at]); at += 1; continue; }
+        if (part[1]) put(part[1]);
+        else if (part[2]) { put(part[2], "attr"); put(part[3]); put(part[4]); }
+        else put(part[0], "tag");
+        closed = Boolean(part[6]);
+        at = ATTRIBUTE.lastIndex;
+      }
+      const tag = name[1].toLowerCase();
+      if (closed && name[0][1] !== "/" && (tag === "style" || tag === "script")) {
+        const end = text.toLowerCase().indexOf("</" + tag, at);
+        const inner = text.slice(at, end < 0 ? text.length : end);
+        if (tag === "style") pieces.push(...sheet(inner)); else put(inner);
+        at += inner.length;
+      }
+    }
+    return pieces;
+  }
+
+  // CSS: what comes before a "{" is a selector; in a block, what comes before
+  // the first ":" of a declaration is its property and the rest its value.
+  function sheet(text) {
+    const pieces = [], held = [];
+    let depth = 0;
+    const settle = (opening) => {
+      let property = depth > 0 && !opening;
+      for (const [words, kind] of held) {
+        if (kind) { pieces.push([words, kind]); continue; }
+        if (opening) { pieces.push([words, "tag"]); continue; }
+        if (property && words === ":") { property = false; pieces.push([words, ""]); continue; }
+        pieces.push([words, property ? "attr" : ""]);
+      }
+      held.length = 0;
+    };
+    for (const [words] of text.matchAll(CSS)) {
+      if (words === "{" || words === ";" || words === "}") {
+        settle(words === "{");
+        pieces.push([words, ""]);
+        depth = Math.max(0, depth + (words === "{" ? 1 : words === "}" ? -1 : 0));
+      } else {
+        held.push([words, words.startsWith("/*") ? "note" : ""]);
+      }
+    }
+    settle(depth === 0);
+    return pieces;
+  }
+
+  function paint(box) {
+    const copy = box.firstElementChild, area = box.lastElementChild;
+    const made = document.createDocumentFragment();
+    for (const [words, kind] of colour(area.value)) {
+      if (!kind) { made.append(words); continue; }
+      const span = document.createElement("span");
+      span.className = "k-" + kind;
+      span.textContent = words;
+      made.append(span);
+    }
+    // A last empty line still takes its height in the box.
+    if (area.value.endsWith("\n")) made.append(" ");
+    copy.replaceChildren(made);
+    copy.scrollTop = area.scrollTop;
+    copy.scrollLeft = area.scrollLeft;
+  }
+
+  const boxes = [...document.querySelectorAll(".code-box")];
+  const waiting = new Set();
+  let frame = 0;
+  const later = (box) => {
+    waiting.add(box);
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0;
+      waiting.forEach(paint);
+      waiting.clear();
+    });
+  };
+  for (const box of boxes) {
+    const copy = box.firstElementChild, area = box.lastElementChild;
+    const style = getComputedStyle(area);
+    for (const name of COPIED) copy.style[name] = style[name];
+    area.addEventListener("input", () => later(box));
+    area.addEventListener("scroll", () => {
+      copy.scrollTop = area.scrollTop;
+      copy.scrollLeft = area.scrollLeft;
+    });
+    paint(box);
+  }
+  // A script that sets a box's value repaints it here.
+  window.presslessCode = {colour, paint: () => boxes.forEach(paint)};
+})();
+"""
+
+
 # PRESS-0260 § 4.2 to § 4.5: the visual view. The frame runs no script of its
 # own, so this one, on the Face's page, reaches into it (§ 3 decision 9). It
 # keeps a model of the page: per section its kind, its fields, its path in the
@@ -1451,6 +1591,7 @@ _VISUAL_SCRIPT = r"""
               .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
           : fields[name] || "";
       });
+      window.presslessCode.paint();
       panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
         button.hidden = kind !== "columns" || Number(button.dataset.column) >= picked.parts.length;
       });

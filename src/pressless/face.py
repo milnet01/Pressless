@@ -592,6 +592,8 @@ function say(key, slots = {}) {
 # colours only where his stylesheet sets none. The body resets every property
 # first, because a rule of his can set one no `.face` rule does, as a
 # two-column `body { display: grid }` would (PRESS-0133).
+# PRESS-0261: a code box's textarea is reached as `.code-box > :last-child`, so
+# a site's own textarea rule cannot cover the coloured copy behind it.
 _SHAPES = """
 body.face { all: unset; display: block; margin: 0; background: var(--paper); color: var(--ink);
   font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
@@ -723,6 +725,19 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face #panel .panel-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .face :where(#panel textarea) { min-height: 12rem; font: .9em/1.4 ui-monospace, Consolas,
   "DejaVu Sans Mono", monospace; }
+.face .code-box { position: relative; width: 100%; flex-basis: 100%; }
+.face .code-box > pre { position: absolute; inset: 0; margin: 0; box-sizing: border-box;
+  overflow: hidden; pointer-events: none; border-style: solid; border-color: transparent;
+  border-radius: 10px; color: var(--ink); background: var(--paper); }
+.face .code-box > :last-child { position: relative; display: block; overflow-y: auto;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink);
+  background: transparent; }
+.face .code-box > * { white-space: pre-wrap; overflow-wrap: break-word;
+  scrollbar-gutter: stable; }
+.face .code-box > :last-child::selection {
+  background: color-mix(in srgb, var(--amber) 35%, transparent); }
+.face .code-box .k-tag { color: var(--amber-ink); }
+.face .code-box .k-attr, .face .code-box .k-note { color: var(--soft); }
 .face #panel .panel-add { border-top: 1px solid var(--line); margin-top: .75rem;
   padding-top: .5rem; }
 .face main:has(> #editor) { display: flex; flex-direction: column; }
