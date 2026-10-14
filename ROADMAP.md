@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=266 -->
+<!-- ants-roadmap-id-high-water: PRESS=267 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4308,7 +4308,7 @@ removed, and the menu follows.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Face, Store.
 
-- 📋 [PRESS-0217] **Ready-made interactive pieces for a page, and a place for their own script.**
+- 🚧 [PRESS-0217] **Ready-made interactive pieces for a page, and a place for their own script.**
   User, 2026-10-02: a few JavaScript templates for a bit of
   interactivity, and let users write their own. Candidates: a picture
   slideshow, questions that fold open, a picture that enlarges when
@@ -4600,6 +4600,21 @@ removed, and the menu follows.
   **Layman:** A check of whether anyone could write code on their page to steal Pressless's private keys: today they cannot, and these small fixes keep it that way.
   Kind: security.
   Source: code-quality-review-2026-10-14.
+
+- ✅ [PRESS-0267] **The publish-outcome test no longer times out on a slow Windows runner.**
+  GitHub's Windows job failed on f37c817 (seed 1458543439):
+  test_the_outcome_shows_until_a_save timed out reading a page after a
+  save. Its requests ran under the one-second bound that INV-2, INV-3
+  and INV-5 of PRESS-0235 set for a press in flight, but INV-6 runs after
+  the press has ended and sets no bound. Locally each request answers in
+  about 3 ms; the Windows box passed the whole suite. Fixed by giving
+  that test's requests the ordinary ten seconds. Red: a 1.5 s delay on
+  GET /edit and /page fails the old test with the CI's TimeoutError and
+  passes the new one.
+  **Layman:** A test that checks the "Published" line could fail on a slow computer for no real reason; it now waits a normal amount of time.
+  Kind: fix.
+  Source: ci-windows-2026-10-14.
+  Lanes: tests.
 
 ## 0.10.0 — their own look, and any file
 

@@ -240,17 +240,19 @@ def test_the_outcome_shows_until_a_save(folder):
     with _pressless(folder, transport) as browser:
         with _held_publish(browser, folder, transport):
             pass
+        # The press has ended, so no request here is bound by the second a press
+        # in flight must answer within: a slow Windows runner once took longer.
         for path in ("/edit?slug=seaside", "/page?kind=pages&name=about"):
-            status, _, page = browser.request("GET", path)
+            status, _, page = browser.request("GET", path, timeout=10)
             assert status == 200, (path, page)
             assert _line(page).endswith(f">{PUBLISHED}"), (path, _line(page))
-        status, _, text = browser.request("POST", "/page/save", _page_form(folder))
+        status, _, text = browser.request("POST", "/page/save", _page_form(folder), timeout=10)
         assert status == 200, text
         for path in ("/edit?slug=seaside", "/page?kind=pages&name=about"):
-            line = _line(browser.request("GET", path)[2])
+            line = _line(browser.request("GET", path, timeout=10)[2])
             assert PUBLISHED not in line, (path, line)
-        assert _line(browser.request("GET", "/page?kind=pages&name=about")[2]).endswith(
-            ">Changes not published yet"), "the page's standing words"
+        assert _line(browser.request("GET", "/page?kind=pages&name=about", timeout=10)[2]
+                     ).endswith(">Changes not published yet"), "the page's standing words"
 
 
 # ------------------------------------------------------------------ INV-7 ---
