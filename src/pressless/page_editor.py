@@ -1894,7 +1894,13 @@ _VISUAL_SCRIPT = r"""
     if (name === "link") {
       const address = window.prompt(say("script.visual.ask_link"), "https://");
       if (!address || !allowed(address)) return;
-      doc.execCommand("createLink", false, address);
+      // With no words picked Firefox links nothing; give the link its address.
+      if (doc.getSelection().isCollapsed) {
+        doc.execCommand("insertHTML", false, '<a href="' + text(address).replace(/"/g, "&quot;")
+          + '">' + text(address) + "</a>");
+      } else {
+        doc.execCommand("createLink", false, address);
+      }
     } else {
       doc.execCommand(name);
     }

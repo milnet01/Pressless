@@ -89,6 +89,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **In Firefox, Link or Ctrl+K with no words picked now adds the address as a link** (PRESS-0269)
+  It did nothing there before; Chrome and Edge already did this.
+
+- **In Firefox, the code box's colours now line up with the letters typed over them** (PRESS-0270)
+  They sat a pixel high, and two pixels off when scrolled to the end.
+
 - **After an Undo, Drafts now says which of two same-named entries is which.** (PRESS-0249)
   One line says the entry was taken off your site by Undo; the other
   says it is your later changes.

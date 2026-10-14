@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=268 -->
+<!-- ants-roadmap-id-high-water: PRESS=270 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4646,6 +4646,30 @@ removed, and the menu follows.
   Kind: security.
   Source: in-session-2026-10-14 PRESS-0217 build.
   Lanes: Face.
+
+- ✅ [PRESS-0269] **In Firefox, a link added with no words picked does nothing.**
+  Found by the 0.9.0 pre-release round. createLink with a collapsed
+  selection inserts nothing in Firefox, so the writer typed an address
+  and nothing appeared. With no words picked, the address is now
+  inserted as the link's words. Proved red then green by
+  scripts/by-hand-browser-checks.py --browser firefox (PRESS-0260
+  INV-9 row), and in the installed Firefox 157.
+  **Layman:** In Firefox, pressing Link or Ctrl+K with nothing selected now puts the address in as a link, as it already did in Chrome and Edge.
+  Kind: fix.
+  Source: hand-check-2026-10-14 Firefox.
+  Lanes: page_editor.
+
+- ✅ [PRESS-0270] **In Firefox, the code box's colours sit one pixel above their letters.**
+  Found by the 0.9.0 pre-release round. Firefox gives a textarea a
+  1px margin above and below; the coloured copy fills the code box, so
+  it stood 1px above the textarea and could not scroll as far (2px
+  short at the bottom). The textarea's margin is now 0. Proved red
+  then green by the PRESS-0261 rows of
+  scripts/by-hand-browser-checks.py --browser firefox.
+  **Layman:** In Firefox, the coloured code under the code box now lines up exactly with the letters typed over it.
+  Kind: fix.
+  Source: hand-check-2026-10-14 Firefox.
+  Lanes: face.
 
 ## 0.10.0 — their own look, and any file
 
