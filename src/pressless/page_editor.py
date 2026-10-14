@@ -568,7 +568,8 @@ def _drag() -> str:
 
 
 _KINDS = (blocks.TEXT, blocks.HEADING, blocks.PICTURE, blocks.PICTURES, blocks.BUTTON,
-          blocks.VIDEO, blocks.MUSIC, blocks.DOWNLOAD, blocks.COLUMNS)
+          blocks.VIDEO, blocks.MUSIC, blocks.DOWNLOAD, blocks.COLUMNS, *blocks.PIECES,
+          blocks.SCRIPT)
 # Each kind's name on the screen; the script reads the same keys by kind.
 _KIND_WORDS = {
     blocks.TEXT: "script.visual.kind.text", blocks.HEADING: "script.visual.kind.heading",
@@ -576,6 +577,11 @@ _KIND_WORDS = {
     blocks.BUTTON: "script.visual.kind.button", blocks.VIDEO: "script.visual.kind.video",
     blocks.MUSIC: "script.visual.kind.music", blocks.DOWNLOAD: "script.visual.kind.download",
     blocks.COLUMNS: "script.visual.kind.columns", blocks.CODE: "script.visual.kind.code",
+    # PRESS-0217 § 4.1: the ready-made pieces and the writer's own script.
+    blocks.SLIDESHOW: "script.visual.kind.slideshow",
+    blocks.QUESTIONS: "script.visual.kind.questions",
+    blocks.ENLARGE: "script.visual.kind.enlarge", blocks.TOP: "script.visual.kind.top",
+    blocks.COUNTDOWN: "script.visual.kind.countdown", blocks.SCRIPT: "script.visual.kind.script",
 }
 
 
@@ -614,22 +620,25 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <label data-for="heading">{say("page_editor.panel.level")} <select data-field="level">{
     "".join(f'<option value="{level}">{level}</option>' for level in range(1, 7))}</select></label>
 <datalist id="photograph-list">{choices}</datalist>
-<p data-for="picture"><button type="button" data-act="photograph">{
+<p data-for="picture enlarge"><button type="button" data-act="photograph">{
     say("editor.add_photograph")}</button>
 <input type="file" id="photograph-file" hidden
  accept="image/jpeg,image/png,image/webp,image/gif"></p>
-{field("page_editor.panel.photograph", "src", "picture", ' list="photograph-list"')}
+{field("page_editor.panel.photograph", "src", "picture enlarge", ' list="photograph-list"')}
 {field("page_editor.panel.address", "src", "video music")}
 {field("page_editor.panel.address", "href", "button download")}
-{field("page_editor.panel.alt", "alt", "picture")}
-{field("page_editor.panel.caption", "caption", "picture")}
-{field("page_editor.panel.label", "label", "button download")}
-<p data-for="pictures"><button type="button" data-act="add-picture">{
+{field("page_editor.panel.alt", "alt", "picture enlarge")}
+{field("page_editor.panel.caption", "caption", "picture enlarge")}
+{field("page_editor.panel.ends", "to", "countdown", ' type="datetime-local"')}
+{field("page_editor.panel.label", "label", "button download top countdown")}
+<p data-for="pictures slideshow"><button type="button" data-act="add-picture">{
     say("page_editor.panel.add_picture")}</button></p>
+<p data-for="questions"><button type="button" data-act="add-question">{
+    say("page_editor.panel.add_question")}</button></p>
 <label data-for="columns">{say("page_editor.panel.columns")} <select data-field="count">{
     "".join(f'<option value="{count}">{count}</option>' for count in range(2, 5))}</select></label>
 <p class="panel-row" data-for="columns">{columns}</p>
-<label data-for="code">{say("page_editor.panel.code")}
+<label data-for="code script">{say("page_editor.panel.code")}
 {_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
 <div class="panel-add"><label>{say("page_editor.panel.add")}
  <select id="add-kind">{kinds}</select></label>
@@ -1532,9 +1541,15 @@ _VISUAL_SCRIPT = r"""
   const given = JSON.parse(document.getElementById("sections").textContent);
   const up = given.up;
   const KINDS = ["text", "heading", "picture", "pictures", "button", "video", "music",
-                 "download", "columns"];
-  const IN_COLUMN = KINDS.filter((kind) => kind !== "columns" && kind !== "pictures");
-  const ADDRESSED = ["picture", "pictures", "button", "video", "music", "download"];
+                 "download", "columns", "slideshow", "questions", "enlarge", "top",
+                 "countdown", "script"];
+  // The kinds holding other sections, which no column or answer holds; a row
+  // of them holds pictures alone.
+  const HOLDERS = ["columns", "pictures", "slideshow", "questions"];
+  const ROWS = ["pictures", "slideshow"];
+  const IN_COLUMN = KINDS.filter((kind) => !HOLDERS.includes(kind));
+  const ADDRESSED = ["picture", "pictures", "button", "video", "music", "download",
+                     "slideshow", "enlarge"];
   const YOUTUBE = new RegExp("^\\s*(?:https?:)?//(?:(?:www\\.|m\\.)?youtube(?:-nocookie)?\\.com/"
                              + "(?:watch\\?(?:.*&)?v=|embed/|shorts/)|youtu\\.be/)"
                              + "([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])", "i");
@@ -1656,8 +1671,12 @@ _VISUAL_SCRIPT = r"""
   window.presslessVisual = {post};
 
   // ---- the frame (§ 4.2) -----------------------------------------------
+  // PRESS-0217 § 4.2: a script section is shown as its code, which the
+  // sandbox keeps from running, so it can be picked like any other.
   const STYLE = "[data-pressless-picked]{box-shadow:0 0 0 3px #e9a23b}"
-    + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}";
+    + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}"
+    + "script[data-pressless-script]{display:block;white-space:pre-wrap;"
+    + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}";
   function pair() {
     const doc = frame.contentDocument;
     if (!doc || !doc.body) return;
@@ -1689,12 +1708,18 @@ _VISUAL_SCRIPT = r"""
       if (closing < 0 || next >= order.length) return;
       const entry = order[next++];
       const item = byPathNow().get(key(entry.path));
-      if (entry.kind !== "columns" && entry.kind !== "pictures") skip = closing;
+      if (!HOLDERS.includes(entry.kind)) skip = closing;
       if (!item || item.kind !== entry.kind) return;
       item.start = mark.at; item.end = marks[closing].at;
+      if (item.kind === "script") {
+        const code = between(item).find((at) => at.localName === "script");
+        if (code) code.setAttribute("data-pressless-script", "");
+      }
       if (item.kind === "text" || item.kind === "heading") {
         item.el = item.start.nextSibling;
         if (item.changed && item.fields.html !== undefined) item.el.innerHTML = item.fields.html;
+        // An empty one shows its kind faintly, so it can be seen and picked.
+        item.el.setAttribute("data-pressless-empty", say("script.visual.kind." + item.kind));
       }
     });
     doc.addEventListener("click", clicked, true);
@@ -1784,7 +1809,7 @@ _VISUAL_SCRIPT = r"""
       const fields = picked.fields;
       panel.querySelectorAll("[data-for]:not([hidden]) [data-field]").forEach((input) => {
         const name = input.dataset.field;
-        input.value = name === "code" ? picked.code || ""
+        input.value = name === "code" ? (picked.kind === "code" ? picked.code : fields.code) || ""
           : name === "count" ? String(picked.parts.length)
           : name === "src" && fields.youtube ? "https://www.youtube.com/watch?v=" + fields.youtube
           : name === "caption" ? (fields.caption || "").replace(/<[^>]*>/g, "")
@@ -1798,8 +1823,10 @@ _VISUAL_SCRIPT = r"""
     }
     const list = picked ? listOf(picked) : model;
     const at = picked ? list.indexOf(picked) : -1;
-    act("up").disabled = !picked || at <= 0;
-    act("down").disabled = !picked || at >= list.length - 1;
+    // PRESS-0217: a question's words stay first in it, above its answer.
+    const asked = picked && picked.parent && picked.parent.kind === "questions";
+    act("up").disabled = !picked || at <= (asked ? 1 : 0);
+    act("down").disabled = !picked || at >= list.length - 1 || (asked && at === 0);
     act("remove").disabled = !picked;
     destinations = places(picked);
     const where = document.getElementById("move-to");
@@ -1808,7 +1835,7 @@ _VISUAL_SCRIPT = r"""
         : say("script.visual.move.column", {number: String(place.column + 1)}), String(at)))
       : [new Option(say("script.visual.move.nowhere"), "")]));
     where.disabled = act("move-to").disabled = !destinations.length;
-    const fits = !picked ? KINDS : picked.parent && picked.parent.kind === "pictures" ? ["picture"]
+    const fits = !picked ? KINDS : picked.parent && ROWS.includes(picked.parent.kind) ? ["picture"]
       : picked.parent ? IN_COLUMN : KINDS;
     document.querySelectorAll("#add-kind option").forEach((option) => {
       option.disabled = !fits.includes(option.value);
@@ -1825,7 +1852,7 @@ _VISUAL_SCRIPT = r"""
     const name = input.dataset.field;
     if (!picked || !name || name === "count") return;
     const value = input.value;
-    if (name === "code") {
+    if (name === "code" && picked.kind === "code") {
       picked.code = value;
     } else if (name === "caption") {
       if (value.trim()) picked.fields.caption = text(value);
@@ -1881,12 +1908,28 @@ _VISUAL_SCRIPT = r"""
       : kind === "button" || kind === "download" ? {href: address, label: address}
       : kind === "video" ? (YOUTUBE.exec(address) ? {youtube: YOUTUBE.exec(address)[1]}
                             : {src: address})
-      : kind === "music" ? {src: address} : {};
-    const parts = kind === "columns" ? [[], []] : kind === "pictures" ? [[]] : [];
+      : kind === "music" ? {src: address}
+      : kind === "enlarge" ? {src: address, alt: ""}
+      : kind === "top" ? {label: say("script.visual.top_label")}
+      : kind === "countdown" ? {to: weekAhead(), label: ""}
+      : kind === "script" ? {code: ""} : {};
+    const parts = kind === "columns" ? [[], []]
+      : ROWS.includes(kind) || kind === "questions" ? [[]] : [];
     const item = node(kind, fields, null, true, undefined, parts, parent);
     item.column = column;
-    if (kind === "pictures") item.parts[0].push(made("picture", address, item, 0));
+    if (ROWS.includes(kind)) item.parts[0].push(made("picture", address, item, 0));
+    if (kind === "questions") item.parts[0] = question(item, 0);
     return item;
+  }
+  // A question's words and its answer, each a paragraph to type into.
+  const question = (holder, column) => [made("text", "", holder, column),
+                                        made("text", "", holder, column)];
+  // A countdown starts a week from now, to the minute, in local time.
+  function weekAhead() {
+    const when = new Date(Date.now() + 7 * 86400000);
+    const two = (number) => String(number).padStart(2, "0");
+    return when.getFullYear() + "-" + two(when.getMonth() + 1) + "-" + two(when.getDate())
+      + "T" + two(when.getHours()) + ":" + two(when.getMinutes());
   }
   function place(item, list, at) {
     list.splice(at, 0, item);
@@ -1946,13 +1989,18 @@ _VISUAL_SCRIPT = r"""
   act("add-picture").addEventListener("click", () => {
     const address = document.getElementById("add-address").value.trim()
       || (field("src") && field("src").value.trim());
-    if (!picked || picked.kind !== "pictures") return;
+    if (!picked || !ROWS.includes(picked.kind)) return;
     if (!address) {
       document.getElementById("panel-said").textContent = say("script.visual.needs_address");
       return;
     }
     picked.parts[0].push(made("picture", address, picked, 0));
     document.getElementById("add-address").value = "";
+    touch(picked);
+  });
+  act("add-question").addEventListener("click", () => {
+    if (!picked || picked.kind !== "questions") return;
+    picked.parts.push(question(picked, picked.parts.length));
     touch(picked);
   });
   function move(by) {
@@ -2028,7 +2076,19 @@ _VISUAL_SCRIPT = r"""
     if (!picked) return;
     const gone = picked;
     show(null, false);
-    drop(gone);
+    const holder = gone.parent;
+    if (holder && holder.kind === "questions" && listOf(gone).indexOf(gone) === 0) {
+      // A question's words go with the whole question, answer and all.
+      const column = gone.column;
+      [...holder.parts[column]].forEach(drop);
+      holder.parts.splice(column, 1);
+      holder.parts.slice(column).forEach((part, at) => part.forEach((item) => {
+        item.column = column + at;
+      }));
+      touch(holder);
+    } else {
+      drop(gone);
+    }
     fill();
   });
 
@@ -2063,8 +2123,8 @@ _VISUAL_SCRIPT = r"""
       + from.x + "px";
     handle.style.top = Math.max(0, at.top - handle.offsetHeight) + from.y + "px";
   }
-  const fits = (item, owner) => !owner || (owner.kind === "columns"
-    ? IN_COLUMN.includes(item.kind) : item.kind === "picture");
+  const fits = (item, owner) => !owner || (ROWS.includes(owner.kind)
+    ? item.kind === "picture" : IN_COLUMN.includes(item.kind));
   function landing(item, x, y) {
     const doc = frame.contentDocument;
     const under = doc && doc.elementFromPoint(x, y);
@@ -2080,7 +2140,7 @@ _VISUAL_SCRIPT = r"""
     const list = listOf(target);
     const next = list[list.indexOf(target) + (after ? 1 : -1)];
     if (next === item) return null;
-    const row = item.parent && item.parent.kind === "pictures" ? item.parent : null;
+    const row = item.parent && ROWS.includes(item.parent.kind) ? item.parent : null;
     if (row && row !== target.parent && row.parts[0].length === 1) return null;
     return {target, after, edges};
   }

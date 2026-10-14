@@ -14,6 +14,8 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0265: a section is dragged into place with the mouse
   PRESS-0216: the header is typed in on the page; the menu's links are
     changed, moved and added in its list
+  PRESS-0217 s10: the pieces behave on the published site, and in the
+    visual editor show their fallbacks, a script piece among them inert
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -45,6 +47,7 @@ from PIL import Image  # noqa: E402
 
 from pressless import (  # noqa: E402
     blocks,
+    builder,
     cheatsheet,
     credentials,
     editor,
@@ -52,6 +55,7 @@ from pressless import (  # noqa: E402
     marks,
     page_editor,
     publishing,
+    settings,
     store,
     templates,
     undo,
@@ -444,6 +448,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
+        pieces(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -771,6 +776,120 @@ def drag_sections(page, origin: str, folder: Path) -> None:
     shown = drag("Right", "Left")
     check("PRESS-0265: dragged from one column to another",
           shown and layout() == [[["Right", "Left"], ["Loose"]]], f"line={shown} {layout()}")
+
+
+# PRESS-0217: every piece, a script piece that would set the title if it ran,
+# and enough page below them that back to top has somewhere to come back from.
+_FORMS = ROOT / "tests" / "features" / "blocks" / "forms"
+PIECES_PAGE = (
+    "<!doctype html><html><head><title>Pieces</title></head><body>\n"
+    "<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main><!-- pressless:page -->\n"
+    + "\n".join((_FORMS / f"{kind}-1.html").read_text(encoding="utf-8").strip()
+                for kind in ("slideshow", "questions", "enlarge", "countdown"))
+    + "\n<!-- pressless:script --><script>document.title = 'RAN';</script>"
+    "<!-- /pressless:script -->\n"
+    + "<!-- pressless:text --><p>Further down.</p><!-- /pressless:text -->\n" * 60
+    + (_FORMS / "top-1.html").read_text(encoding="utf-8").strip()
+    + "\n<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
+    "</body></html>\n").replace("2026-12-25T18:00", "2099-12-25T18:00").replace(
+        "2026-12-25 18:00", "2099-12-25 18:00")
+
+
+def pieces(page, origin: str, folder: Path) -> None:
+    """PRESS-0217 s10: what no test without a browser reaches."""
+    store.write_html(folder, store.PAGES_FOLDER, "pieces", PIECES_PAGE)
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "pieces", waiting=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+
+    # ---- the editor: fallbacks, and the script shown as its code, inert ----
+    page.goto(f"{origin}/page?kind=pages&name=pieces", wait_until="networkidle")
+    frame = page.frame_locator("#preview")
+    title = page.evaluate("document.getElementById('preview').contentDocument.title")
+    shown = frame.locator(".pressless-slideshow > *:visible").count()
+    answers = frame.locator(".pressless-questions dd:visible").count()
+    check("PRESS-0217 INV-2/INV-4: in the editor nothing runs and every fallback shows",
+          title == "Pieces" and shown == 2 and answers == 2
+          and frame.locator(".pressless-slideshow-turn").count() == 0,
+          f"title={title!r} slides={shown} answers={answers}")
+    code = frame.locator("script[data-pressless-script]")
+    box = code.bounding_box() if code.count() else None
+    if box:
+        code.click()
+    picked = page.locator("#picked").text_content()
+    check("PRESS-0217 s4.2: a script piece shows as its code and is picked by a click",
+          bool(box) and box["height"] > 0 and picked == "Changing: Your own script"
+          and "RAN" in (page.locator("[data-field=code]:visible").input_value() or ""),
+          f"box={box} picked={picked!r}")
+    page.select_option("#add-kind", "countdown")
+    page.locator("[data-act=add]").click()
+    page.locator("[data-field=label]:visible").fill("Until then")
+    page.wait_for_timeout(1600)
+    page.wait_for_function("document.getElementById('save-status').textContent !== "
+                           "'Saving'", timeout=5000)
+    page.wait_for_timeout(800)
+    read = blocks.read("pieces", store.read_html(waiting)) if waiting.is_file() else None
+    added = [s.fields for s in (read.sections if read else ()) if s.kind == "countdown"]
+    check("PRESS-0217 s4.1: a countdown is added from the panel, a week ahead",
+          len(added) == 2 and added[1]["label"] == "Until then"
+          and blocks._is_when(added[1]["to"]), str(added))
+
+    def questions() -> list[str]:
+        read = blocks.read("pieces", store.read_html(waiting))
+        held = next(s for s in read.sections if s.kind == "questions")
+        return [asked[0].fields["html"] for asked in held.parts]
+
+    def settle() -> None:
+        page.wait_for_timeout(1600)
+        page.wait_for_function("document.getElementById('save-status').textContent !== "
+                               "'Saving'", timeout=5000)
+        page.wait_for_timeout(800)
+
+    # A click on a question's dt, outside its words, picks the whole piece.
+    frame.locator(".pressless-questions dt").first.dispatch_event("click")
+    page.locator("[data-act=add-question]").click()
+    settle()
+    grown = questions()
+    frame.locator(".pressless-questions dt p").nth(2).click()
+    up = page.locator("[data-act=up]").is_disabled()
+    page.locator("[data-act=remove]").click()
+    settle()
+    check("PRESS-0217 s4.1: a question is added, and removing its words removes it",
+          grown == ["Why?", "When?", ""] and up and questions() == ["Why?", "When?"],
+          f"after adding={grown} up disabled={up} after removing={questions()}")
+
+    # ---- the published site: each piece behaves -----------------------------
+    site = folder.parent / "pieces-site"
+    builder.build(folder, settings.load(folder), site)
+    page.goto((site / "pages" / "pieces.html").as_uri(), wait_until="load")
+    page.wait_for_timeout(1300)
+    slides = page.locator(".pressless-slideshow > *:visible").count()
+    page.locator(".pressless-slideshow-turn button").last.click()
+    second = page.locator(".pressless-slideshow > *:visible figcaption").count()
+    check("PRESS-0217 s4.3: the slideshow shows one picture and turns to the next",
+          slides == 1 and second == 1, f"visible={slides} second has caption={second}")
+    hidden = page.locator(".pressless-questions dd:visible").count()
+    page.locator(".pressless-questions dt").first.click()
+    opened = page.locator(".pressless-questions dd:visible").count()
+    check("PRESS-0217 s4.3: the questions start folded and open by their question",
+          hidden == 0 and opened == 1, f"before={hidden} after={opened}")
+    page.locator(".pressless-enlarge img").click()
+    big = page.locator("dialog.pressless-enlarged[open] img").count()
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(300)  # the close event is a task of its own
+    gone = page.locator("dialog.pressless-enlarged").count()
+    check("PRESS-0217 s4.3: the picture enlarges on a click, and Escape closes it",
+          big == 1 and gone == 0, f"open={big} after Escape={gone}")
+    told = page.locator(".pressless-countdown time").first.text_content() or ""
+    check("PRESS-0217 s4.3: the countdown shows the time left in words",
+          "2099" not in told and "day" in told, told)
+    page.locator(".pressless-top").scroll_into_view_if_needed()
+    page.locator(".pressless-top").click()
+    page.wait_for_function("window.scrollY === 0", timeout=3000)
+    ran = page.title()
+    check("PRESS-0217 s4.4: back to top returns to the top; the writer's script runs",
+          ran == "RAN", f"title={ran!r}")
+    check("PRESS-0217: no script error in the editor or on the site", not errors, str(errors))
 
 
 def furniture_views(page, origin: str, folder: Path) -> None:

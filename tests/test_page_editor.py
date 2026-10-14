@@ -810,3 +810,33 @@ def test_inline_script_json_escapes_angle_brackets() -> None:
     menu = page_editor._menu_panel([("words", payload)], ())
     links = menu.split('id="links">', 1)[1].split("</script>", 1)[0]
     assert "<" not in links and ">" not in links
+
+
+# ------------------------------------------- PRESS-0217 INV-2 ---------------
+# docs/specs/PRESS-0217-interactive-pieces.md § 5: no piece runs in the Face.
+
+PIECE_FORMS = Path(__file__).parent / "features" / "blocks" / "forms"
+
+
+def test_the_piece_preview_runs_no_script(tmp_path):
+    """INV-2. Breaks when the preview is given allow-scripts so a piece can be
+    shown behaving, which lets a script piece reach the Face's endpoints."""
+    pieces = "".join((PIECE_FORMS / f"{kind}-1.html").read_text(encoding="utf-8")
+                     for kind in ("slideshow", "script"))
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "shows", AREA_BEFORE + pieces + AREA_AFTER)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=shows")
+        assert status == 200, text
+        frames = re.findall(r"<iframe\b[^>]*>", text)
+        assert len(frames) == 1, frames
+        assert re.findall(r'\bsandbox="([^"]*)"', frames[0]) == ["allow-same-origin"], frames[0]
+        # Each piece is a section the visual editor can pick, not code.
+        given = json.loads(text.split('id="sections">', 1)[1].split("</script>", 1)[0])
+        assert [item["kind"] for item in given["sections"] if len(item["path"]) == 1] == [
+            "slideshow", "script"], given
+        address = html.unescape(re.search(r'\bsrc="([^"]*)"', frames[0]).group(1))
+        status, _, preview = browser.request("GET", address)
+    assert status == 200, preview
+    assert "pieces.js" not in preview, "the preview links the pieces' script"
+    assert '<script>document.title = "a < b && c";</script>' in preview

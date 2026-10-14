@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=267 -->
+<!-- ants-roadmap-id-high-water: PRESS=268 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4308,7 +4308,7 @@ removed, and the menu follows.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Face, Store.
 
-- 🚧 [PRESS-0217] **Ready-made interactive pieces for a page, and a place for their own script.**
+- ✅ [PRESS-0217] **Ready-made interactive pieces for a page, and a place for their own script.**
   User, 2026-10-02: a few JavaScript templates for a bit of
   interactivity, and let users write their own. Candidates: a picture
   slideshow, questions that fold open, a picture that enlarges when
@@ -4317,6 +4317,12 @@ removed, and the menu follows.
   Decided by the user 2026-10-14: a short spec first, one review round.
   All five pieces: questions that fold open, a picture slideshow, a
   picture that enlarges, back to top, and a countdown.
+  Shipped 2026-10-14: six Blocks kinds (slideshow, questions, enlarge,
+  top, countdown, script), their panel settings, and pieces.js at
+  look/pieces.js, linked only from a published page carrying a piece and
+  never from a preview. What the build settled is the spec's § 14. Chrome
+  checks in scripts/by-hand-browser-checks.py pass; Firefox and Edge are
+  owed by hand. The older served-script gap the build found is PRESS-0268.
   **Layman:** A page can hold a picture slideshow, questions that fold open and similar pieces from a list, and anyone who writes their own script can add it.
   Kind: feature.
   Source: user-request-2026-10-02.
@@ -4615,6 +4621,24 @@ removed, and the menu follows.
   Kind: fix.
   Source: ci-windows-2026-10-14.
   Lanes: tests.
+
+- 📋 [PRESS-0268] **A script file the Face serves never runs in the Face's origin, even on a page opened outside the preview frame.**
+  Found building PRESS-0217. face.FILES_POLICY gives every served file
+  `script-src 'self'`. Inside the preview frame nothing runs (sandbox
+  without allow-scripts), but a /preview/ page opened as its own tab runs
+  any same-origin script it links. /assets/ serves preview-assets, the
+  live site's assets/ copied by Import, and /look/ the Store's look
+  folder; a .js file in either, linked from a code section, would run in
+  the Face's origin with the session cookie and pass the Origin check on
+  a POST. PRESS-0217 itself adds no such path: pieces.js is never put in
+  a preview, and a script piece is inline, which the policy blocks.
+  Likely fix: `script-src 'none'` in FILES_POLICY, since nothing the Face
+  serves as a file needs to run; that changes PRESS-0012 § 4.3 and its
+  INV-8, so it is a contract change and owes that spec's gate.
+  **Layman:** A script that came with an imported site could run inside Pressless if someone opened a preview page on its own; this closes that door.
+  Kind: security.
+  Source: in-session-2026-10-14 PRESS-0217 build.
+  Lanes: Face.
 
 ## 0.10.0 — their own look, and any file
 

@@ -162,6 +162,9 @@ frame, at a fixed place and size. It shows:
   sits in: the page's, a column's, or a row of pictures'. At an end of
   its list, the button it cannot use is shown disabled, never hidden.
 
+*Amended by PRESS-0217:* the Add list and this table gain its six kinds
+(PRESS-0217 § 4.1, § 4.2).
+
 A picked columns section's panel also offers **Add to column N** for
 each column, and a picked row of pictures **Add a picture**. A row of
 pictures is added with its first picture, since Blocks refuses an

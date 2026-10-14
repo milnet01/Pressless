@@ -250,3 +250,30 @@ Rows live in `../reviews/PRESS-0217-interactive-pieces-loop-log.md`.
 No new dependency. `pieces.js` is one packaged asset, linked only on a page
 that uses a piece. A save reads and writes one file and builds one preview, as
 today.
+
+## 14. As built (2026-10-14)
+
+What the build settled, recorded rather than decided here:
+
+- **`pieces.js` is published at `look/pieces.js`**, not `assets/pieces.js`
+  (§ 3 decision 4): the Builder never writes under `assets/` (PRESS-0008 § 3
+  decision 3). Its text is `blocks.PIECES_SCRIPT`, beside the writers whose
+  classes it reads, so `builder.py`'s import allowlist (PRESS-0008 INV-11) is
+  unchanged.
+- **A preview never carries `pieces.js`**, neither the link nor the file, as a
+  preview never carries the counting code. § 4.3's "served under `/preview/`"
+  does not arise, and a preview page opened outside its frame runs no piece.
+  `tests/test_builder.py::test_a_preview_never_carries_pieces_js` holds it.
+- **A piece in the header or footer** links `pieces.js` from every page the
+  furniture is filled into, the journal's pages included.
+- **`top` holds its words in a `label` field**, so they survive a change of
+  the app's language; the editor fills it with its own words when the piece
+  is added.
+- **Each question is a part whose first section is a text section**, the
+  question, and whose others are its answer: a `dt` holding the first and a
+  `dd` holding the rest. An answer holds no section that holds others.
+- **A `script` section is refused where its code holds `</script` or
+  `<!--`**: either changes where a browser ends the element, so the code
+  could not reach the page as written.
+- **The editor shows a `script` section's code in the frame**, by a style the
+  editor adds there, so it can be picked; the sandbox keeps it from running.

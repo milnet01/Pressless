@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from pressless import blocks, builder, starter, store
+from pressless import blocks, builder, page_editor, starter, store
 from pressless.blocks import Section
 
 FORMS = Path(__file__).parent / "features" / "blocks" / "forms"
@@ -44,6 +44,23 @@ EVERY_KIND = (
                                     _picture(7)))),
     Section(blocks.COLUMNS, parts=tuple((Section(blocks.TEXT, {"html": str(n)}),)
                                         for n in range(4))),
+    # PRESS-0217's pieces.
+    Section(blocks.SLIDESHOW, parts=((_picture(8), _picture(9, caption="Nine")),)),
+    Section(blocks.QUESTIONS, parts=((Section(blocks.TEXT, {"html": "Why?"}),
+                                      Section(blocks.TEXT, {"html": "Because."})),
+                                     (Section(blocks.TEXT, {"html": ""}),
+                                      _picture(10), Section(blocks.TOP, {"label": "Up"})))),
+    Section(blocks.ENLARGE, {"src": "11.jpg", "alt": "picture 11"}),
+    Section(blocks.ENLARGE, {"src": "12.jpg", "alt": "", "height": "480",
+                             "caption": "<em>Twelve</em>"}),
+    Section(blocks.TOP, {"label": 'Back "up" & <away>'}),
+    Section(blocks.COUNTDOWN, {"to": "2026-12-25T18:00:00Z", "label": "Until <then>"}),
+    Section(blocks.COUNTDOWN, {"to": "2026-12-25T18:00", "label": ""}),
+    Section(blocks.SCRIPT, {"code": "if (a < b && c > 'd') { x = \"&amp;\"; }\n"}),
+    Section(blocks.SCRIPT, {"code": ""}),
+    Section(blocks.COLUMNS, parts=((Section(blocks.SCRIPT, {"code": "1"}),),
+                                   (Section(blocks.COUNTDOWN, {"to": "2027-01-01T00:00",
+                                                               "label": "x"}),))),
 )
 
 
@@ -371,3 +388,94 @@ def test_new_pages_are_all_sections(tmp_path):
         kinds = [section.kind for section in page.sections]
         assert kinds[0] == blocks.HEADING and set(kinds[1:]) == {blocks.TEXT}, (name, kinds)
         assert re.search(r"<title>[^<]*&quot;", text), name
+
+
+# ------------------------------------------- PRESS-0217: the pieces ---
+#
+# The invariants below are docs/specs/PRESS-0217-interactive-pieces.md § 5's.
+# The kinds are spelled out rather than read from `blocks`, since the names
+# are what a page's marks hold.
+
+PIECES = ("slideshow", "questions", "enlarge", "top", "countdown", "script")
+
+
+def _form(kind: str) -> str:
+    return (FORMS / f"{kind}-1.html").read_text(encoding="utf-8").rstrip("\n")
+
+
+def _written(section: Section) -> str:
+    """What `section_html` writes, or "" where it refuses."""
+    try:
+        return blocks.section_html(section)
+    except blocks.SectionRefused:
+        return ""
+
+
+def _question(asked: str, *answer: Section) -> tuple[Section, ...]:
+    return (Section(blocks.TEXT, {"html": asked}), *answer)
+
+
+def test_a_piece_round_trips():
+    """INV-1. Breaks when a new kind's reader does not accept its own writer's
+    bytes, so the section is kept as code and the editor cannot pick it."""
+    for kind in PIECES:
+        written = _form(kind)
+        page = blocks.read("page", _page(written))
+        assert [section.kind for section in page.sections] == [kind], kind
+        assert blocks.section_html(page.sections[0]) == written, kind
+        assert blocks.write(page) == _page(written), kind
+    # Picked, moved and removed in the visual editor as the nine kinds are.
+    text = _page(*(_form(kind) for kind in PIECES))
+    posted = [{"keep": [at]} for at in reversed(range(1, len(PIECES)))]
+    moved = blocks.read("page", page_editor.put_sections("page", text, posted, [[0]]))
+    assert [section.kind for section in moved.sections] == list(reversed(PIECES[1:]))
+
+
+def test_each_piece_has_a_fallback():
+    """INV-4. Breaks when a piece writes an empty shell that needs pieces.js
+    to show anything, so the preview and a no-script visitor see nothing."""
+    shown = _written(Section("slideshow", parts=((_picture(1), _picture(2)),)))
+    assert shown.count("<img ") == 2 and "hidden" not in shown, shown
+    shown = _written(Section("questions", parts=(
+        _question("Why?", Section(blocks.TEXT, {"html": "Because."})),)))
+    assert re.search(r"<dt>.*Why\?.*</dt><dd>.*Because\..*</dd>", shown), shown
+    assert "hidden" not in shown, shown
+    shown = _written(Section("enlarge", {"src": "1.jpg", "alt": "picture 1"}))
+    assert '<img src="1.jpg" alt="picture 1">' in shown, shown
+    shown = _written(Section("countdown", {"to": "2026-12-25T18:00", "label": "Until"}))
+    assert re.search(r">Until <time>2026-12-25 18:00</time>", shown), shown
+    shown = _written(Section("top", {"label": "Back to top"}))
+    assert re.search(r'<a [^>]*href="#top"[^>]*>Back to top</a>', shown), shown
+
+
+def test_a_malformed_piece_is_refused():
+    """INV-6. Breaks when a bad field is written into the page rather than
+    refused."""
+    answer = Section(blocks.TEXT, {"html": "Yes."})
+    for good in (Section("countdown", {"to": "2026-12-25T18:00", "label": ""}),
+                 Section("countdown", {"to": "2026-12-25T18:00:30+02:00", "label": "x"}),
+                 Section("slideshow", parts=((_picture(1),),)),
+                 Section("questions", parts=(_question("Why?", answer),)),
+                 Section("script", {"code": ""})):
+        assert _written(good), good
+    for bad in (Section("countdown", {"to": "next Tuesday", "label": ""}),
+                Section("countdown", {"to": "2026-12-25", "label": ""}),
+                Section("countdown", {"to": "2026-13-01T00:00", "label": ""}),
+                Section("countdown", {"to": "2026-12-25T18:00"}),
+                Section("slideshow"),
+                Section("slideshow", parts=((),)),
+                Section("slideshow", parts=((Section(blocks.TEXT, {"html": "x"}),),)),
+                Section("questions"),
+                Section("questions", parts=(_question("Why?"),)),
+                Section("questions", parts=((_picture(1), answer),)),
+                Section("questions", parts=(_question("Why?", _form_section("questions")),)),
+                Section("top", {}),
+                Section("script", {"code": "</script><p>out</p>"}),
+                Section("script", {"code": "a = '<!--';"}),
+                Section(blocks.COLUMNS, parts=((_form_section("slideshow"),), (answer,)))):
+        assert not _written(bad), bad
+
+
+def _form_section(kind: str) -> Section:
+    """The piece its frozen form reads as; a code section before PRESS-0217."""
+    return blocks.read("page", _page(_form(kind))).sections[0]

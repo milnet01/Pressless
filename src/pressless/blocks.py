@@ -11,7 +11,8 @@ Pure calculation: no disk, no network, and the standard library alone, since
 the Builder imports this module (§4.1).
 
 The contract is `docs/specs/PRESS-0215-blocks.md`; the section and INV-N
-references below are to it.
+references below are to it. The ready-made pieces and the script section are
+`docs/specs/PRESS-0217-interactive-pieces.md`'s.
 """
 from __future__ import annotations
 
@@ -19,19 +20,28 @@ import html as _html
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from html.parser import HTMLParser
 from types import MappingProxyType
 
 __all__ = [
-    "BUTTON", "CODE", "COLUMNS", "DOWNLOAD", "HEADING", "KINDS", "MUSIC", "PICTURE",
-    "PICTURES", "TEXT", "VIDEO",
+    "BUTTON", "CODE", "COLUMNS", "COUNTDOWN", "DOWNLOAD", "ENLARGE", "HEADING", "KINDS",
+    "MUSIC", "PICTURE", "PICTURES", "PIECES", "PIECES_SCRIPT", "QUESTIONS", "SCRIPT",
+    "SLIDESHOW", "TEXT", "TOP", "VIDEO",
     "Page", "Section", "SectionRefused",
     "adopt", "inline", "read", "section_html", "unmarked", "write",
 ]
 
 TEXT, HEADING, PICTURE, PICTURES, BUTTON = "text", "heading", "picture", "pictures", "button"
 VIDEO, MUSIC, DOWNLOAD, COLUMNS = "video", "music", "download", "columns"
-KINDS = (TEXT, HEADING, PICTURE, PICTURES, BUTTON, VIDEO, MUSIC, DOWNLOAD, COLUMNS)
+# PRESS-0217 § 4.1: the ready-made pieces, which pieces.js enhances on the
+# published site, and a place for the writer's own script, which it does not.
+SLIDESHOW, QUESTIONS, ENLARGE, TOP, COUNTDOWN = (
+    "slideshow", "questions", "enlarge", "top", "countdown")
+SCRIPT = "script"
+PIECES = (SLIDESHOW, QUESTIONS, ENLARGE, TOP, COUNTDOWN)
+KINDS = (TEXT, HEADING, PICTURE, PICTURES, BUTTON, VIDEO, MUSIC, DOWNLOAD, COLUMNS,
+         *PIECES, SCRIPT)
 CODE = "code"
 
 _PAGE, _COLUMN = "page", "column"
@@ -39,6 +49,11 @@ _WHITESPACE = " \t\n\r\f"
 _MARK = re.compile(r"<!-- (/?)pressless:([a-z]+) -->")
 _YOUTUBE_ID = re.compile(r"[A-Za-z0-9_-]{11}")
 _SCHEME = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*):")
+# A countdown's end: a date and a time, then optionally seconds and an offset.
+_WHEN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?")
+# What would end a script element early or change how a browser reads where
+# it ends; HTML's rule, not a reading of the script.
+_SCRIPT_END = re.compile(r"</script|<!--", re.IGNORECASE)
 _VOID = frozenset(("area", "base", "br", "col", "embed", "hr", "img", "input", "link",
                    "meta", "source", "track", "wbr"))
 
@@ -210,7 +225,16 @@ _FIELDS = {
     DOWNLOAD: ({"href", "label"}, set()),
     COLUMNS: (set(), set()),
     _COLUMN: (set(), set()),
+    SLIDESHOW: (set(), set()),
+    QUESTIONS: (set(), set()),
+    ENLARGE: ({"src", "alt"}, {"width", "height", "caption"}),
+    TOP: ({"label"}, set()),
+    COUNTDOWN: ({"to", "label"}, set()),
+    SCRIPT: ({"code"}, set()),
 }
+
+# The kinds that hold other sections, which no column or answer holds.
+_HOLDERS = frozenset((COLUMNS, PICTURES, SLIDESHOW, QUESTIONS, _COLUMN))
 
 
 def _check(section: Section) -> None:
@@ -236,19 +260,39 @@ def _check(section: Section) -> None:
     for name, mailto in (("src", False), ("href", True)):
         if name in fields and not address_allowed(fields[name], mailto=mailto):
             raise SectionRefused(f"a {kind} section may not link to {fields[name]!r}")
+    if kind == COUNTDOWN and not _is_when(fields["to"]):
+        raise SectionRefused(f"a countdown's end, {fields['to']!r}, is not a date and a time")
+    if kind == SCRIPT and _SCRIPT_END.search(fields["code"]):
+        raise SectionRefused("a script section cannot hold </script or <!--")
     _check_parts(section)
+
+
+def _is_when(value: str) -> bool:
+    if not _WHEN.fullmatch(value):
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 def _check_parts(section: Section) -> None:
     kind, parts = section.kind, section.parts
-    if kind == PICTURES:
+    if kind in (PICTURES, SLIDESHOW):
         if len(parts) != 1 or not parts[0] or any(part.kind != PICTURE for part in parts[0]):
-            raise SectionRefused("a row of pictures holds pictures, and nothing else")
+            raise SectionRefused(f"a {kind} section holds pictures, and nothing else")
     elif kind == COLUMNS:
         if not 2 <= len(parts) <= 4:
             raise SectionRefused(f"columns come two to four at a time, not {len(parts)}")
-        if any(part.kind in (COLUMNS, PICTURES, _COLUMN) for column in parts for part in column):
-            raise SectionRefused("a column holds no columns and no row of pictures")
+        if any(part.kind in _HOLDERS for column in parts for part in column):
+            raise SectionRefused("a column holds no section that holds others")
+    elif kind == QUESTIONS:
+        # PRESS-0217 § 4.1: each part is a question, its words then its answer.
+        if not parts or any(len(asked) < 2 or asked[0].kind != TEXT for asked in parts):
+            raise SectionRefused("each question is a paragraph, then its answer")
+        if any(part.kind in _HOLDERS for asked in parts for part in asked):
+            raise SectionRefused("an answer holds no section that holds others")
     elif kind == _COLUMN:
         if len(parts) != 1:
             raise SectionRefused("a column is one list of sections")
@@ -275,15 +319,28 @@ def _text(value: str) -> str:
     return _html.escape(value, quote=False)
 
 
-def _write_picture(fields) -> str:
+def _img(fields) -> str:
     img = f'<img src="{_attr(fields["src"])}" alt="{_attr(fields["alt"])}"'
     for name in ("width", "height"):
         if name in fields:
             img += f' {name}="{_attr(fields[name])}"'
-    img += ">"
+    return img + ">"
+
+
+def _caption(fields) -> str:
+    return f"<figcaption>{fields['caption']}</figcaption>" if "caption" in fields else ""
+
+
+def _write_picture(fields) -> str:
     if "caption" in fields:
-        return f"<figure>{img}<figcaption>{fields['caption']}</figcaption></figure>"
-    return img
+        return f"<figure>{_img(fields)}{_caption(fields)}</figure>"
+    return _img(fields)
+
+
+def _write_questions(section: Section) -> str:
+    return '<dl class="pressless-questions">' + "".join(
+        f"<dt>{_bytes(asked[0])}</dt><dd>" + "".join(_bytes(part) for part in asked[1:])
+        + "</dd>" for asked in section.parts) + "</dl>"
 
 
 def _write_video(fields) -> str:
@@ -312,6 +369,16 @@ _WRITERS: dict[str, Callable[[Section], str]] = {
     COLUMNS: lambda s: '<div class="pressless-columns">' + "".join(
         _wrap(_COLUMN, _write_parts("pressless-column", column)) for column in s.parts) + "</div>",
     _COLUMN: lambda s: _write_parts("pressless-column", s.parts[0]),
+    SLIDESHOW: lambda s: _write_parts("pressless-slideshow", s.parts[0]),
+    QUESTIONS: _write_questions,
+    ENLARGE: lambda s: (f'<figure class="pressless-enlarge">{_img(s.fields)}'
+                        f"{_caption(s.fields)}</figure>"),
+    TOP: lambda s: f'<a class="pressless-top" href="#top">{_text(s.fields["label"])}</a>',
+    COUNTDOWN: lambda s: (f'<p class="pressless-countdown" data-to="{_attr(s.fields["to"])}">'
+                          f'{_text(s.fields["label"])} <time>'
+                          f'{_text(s.fields["to"].replace("T", " "))}</time></p>'),
+    # PRESS-0217 § 4.4: the writer's code verbatim, never read or changed.
+    SCRIPT: lambda s: f"<script>{s.fields['code']}</script>",
 }
 
 
@@ -344,12 +411,29 @@ def _read_picture(inner: str):
                          r"</figcaption></figure>", inner, re.S)
     if found is None:
         return None
-    attrs = _read_attrs(found.group(1) or found.group(2))
+    return _picture_attrs(found.group(1) or found.group(2), found.group(3))
+
+
+def _picture_attrs(img: str, caption: str | None):
+    attrs = _read_attrs(img)
     if attrs is None:
         return None
-    if found.group(3) is not None:
-        attrs["caption"] = found.group(3)
+    if caption is not None:
+        attrs["caption"] = caption
     return attrs
+
+
+def _read_enlarge(inner: str):
+    found = re.fullmatch(r'<figure class="pressless-enlarge">(<img [^>]*>)'
+                         r"(?:<figcaption>(.*)</figcaption>)?</figure>", inner, re.S)
+    return found and _picture_attrs(found.group(1), found.group(2))
+
+
+def _read_countdown(inner: str):
+    found = re.fullmatch(r'<p class="pressless-countdown" data-to="([^"]*)">(.*) <time>'
+                         r"[^<]*</time></p>", inner, re.S)
+    return found and {"to": _html.unescape(found.group(1)),
+                      "label": _html.unescape(found.group(2))}
 
 
 def _read_link(css: str, extra: str):
@@ -384,6 +468,13 @@ _READERS: dict[str, Callable[[str], dict[str, str] | None]] = {
     VIDEO: _read_video,
     MUSIC: _read_media("audio"),
     DOWNLOAD: _read_link("pressless-download", " download"),
+    ENLARGE: _read_enlarge,
+    TOP: lambda inner: ((found := re.fullmatch(r'<a class="pressless-top" href="#top">(.*)</a>',
+                                               inner, re.S))
+                        and {"label": _html.unescape(found.group(1))}),
+    COUNTDOWN: _read_countdown,
+    SCRIPT: lambda inner: ((found := re.fullmatch(r"<script>(.*)</script>", inner, re.S))
+                           and {"code": found.group(1)}),
 }
 
 # §4.5: every form each kind has been written in, oldest first, as a reader
@@ -396,7 +487,8 @@ _FORMS: dict[str, tuple[tuple[Callable, Callable[[Section], str]], ...]] = {
 # What a section of each kind may hold, by where it sits (§4.3).
 _AT_TOP = frozenset(KINDS)
 _IN_COLUMNS = frozenset((_COLUMN,))
-_IN_A_COLUMN = frozenset(KINDS) - {COLUMNS, PICTURES}
+_IN_A_COLUMN = frozenset(KINDS) - _HOLDERS
+_IN_AN_ANSWER = _IN_A_COLUMN
 _IN_PICTURES = frozenset((PICTURE,))
 
 
@@ -467,15 +559,17 @@ class _Reading:
     def candidate(self, kind: str, reader, start: int, end: int) -> Section | None:
         """The section `reader` finds in text[start:end], to be checked against
         its writer; None where it finds none."""
-        if kind in (PICTURES, COLUMNS, _COLUMN):
-            css = {PICTURES: "pressless-pictures", COLUMNS: "pressless-columns",
-                   _COLUMN: "pressless-column"}[kind]
+        if kind == QUESTIONS:
+            return self.questions(start, end)
+        if kind in (PICTURES, SLIDESHOW, COLUMNS, _COLUMN):
+            css = {PICTURES: "pressless-pictures", SLIDESHOW: "pressless-slideshow",
+                   COLUMNS: "pressless-columns", _COLUMN: "pressless-column"}[kind]
             opening, closing = f'<div class="{css}">', "</div>"
             inner = self.text[start:end]
             if not (inner.startswith(opening) and inner.endswith(closing)):
                 return None
-            allowed = {PICTURES: _IN_PICTURES, COLUMNS: _IN_COLUMNS,
-                       _COLUMN: _IN_A_COLUMN}[kind]
+            allowed = {PICTURES: _IN_PICTURES, SLIDESHOW: _IN_PICTURES,
+                       COLUMNS: _IN_COLUMNS, _COLUMN: _IN_A_COLUMN}[kind]
             parts, _gaps = self.sequence(start + len(opening), end - len(closing), allowed)
             if kind == COLUMNS:
                 if any(part.kind != _COLUMN for part in parts):
@@ -484,6 +578,35 @@ class _Reading:
             return Section(kind, parts=(parts,))
         fields = reader(self.text[start:end])
         return Section(kind, fields) if fields else None
+
+    def questions(self, start: int, end: int) -> Section | None:
+        """PRESS-0217 § 4.1: text[start:end] as `_write_questions` writes it,
+        each question one marked paragraph in a `dt`, its answer the marked
+        sections in the `dd` after it; None where it is anything else."""
+        text = self.text
+        opening, closing = '<dl class="pressless-questions">', "</dl>"
+        if not (text.startswith(opening, start) and text.endswith(closing, start, end)):
+            return None
+        pos, stop, parts = start + len(opening), end - len(closing), []
+        while pos < stop:
+            asked = self.at.get(pos + len("<dt>"))
+            if not text.startswith("<dt>", pos) or asked is None or asked.closing:
+                return None
+            asked_end = self.partner(asked, stop)
+            if asked_end is None or not text.startswith("</dt><dd>", asked_end.end):
+                return None
+            answer = pos = asked_end.end + len("</dt><dd>")
+            while (mark := self.at.get(pos)) is not None and not mark.closing:
+                partner = self.partner(mark, stop)
+                if partner is None:
+                    return None
+                pos = partner.end
+            if not text.startswith("</dd>", pos):
+                return None
+            told, _gaps = self.sequence(answer, pos, _IN_AN_ANSWER)
+            parts.append((self.section(asked, asked_end, frozenset((TEXT,))), *told))
+            pos += len("</dd>")
+        return Section(QUESTIONS, parts=tuple(parts))
 
 
 def read(name: str, html: str) -> Page | None:
@@ -636,3 +759,137 @@ def unmarked(name: str, html: str) -> str:
         pos = end
     out.append(html[pos:])
     return "".join(out)
+
+
+# ------------------------------------------------- pieces.js (PRESS-0217) ---
+#
+# What makes a ready-made piece behave on the published site (§ 4.3). The
+# Builder writes it into the site folder and links it from a published page
+# only where that page carries a piece; never into a preview, since the Face's
+# frame runs no script and a preview page opened on its own must run none
+# either (§ 4.2, INV-2). It sits here beside the HTML it enhances, found by
+# the classes and `data-` hooks the writers above give each piece. It reaches
+# no network and shows no words of its own: the arrows are signs, and a
+# countdown's units are the visitor's browser's own, in the visitor's language.
+
+PIECES_SCRIPT = r"""(() => {
+  "use strict";
+  const each = (selector, enhance) => document.querySelectorAll(selector).forEach(enhance);
+  const style = document.createElement("style");
+  style.textContent = ".pressless-enlarge img{cursor:zoom-in}"
+    + ".pressless-enlarged{padding:0;border:0;background:none;max-width:none;max-height:none}"
+    + ".pressless-enlarged::backdrop{background:rgb(0 0 0 / .85)}"
+    + ".pressless-enlarged img{display:block;max-width:95vw;max-height:90vh;"
+    + "width:auto;height:auto;cursor:zoom-out}"
+    + ".pressless-questions dt{cursor:pointer}"
+    + ".pressless-slideshow-turn{display:flex;gap:.5em;align-items:center}";
+  document.head.append(style);
+
+  // A slideshow shows one picture at a time, with a sign either side to turn.
+  each(".pressless-slideshow", (show) => {
+    const slides = [...show.children];
+    if (slides.length < 2) return;
+    let at = 0;
+    const turn = document.createElement("p");
+    turn.className = "pressless-slideshow-turn";
+    const count = document.createElement("span");
+    count.setAttribute("aria-live", "polite");
+    const sign = (text, by) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      button.addEventListener("click", () => go(at + by));
+      return button;
+    };
+    const go = (to) => {
+      at = (to + slides.length) % slides.length;
+      slides.forEach((slide, number) => { slide.hidden = number !== at; });
+      count.textContent = (at + 1) + " / " + slides.length;
+    };
+    turn.append(sign("‹", -1), count, sign("›", 1));
+    show.after(turn);
+    go(0);
+  });
+
+  // Questions fold shut, and each opens by its question.
+  each(".pressless-questions", (list) => {
+    list.querySelectorAll(":scope > dt").forEach((asked) => {
+      const answer = asked.nextElementSibling;
+      if (!answer || answer.localName !== "dd") return;
+      const open = (shown) => {
+        answer.hidden = !shown;
+        asked.setAttribute("aria-expanded", String(shown));
+      };
+      asked.tabIndex = 0;
+      asked.setAttribute("role", "button");
+      asked.addEventListener("click", () => open(answer.hidden));
+      asked.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        open(answer.hidden);
+      });
+      open(false);
+    });
+  });
+
+  // A picture that enlarges fills the window until it is clicked or Escape.
+  each(".pressless-enlarge img", (picture) => {
+    const enlarge = () => {
+      const shown = document.createElement("dialog");
+      shown.className = "pressless-enlarged";
+      const big = picture.cloneNode();
+      big.removeAttribute("width");
+      big.removeAttribute("height");
+      shown.append(big);
+      shown.addEventListener("click", () => shown.close());
+      shown.addEventListener("close", () => { shown.remove(); picture.focus(); });
+      document.body.append(shown);
+      shown.showModal();
+    };
+    picture.tabIndex = 0;
+    picture.setAttribute("role", "button");
+    picture.addEventListener("click", enlarge);
+    picture.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      enlarge();
+    });
+  });
+
+  // Back to top glides there, unless the visitor asks for less motion.
+  each(".pressless-top", (link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({top: 0, behavior: still ? "auto" : "smooth"});
+    });
+  });
+
+  // A countdown shows the time left in the visitor's own words for the units,
+  // and its end again once that has passed.
+  each(".pressless-countdown", (box) => {
+    const end = Date.parse(box.dataset.to);
+    const shown = box.querySelector("time");
+    if (!shown || Number.isNaN(end)) return;
+    const target = shown.textContent;
+    const unit = (name, amount) => new Intl.NumberFormat(undefined,
+      {style: "unit", unit: name, unitDisplay: "long"}).format(amount);
+    const tick = () => {
+      const left = Math.floor((end - Date.now()) / 1000);
+      if (left <= 0) {
+        shown.textContent = target;
+        clearInterval(timer);
+        return;
+      }
+      const days = Math.floor(left / 86400), hours = Math.floor(left % 86400 / 3600);
+      const parts = [];
+      if (days) parts.push(unit("day", days));
+      if (days || hours) parts.push(unit("hour", hours));
+      parts.push(unit("minute", Math.floor(left % 3600 / 60)), unit("second", left % 60));
+      shown.textContent = parts.join(" ");
+    };
+    const timer = setInterval(tick, 1000);
+    tick();
+  });
+})();
+"""

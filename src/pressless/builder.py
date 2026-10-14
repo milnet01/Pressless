@@ -37,6 +37,7 @@ ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
 STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
+PIECES_SCRIPT = "look/pieces.js"   # PRESS-0217 § 4.3; never under assets/ (decision 3)
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
 
@@ -97,6 +98,28 @@ def counting_code(measurement_id: str) -> str:
             "<script>window.dataLayer=window.dataLayer||[];"
             "function gtag(){dataLayer.push(arguments);}gtag('js',new Date());"
             f"gtag('config','{measurement_id}');</script>\n")
+
+
+def _inserted(text: str, code: str) -> str:
+    """`code` at the end of the page's head, else after its body's start tag,
+    else at its end (PRESS-0199 § 4.2)."""
+    if found := _HEAD_END.search(text):
+        return text[:found.start()] + code + text[found.start():]
+    if found := _BODY_START.search(text):
+        return text[:found.end()] + code + text[found.end():]
+    return text + code
+
+
+def _has_piece(text: str) -> bool:
+    """PRESS-0217 § 4.3: whether the file's sections hold a ready-made piece,
+    at any depth. The writer's own script is not one."""
+    page = blocks.read("", text)
+
+    def found(sections) -> bool:
+        return any(section.kind in blocks.PIECES or any(found(part) for part in section.parts)
+                   for section in sections)
+
+    return page is not None and found(page.sections)
 
 
 def stylesheets(folder: Path) -> tuple[str, ...]:
@@ -436,7 +459,7 @@ def _held_pictures(folder: Path, relative: str, text: str) -> list[str]:
         for section in sections:
             for part in section.parts:
                 walk(part)
-            if section.kind != blocks.PICTURE:
+            if section.kind not in (blocks.PICTURE, blocks.ENLARGE):
                 continue
             # A made-up host, since urljoin resolves only the schemes it knows.
             address = urlsplit(urljoin(f"http://pages.invalid/{relative}",
@@ -465,6 +488,8 @@ class _Build:
         self.files: list[str] = []
         self.copied: set[str] = set()
         self.marked = ""  # the furniture file whose marks stay, for its preview alone
+        self.furniture_pieces = False  # whether the header or footer holds a piece
+        self.pieces_linked = False     # whether any page written links pieces.js
 
     # -- writing --
 
@@ -503,6 +528,7 @@ class _Build:
                                                  text.replace("{{UP}}", "")):
                     self.web_copy(photograph)
             held[name] = text if self.marked == name else blocks.unmarked(name, text)
+        self.furniture_pieces = any(_has_piece(furniture[name]) for name in ("header", "footer"))
         self.furniture = _Furniture(held["header"], furniture["navigation"],
                                     held["footer"], self.today.year, identity)
 
@@ -572,6 +598,8 @@ class _Build:
         style_code = store.read_style_code(self.folder)
         if style_code is not None:
             self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
+        if self.pieces_linked:
+            self.write_text(PIECES_SCRIPT, blocks.PIECES_SCRIPT)
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
 
     def fixed_page(self, name: str, text: str, *, marks: bool = False) -> None:
@@ -583,8 +611,10 @@ class _Build:
         if self.photo_src is None:
             for held in _held_pictures(self.folder, relative, text):
                 self.web_copy(held)
-        self.write_text(relative, self.counted(_fill_fixed_page(
-            name, text if marks else blocks.unmarked(name, text), depth, self.furniture)))
+        filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
+                                  self.furniture)
+        self.write_text(relative, self.counted(self.enhanced(
+            filled, depth, self.furniture_pieces or _has_piece(text))))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug
@@ -608,7 +638,7 @@ class _Build:
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
-        self.write_text(f"{relative}/index.html", self.counted(f"""<!doctype html>
+        self.write_text(f"{relative}/index.html", self.counted(self.enhanced(f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -629,7 +659,7 @@ class _Build:
 
 </body>
 </html>
-"""))
+""", depth, self.furniture_pieces)))
 
     def counted(self, text: str) -> str:
         """PRESS-0199 § 4.2: `text` with Google's tag, on a publishing build
@@ -638,12 +668,15 @@ class _Build:
         measurement_id = self.settings.measurement_id
         if self.photo_src is not None or measurement_id is None or _TAGGED in text:
             return text
-        code = counting_code(measurement_id)
-        if found := _HEAD_END.search(text):
-            return text[:found.start()] + code + text[found.start():]
-        if found := _BODY_START.search(text):
-            return text[:found.end()] + code + text[found.end():]
-        return text + code
+        return _inserted(text, counting_code(measurement_id))
+
+    def enhanced(self, text: str, depth: int, piece: bool) -> str:
+        """PRESS-0217 § 4.3: `text` linking pieces.js, on a publishing build of
+        a page that carries a piece; never a preview's (INV-2)."""
+        if self.photo_src is not None or not piece:
+            return text
+        self.pieces_linked = True
+        return _inserted(text, f'<script src="{"../" * depth}{PIECES_SCRIPT}" defer></script>\n')
 
     def meta(self, entry: store.Entry, up: str) -> str:
         """The date line: the entry's own date, then a chip per category."""

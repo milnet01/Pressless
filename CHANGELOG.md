@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A page can hold ready-made interactive pieces, and a place for your own script** (PRESS-0217)
+  A picture slideshow, questions that fold open, a picture that enlarges
+  when clicked, a back-to-top link and a countdown are added from the
+  visual editor's list like any section, and so is a box for your own
+  script. They behave only on the published site; in Pressless each shows
+  as it looks without its script, and your script never runs there.
+
 - **Change the header, footer and menu without code.** (PRESS-0216)
   The header and footer open on the page, as a page does: click their
   words and type, or add a picture or a button. Words the site fills in

@@ -216,6 +216,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Backspace": "a key's name, as the browser reports it",
         "video music": "the section kinds a panel control serves",
         "button download": "the section kinds a panel control serves",
+        "picture enlarge": "the section kinds a panel control serves",
+        "button download top countdown": "the section kinds a panel control serves",
     },
     "publishing.py": {"MESSAGE": "a git commit message (decision 4)"},
     "report.py": {"body": _ISSUE, "query": _ISSUE},

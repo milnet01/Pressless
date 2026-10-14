@@ -1502,3 +1502,80 @@ def test_a_furniture_picture_is_published(tmp_path):
     build(folder, _settings(), into)
     held = [name for name in _files(into) if name.startswith("photographs/")]
     assert held == ["photographs/my boat.jpg"], held
+
+
+# ------------------------------------------- PRESS-0217: the pieces ---
+#
+# docs/specs/PRESS-0217-interactive-pieces.md § 5. A piece is written here as
+# its frozen form, which tests/test_blocks.py holds to `section_html`.
+
+PIECE_FORMS = Path(__file__).parent / "features" / "blocks" / "forms"
+PIECES_TAG = re.compile(r'<script src="(?:\.\./)*look/pieces\.js" defer></script>')
+
+
+def _sectioned(*forms: str) -> str:
+    sections = "".join((PIECE_FORMS / f"{form}-1.html").read_text(encoding="utf-8")
+                       for form in forms)
+    return SECTIONED.replace("<!-- /pressless:page -->", sections + "<!-- /pressless:page -->")
+
+
+def test_a_page_with_no_piece_is_unchanged(tmp_path):
+    """INV-3. Breaks when pieces.js is linked on every page rather than only
+    where a piece is present."""
+    plain = {"index": SECTIONED, "about": _sectioned("text", "script")}
+    alone = tmp_path / "alone"
+    build(_store(tmp_path / "a", pages=plain), _settings(), alone)
+    beside = tmp_path / "beside"
+    build(_store(tmp_path / "b", pages={**plain, "shows": _sectioned("slideshow")}),
+          _settings(), beside)
+    for name in ("index.html", "pages/about.html"):
+        assert (alone / name).read_bytes() == (beside / name).read_bytes(), name
+        assert "pieces.js" not in (beside / name).read_text(encoding="utf-8"), name
+    assert not (alone / "look" / "pieces.js").exists()
+    shows = (beside / "pages" / "shows.html").read_text(encoding="utf-8")
+    assert PIECES_TAG.search(shows) and '"../look/pieces.js"' in shows, shows
+    # No head in this page, so the tag follows its body's start tag.
+    assert shows.index("<body>") < shows.index("pieces.js") < shows.index("<main>"), shows
+    assert (beside / "look" / "pieces.js").read_text(encoding="utf-8").strip()
+
+
+def test_a_piece_in_the_footer_reaches_every_page(tmp_path):
+    """§ 4.3: the furniture is part of every page, so a piece in the footer
+    links pieces.js from each, the journal's pages too."""
+    folder = _store(tmp_path, pages={"index": BOTH_ENDS})
+    store.write_html(folder, store.FURNITURE_FOLDER, "footer", MARKED_FOOTER.replace(
+        "<!-- /pressless:page -->", (PIECE_FORMS / "top-1.html").read_text(encoding="utf-8")
+        + "<!-- /pressless:page -->"))
+    store.write(folder, _entry("seaside"), draft=False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    for name in ("index.html", "blog/index.html"):
+        assert PIECES_TAG.search((into / name).read_text(encoding="utf-8")), name
+
+
+def test_a_preview_never_carries_pieces_js(tmp_path):
+    """INV-2's Builder half: a preview is never given pieces.js, so a preview
+    page opened outside its frame runs no piece in the Face's origin."""
+    folder = _store(tmp_path, pages={"index": _sectioned("slideshow", "top")})
+    change = builder.Html(store.PAGES_FOLDER, "index", _sectioned("slideshow", "top"))
+    into = tmp_path / "preview"
+    for marked in (False, True):
+        relative = builder.preview_html(folder, _settings(), into, change, show="index",
+                                        photo_src=lambda name: name, marks=marked)
+        assert "pieces.js" not in (into / relative).read_text(encoding="utf-8"), marked
+        assert not (into / "look" / "pieces.js").exists(), marked
+
+
+def test_a_user_script_is_published_verbatim(tmp_path):
+    """INV-5. Breaks when the Builder escapes, rewrites or drops the user's code."""
+    code = "if (a < b && c > \"d\") { x = '&amp;'; }\n  // é, and a tab:\t."
+    try:
+        piece = blocks.section_html(blocks.Section("script", {"code": code}))
+    except blocks.SectionRefused:
+        piece = ""
+    page = SECTIONED.replace("<!-- /pressless:page -->", piece + "<!-- /pressless:page -->")
+    into = tmp_path / "site"
+    build(_store(tmp_path, pages={"index": page}), _settings(), into)
+    published = (into / "index.html").read_text(encoding="utf-8")
+    assert f"<script>{code}</script>" in published, published
+    assert "pieces.js" not in published, "a script piece is not a ready-made piece"

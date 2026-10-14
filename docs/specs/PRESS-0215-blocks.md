@@ -107,6 +107,8 @@ def unmarked(name: str, html: str) -> str: ...
 def inline(markup: str) -> str | None: ...   # amended by PRESS-0260 § 4.5
 ```
 
+*Amended by PRESS-0217:* six more kinds join `KINDS` (PRESS-0217 § 4.1).
+
 `read` returns `None` for a file with no sections area. `adopt` returns
 `None` where § 4.6 finds no area to make. `Section.fields` is a frozen
 mapping. `len(gaps) == len(sections) + 1`.
@@ -196,6 +198,9 @@ parts, and any address that is not a relative path or an `http:`,
 `https:` or (for an `href` only) `mailto:` address: every `src` and
 `href` it would write, an inline `a`'s included. For `CODE`
 it returns `source`.
+
+*Amended by PRESS-0217:* the six kinds PRESS-0217 adds, their fields, HTML and
+refusals, are its § 4.1 and § 14.
 
 ### 4.5 Earlier forms
 
