@@ -505,11 +505,19 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <div id="undo-result"></div>
 <div id="proof">{true_colours(undimmed)}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
- src="{attr(preview or 'about:blank')}"></iframe></div>
+ src="{attr(preview or 'about:blank')}"></iframe>{_drag() if view == VISUAL else ""}</div>
 <script>{_PAGE_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
 {f"<script>{_VISUAL_SCRIPT}</script>" if view == VISUAL else ""}
 <script>{editor._UNDO_SCRIPT}</script>"""
+
+
+# PRESS-0265: the handle that drags the picked section, and the line that
+# shows where it will land. Both sit over the frame, so nothing moves; the
+# keyboard's way is the panel's Move buttons, so the handle takes no focus.
+def _drag() -> str:
+    return ('<button type="button" id="drag-handle" tabindex="-1" aria-hidden="true" hidden>'
+            f'{say("page_editor.drag")}</button><div id="drop-line" hidden></div>')
 
 
 _KINDS = (blocks.TEXT, blocks.HEADING, blocks.PICTURE, blocks.PICTURES, blocks.BUTTON,
@@ -1348,6 +1356,9 @@ _VISUAL_SCRIPT = r"""
 (() => {
   const frame = document.getElementById("preview");
   const panel = document.getElementById("panel");
+  const proof = document.getElementById("proof");
+  const handle = document.getElementById("drag-handle");
+  const line = document.getElementById("drop-line");
   const given = JSON.parse(document.getElementById("sections").textContent);
   const up = given.up;
   const KINDS = ["text", "heading", "picture", "pictures", "button", "video", "music",
@@ -1382,6 +1393,7 @@ _VISUAL_SCRIPT = r"""
   let removed = [];
   let picked = null;
   let destinations = [];  // where the picked section may be moved to (PRESS-0264)
+  let dragging = null;  // the section being dragged, and where it would land (PRESS-0265)
   let editing = null;
   let frameSections = given.sections;
   let waitingPreview = null;
@@ -1520,6 +1532,7 @@ _VISUAL_SCRIPT = r"""
     doc.addEventListener("input", typed);
     doc.addEventListener("paste", pasted);
     doc.addEventListener("focusout", () => { editing = null; setTimeout(settled, 0); });
+    doc.defaultView.addEventListener("scroll", placeHandle);
     doc.addEventListener("focusin", (event) => {
       editing = picked && picked.el && picked.el.contains(event.target) ? picked : null;
     });
@@ -1634,6 +1647,7 @@ _VISUAL_SCRIPT = r"""
     if (choice.selectedOptions[0] && choice.selectedOptions[0].disabled) choice.value = fits[0];
     document.getElementById("add-where").textContent =
       say(picked ? "script.visual.below" : "script.visual.end");
+    placeHandle();
   }
 
   panel.addEventListener("input", (event) => {
@@ -1848,9 +1862,111 @@ _VISUAL_SCRIPT = r"""
     fill();
   });
 
+  // ---- PRESS-0265: dragging a section into place -----------------------
+  // The handle sits at the picked section's top right corner. Dragged, a line shows
+  // where the section will land: before or after the section under the
+  // pointer, in that section's list, where its kind fits there; else beside
+  // the columns or row holding it. A row of pictures keeps its last picture.
+  function box(item) {
+    const rects = between(item).filter((at) => at.nodeType === Node.ELEMENT_NODE)
+      .map((at) => at.getBoundingClientRect()).filter((at) => at.width || at.height);
+    if (!rects.length) return null;
+    return {top: Math.min(...rects.map((at) => at.top)),
+            bottom: Math.max(...rects.map((at) => at.bottom)),
+            left: Math.min(...rects.map((at) => at.left)),
+            right: Math.max(...rects.map((at) => at.right))};
+  }
+  // Where the page in the frame starts, measured from the proof.
+  function origin() {
+    const outer = frame.getBoundingClientRect(), holder = proof.getBoundingClientRect();
+    return {x: outer.left - holder.left + frame.clientLeft,
+            y: outer.top - holder.top + frame.clientTop, height: frame.clientHeight};
+  }
+  function placeHandle() {
+    if (!handle) return;
+    const at = picked && !dragging ? box(picked) : null;
+    const from = origin();
+    handle.hidden = !at || at.bottom < 0 || at.top > from.height;
+    if (handle.hidden) return;
+    // At its top right, where the line above most often ends short.
+    handle.style.left = Math.max(0, Math.min(at.right, frame.clientWidth) - handle.offsetWidth)
+      + from.x + "px";
+    handle.style.top = Math.max(0, at.top - handle.offsetHeight) + from.y + "px";
+  }
+  const fits = (item, owner) => !owner || (owner.kind === "columns"
+    ? IN_COLUMN.includes(item.kind) : item.kind === "picture");
+  function landing(item, x, y) {
+    const doc = frame.contentDocument;
+    const under = doc && doc.elementFromPoint(x, y);
+    if (!under) return null;
+    let target = null;
+    each(model, (at) => { if (at.marked && inside(at, under)) target = at; });
+    while (target && !fits(item, target.parent)) target = target.parent;
+    for (let at = target; at; at = at.parent) if (at === item) return null;
+    if (!target) return null;
+    const edges = box(target);
+    if (!edges) return null;
+    const after = y > (edges.top + edges.bottom) / 2;
+    const list = listOf(target);
+    const next = list[list.indexOf(target) + (after ? 1 : -1)];
+    if (next === item) return null;
+    const row = item.parent && item.parent.kind === "pictures" ? item.parent : null;
+    if (row && row !== target.parent && row.parts[0].length === 1) return null;
+    return {target, after, edges};
+  }
+  function relocate(item, target, after) {
+    const from = item.parent;
+    const nodes = item.start ? [item.start, ...between(item), item.end] : [];
+    const old = listOf(item);
+    old.splice(old.indexOf(item), 1);
+    const list = listOf(target);
+    list.splice(list.indexOf(target) + (after ? 1 : 0), 0, item);
+    item.parent = target.parent;
+    item.column = target.column;
+    if (nodes.length && target.start) {
+      if (after) target.end.after(...nodes); else target.start.before(...nodes);
+    }
+    for (const owner of new Set([from, target.parent])) {
+      if (owner) touch(owner); else window.presslessPage.changed();
+    }
+    fill();
+  }
+  if (handle) {
+    handle.addEventListener("pointerdown", (event) => {
+      if (!picked) return;
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      dragging = {item: picked, landing: null};
+    });
+    handle.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const from = origin(), holder = proof.getBoundingClientRect();
+      const found = landing(dragging.item, event.clientX - holder.left - from.x,
+                            event.clientY - holder.top - from.y);
+      dragging.landing = found;
+      line.hidden = !found;
+      if (!found) return;
+      line.style.left = found.edges.left + from.x + "px";
+      line.style.width = found.edges.right - found.edges.left + "px";
+      line.style.top = (found.after ? found.edges.bottom : found.edges.top) + from.y - 1 + "px";
+    });
+    const stop = (event) => {
+      if (!dragging) return;
+      const {item, landing: found} = dragging;
+      dragging = null;
+      line.hidden = true;
+      if (found && event.type === "pointerup") relocate(item, found.target, found.after);
+      placeHandle();
+    };
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+    window.addEventListener("resize", placeHandle);
+  }
+
   // ---- typing (§ 4.4) --------------------------------------------------
   function typed(event) {
     if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
+    placeHandle();
   }
   function pasted(event) {
     if (!picked || !picked.el) return;

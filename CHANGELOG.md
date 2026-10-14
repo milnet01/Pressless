@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Drag a section into place with the mouse.** (PRESS-0265)
+  The section you picked shows a Drag handle at its top right. Drag it,
+  and a line shows where the section will land. The Move buttons still
+  work, for the keyboard.
+
 - **Move a section between columns, or out of them.** (PRESS-0264)
   The side panel's new Move to list offers the other columns, or Below
   the columns. A section just below some columns can move back into

@@ -11,6 +11,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0261: the code boxes' colours line up with the letters typed over them
   PRESS-0263: the true-colours switch is kept, and the preview starts undimmed
   PRESS-0264: Move to takes a section between columns, out of them and back
+  PRESS-0265: a section is dragged into place with the mouse
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -439,6 +440,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         code_colours(page, origin)
         true_colours_kept(page, origin)
         move_between_columns(page, origin, folder)
+        drag_sections(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -726,6 +728,46 @@ def move_between_columns(page, origin: str, folder: Path) -> None:
           nowhere == ["No other place"] and disabled
           and offered == ["Column 1", "Column 2"]
           and layout() == [[["Left"], ["Right"]], "Loose"], f"{nowhere} {offered} {layout()}")
+
+
+def drag_sections(page, origin: str, folder: Path) -> None:
+    """PRESS-0265: the handle drags the picked section; the line shows where."""
+    store.write_html(folder, store.PAGES_FOLDER, "dragged", _column_page("Left", "Right",
+                                                                         after="Loose"))
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "dragged", waiting=True)
+    frame = page.frame_locator("#preview")
+
+    def layout() -> list:
+        read = blocks.read("dragged", store.read_html(waiting))
+        return [[[c.fields["html"] for c in part] for part in s.parts] if s.parts
+                else s.fields.get("html") for s in read.sections]
+
+    def drag(words: str, onto: str) -> bool:
+        """Drag `words` onto the upper half of `onto`; whether the line showed."""
+        frame.locator("p", has_text=words).click()
+        grip = page.locator("#drag-handle").bounding_box()
+        outer = page.locator("#preview").bounding_box()
+        target = frame.locator("p", has_text=onto).bounding_box()
+        page.mouse.move(grip["x"] + grip["width"] / 2, grip["y"] + grip["height"] / 2)
+        page.mouse.down()
+        page.mouse.move(target["x"] + 5, target["y"] + 3, steps=8)
+        shown = page.locator("#drop-line").is_visible()
+        page.mouse.up()
+        page.wait_for_timeout(1600)
+        page.wait_for_function("document.getElementById('save-status').textContent "
+                               "!== 'Saving'", timeout=5000)
+        page.wait_for_timeout(800)
+        return shown and outer is not None
+
+    page.goto(f"{origin}/page?kind=pages&name=dragged&view=visual", wait_until="networkidle")
+    handle_hidden = page.locator("#drag-handle").is_hidden()
+    shown = drag("Loose", "Right")
+    check("PRESS-0265: dragged from the page into a column, with a line showing where",
+          handle_hidden and shown and layout() == [[["Left"], ["Loose", "Right"]]],
+          f"hidden first={handle_hidden} line={shown} {layout()}")
+    shown = drag("Right", "Left")
+    check("PRESS-0265: dragged from one column to another",
+          shown and layout() == [[["Right", "Left"], ["Loose"]]], f"line={shown} {layout()}")
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

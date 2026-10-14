@@ -481,6 +481,7 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.remove": "Remove",
     "page_editor.panel.move_to": "Move to",
     "page_editor.panel.move": "Move",
+    "page_editor.drag": "Drag",
     "script.visual.nothing": "Click a heading, paragraph or any section on the page to change it.",
     "script.visual.picked": "Changing: {kind}",
     "script.visual.below": "It goes below the section you picked.",

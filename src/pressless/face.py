@@ -700,6 +700,11 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face iframe#preview { width: 100%; min-height: 70vh; border: 1px solid var(--line);
   border-radius: 12px; background: #fff; filter: var(--preview-dim); }
 .face iframe#preview.undimmed { filter: none; }
+.face #proof { position: relative; }
+.face #drag-handle { position: absolute; z-index: 2; margin: 0; padding: .2rem .7rem;
+  cursor: grab; touch-action: none; }
+.face #drop-line { position: absolute; z-index: 2; height: 3px; background: var(--amber);
+  pointer-events: none; }
 .face .true-colours { display: var(--preview-switch); margin: 0 0 .5rem; }
 .face .true-colours label { margin: 0; }
 .face label:has(> input[type="radio"]), .face label:has(> input[type="checkbox"]) {

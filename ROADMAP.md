@@ -4548,10 +4548,21 @@ removed, and the menu follows.
   Source: user-decision-2026-10-13 PRESS-0260.
   Lanes: Face.
 
-- 📋 [PRESS-0265] **Sections in the visual editor can be dragged into place.**
+- ✅ [PRESS-0265] **Sections in the visual editor can be dragged into place.**
   PRESS-0260 moves sections with buttons only, which keyboard users
   and the partially sighted can use; dragging is an extra way, never
   the only one. See docs/specs/PRESS-0260-visual-editor.md § 9.
+  Shipped 2026-10-14: a Drag handle over the frame at the picked
+  section's top right, and a line showing where it will land
+  (page_editor._drag, and landing and relocate in _VISUAL_SCRIPT). It
+  lands before or after the section under the pointer, in that section's
+  list where its kind fits, else beside the columns or row holding it; a
+  row of pictures keeps its last picture. The handle takes no focus: the
+  Move buttons are the keyboard's way. Not reached by dragging: an empty
+  column, which Move to (PRESS-0264) fills. Checked in Chrome with a real
+  mouse by scripts/by-hand-browser-checks.py. Owed by hand before the
+  release: Firefox here and Edge on the Windows box, pointer capture over
+  a frame included.
   **Layman:** They can drag a section up or down the page with the mouse, as well as using the Move buttons.
   Kind: feature.
   Source: in-session-2026-10-13 PRESS-0260.
