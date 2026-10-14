@@ -23,7 +23,16 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, paths, photographs, pressing, settings, store
+from pressless import (
+    builder,
+    cheatsheet,
+    choices,
+    paths,
+    photographs,
+    pressing,
+    settings,
+    store,
+)
 from pressless.face import (
     SENTENCES,
     Face,
@@ -437,15 +446,19 @@ def _pages(folder: Path, hint: str = "") -> str:
              for name, key in (("header", "editor.pages.header"),
                                ("footer", "editor.pages.footer"),
                                ("navigation", "editor.pages.navigation"))]
-    items = []
+    items, carry_on = [], ""
+    last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
     for kind, name, label in rows:
         address = "/page?" + urllib.parse.urlencode({"kind": kind, "name": name})
+        if (kind, name) == last:
+            carry_on = (f'<p>{say("editor.list.carry_on")} <a href="'
+                        f'{html.escape(address, quote=True)}">{html.escape(label)}</a></p>')
         note = (f" <em>{say('editor.list.changed')}</em>"
                 if store.html_path_for(folder, kind, name, waiting=True).is_file() else "")
         items.append(f'<li><a href="{html.escape(address, quote=True)}">'
                      f"{html.escape(label)}</a>{note}</li>")
     said = say(PAGE_HINTS[hint]) if hint in PAGE_HINTS else ""
-    return ("<ul>" + "".join(items) + "</ul>"
+    return (carry_on + "<ul>" + "".join(items) + "</ul>"
             f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
             '<input name="name" autocomplete="off"></label> '
             f"<button>{say('editor.list.new_page')}</button></form>"
@@ -572,7 +585,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 {message_box("address-hint", focus="address")}
 <div id="undo-result"></div>
-<div id="proof">{true_colours()}
+<div id="proof">{true_colours(choices.read(folder).true_colours)}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_EDITOR_SCRIPT}</script>

@@ -9,6 +9,7 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
   PRESS-0260 s10: INV-5's no-script half, INV-9, and the visual view's keys
     and buttons (s 4.3, s 4.4)
   PRESS-0261: the code boxes' colours line up with the letters typed over them
+  PRESS-0263: the true-colours switch is kept, and the preview starts undimmed
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -435,6 +436,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
 
         visual_editor(page, origin, folder)
         code_colours(page, origin)
+        true_colours_kept(page, origin)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -645,6 +647,28 @@ def code_colours(page, origin: str) -> None:
           str(seen))
     check("PRESS-0261: the box's own letters are transparent over the copy",
           seen["letters"] == "rgba(0, 0, 0, 0)", seen["letters"])
+
+
+def true_colours_kept(page, origin: str) -> None:
+    """PRESS-0263: the switch's change is sent, and the next page starts with
+    it and with the preview undimmed."""
+    address = f"{origin}/page?kind=pages&name=visual"
+    page.goto(address, wait_until="networkidle")
+    flip = """on => {
+      const box = document.querySelector('input[data-true-colours]');
+      box.checked = on;
+      box.dispatchEvent(new Event('change', {bubbles: true}));
+    }"""
+    with page.expect_response(lambda r: r.url.endswith("/true-colours")) as sent:
+        page.evaluate(flip, True)
+    page.goto(address, wait_until="networkidle")
+    seen = page.evaluate("""() => [
+      document.querySelector('input[data-true-colours]').checked,
+      document.getElementById('preview').classList.contains('undimmed')]""")
+    with page.expect_response(lambda r: r.url.endswith("/true-colours")):
+        page.evaluate(flip, False)
+    check("PRESS-0263: the true-colours switch is kept, and the preview starts undimmed",
+          sent.value.status == 204 and seen == [True, True], f"{sent.value.status} {seen}")
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

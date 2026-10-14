@@ -385,6 +385,7 @@ _WORDS: dict[str, str] = {
     "editor.list.drafts": "Drafts",
     "editor.list.on_site": "On your site",
     "editor.list.pages": "Your pages",
+    "editor.list.carry_on": "Carry on with:",
     "editor.list.blank": "A blank entry",
     "editor.list.start_from": "Start from",
     "editor.pages.home": "Home",

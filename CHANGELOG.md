@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless remembers your choices between visits.** (PRESS-0263)
+  Your list of pages offers the last page you opened, under "Carry on
+  with". A page opens in the view you last switched to. The header,
+  footer and menu show on the page you last picked. The preview keeps
+  its true colours if you turned the dimming off. These are kept on your
+  computer only and never sent anywhere.
+
 - **The code box shows a page's code in colour.** (PRESS-0261)
   Tags, attributes and the words between them each take their own
   colour, and so do the selectors and settings in a page's style.

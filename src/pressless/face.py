@@ -33,6 +33,7 @@ from pathlib import Path
 from pressless import (
     blocks,
     builder,
+    choices,
     credentials,
     github_signin,
     google_signin,
@@ -560,10 +561,15 @@ for (const box of document.querySelectorAll("dialog.message")) {
   });
 }
 // PRESS-0187: a dark look dims the preview; this switch shows its true colours.
+// PRESS-0263: it starts as he last left it, and each change is remembered.
+for (const box of document.querySelectorAll("input[data-true-colours]:checked")) {
+  document.getElementById("preview").classList.add("undimmed");
+}
 document.addEventListener("change", (event) => {
   const box = event.target.closest("input[data-true-colours]");
   if (!box) return;
   document.getElementById("preview").classList.toggle("undimmed", box.checked);
+  fetch("/true-colours", {method: "POST", body: box.checked ? "1" : "0"});
 });
 """
 
@@ -780,9 +786,11 @@ def message_box(inner_id: str, content: str = "", *, focus: str = "",
             "</dialog>")
 
 
-def true_colours() -> str:
-    """Sits above each editor's preview; shown only on a dark look (PRESS-0187)."""
-    return ('<p class="true-colours"><label><input type="checkbox" data-true-colours>'
+def true_colours(on: bool = False) -> str:
+    """Sits above each editor's preview; shown only on a dark look (PRESS-0187).
+    `on` is his last choice, kept between visits (PRESS-0263)."""
+    checked = " checked" if on else ""
+    return (f'<p class="true-colours"><label><input type="checkbox" data-true-colours{checked}>'
             f' {say("face.true_colours")}</label></p>')
 
 
@@ -974,6 +982,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if method == "POST" and parts.path == "/theme":
             self._choose_theme(face)
             return
+        if method == "POST" and parts.path == "/true-colours":
+            self._choose_true_colours(face)
+            return
 
         registered = face._pages.get((method, parts.path))
         if registered is None:
@@ -1018,6 +1029,24 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send(500, "", "text/plain")
             return
         face._theme = key
+        self._send(204, "", "text/plain")
+
+    def _choose_true_colours(self, face: Face) -> None:
+        """PRESS-0263: remember the preview's true-colours switch, which the
+        page has already applied."""
+        length = _length(self.headers.get("Content-Length"))
+        if length is None or length > _THEME_LIMIT:
+            self._drain()
+            self._send(400, "", "text/plain")
+            return
+        said = self.rfile.read(length)
+        if said not in (b"0", b"1"):
+            self._send(400, "", "text/plain")
+            return
+        if not choices.remember(face._folder, true_colours=said == b"1"):
+            face._log.note("the true-colours choice could not be saved")
+            self._send(500, "", "text/plain")
+            return
         self._send(204, "", "text/plain")
 
     def _answer(self, face: Face, page: Page, request: Request, publishing: bool) -> None:

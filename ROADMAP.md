@@ -4292,6 +4292,7 @@ removed, and the menu follows.
   S15. Today these are edited only as code. One edit reaches every
   page, so the preview and undo rules design.md gives the furniture
   still hold.
+  Decided by the user 2026-10-14: a short spec first, one review round.
   **Layman:** They change the top and bottom of every page, and the menu, the same way they change a page, with no code.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -4303,6 +4304,9 @@ removed, and the menu follows.
   slideshow, questions that fold open, a picture that enlarges when
   clicked, back to top, a countdown. Each works with the page's look
   and needs no outside service.
+  Decided by the user 2026-10-14: a short spec first, one review round.
+  All five pieces: questions that fold open, a picture slideshow, a
+  picture that enlarges, back to top, and a countdown.
   **Layman:** A page can hold a picture slideshow, questions that fold open and similar pieces from a list, and anyone who writes their own script can add it.
   Kind: feature.
   Source: user-request-2026-10-02.
@@ -4502,10 +4506,22 @@ removed, and the menu follows.
   Source: user-decision-2026-10-13.
   Lanes: Face, Settings.
 
-- 📋 [PRESS-0263] **Remember the user's choices on their own computer.**
+- ✅ [PRESS-0263] **Remember the user's choices on their own computer.**
   Decided by the user 2026-10-13, as the useful half of "can the
   app learn". Stored on this computer only and never sent anywhere.
   Needs no spec.
+  Decided by the user 2026-10-14: remember four things. The last page
+  edited, offered as a link on the list in a fixed spot; the page shown
+  behind the header, footer and menu; the visual or code view; and the
+  preview's true-colours switch.
+  Shipped 2026-10-14: src/pressless/choices.py keeps choices.json in
+  Pressless's own folder, beside theme.json. The page editor records the
+  page opened, a view asked for and a page the furniture was shown on,
+  and an address naming none takes the last one. The list's pages card
+  offers the last page while it is held; the true-colours switch posts
+  to /true-colours. tests/test_choices.py, each part seen red by a hand
+  mutation; the switch's script checked in Chrome. Owed by hand before
+  the release: Firefox here and Edge on the Windows box.
   **Layman:** Pressless remembers things like the page they last opened and the page they like to preview, kept only on their computer.
   Kind: enhancement.
   Source: user-decision-2026-10-13.
@@ -4515,6 +4531,9 @@ removed, and the menu follows.
   Left out of PRESS-0260 by the user 2026-10-13 to keep the first
   version small: there, Move up and Move down work within one list.
   See docs/specs/PRESS-0260-visual-editor.md § 9.
+  Decided by the user 2026-10-14: a Move to list in the side panel,
+  naming each column and Below the columns. Move up and Move down keep
+  working within one list.
   **Layman:** They can move a paragraph or picture from one column to another, or out of the columns altogether.
   Kind: feature.
   Source: user-decision-2026-10-13 PRESS-0260.

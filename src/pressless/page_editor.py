@@ -26,6 +26,7 @@ from pathlib import Path
 from pressless import (
     blocks,
     builder,
+    choices,
     editor,
     github_setup,
     menu,
@@ -372,12 +373,17 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     if held is not None:
         return held
     broken = None
+    # PRESS-0263: an address that names no view, or no page to show the
+    # furniture on, takes the one he chose last.
+    remembered = choices.read(folder)
+    asked_view = request.query.get("view", remembered.view)
+    asked_show = request.query.get("show", remembered.shown_on)
     with lock, face.capture() as notices:
         try:
             path, waiting = _read(folder, kind, name)
             text = store.read_html(path)
             base = _digest(path)
-            show = _show(folder, kind, name, request.query.get("show", ""))
+            show = _show(folder, kind, name, asked_show)
             # PRESS-0214 § 4.5: no newest entry to show a change on while the
             # journal is off.
             entries = (store.list_slugs(folder, draft=False)
@@ -387,7 +393,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             failure: Exception | None = exc
         else:
             failure = None
-            view = _view(kind, request.query.get("view", ""))
+            view = _view(kind, asked_view)
             shown, sections, photographs = text, None, ()
             try:
                 builder.furniture_spans(name, text)
@@ -409,17 +415,24 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                                                 marks=view == VISUAL)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
+    changes: dict[str, object] = {"page": (kind, name)}
+    if kind == store.PAGES_FOLDER and "view" in request.query:
+        changes["view"] = _view(kind, request.query["view"])
+    if kind == store.FURNITURE_FOLDER and "show" in request.query:
+        changes["shown_on"] = request.query["show"]
+    choices.remember(folder, **changes)
     return render_notices(notices) + _page(
         kind, name, view, show, waiting, base, text, held, bool(entries), broken,
         preview, preview_failure, builder.stylesheets(folder),
-        face.view_site(), starter.unpublished(folder), sections, photographs)
+        face.view_site(), starter.unpublished(folder), sections, photographs,
+        remembered.true_colours)
 
 
 def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
           box: str, held: tuple[str, ...], has_entries: bool, broken: str | None,
           preview: str | None, failure: str | None, sheets: tuple[str, ...],
           visit: str, off_site: bool, sections: list[dict] | None = None,
-          photographs: tuple[str, ...] = ()) -> str:
+          photographs: tuple[str, ...] = (), undimmed: bool = False) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -490,7 +503,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
-<div id="proof">{true_colours()}
+<div id="proof">{true_colours(undimmed)}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_PAGE_SCRIPT}</script>
