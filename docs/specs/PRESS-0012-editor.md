@@ -3,6 +3,9 @@
 **Status:** accepted (2026-09-26). Gated for two loops, the spec cap; every verified finding fixed, none left in the tail. Re-gated for PRESS-0148 over two more loops, to the cap; the tail is empty.
 **Amended 2026-09-27, before implementation** (PRESS-0169): the preview
 frame runs no script. That changes direction, so the gate re-armed.
+**Amended 2026-10-14, before implementation** (PRESS-0268): no file the
+Face serves runs a script, in the frame or out of it. That changes
+direction, so the gate re-armed.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0012 (`docs/design.md` § The parts, § State;
 discovery S2, S7, S10).
@@ -188,7 +191,7 @@ Locate = Callable[[str], Path]
 
 FILES_POLICY = ("default-src 'self'; img-src 'self' data:; "
                 "style-src 'self' 'unsafe-inline'; font-src 'self'; "
-                "script-src 'self'; connect-src 'self'; frame-src 'none'; "
+                "script-src 'none'; connect-src 'self'; frame-src 'none'; "
                 "object-src 'none'; base-uri 'none'; form-action 'none'; "
                 "frame-ancestors 'self'")
 
@@ -225,6 +228,13 @@ A 404 here is not a failure: nothing is logged and no sentence is shown.
 what keeps Google's script, and Spotify and YouTube players, out of a preview
 (§ 3 decision 4). The page itself is not rewritten, so it stays the Builder's
 bytes.
+
+**`script-src 'none'`** stops every script in a served file, the page's own
+and any file it links. The frame's sandbox stops them only inside the frame;
+a `/preview/…` page opened in a tab of its own would otherwise run a site's
+`.js` file in the Face's origin, with the session cookie (PRESS-0268).
+Nothing the Face serves as a file needs a script: its own screens are pages
+it wraps, whose scripts the file policy does not reach.
 
 **Its `Content-Type`** comes from the suffix, ignoring case:
 
@@ -534,8 +544,8 @@ made with `store.write_html`.
   `.css`, a `.js` and a `.txt` each carry it, and their types are the table's.
   `mimetypes` names the last two `application/javascript` and `text/plain` on
   Linux, so a lookup there fails.
-  *Breaks when:* the header is missing on any response, or the type is read
-  from `mimetypes`.
+  *Breaks when:* the header is missing on any response, the type is read
+  from `mimetypes`, or the policy lets a served file's script run.
 
 - **INV-9** — A `Reply` is sent as it is, and a `str` is still wrapped, now
   with `Content-Security-Policy: frame-src 'self'; frame-ancestors 'self'`.
