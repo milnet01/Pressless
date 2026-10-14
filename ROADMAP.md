@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=265 -->
+<!-- ants-roadmap-id-high-water: PRESS=266 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4577,6 +4577,29 @@ removed, and the menu follows.
   Kind: feature.
   Source: in-session-2026-10-13 PRESS-0260.
   Lanes: Face.
+
+- ✅ [PRESS-0266] **Harden the web-origin and secret surface against a user script reaching a key.**
+  A three-lane cold security review (reports in
+  /mnt/Games/Scripts/Linux/.pressless-secreview-20261014) confirmed no
+  secret (GitHub token, Google client secret, usage key) crosses the HTTP
+  boundary to a browser, and that the preview runs no user script. Six
+  hardening fixes from it, each with a regression test:
+  - page_editor: the inline sections/links <script> JSON escapes every
+    `<` (not just `</`), so user content cannot open an HTML tag or
+    comment in the trusted editor origin (CWE-116).
+  - face: the /folder/open 500 page carries frame-src 'self' like every
+    other wrapped page; a registered POST body over 64 MiB is refused 413
+    before it is read into memory.
+  - github_signin: a non-string `error` field maps to PublishError rather
+    than crashing on the dict lookup.
+  - google_signin: the reflected OAuth error is passed through _scrub.
+  - usage: a test locks that a failed report never logs the api_secret URL.
+  Forward note: when PRESS-0217 adds user JavaScript, the preview must stay
+  sandboxed-without-scripts and user JS must never be served executable
+  from the Face origin.
+  **Layman:** A check of whether anyone could write code on their page to steal Pressless's private keys: today they cannot, and these small fixes keep it that way.
+  Kind: security.
+  Source: code-quality-review-2026-10-14.
 
 ## 0.10.0 — their own look, and any file
 

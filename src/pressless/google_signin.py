@@ -129,7 +129,8 @@ def finish(attempt: Attempt, query: dict[str, str],
     if error == "access_denied":
         raise Declined("he declined on Google's page")
     if error is not None:
-        raise InsightsError("Google ended the sign-in", error[:insights.DETAIL_LIMIT])
+        raise InsightsError("Google ended the sign-in",
+                            _scrub(str(error), ())[:insights.DETAIL_LIMIT])
     answer = _post(transport, TOKEN_URL, {
         "code": query.get("code", ""),
         "client_id": CLIENT_ID,

@@ -847,3 +847,37 @@ def test_every_page_links_to_the_report_page(tmp_path: Path) -> None:
             assert '<a href="/report">Suggest or report a problem</a>' in bar, path
     finally:
         served.stop()
+
+
+def test_an_oversize_registered_post_body_is_refused(tmp_path: Path) -> None:
+    """Security: a registered page's POST body is read whole into memory, so a
+    Content-Length past the ceiling is refused with 413 before a byte is read.
+    Breaks when the cap is dropped and a forged or runaway length is buffered."""
+    served = face.serve(tmp_path)
+    served.add_page("POST", "/sink", lambda request: "")
+    try:
+        client = _Client(served)
+        conn = socket.create_connection(("127.0.0.1", client.port), timeout=10)
+        try:
+            request = (
+                f"POST /sink HTTP/1.1\r\n"
+                f"Host: {client.host}\r\n"
+                f"Cookie: {client.cookie}\r\n"
+                f"Origin: {client.origin}\r\n"
+                f"Content-Type: application/x-www-form-urlencoded\r\n"
+                f"Content-Length: {face._MAX_BODY + 1}\r\n"
+                f"Connection: close\r\n\r\n"
+            )
+            conn.sendall(request.encode("ascii") + b"x")
+            conn.shutdown(socket.SHUT_WR)
+            raw = b""
+            while True:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                raw += chunk
+        finally:
+            conn.close()
+    finally:
+        served.stop()
+    assert raw.split(b"\r\n", 1)[0].split(b" ")[1] == b"413"

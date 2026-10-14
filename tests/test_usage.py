@@ -391,3 +391,23 @@ def test_every_screen_links_to_the_usage_screen(tmp_path):
     with _served(tmp_path, _Recorder()) as browser:
         page = browser.request("GET", "/usage")[2]
     assert '<a href="/usage">Usage reports</a>' in page
+
+
+def test_a_failed_send_logs_no_secret_and_no_url():
+    """Security (PRESS-0262): when a report cannot be sent, the one log line
+    names the event and the exception type only -- never the address, which
+    carries the api_secret in its query. Breaks when `_send` logs str(exc) or
+    the url instead of type(exc).__name__."""
+    notes: list[str] = []
+
+    class _Raiser:
+        def request(self, *args):
+            raise OSError("POST https://x/mp/collect?api_secret=plain-words-secret failed")
+
+    url = ("https://www.google-analytics.com/mp/collect"
+           "?measurement_id=G-PLAINWORDS&api_secret=plain-words-secret")
+    usage._send(_Raiser(), url, b"{}", "screen", notes.append)
+    assert notes and "not sent" in notes[0]
+    assert "plain-words-secret" not in notes[0]
+    assert "api_secret" not in notes[0]
+    assert "google-analytics" not in notes[0]

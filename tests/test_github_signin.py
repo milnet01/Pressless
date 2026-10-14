@@ -197,3 +197,18 @@ def test_reaches_reads_the_installations_repositories_where_they_are_chosen():
     assert github_signin.reaches(ACCESS, github_signin.Installation(7, True), "owner/site",
                                  every) is True
     assert every.sent == []
+
+
+@pytest.mark.parametrize("call", ["begin", "poll"])
+def test_a_non_string_error_is_a_publish_error_not_a_crash(call):
+    """Security/robustness: a 200 answer whose `error` field is not a string
+    (an object) must map to PublishError, not raise TypeError from the dict
+    lookup. Breaks when `_POLL_ERRORS.get(error, ...)` is handed an unhashable
+    value."""
+    github = _GitHub((200, {"error": {"nested": "x"}, "error_description": "x"}))
+    with pytest.raises(github_signin.PublishError) as raised:
+        if call == "begin":
+            github_signin.begin(github)
+        else:
+            github_signin.poll(_code(), github)
+    assert type(raised.value) is github_signin.PublishError

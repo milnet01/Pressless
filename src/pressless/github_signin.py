@@ -94,7 +94,7 @@ def begin(transport: Transport | None = None) -> DeviceCode:
     answer = _form(transport, DEVICE_URL, {"client_id": CLIENT_ID})
     error = answer.get("error")
     if error is not None:
-        raise _POLL_ERRORS.get(error, PublishError)(
+        raise _POLL_ERRORS.get(error if isinstance(error, str) else "", PublishError)(
             f"GitHub would not start a sign-in ({_code(error, ())})")
     return DeviceCode(_text(answer, "device_code"), _text(answer, "user_code"),
                       _text(answer, "verification_uri"),
@@ -109,7 +109,7 @@ def poll(code: DeviceCode, transport: Transport | None = None) -> Tokens:
                                           "grant_type": _DEVICE_GRANT})
     error = answer.get("error")
     if error is not None:
-        raise _POLL_ERRORS.get(error, PublishError)(
+        raise _POLL_ERRORS.get(error if isinstance(error, str) else "", PublishError)(
             f"GitHub answered the sign-in with {_code(error, secret)}")
     return _tokens(answer)
 

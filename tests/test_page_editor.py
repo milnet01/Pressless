@@ -793,3 +793,20 @@ def test_an_unusual_menu_opens_in_the_code_view(tmp_path):
     assert html.escape(words.say("notice.page_editor.menu_code_only")) in page
     assert status == 409
     assert not _waiting(folder, "furniture", "navigation").exists()
+
+
+def test_inline_script_json_escapes_angle_brackets() -> None:
+    """Security: user content in the inline <script type="application/json">
+    blocks cannot open an HTML tag or comment and break out of the element.
+    Breaks when the escaping drops back to replacing `</` alone, which leaves
+    `<!--` and `<script` (and the `<` of `<\\/script>`) raw in the block."""
+    payload = "<!--<script>pwn()</script>-->"
+    sections = [{"kind": "code", "code": payload, "marked": True, "path": [0]}]
+    panel = page_editor._panel("pages", "index", sections, ())
+    block = panel.split('id="sections">', 1)[1].split("</script>", 1)[0]
+    assert "<" not in block and ">" not in block
+    assert "\\u003c" in block
+
+    menu = page_editor._menu_panel([("words", payload)], ())
+    links = menu.split('id="links">', 1)[1].split("</script>", 1)[0]
+    assert "<" not in links and ">" not in links

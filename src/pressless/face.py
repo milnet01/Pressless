@@ -980,7 +980,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 _open_folder(face._folder)
             except FolderNotOpened as exc:
                 self._send(500, _page(face.fail(exc, publishing=False), face._theme,
-                                      face.live_address()), "text/html")
+                                      face.live_address()), "text/html",
+                           (("Content-Security-Policy", _FRAMES_POLICY),))
                 return
             self._send(204, "", "text/plain")
             return
@@ -1002,6 +1003,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             # Unparseable or negative: read(-1) would wait for the client to
             # close, holding this thread (PRESS-0162).
             self._send(400, "", "text/plain")
+            return
+        if length > _MAX_BODY:
+            # A client-declared Content-Length past the ceiling is drained and
+            # refused rather than read whole into memory, as an over-long theme
+            # or true-colours body already is. The cap sits well above any real
+            # page save or photograph, so only a runaway or forged length hits it.
+            self._drain()
+            self._send(413, "", "text/plain")
             return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
         face._reply.after = []
@@ -1103,6 +1112,12 @@ _POLL_SECONDS = 0.5
 
 # The longest theme key with room to spare; a longer body is not a key.
 _THEME_LIMIT = 64
+
+# The ceiling on a registered page's POST body, read whole into memory. It sits
+# far above any real page save (capped at ~60 KB client-side) or photograph, and
+# far below a size that would exhaust memory; a declared length past it is
+# refused with 413 before a byte is read.
+_MAX_BODY = 64 * 1024 * 1024
 
 
 class Face:

@@ -110,6 +110,16 @@ def _marked(section: blocks.Section) -> bool:
     return bool(opening) and section.source.endswith(f"<!-- /pressless:{opening.group(1)} -->")
 
 
+def _script_json(payload: object) -> str:
+    """JSON for an inline `<script type="application/json">` block, with every
+    character that could open an HTML tag or comment escaped, so user content
+    carried in it cannot break out of the element (OWASP A03 / CWE-116). A
+    `</script>`, a `<!--` and a `<script` all begin with `<`, so escaping `<`
+    (and `>`/`&` with it) closes the hole the bare `</` replacement left open."""
+    return (json.dumps(payload)
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+
+
 def outline(page: blocks.Page) -> list[dict]:
     """§ 4.2: every section's path, kind and fields, in order, marked or not. A
     marked code section carries its HTML without its two marks."""
@@ -593,7 +603,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     columns = "".join(f'<button type="button" data-act="add-to" data-column="{number}">'
                       f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
                       "</button>" for number in range(4))
-    data = json.dumps({"sections": sections or [], "up": up}).replace("</", "<\\/")
+    data = _script_json({"sections": sections or [], "up": up})
     return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}">
 <script type="application/json" id="sections">{data}</script>
 <p id="picked" role="status">{say("script.visual.nothing")}</p>
@@ -657,7 +667,7 @@ def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...]) -> str:
         return f'<option value="{attr(address)}">{html.escape(label)}</option>'
 
     places = "".join(place(page) for page in pages)
-    data = json.dumps({"links": links}).replace("</", "<\\/")
+    data = _script_json({"links": links})
     row = (f'<li class="panel-row"><label>{say("page_editor.menu.words")} '
            '<input data-link="words" autocomplete="off"></label>'
            f'<label>{say("page_editor.menu.address")} '

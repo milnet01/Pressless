@@ -325,3 +325,17 @@ def test_measurement_ids_reads_the_web_streams():
     assert google_signin.measurement_ids(
         ACCESS, "111", "https://nomatch.example", _Google((200, streams))) == (
         "G-OTHER1", "G-MINE1")
+
+
+def test_a_reflected_sign_in_error_is_scrubbed(monkeypatch: pytest.MonkeyPatch):
+    """Security: the OAuth error reflected in the redirect rides the detail
+    channel, which the Face shows and logs; it is passed through _scrub so it
+    can never echo the client secret. Breaks when the raw `error` is used."""
+    monkeypatch.setattr(google_signin, "CLIENT_SECRET", SECRET)
+    client = _Google((200, {"refresh_token": REFRESH}))
+    attempt = _attempt(client)
+    with pytest.raises(insights.InsightsError) as caught:
+        google_signin.finish(
+            attempt, {"state": attempt.state, "error": f"server_error {SECRET}"}, client)
+    assert SECRET not in (caught.value.detail or "")
+    assert client.calls == []
