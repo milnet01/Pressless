@@ -3654,6 +3654,17 @@ it decides how pages, the menu and the look are held.
     replace is confirmed
   Every row owed on the 0.9.0 draft has run. 0.9.0 is signed and
   published.
+  2026-10-15, 0.9.1 draft, Windows box, all rows passed. Draft zip
+  unpacked to a fresh folder with only settings.json; started from a
+  desktop task. Settings reported the existing GitHub key from the
+  Windows vault (no prompt needed); the console window read "store:
+  keyring Windows WinVaultKeyring". Driven Edge: starter site ticked,
+  Home pressed over milnet02/pressless-test-3, refused with the replace
+  link; confirmed the replace; back on the page no box reopened and
+  /press read empty (PRESS-0272). Pressed again: published, and the live
+  site served the new homepage. /setup/google showed the sign-in button
+  without the review notice (PRESS-0243). Chrome 155: home and an editor
+  loaded with no page errors. Box folder, browsers and helpers removed.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
