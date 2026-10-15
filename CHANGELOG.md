@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-15
+
+**Theme:** pages, menus and the homepage are theirs
+
 ### Changed
 
 - **Google has approved Pressless, so the visitor-numbers setup no longer says Google is still checking it** (PRESS-0243)
