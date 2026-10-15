@@ -5560,6 +5560,11 @@ owned by docs/standards/versioning-overrides.md.
   Google's approval email arrives, set google_signin.APPROVED to True;
   test_the_page_says_while_google_has_not_approved_pressless then needs
   its expectation turned round. Blocked on Google's reply, not on code.
+  2026-10-15: Google's approval arrived. Its email approves the OAuth
+  verification for project 407838712240, the number google_signin's
+  CLIENT_ID starts with, for the analytics.readonly scope. Nothing is
+  owed in Google's console. No longer blocked: do it with PRESS-0272 and
+  ship both as 0.9.1, a PATCH, since 0.10.0's section is still open.
   **Layman:** When Google says yes, the app stops warning that Google is still checking it.
   Kind: chore.
   Source: PRESS-0200 resolution 2026-10-10.
