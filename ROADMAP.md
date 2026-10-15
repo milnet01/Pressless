@@ -11203,11 +11203,15 @@ already-built code ships in whichever release comes next.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 Windows round.
 
-- 📋 [PRESS-0271] **The browser-check script leaves its temp folder in /tmp after every run.**
+- ✅ [PRESS-0271] **The browser-check script leaves its temp folder in /tmp after every run.**
   scripts/by-hand-browser-checks.py makes its folder with
   tempfile.mkdtemp() and never removes it; 25 had built up on
   2026-10-14 (deleted by hand). /tmp is RAM on the maintainer's
   machine. Remove the folder in main()'s finally, or make it on a disk.
+  Fixed 2026-10-15: main() makes the folder with
+  tempfile.TemporaryDirectory, so it is removed on the way out, a failed
+  run included. Red: one run of the old script left one folder. Green:
+  86 passed, none left.
   **Layman:** A test tool leaves a small folder behind each time it runs, in memory-backed storage on this machine.
   Kind: fix.
   Source: in-session-2026-10-14.

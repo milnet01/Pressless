@@ -90,26 +90,27 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=0, help="the Face's port")
     parser.add_argument("--site-port", type=int, default=0, help="the built site's port")
     parser.parse_args(namespace=OPTIONS)
-    tmp = Path(tempfile.mkdtemp(prefix="pressless-browser-check-"))
-    folder = tp._folder(tmp)
-    store.write(folder, tp._entry("seaside", body="Words."), draft=True)
-    credentials.read = lambda kind, folder, account: tp.KEY
-    publishing._now = lambda: tp.NOW
+    # PRESS-0271: removed on the way out, failure included; /tmp is RAM here.
+    with tempfile.TemporaryDirectory(prefix="pressless-browser-check-") as tmp:
+        folder = tp._folder(Path(tmp))
+        store.write(folder, tp._entry("seaside", body="Words."), draft=True)
+        credentials.read = lambda kind, folder, account: tp.KEY
+        publishing._now = lambda: tp.NOW
 
-    served = face.serve(folder, OPTIONS.port)
-    try:
-        editor.register(served, folder)
-        cheatsheet.register(served)
-        templates.register(served, folder)
-        publishing.register(served, folder, transport=tp._github())
-        undo.register(served, folder, transport=tp._github())
-        page_editor.register(served, folder, transport=tp._github())
-        parts = urllib.parse.urlsplit(served.url)
-        secret = urllib.parse.parse_qs(parts.query)["t"][0]
-        origin = f"http://{parts.netloc}"
-        run(origin, secret, folder)
-    finally:
-        served.stop()
+        served = face.serve(folder, OPTIONS.port)
+        try:
+            editor.register(served, folder)
+            cheatsheet.register(served)
+            templates.register(served, folder)
+            publishing.register(served, folder, transport=tp._github())
+            undo.register(served, folder, transport=tp._github())
+            page_editor.register(served, folder, transport=tp._github())
+            parts = urllib.parse.urlsplit(served.url)
+            secret = urllib.parse.parse_qs(parts.query)["t"][0]
+            origin = f"http://{parts.netloc}"
+            run(origin, secret, folder)
+        finally:
+            served.stop()
 
     print()
     failed = [n for n, ok, _ in RESULTS if not ok]
