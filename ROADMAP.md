@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=271 -->
+<!-- ants-roadmap-id-high-water: PRESS=272 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3636,6 +3636,24 @@ it decides how pages, the menu and the look are held.
   keyring prompt in the desktop session, a real publish through Press
   to site, and PRESS-0195's real Remove and Rename to a GitHub test
   repo.
+  2026-10-15, the 0.9.0 draft on the Windows box, driven from Linux:
+  - passed: the draft zip's --self-check in the desktop session: ok,
+    folder Pressless-data, keyring WinVaultKeyring
+  - passed: the console window from Start Pressless.bat shows the
+    self-check and "Pressless is running"
+  - passed: the real keyring read. A fresh copy given only a settings
+    file opened with the GitHub sign-in held in the vault, and Settings'
+    repository check passed with it
+  - passed: a real publish. Settings' starter site, Sunrise look, pressed
+    to milnet02/pressless-test-3 after "Replace the site on GitHub"
+    (99774d7); the live page carried the new site name
+  - passed: PRESS-0195's real add, Rename and Remove, one press each
+    (8a91732, 8ea95d6, 4124fe5). Rename left a forwarding page at the old
+    address and the menu followed; Remove took both files and the link
+  - found: PRESS-0272, the replace refusal box reopens after the
+    replace is confirmed
+  Every row owed on the 0.9.0 draft has run. 0.9.0 is signed and
+  published.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -11168,6 +11186,26 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: in-session-2026-10-14.
   Lanes: scripts.
+
+- 📋 [PRESS-0272] **After "Replace the site on GitHub" is confirmed, the refusal box still reopens and asks for it again.**
+  Seen on the 0.9.0 draft. A press over a repository holding a site
+  refuses with WouldReplaceASite and offers the replace link. Following
+  it and typing the repository's name ends on "Ready to replace your
+  site. Now publish again from where you were." Back on the page, the
+  same refusal box opens again, still saying "choose Replace the site on
+  GitHub below", so it reads as if the confirmation did not take. OK
+  closes it and the next press replaces the site as it should.
+  Cause: pressing.forget() runs on a save, OK on the box, the journal
+  switch and a Settings save (PRESS-0235 decision 6). The replace
+  confirmation is not one of them, though it answers this outcome.
+  Present since PRESS-0235 (0.8.0), so 0.8.3 has it too.
+  Fix: the replace confirmation forgets the carried outcome, as a
+  Settings save does; a test presses into WouldReplaceASite, confirms,
+  and reads /press back empty.
+  **Layman:** After you agree to replace the old site, Pressless still shows the warning telling you to replace it.
+  Kind: fix.
+  Source: hand-check-2026-10-15 0.9.0 draft, Windows box.
+  Lanes: Face, Publishing.
 
 ## Milestones
 
