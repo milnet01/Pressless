@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=273 -->
+<!-- ants-roadmap-id-high-water: PRESS=274 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4873,13 +4873,22 @@ documents go on the site beside the photographs.
   Source: user-decision-2026-10-03 PRESS-0213.
   Lanes: Store, Builder, Face.
 
-- 📋 [PRESS-0248] **The three starter looks get a dark version that follows the visitor's computer.**
+- ✅ [PRESS-0248] **The three starter looks get a dark version that follows the visitor's computer.**
   Seen in the 0.8.1 Windows hand round (PRESS-0133): every starter
   look in starter.py is light only. Nothing promised a dark one, so
   this is new work, not a defect, and 0.8.1 ships without it.
   Each look needs a prefers-color-scheme: dark block in its own
   style.css, checked for contrast. Check the editor preview too:
   it shows the site's look beside the editor (PRESS-0187).
+  Shipped 2026-10-15: each look's colours are named once in
+  starter._PALETTES, light and dark, and the style code declares both
+  sets, the dark one under prefers-color-scheme: dark. Light output
+  unchanged: Chrome's computed colours matched a pre-change capture for
+  every look. tests/test_starter.py checks every text pair at 7:1 both
+  ways and that no rule keeps a colour of its own; three hand breaks
+  each turned it red. The preview frame follows the computer's setting,
+  as a visitor's browser does. Sites filled before this keep their
+  stylesheet; PRESS-0196's panel rewrites it.
   **Layman:** A site made from Meadow, Harbour or Sunrise turns dark for a visitor whose computer is set to dark, the way Pressless's own screens already do.
   Kind: enhancement.
   Source: user-request-2026-10-10.
@@ -4896,6 +4905,19 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-15.
   Lanes: Face, Builder.
+
+- 📋 [PRESS-0274] **Photographs in AVIF and JPEG XL are taken in and published, as WebP already is.**
+  User 2026-10-15: support JPEG XL, WebP and AVIF. WebP already passes
+  PRESS-0008 § 4.6. AVIF: Pillow 12 reads and writes it, so it joins
+  _REENCODED, photographs.SUFFIXES and both upload boxes' accept lists.
+  JPEG XL: Pillow cannot read it without a plugin, and most browsers
+  cannot show it, so the original is kept and the web copy is published
+  in a format every browser shows. Needs the plugin checked on the
+  Windows box and under PyInstaller first. Amends PRESS-0008 § 4.6.
+  **Layman:** You can add photographs saved in the newer AVIF and JPEG XL formats, not only JPEG, PNG, WebP and GIF.
+  Kind: feature.
+  Source: user-request-2026-10-15.
+  Lanes: Builder, Face.
 
 ## 0.11.0 — anyone can bring their site in
 

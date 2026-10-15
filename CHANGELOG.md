@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A new site made from Sunrise, Meadow or Harbour turns dark for a visitor whose computer is set to dark** (PRESS-0248)
+  Every text colour stays at least 7:1 against its background in light
+  and dark. A site made before this release keeps its light-only
+  stylesheet.
+
 ## [0.9.1] - 2026-10-15
 
 **Theme:** pages, menus and the homepage are theirs

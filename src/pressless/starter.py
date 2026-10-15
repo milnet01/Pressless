@@ -88,96 +88,171 @@ def _words(key: str) -> str:
 # PRESS-0239: three looks to start from, each with large type, underlined
 # links and a visible focus ring, and each rearranging itself to the screen's
 # width: the first user is partially sighted (§ 4.3). Every text colour has a
-# contrast of at least 7:1 against its background, by the WCAG formula. The
-# names are the looks' own, as file names are, and are never shown: the words
-# table holds what setup says about each.
+# contrast of at least 7:1 against its background, by the WCAG formula, in
+# light and in dark. The names are the looks' own, as file names are, and are
+# never shown: the words table holds what setup says about each.
 LOOKS = ("sunrise", "meadow", "harbour")
 
-# Sunrise: a warm band across the top, one centred column. Lowest contrast:
-# the footer's links, #7c2a0b on #f3e3cf, 7.6:1.
+# PRESS-0248: each look's colours by name, the rules below naming no other.
+# The dark set applies where the visitor's computer is set to dark.
+COLOURS = ("paper", "ink", "soft", "link", "heading", "band", "on-band", "band-soft",
+           "accent", "foot", "on-foot", "foot-link", "line")
+
+# Each row a colour's name, its light value and its dark value.
+_PALETTES = {
+    "sunrise": """
+        paper     #fffaf2 #1a1410
+        ink       #2b1d14 #f5e9dc
+        soft      #3a3a3a #d4c4b2
+        link      #7c2a0b #ffb38a
+        heading   #2b1d14 #f5e9dc
+        band      #9a3412 #6b230a
+        on-band   #ffffff #ffffff
+        band-soft #ffffff #ffffff
+        accent    #ffffff #ffffff
+        foot      #f3e3cf #2b2019
+        on-foot   #2b1d14 #f5e9dc
+        foot-link #7c2a0b #ffb38a
+        line      #f3e3cf #4a3a2e
+    """,
+    "meadow": """
+        paper     #f6f8f4 #111a14
+        ink       #1c2a1f #e2ece4
+        soft      #3a3a3a #b9c9bc
+        link      #1d5c32 #8fd8a7
+        heading   #1f4d2b #a6e3b8
+        band      #1f4d2b #183d22
+        on-band   #ffffff #ffffff
+        band-soft #ffffff #ffffff
+        accent    #ffffff #ffffff
+        foot      #f6f8f4 #111a14
+        on-foot   #1c2a1f #e2ece4
+        foot-link #1d5c32 #8fd8a7
+        line      #c9d6c9 #34483a
+    """,
+    "harbour": """
+        paper     #ffffff #0e1525
+        ink       #14213d #e6ecf7
+        soft      #3a3a3a #b6c2d8
+        link      #1e40af #9fc2ff
+        heading   #14213d #e6ecf7
+        band      #14213d #18264a
+        on-band   #ffffff #ffffff
+        band-soft #dbe4f3 #dbe4f3
+        accent    #f4a261 #f4a261
+        foot      #14213d #18264a
+        on-foot   #ffffff #ffffff
+        foot-link #ffffff #ffffff
+        line      #dbe4f3 #2c3c63
+    """,
+}
+
+
+def palette(look: str, dark: bool) -> dict[str, str]:
+    """A look's colours by name, light or dark."""
+    rows = [row.split() for row in _PALETTES[look].strip().splitlines()]
+    if [name for name, *_ in rows] != list(COLOURS):
+        raise ValueError(f"{look}'s colours are not COLOURS, in order")
+    return {name: values[dark] for name, *values in rows}
+
+
+def _palette_code(look: str) -> str:
+    def declared(dark: bool) -> str:
+        return " ".join(f"--{name}: {value};" for name, value in palette(look, dark).items())
+    return (f":root {{ color-scheme: light dark; {declared(False)} }}\n"
+            f"@media (prefers-color-scheme: dark) {{ :root {{ {declared(True)} }} }}\n")
+
+# Sunrise: a warm band across the top, one centred column.
 _SUNRISE = """
 html { font-size: 118.75%; }
 body {
   margin: 0;
-  background: #fffaf2;
-  color: #2b1d14;
+  background: var(--paper);
+  color: var(--ink);
   font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.65;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
-a { color: #7c2a0b; text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid #2b1d14; outline-offset: 3px; }
+a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 header.site {
-  background: #9a3412;
-  color: #ffffff;
+  background: var(--band);
+  color: var(--on-band);
   padding: 1.5rem max(1.25rem, calc((100% - 44rem) / 2));
 }
-header.site a { color: #ffffff; }
-header.site a:focus-visible { outline-color: #ffffff; }
+header.site a { color: var(--on-band); }
+header.site a:focus-visible { outline-color: var(--on-band); }
 .site-name {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.9rem;
   font-weight: bold;
   text-decoration: none;
 }
-.site-description { margin: 0.25rem 0 0; font-size: 1.05rem; }
+.site-description { margin: 0.25rem 0 0; font-size: 1.05rem; color: var(--band-soft); }
 .site-description:empty { display: none; }
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
 nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #ffffff; }
+nav.primary a[aria-current="page"] { text-decoration: none;
+  border-bottom: 3px solid var(--accent); }
 
 main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: 46.5rem;
   margin: 0 auto; padding: 2rem 1.25rem; }
-h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.25; color: #2b1d14; }
+h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.25;
+  color: var(--heading); }
 h1 { font-size: 2.2rem; margin-top: 0.5rem; }
 img { max-width: 100%; height: auto; border-radius: 0.5rem; }
 
 footer.site {
-  background: #f3e3cf;
+  background: var(--foot);
+  color: var(--on-foot);
   padding: 1.25rem max(1.25rem, calc((100% - 44rem) / 2));
   font-size: 0.95rem;
 }
 footer.site p { margin: 0; }
+footer.site a { color: var(--foot-link); }
 """
 
 # Meadow: the name and menu in a green panel, beside the page on a wide
-# screen and above it on a narrow one. Lowest: links, #1d5c32 on #f6f8f4, 7.5:1.
+# screen and above it on a narrow one.
 _MEADOW = """
 html { font-size: 118.75%; }
 body {
   margin: 0;
-  background: #f6f8f4;
-  color: #1c2a1f;
+  background: var(--paper);
+  color: var(--ink);
   font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.65;
 }
-a { color: #1d5c32; text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid #1c2a1f; outline-offset: 3px; }
+a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
-header.site { background: #1f4d2b; color: #ffffff; padding: 1.5rem 1.25rem; }
-header.site a { color: #ffffff; }
-header.site a:focus-visible { outline-color: #ffffff; }
+header.site { background: var(--band); color: var(--on-band); padding: 1.5rem 1.25rem; }
+header.site a { color: var(--on-band); }
+header.site a:focus-visible { outline-color: var(--on-band); }
 .site-name { font-size: 1.7rem; font-weight: bold; text-decoration: none; line-height: 1.2; }
-.site-description { margin: 0.5rem 0 0; font-size: 1rem; }
+.site-description { margin: 0.5rem 0 0; font-size: 1rem; color: var(--band-soft); }
 .site-description:empty { display: none; }
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
 nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #ffffff; }
+nav.primary a[aria-current="page"] { text-decoration: none;
+  border-bottom: 3px solid var(--accent); }
 
 main, .wrap { max-width: 42rem; padding: 2rem 1.25rem; }
 h1, h2, h3 { line-height: 1.25; }
-h1 { font-size: 2.1rem; margin-top: 0.5rem; color: #1f4d2b; }
+h1 { font-size: 2.1rem; margin-top: 0.5rem; color: var(--heading); }
 img { max-width: 100%; height: auto; border-radius: 0.5rem; }
 
 footer.site {
-  border-top: 2px solid #c9d6c9;
+  color: var(--on-foot);  /* on the page's own paper: foot is paper */
+  border-top: 2px solid var(--line);
   margin: 2rem 1.25rem 0;
   padding: 1rem 0 1.5rem;
   font-size: 0.95rem;
 }
+footer.site a { color: var(--foot-link); }
 
 /* Wide screens: the name and the menu sit in a panel on the left. */
 @media (min-width: 56rem) {
@@ -191,42 +266,43 @@ footer.site {
   nav.primary { flex-direction: column; gap: 0.75rem; margin-top: 2rem; }
   nav.primary a { border-left: 4px solid transparent; padding-left: 0.6rem;
     margin-left: calc(-0.6rem - 4px); }
-  nav.primary a[aria-current="page"] { border-bottom: none; border-left-color: #ffffff; }
+  nav.primary a[aria-current="page"] { border-bottom: none; border-left-color: var(--accent); }
   main, .wrap { padding: 3rem 3rem 2rem; }
   footer.site { margin: 0 3rem; }
 }
 """
 
 # Harbour: a navy bar, the name on the left and the menu on the right on a
-# wide screen. Lowest: links, #1e40af on #ffffff, 8.7:1.
+# wide screen.
 _HARBOUR = """
 html { font-size: 118.75%; }
 body {
   margin: 0;
-  background: #ffffff;
-  color: #14213d;
+  background: var(--paper);
+  color: var(--ink);
   font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.65;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
-a { color: #1e40af; text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid #14213d; outline-offset: 3px; }
+a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 header.site {
-  background: #14213d;
-  color: #ffffff;
+  background: var(--band);
+  color: var(--on-band);
   padding: 1.25rem max(1.25rem, calc((100% - 43.5rem) / 2));
 }
-header.site a { color: #ffffff; }
-header.site a:focus-visible { outline-color: #ffffff; }
+header.site a { color: var(--on-band); }
+header.site a:focus-visible { outline-color: var(--on-band); }
 .site-name { font-size: 1.6rem; font-weight: 800; text-decoration: none; letter-spacing: 0.01em; }
-.site-description { margin: 0.25rem 0 0; font-size: 1rem; color: #dbe4f3; }
+.site-description { margin: 0.25rem 0 0; font-size: 1rem; color: var(--band-soft); }
 .site-description:empty { display: none; }
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.75rem; }
 nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px solid #f4a261; }
+nav.primary a[aria-current="page"] { text-decoration: none;
+  border-bottom: 3px solid var(--accent); }
 
 /* Wide screens: the name on the left, the menu on the right. */
 @media (min-width: 48rem) {
@@ -243,7 +319,7 @@ nav.primary a[aria-current="page"] { text-decoration: none; border-bottom: 3px s
 
 main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: 46rem;
   margin: 0 auto; padding: 2.5rem 1.25rem; }
-h1, h2, h3 { line-height: 1.2; color: #14213d; }
+h1, h2, h3 { line-height: 1.2; color: var(--heading); }
 h1 { font-size: clamp(2rem, 7vw, 2.6rem); font-weight: 800; margin-top: 0.5rem; }
 h1::after {
   content: "";
@@ -251,25 +327,25 @@ h1::after {
   width: 4rem;
   height: 0.3rem;
   margin-top: 0.75rem;
-  background: #f4a261;
+  background: var(--accent);
   border-radius: 0.15rem;
 }
 img { max-width: 100%; height: auto; border-radius: 0.5rem; }
 
 footer.site {
-  background: #14213d;
-  color: #ffffff;
+  background: var(--foot);
+  color: var(--on-foot);
   padding: 1.5rem max(1.25rem, calc((100% - 43.5rem) / 2));
   font-size: 0.95rem;
 }
-footer.site a { color: #ffffff; }
+footer.site a { color: var(--foot-link); }
 footer.site p { margin: 0; }
 """
 
 _LOOK_RULES = {"sunrise": _SUNRISE, "meadow": _MEADOW, "harbour": _HARBOUR}
 
 _JOURNAL_RULES = """.prose { overflow-wrap: break-word; }
-.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: #3a3a3a; }
+.post-meta, .eyebrow, .lead, .page-intro, .comments-note { color: var(--soft); }
 .post-list, .comment-list { list-style: none; padding: 0; }
 .post-list li, .comment { margin-bottom: 1.25rem; }
 .chip { display: inline-block; margin: 0 0.5rem 0.5rem 0; }
@@ -278,7 +354,8 @@ _JOURNAL_RULES = """.prose { overflow-wrap: break-word; }
 
 
 def _style_code(look: str) -> str:
-    return (f"/* {say('starter.style_note')} */\n" + _LOOK_RULES[look] + "\n"
+    return (f"/* {say('starter.style_note')} */\n" + _palette_code(look)
+            + _LOOK_RULES[look] + "\n"
             + f"/* {say('starter.journal_note')} */\n" + _JOURNAL_RULES)
 
 

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from test_publishing import KEY, _github, _settings
+from test_themes import _contrast
 
 from pressless import builder, publishing, starter, store
 
@@ -120,3 +121,48 @@ def test_each_look_writes_its_own_style(tmp_path):
     assert styles["nonsense"] == styles[starter.LOOKS[0]]
     for look in starter.LOOKS:
         assert ".prose" in styles[look], look
+
+
+# PRESS-0248: the text pairs each look's rules put together, written out here
+# rather than read from starter.py, so a look cannot pass by dropping a pair.
+# The floor is the one PRESS-0239 set, 7:1 (WCAG AAA): the first user is
+# partially sighted.
+_TEXT_PAIRS = (("ink", "paper"), ("soft", "paper"), ("link", "paper"), ("heading", "paper"),
+               ("on-band", "band"), ("band-soft", "band"),
+               ("on-foot", "foot"), ("foot-link", "foot"))
+_FLOOR = 7.0
+
+
+@pytest.mark.parametrize("dark", (False, True), ids=("light", "dark"))
+@pytest.mark.parametrize("look", starter.LOOKS)
+def test_every_look_reads_at_seven_to_one_in_light_and_dark(look, dark):
+    """Breaks when a text colour falls below 7:1 on its background in either
+    scheme."""
+    colours = starter.palette(look, dark)
+    for text, ground in _TEXT_PAIRS:
+        ratio = _contrast(colours[text], colours[ground])
+        assert ratio >= _FLOOR, f"{look} {text} on {ground}: {ratio:.2f}"
+
+
+def test_meadow_footer_sits_on_the_paper():
+    """Meadow's footer paints no background of its own, so its colours are
+    only checked truly where `foot` is the paper. Breaks when the two part."""
+    for dark in (False, True):
+        colours = starter.palette("meadow", dark)
+        assert colours["foot"] == colours["paper"]
+
+
+@pytest.mark.parametrize("look", starter.LOOKS)
+def test_each_look_turns_dark_with_the_computer_and_names_no_other_colour(tmp_path, look):
+    """PRESS-0248: the style code carries a dark set of every colour, and the
+    rules outside the two sets name only those colours. Breaks when a rule
+    keeps a colour of its own, which the dark set would not reach."""
+    starter.fill(tmp_path, "A Site", look)
+    css = store.read_style_code(tmp_path)
+    light, dark = re.findall(r":root \{ (?:color-scheme: light dark; )?([^}]*) \}", css)
+    assert "@media (prefers-color-scheme: dark) { :root {" in css
+    for declared in (light, dark):
+        assert re.findall(r"--([a-z-]+):", declared) == list(starter.COLOURS)
+    rules = css.split("\n", 3)[3]   # after the comment and the two sets
+    assert not re.findall(r"#[0-9a-fA-F]{3,8}\b", rules)
+    assert set(re.findall(r"var\(--([a-z-]+)\)", rules)) <= set(starter.COLOURS)

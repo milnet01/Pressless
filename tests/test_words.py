@@ -229,6 +229,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "_WINDOWS_SCRIPT": "PowerShell",
     },
     "starter.py": {"_SUNRISE": _CSS, "_MEADOW": _CSS, "_HARBOUR": _CSS, "_JOURNAL_RULES": _CSS,
+                   ":root { color-scheme: light dark;": _CSS,
                    "Home": "a data-nav name, which the Builder matches on"},
     "store.py": {
         "RECOGNISED_FIELDS": _FIELDS, "one_line": _FIELDS,
