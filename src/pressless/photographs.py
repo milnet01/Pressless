@@ -29,7 +29,10 @@ LONGEST_NAME = 60         # before the suffix, as a new entry's address
 # where the chosen file carries another: a JPEG named .png would be sent to
 # browsers as a PNG.
 SUFFIXES = {"JPEG": (".jpg", ".jpeg"), "MPO": (".jpg", ".jpeg"), "PNG": (".png",),
-            "WEBP": (".webp",), "GIF": (".gif",)}
+            "WEBP": (".webp",), "GIF": (".gif",), "AVIF": (".avif",)}
+
+# What both upload boxes offer: the types of the formats above (PRESS-0274).
+ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif"
 
 
 class NotAPhotograph(Exception):

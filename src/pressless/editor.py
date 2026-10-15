@@ -573,7 +573,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 <p><button type="button" data-editor="photograph">{say("editor.add_photograph")}</button>
  <input type="file" id="photograph-file" hidden
- accept="image/jpeg,image/png,image/webp,image/gif">
+ accept="{photographs.ACCEPT}">
  <span id="photograph-status"></span></p>
 <p id="photograph-missing" hidden></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">

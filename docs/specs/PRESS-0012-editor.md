@@ -247,6 +247,7 @@ it wraps, whose scripts the file policy does not reach.
 | `.jpg`, `.jpeg` | `image/jpeg` |
 | `.gif` | `image/gif` |
 | `.webp` | `image/webp` |
+| `.avif` | `image/avif` (PRESS-0274) |
 | `.svg` | `image/svg+xml` |
 | `.ico` | `image/x-icon` |
 | `.woff2` | `font/woff2` |

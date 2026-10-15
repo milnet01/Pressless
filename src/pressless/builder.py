@@ -76,7 +76,7 @@ _LEADING_COMMENT = re.compile(r"^\s*<!--.*?-->[ \t]*\n", re.S)
 _ANIMATION = (" reveal-load d1", " reveal-load d2", " reveal-load d3")
 
 # §4.6: re-encoded in their own format. Anything else Pillow opens is refused.
-_REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP"}
+_REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF"}
 
 def _entries(count: int) -> str:
     """§4.3's count: `1 entry`, `2 entries`."""

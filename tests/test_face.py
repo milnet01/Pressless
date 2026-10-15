@@ -430,6 +430,7 @@ def test_files_carry_the_policy(tmp_path: Path) -> None:
     mounted.mkdir()
     types = {"page.HTML": "text/html; charset=utf-8", "site.css": "text/css; charset=utf-8",
              "site.js": "text/javascript; charset=utf-8",
+             "dusk.AVIF": "image/avif",   # PRESS-0274
              "notes.txt": "application/octet-stream"}
     for name in types:
         (mounted / name).write_bytes(b"x")

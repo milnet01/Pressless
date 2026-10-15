@@ -115,10 +115,19 @@ def test_only_a_picture_the_builder_publishes_is_kept(tmp_path, data):
     assert _originals(tmp_path) == {}
 
 
-@pytest.mark.parametrize("fmt", ["JPEG", "PNG", "WEBP", "GIF"])
+_ENDINGS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif", "AVIF": ".avif"}
+
+
+@pytest.mark.parametrize("fmt", list(_ENDINGS))
 def test_each_published_format_is_kept_under_its_own_ending(tmp_path, fmt):
-    ending = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}[fmt]
-    assert photographs.add(tmp_path, "picture", _picture(fmt)) == "picture" + ending
+    assert photographs.add(tmp_path, "picture", _picture(fmt)) == "picture" + _ENDINGS[fmt]
+
+
+def test_the_upload_box_offers_every_format_kept():
+    """PRESS-0274: both upload boxes take their list from ACCEPT, so a format
+    the Builder publishes can be chosen. Breaks when one is left off."""
+    offered = set(photographs.ACCEPT.split(","))
+    assert offered == {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
 
 
 # -------------------------------------------------------------- missing ---

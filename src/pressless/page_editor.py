@@ -49,6 +49,7 @@ from pressless.face import (
     render_notices,
     true_colours,
 )
+from pressless.photographs import ACCEPT as PHOTOGRAPH_TYPES
 from pressless.words import say
 
 VISUAL = "visual"
@@ -623,7 +624,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <p data-for="picture enlarge"><button type="button" data-act="photograph">{
     say("editor.add_photograph")}</button>
 <input type="file" id="photograph-file" hidden
- accept="image/jpeg,image/png,image/webp,image/gif"></p>
+ accept="{PHOTOGRAPH_TYPES}"></p>
 {field("page_editor.panel.photograph", "src", "picture enlarge", ' list="photograph-list"')}
 {field("page_editor.panel.address", "src", "video music")}
 {field("page_editor.panel.address", "href", "button download")}

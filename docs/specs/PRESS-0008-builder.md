@@ -306,12 +306,12 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
 2. The original is `store.photograph_path_for(folder, name)`. Absent, it is
    `BuildStopped` naming the file.
 3. **The format is the one Pillow decodes, never the file name's
-   extension.** An image Pillow reports as `JPEG`, `MPO`, `PNG` or `WEBP` is
-   re-encoded: rotated upright by its orientation tag, shrunk to fit
-   `LONGEST_SIDE` on each side and never enlarged, and saved in its own
-   format — an `MPO` as a JPEG of its first picture — carrying no EXIF, XMP
-   or comment block. A JPEG is saved progressive at quality 82, as today's
-   `_work/resize.py` does.
+   extension.** An image Pillow reports as `JPEG`, `MPO`, `PNG`, `WEBP` or
+   `AVIF` (PRESS-0274) is re-encoded: rotated upright by its orientation
+   tag, shrunk to fit `LONGEST_SIDE` on each side and never enlarged, and
+   saved in its own format — an `MPO` as a JPEG of its first picture —
+   carrying no EXIF, XMP or comment block. A JPEG is saved progressive at
+   quality 82, as today's `_work/resize.py` does.
 4. **A `GIF` is re-saved with every frame**, each shrunk the same way, its
    timing kept and no comment or XMP block carried. So no original is
    published (§4.5).

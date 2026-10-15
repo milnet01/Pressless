@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=274 -->
+<!-- ants-roadmap-id-high-water: PRESS=275 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4906,7 +4906,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-15.
   Lanes: Face, Builder.
 
-- 📋 [PRESS-0274] **Photographs in AVIF and JPEG XL are taken in and published, as WebP already is.**
+- 📋 [PRESS-0274] **Photographs in AVIF are taken in and published, as WebP already is.**
   User 2026-10-15: support JPEG XL, WebP and AVIF. WebP already passes
   PRESS-0008 § 4.6. AVIF: Pillow 12 reads and writes it, so it joins
   _REENCODED, photographs.SUFFIXES and both upload boxes' accept lists.
@@ -4914,6 +4914,15 @@ documents go on the site beside the photographs.
   cannot show it, so the original is kept and the web copy is published
   in a format every browser shows. Needs the plugin checked on the
   Windows box and under PyInstaller first. Amends PRESS-0008 § 4.6.
+  Decided by the user 2026-10-15: AVIF now, JPEG XL later. Measured:
+  pillow-jxl-plugin is GPL-3.0-or-later, which a bundled MIT app cannot
+  ship; the BSD readers (imagecodecs, pylibjxl) need numpy, roughly
+  doubling the 23.1 MB Windows zip. Only Safari shows JPEG XL by default
+  (searched 2026-10-15). JPEG XL moves to PRESS-0275; this item is AVIF.
+  Decided by the user 2026-10-15: AVIF is published as AVIF, and the
+  review-contract gate on the two one-word amendments (PRESS-0008 § 4.6
+  step 3, PRESS-0012's Content-Type table) is waived; tests stand in,
+  each seen to fail.
   **Layman:** You can add photographs saved in the newer AVIF and JPEG XL formats, not only JPEG, PNG, WebP and GIF.
   Kind: feature.
   Source: user-request-2026-10-15.
@@ -11290,6 +11299,17 @@ already-built code ships in whichever release comes next.
   Kind: fix.
   Source: hand-check-2026-10-15 0.9.0 draft, Windows box.
   Lanes: Face, Publishing.
+
+- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, once Pillow reads the format itself.**
+  Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
+  Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
+  and the BSD readers need numpy. Most browsers do not show JPEG XL,
+  so the original is kept and the web copy is published as WebP or
+  AVIF. Re-check Pillow's release notes at each dependency sweep.
+  **Layman:** You will be able to add JPEG XL photographs once the picture library Pressless uses can read them without making the download much bigger.
+  Kind: feature.
+  Source: user-decision-2026-10-15 PRESS-0274.
+  Lanes: Builder, Face.
 
 ## Milestones
 

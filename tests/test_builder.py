@@ -609,6 +609,27 @@ def test_web_copies_are_small_and_carry_nothing(tmp_path):
         build(folder, _settings(), into)
 
 
+def test_an_avif_web_copy_is_avif_upright_small_and_bare(tmp_path):
+    """INV-9 for AVIF (PRESS-0274): re-encoded as AVIF, turned upright by its
+    orientation tag, fitted to LONGEST_SIDE, carrying no EXIF or XMP."""
+    folder = _store(tmp_path)
+    xmp = f"<x:xmpmeta>{SENTINEL}</x:xmpmeta>".encode()
+    _photograph(folder, "dusk.avif", _image("AVIF", (3200, 1600),
+                                            exif=_exif_with_gps(6), xmp=xmp))
+    assert SENTINEL.encode() in store.photograph_path_for(folder, "dusk.avif").read_bytes()
+    store.write(folder, _entry("dusk", body="{photo: dusk.avif}"), draft=False)
+
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    copy = into / "photographs" / "dusk.avif"
+    with Image.open(copy) as web:
+        assert web.format == "AVIF"
+        assert max(web.size) == LONGEST_SIDE
+        assert web.size[1] > web.size[0], "the orientation tag was not applied"
+        assert len(web.getexif()) == 0
+    assert SENTINEL.encode() not in copy.read_bytes()
+
+
 def test_a_preview_writes_no_web_copies(tmp_path):
     """§4.1: `photo_src` given, no web copy is written and its address is used
     as given."""

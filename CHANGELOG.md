@@ -14,6 +14,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **You can add photographs in the AVIF format, and they are published as AVIF** (PRESS-0274)
+  Like the other formats, each published copy is turned upright, made
+  no larger than the site needs and stripped of location and camera
+  details.
+
 - **A new site made from Sunrise, Meadow or Harbour turns dark for a visitor whose computer is set to dark** (PRESS-0248)
   Every text colour stays at least 7:1 against its background in light
   and dark. A site made before this release keeps its light-only
