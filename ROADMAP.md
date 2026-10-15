@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=272 -->
+<!-- ants-roadmap-id-high-water: PRESS=273 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4757,6 +4757,14 @@ documents go on the site beside the photographs.
   its own screens; the live site's stylesheet is not editable in the
   app. What 'look' covers, and whether it is a set of choices or the
   stylesheet itself, is still to be decided with the user.
+  Decided by the user 2026-10-15: a panel of choices (colours, fonts,
+  text size, page width, header and menu layout) with a live preview,
+  plus an optional box for their own CSS, as WordPress offers.
+  User 2026-10-15: include CSS that helps with interactivity, beside
+  PRESS-0217's script pieces. The panel gains effect choices done in
+  CSS alone: pictures that lift on hover, sections that fade in as they
+  scroll into view, smooth scrolling. Each honours the visitor's
+  prefers-reduced-motion. A page's own CSS is PRESS-0273.
   **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
@@ -4773,7 +4781,7 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
 
-- 📋 [PRESS-0180] **Settings can pin Pressless to light or dark, whatever the computer is set to.**
+- ✅ [PRESS-0180] **Settings can pin Pressless to light or dark, whatever the computer is set to.**
   Split from PRESS-0178, which shipped the look following the system
   setting only (user choice, 2026-09-28).
 
@@ -4782,6 +4790,12 @@ documents go on the site beside the photographs.
   must read it on every page. The stylesheet already keys every colour
   off custom properties, so the pin is a class on the page that selects
   one set.
+  Delivered by PRESS-0190 (shipped 2026-10-01), checked 2026-10-15: its
+  picker offers Light, Dark and Follow computer, kept in theme.json. In
+  Chrome with the computer emulated dark, pinned Light gives --paper
+  #f4efe6 and pinned Dark #1d1a16, and the reverse holds with the
+  computer light. The pin sits in the top bar rather than Settings; no
+  new code.
   **Layman:** You can choose light or dark for Pressless yourself, instead of it copying your computer.
   Kind: feature.
   Source: user-request-2026-09-28.
@@ -4869,6 +4883,19 @@ documents go on the site beside the photographs.
   **Layman:** A site made from Meadow, Harbour or Sunrise turns dark for a visitor whose computer is set to dark, the way Pressless's own screens already do.
   Kind: enhancement.
   Source: user-request-2026-10-10.
+
+- 📋 [PRESS-0273] **A page can hold its own CSS, the style twin of PRESS-0217's script piece.**
+  User 2026-10-15: "I mentioned JS for interactivity but I forgot about
+  what CSS does these days as well." A new Blocks kind, style, holding
+  the user's CSS verbatim in a style element, beside script
+  (PRESS-0217 § 4.4). Unlike script it takes effect in the preview too,
+  since CSS is not blocked by the frame's sandbox; the spec amendment
+  settles whether the Face's CSP allows its url() loads. Site-wide CSS
+  and ready-made CSS effects are PRESS-0196.
+  **Layman:** Someone who knows CSS can add their own styling and effects, such as hover and scroll animations, to one page.
+  Kind: feature.
+  Source: user-request-2026-10-15.
+  Lanes: Face, Builder.
 
 ## 0.11.0 — anyone can bring their site in
 
