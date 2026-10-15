@@ -4906,7 +4906,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-15.
   Lanes: Face, Builder.
 
-- 📋 [PRESS-0274] **Photographs in AVIF are taken in and published, as WebP already is.**
+- ✅ [PRESS-0274] **Photographs in AVIF are taken in and published, as WebP already is.**
   User 2026-10-15: support JPEG XL, WebP and AVIF. WebP already passes
   PRESS-0008 § 4.6. AVIF: Pillow 12 reads and writes it, so it joins
   _REENCODED, photographs.SUFFIXES and both upload boxes' accept lists.
@@ -4923,6 +4923,10 @@ documents go on the site beside the photographs.
   review-contract gate on the two one-word amendments (PRESS-0008 § 4.6
   step 3, PRESS-0012's Content-Type table) is waived; tests stand in,
   each seen to fail.
+  Shipped 2026-10-15 (fa9ebbf): AVIF is kept as .avif, offered by both
+  upload boxes through photographs.ACCEPT, served by the Face as
+  image/avif and re-encoded as AVIF by the Builder. Tests seen red
+  first; the Windows box ran them too.
   **Layman:** You can add photographs saved in the newer AVIF and JPEG XL formats, not only JPEG, PNG, WebP and GIF.
   Kind: feature.
   Source: user-request-2026-10-15.
