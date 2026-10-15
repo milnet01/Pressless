@@ -22,7 +22,17 @@ from _face_session import Browser
 from test_editor import _binned
 from test_publisher import _listing, _reads, _Transport, _tree_creation_paths, _writes
 
-from pressless import builder, credentials, editor, face, publisher, publishing, settings, store
+from pressless import (
+    builder,
+    credentials,
+    editor,
+    face,
+    pressing,
+    publisher,
+    publishing,
+    settings,
+    store,
+)
 
 KEY = "ghp_SENTINELpublishingKEY0123456789"
 REPLACES = "Replaces"
@@ -568,3 +578,24 @@ def test_replace_needs_the_name_and_publishes_nothing(tmp_path):
     assert settings.load(folder).untouchable == ()
     assert not (folder / MARKER).exists()
     assert github.requests == []
+
+
+def test_confirming_the_replace_forgets_the_refusal(tmp_path, monkeypatch):
+    """PRESS-0272. Breaks when the replace confirmation leaves the
+    WouldReplaceASite outcome standing, so its box reopens on the next page."""
+    folder = _starter_folder(tmp_path)
+    store.write_journal(folder, True)
+    store.write(folder, _entry("seaside"), draft=True)
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    _key(monkeypatch)
+    with _pressless(folder, _holding("index.html")) as browser:
+        status, text = browser.publish("seaside", True, _base(folder, "seaside", draft=True),
+                                       folder=folder)
+        assert status == 200, text
+        assert json.loads(text)["published"] is False
+        refused = pressing.state()["failure"]
+        status, _, _ = browser.request(
+            "POST", "/publish/replace", {"repository": "owner/owner.github.io"})
+    assert status == 200
+    assert refused and "Replace the site on GitHub" in refused
+    assert pressing.state()["failure"] is None

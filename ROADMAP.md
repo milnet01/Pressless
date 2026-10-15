@@ -11192,7 +11192,7 @@ already-built code ships in whichever release comes next.
   Source: in-session-2026-10-14.
   Lanes: scripts.
 
-- 📋 [PRESS-0272] **After "Replace the site on GitHub" is confirmed, the refusal box still reopens and asks for it again.**
+- ✅ [PRESS-0272] **After "Replace the site on GitHub" is confirmed, the refusal box still reopens and asks for it again.**
   Seen on the 0.9.0 draft. A press over a repository holding a site
   refuses with WouldReplaceASite and offers the replace link. Following
   it and typing the repository's name ends on "Ready to replace your
@@ -11207,6 +11207,11 @@ already-built code ships in whichever release comes next.
   Fix: the replace confirmation forgets the carried outcome, as a
   Settings save does; a test presses into WouldReplaceASite, confirms,
   and reads /press back empty.
+  Resolved (2026-10-15): the replace confirmation calls
+  pressing.forget() once it has saved.
+  test_confirming_the_replace_forgets_the_refusal presses into
+  WouldReplaceASite, confirms, and reads the record back empty; red
+  before the fix on its own assertion. Ships in 0.9.1.
   **Layman:** After you agree to replace the old site, Pressless still shows the warning telling you to replace it.
   Kind: fix.
   Source: hand-check-2026-10-15 0.9.0 draft, Windows box.

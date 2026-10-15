@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **After you agree to replace the site on GitHub, the warning asking you to do so no longer reopens** (PRESS-0272)
+
 ## [0.9.0] - 2026-10-15
 
 **Theme:** pages, menus and the homepage are theirs
