@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=275 -->
+<!-- ants-roadmap-id-high-water: PRESS=276 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4765,6 +4765,10 @@ documents go on the site beside the photographs.
   CSS alone: pictures that lift on hover, sections that fade in as they
   scroll into view, smooth scrolling. Each honours the visitor's
   prefers-reduced-motion. A page's own CSS is PRESS-0273.
+  Decided by the user 2026-10-15: the panel works on a site with style
+  code; an imported site is PRESS-0276. A text colour under WCAG AA
+  (4.5:1) is warned about beside the colour and still saved. Spec:
+  docs/specs/PRESS-0196-site-look.md.
   **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
@@ -11314,6 +11318,17 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
   Lanes: Builder, Face.
+
+- 📋 [PRESS-0276] **An imported site can take a Pressless look, or extra CSS on top of its own stylesheets.**
+  Split from PRESS-0196 by the user's 2026-10-15 choice. An imported site
+  has no style code: its pages link assets/site.css and assets/blog.css,
+  which live only in the published repository, and each imported fixed
+  page carries those links in its own HTML. Either route rewrites every
+  imported page's links, so it is its own item.
+  **Layman:** A site brought in from WordPress can use the Look panel too, either by switching to a Pressless design or by adding its own styling on top.
+  Kind: feature.
+  Source: user-decision-2026-10-15 PRESS-0196.
+  Lanes: Builder, Face, Store.
 
 ## Milestones
 
