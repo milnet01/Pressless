@@ -65,6 +65,9 @@ vgcore.*
 # Scratch
 scratch/
 tmp/
+# Kept review returns and roadmap-store backups. They quote code or hold
+# the store, so they stay on this machine and are never published.
+/local-archive/
 Screenshot_*.png
 screenshot*.png
 

@@ -4643,6 +4643,8 @@ removed, and the menu follows.
   Forward note: when PRESS-0217 adds user JavaScript, the preview must stay
   sandboxed-without-scripts and user JS must never be served executable
   from the Face origin.
+  Moved (2026-10-15): the review reports are now in the repository's
+  local-archive/security-review-2026-10-14/, which git ignores.
   **Layman:** A check of whether anyone could write code on their page to steal Pressless's private keys: today they cannot, and these small fixes keep it that way.
   Kind: security.
   Source: code-quality-review-2026-10-14.
@@ -9765,6 +9767,9 @@ already-built code ships in whichever release comes next.
   Ants MCP feedback stands: no roadmap verb moves an item between
   sections, which is what forced the direct write, and the direct write is
   refused from a Claude Code session.
+  Moved (2026-10-15): the backups and resection.sql are now in the
+  repository's local-archive/roadmap-store-backups-2026-09-08/, which
+  git ignores, so they are still never published.
   **Layman:** The roadmap is one long list; the current house style wants it grouped by which version each thing lands in.
   Kind: chore.
   Source: roadmap-format.md 3.2, changed 2026-09-06; in-session 2026-09-07.
@@ -10443,6 +10448,8 @@ already-built code ships in whichever release comes next.
   rename replaces only an empty directory; L10.4 measured all 149 upload
   addresses on the site's host, and a host check drops CDN images; L10.6
   expat 2.8.4; the INFO notes, nothing to fix.
+  Moved (2026-10-15): the review and its ledger are now in the
+  repository's local-archive/reviews/, which git ignores.
   **Layman:** The code review also listed many small issues; they are written down and still need sorting into fix or leave.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135, Low and Info rungs.
