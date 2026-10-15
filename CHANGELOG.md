@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-15
+
+**Theme:** pages, menus and the homepage are theirs
+
 ### Added
 
 - **A page can hold ready-made interactive pieces, and a place for your own script** (PRESS-0217)
