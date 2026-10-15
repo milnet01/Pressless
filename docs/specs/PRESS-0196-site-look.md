@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0196 — The site's look: a panel of choices, and their own CSS
 
-**Status:** spec draft (2026-10-15).
+**Status:** accepted (2026-10-15). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0196 (the user 2026-10-01 under PRESS-0194; the
 panel, the extra-CSS box, CSS-only effects and the two scope calls, the user
@@ -122,8 +122,10 @@ stylesheet (§ 4.4) and an undo (§ 4.7) each bin the version they replace.
 
 ### 4.2 The generator: `look.py`
 
-A new module owning the choices and the stylesheet made from them. It imports
-`starter` for the palettes and layouts and nothing from the Face.
+A new module owning the choices and the stylesheet made from them. It takes
+over `starter.COLOURS`, `starter._PALETTES`, `starter.palette`,
+`starter._LOOK_RULES` and `starter._JOURNAL_RULES`, so `starter` imports
+`look` and never the reverse. It imports nothing from the Face.
 
 ```python
 FONTS: dict[str, str]          # key -> CSS font-family stack
@@ -142,19 +144,43 @@ def css(choices: Choices, extra: str) -> str
 def save(folder: Path, choices: Choices, extra: str) -> None
 def warnings(choices: Choices) -> list[tuple[str, str, str, float]]
     # (scheme, text, background, ratio) for each TEXT_PAIRS pair under 4.5
+def digest(folder: Path) -> str
+    # SHA-256 over choices.json, extra.css and style.css in that order,
+    # an absent file counting as a fixed marker
+class LookUnreadable(store.StoreError): ...
 ```
+
+`TEXT_PAIRS` is PRESS-0248's list, the same for every layout: `ink`,
+`soft`, `link` and `heading` on `paper`; `on-band` and `band-soft` on
+`band`; `on-foot` and `foot-link` on `foot`. Every layout paints its footer
+with `foot` (item 4 of the layout rules below), so each pair is a background that is really
+painted.
 
 `css` returns, in this order: the palette (the light set on `:root` and the
 dark set under `prefers-color-scheme: dark`, as `starter._palette_code` does
 today, now from the choices), a `:root` block declaring `--body-font`,
 `--heading-font`, `--text-size` and `--width`, the layout's rules, the
 journal rules (`starter._JOURNAL_RULES`), the effects chosen (§ 4.3), and
-last `extra` after a comment naming it.
+last `extra` after a comment naming it. Effects use the palette's
+names, never a colour of their own: `lift`'s shadow is
+`color-mix(in srgb, var(--ink) 25%, transparent)`.
 
-The layout rules are today's `starter._LOOK_RULES` with each font family, the
-`html` font size and the main column's `max-width` replaced by those four
-custom properties, so a look's defaults reproduce today's computed style
-exactly (INV-1). `starter._style_code` is withdrawn; its one caller,
+The layout rules are today's `starter._LOOK_RULES` with four changes:
+
+1. The body's font family is `var(--body-font)`, and every layout's
+   headings and `.site-name` take `var(--heading-font)`. The defaults are
+   `serif` headings for Sunrise, which sets Georgia today, and `system` for
+   Meadow and Harbour, whose headings inherit the body's family today.
+2. The `html` font size is `var(--text-size)`.
+3. The main column's `max-width` is `var(--width)`, and the header's and
+   footer's side padding, which today aligns their text with that column
+   (`calc((100% - 44rem) / 2)` in Sunrise, `43.5rem` in Harbour), is
+   `calc((100% - var(--width) + 2.5rem) / 2)` inside the same `max()`.
+4. Meadow's footer paints `background: var(--foot)`, whose default equals
+   `paper` in both schemes, so the panel's `foot` colour does something and
+   every footer pair is checked against what is painted.
+
+So a look's defaults reproduce today's computed style (INV-1). `starter._style_code` is withdrawn; its one caller,
 `starter.fill`, saves defaults instead (§ 4.6).
 
 `save` writes `choices.json`, then `extra.css`, then `style.css` from
@@ -188,11 +214,15 @@ gains a "Look" link beside Settings (`face._page`).
 `GET /look` shows one of three states:
 
 1. **The site has `choices.json`** — the panel, filled from `look.read`.
-2. **The site has style code and no `choices.json`** — a site filled before
-   this item, or a stylesheet written by hand. The panel opens on a layout
-   picker (default `sunrise`) showing `look.defaults` of the layout picked,
-   and says above Save that the current stylesheet will be moved to the bin
-   and replaced. Save bins `look/style.css` first, then calls `look.save`.
+2. **The site has style code that its choices did not make** — no
+   `choices.json` (a site filled before this item), or a `style.css` that is
+   not `look.css` of the choices and extra CSS beside it (edited by hand).
+   The panel opens on the choices where they are readable, else on a layout
+   picker (default `sunrise`) showing `look.defaults` of the layout picked.
+   It says above Save that the current stylesheet will be replaced and a
+   copy kept in the bin. Save writes that copy into the bin first, leaving
+   `look/style.css` in place, then calls `look.save`, which replaces it
+   last.
 3. **The site has no style code** — the imported case (§ 4.5).
 
 The panel: the layout; for each colour name a colour input in a light and a
@@ -209,8 +239,8 @@ address ends `look/style.css` and puts the answer in a
 `<style id="pressless-look-draft">`. Each warning is shown beside its colour
 in words, naming the pair, the scheme and the ratio against 4.5:1.
 
-**Save** posts to `/look/save` with the digest of `choices.json` the screen
-was drawn from. Under `editor.LOCK`, a digest that no longer matches raises
+**Save** posts to `/look/save` with the `look.digest` the screen was drawn
+from. Under `editor.LOCK`, a digest that no longer matches raises
 `editor.ChangedElsewhere` and writes nothing, as `templates._save` does;
 otherwise `look.save` runs and the screen says the look reaches the website
 at the next publish. Warnings never stop a save (§ 3 decision 4).
@@ -248,6 +278,8 @@ files. Reconciling treats them as one unit:
   differs from its fetched version, or that the fetched state lacks, goes to
   the bin, and the fetched versions are written; each step records its
   reversal as the identity steps do.
+- **The fetched `choices.json` fails `look.read`** — the Store's look is
+  kept, nothing under `look/` is written, and the undo's report says so.
 - **The fetched state carries none** — a publish from before this item — and
   the Store's look is kept, as PRESS-0213 keeps an identity the fetched state
   lacks.
@@ -261,6 +293,8 @@ files. Reconciling treats them as one unit:
   page of each layout in Chrome under both colour schemes from the old and
   the new stylesheet and compare every element's computed colour, background,
   borders, font family, font size and the main column's width.
+  The one expected difference is Meadow's footer background, now `foot`
+  where it was transparent over the same `paper`.
   *Breaks when:* a value lifted into a custom property is given a different
   default, or a rule is dropped in the move.
 
@@ -301,16 +335,20 @@ files. Reconciling treats them as one unit:
   expects that pair in both schemes' warnings, then saves and reads it back.
   *Breaks when:* the warning list omits a pair or the save refuses.
 
-- **INV-7** — Saving over a style code with no `choices.json` moves the old
-  `style.css` to the bin before writing.
+- **INV-7** — Saving over a style code its choices did not make keeps a
+  copy of the old `style.css` in the bin, and `style.css` is never absent
+  during the save.
   *Test:* `tests/test_look_screen.py` writes a hand-made `style.css`, saves a
   layout and finds the hand-made text in the bin.
-  *Breaks when:* the old stylesheet is overwritten without a copy.
+  *Breaks when:* the old stylesheet is overwritten without a copy, or
+  moved away before the new one is written.
 
-- **INV-8** — A save whose digest no longer matches `choices.json` writes
-  nothing and reports the change made elsewhere.
-  *Test:* `tests/test_look_screen.py` saves with a stale digest and finds all
-  three files unchanged.
+- **INV-8** — A save whose `look.digest` no longer matches writes nothing
+  and reports the change made elsewhere, whichever of the three files
+  changed.
+  *Test:* `tests/test_look_screen.py` changes only `extra.css` after drawing
+  the screen, saves with the old digest, and finds all three files
+  unchanged.
   *Breaks when:* the save skips the digest check.
 
 - **INV-9** — On a site with no style code, `/look` shows no panel and both
@@ -328,7 +366,8 @@ files. Reconciling treats them as one unit:
   restores them as one unit; a fetched state without any keeps the Store's.
   *Test:* `tests/test_builder.py` builds a site with all three and finds them
   under `content/look/`; `tests/test_undo.py` undoes to a state with an
-  earlier look and to one with none.
+  earlier look, to one with none, and to one whose `choices.json` is
+  unreadable.
   *Breaks when:* `content` omits a file, or undo restores `choices.json`
   without its `style.css`.
 
@@ -342,8 +381,9 @@ files. Reconciling treats them as one unit:
 - **`choices.json` unreadable** (hand-edited, or from a newer Pressless) —
   `GET /look` says the look's settings cannot be read and shows no panel;
   nothing is written, and the published stylesheet is untouched.
-- **A save interrupted between files** — `style.css` is written last, so the
-  published stylesheet is the previous one, intact. The panel then shows the
+- **A save interrupted between files** — `style.css` is written last and
+  never moved away first (§ 4.4 state 2), so the published stylesheet is the
+  previous one, intact. The panel then shows the
   newer choices; the next save writes a matching stylesheet.
 - **Extra CSS that breaks the site's look** — it reaches only the frame and
   the published site, never the Look screen itself (INV-10), so it can be
@@ -356,8 +396,13 @@ files. Reconciling treats them as one unit:
 ## 7. Tests
 
 New `tests/test_look.py` (INV-3, INV-4, INV-5) and `tests/test_look_screen.py`
-(INV-6, INV-7, INV-8, INV-9, INV-10); `tests/test_starter.py` gains INV-12 and keeps INV-2
-re-pointed; `tests/test_builder.py` and `tests/test_undo.py` gain INV-11.
+(INV-6, INV-7, INV-8, INV-9, INV-10); `tests/test_starter.py` gains INV-12, keeps INV-2
+re-pointed, and re-points PRESS-0248's
+`test_each_look_turns_dark_with_the_computer_and_names_no_other_colour` at
+`look.css(look.defaults(layout), "")`: it finds the light and dark sets by
+their selectors rather than by position, allows the four non-colour
+properties of § 4.2 beside `COLOURS`, and still refuses a raw colour in the
+rules; `tests/test_builder.py` and `tests/test_undo.py` gain INV-11.
 INV-1 is the by-hand Chrome comparison, run once before `_style_code` is
 withdrawn, with its result recorded in the commit body. Each test is seen to
 fail before the code it locks exists.
@@ -415,6 +460,6 @@ Rows live in `../reviews/PRESS-0196-site-look-loop-log.md`.
 ## 13. Migration / compatibility
 
 A site filled before this item has `look/style.css` and no `choices.json`:
-state 2 of § 4.4 handles it, binning the old stylesheet on the first save. A
-site with neither is state 3. Older published states carry no look files in
+state 2 of § 4.4 handles it, keeping a copy of the old stylesheet in the bin
+on the first save. A site with neither is state 3. Older published states carry no look files in
 `content/`, and undo keeps the Store's look for them (§ 4.7).
