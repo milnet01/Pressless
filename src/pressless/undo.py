@@ -13,13 +13,23 @@ import contextlib
 import dataclasses
 import json
 import shutil
+import warnings
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from pressless import editor, github_setup, pressing, publisher, publishing, settings, store
+from pressless import (
+    editor,
+    github_setup,
+    look,
+    pressing,
+    publisher,
+    publishing,
+    settings,
+    store,
+)
 from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
 from pressless.words import say
 
@@ -35,6 +45,13 @@ class NothingToUndo(Exception):
 
 
 # Added here rather than in face.py, which cannot import this module back.
+# PRESS-0196: undo keeps the Store's look rather than raise this (§ 4.7); the
+# sentence is for the Look screen, which can.
+SENTENCES[look.LookUnreadable] = Sentence(
+    "failure.look.LookUnreadable.what",
+    Site.UNCHANGED,
+    "failure.look.LookUnreadable.next",
+)
 SENTENCES[NothingToUndo] = Sentence(
     "failure.undo.NothingToUndo.what",
     Site.UNCHANGED,
@@ -162,6 +179,9 @@ class _State:
     # PRESS-0213: the fetched identity, keyed by its file's name like forwards;
     # empty where the fetched state has none, which keeps the Store's.
     identity: dict[str, store.Identity] = field(default_factory=dict)
+    # PRESS-0196 § 4.7: the fetched look files by name, as text; empty where
+    # the fetched state has none, which keeps the Store's look.
+    look: dict[str, str] = field(default_factory=dict)
 
 
 def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
@@ -208,7 +228,14 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             fetched = store.read_identity(fetch / prefix)
             if fetched is not None:
                 state.identity[name] = fetched
+        elif kind == store.LOOK_FOLDER and name in _LOOK_FILES:
+            text = store.read_look_file(fetch / prefix, name)
+            if text is not None:
+                state.look[name] = text
     return state
+
+
+_LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
 
 
 def _stem(name: str, suffix: str) -> str:
@@ -307,6 +334,35 @@ def _demote(folder: Path, slug: str, reversals: list[Callable[[], None]],
     changed.demoted.append(slug)
 
 
+def _restore_look(folder: Path, fetched: dict[str, str],
+                  reversals: list[Callable[[], None]]) -> None:
+    """PRESS-0196 § 4.7: the look's three files as one unit. A fetched state
+    holding none keeps the Store's look, as one without an identity keeps the
+    Store's; so does one whose choices.json cannot be read, and it says so.
+    Otherwise each Store file that differs from its fetched version, or that
+    the fetched state lacks, goes to the bin, and the fetched ones are written."""
+    if not fetched:
+        return
+    if store.LOOK_CHOICES_NAME in fetched:
+        try:
+            look.from_json(fetched[store.LOOK_CHOICES_NAME])
+        except look.LookUnreadable:
+            warnings.warn(store.StoreNotice("notice.undo.look_kept"), stacklevel=2)
+            return
+    for name in _LOOK_FILES:
+        path = store.look_path_for(folder, name)
+        remembered = store.read_look_file(folder, name)
+        wanted = fetched.get(name)
+        if remembered == wanted:
+            continue
+        if remembered is not None:
+            store.move_to_bin(folder, path)
+            reversals.append(lambda n=name, r=remembered: store.write_look_file(folder, n, r))
+        if wanted is not None:
+            store.write_look_file(folder, name, wanted)
+            reversals.append(lambda p=path: store.move_to_bin(folder, p))
+
+
 def _restore_other_kinds(folder: Path, state: _State,
                          reversals: list[Callable[[], None]]) -> None:
     """Every other kind the fetched state holds is written where it differs or is
@@ -353,6 +409,8 @@ def _restore_other_kinds(folder: Path, state: _State,
             store.write_identity(folder, identity)
             if remembered_identity is None:
                 reversals.append(lambda p=path: store.move_to_bin(folder, p))
+
+    _restore_look(folder, state.look, reversals)
 
     # PRESS-0214 § 4.4: the one kind whose ABSENCE is restored. An absent
     # options file means the journal is on, so keeping his file over a fetched

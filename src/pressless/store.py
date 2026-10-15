@@ -365,24 +365,7 @@ def move_to_bin(folder: Path, path: Path) -> Path:
     the bin itself, and a file directly in `folder` -- where the settings
     file lives -- are refused, so no caller can bin one by mistake.
     """
-    handed = Path(folder)
-    source = Path(path)
-    try:
-        relative = source.relative_to(handed)
-    except ValueError:
-        relative = None
-    if (
-        relative is None
-        or len(relative.parts) != 2
-        or relative.parts[0] not in _BINNABLE
-    ):
-        raise StoreError(
-            f"{source.name} is not a file the Store holds as writing, so it "
-            f"was not moved to the bin"
-        )
-    if not source.is_file():
-        raise EntryNotFound(f"there is no file {source.name} to move to the bin")
-    target = handed / BIN_FOLDER / _now().strftime("%Y-%m-%d-%H%M%S") / relative
+    source, target, relative = _bin_target(folder, path, "moved")
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         _move_without_overwriting(source, target)
@@ -396,6 +379,53 @@ def move_to_bin(folder: Path, path: Path) -> Path:
             f"{source.name} could not be moved to the bin: {_why(exc)}"
         ) from exc
     return target
+
+
+def copy_to_bin(folder: Path, path: Path) -> Path:
+    """move_to_bin's twin that leaves the file in place, so it is never absent
+    while its replacement is written (PRESS-0196 § 4.4). The same files only,
+    and the copy refuses rather than replacing one already in the bin."""
+    source, target, relative = _bin_target(folder, path, "copied")
+    try:
+        data = source.read_bytes()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "xb") as copy:
+            copy.write(data)
+    except FileExistsError as exc:
+        raise StoreError(
+            f"the bin already holds {relative.as_posix()} from this second; "
+            f"nothing was copied"
+        ) from exc
+    except OSError as exc:
+        raise StoreError(
+            f"{source.name} could not be copied to the bin: {_why(exc)}"
+        ) from exc
+    return target
+
+
+def _bin_target(folder: Path, path: Path, verb: str) -> tuple[Path, Path, Path]:
+    """The checks move_to_bin and copy_to_bin share, and where the file goes:
+    (source, bin/<stamp>/<relative path>, relative path)."""
+    handed = Path(folder)
+    source = Path(path)
+    try:
+        relative = source.relative_to(handed)
+    except ValueError:
+        relative = None
+    if (
+        relative is None
+        or len(relative.parts) != 2
+        or relative.parts[0] not in _BINNABLE
+    ):
+        raise StoreError(
+            f"{source.name} is not a file the Store holds as writing, so it "
+            f"was not {verb} to the bin"
+        )
+    if not source.is_file():
+        verb_to = "move" if verb == "moved" else "copy"
+        raise EntryNotFound(f"there is no file {source.name} to {verb_to} to the bin")
+    target = handed / BIN_FOLDER / _now().strftime("%Y-%m-%d-%H%M%S") / relative
+    return source, target, relative
 
 
 def _move(folder: Path, slug: str, *, from_draft: bool) -> Path:
@@ -639,6 +669,8 @@ LOOK_FOLDER = "look"                 # PRESS-0126: the site's own style code
 IDENTITY_FOLDER = "identity"         # PRESS-0213: the site's name and description
 IDENTITY_FILE = "identity.json"
 STYLE_CODE_NAME = "style.css"
+LOOK_CHOICES_NAME = "choices.json"   # PRESS-0196: what the style code is made from
+EXTRA_CSS_NAME = "extra.css"         # PRESS-0196: their own CSS, added last
 HTML_SUFFIX = ".html"
 COMMENTS_SUFFIX = ".json"
 
@@ -651,7 +683,7 @@ WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-w
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
-    IDENTITY_FOLDER, *WAITING_FOLDERS.values(),
+    IDENTITY_FOLDER, LOOK_FOLDER, *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -1096,10 +1128,24 @@ def style_code_path(folder: Path) -> Path:
     return Path(folder) / LOOK_FOLDER / STYLE_CODE_NAME
 
 
+def look_path_for(folder: Path, name: str) -> Path:
+    """Where one of the look's files sits: STYLE_CODE_NAME, LOOK_CHOICES_NAME
+    or EXTRA_CSS_NAME (PRESS-0196 § 4.1)."""
+    if name not in (STYLE_CODE_NAME, LOOK_CHOICES_NAME, EXTRA_CSS_NAME):
+        raise StoreError(f"{name!r} is not one of the look's files")
+    return Path(folder) / LOOK_FOLDER / name
+
+
 def read_style_code(folder: Path) -> str | None:
     """The style code, decoded and otherwise untouched, as read_html reads a
     page; None where the Store holds none (PRESS-0126 § 4.2)."""
-    target = style_code_path(folder)
+    return read_look_file(folder, STYLE_CODE_NAME)
+
+
+def read_look_file(folder: Path, name: str) -> str | None:
+    """One of the look's files, decoded and otherwise untouched; None where
+    the Store holds none (PRESS-0196 § 4.1)."""
+    target = look_path_for(folder, name)
     try:
         data = target.read_bytes()
     except FileNotFoundError:
@@ -1115,8 +1161,14 @@ def read_style_code(folder: Path) -> str | None:
 def write_style_code(folder: Path, css: str) -> Path:
     """Write the style code whole or not at all, its bytes as given, as
     write_html writes a page (PRESS-0126 § 4.2)."""
-    target = style_code_path(folder)
-    _write_atomically(folder, target, css, prefix=".look-", newline="")
+    return write_look_file(folder, STYLE_CODE_NAME, css)
+
+
+def write_look_file(folder: Path, name: str, text: str) -> Path:
+    """Write one of the look's files whole or not at all, its bytes as given
+    (PRESS-0196 § 4.2)."""
+    target = look_path_for(folder, name)
+    _write_atomically(folder, target, text, prefix=".look-", newline="")
     return target
 
 

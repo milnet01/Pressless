@@ -234,7 +234,17 @@ _WORDS: dict[str, str] = {
     "failure.photographs.NotAPhotograph.what": (
         "That file is not a picture Pressless can put on your site, so it was not added."
     ),
-    "failure.photographs.NotAPhotograph.next": "Choose a JPEG, PNG, WebP or GIF photograph.",
+    "failure.photographs.NotAPhotograph.next": (
+        "Choose a JPEG, PNG, WebP, GIF or AVIF photograph."
+    ),
+    "failure.look.LookUnreadable.what": (
+        "Pressless could not read the settings your site's look is made from, so it"
+        " changed nothing."
+    ),
+    "failure.look.LookUnreadable.next": (
+        "Your site keeps its current look. If look/choices.json in Pressless's own folder was"
+        " edited by hand, put the earlier copy back from the bin."
+    ),
     "failure.page_editor.SectionsUnreadable.what": (
         "Not saved: Pressless could not keep your page's sections as you left them."
     ),
@@ -291,6 +301,10 @@ _WORDS: dict[str, str] = {
     # A notice's next step, and what a failure or notice means for the site.
     "notice.next": "Nothing was lost. Send this to whoever helps you if you did not expect it.",
     # Notices: a StoreNotice or SettingsNotice carries its key and slots.
+    "notice.undo.look_kept": (
+        "The look in the state you went back to could not be read, so your site keeps"
+        " its current look; everything else was brought back"
+    ),
     "notice.store.twin": (
         "{twin} names the same entry as {target} and is not the file Pressless reads; after "
         "this move the folder holds both, and {twin} can only be reached by renaming it"
@@ -1262,10 +1276,13 @@ _WORDS: dict[str, str] = {
     ),
     "starter.about.title": "About — {name}",
     "starter.about.words": "Say who you are and what this site is for.",
-    "starter.style_note": (
-        "Your site's look. Change anything here; Pressless publishes it as it is."
+    "look.style_note": (
+        "Your site's look, made by Pressless's Look screen. Change it there:"
+        " a change made here by hand is replaced at the next save, with a copy kept"
+        " in the bin."
     ),
-    "starter.journal_note": "The journal's pages, should you turn it on.",
+    "look.journal_note": "The journal's pages, should you turn it on.",
+    "look.extra_note": "Your own CSS, from the box at the bottom of the Look screen.",
     "starter.this_site": "this site",
     "starter.privacy": "Privacy",
     "starter.privacy.title": "Privacy — {name}",

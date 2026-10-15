@@ -4752,7 +4752,7 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-01.
 
-- 📋 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
+- 🚧 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
   Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
   its own screens; the live site's stylesheet is not editable in the
   app. What 'look' covers, and whether it is a set of choices or the
@@ -4769,6 +4769,17 @@ documents go on the site beside the photographs.
   code; an imported site is PRESS-0276. A text colour under WCAG AA
   (4.5:1) is warned about beside the colour and still saved. Spec:
   docs/specs/PRESS-0196-site-look.md.
+  Progress 2026-10-15, step 1 of 2 committed: look.py (choices, defaults,
+  read, css, save, digest, warnings), store's look files and copy_to_bin,
+  starter.fill saving defaults, content/ carrying the look, and undo's
+  _restore_look. INV-1 proven by hand: Chrome's computed style for all
+  three layouts, light and dark, 1200 and 600 px, matched the old
+  stylesheet except Meadow's footer background (spec-allowed). Still
+  owed: look_screen.py (GET /look, /look/preview, /look/save, the bar
+  link, words), tests/test_look.py and tests/test_look_screen.py for
+  INV-3 to INV-10, INV-11's builder and undo tests, INV-12, the spec's
+  § 11 pointer edits, an amendment recording the store surface as built,
+  and a CHANGELOG entry.
   **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.

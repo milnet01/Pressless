@@ -13,6 +13,7 @@ from test_publishing import KEY, _github, _settings
 from test_themes import _contrast
 
 from pressless import builder, publishing, starter, store
+from pressless import look as starter_look
 
 NAME = 'A <b> & "Co"'
 
@@ -124,7 +125,7 @@ def test_each_look_writes_its_own_style(tmp_path):
 
 
 # PRESS-0248: the text pairs each look's rules put together, written out here
-# rather than read from starter.py, so a look cannot pass by dropping a pair.
+# rather than read from look.py, so a look cannot pass by dropping a pair.
 # The floor is the one PRESS-0239 set, 7:1 (WCAG AAA): the first user is
 # partially sighted.
 _TEXT_PAIRS = (("ink", "paper"), ("soft", "paper"), ("link", "paper"), ("heading", "paper"),
@@ -138,17 +139,18 @@ _FLOOR = 7.0
 def test_every_look_reads_at_seven_to_one_in_light_and_dark(look, dark):
     """Breaks when a text colour falls below 7:1 on its background in either
     scheme."""
-    colours = starter.palette(look, dark)
+    colours = starter_look.palette(look, dark)
     for text, ground in _TEXT_PAIRS:
         ratio = _contrast(colours[text], colours[ground])
         assert ratio >= _FLOOR, f"{look} {text} on {ground}: {ratio:.2f}"
 
 
 def test_meadow_footer_sits_on_the_paper():
-    """Meadow's footer paints no background of its own, so its colours are
-    only checked truly where `foot` is the paper. Breaks when the two part."""
+    """Meadow's footer paints `foot` since PRESS-0196, where it painted nothing
+    over the paper before; its defaults keep the two equal, so the look is
+    unchanged (PRESS-0196 INV-1). Breaks when the two part."""
     for dark in (False, True):
-        colours = starter.palette("meadow", dark)
+        colours = starter_look.palette("meadow", dark)
         assert colours["foot"] == colours["paper"]
 
 
@@ -159,10 +161,14 @@ def test_each_look_turns_dark_with_the_computer_and_names_no_other_colour(tmp_pa
     keeps a colour of its own, which the dark set would not reach."""
     starter.fill(tmp_path, "A Site", look)
     css = store.read_style_code(tmp_path)
-    light, dark = re.findall(r":root \{ (?:color-scheme: light dark; )?([^}]*) \}", css)
-    assert "@media (prefers-color-scheme: dark) { :root {" in css
-    for declared in (light, dark):
-        assert re.findall(r"--([a-z-]+):", declared) == list(starter.COLOURS)
-    rules = css.split("\n", 3)[3]   # after the comment and the two sets
+    light = re.search(r"^:root \{ color-scheme: light dark; ([^}]*) \}$", css, re.M)
+    dark = re.search(r"^@media \(prefers-color-scheme: dark\) \{ :root \{ ([^}]*) \} \}$",
+                     css, re.M)
+    assert light and dark
+    for declared in (light.group(1), dark.group(1)):
+        assert re.findall(r"--([a-z-]+):", declared) == list(starter_look.COLOURS)
+    rules = css.replace(light.group(0), "").replace(dark.group(0), "")
     assert not re.findall(r"#[0-9a-fA-F]{3,8}\b", rules)
-    assert set(re.findall(r"var\(--([a-z-]+)\)", rules)) <= set(starter.COLOURS)
+    # PRESS-0196 § 4.2: the four measures beside the colours, and nothing else.
+    measures = {"body-font", "heading-font", "text-size", "width"}
+    assert set(re.findall(r"var\(--([a-z-]+)\)", rules)) <= set(starter_look.COLOURS) | measures

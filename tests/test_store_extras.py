@@ -848,6 +848,9 @@ _PRESS_0195_SURFACE = {"PAGE_FORWARDS_FILE", "page_forwards_path_for",
                        "read_page_forwards", "write_page_forwards"}
 _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
                        "read_style_code", "write_style_code", "holds_a_site"}
+# copy_to_bin reaches only _BINNABLE's folders, which photographs/ is not.
+_PRESS_0196_SURFACE = {"LOOK_CHOICES_NAME", "EXTRA_CSS_NAME", "look_path_for",
+                       "read_look_file", "write_look_file", "copy_to_bin"}
 
 # §3 decision 10 leaves a photograph's file name to PRESS-0016 -- the archive's
 # own attachment names carry underscores and would not pass the slug rule -- so
@@ -948,12 +951,12 @@ def test_photographs_stay_where_they_are(tmp_path):
     surface = _public_names(store_module)
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
-                        | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE)
+                        | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
-        f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's and "
-        f"PRESS-0195 §4.1's. "
+        f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's, "
+        f"PRESS-0195 §4.1's and PRESS-0196 §4.1's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"
