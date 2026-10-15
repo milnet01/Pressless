@@ -5555,7 +5555,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
 
-- 📋 [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
+- ✅ [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
   The verification request went in on 2026-10-10 (PRESS-0200). When
   Google's approval email arrives, set google_signin.APPROVED to True;
   test_the_page_says_while_google_has_not_approved_pressless then needs
@@ -5565,6 +5565,9 @@ owned by docs/standards/versioning-overrides.md.
   CLIENT_ID starts with, for the analytics.readonly scope. Nothing is
   owed in Google's console. No longer blocked: do it with PRESS-0272 and
   ship both as 0.9.1, a PATCH, since 0.10.0's section is still open.
+  Resolved (2026-10-15): google_signin.APPROVED is True. The page
+  test was already parametrised over both values, so no expectation
+  needed turning round. Ships in 0.9.1.
   **Layman:** When Google says yes, the app stops warning that Google is still checking it.
   Kind: chore.
   Source: PRESS-0200 resolution 2026-10-10.

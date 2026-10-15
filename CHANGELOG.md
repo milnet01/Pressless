@@ -12,6 +12,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Google has approved Pressless, so the visitor-numbers setup no longer says Google is still checking it** (PRESS-0243)
+  The page also drops its steps for getting past Google's
+  unverified-app warning.
+
 ### Fixed
 
 - **After you agree to replace the site on GitHub, the warning asking you to do so no longer reopens** (PRESS-0272)

@@ -37,8 +37,8 @@ except ImportError:  # a development checkout, before write_google_secret.py run
 CLIENT_ID = "407838712240-ioic610gg2obnav839qe4pdk07ar1gki.apps.googleusercontent.com"
 # Whether Google has finished verifying the client (PRESS-0200). Until it
 # has, the Google step says the review is pending and how to get past the
-# unverified-app warning.
-APPROVED = False
+# unverified-app warning. Google approved it on 2026-10-15 (PRESS-0243).
+APPROVED = True
 # The privacy policy registered on Google's consent screen (PRESS-0255).
 # One copy to keep true, so the app links here rather than carrying its own.
 PRIVACY_URL = "https://antsprojectshub.co.za/p/pressless/privacy.html"
