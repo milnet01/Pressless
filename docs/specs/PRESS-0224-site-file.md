@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0224 — A whole site saves to one file, and opens again
 
-**Status:** spec draft (2026-10-16).
+**Status:** accepted (2026-10-16). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0224 (user-request-2026-10-03).
 
@@ -30,8 +30,8 @@ nothing.
 2. **The Face cannot take a large file.** `face._MAX_BODY` refuses a
    body over 64 MiB, and every body is read whole into memory before a
    page sees it. A site with its photographs is larger.
-3. **The Face cannot hand back a file to save.** A registered page
-   answers with text; nothing sends a file as a download.
+3. **The Face cannot hand back a file to save.** Nothing sends a file
+   as a download.
 
 ## 3. Scope decisions (agreed with the user)
 
@@ -114,22 +114,24 @@ Nothing is written before `check` passes.
 
 1. `check(source, room)`, where `room` is the free space on the drive
    holding `own`, less 1 GiB.
-2. Unpack every member into `<own>/sites/.opening`, removed first where
-   a stopped open left one.
-3. Rewrite its `settings.json` as JSON, keeping every key it does not
-   name: `site_folder` becomes `<target>/site`; `credentials.store` is
-   `credentials.choose().store`, kept as it was where that raises;
-   `github_account` is `sites.account("github", target)`, and
-   `google_account`, where it is not null,
-   `sites.account("google", target)`. Then `settings.load` must accept
-   it, or the open is refused.
-4. The target is the open site where that site is unused, else
-   `sites.new_site(own)`. **Unused** means its folder holds no name but
-   `wizard.FOLDER` and `choices.FILE_NAME`. An unused target is removed,
-   then `.opening` is renamed to its name.
-5. `sites.choose(own, target.name)`, and PRESS-0223's restart opens it.
+2. Unpack every member but `MANIFEST` into `<own>/sites/.opening`,
+   removed first where a stopped open left one.
+3. The target is the open site where that site is unused, else
+   `sites.new_site(own)`. **Unused** means it has no `settings.json` and
+   `store.holds_a_site` is False for it, as on a fresh install after its
+   first launch has seeded `templates/`.
+4. Rewrite `.opening`'s `settings.json` as JSON, keeping every key it
+   does not name: `site_folder` becomes `<target>/site`;
+   `credentials.store` is `credentials.choose().store`, kept as it was
+   where that raises; `github_account` is
+   `sites.account("github", target)`, and `google_account`, where it is
+   not null, `sites.account("google", target)`. Then `settings.load`
+   must accept it, or the open is refused.
+5. The target folder is removed, then `.opening` is renamed to its name.
+6. `sites.choose(own, target.name)`, and PRESS-0223's restart opens it.
 
-A refusal at any step removes `.opening` and leaves `sites/` as it was.
+A refusal at any step removes `.opening` and any folder `new_site` made,
+and leaves `sites/` as it was.
 
 The site opens with no key. Publishing then says Pressless does not have
 the publishing key yet, and to enter it in Settings
@@ -153,14 +155,16 @@ class Download:
   The body is the file itself, sent by `fetch` with no form around it.
   It is copied in 64 KiB pieces to `<into>/.upload-<random>`, refused
   with 413 where the declared length is over the drive's free space less
-  1 GiB, and handed to `handler` by path. The file is deleted when
-  `handler` returns or raises. `_MAX_BODY` is unchanged for every other
-  route.
+  1 GiB, and handed to `handler` by path. The handler runs as a
+  registered page's does: `face.after_reply` works inside it, its `str`
+  is wrapped as a page, and an exception reaches `Face.fail`. The file is
+  deleted when `handler` returns or raises. `_MAX_BODY` is unchanged for
+  every other route.
 - **A page may return a `Download`.** The Face sends it in 64 KiB pieces
   with `Content-Disposition: attachment` and the name quoted as RFC 6266
   says, then deletes it.
 
-`POST /sites/open` is an upload into `own`; its handler calls
+`POST /sites/open-file` is an upload into `own`; its handler calls
 `open_into`, and answers with the restart's *going* page, or the Sites
 screen with the refusal's sentence.
 
@@ -168,7 +172,7 @@ screen with the refusal's sentence.
 
 PRESS-0223 § 4.6's screen gains **Save this site to a file**, a link to
 `GET /sites/save`, and **Open a site file**, a file input taking `.zip`
-whose choice is sent to `POST /sites/open`. While it is sent, the button
+whose choice is sent to `POST /sites/open-file`. While it is sent, the button
 reads *Opening…* and is disabled.
 
 ## 5. Invariants
@@ -199,18 +203,19 @@ reads *Opening…* and is disabled.
   target's own account names, and `settings.load` accepts them. *Test:*
   `tests/test_sitefile.py::test_an_opened_site_is_set_up_for_this_computer`.
   *Breaks when:* the opened site reads or writes another site's key.
-- **INV-6** — Opening over a fresh install's unused `site-1` makes the
-  file's site `site-1`; opening while `site-1` holds writing makes
-  `site-2` and leaves `site-1` unchanged. *Test:*
-  `tests/test_sitefile.py::test_opening_never_writes_over_a_site`.
-  *Breaks when:* a site holding anything but setup progress is removed.
+- **INV-6** — Opening over a fresh install's unused `site-1`, its
+  templates seeded, makes the file's site `site-1`; opening while
+  `site-1` holds writing makes `site-2` and leaves `site-1` unchanged.
+  *Test:* `tests/test_sitefile.py::test_opening_never_writes_over_a_site`.
+  *Breaks when:* a site with settings or writing is removed.
 - **INV-7** — An upload route takes a body larger than `face._MAX_BODY`,
   handing the handler a file with the same bytes, and deletes it after;
   the same body to a registered page is refused with 413. *Test:*
   `tests/test_face.py::test_an_upload_streams_past_the_page_ceiling`.
   *Breaks when:* the body is read whole, or the file is left behind.
-- **INV-8** — An upload or a download without the session cookie, or
-  with another origin, is refused before a byte of the body is written.
+- **INV-8** — An upload without the session cookie, or with another
+  origin, is refused before a byte of the body is written; a download
+  without the session cookie is refused.
   *Test:* `tests/test_face.py::test_an_upload_needs_the_session`.
   *Breaks when:* the upload route skips a check a page gets.
 - **INV-9** — `GET /sites/save` answers with `Content-Disposition:
@@ -233,12 +238,13 @@ the Store's own checks, as an entry from disk is today.
   removed, and the screen says the file could not be opened and no site
   changed.
 - **Pressless stops mid-open**: `.opening` is left, never listed (it
-  does not match `site-N`), and removed by the next open.
+  does not match `site-N`), and removed by the next open. A site
+  `new_site` made is left empty.
 - **The browser stops a download**: the `.saving-` file is deleted when
   the send ends, sent or not.
 - **A file from a newer Pressless**: refused, with words to update
   Pressless first.
-- **A keyring that refuses** at step 3: the store stays as the file had
+- **A keyring that refuses** at step 4: the store stays as the file had
   it, and Settings asks for the key as for any missing key.
 
 ## 7. Tests
