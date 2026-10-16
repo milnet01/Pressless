@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=276 -->
+<!-- ants-roadmap-id-high-water: PRESS=277 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -11353,6 +11353,16 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0196.
   Lanes: Builder, Face, Store.
+
+- 📋 [PRESS-0277] **The leak sweep can check a named file outside the tree, such as a review packet.**
+  scripts/local-ci.sh --docs sweeps the tree, commits and refs. A
+  review packet sits outside the tree, so on 2026-10-16 it was swept by
+  hand with the machine-local leakPatterns key alone, missing the
+  script's own pattern. A --sweep FILE option would run the script's
+  whole pattern over named files, so the pattern stays in one place.
+  **Layman:** Before a review, Claude can check that nothing in the reviewers' notes names the writer, in one step.
+  Kind: chore.
+  Source: in-session-2026-10-16 PRESS-0197 review.
 
 ## Milestones
 
