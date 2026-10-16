@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0223 — Pressless holds several sites
 
-**Status:** spec draft (2026-10-16).
+**Status:** accepted (2026-10-16). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0223 (user-request-2026-10-03).
 
@@ -125,13 +125,17 @@ prints it and stops with exit code 1, and nothing is deleted.
 `_serve_once(own)` takes `site = sites.open_site(own)` at the top of each
 pass, so a restart opens whichever site `OPEN_FILE` now names.
 
-- **`own`** goes to `face.serve` (the log and the theme), `usage.register`
-  and `updating.register`, and to the lock.
+- **`own`** goes to `face.serve` (the log and the theme),
+  `updating.register` and `sites_screen.register`, and to the lock.
+  `sites_screen.register` also takes `restart.set`, as
+  `restarting.register` does.
 - **`site`** goes to `setup`, `github_setup`, `google_setup`,
   `dashboard`, `editor`, `templates`, `publishing`, `undo`,
-  `page_editor`, `look_screen`, `files_screen`, `sites_screen`,
+  `page_editor`, `look_screen`, `files_screen`,
   `setup.carry_name_across`, `setup.follow_the_folder` and
   `settings.load`.
+- **`usage.register(served, own, site=site)`**: `usage.json` stays in
+  `own`, and its question loads the site's settings.
 - **`face.serve(own, site=site)`**: `Face` gains `site`, which
   `Face.live_address` reads settings from and `Face`'s true-colours
   route remembers choices in. The details box's copy and open buttons
@@ -149,12 +153,12 @@ def account(kind: str, site: Path) -> str:
     """'github' or 'google' for site-1; 'github-site-2' and so on after."""
 ```
 
-`setup` and `google_setup` file a new key under
-`sites.account("github", site)` and `sites.account("google", site)` in
-place of `GITHUB_ACCOUNT` and `GOOGLE_ACCOUNT`, and record that name in
-`settings.Credentials` as today. `site-1` keeps the names an existing
-install's key is already filed under, so the move in § 4.3 touches no
-keyring. Every reader reads the name from Settings, as today.
+`setup` and `google_setup` use `sites.account("github", site)` and
+`sites.account("google", site)` everywhere they use `GITHUB_ACCOUNT`
+and `GOOGLE_ACCOUNT` today — filing, reading and deleting — and record
+that name in `settings.Credentials` as today. `site-1` keeps the names
+an existing install's key is already filed under, so the move in § 4.3
+touches no keyring.
 
 ### 4.6 The Sites screen
 
@@ -200,16 +204,17 @@ again with a hint, and nothing changes.
   *Test:* `tests/test_sites.py::test_a_stopped_move_finishes`.
   *Breaks when:* the second start treats `sites/` as done.
 - **INV-5** — `sites.account("github", <own>/sites/site-1)` is `"github"`;
-  for `site-3` it is `"github-site-3"`. Setup on `site-2` files the key
-  under `"github-site-2"` and leaves the `"github"` entry. *Test:*
-  `tests/test_sites.py::test_each_site_keeps_its_own_key`, with the
-  file store.
+  for `site-3` it is `"github-site-3"`. Setup on `site-2` files and
+  reads the key under `"github-site-2"` and leaves the `"github"` entry.
+  *Test:* `tests/test_sites.py::test_each_site_keeps_its_own_key`, with
+  one stand-in keyring both sites share, patched over
+  `keyring.get_keyring` as `tests/test_credentials.py` does.
   *Breaks when:* a second site's key overwrites the first's.
 - **INV-6** — After `POST /sites/open` with `site=site-2`, the next pass
-  of `_serve_once` hands `site-2` to every part in § 4.4's site list and
+  of `_serve_once` hands `site-2` to every part § 4.4 names it for, and
   `own` to the rest. *Test:*
   `tests/test_main.py::test_a_switch_hands_the_new_site_to_every_part`,
-  with each `register` replaced by a recorder.
+  with `face.serve` and each `register` replaced by a recorder.
   *Breaks when:* a part keeps the old site, or the log moves into a site.
 - **INV-7** — A draft saved in `site-1`, then the user switches to
   `site-2`, is not listed in `site-2`'s Your writing and is still in
