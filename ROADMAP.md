@@ -4789,7 +4789,7 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
 
-- 📋 [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
+- ✅ [PRESS-0197] **He can upload files other than photographs: music, downloads, PDFs.**
   Part of PRESS-0194 (user, 2026-10-01). Today only photographs are
   handled (PRESS-0016). Which file kinds, size limits for the GitHub
   API, and how a page links to a file are still to be decided.
@@ -4797,6 +4797,9 @@ documents go on the site beside the photographs.
   take a typed address until this ships; uploading their files here
   should let the visual editor's side panel choose one, as it chooses a
   photograph (docs/specs/PRESS-0260-visual-editor.md § 9).
+  Shipped 2026-10-16 in 0f9c596, to docs/specs/PRESS-0197-upload-any-file.md.
+  Gate green on Linux and the Windows box; browser rows pass in Chrome.
+  Firefox and Edge checks of the upload not yet run.
   **Layman:** He can put music, downloads and documents on his site, not only photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
