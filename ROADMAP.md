@@ -4913,7 +4913,7 @@ documents go on the site beside the photographs.
   Kind: enhancement.
   Source: user-request-2026-10-10.
 
-- 📋 [PRESS-0273] **A page can hold its own CSS, the style twin of PRESS-0217's script piece.**
+- ✅ [PRESS-0273] **A page can hold its own CSS, the style twin of PRESS-0217's script piece.**
   User 2026-10-15: "I mentioned JS for interactivity but I forgot about
   what CSS does these days as well." A new Blocks kind, style, holding
   the user's CSS verbatim in a style element, beside script
@@ -4921,6 +4921,14 @@ documents go on the site beside the photographs.
   since CSS is not blocked by the frame's sandbox; the spec amendment
   settles whether the Face's CSP allows its url() loads. Site-wide CSS
   and ready-made CSS effects are PRESS-0196.
+  Decided by the user 2026-10-16: no spec, and the CSS styles the
+  whole page it sits on (every page from the header or footer).
+  Shipped 2026-10-16 in e6de15d: the style Blocks kind, its panel code
+  box and a note that outside pictures and fonts show only on the
+  published site, since the preview's policy stays as it is. What the
+  build settled is PRESS-0217 § 14. Chrome check in
+  scripts/by-hand-browser-checks.py passes; Firefox and Edge are owed
+  by hand.
   **Layman:** Someone who knows CSS can add their own styling and effects, such as hover and scroll animations, to one page.
   Kind: feature.
   Source: user-request-2026-10-15.
