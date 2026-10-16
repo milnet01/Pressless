@@ -4902,7 +4902,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-03.
   Lanes: face, store.
 
-- 📋 [PRESS-0225] **Pressless makes a backup file by itself each day, and keeps the last few.**
+- ✅ [PRESS-0225] **Pressless makes a backup file by itself each day, and keeps the last few.**
   The user asked on 2026-10-03 for autosave. Writing already saves itself
   about a second after typing stops (src/pressless/editor.py), so what
   the user chose is automatic backups: the same file as PRESS-0224, made
@@ -4915,6 +4915,23 @@ documents go on the site beside the photographs.
   since they share one file; one review round.
   2026-10-16, corrected: no spec. It makes PRESS-0224's file on a
   schedule; this bullet and its tests are the contract.
+  Decided by Claude 2026-10-16, building it: at each start and hourly
+  while open, every site holding anything gets a backup if none is dated
+  today, made in the background with PRESS-0224's sitefile.save. Each
+  site keeps its last seven; only Pressless's own backup files are ever
+  removed. They go to a Pressless-backups folder beside Pressless-data
+  until the person sets another folder on the Sites screen (a typed
+  address: a browser cannot pick a folder for a local program). A failed
+  backup is said on the Sites screen and in the log, never as an
+  interruption.
+  2026-10-16: backups.py makes each site holding anything a dated backup
+  once a day, at start and hourly while open, keeping each site's last
+  seven by its folder name, never touching other files, in
+  Pressless-backups beside Pressless-data or a folder chosen on the
+  Sites screen. A failure is said on the Sites screen and noted in the
+  log. Locked by tests/test_backups.py, the PRESS-0225 test in
+  tests/test_sites_screen.py and the launcher test in
+  tests/test_main.py.
   **Layman:** Even if you forget, Pressless quietly keeps a recent copy of your sites, so losing the computer or the folder does not lose your writing.
   Kind: feature.
   Source: user-request-2026-10-03.

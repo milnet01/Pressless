@@ -423,6 +423,9 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
                             calls.append((_name, folder, kwargs)))
     monkeypatch.setattr(main_module.webbrowser, "open", lambda url: True)
     monkeypatch.setattr(main_module, "_refresh_shortcuts", lambda served: None)
+    started: list[tuple] = []
+    monkeypatch.setattr(main_module.backups, "start",
+                        lambda folder, stop, note=None: started.append((folder, stop)))
     passes = iter([True, False])
 
     def wait(restart):
@@ -443,3 +446,7 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
         assert usage_call[1] == own and usage_call[2] == {"site": site}
     assert (own / "pressless.log").is_file()
     assert not list((own / "sites").glob("*/pressless.log"))
+    # PRESS-0225: each pass starts the backups over Pressless's own folder,
+    # and stops them when it ends.
+    assert [call[0] for call in started] == [own, own]
+    assert all(call[1].is_set() for call in started)

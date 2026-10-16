@@ -11,7 +11,7 @@ from pathlib import Path
 from _face_session import Browser
 from test_publishing import _entry
 
-from pressless import editor, face, sitefile, sites, sites_screen, store
+from pressless import backups, editor, face, sitefile, sites, sites_screen, store
 
 OPEN = "sites.json"
 
@@ -138,3 +138,30 @@ def test_an_opened_file_becomes_the_next_site(tmp_path: Path) -> None:
     assert json.loads((own / OPEN).read_text(encoding="utf-8"))["open"] == "site-3"
     assert (own / "sites" / "site-3" / "drafts" / "seaside-walk.txt").is_file()
     assert not list(own.glob(".upload-*"))
+
+
+# ------------------------------------------------------------ PRESS-0225 ----
+
+
+def test_the_screen_sets_where_backups_go_and_says_what_went_wrong(tmp_path: Path) -> None:
+    """PRESS-0225. Breaks when a chosen folder is not kept, a bad one is,
+    or a failed backup is not said."""
+    own = _own(tmp_path)
+    chosen = tmp_path / "usb drive"
+    chosen.mkdir()
+    restarts: list[int] = []
+    served, browser = _serve(own, restarts)
+    try:
+        page = browser.request("GET", "/sites")[2]
+        assert "the Pressless-backups folder beside the program" in page
+        page = browser.request("POST", "/sites/backups", {"folder": "not/a/whole/address"})[2]
+        assert "That is not the address of a folder" in page
+        assert backups.folder_of(own) == tmp_path / "Pressless-backups"
+        page = browser.request("POST", "/sites/backups", {"folder": str(chosen)})[2]
+        assert "Backups now go to the folder you chose." in page
+        backups._write(own, trouble="The last backup could not be made in the x folder: y.")
+        page = browser.request("GET", "/sites")[2]
+        assert "The last backup could not be made" in page
+    finally:
+        served.stop()
+    assert backups.folder_of(own) == chosen and restarts == []

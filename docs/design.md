@@ -475,8 +475,11 @@ also published.
 
 **Pressless's own folder keeps one folder per site, under `sites/`**
 (PRESS-0223). Each holds that site's share of the row above. The log, the
-updater's files, the lock, the theme, the usage answers and `sites.json`,
-which names the open site, stay at the top.
+updater's files, the lock, the theme, the usage answers, the backups
+record and `sites.json`, which names the open site, stay at the top.
+**Daily backups go beside it**, to a `Pressless-backups` folder, or to a
+folder he chooses (PRESS-0225), so deleting Pressless's own folder does
+not take them with it.
 
 **Drafts are outside the site folder because of the measurement above,
 and for no other reason.** Inside it they would be backed up by every

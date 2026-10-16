@@ -136,6 +136,11 @@ writing, photographs and settings. **Open a site file** in Pressless on
 the other computer opens it as a site. The publishing key is never in
 the file, so Settings asks for it once.
 
+**Pressless also makes a backup of every site by itself each day**, and
+keeps the last seven. They go to a `Pressless-backups` folder beside
+the program. Choose another folder on the Sites screen, on a USB stick
+or in a cloud folder, so a lost computer does not take them too.
+
 ## Moving an existing blog in
 
 **You cannot bring your own blog in yet.** You start with an empty site

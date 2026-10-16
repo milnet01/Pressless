@@ -27,6 +27,7 @@ from typing import BinaryIO
 
 from pressless import (
     about,
+    backups,
     cheatsheet,
     credentials,
     dashboard,
@@ -190,6 +191,7 @@ def _serve_once(own: Path) -> bool:
     a restart (PRESS-0223 § 4.4): the machine's parts take Pressless's own
     folder, and the site's take the site's."""
     restart = threading.Event()
+    stopping = threading.Event()
     again = False
     folder = sites.open_site(own)
     served = face.serve(own, site=folder)
@@ -239,11 +241,14 @@ def _serve_once(own: Path) -> bool:
         if not opened:
             print(say("main.open_link", link=link))
         print(say("main.running"))
+        # PRESS-0225: today's backups, then a look every hour, behind this Face.
+        backups.start(own, stopping, served.note)
         try:
             again = _wait(restart)
         except KeyboardInterrupt:
             pass
     finally:
+        stopping.set()
         if again:
             # A save, publish or undo under way ends before its Face does.
             with editor.LOCK:

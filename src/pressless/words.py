@@ -1261,6 +1261,23 @@ _WORDS: dict[str, str] = {
         "open the file again."
     ),
     "script.sites.opening": "Opening…",
+    "sites_screen.backups.title": "Daily backups",
+    "sites_screen.backups.about": (
+        "Each day Pressless saves every site to a file by itself, and keeps the last seven "
+        "of each. A backup on another drive, a USB stick or a cloud folder, is safe even "
+        "if this computer is lost."
+    ),
+    "sites_screen.backups.default_folder": (
+        "Backups go to the Pressless-backups folder beside the program."
+    ),
+    "sites_screen.backups.chosen_folder": "Backups go to the folder you chose.",
+    "sites_screen.backups.folder": "Another folder: paste its whole address",
+    "sites_screen.backups.use": "Use this folder",
+    "sites_screen.backups.chosen": "Backups now go to the folder you chose.",
+    "sites_screen.backups.not_a_folder": (
+        "That is not the address of a folder. Open the folder, copy its whole address, "
+        "and paste it here."
+    ),
     # Suggest or report a problem (report.py). The issue form it fills stays English.
     "report.what": (
         "This opens a new issue on Pressless's page on GitHub, with a short form already "

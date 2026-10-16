@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 
 from pressless import credentials, editor, settings, sites, store
 from pressless.safe_write import write_whole
+from pressless.words import say
 
 MANIFEST = "pressless-site.json"
 FORMAT = "pressless-site"
@@ -39,6 +40,28 @@ class Refused(Exception):
     def __init__(self, message: str, *, newer: bool = False) -> None:
         super().__init__(message)
         self.newer = newer
+
+
+def name_of(site: Path) -> str:
+    """The site's own name, else the repository it publishes to, else the
+    words for a site not set up yet (PRESS-0223 § 4.6)."""
+    try:
+        identity = store.read_identity(site)
+    except store.StoreError:
+        identity = None
+    if identity is not None and identity.name.strip():
+        return identity.name
+    try:
+        return settings.load(site).repository
+    except (settings.NotSetUp, settings.SettingsError):
+        return say("sites_screen.unnamed")
+
+
+def stem(site: Path) -> str:
+    """§ 4.1: the site's name kept to letters, digits, spaces and hyphens, its
+    spaces collapsed, for a file's name."""
+    kept = "".join(c for c in name_of(site) if c.isalnum() or c in " -")
+    return " ".join(kept.split()) or say("sites_screen.file_unnamed")
 
 
 def _members(site: Path) -> list[tuple[str, Path]]:
@@ -122,7 +145,7 @@ def _room(own: Path) -> int:
     return shutil.disk_usage(own).free - _SPARE
 
 
-def _unused(site: Path) -> bool:
+def unused(site: Path) -> bool:
     """§ 4.4: no settings and nothing written, as on a fresh install."""
     return not (site / settings.FILE_NAME).exists() and not store.holds_a_site(site)
 
@@ -173,7 +196,7 @@ def open_into(source: Path, own: Path) -> Path:
                 to.parent.mkdir(parents=True, exist_ok=True)
                 with held.open(info) as piece, open(to, "wb") as out:
                     shutil.copyfileobj(piece, out)
-        target = current if _unused(current) else sites.new_site(own)
+        target = current if unused(current) else sites.new_site(own)
         if target != current:
             made = target
         _settle(opening, target)

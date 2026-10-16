@@ -15,6 +15,7 @@ from test_credentials import _Store, _use
 
 from pressless import __main__ as main_module
 from pressless import (
+    backups,
     choices,
     credentials,
     editor,
@@ -103,7 +104,7 @@ def test_every_name_is_on_one_side() -> None:
                   undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME}
     machine_names = {log.FILE_NAME, log.OLD_NAME, updater.FILE_NAME, installer.LOG_NAME,
                      main_module._LOCK_NAME, themes.FILE_NAME, usage.FILE_NAME,
-                     usage.SENT_NAME, OPEN, SITES}
+                     usage.SENT_NAME, backups.FILE_NAME, OPEN, SITES}
     assert sites.SITE_NAMES == site_names
     assert sites.MACHINE_NAMES == machine_names
     assert not site_names & machine_names

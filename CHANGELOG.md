@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Pressless backs up every site by itself, each day** (PRESS-0225)
+  Each day it saves every site to a file and keeps the last seven, in a
+  Pressless-backups folder beside the program or a folder you choose on
+  the Sites screen. A backup that fails is said there, and never stops
+  your work.
+
 - **A whole site saves to one file, and opens again as a site** (PRESS-0224)
   On the Sites screen, *Save this site to a file* downloads its writing,
   photographs and settings as one .zip file, which any computer can
