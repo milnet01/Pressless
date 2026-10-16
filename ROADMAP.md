@@ -4893,6 +4893,12 @@ documents go on the site beside the photographs.
   the name and description in identity/identity.json
   (docs/specs/PRESS-0213-site-identity.md); this item widens that file,
   its reader and undo's handling of it to carry the two pictures.
+  2026-10-16: spec docs/specs/PRESS-0227-site-icon-and-picture.md
+  gated by review-contract, one round (user budget 2026-09-29), two
+  cold lanes: six verified findings fixed, one dismissed, Status
+  accepted (2026-10-16). The six fixes were read by no lane;
+  implementation is the next reader. Loop log:
+  docs/reviews/PRESS-0227-site-icon-and-picture-loop-log.md.
   **Layman:** They pick the little picture in the browser tab and the picture people see when the site is shared.
   Kind: feature.
   Source: user-decision-2026-10-03 PRESS-0213.
