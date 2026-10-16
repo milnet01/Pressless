@@ -5047,12 +5047,16 @@ documents go on the site beside the photographs.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0284] **The page editor's own heading keeps Pressless's colour, never the site's.**
+- ✅ [PRESS-0284] **The page editor's own heading keeps Pressless's colour, never the site's.**
   Found in the Edge hand check of 2026-10-16: on the style-check page
   in the Forest hero theme the editor's h1 was near-invisible. The editor
   links the site's stylesheets into the Face (PRESS-0178), the site's look
   sets `h1 { color: var(--heading) }` (look.py), and `.face h1` sets no
   colour, so the site's heading colour reaches the Face.
+  2026-10-16: the Face's h1 and h2 set their own colour, and its h1
+  drops Harbour's ::after bar. test_face.py's
+  test_a_site_look_cannot_restyle_the_faces_own_headings holds it for
+  every starter look.
   **Layman:** The page name at the top of the editor is always easy to read, whatever your site's look.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
@@ -5100,7 +5104,7 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0288] **The visual editor's panel shows Bold, Italic and Link only for the sections they work on.**
+- 🚧 [PRESS-0288] **The visual editor's panel shows Bold, Italic and Link only for the sections they work on.**
   Seen in the Edge and Firefox hand checks of 2026-10-16: with a music
   or CSS section picked, the panel still shows Bold, Italic and Link, and
   earlier Add to column 1-3. The script sets `hidden` on each [data-for]
@@ -5110,6 +5114,8 @@ documents go on the site beside the photographs.
   User suggestion 2026-10-16: put the Add list first in the panel, above
   Bold, Italic and Link, since it decides what can be done. Do it with
   this fix unless the fixed panel shows it unneeded; show the user both.
+  2026-10-16: hidden rows fixed (1bca652). Open: show the user the
+  fixed panel, with and without Add first, before shipping.
   **Layman:** The panel stops showing buttons that do nothing for the part you picked.
   Kind: fix.
   Source: user-hand-check-2026-10-16.

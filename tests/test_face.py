@@ -24,7 +24,7 @@ from _face_session import Browser, follow_link, session_cookie
 from test_setup import _saved
 
 import pressless
-from pressless import credentials, face, insights, publisher, store, themes
+from pressless import credentials, face, insights, look, publisher, store, themes
 
 LABEL_WORDS = "the Pressless-data folder, beside the program"
 LOG_NAME = "pressless.log"
@@ -611,6 +611,37 @@ def test_his_body_rule_cannot_lay_out_the_face(tmp_path: Path) -> None:
     assert body is not None, "no body.face rule"
     assert body.group(1).strip().startswith("all: unset;"), body.group(1)
     assert "display: block;" in body.group(1), body.group(1)
+
+
+def _properties(style: str) -> dict[str, set[str]]:
+    """Each selector in `style`, with the property names its rules set."""
+    found: dict[str, set[str]] = {}
+    for group, body in re.findall(r"([^{}]+)\{([^{}]*)\}", style):
+        names = {part.partition(":")[0].strip() for part in body.split(";") if ":" in part}
+        for selector in group.split(","):
+            found.setdefault(selector.strip(), set()).update(names)
+    return found
+
+
+def test_a_site_look_cannot_restyle_the_faces_own_headings(tmp_path: Path) -> None:
+    """PRESS-0284: Harbour's `h1 { color: var(--heading) }` reached the
+    editor's own h1, which set no colour, and left it near-invisible. Each
+    property a starter look sets on a heading the Face styles, the Face sets
+    too; a decoration the look adds, the Face takes away.
+    Breaks when a `.face` heading rule stops setting one of them."""
+    _, style = _served_style(tmp_path)
+    own = _properties(style)
+    for layout in look.LAYOUTS:
+        for selector, names in _properties(look.css(look.defaults(layout), "")).items():
+            tag, _, pseudo = selector.partition("::")
+            if not re.fullmatch(r"h[1-6]", tag) or f".face {tag}" not in own:
+                continue
+            if pseudo:
+                assert "content" in own.get(f".face {selector}", set()), (layout, selector)
+                continue
+            missing = {name for name in names - own[f".face {tag}"]
+                       if name.partition("-")[0] not in own[f".face {tag}"]}
+            assert not missing, (layout, selector, missing)
 
 
 def test_the_look_reaches_only_the_faces_own_frame(tmp_path: Path) -> None:

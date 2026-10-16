@@ -632,8 +632,9 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar > a { margin-left: .6rem; font-weight: 600; }
 .face main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .face h1, .face h2 { font-family: Arial, Calibri, "Liberation Sans", Helvetica, sans-serif;
-  font-weight: 600; line-height: 1.2; }
+  font-weight: 600; line-height: 1.2; color: var(--ink); }
 .face h1 { font-size: 2.1rem; margin: .25rem 0 1.5rem; letter-spacing: -.01em; }
+.face h1::after { content: none; }
 .face h2 { font-size: 1.3rem; margin: 2rem 0 .75rem; }
 .face .card { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
   padding: 1.1rem 1.4rem; margin: 1.25rem 0; box-shadow: 0 4px 18px var(--shadow); }
