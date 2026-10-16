@@ -137,7 +137,7 @@ def _open(face: Face, folder: Path, request: Request) -> str:
 
 
 def _imported() -> str:
-    return (f'<p><a href="/">{say("face.your_writing")}</a></p>'
+    return (f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>'
             f'<h1>{say("look_screen.title")}</h1><p>{say("look_screen.imported")}</p>')
 
 
@@ -215,7 +215,7 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
         for name, key in _EFFECT_WORDS.items())
     said = say("look_screen.saved") if saved else ""
     replaces = "" if made else f'<p class="look-replaces">{say("look_screen.replaces")}</p>'
-    return f"""<p><a href="/">{say("face.your_writing")}</a></p>
+    return f"""<p class="nav"><a href="/">{say("face.your_writing")}</a></p>
 <h1>{say("look_screen.title")}</h1>
 <p>{say("look_screen.about")}</p>
 <p id="look-status" class="press-status" role="status">{said}</p>

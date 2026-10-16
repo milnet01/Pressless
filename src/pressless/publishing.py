@@ -422,7 +422,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             pressing.forget()  # PRESS-0272: this answers the refusal's box
             return (f"<h1>{say('publishing.ready.heading')}</h1>"
                     f"<p>{say('publishing.ready', repository=e(saved.repository))}</p>"
-                    f'<p><a href="/">{say("face.your_writing")}</a></p>')
+                    f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>')
         hint = message_box("repository-hint", say("publishing.hint"), focus="repository")
     boxes = "".join(
         f'<li><label><input type="checkbox" name="keep" value="{e(entry, quote=True)}" '

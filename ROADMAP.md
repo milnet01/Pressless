@@ -5120,7 +5120,7 @@ documents go on the site beside the photographs.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0286] **The top bar's links are shown as buttons.**
+- ✅ [PRESS-0286] **The top bar's links are shown as buttons.**
   Asked by the user at the Edge hand check of 2026-10-16: the bar's
   links work, but buttons would look more professional. Each theme must
   keep them readable, light and dark; the layout must not shift.
@@ -5128,6 +5128,14 @@ documents go on the site beside the photographs.
   Widened by the user the same day: the editor's own navigation links
   (Your writing, Show me the code / Back to the page) are buttons too.
   Among the editor's many buttons the user missed the plain-link switch.
+  2026-10-16: the top bar's links, and each screen's own Your writing
+  line and the page editor's view switch (a p.nav line), take the button
+  look: ink on sheet (paper on the bar), the buttons' border and round
+  ends, no underline; hover changes colour and shadow only, so nothing
+  moves. Links stay links. At 1280 pixels wide the bar now wraps to two
+  rows. Locked by
+  tests/test_face.py::test_the_bar_and_a_screens_own_links_look_like_buttons
+  and ::test_the_editors_way_back_and_switch_are_buttons.
   **Layman:** Settings, Look, Files and the other places at the top look like buttons, which reads as more finished.
   Kind: ux.
   Source: user-hand-check-2026-10-16.

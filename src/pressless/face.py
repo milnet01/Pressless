@@ -629,7 +629,17 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
 .face .bar .theme { margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: .5rem; }
 .face .bar .theme select { padding: .3rem .5rem; }
-.face .bar > a { margin-left: .6rem; font-weight: 600; }
+.face .bar > a, .face .nav > a { display: inline-block; margin: 0; padding: .35rem .9rem;
+  font: inherit; font-weight: 600; line-height: 1.4; color: var(--ink);
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 999px;
+  text-decoration: none; box-shadow: 0 1px 3px var(--shadow);
+  transition: border-color .15s, box-shadow .15s; }
+.face .bar > a { background: var(--paper); }
+.face .bar > a:hover, .face .nav > a:hover { color: var(--ink); border-color: var(--amber);
+  box-shadow: 0 3px 10px var(--shadow); }
+.face .bar > a:focus-visible, .face .nav > a:focus-visible { outline: 2px solid var(--amber);
+  outline-offset: 2px; }
+.face .nav { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .face main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .face h1, .face h2 { font-family: Arial, Calibri, "Liberation Sans", Helvetica, sans-serif;
   font-weight: 600; line-height: 1.2; color: var(--ink); }

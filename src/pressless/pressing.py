@@ -125,7 +125,7 @@ def holding() -> str | None:
     now = state()
     if not now["running"]:
         return None
-    return (f'<p><a href="/">{say("face.your_writing")}</a></p>'
+    return (f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>'
             '<p id="publish-status" class="press-status" role="status" data-press="hold">'
             f"{html.escape(now['said'])}</p><script>{SCRIPT}</script>")
 

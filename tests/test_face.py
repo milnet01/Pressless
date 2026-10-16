@@ -21,10 +21,21 @@ from pathlib import Path
 
 import pytest
 from _face_session import Browser, follow_link, session_cookie
+from test_publishing import _entry
 from test_setup import _saved
 
 import pressless
-from pressless import credentials, face, insights, look, publisher, store, themes
+from pressless import (
+    credentials,
+    editor,
+    face,
+    insights,
+    look,
+    page_editor,
+    publisher,
+    store,
+    themes,
+)
 
 LABEL_WORDS = "the Pressless-data folder, beside the program"
 LOG_NAME = "pressless.log"
@@ -682,6 +693,49 @@ def _rule(style: str, selector: str) -> str:
     found = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", style)
     assert found, f"no rule for {selector}"
     return found.group(1)
+
+
+def test_the_bar_and_a_screens_own_links_look_like_buttons(tmp_path: Path) -> None:
+    """PRESS-0286. Breaks when the top bar's links, or a screen's own way back
+    and view switch, lose the button look, or leave a property a site's own
+    `a` rule could set, which would restyle them in the editors."""
+    _, style = _served_style(tmp_path)
+    rule = _rule(style, ".face .bar > a, .face .nav > a")
+    for declaration in ("display: inline-block", "color: var(--ink)",
+                        "background: var(--sheet)", "border: 1px solid var(--line)",
+                        "border-radius: 999px", "text-decoration: none", "font-weight: 600"):
+        assert declaration in rule, declaration
+    # On the bar's own sheet, a bar link takes the paper, so it stands out.
+    assert "background: var(--paper)" in _rule(style, ".face .bar > a")
+    hover = _rule(style, ".face .bar > a:hover, .face .nav > a:hover")
+    assert "color: var(--ink)" in hover and "border-color: var(--amber)" in hover
+
+
+@pytest.mark.parametrize("address", ["/edit?slug=seaside",
+                                     "/page?kind=pages&name=index",
+                                     "/page?kind=pages&name=index&view=code"])
+def test_the_editors_way_back_and_switch_are_buttons(tmp_path: Path, address: str) -> None:
+    """PRESS-0286. Breaks when an editor's Your writing or its view switch
+    sits outside a `.nav` line, so it shows as a plain link."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    store.write(folder, _entry("seaside"), draft=True)
+    store.write_html(folder, store.PAGES_FOLDER, "index",
+                     "<!doctype html><html><head><title>Home</title></head><body><main>"
+                     "<!-- pressless:page --><!-- pressless:text --><p>Hi</p>"
+                     "<!-- /pressless:text --><!-- /pressless:page --></main></body></html>")
+    served = face.serve(folder)
+    try:
+        editor.register(served, folder)
+        page_editor.register(served, folder)
+        body = _Client(served).request("GET", address)[2]
+    finally:
+        served.stop()
+    lines = re.findall(r'<p class="nav">(.*?)</p>', body, re.S)
+    assert any('<a href="/">Your writing</a>' in line for line in lines), address
+    if address.startswith("/page"):
+        assert any("Show me the code" in line or "View editor" in line
+                   for line in lines), address
 
 
 def test_a_dark_look_dims_the_preview_until_he_asks_for_true_colours(

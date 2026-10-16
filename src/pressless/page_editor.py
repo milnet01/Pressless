@@ -498,7 +498,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
     if broken is None:
         other, label = ((CODE, say("page_editor.show_code")) if view == VISUAL
                         else (VISUAL, say("page_editor.show_visual")))
-        switch = f"<p>{link(label, _page_address(kind, name, view=other))}</p>"
+        switch = f'<p class="nav">{link(label, _page_address(kind, name, view=other))}</p>'
     picker = ""
     if kind == store.FURNITURE_FOLDER:
         choices = [link(say("editor.pages.home") if page == HOME else page,
@@ -525,7 +525,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
         for sheet in sheets)
     return f"""{stylesheets}
-<p><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
+<p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
 <h1>{html.escape(title)}</h1>
 <div id="standing" data-waiting="{'1' if waiting else '0'}">
 <p data-when="1"{'' if waiting else ' hidden'}>{say("editor.standing.waiting")}</p>

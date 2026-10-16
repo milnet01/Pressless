@@ -566,7 +566,7 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
     return f"""{stylesheets}
-<p><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
+<p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
 <div class="states">{standing}</div>
 {message_box("notices")}
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"

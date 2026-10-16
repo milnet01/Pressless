@@ -107,7 +107,7 @@ def _page(template: store.Entry, base: str) -> str:
         return html.escape(value, quote=True)
 
     tags = say("editor.tags")
-    return f"""<p><a href="/">{say('face.your_writing')}</a></p>
+    return f"""<p class="nav"><a href="/">{say('face.your_writing')}</a></p>
 <p>{say('templates.about', name=html.escape(template.slug))}</p>
 <form method="post" action="/template/save">
 <input type="hidden" name="name" value="{attr(template.slug)}">

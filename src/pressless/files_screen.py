@@ -92,7 +92,7 @@ def _page(kept: tuple[str, ...], named: dict[str, tuple[str, ...]],
                f'<th scope="col">{say("files_screen.used_by")}</th><td></td></tr></thead>'
                f"<tbody>{rows}</tbody></table>" if kept
                else f"<p>{say('files_screen.none')}</p>")
-    return (f'<p><a href="/">{say("face.your_writing")}</a></p>'
+    return (f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>'
             f'<h1>{say("files_screen.title")}</h1><p>{say("files_screen.about")}</p>'
             f'<div role="status">{said}</div>{listing}')
 
