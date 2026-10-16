@@ -1575,3 +1575,14 @@ def test_signing_in_again_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
         assert github.calls == []
         status, page = browser.post({}, path="/setup/github")
     assert status == 200 and USER_CODE in page
+
+
+def test_the_welcome_step_says_pressless_is_independent(tmp_path, monkeypatch):
+    """PRESS-0278. Breaks when the first screen of setup, shown before
+    anything is published, drops the line saying who does not stand behind
+    Pressless."""
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        _, welcome = browser.get()
+    assert _step(welcome) == "welcome"
+    assert words.say("about.independent") in welcome

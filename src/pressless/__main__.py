@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from pressless import (
+    about,
     cheatsheet,
     credentials,
     dashboard,
@@ -189,6 +190,7 @@ def _serve_once(folder: Path) -> bool:
         editor.register(served, folder)
         cheatsheet.register(served)
         report.register(served)
+        about.register(served)
         usage.register(served, folder)
         templates.register(served, folder)
         publishing.register(served, folder)

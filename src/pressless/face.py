@@ -871,7 +871,9 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         # PRESS-0179: on every screen, failure pages included.
         f'<a href="/report">{say("face.report")}</a>'
         # PRESS-0262 § 4.3: beside Report a problem.
-        f'<a href="{usage.ADDRESS}">{say("face.usage")}</a></header>'
+        f'<a href="{usage.ADDRESS}">{say("face.usage")}</a>'
+        # PRESS-0278: last, beside Usage reports.
+        f'<a href="/about">{say("face.about")}</a></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 

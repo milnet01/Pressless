@@ -17,6 +17,7 @@ from test_setup import _saved
 
 from pressless import (
     _flag_data,
+    about,
     builder,
     cheatsheet,
     dashboard,
@@ -374,6 +375,7 @@ def _served(folder: Path) -> face.Face:
     editor.register(served, folder)
     cheatsheet.register(served)
     report.register(served)
+    about.register(served)
     templates.register(served, folder)
     publishing.register(served, folder)
     undo.register(served, folder)
@@ -432,6 +434,7 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
                 ("Settings", "/setup"), ("GitHub sign-in", github_setup.PAGE),
                 ("visitor numbers setup", google_setup.PAGE), ("the dashboard", dashboard.PAGE),
                 ("the report page", report.ADDRESS), ("the cheat sheet", cheatsheet.ADDRESS),
+                ("the About page", about.ADDRESS),
                 ("a template", "/template?name=poem"), ("restarting", restarting.PATH),
                 ("the Look screen", look_screen.ADDRESS),
                 ("the Files screen", files_screen.ADDRESS)):

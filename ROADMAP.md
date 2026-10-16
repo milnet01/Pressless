@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=277 -->
+<!-- ants-roadmap-id-high-water: PRESS=278 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4800,6 +4800,8 @@ documents go on the site beside the photographs.
   Shipped 2026-10-16 in 0f9c596, to docs/specs/PRESS-0197-upload-any-file.md.
   Gate green on Linux and the Windows box; browser rows pass in Chrome.
   Firefox and Edge checks of the upload not yet run.
+  Playback, user 2026-10-16: the native players on the site and in the
+  preview are enough. No Files-screen play button, no Range support.
   **Layman:** He can put music, downloads and documents on his site, not only photographs.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.
@@ -4962,6 +4964,17 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-15.
   Lanes: Builder, Face.
+
+- 🚧 [PRESS-0278] **An About page that shows the version, and says Pressless is independent of GitHub, Google and WordPress.**
+  The version showed nowhere in the app but the report form. The
+  house-style disclaimer, from the hub website session, goes on the
+  About page and on setup's welcome step, before anything is
+  published. Its last clause names GitHub Pages, the one host
+  Pressless publishes to. The README carries it too.
+  **Layman:** An About button shows which Pressless you have, and says who does and does not stand behind it.
+  Kind: feature.
+  Source: user-request-2026-10-16.
+  Lanes: Face.
 
 ## 0.11.0 — anyone can bring their site in
 

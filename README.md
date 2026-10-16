@@ -165,3 +165,13 @@ and the Usage reports screen shows every report sent and turns them off.
 ## Licence
 
 Free to use, change and share, under the [MIT licence](LICENSE).
+
+## Who is behind it
+
+Pressless is an independent project. It is not made by, affiliated with or
+endorsed by GitHub, Google or WordPress. You are responsible for what you
+publish, and for following the terms of use of GitHub Pages, which hosts your
+site.
+
+Pressless shows its version on its About page, linked from the top of every
+screen.

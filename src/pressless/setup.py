@@ -877,7 +877,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
 
 def _show_welcome(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return f"<p>{say('setup.welcome')}</p><p>{say('setup.welcome.beside')}</p>"
+    # PRESS-0278: before anything is published.
+    return (f"<p>{say('setup.welcome')}</p><p>{say('setup.welcome.beside')}</p>"
+            f"<p>{say('about.independent')}</p>")
 
 
 def _show_reports(answers: wizard.Answers, hint: wizard.Hint | None) -> str:

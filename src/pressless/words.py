@@ -414,6 +414,7 @@ _WORDS: dict[str, str] = {
     "face.files": "Files",
     "face.report": "Suggest or report a problem",
     "face.usage": "Usage reports",
+    "face.about": "About",
     # The editor and the list (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "
@@ -1231,6 +1232,18 @@ _WORDS: dict[str, str] = {
     "report.open": (
         "<a href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Open the report on "
         "GitHub</a>"
+    ),
+    # About Pressless (about.py), and setup's welcome step (PRESS-0278).
+    "about.version": "This is Pressless {version}.",
+    "about.independent": (
+        "Pressless is an independent project. It is not made by, affiliated with or endorsed "
+        "by GitHub, Google or WordPress. You are responsible for what you publish, and for "
+        "following the terms of use of GitHub Pages, which hosts your site."
+    ),
+    "about.licence": (
+        "It is free to use, change and share, under the MIT licence. Its source is on <a "
+        "href=\"{address}\" target=\"_blank\" rel=\"noopener noreferrer\">Pressless's page "
+        "on GitHub</a>."
     ),
     # Usage reports (usage.py), and their step in setup (PRESS-0262).
     "usage.title": "Usage reports",
