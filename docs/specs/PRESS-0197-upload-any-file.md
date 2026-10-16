@@ -1,15 +1,16 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0197 — Upload music, video, PDF, ZIP and text files
 
-**Status:** spec draft (2026-10-16).
+**Status:** accepted (2026-10-16).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0197 (user request 2026-10-01, PRESS-0194;
 decisions 2026-10-16).
 
 **Blocker for:** PRESS-0227.
 **Amends:** PRESS-0006 (§ 4.1, the Store's folders), PRESS-0005 (§ 4.1,
-`move_to_bin`'s folders), PRESS-0008 (§ 4.1 `ROOT_OUTPUT`), PRESS-0009
-(§ 4.4, a kept folder the build fills), PRESS-0012 (§ 4.3's type table),
+`move_to_bin`'s folders), PRESS-0008 (§ 4.1 `ROOT_OUTPUT`), PRESS-0013
+(§ 4.3, a kept folder the build fills), PRESS-0021 (decision 3,
+`untouchable`), PRESS-0012 (§ 4.3's type table),
 PRESS-0260 (§ 3 decision 6, § 4.6). § 11 lists each edit.
 
 Layman: the writer can upload songs, videos, PDFs, ZIP files and text
@@ -168,26 +169,39 @@ def web_file(name: str) -> str: ...   # "files/" + quote(name, safe="")
 def files_named(folder: Path) -> dict[str, tuple[str, ...]]: ...  # name -> pages naming it
 ```
 
-- **What a page names** is every section's `src` or `href`, read from the
-  page's place as `_held_pictures` reads one, that is `files/<name>` for a
-  name `store.list_files` holds. One walk serves both: `_held_pictures`
-  and this read the same way.
+- **What a page names** is every section's `src` or `href` that, read from
+  the page's place as `_held_pictures` reads one, is `files/<name>` for a
+  name `store.list_files` holds. Photographs are still collected from
+  `picture` and `enlarge` sections' `src` alone, so a download linking into
+  `photographs/` never reaches `web_copy`. The two share one address reader.
 - **Building the site folder**, each named file is copied byte for byte to
   `files/<name>`, once. A name beginning with a dot, a file over
   `FILE_LARGEST`, or one `file_allowed` refuses is `BuildStopped`, naming
   the file.
-- **`files_named`** reads the pages the build reads, the furniture
-  included, and is what `/files` and its removal use.
+- **`files_named`** reads the header, the footer and every fixed page, each
+  both published and waiting (`store.WAITING_FOLDERS`), so a page still being
+  edited keeps its files. `/files` and its removal use it; the build reads
+  the published copies alone.
 
-### 4.7 A repository whose own folder is called `files`
+### 4.7 A repository's own `files` folder
 
-`settings.untouchable` was derived before `ROOT_OUTPUT` held `files`, so
-on such an install it holds `files`. `publisher.publish` raises
-`KeptFolderBuilt`, a `PublishError`, where a local path's first segment is
-on the untouchable list, before any write. Its sentence says the
-repository already has its own `files` folder, and to move that folder on
-GitHub and then save the Settings page again, which re-reads the
-repository (`setup._save_sequence`).
+With `files` in `ROOT_OUTPUT`, a new setup does not keep a repository's own
+`files` folder, and a publish replaces what it holds. That is what happens
+to a repository's own `pages` folder today (PRESS-0021). An install set up
+before this may have `files` on its saved list, and two rules keep that
+folder safe:
+
+- **Publishing refuses.** `publishing.publish`, before it calls
+  `publisher.publish`, raises `KeptFolderBuilt` where the built site folder
+  holds a first segment that is both in `ROOT_OUTPUT` and on the saved
+  `untouchable` list, compared with casefold. Its sentence names that
+  segment and says to move that folder on GitHub, then save the Settings
+  page again. `publisher.publish` is unchanged (PRESS-0009 § 4.4).
+- **Saving Settings keeps a kept entry.** `setup.untouchable(root, kept=())`
+  also keeps each entry of `kept` that `root` still holds. The Settings page
+  passes its saved list; the first-run wizard passes none. So a save made
+  before the folder is moved keeps the protection, and the refusal keeps
+  firing.
 
 ## 5. Invariants
 
@@ -225,20 +239,25 @@ repository (`setup._save_sequence`).
   *Breaks when:* an unnamed file is published, a named one is altered, or
   a changed one is published.
 - **INV-7** — `setup.untouchable(("files", "CNAME"))` is `("CNAME",)`.
+  With `kept=("files",)` it is `("CNAME", "files")`; with
+  `kept=("files",)` over a root of `("CNAME",)` it is `("CNAME",)`.
   *Test:* `tests/test_setup.py::test_files_is_builder_output`.
-  *Breaks when:* `"files"` is not in `ROOT_OUTPUT`.
-- **INV-8** — With `untouchable` holding `Files` and the site folder
-  holding `files/a.pdf`, `publish` raises `KeptFolderBuilt` and the
-  transport records no write. With no `files/` path it publishes as
-  before. *Test:*
-  `tests/test_publisher.py::test_a_kept_folder_the_build_fills_stops_the_publish`.
-  *Breaks when:* the file is dropped silently, or a write precedes the
-  refusal.
+  *Breaks when:* `"files"` is not in `ROOT_OUTPUT`, a kept entry the root
+  still holds is dropped, or one it no longer holds is kept.
+- **INV-8** — With the saved `untouchable` holding `Files` and the built
+  site folder holding `files/a.pdf`, `publishing.publish` raises
+  `KeptFolderBuilt` naming `Files`, and `publisher.publish` is not called.
+  With `untouchable` holding only `CNAME`, it publishes as before. *Test:*
+  `tests/test_publishing.py::test_a_kept_folder_the_build_fills_stops_the_publish`.
+  *Breaks when:* the file is dropped silently, or the Publisher is
+  reached.
 - **INV-9** — `POST /files/remove` for a file no page names moves it to the
   bin; for one a page names it answers a sentence naming that page and the
-  file stays. `GET /files` lists both, with sizes. *Test:*
+  file stays, a page named only by its waiting copy included. `GET /files`
+  lists both, with sizes. *Test:*
   `tests/test_files_screen.py::test_removal_is_refused_while_a_page_names_the_file`.
-  *Breaks when:* a named file is removed, or an unnamed one is not.
+  *Breaks when:* a named file is removed, a waiting page is not read, or
+  an unnamed file is not removed.
 - **INV-10** — The side panel of a music section lists only music kinds of
   the kept files; a video section only video kinds; a download section
   every kept file. A file uploaded from the panel of a page in `pages/`
@@ -274,7 +293,7 @@ The preview frame keeps `sandbox="allow-same-origin"` without
 `tests/test_files.py` (new) gains INV-1, INV-2 and INV-3;
 `tests/test_store_extras.py` INV-4; `tests/test_files_screen.py` (new)
 INV-5 and INV-9; `tests/test_builder.py` INV-6; `tests/test_setup.py`
-INV-7; `tests/test_publisher.py` INV-8; `tests/test_page_editor.py` and
+INV-7; `tests/test_publishing.py` INV-8; `tests/test_page_editor.py` and
 `scripts/by-hand-browser-checks.py` INV-10. Fixtures use short made-up
 bytes behind each signature, never real media. Each test is seen failing
 against the code before this item, then mutation-probed once it lands.
@@ -313,7 +332,7 @@ against the code before this item, then mutation-probed once it lands.
 | INV-5 | `tests/test_files_screen.py::test_kept_files_are_served_under_the_policy` |
 | INV-6 | `tests/test_builder.py::test_named_files_are_published_byte_for_byte` |
 | INV-7 | `tests/test_setup.py::test_files_is_builder_output` |
-| INV-8 | `tests/test_publisher.py::test_a_kept_folder_the_build_fills_stops_the_publish` |
+| INV-8 | `tests/test_publishing.py::test_a_kept_folder_the_build_fills_stops_the_publish` |
 | INV-9 | `tests/test_files_screen.py::test_removal_is_refused_while_a_page_names_the_file` |
 | INV-10 | `tests/test_page_editor.py::test_the_panel_offers_kept_files_by_kind`; `scripts/by-hand-browser-checks.py` |
 | § 4.4 the screen's words | `tests/test_words.py` |
@@ -328,7 +347,10 @@ Each edit below is a pointer to this spec beside the clause it changes.
 - `docs/specs/PRESS-0005-store.md` § 4.1 — `move_to_bin` takes `files/`.
 - `docs/specs/PRESS-0008-builder.md` § 4.1 — `ROOT_OUTPUT` gains `files`;
   named files are copied byte for byte.
-- `docs/specs/PRESS-0009-publisher.md` § 4.4 — `KeptFolderBuilt`.
+- `docs/specs/PRESS-0013-publish.md` § 4.3 — `KeptFolderBuilt` before the
+  Publisher is called.
+- `docs/specs/PRESS-0021-setup.md` § 3 decision 3 and `untouchable` — a
+  save keeps a kept entry the repository still holds.
 - `docs/specs/PRESS-0012-editor.md` § 4.3 — the type table gains § 4.1's
   rows.
 - `docs/specs/PRESS-0260-visual-editor.md` § 3 decision 6 and § 4.6 — the
