@@ -772,8 +772,8 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   background: color-mix(in srgb, var(--amber) 35%, transparent); }
 .face .code-box .k-tag { color: var(--amber-ink); }
 .face .code-box .k-attr, .face .code-box .k-note { color: var(--soft); }
-.face #panel .panel-add { border-top: 1px solid var(--line); margin-top: .75rem;
-  padding-top: .5rem; }
+.face #panel .panel-add { border-bottom: 1px solid var(--line); margin-bottom: .75rem;
+  padding-bottom: .5rem; }
 .face main:has(> #editor), .face main:has(> #look) { display: flex; flex-direction: column; }
 .face main > #undo-result { order: -1; }
 .face .look-colours td { vertical-align: top; padding: .25rem 1rem .25rem 0; }

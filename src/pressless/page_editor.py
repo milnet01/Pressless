@@ -627,6 +627,12 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}">
 <script type="application/json" id="sections">{data}</script>
 <p id="picked" role="status">{say("script.visual.nothing")}</p>
+<div class="panel-add"><label>{say("page_editor.panel.add")}
+ <select id="add-kind">{kinds}</select></label>
+<label>{say("page_editor.panel.address")} <input id="add-address" autocomplete="off"
+ list="photograph-list"></label>
+<button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
+<p id="add-where">{say("script.visual.end")}</p></div>
 <div class="panel-row" data-for="text heading">
 <button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
 <button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
@@ -660,12 +666,6 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <label data-for="code script style">{say("page_editor.panel.code")}
 {_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
 <p data-for="style">{say("page_editor.panel.style_note")}</p>
-<div class="panel-add"><label>{say("page_editor.panel.add")}
- <select id="add-kind">{kinds}</select></label>
-<label>{say("page_editor.panel.address")} <input id="add-address" autocomplete="off"
- list="photograph-list"></label>
-<button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
-<p id="add-where">{say("script.visual.end")}</p></div>
 <p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
 <button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
 <button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>

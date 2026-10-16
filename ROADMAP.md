@@ -5114,7 +5114,7 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 🚧 [PRESS-0288] **The visual editor's panel shows Bold, Italic and Link only for the sections they work on.**
+- ✅ [PRESS-0288] **The visual editor's panel shows Bold, Italic and Link only for the sections they work on.**
   Seen in the Edge and Firefox hand checks of 2026-10-16: with a music
   or CSS section picked, the panel still shows Bold, Italic and Link, and
   earlier Add to column 1-3. The script sets `hidden` on each [data-for]
@@ -5126,6 +5126,9 @@ documents go on the site beside the photographs.
   this fix unless the fixed panel shows it unneeded; show the user both.
   2026-10-16: hidden rows fixed (1bca652). Open: show the user the
   fixed panel, with and without Add first, before shipping.
+  2026-10-16: shown both layouts, the user chose Add first: a choice
+  should change only what is below it, never above. The Add list now
+  sits under the Changing line, its rule below it.
   **Layman:** The panel stops showing buttons that do nothing for the part you picked.
   Kind: fix.
   Source: user-hand-check-2026-10-16.

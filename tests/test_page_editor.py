@@ -812,6 +812,14 @@ def test_inline_script_json_escapes_angle_brackets() -> None:
     assert "<" not in links and ">" not in links
 
 
+def test_the_add_list_comes_first_in_the_panel() -> None:
+    """PRESS-0288, the user's choice of 2026-10-16. Breaks when anything but
+    the Changing line comes before the Add list."""
+    panel = page_editor._panel("pages", "index", [], ())
+    after_line = panel.split('id="picked"', 1)[1].split("</p>", 1)[1]
+    assert after_line.lstrip().startswith('<div class="panel-add">')
+
+
 # ------------------------------------------- PRESS-0217 INV-2 ---------------
 # docs/specs/PRESS-0217-interactive-pieces.md § 5: no piece runs in the Face.
 
