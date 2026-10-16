@@ -5111,6 +5111,11 @@ documents go on the site beside the photographs.
   User decision 2026-10-16: the code view's switch reads "View editor",
   not "Back to the page" -- the code is the page too, in another form.
   Sentence case, as every other button's words are.
+  2026-10-16: the wording half shipped: the code view's switch reads
+  "View editor" (words.py page_editor.show_visual; PRESS-0260 section
+  4.1 amended). The no-reload half is open: the two views are separate
+  server pages and the visual script builds its model once at load, so a
+  switch in place needs a design choice, put to the user.
   **Layman:** Moving between editing the page and seeing its code is instant, and the button says which one you get.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.

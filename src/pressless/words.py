@@ -524,7 +524,7 @@ _WORDS: dict[str, str] = {
         "Header or Footer when your site is built. Edit the Header or Footer instead."
     ),
     "page_editor.show_code": "Show me the code",
-    "page_editor.show_visual": "Back to the page",
+    "page_editor.show_visual": "View editor",
     "notice.page_editor.furniture_code_only": (
         "Pressless cannot find where this part of your site starts and ends, so it opens "
         "as code."

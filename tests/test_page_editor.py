@@ -367,7 +367,8 @@ def test_furniture_opens_in_the_visual_view(tmp_path):
         code = browser.request("GET", "/page?kind=furniture&name=footer&view=code")[2]
     assert 'id="sections"' in footer and "Show me the code" in footer
     assert 'id="menu-links"' in menu_view and '"Journal"' in menu_view
-    assert f">\n{html.escape(FOOTER)}</textarea>" in code and "Back to the page" in code
+    # PRESS-0285: the code view's switch says which view it gives.
+    assert f">\n{html.escape(FOOTER)}</textarea>" in code and ">View editor<" in code
 
 
 # ----------------------------------------------------------------- INV-14 ---

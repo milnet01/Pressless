@@ -102,7 +102,7 @@ takes the same rule as a page.
    (§ 4.2).
 
 The switch link offers *Show me the code* in the visual view and
-*Back to the page* (`page_editor.show_visual`) in the code view.
+*View editor* (`page_editor.show_visual`) in the code view (PRESS-0285).
 
 ### 4.2 The frame
 
