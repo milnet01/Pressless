@@ -5091,6 +5091,11 @@ documents go on the site beside the photographs.
   by-hand row never clicks a player, which is why it passed. Check the
   fix in Edge, Chrome and Firefox; the published site's players must
   stay playable.
+  Lead, untested (2026-10-16): in the editor frame's injected STYLE
+  (page_editor.py, the pair() function's style), `audio, video {
+  pointer-events: none }` would hand the click to the section around the
+  player. Prove the defect red in a browser row first; the published site
+  never gets this style.
   **Layman:** Clicking a song or video player on the page picks it, so you can change or remove it.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
