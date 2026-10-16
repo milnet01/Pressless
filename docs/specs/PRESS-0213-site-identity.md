@@ -71,6 +71,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ### 4.1 The Store
 
+*PRESS-0227 § 4.1 adds `icon` and `picture` to the identity file.*
+
 ```python
 # src/pressless/store.py — added
 IDENTITY_FOLDER = "identity"
@@ -182,6 +184,8 @@ the file keeps the Store's**, as PRESS-0015 § 4.4 does for every kind but
 the options file.
 
 ### 4.6 The wizard's *site* step and the Settings page
+
+*PRESS-0227 § 4.2 adds the Settings page's *Site icon* and *Sharing picture* rows, and the wizard keeps the pictures the Store names.*
 
 Both forms gain a field `site_description`, labelled "A short description
 of your site (optional)", beside `site_name`.
@@ -319,7 +323,7 @@ mutation-probed once the code lands.
 
 ## 9. Out of scope
 
-- The icon and the sharing picture — 0.10.0, beside PRESS-0197.
+- The icon and the sharing picture — PRESS-0227.
 - Drafts for the identity, with the header, footer, look and site-wide
   script — not yet queued.
 - Filling the identity into a fixed page's own head.

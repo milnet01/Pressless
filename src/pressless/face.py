@@ -664,6 +664,10 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   color: var(--ink); border-color: var(--line); }
 .face .site-line { margin: -.4rem 0 1rem; color: var(--soft); }
 .face button.help { padding: .4rem .8rem; min-width: 2.4rem; }
+.face .picture-row p { margin-bottom: .4rem; }
+.face .picture-shown { display: inline-block; width: 4rem; height: 4rem; margin-right: .75rem;
+  vertical-align: middle; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.face .picture-shown img { width: 100%; height: 100%; object-fit: cover; }
 .face dialog { max-width: min(42rem, calc(100vw - 2rem)); color: var(--ink);
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
   padding: 1.1rem 1.4rem; box-shadow: 0 8px 30px var(--shadow); }

@@ -392,7 +392,8 @@ def test_setup_works_on_an_empty_install(
     """INV-5. Breaks when setup calls into the Store for anything but whether
     it holds a site and the identity it writes, with the starter box
     unticked. PRESS-0126 § 4.4 lets setup read the first, to offer the starter
-    site; PRESS-0213 § 4.6 has it check and write the second."""
+    site; PRESS-0213 § 4.6 has it check and write the second, and PRESS-0227
+    § 4.2 read it first, to keep the pictures a carried Store names."""
     touched: list[str] = []
 
     def refuse(name: str):
@@ -404,7 +405,7 @@ def test_setup_works_on_an_empty_install(
     for name, function in inspect.getmembers(store, inspect.isfunction):
         if (not name.startswith("_") and function.__module__ == store.__name__
                 and name not in ("holds_a_site", "identity_problem", "write_identity",
-                                 "identity_path_for")):
+                                 "identity_path_for", "read_identity")):
             monkeypatch.setattr(store, name, refuse(name))
     _Store(monkeypatch)
 
@@ -875,7 +876,7 @@ def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
     _saved(tmp_path)
     with _setup_page(tmp_path, _GitHub()) as browser:
         _, page = browser.get()
-    boxes = re.findall(r'<input type="(?:text|password)" name="([^"]+)"', page)
+    boxes = re.findall(r'<input type="(?:text|password|hidden)" name="([^"]+)"', page)
     assert "key" in boxes and "repository" in boxes
     for name in boxes:
         assert re.search(rf'<button type="button" class="help" data-help="{name}-help"',
@@ -1586,3 +1587,44 @@ def test_the_welcome_step_says_pressless_is_independent(tmp_path, monkeypatch):
         _, welcome = browser.get()
     assert _step(welcome) == "welcome"
     assert words.say("about.independent") in welcome
+
+
+# ------------------------------------------------------ PRESS-0227 INV-8 ----
+# docs/specs/PRESS-0227-site-icon-and-picture.md § 4.2.
+
+
+def test_settings_choose_the_icon_and_picture(tmp_path, monkeypatch):
+    """INV-8. Breaks when a save drops a picture, keeps a removed one, or
+    writes on a refused name."""
+    shown = {"site_name": "Shown Name", "site_description": "Shown words."}
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("Shown Name", "Shown words."))
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        browser.post(_answers(key="", site_icon="a.png", site_picture="b.jpg", **shown))
+        assert store.read_identity(tmp_path) == store.Identity(
+            "Shown Name", "Shown words.", "a.png", "b.jpg")
+        page = browser.get()[1]
+        assert re.search(r'<input type="hidden" name="site_icon" value="a.png"', page)
+        assert "/originals/a.png" in page and "/originals/b.jpg" in page
+
+        browser.post(_answers(key="", site_icon="", site_picture="b.jpg", **shown))
+        assert store.read_identity(tmp_path) == store.Identity(
+            "Shown Name", "Shown words.", "", "b.jpg")
+
+        identity_before = store.identity_path_for(tmp_path).read_bytes()
+        settings_before = _settings_file(tmp_path).read_bytes()
+        page = browser.post(_answers(key="", site_icon=".a.png", site_picture="b.jpg",
+                                     site_address="https://example.org/changed", **shown))[1]
+        assert _hint_for("site_icon", page)
+        assert "Choose the picture again, or remove it." in page
+        assert store.identity_path_for(tmp_path).read_bytes() == identity_before
+        assert _settings_file(tmp_path).read_bytes() == settings_before
+
+    carried = tmp_path / "carried"
+    carried.mkdir()
+    store.write_identity(carried, store.Identity("Old", icon="a.png", picture="b.jpg"))
+    _Store(monkeypatch)
+    with _setup_page(carried, _GitHub()) as browser:
+        _first_run(browser)
+    assert store.read_identity(carried) == store.Identity("A Journal", "", "a.png", "b.jpg")

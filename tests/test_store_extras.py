@@ -1277,3 +1277,35 @@ def test_files_are_named_and_binned_like_writing(tmp_path):
     assert not kept.exists()
     assert binned.read_bytes() == b"%PDF- made up"
     assert binned.parent.name == "files"
+
+
+# ------------------------------------------------- PRESS-0227 INV-1, INV-2 ---
+# docs/specs/PRESS-0227-site-icon-and-picture.md § 4.1.
+
+
+def test_the_identity_names_its_pictures(tmp_path):
+    """PRESS-0227 INV-1. Breaks when a refused name is accepted, or a
+    non-string is read."""
+    target = store_module.identity_path_for(tmp_path)
+    target.parent.mkdir()
+    target.write_text('{"name": "A", "icon": "a.png"}', encoding="utf-8")
+    assert store_module.read_identity(tmp_path) == store_module.Identity("A", "", "a.png", "")
+    target.write_text('{"name": "A", "picture": 1}', encoding="utf-8")
+    with pytest.raises(StoreError):
+        store_module.read_identity(tmp_path)
+
+    problem = store_module.identity_problem
+    assert problem(store_module.Identity("A", icon=".a.png")) == "icon"
+    assert problem(store_module.Identity("A", icon="a/b.png")) == "icon"
+    assert problem(store_module.Identity("A", picture="con.png")) == "picture"
+    assert problem(store_module.Identity("A", icon="a.png", picture="b.jpg")) is None
+
+
+def test_an_identity_without_pictures_is_written_as_before(tmp_path):
+    """PRESS-0227 INV-2. Breaks when empty keys are written, or the key order
+    changes."""
+    path = store_module.write_identity(tmp_path, store_module.Identity("A", "B"))
+    assert path.read_bytes() == b'{\n  "description": "B",\n  "name": "A"\n}\n'
+    store_module.write_identity(tmp_path, store_module.Identity("A", "B", icon="a.png"))
+    written = json.loads(path.read_text(encoding="utf-8"))
+    assert written == {"description": "B", "icon": "a.png", "name": "A"}

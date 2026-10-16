@@ -24,6 +24,7 @@ import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import NoReturn
 
 from pressless.safe_write import patiently, write_whole
 from pressless.words import ENGLISH
@@ -1065,9 +1066,12 @@ def write_journal(folder: Path, on: bool) -> Path:
 
 @dataclass(frozen=True)
 class Identity:
-    """The site's name and short description (PRESS-0213 § 4.1)."""
+    """The site's name and short description (PRESS-0213 § 4.1), and the
+    photographs chosen as its icon and sharing picture (PRESS-0227 § 4.1)."""
     name: str
     description: str = ""
+    icon: str = ""       # a photograph's name, or ""
+    picture: str = ""    # a photograph's name, or ""
 
 
 def identity_path_for(folder: Path) -> Path:
@@ -1077,14 +1081,34 @@ def identity_path_for(folder: Path) -> Path:
 
 
 def identity_problem(identity: Identity) -> str | None:
-    """Which answer is refused -- "name" or "description" -- or None. A name
-    is one non-blank line; a description is one line and may be empty."""
+    """Which answer is refused -- "name", "description", "icon" or "picture"
+    -- or None. A name is one non-blank line; a description is one line and
+    may be empty. A picture is "" or a photograph's name not beginning with a
+    dot, which a publish refuses (PRESS-0227 § 4.1)."""
     name = identity.name
     if not name.strip() or "\n" in name or "\r" in name:
         return "name"
     if "\n" in identity.description or "\r" in identity.description:
         return "description"
+    for field in ("icon", "picture"):
+        chosen = getattr(identity, field)
+        if chosen and (chosen.startswith(".") or not _photograph_name(chosen)):
+            return field
     return None
+
+
+def _photograph_name(name: str) -> bool:
+    try:
+        photograph_path_for(Path(), name)
+    except StoreError:
+        return False
+    return True
+
+
+def _refuse_identity(target: Path, problem: str) -> NoReturn:
+    raise StoreError(f"{target.name}: the {problem} is not a photograph's name"
+                     if problem in ("icon", "picture") else
+                     f"{target.name}: the {problem} is empty or holds a line break")
 
 
 def read_identity(folder: Path) -> Identity | None:
@@ -1102,13 +1126,14 @@ def read_identity(folder: Path) -> Identity | None:
         raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
     if not isinstance(carried, dict):
         raise StoreError(f"{target.name} is not an object")
-    name, description = carried.get("name"), carried.get("description", "")
-    if not isinstance(name, str) or not isinstance(description, str):
-        raise StoreError(f"{target.name}: the name and description must be text")
-    identity = Identity(name, description)
+    name = carried.get("name")
+    rest = [carried.get(key, "") for key in ("description", "icon", "picture")]
+    if not all(isinstance(value, str) for value in (name, *rest)):
+        raise StoreError(f"{target.name}: the name, description and pictures must be text")
+    identity = Identity(name, *rest)
     problem = identity_problem(identity)
     if problem is not None:
-        raise StoreError(f"{target.name}: the {problem} is empty or holds a line break")
+        _refuse_identity(target, problem)
     return identity
 
 
@@ -1117,9 +1142,13 @@ def write_identity(folder: Path, identity: Identity) -> Path:
     problem = identity_problem(identity)
     target = identity_path_for(folder)
     if problem is not None:
-        raise StoreError(f"{target.name}: the {problem} is empty or holds a line break")
-    text = json.dumps({"description": identity.description, "name": identity.name},
-                      indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+        _refuse_identity(target, problem)
+    # PRESS-0227 § 4.1: a picture not chosen is left out, so an identity
+    # without one is written as an older Pressless wrote it.
+    held = {"description": identity.description, "name": identity.name,
+            **{key: value for key, value in (("icon", identity.icon),
+                                             ("picture", identity.picture)) if value}}
+    text = json.dumps(held, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     _write_atomically(folder, target, text, prefix=".identity-", newline="\n")
     return target
 

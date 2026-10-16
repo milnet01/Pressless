@@ -22,10 +22,12 @@ from pathlib import Path
 from pressless import (
     builder,
     credentials,
+    editor,
     github_setup,
     github_signin,
     google_setup,
     google_signin,
+    photographs,
     pressing,
     publisher,
     restarting,
@@ -36,7 +38,7 @@ from pressless import (
     usage,
     wizard,
 )
-from pressless.face import Face, Request, render_notices
+from pressless.face import Face, Request, message_box, render_notices
 from pressless.store import StoreError
 from pressless.words import say
 
@@ -45,15 +47,19 @@ GITHUB_ACCOUNT = "github"             # the account the publishing key is filed 
 
 # The answers a refused SettingsError can name; any other key is a failure.
 _ANSWERED = ("repository", "site_address", "measurement_id")
-_FIELDS = ("repository", "site_name", "site_description", "site_address",
-           "daily_prompt_filter", "measurement_id")
-# PRESS-0213 § 4.6: the two answers the Store keeps, by the field each is typed in.
-_IDENTITY_FIELDS = {"name": "site_name", "description": "site_description"}
+_FIELDS = ("repository", "site_name", "site_description", "site_icon", "site_picture",
+           "site_address", "daily_prompt_filter", "measurement_id")
+# PRESS-0213 § 4.6: the answers the Store keeps, by the field each is given in;
+# the two pictures are PRESS-0227 § 4.2's.
+_IDENTITY_FIELDS = {"name": "site_name", "description": "site_description",
+                    "icon": "site_icon", "picture": "site_picture"}
 
 _HINTS = {          # the words key for each refused answer
     "repository": "setup.hint.repository",
     "site_name": "setup.hint.site_name",
     "site_description": "setup.hint.site_description",
+    "site_icon": "setup.hint.site_icon",                # PRESS-0227 § 4.2
+    "site_picture": "setup.hint.site_picture",
     "site_address": "setup.hint.site_address",
     "measurement_id": "setup.hint.measurement_id",     # PRESS-0199 § 4.4
 }
@@ -80,6 +86,8 @@ def _new_key() -> str:
 _HELP_PARAGRAPHS = {
     "site_name": ("setup.help.site_name",),
     "site_description": ("setup.help.site_description",),
+    "site_icon": ("setup.help.site_icon",),
+    "site_picture": ("setup.help.site_picture",),
     "site_address": ("setup.help.site_address", "setup.help.site_address.named"),
     "daily_prompt_filter": ("setup.help.daily_prompt_filter",
                             "setup.help.daily_prompt_filter.empty"),
@@ -366,13 +374,13 @@ def _values_from(folder: Path, saved: settings.Settings) -> dict[str, str]:
     """The Settings page's answers: the identity from the Store (PRESS-0213
     § 4.6), empty where it holds none, and the rest from Settings."""
     identity = store.read_identity(folder) or store.Identity("")
-    held = {"site_name": identity.name, "site_description": identity.description}
+    held = {field: getattr(identity, key) for key, field in _IDENTITY_FIELDS.items()}
     return {name: held[name] if name in held else getattr(saved, name) or ""
             for name in _FIELDS}
 
 
 def _identity(values: dict[str, str]) -> store.Identity:
-    return store.Identity(values["site_name"], values["site_description"])
+    return store.Identity(**{key: values[field] for key, field in _IDENTITY_FIELDS.items()})
 
 
 def _identity_hint(identity: store.Identity) -> str | None:
@@ -440,6 +448,8 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + field("repository", say("setup.field.repository"))
         + field("site_name", say("setup.field.site_name"))
         + field("site_description", say("setup.field.site_description"))
+        + _picture_row("site_icon", say("setup.field.site_icon"), values, hints)
+        + _picture_row("site_picture", say("setup.field.site_picture"), values, hints)
         + field("site_address", say("setup.field.site_address"))
         + field("daily_prompt_filter", say("setup.field.daily_prompt_filter"))
         + field("measurement_id", say("setup.field.measurement_id"))
@@ -449,7 +459,62 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + field("key", say("setup.field.key"), "password")
         + f'<p><button type="submit">{say("setup.save")}</button></p></form>'
         + _google_link(google_on)
+        + f"<script>{_PICTURE_SCRIPT}</script>"
     )
+
+
+def _picture_row(name: str, label: str, values: dict[str, str], hints: dict[str, str]) -> str:
+    """PRESS-0227 § 4.2: a picture chosen by uploading a photograph, held by
+    name in a hidden input, with Remove beside it. The shown picture keeps its
+    place when there is none, so nothing below it moves."""
+    e = html.escape
+    chosen = values.get(name, "")
+    refused = name in hints
+    invalid = f' aria-invalid="true" aria-describedby="{name}-hint"' if refused else ""
+    shown = f' src="{e(editor.photo_src(chosen), quote=True)}"' if chosen else " hidden"
+    button, dialog = wizard.help_parts(name, label, _settings_help(name))
+    return (f'<div class="picture-row" data-picture="{name}" '
+            f'data-originals="{e(editor.photo_src(""), quote=True)}">'
+            f'<p><span id="{name}-label">{e(label)}</span>{button}</p>'
+            f'<input type="hidden" name="{name}" value="{e(chosen, quote=True)}"{invalid}>'
+            f'<span class="picture-shown"><img alt=""{shown}></span>'
+            f'<label class="picture-choose">{say("setup.picture.choose")} '
+            f'<input type="file" accept="{photographs.ACCEPT}" '
+            f'aria-describedby="{name}-label"></label> '
+            f'<button type="button" data-remove>{say("setup.picture.remove")}</button>'
+            f"</div>{dialog}"
+            + message_box(f"{name}-said")
+            + (message_box(f"{name}-hint", e(hints[name])) if refused else ""))
+
+
+# PRESS-0227 § 4.2: the upload goes where the page editor's panel sends one.
+_PICTURE_SCRIPT = r"""
+for (const row of document.querySelectorAll("[data-picture]")) {
+  const name = row.dataset.picture;
+  const kept = row.querySelector(`input[name="${name}"]`);
+  const shown = row.querySelector(".picture-shown img");
+  const chooser = row.querySelector("input[type=file]");
+  const said = document.getElementById(name + "-said");
+  chooser.addEventListener("change", async () => {
+    const file = chooser.files[0];
+    if (!file) return;
+    said.innerHTML = "";
+    const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
+                               {method: "POST", body: file});
+    const reply = await answer.text();
+    chooser.value = "";
+    if (answer.status !== 200) { said.innerHTML = reply; return; }
+    kept.value = JSON.parse(reply).name;
+    shown.src = row.dataset.originals + encodeURIComponent(kept.value);
+    shown.hidden = false;
+  });
+  row.querySelector("button[data-remove]").addEventListener("click", () => {
+    kept.value = "";
+    shown.removeAttribute("src");
+    shown.hidden = true;
+  });
+}
+"""
 
 
 def _signed_in(folder: Path, saved: settings.Settings) -> bool:
@@ -739,8 +804,13 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return {**answers, "site_address": address}
 
     def check_site(answers: wizard.Answers):
-        identity = store.Identity(answers.get("site_name", ""),
-                                  answers.get("site_description", ""))
+        # PRESS-0227 § 4.2: the pictures a carried Store already names are kept.
+        try:
+            held = store.read_identity(folder) or store.Identity("")
+        except StoreError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        identity = dataclasses.replace(held, name=answers.get("site_name", ""),
+                                       description=answers.get("site_description", ""))
         refused_identity = _identity_hint(identity)
         if refused_identity is not None:
             return wizard.Hint(refused_identity, say(_HINTS[refused_identity]))

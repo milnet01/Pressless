@@ -75,19 +75,27 @@ def field(name: str, label: str, answers: Answers, hint: Hint | None,
     refused = hint is not None and hint.field == name
     shown = message_box(f"{name}-hint", e(hint.text), focus=name) if refused else ""
     invalid = f' aria-invalid="true" aria-describedby="{name}-hint"' if refused else ""
-    button = dialog = ""
-    if help_html:
-        # Outside the label, which would otherwise hand the box's clicks to it.
-        button = (f' <button type="button" class="help" data-help="{name}-help" '
-                  f'aria-haspopup="dialog" '
-                  f'aria-label="{e(say("wizard.help", label=label), quote=True)}">'
-                  "?</button>")
-        dialog = (f'<dialog id="{name}-help" aria-labelledby="{name}-help-title">'
-                  f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
-                  f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
-                  "</dialog>")
+    # Outside the label, which would otherwise hand the box's clicks to it.
+    button, dialog = help_parts(name, label, help_html)
     return (f'<p><label>{e(label)} <input type="{kind}" name="{name}"{value}{invalid} '
             f'autocomplete="off"></label>{button}</p>{dialog}{shown}')
+
+
+def help_parts(name: str, label: str, help_html: str) -> tuple[str, str]:
+    """The "?" button beside `name`'s box and the dialog it opens; both
+    empty where there is no `help_html`."""
+    if not help_html:
+        return "", ""
+    e = html.escape
+    button = (f' <button type="button" class="help" data-help="{name}-help" '
+              f'aria-haspopup="dialog" '
+              f'aria-label="{e(say("wizard.help", label=label), quote=True)}">'
+              "?</button>")
+    dialog = (f'<dialog id="{name}-help" aria-labelledby="{name}-help-title">'
+              f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
+              f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
+              "</dialog>")
+    return button, dialog
 
 
 class Wizard:

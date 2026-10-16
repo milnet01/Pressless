@@ -209,11 +209,11 @@ _WORDS: dict[str, str] = {
         "Turn the journal on from Your writing, then publish this entry again."
     ),
     "failure.publishing.KeptFolderBuilt.what": (
-        "Your site now has a folder called {folder}, and Settings keeps the {folder} "
-        "folder on GitHub as it is, so publishing would leave your new files out."
+        "Your site now makes {folder}, and Settings keeps {folder} on GitHub as it is, "
+        "so publishing would leave your new files out."
     ),
     "failure.publishing.KeptFolderBuilt.next": (
-        "Rename or move the {folder} folder in your repository on GitHub, then save the "
+        "Rename or move {folder} in your repository on GitHub, then save the "
         "Settings page again and publish."
     ),
     "failure.publishing.WouldReplaceASite.what": (
@@ -914,6 +914,8 @@ _WORDS: dict[str, str] = {
     "setup.hint.repository": "Type it as owner/name, the way GitHub shows it.",
     "setup.hint.site_name": "Type the site's name on one line.",
     "setup.hint.site_description": "Write the description on one line, or leave it empty.",
+    "setup.hint.site_icon": "Choose the picture again, or remove it.",
+    "setup.hint.site_picture": "Choose the picture again, or remove it.",
     "setup.hint.site_address": "Type the site's full address, starting with https://.",
     "setup.hint.measurement_id": (
         "Type the measurement id as Google shows it: G- and then capital letters and "
@@ -982,6 +984,10 @@ _WORDS: dict[str, str] = {
     "setup.field.repository": "Your site's repository on GitHub (owner/name)",
     "setup.field.site_name": "Your site's name",
     "setup.field.site_description": "A short description of your site (optional)",
+    "setup.field.site_icon": "Your site's icon (optional)",
+    "setup.field.site_picture": "Your site's sharing picture (optional)",
+    "setup.picture.choose": "Choose a picture",
+    "setup.picture.remove": "Remove",
     "setup.field.site_address": "Your site's address",
     "setup.field.daily_prompt_filter": (
         "Leave out entries with a tag matching (optional, for example dailyprompt-*)"
@@ -1003,6 +1009,16 @@ _WORDS: dict[str, str] = {
     "setup.help.site_description": (
         "One line about your site, in your own words. Pressless puts it wherever your site's "
         "header and footer have a place for it. Leave it empty if you do not want one."
+    ),
+    "setup.help.site_icon": (
+        "The little picture in a browser's tab beside your site's name. Pressless cuts the "
+        "middle of your picture to a square, so a picture with its subject in the middle "
+        "works best."
+    ),
+    "setup.help.site_picture": (
+        "The picture people see beside a link to your site when it is shared, for example "
+        "on Facebook. A wide picture works best. A page that already names its own sharing "
+        "picture keeps it."
     ),
     "setup.help.site_address": (
         "The address people type to reach your site, starting with https://. On GitHub, open "

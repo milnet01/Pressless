@@ -90,6 +90,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 *PRESS-0197 § 4.6 adds `files` to `ROOT_OUTPUT`, and copies each kept file a page names byte for byte.*
 
+*PRESS-0227 § 4.3 adds `site-icon.png` to `ROOT_OUTPUT`, and the chosen icon's links and sharing picture's tags to each page's head.*
+
 ```python
 # src/pressless/builder.py
 

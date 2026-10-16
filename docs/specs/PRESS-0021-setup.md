@@ -307,7 +307,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 ## 5. Invariants
 
-*PRESS-0213 § 4.6 changes INV-5.*
+*PRESS-0213 § 4.6 changes INV-5, and PRESS-0227 § 4.2 lets first run read the identity.*
 
 The tests below are in `tests/test_setup.py` unless named otherwise. Each
 runs the page through `face.serve(tmp_path)` with a fake

@@ -92,8 +92,8 @@ SENTENCES[WouldReplaceASite] = Sentence(
 )
 
 class KeptFolderBuilt(Exception):
-    """The built site fills a folder Settings keeps on GitHub, which a publish
-    would leave as it was (PRESS-0197 § 4.7)."""
+    """The built site fills a folder or file Settings keeps on GitHub, which a
+    publish would leave as it was (PRESS-0197 § 4.7, PRESS-0227 § 4.4)."""
 
     def __init__(self, message: str, folder: str) -> None:
         super().__init__(message)

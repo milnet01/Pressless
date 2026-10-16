@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Choose your site's icon and its sharing picture** (PRESS-0227)
+  The Settings page has two new rows. The icon shows in a browser's tab
+  beside your site's name; Pressless cuts its middle to a square. The
+  sharing picture shows beside a link to your site when it is shared. A
+  page that already names its own icon or sharing picture keeps it.
+
 - **Upload songs, videos, PDFs, ZIP files and text files** (PRESS-0197)
   A video, music or download section now has an *Upload a file* button
   and a list of the files you have uploaded. A file a page uses goes on

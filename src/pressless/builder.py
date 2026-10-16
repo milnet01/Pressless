@@ -33,13 +33,15 @@ from pressless import blocks, marks, store
 from pressless.settings import Settings
 
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
-               "sitemap.xml", "robots.txt", "look", "files")
+               "sitemap.xml", "robots.txt", "look", "files", "site-icon.png")
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
 STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
 PIECES_SCRIPT = "look/pieces.js"   # PRESS-0217 § 4.3; never under assets/ (decision 3)
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
+SITE_ICON = "site-icon.png"   # PRESS-0227 § 4.3: the chosen icon, at the root
+ICON_SIDE = 180
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,10 @@ def _entries(count: int) -> str:
 _TAGGED = "googletagmanager.com/gtag/js"
 _HEAD_END = re.compile(r"</head\s*>", re.IGNORECASE)
 _BODY_START = re.compile(r"<body\b[^>]*>", re.IGNORECASE)
+# PRESS-0227 § 4.3: a page's own icon link, `shortcut icon` and
+# `apple-touch-icon` included.
+_OWN_ICON = re.compile(r"""<link\b[^>]*\brel\s*=\s*["']?[^"'>]*\bicon\b""", re.IGNORECASE)
+_OWN_PICTURE = "og:image"
 
 
 def counting_code(measurement_id: str) -> str:
@@ -666,6 +672,12 @@ class _Build:
         journal = store.journal_on(self.folder)
         entries = self.read_entries() if journal else {}
         pages = self.read_html()
+        identity = self.furniture.identity
+        if self.photo_src is None:      # PRESS-0227 § 4.3
+            if identity.icon:
+                self.icon_copy(identity.icon)
+            if identity.picture:
+                self.web_copy(identity.picture)
         filtered = self.filtered(entries)
         shown = self.shown(entries)
         for entry in shown:
@@ -703,8 +715,8 @@ class _Build:
                 self.file_copy(held)
         filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
                                   self.furniture)
-        self.write_text(relative, self.counted(self.enhanced(
-            filled, depth, self.furniture_pieces or _has_piece(text))))
+        self.write_text(relative, self.counted(self.identified(self.enhanced(
+            filled, depth, self.furniture_pieces or _has_piece(text)), depth)))
 
     def refuse_an_unusable_name(self, entry: store.Entry, name: str) -> None:
         """§4.3: a category or tag becomes a folder name, so the Store's slug
@@ -728,7 +740,8 @@ class _Build:
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
-        self.write_text(f"{relative}/index.html", self.counted(self.enhanced(f"""<!doctype html>
+        self.write_text(f"{relative}/index.html", self.counted(self.identified(self.enhanced(
+            f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -749,7 +762,7 @@ class _Build:
 
 </body>
 </html>
-""", depth, self.furniture_pieces)))
+""", depth, self.furniture_pieces), depth)))
 
     def counted(self, text: str) -> str:
         """PRESS-0199 § 4.2: `text` with Google's tag, on a publishing build
@@ -759,6 +772,27 @@ class _Build:
         if self.photo_src is not None or measurement_id is None or _TAGGED in text:
             return text
         return _inserted(text, counting_code(measurement_id))
+
+    def identified(self, text: str, depth: int) -> str:
+        """PRESS-0227 § 4.3: `text` with the chosen icon's links and the
+        sharing picture's tags, on a publishing build. Not where the page
+        already holds its own of either."""
+        identity = self.furniture.identity
+        if self.photo_src is not None:
+            return text
+        lines = ""
+        if identity.icon and not _OWN_ICON.search(text):
+            up = "../" * depth
+            lines += (f'<link rel="icon" type="image/png" href="{up}{SITE_ICON}">\n'
+                      f'<link rel="apple-touch-icon" href="{up}{SITE_ICON}">\n')
+        if identity.picture and _OWN_PICTURE not in text:
+            # A social site reads the picture from another site, so the
+            # address is absolute.
+            address = html.escape(self.settings.site_address.rstrip("/"), quote=True)
+            lines += (f'<meta property="og:image" '
+                      f'content="{address}/{web_photograph(identity.picture)}">\n'
+                      '<meta name="twitter:card" content="summary_large_image">\n')
+        return _inserted(text, lines) if lines else text
 
     def enhanced(self, text: str, depth: int, piece: bool) -> str:
         """PRESS-0217 § 4.3: `text` linking pieces.js, on a publishing build of
@@ -876,6 +910,24 @@ class _Build:
         copy.save(target, fmt, **options)
         self.files.append(relative)
         self.copied.add(name)
+
+    def icon_copy(self, name: str) -> None:
+        """PRESS-0227 § 4.3: the photograph `name` as the site's icon, square
+        and centred, refused as web_copy refuses one."""
+        original = store.photograph_path_for(self.folder, name)
+        if not original.is_file():
+            raise BuildStopped(f"the photograph {name} is not in the photographs folder")
+        try:
+            with Image.open(original) as picture:
+                # The first frame. RGBA before the fit: PNG cannot hold a
+                # CMYK JPEG's mode, and a palette would be resized coarsely.
+                upright = ImageOps.exif_transpose(picture).convert("RGBA")
+                icon = ImageOps.fit(upright, (ICON_SIDE, ICON_SIDE))
+        except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
+            raise BuildStopped(
+                f"the photograph {name} could not be read as a picture") from None
+        icon.save(self.root / SITE_ICON, "PNG")
+        self.files.append(SITE_ICON)
 
     # -- kept files (PRESS-0197 § 4.6) --
 

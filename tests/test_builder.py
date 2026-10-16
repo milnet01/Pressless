@@ -1676,3 +1676,127 @@ def test_named_files_are_published_byte_for_byte(tmp_path):
     with pytest.raises(BuildStopped, match="a.mp3"):
         build(folder, _settings(), into)
     assert (into / "files" / "a.mp3").read_bytes() == song, "a failed build changed the site"
+
+
+# PRESS-0227 INV-3 to INV-7 (docs/specs/PRESS-0227-site-icon-and-picture.md § 4.3).
+
+_ICON_LINKS = re.compile(r'<link rel="(?:icon|apple-touch-icon)"[^>]*href="([^"]*)"')
+
+
+def _pictured(tmp_path: Path, *, icon: str = "", picture: str = "", pages=None) -> Path:
+    """A Store with one published entry, so the journal's pages are built,
+    and an identity choosing `icon` and `picture`."""
+    folder = _store(tmp_path, pages=pages)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_identity(folder, store.Identity("A", icon=icon, picture=picture))
+    return folder
+
+
+def test_the_icon_is_square_and_on_every_page(tmp_path):
+    """INV-3. Breaks when the icon is not square, a page lacks the link, or
+    `up` is wrong."""
+    folder = _pictured(tmp_path, icon="wide.jpg")
+    _photograph(folder, "wide.jpg", _image("JPEG", (300, 200)))
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+    assert "site-icon.png" in built.files
+    with Image.open(into / "site-icon.png") as icon:
+        assert (icon.format, icon.size) == ("PNG", (180, 180))
+    archive = (into / "blog/archive/index.html").read_text(encoding="utf-8")
+    assert _ICON_LINKS.findall(archive) == ["../../site-icon.png"] * 2
+    assert 'rel="apple-touch-icon"' in archive
+    home = (into / "index.html").read_text(encoding="utf-8")
+    assert _ICON_LINKS.findall(home) == ["site-icon.png"] * 2
+    for page in _html_files(into):
+        assert 'rel="icon"' in page.read_text(encoding="utf-8"), page
+
+    # A CMYK JPEG has a mode PNG cannot hold.
+    out = io.BytesIO()
+    Image.new("CMYK", (300, 200), (0, 200, 200, 0)).save(out, "JPEG")
+    _photograph(folder, "wide.jpg", out.getvalue())
+    build(folder, _settings(), into)
+    with Image.open(into / "site-icon.png") as icon:
+        assert icon.size == (180, 180)
+
+
+def test_the_sharing_picture_is_absolute_on_every_page(tmp_path):
+    """INV-4. Breaks when the address is relative, doubled at the `/`, or a
+    page lacks the tag."""
+    folder = _pictured(tmp_path, picture="share.jpg",
+                       pages={"index": "<p>home</p>\n", "about": "<p>a</p>\n"})
+    _photograph(folder, "share.jpg", _image("JPEG"))
+    store.write_forwards(folder, {"old-seaside": "seaside"})
+    store.write_page_forwards(folder, {"old-about": "about"})
+    into = tmp_path / "site"
+    built = build(folder, _settings(site_address="https://example.org/"), into)
+    assert "photographs/share.jpg" in built.files
+    tag = '<meta property="og:image" content="https://example.org/photographs/share.jpg">'
+    forwards = 0
+    for page in _html_files(into):
+        text = page.read_text(encoding="utf-8")
+        if 'http-equiv="refresh"' in text:
+            forwards += 1
+            assert "og:image" not in text and "rel=\"icon\"" not in text, page
+            continue
+        assert text.count(tag) == 1, page
+        assert '<meta name="twitter:card" content="summary_large_image">' in text, page
+    assert forwards == 2
+
+
+def test_a_page_keeps_its_own_icon_and_picture(tmp_path):
+    """INV-5. Breaks when a second icon link or og:image is inserted, or the
+    match is case-sensitive."""
+    own = ('<html><head><LINK REL="shortcut icon" href="x.ico">\n'
+           '<meta property="og:image" content="https://example.org/x.jpg">\n'
+           "</head><body><p>Home</p></body></html>\n")
+    folder = _pictured(tmp_path, icon="i.png", picture="share.jpg", pages={"index": own})
+    _photograph(folder, "i.png", _image("PNG"))
+    _photograph(folder, "share.jpg", _image("JPEG"))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    home = (into / "index.html").read_text(encoding="utf-8")
+    assert '<LINK REL="shortcut icon" href="x.ico">' in home
+    assert "site-icon.png" not in home and "apple-touch-icon" not in home
+    assert home.count("og:image") == 1 and "twitter:card" not in home
+    entry = _entry_page(into, _entry("seaside")).read_text(encoding="utf-8")
+    assert "site-icon.png" in entry and "og:image" in entry, "the other pages lost theirs"
+
+
+def test_no_pictures_change_nothing(tmp_path):
+    """INV-6. Breaks when any line is inserted with nothing chosen, or a
+    preview carries one."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    starter.fill(folder, "A Journal")
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+    assert "site-icon.png" not in built.files
+    for page in _html_files(into):
+        text = page.read_text(encoding="utf-8")
+        for line in ('rel="icon"', "og:image", "twitter:card"):
+            assert line not in text, (page, line)
+
+    shell = builder._Build(folder, _settings(), tmp_path / "unused", None, None,
+                           REPRODUCIBLE_TODAY)
+    shell.read_html()
+    page = "<html><head><title>T</title></head><body></body></html>"
+    assert shell.identified(page, 1) == page
+
+    store.write_identity(folder, store.Identity("A Journal", icon="i.png", picture="i.png"))
+    _photograph(folder, "i.png", _image("PNG"))
+    preview = tmp_path / "preview"
+    built = build(folder, _settings(), preview, photo_src=lambda name: name)
+    assert "site-icon.png" not in built.files
+    for page in _html_files(preview):
+        text = page.read_text(encoding="utf-8")
+        for line in ('rel="icon"', "og:image", "twitter:card"):
+            assert line not in text, (page, line)
+
+
+def test_a_missing_icon_stops_the_build(tmp_path):
+    """INV-7. Breaks when the build goes on without the icon."""
+    folder = _pictured(tmp_path, icon="gone.png")
+    with pytest.raises(BuildStopped,
+                       match="the photograph gone.png is not in the photographs folder"):
+        build(folder, _settings(), tmp_path / "site")
+    assert not (tmp_path / "site").exists()

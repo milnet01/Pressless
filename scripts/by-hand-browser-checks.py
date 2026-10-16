@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import io
 import sys
 import tempfile
 import threading
@@ -74,6 +75,7 @@ from pressless import (  # noqa: E402
     page_editor,
     publishing,
     settings,
+    setup,
     store,
     templates,
     undo,
@@ -111,6 +113,8 @@ def main() -> int:
             undo.register(served, folder, transport=tp._github())
             page_editor.register(served, folder, transport=tp._github())
             files_screen.register(served, folder)
+            setup.register(served, folder, transport=tp._github(),
+                           shortcut_places=lambda: None)
             parts = urllib.parse.urlsplit(served.url)
             secret = urllib.parse.parse_qs(parts.query)["t"][0]
             origin = f"http://{parts.netloc}"
@@ -493,6 +497,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         furniture_views(page, origin, folder)
         pieces(page, origin, folder)
         kept_files(page, origin, folder)
+        settings_pictures(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -542,6 +547,49 @@ def kept_files(page, origin: str, folder: Path) -> None:
     check("PRESS-0197 s4.4: the Files screen names the page using the file",
           "my-song.mp3" in listed and "songs" in listed, listed)
     check("PRESS-0197: the upload raised no script error", not errors, str(errors))
+
+
+def settings_pictures(page, origin: str, folder: Path) -> None:
+    """PRESS-0227 INV-9: Settings' picture rows upload, show and remove."""
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{origin}/setup", wait_until="networkidle")
+    row = page.locator('[data-picture="site_icon"]')
+    kept = row.locator('input[name="site_icon"]')
+    shown = row.locator(".picture-shown img")
+    frame = row.locator(".picture-shown")
+    before = frame.bounding_box()
+    picture = io.BytesIO()
+    Image.new("RGB", (300, 200), (40, 90, 160)).save(picture, "PNG")
+    row.locator("input[type=file]").set_input_files(
+        {"name": "Sample Icon.png", "mimeType": "image/png", "buffer": picture.getvalue()})
+    page.wait_for_function(
+        "document.querySelector('input[name=site_icon]').value !== ''", timeout=5000)
+    name = kept.input_value()
+    loaded = shown.evaluate("img => img.complete && img.naturalWidth > 0")
+    check("PRESS-0227 INV-9: choosing a file uploads it, shows it and fills the input",
+          (folder / "photographs" / name).is_file() and shown.is_visible() and loaded,
+          f"{name!r} visible={shown.is_visible()} loaded={loaded}")
+    during = frame.bounding_box()
+    row.locator("button[data-remove]").click()
+    after = frame.bounding_box()
+    check("PRESS-0227: the picture's frame keeps its place, chosen or removed",
+          before is not None and before == during == after, f"{before} {during} {after}")
+    check("PRESS-0227 INV-9: Remove empties the input and hides the picture",
+          kept.input_value() == "" and not shown.is_visible(), kept.input_value())
+
+    picture_row = page.locator('[data-picture="site_picture"]')
+    picture_row.locator("input[type=file]").set_input_files(
+        {"name": "broken.png", "mimeType": "image/png", "buffer": b"not a picture at all"})
+    said = page.locator("#site_picture-said")
+    page.wait_for_function(
+        "document.getElementById('site_picture-said').textContent.trim() !== ''",
+        timeout=5000)
+    check("PRESS-0227 s4.2: a refused upload says why, and keeps the input as it was",
+          said.is_visible() and picture_row.locator('input[name="site_picture"]')
+          .input_value() == "", said.inner_text()[:120])
+    page.keyboard.press("Escape")
+    check("PRESS-0227: the rows raised no script error", not errors, str(errors))
 
 
 def visual_editor(page, origin: str, folder: Path) -> None:

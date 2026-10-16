@@ -68,7 +68,8 @@ class Identity:
   read: absent is `""`, a value that is not a string raises `StoreError`.
 - `identity_problem` returns `"icon"` or `"picture"` where that field is
   not `""` and `photograph_path_for` refuses it, or it begins with `.`
-  (`_Build.web_copy` refuses such a name).
+  (`_Build.web_copy` refuses such a name). `read_identity` refuses a file
+  naming one, as it refuses a bad name.
 - `write_identity` writes `"icon"` and `"picture"` only when not `""`. An
   identity with neither writes the bytes it writes today.
 - An older Pressless reading the wider file ignores the two keys
@@ -86,8 +87,8 @@ class Identity:
   sets the hidden input to the answered `name` and shows the picture;
 - a *Remove* button that empties the hidden input and hides the picture.
 
-A refused upload shows the answer's sentence beside the row and leaves
-the hidden input as it was. A refused name gets the row's hint, shown as
+A refused upload shows the answer's sentence in the row's message box
+(PRESS-0236), and leaves the hidden input as it was. A refused name gets the row's hint, shown as
 `wizard.field` shows one: `_HINTS` gains `site_icon` and `site_picture`,
 each worded "Choose the picture again, or remove it." `_FIELDS` gains
 `site_icon` and `site_picture`; `_IDENTITY_FIELDS` maps `icon` and
@@ -106,9 +107,9 @@ first run over a carried folder does not drop them.
 - **Icon chosen.** `_Build.icon_copy(name)` opens the photograph as
   `web_copy` does, with the same `BuildStopped` sentences for a missing or
   unreadable one. It writes `site-icon.png`: the first frame,
-  `ImageOps.exif_transpose`, then `ImageOps.fit` to `ICON_SIDE = 180`
-  pixels square, centred, converted to `RGBA` and saved as PNG. PNG
-  cannot hold a CMYK JPEG's mode.
+  `ImageOps.exif_transpose`, converted to `RGBA`, then `ImageOps.fit` to
+  `ICON_SIDE = 180` pixels square, centred, and saved as PNG. PNG cannot
+  hold a CMYK JPEG's mode, and a palette is resized coarsely.
 - **Picture chosen.** `web_copy(name)` publishes it as any photograph.
 
 `_Build.identified(text, depth)` returns `text` with these inserted by
@@ -273,6 +274,8 @@ Each edit below is a pointer to this spec beside the clause it changes.
   line points here.
 - `docs/specs/PRESS-0008-builder.md` § 4.1 — `ROOT_OUTPUT` gains
   `site-icon.png`.
+- `docs/specs/PRESS-0021-setup.md` § 5 — INV-5's first run may read the
+  identity, for § 4.2's wizard keep.
 - `CHANGELOG.md` — an Added entry when it ships.
 
 ## 12. Cold-eyes loop log
