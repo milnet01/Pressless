@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=288 -->
+<!-- ants-roadmap-id-high-water: PRESS=289 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -4858,6 +4858,9 @@ documents go on the site beside the photographs.
   2026-10-16, corrected: spec-format.md section 2 allows no umbrella
   spec, so PRESS-0223 and PRESS-0224 each get a spec (one review round
   each), cross-referenced.
+  Spec review 2026-10-16: one cold round (the user's budget), two lanes;
+  5 verified, 5 fixed, none deferred. Spec accepted (a8fc42d); the fixes
+  are read by no lane, so implementation is their reader.
   **Layman:** One copy of Pressless can look after more than one website, and you pick which one you are working on, like opening files in a word processor.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -4876,6 +4879,9 @@ documents go on the site beside the photographs.
   spec, so PRESS-0224 and PRESS-0223 each get a spec (one review round
   each), cross-referenced. PRESS-0225 and PRESS-0221 need none: each
   reuses this file.
+  Spec review 2026-10-16: one cold round (the user's budget), two lanes;
+  6 verified, 6 fixed, none deferred. Spec accepted (744455f); the fixes
+  are read by no lane, so implementation is their reader.
   **Layman:** You can save everything about one site, its writing, photographs and settings, as a single file, and open that file later or on another computer.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -5155,6 +5161,17 @@ documents go on the site beside the photographs.
   **Layman:** The panel stops showing buttons that do nothing for the part you picked.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
+
+- ✅ [PRESS-0289] **An enlarge section takes the photograph chosen with Add photograph.**
+  Found reading page_editor's panel script for PRESS-0282: the panel shows
+  Add photograph for picture and enlarge sections, but the chooser's change
+  handler returns unless the picked section is a picture, so an enlarge
+  section's chosen photograph is uploaded nowhere and nothing is said.
+  2026-10-16: the chooser's handler accepts picture and enlarge. Locked
+  by the enlarge_photograph row in scripts/by-hand-browser-checks.py.
+  **Layman:** Choosing a photograph for a picture that enlarges when clicked now puts it in, instead of doing nothing.
+  Kind: fix.
+  Source: found-while-working-PRESS-0282-2026-10-16.
 
 ## 0.11.0 — anyone can bring their site in
 

@@ -500,6 +500,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         kept_files(page, origin, folder)
         players_picked(page, origin, folder)
         added_by_upload(page, origin, folder)
+        enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
 
         print("\n  console during the run:")
@@ -624,6 +625,33 @@ def added_by_upload(page, origin: str, folder: Path) -> None:
           and found == {"music": "../files/tune.mp3", "download": "../files/notes.pdf"},
           f"asked={asked} found={found}")
     check("PRESS-0282: adding by upload raised no script error", not errors, str(errors))
+
+
+def enlarge_photograph(page, origin: str, folder: Path) -> None:
+    """PRESS-0289: Add photograph fills an enlarge section, as a picture's."""
+    store.write_html(folder, store.PAGES_FOLDER, "enlarged",
+                     VISUAL_PAGE.replace("<title>Visual", "<title>Enlarged"))
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "enlarged", waiting=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{origin}/page?kind=pages&name=enlarged", wait_until="networkidle")
+    page.select_option("#add-kind", "enlarge")
+    page.fill("#add-address", "typed.png")
+    page.locator("[data-act=add]").click()
+    picture = io.BytesIO()
+    Image.new("RGB", (300, 200), (40, 90, 160)).save(picture, "PNG")
+    with page.expect_file_chooser() as chooser:
+        page.locator("[data-act=photograph]").click()
+    chooser.value.set_files({"name": "Big View.png", "mimeType": "image/png",
+                             "buffer": picture.getvalue()})
+    page.wait_for_timeout(1600)
+    page.wait_for_function("document.getElementById('save-status').textContent !== "
+                           "'Saving'", timeout=5000)
+    src = [s.fields.get("src") for s in blocks.read("enlarged", store.read_html(waiting)).sections
+           if s.kind == "enlarge"] if waiting.is_file() else []
+    check("PRESS-0289: Add photograph sets an enlarge section's photograph",
+          src == ["../photographs/big-view.png"], str(src))
+    check("PRESS-0289: the enlarge photograph raised no script error", not errors, str(errors))
 
 
 def settings_pictures(page, origin: str, folder: Path) -> None:

@@ -2327,7 +2327,7 @@ _VISUAL_SCRIPT = r"""
   act("photograph").addEventListener("click", () => { chooser.value = ""; chooser.click(); });
   chooser.addEventListener("change", async () => {
     const file = chooser.files[0];
-    if (!file || !picked || picked.kind !== "picture") return;
+    if (!file || !picked || !["picture", "enlarge"].includes(picked.kind)) return;
     const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
                                {method: "POST", body: file});
     const reply = await answer.text();
