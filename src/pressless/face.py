@@ -751,7 +751,7 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face #panel { flex-basis: 100%; box-sizing: border-box; height: 60vh; overflow-y: auto;
   padding: .5rem 1rem; border: 1px solid var(--line); border-radius: 12px;
   background: var(--sheet); }
-.face #panel [hidden] { display: none; }
+.face #panel [hidden], .face #panel .panel-row[hidden] { display: none; }
 .face #panel #picked, .face #panel #panel-said { min-height: 3.1em; }
 .face #panel .panel-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .face :where(#panel textarea) { min-height: 12rem; font: .9em/1.4 ui-monospace, Consolas,

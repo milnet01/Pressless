@@ -701,6 +701,10 @@ def visual_editor(page, origin: str, folder: Path) -> None:
           str(kinds))
 
     frame.locator("div", has_text="code part").click()
+    shown = [act for act in ("bold", "italic", "link", "add-to")
+             if page.locator(f"#panel [data-act={act}]").first.is_visible()]
+    check("PRESS-0288: a code section's panel shows no Bold, Italic, Link or Add to column",
+          not shown, str(shown))
     code = page.locator("[data-field=code]")
     shown = code.input_value()
     check("PRESS-0260 s4.5: the panel shows a code section's HTML without its marks",
