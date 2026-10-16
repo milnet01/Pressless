@@ -245,6 +245,16 @@ _WORDS: dict[str, str] = {
         "Your site keeps its current look. If look/choices.json in Pressless's own folder was"
         " edited by hand, put the earlier copy back from the bin."
     ),
+    "failure.look_screen.NoStyleCode.what": (
+        "Your site's look comes from its own stylesheets, so Pressless changed nothing."
+    ),
+    "failure.look_screen.NoStyleCode.next": (
+        "Change those stylesheets where they are kept. The Look screen cannot change them yet."
+    ),
+    "failure.look_screen.LookRefused.what": (
+        "One of the look's choices is not one Pressless offers, so nothing was saved."
+    ),
+    "failure.look_screen.LookRefused.next": "Open the Look screen again and choose once more.",
     "failure.page_editor.SectionsUnreadable.what": (
         "Not saved: Pressless could not keep your page's sections as you left them."
     ),
@@ -371,6 +381,7 @@ _WORDS: dict[str, str] = {
     "face.view_site": "View your site",
     "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
+    "face.look": "Look",
     "face.report": "Suggest or report a problem",
     "face.usage": "Usage reports",
     # The editor and the list (editor.py).
@@ -451,6 +462,16 @@ _WORDS: dict[str, str] = {
     ),
     "script.editor.saving": "Saving",
     "script.editor.saved": "Saved",
+    # The Look screen's warnings (look_screen.py), worded there and by its script.
+    "script.look.warning": (
+        "Hard to read in {scheme}: {text} on {background} is {ratio}:1, under 4.5:1."
+    ),
+    "script.look.light": "Light",
+    "script.look.dark": "Dark",
+    "script.look.no_preview": (
+        "The preview could not show your last change. Your choices are still here; Save keeps"
+        " them."
+    ),
     "script.editor.adding_photograph": "Adding the photograph\u2026",
     "script.editor.photograph_added": "Added {name}.",
     "script.editor.confirm_address": (
@@ -1283,6 +1304,69 @@ _WORDS: dict[str, str] = {
     ),
     "look.journal_note": "The journal's pages, should you turn it on.",
     "look.extra_note": "Your own CSS, from the box at the bottom of the Look screen.",
+    # The Look screen (look_screen.py).
+    "look_screen.title": "Your site's look",
+    "look_screen.about": (
+        "Change a choice and the preview beside it shows it at once. Save keeps it, and your"
+        " website shows it after you next publish."
+    ),
+    "look_screen.imported": (
+        "Your site's look comes from its own stylesheets, which Pressless does not change."
+        " Nothing here can change them yet."
+    ),
+    "look_screen.saved": "Saved. Your website shows this look after you next publish.",
+    "look_screen.replaces": (
+        "Saving replaces your site's current style code with one made from these choices."
+        " Pressless keeps a copy of the current one in the bin."
+    ),
+    "look_screen.restart": "Choosing a layout here starts again from its own colours and fonts.",
+    "look_screen.layout": "Layout",
+    "look_screen.colours": "Colours",
+    "look_screen.colours.about": (
+        "Light is used when a visitor's computer is set to light, and dark when it is set to"
+        " dark."
+    ),
+    "look_screen.colour.paper": "Page background",
+    "look_screen.colour.ink": "Text",
+    "look_screen.colour.soft": "Quieter text",
+    "look_screen.colour.link": "Links",
+    "look_screen.colour.heading": "Headings",
+    "look_screen.colour.band": "Header background",
+    "look_screen.colour.on-band": "Header text",
+    "look_screen.colour.band-soft": "Header description",
+    "look_screen.colour.accent": "Menu marker",
+    "look_screen.colour.foot": "Footer background",
+    "look_screen.colour.on-foot": "Footer text",
+    "look_screen.colour.foot-link": "Footer links",
+    "look_screen.colour.line": "Lines",
+    "look_screen.type": "Text and width",
+    "look_screen.body_font": "Text font",
+    "look_screen.heading_font": "Headings font",
+    "look_screen.font.system": "Your visitor's computer's own",
+    "look_screen.font.serif": "Classic, with serifs",
+    "look_screen.font.humanist": "Rounded and friendly",
+    "look_screen.font.mono": "Typewriter",
+    "look_screen.text_size": "Text size",
+    "look_screen.size.normal": "Normal",
+    "look_screen.size.large": "Large",
+    "look_screen.size.larger": "Larger",
+    "look_screen.width": "Page width",
+    "look_screen.width.narrow": "Narrow",
+    "look_screen.width.medium": "The layout's own",
+    "look_screen.width.wide": "Wide",
+    "look_screen.effects": "Effects",
+    "look_screen.effects.about": (
+        "A visitor who has asked their computer for less motion sees none of these."
+    ),
+    "look_screen.effect.lift": "Pictures lift slightly under the pointer",
+    "look_screen.effect.reveal": "Each part of a page fades in as it scrolls into view",
+    "look_screen.effect.smooth": "Links within a page glide rather than jump",
+    "look_screen.extra": "Your own CSS",
+    "look_screen.extra.about": (
+        "For anyone who knows CSS: it is added last, after everything above."
+    ),
+    "look_screen.save": "Save",
+    "look_screen.preview_title": "Your homepage with this look",
     "starter.this_site": "this site",
     "starter.privacy": "Privacy",
     "starter.privacy.title": "Privacy — {name}",

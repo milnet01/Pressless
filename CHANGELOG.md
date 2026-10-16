@@ -14,6 +14,14 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A Look screen changes your site's colours, fonts, text size, page width and layout, with a live preview** (PRESS-0196)
+  Colours are set for light and dark. A text colour that is hard to
+  read is warned about, and still saved. Three gentle effects can be
+  switched on, and a visitor who asked for less motion sees none. Anyone
+  who knows CSS can add their own. The change reaches the website at the
+  next publish, and undo brings back an earlier look. A site imported
+  from elsewhere keeps its own stylesheets.
+
 - **You can add photographs in the AVIF format, and they are published as AVIF** (PRESS-0274)
   Like the other formats, each published copy is turned upright, made
   no larger than the site needs and stripped of location and camera

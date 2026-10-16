@@ -393,7 +393,7 @@ mutation-probed once the code lands.
 - The journal switch — PRESS-0214.
 - The site's name, description and icon held in the Store — PRESS-0213.
 - Choosing and editing the look, its draft, and the style code travelling in
-  `content/` for undo — PRESS-0196.
+  `content/` for undo — PRESS-0196, `docs/specs/PRESS-0196-site-look.md`.
 - The Privacy page in the starter set — PRESS-0199.
 - Starter pages written as Blocks sections — done by PRESS-0215.
 - The editor's errors on an install left empty — deferred; not yet queued.

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import json
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from test_publisher import _blob_hash, _listing, _reads, _Transport, _writes
 from test_publishing import _binned, _entry, _folder, _settings, _state
 
 from pressless import builder, face, log, publisher, store, undo
+from pressless import look as starter_look
 
 KEY = "ghp_SENTINELundoKEY0123456789abcd"
 UNDONE = "Undone"
@@ -759,3 +761,49 @@ def test_undo_restores_the_identity_and_keeps_it_when_absent(tmp_path):
         expected = "Then" if case == "held" else "Now"
         assert store.read_identity(folder) == store.Identity(expected), case
         assert ("identity.json" in _binned(folder)) is (case == "held"), case
+
+
+# PRESS-0196 INV-11 (docs/specs/PRESS-0196-site-look.md § 4.7).
+
+LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
+
+
+def _look(folder: Path) -> dict[str, bytes | None]:
+    found = {}
+    for name in LOOK_FILES:
+        path = store.look_path_for(folder, name)
+        found[name] = path.read_bytes() if path.is_file() else None
+    return found
+
+
+def test_undo_restores_the_look_as_one_unit(tmp_path):
+    """INV-11. Breaks when undo restores choices.json without its style.css,
+    or replaces the Store's look with none or with one it cannot read."""
+    for case in ("earlier", "none", "unreadable"):
+        root = tmp_path / case
+        root.mkdir()
+        folder = _folder(root)
+        store.write(folder, _entry("seaside"), draft=False)
+        starter_look.save(folder, starter_look.defaults("sunrise"), "")
+        now = _look(folder)
+        files = {**_furnished(root), **_content(root, published=(_entry("seaside"),))}
+        scratch = root / "previous-look"
+        scratch.mkdir()
+        starter_look.save(scratch, starter_look.defaults("harbour"), "h1 { color: red; }")
+        then = _look(scratch)
+        if case != "none":
+            files.update({f"content/{store.LOOK_FOLDER}/{name}": data
+                          for name, data in then.items()})
+        if case == "unreadable":
+            files[f"content/{store.LOOK_FOLDER}/{store.LOOK_CHOICES_NAME}"] = b'{"version": 2}'
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            _undo(folder, _previous(files))
+
+        assert _look(folder) == (then if case == "earlier" else now), case
+        binned = set(_binned(folder)) & set(LOOK_FILES)
+        assert binned == (set(LOOK_FILES) if case == "earlier" else set()), case
+        kept = [w for w in caught if isinstance(w.message, store.StoreNotice)
+                and w.message.key == "notice.undo.look_kept"]
+        assert bool(kept) is (case == "unreadable"), case

@@ -467,25 +467,30 @@ _LOOK_WORDS = {"sunrise": ("setup.look.sunrise", "setup.look.sunrise.about"),
                "harbour": ("setup.look.harbour", "setup.look.harbour.about")}
 
 
-def _starter_box(start: bool | None, look: str = "") -> str:
-    """The starter's box, and beneath it a choice of look, each with a
-    small drawing of it. A look Pressless does not have chooses the first."""
-    if start is None:
-        return ""
-    chosen = look if look in starter.LOOKS else starter.LOOKS[0]
-    choices = "".join(
-        f'<label class="look"><input type="radio" name="look" value="{name}"'
+def look_choices(field: str, chosen: str) -> str:
+    """One radio per look, each with a small drawing of it; the Look screen
+    offers its layouts the same way (PRESS-0196 § 4.4). A look Pressless does
+    not have chooses the first."""
+    chosen = chosen if chosen in starter.LOOKS else starter.LOOKS[0]
+    return "".join(
+        f'<label class="look"><input type="radio" name="{field}" value="{name}"'
         + (" checked" if name == chosen else "")
         + f'> <span class="mini mini-{name}" aria-hidden="true">'
         "<span></span><span></span><span></span></span>"
         f"<span><b>{say(_LOOK_WORDS[name][0])}</b>: {say(_LOOK_WORDS[name][1])}</span></label>"
         for name in starter.LOOKS)
+
+
+def _starter_box(start: bool | None, look: str = "") -> str:
+    """The starter's box, and beneath it a choice of look."""
+    if start is None:
+        return ""
     return ('<p><label><input type="checkbox" name="start" value="starter"'
             + (" checked" if start else "")
             + f"> {say('setup.starter.box')}</label></p>"
               f"<p>{say('setup.starter.box.empty')}</p>"
               f'<fieldset class="looks"><legend>{say("setup.starter.look")}</legend>'
-            + choices + "</fieldset>")
+            + look_choices("look", look) + "</fieldset>")
 
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,

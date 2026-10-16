@@ -327,6 +327,8 @@ Each web copy is written once, however many entries name it.
 
 *PRESS-0214 § 4.2: `content/` carries the options file.*
 
+*PRESS-0196 § 4.7: `content/` carries the look's files.*
+
 Byte for byte, at the Store's own relative paths, so undo can write each file
 back where it came from:
 

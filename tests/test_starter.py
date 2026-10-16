@@ -124,6 +124,17 @@ def test_each_look_writes_its_own_style(tmp_path):
         assert ".prose" in styles[look], look
 
 
+
+@pytest.mark.parametrize("look", starter.LOOKS)
+def test_fill_saves_the_layouts_defaults(tmp_path, look):
+    """PRESS-0196 INV-12 (docs/specs/PRESS-0196-site-look.md § 4.6). Breaks
+    when fill writes a stylesheet with no choices behind it."""
+    starter.fill(tmp_path, "A Site", look)
+    assert store.read_look_file(tmp_path, store.LOOK_CHOICES_NAME) == starter_look.to_json(
+        starter_look.defaults(look))
+    assert store.read_style_code(tmp_path) == starter_look.css(starter_look.defaults(look), "")
+
+
 # PRESS-0248: the text pairs each look's rules put together, written out here
 # rather than read from look.py, so a look cannot pass by dropping a pair.
 # The floor is the one PRESS-0239 set, 7:1 (WCAG AAA): the first user is
@@ -137,9 +148,10 @@ _FLOOR = 7.0
 @pytest.mark.parametrize("dark", (False, True), ids=("light", "dark"))
 @pytest.mark.parametrize("look", starter.LOOKS)
 def test_every_look_reads_at_seven_to_one_in_light_and_dark(look, dark):
-    """Breaks when a text colour falls below 7:1 on its background in either
-    scheme."""
-    colours = starter_look.palette(look, dark)
+    """PRESS-0196 INV-2. Breaks when a text colour of a layout's defaults falls
+    below 7:1 on its background in either scheme."""
+    defaults = starter_look.defaults(look)
+    colours = defaults.dark if dark else defaults.light
     for text, ground in _TEXT_PAIRS:
         ratio = _contrast(colours[text], colours[ground])
         assert ratio >= _FLOOR, f"{look} {text} on {ground}: {ratio:.2f}"

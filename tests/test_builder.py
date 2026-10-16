@@ -30,6 +30,7 @@ from PIL import Image
 
 import pressless.builder as builder
 from pressless import blocks, marks, starter, store
+from pressless import look as starter_look
 from pressless.builder import (
     LONGEST_SIDE,
     PER_PAGE,
@@ -1377,6 +1378,18 @@ def test_content_carries_the_identity(tmp_path):
     build(folder, _settings(), tmp_path / "with", today=REPRODUCIBLE_TODAY)
     assert (tmp_path / "with" / "content" / "identity" / "identity.json").read_bytes() == \
         store.identity_path_for(folder).read_bytes()
+
+
+def test_content_carries_the_look(tmp_path):
+    """PRESS-0196 INV-11 (docs/specs/PRESS-0196-site-look.md § 4.7). Breaks
+    when content/ leaves out one of the look's files."""
+    folder = _store(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    starter_look.save(folder, starter_look.defaults("meadow"), "h1 { color: red; }")
+    build(folder, _settings(), tmp_path / "site", today=REPRODUCIBLE_TODAY)
+    for name in (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME):
+        assert (tmp_path / "site" / "content" / store.LOOK_FOLDER / name).read_bytes() == \
+            store.look_path_for(folder, name).read_bytes(), name
 
 
 # PRESS-0215 INV-7 (docs/specs/PRESS-0215-blocks.md § 4.7).

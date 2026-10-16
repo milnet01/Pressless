@@ -4752,7 +4752,7 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-01.
 
-- 🚧 [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
+- ✅ [PRESS-0196] **He can change his site's look: colours, fonts and layout.**
   Part of PRESS-0194 (user, 2026-10-01). Today Pressless themes only
   its own screens; the live site's stylesheet is not editable in the
   app. What 'look' covers, and whether it is a set of choices or the
@@ -4780,6 +4780,11 @@ documents go on the site beside the photographs.
   INV-3 to INV-10, INV-11's builder and undo tests, INV-12, the spec's
   § 11 pointer edits, an amendment recording the store surface as built,
   and a CHANGELOG entry.
+  Shipped 2026-10-16: look_screen.py (GET /look, /look/preview,
+  /look/save), the bar's Look link, and tests for INV-2 to INV-12, each
+  seen red under a hand mutation. Chrome: live preview, warnings in
+  fixed slots, Save never moves; narrow, medium and wide keep header,
+  column and footer aligned in Sunrise and Harbour.
   **Layman:** He can change how his website looks, its colours, fonts and layout, from inside Pressless.
   Kind: feature.
   Source: user-request-2026-10-01, PRESS-0194.

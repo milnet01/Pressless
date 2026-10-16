@@ -116,9 +116,14 @@ file is never half-read.
 (read as empty). Pressless never parses it.
 
 `store` gains `LOOK_CHOICES_NAME = "choices.json"` and
-`EXTRA_CSS_NAME = "extra.css"` beside `STYLE_CODE_NAME`, a path function for
-each, and `LOOK_FOLDER` joins `_BINNABLE`, because a save over an unmanaged
+`EXTRA_CSS_NAME = "extra.css"` beside `STYLE_CODE_NAME`, and one path
+function, `look_path_for(folder, name)`, for all three.
+`read_look_file` and `write_look_file` read and write any of them;
+`read_style_code` and `write_style_code` stay as their style-code cases.
+`LOOK_FOLDER` joins `_BINNABLE`, because a save over an unmanaged
 stylesheet (§ 4.4) and an undo (§ 4.7) each bin the version they replace.
+`copy_to_bin` is `move_to_bin` that leaves the file in place, so § 4.4's
+state 2 keeps `style.css` present while it is replaced.
 
 ### 4.2 The generator: `look.py`
 

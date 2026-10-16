@@ -754,12 +754,18 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .code-box .k-attr, .face .code-box .k-note { color: var(--soft); }
 .face #panel .panel-add { border-top: 1px solid var(--line); margin-top: .75rem;
   padding-top: .5rem; }
-.face main:has(> #editor) { display: flex; flex-direction: column; }
+.face main:has(> #editor), .face main:has(> #look) { display: flex; flex-direction: column; }
 .face main > #undo-result { order: -1; }
+.face .look-colours td { vertical-align: top; padding: .25rem 1rem .25rem 0; }
+.face .look-colours input[type=color] { width: 4rem; height: 2.25rem; padding: 2px; }
+.face .look-warn { display: block; width: 13rem; height: 4.5em; overflow-y: auto;
+  font-size: .85em; }
+.face .look-effects { border: 0; margin: 1rem 0; padding: 0; }
+.face .look-effects label { display: block; margin: .25rem 0; }
 @media (min-width: 70rem) {
-  .face main:has(> #editor) { max-width: none; display: grid; column-gap: 2rem;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .face main:has(> #editor) > * { grid-column: 1; }
+  .face main:has(> #editor), .face main:has(> #look) { max-width: none; display: grid;
+    column-gap: 2rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .face main:has(> #editor) > *, .face main:has(> #look) > * { grid-column: 1; }
   .face main > #proof { grid-column: 2; grid-row: 1 / span 12; align-self: start;
     position: sticky; top: 4.5rem; height: calc(100vh - 6rem);
     display: flex; flex-direction: column; }
@@ -845,6 +851,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         f'{themes.picker(theme)}{visit}<a href="/setup">{say("face.settings")}</a>'
+        # PRESS-0196 § 4.4: beside Settings.
+        f'<a href="/look">{say("face.look")}</a>'
         # PRESS-0179: on every screen, failure pages included.
         f'<a href="/report">{say("face.report")}</a>'
         # PRESS-0262 § 4.3: beside Report a problem.

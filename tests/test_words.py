@@ -25,6 +25,7 @@ from pressless import (
     github_setup,
     google_setup,
     insights,
+    look_screen,
     marks,
     page_editor,
     pressing,
@@ -377,6 +378,7 @@ def _served(folder: Path) -> face.Face:
     publishing.register(served, folder)
     undo.register(served, folder)
     page_editor.register(served, folder)
+    look_screen.register(served, folder)
     pressing.register(served)
     updating.register(served, folder)
     restarting.register(served, lambda: None)
@@ -427,7 +429,8 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
                 ("Settings", "/setup"), ("GitHub sign-in", github_setup.PAGE),
                 ("visitor numbers setup", google_setup.PAGE), ("the dashboard", dashboard.PAGE),
                 ("the report page", report.ADDRESS), ("the cheat sheet", cheatsheet.ADDRESS),
-                ("a template", "/template?name=poem"), ("restarting", restarting.PATH)):
+                ("a template", "/template?name=poem"), ("restarting", restarting.PATH),
+                ("the Look screen", look_screen.ADDRESS)):
             status, _, page = browser.request("GET", address)
             assert status == 200, (name, status)
             if name == "the list":

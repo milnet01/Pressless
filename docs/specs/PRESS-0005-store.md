@@ -172,6 +172,8 @@ and are marked so.
 
 *PRESS-0214 § 4.1: `move_to_bin` also takes `options/`.*
 
+*PRESS-0196 § 4.1: `move_to_bin` also takes `look/`, and `copy_to_bin` bins a copy.*
+
 ```python
 @dataclass(frozen=True)
 class Entry:

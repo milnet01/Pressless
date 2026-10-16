@@ -33,6 +33,7 @@ from pressless import (
     face,
     github_setup,
     google_setup,
+    look_screen,
     page_editor,
     paths,
     pressing,
@@ -192,6 +193,7 @@ def _serve_once(folder: Path) -> bool:
         publishing.register(served, folder)
         undo.register(served, folder)
         page_editor.register(served, folder)
+        look_screen.register(served, folder)
         pressing.register(served)
         updating.register(served, folder)
         restarting.register(served, restart.set)
