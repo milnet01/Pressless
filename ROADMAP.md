@@ -4853,6 +4853,11 @@ documents go on the site beside the photographs.
   2026-10-05, the user: Settings could list the sites in his GitHub
   account (its public repositories with Pages on) and let him switch
   between them, rather than typing each one in.
+  User 2026-10-16: one spec covers PRESS-0224, 0223, 0225 and 0221,
+  since they share one file; one review round.
+  2026-10-16, corrected: spec-format.md section 2 allows no umbrella
+  spec, so PRESS-0223 and PRESS-0224 each get a spec (one review round
+  each), cross-referenced.
   **Layman:** One copy of Pressless can look after more than one website, and you pick which one you are working on, like opening files in a word processor.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -4865,6 +4870,12 @@ documents go on the site beside the photographs.
   file, as PRESS-0221 decided; opening the file asks for it again.
   The file is a format, so it is frozen with the rest at 1.0.0.
   Version 0.10.0 settled by the user 2026-10-03.
+  User 2026-10-16: one spec covers PRESS-0224, 0223, 0225 and 0221,
+  since they share one file; one review round.
+  2026-10-16, corrected: spec-format.md section 2 allows no umbrella
+  spec, so PRESS-0224 and PRESS-0223 each get a spec (one review round
+  each), cross-referenced. PRESS-0225 and PRESS-0221 need none: each
+  reuses this file.
   **Layman:** You can save everything about one site, its writing, photographs and settings, as a single file, and open that file later or on another computer.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -4879,6 +4890,10 @@ documents go on the site beside the photographs.
   folder the person picks, since a backup beside the original is lost
   with it.
   Version 0.10.0 settled by the user 2026-10-03.
+  User 2026-10-16: one spec covers PRESS-0224, 0223, 0225 and 0221,
+  since they share one file; one review round.
+  2026-10-16, corrected: no spec. It makes PRESS-0224's file on a
+  schedule; this bullet and its tests are the contract.
   **Layman:** Even if you forget, Pressless quietly keeps a recent copy of your sites, so losing the computer or the folder does not lose your writing.
   Kind: feature.
   Source: user-request-2026-10-03.
@@ -4897,6 +4912,10 @@ documents go on the site beside the photographs.
   PRESS-0225 makes one each day.
   User 2026-10-05: this wizard opens as a modal dialog, not a page of its
   own (see PRESS-0220).
+  User 2026-10-16: one spec covers PRESS-0224, 0223, 0225 and 0221,
+  since they share one file; one review round.
+  2026-10-16, corrected: no spec. A dialog over PRESS-0224's save and
+  open; this bullet and its tests are the contract.
   **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
   Kind: feature.
   Source: user-request-2026-10-03.
