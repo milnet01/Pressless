@@ -660,6 +660,7 @@ FURNITURE_FOLDER = "furniture"
 TEMPLATES_FOLDER = "templates"
 COMMENTS_FOLDER = "comments"
 PHOTOGRAPHS_FOLDER = "photographs"
+FILES_FOLDER = "files"               # PRESS-0197: uploads that are not photographs
 FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it forwards to
 FORWARDS_FILE = "forwards.json"
 PAGE_FORWARDS_FILE = "pages.json"    # PRESS-0195: a renamed page's old name -> its new one
@@ -679,11 +680,11 @@ COMMENTS_SUFFIX = ".json"
 WAITING_FOLDERS = {PAGES_FOLDER: "pages-waiting", FURNITURE_FOLDER: "furniture-waiting"}
 
 # What move_to_bin takes a file from (PRESS-0005 §4.1): every folder of
-# writing the Store holds, and nothing else.
+# writing the Store holds, and the kept files (PRESS-0197), and nothing else.
 _BINNABLE = (
     PUBLISHED_FOLDER, DRAFTS_FOLDER, PAGES_FOLDER, FURNITURE_FOLDER,
     TEMPLATES_FOLDER, COMMENTS_FOLDER, FORWARDS_FOLDER, OPTIONS_FOLDER,
-    IDENTITY_FOLDER, LOOK_FOLDER, *WAITING_FOLDERS.values(),
+    IDENTITY_FOLDER, LOOK_FOLDER, FILES_FOLDER, *WAITING_FOLDERS.values(),
 )
 
 # §3 decision 2: the site has exactly one header, one footer and one
@@ -1207,6 +1208,17 @@ def photograph_path_for(folder: Path, name: str) -> Path:
     Import's for the archive and PRESS-0016's afterwards, and the originals
     are never copied to the site folder.
     """
+    return Path(folder) / PHOTOGRAPHS_FOLDER / _single_name(name, "a photograph")
+
+
+def file_path_for(folder: Path, name: str) -> Path:
+    """Where the kept file `name` sits (PRESS-0197 § 4.3): refused by
+    photograph_path_for's own check, since the names come the same way."""
+    return Path(folder) / FILES_FOLDER / _single_name(name, "a file")
+
+
+def _single_name(name: str, what: str) -> str:
+    """`name`, where it is one path component Windows keeps as written."""
     if (
         not name
         or name in (".", "..")
@@ -1218,17 +1230,17 @@ def photograph_path_for(folder: Path, name: str) -> Path:
         or os.path.basename(name) != name
     ):
         raise StoreError(
-            f"{name!r} is not a file name: a photograph's name is a single "
+            f"{name!r} is not a file name: {what}'s name is a single "
             f"path component, so that it cannot reach outside the folder it "
             f"was meant for"
         )
     if not _windows_keeps(name):
         raise StoreError(
             f"{name!r} is not a file name Windows keeps as written. It is "
-            f"refused everywhere so a photograph saved on one machine is kept "
+            f"refused everywhere so {what} saved on one machine is kept "
             f"on the other"
         )
-    return Path(folder) / PHOTOGRAPHS_FOLDER / name
+    return name
 
 
 # §3 decision 10's refusals, measured on a Windows 10 box with CreateFileW
@@ -1261,6 +1273,15 @@ def list_photographs(folder: Path) -> tuple[str, ...]:
     return _only_usable(tuple((name, name) for name in names),
                         Path(folder) / PHOTOGRAPHS_FOLDER,
                         lambda name: photograph_path_for(folder, name))
+
+
+def list_files(folder: Path) -> tuple[str, ...]:
+    """The kept file names, sorted, whole, on list_photographs' rule
+    (PRESS-0197 § 4.3)."""
+    names = _list_names(folder, FILES_FOLDER, "")
+    return _only_usable(tuple((name, name) for name in names),
+                        Path(folder) / FILES_FOLDER,
+                        lambda name: file_path_for(folder, name))
 
 
 def _html_subfolder(kind: str) -> str:

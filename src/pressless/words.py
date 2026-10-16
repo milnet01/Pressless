@@ -208,6 +208,14 @@ _WORDS: dict[str, str] = {
     "failure.publishing.JournalOff.next": (
         "Turn the journal on from Your writing, then publish this entry again."
     ),
+    "failure.publishing.KeptFolderBuilt.what": (
+        "Your site now has a folder called {folder}, and Settings keeps the {folder} "
+        "folder on GitHub as it is, so publishing would leave your new files out."
+    ),
+    "failure.publishing.KeptFolderBuilt.next": (
+        "Rename or move the {folder} folder in your repository on GitHub, then save the "
+        "Settings page again and publish."
+    ),
     "failure.publishing.WouldReplaceASite.what": (
         "Your GitHub repository already holds a website, and publishing your starter site "
         "would replace it, so Pressless stopped."
@@ -236,6 +244,27 @@ _WORDS: dict[str, str] = {
     ),
     "failure.photographs.NotAPhotograph.next": (
         "Choose a JPEG, PNG, WebP, GIF or AVIF photograph."
+    ),
+    "failure.files.NotAllowed.what": (
+        "That file is not a kind Pressless can put on your site, or its name does not match"
+        " what is inside it, so it was not added."
+    ),
+    "failure.files.NotAllowed.next": (
+        "Choose an MP3, Ogg, WAV, M4A, MP4, WebM, PDF, ZIP or plain-text file, named with"
+        " the ending its kind has."
+    ),
+    "failure.files.TooLarge.what": (
+        "That file is larger than 50 MiB (about 52 MB), so it was not added."
+    ),
+    "failure.files.TooLarge.next": (
+        "Make the file smaller, or put it somewhere else and type its address instead."
+    ),
+    "failure.files_screen.FileInUse.what": (
+        "That file is used on {pages}, so it was not removed."
+    ),
+    "failure.files_screen.FileInUse.next": (
+        "Take it out of those pages first, publishing or discarding any page still being"
+        " edited, then remove it."
     ),
     "failure.look.LookUnreadable.what": (
         "Pressless could not read the settings your site's look is made from, so it"
@@ -382,6 +411,7 @@ _WORDS: dict[str, str] = {
     "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
     "face.look": "Look",
+    "face.files": "Files",
     "face.report": "Suggest or report a problem",
     "face.usage": "Usage reports",
     # The editor and the list (editor.py).
@@ -514,6 +544,7 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.level": "Heading size, 1 the largest",
     "page_editor.panel.photograph": "A photograph you have, or an address",
     "page_editor.panel.address": "Address",
+    "page_editor.panel.add_file": "Upload a file",
     "page_editor.panel.alt": "Words that describe it",
     "page_editor.panel.caption": "Caption, if any",
     "page_editor.panel.label": "Words on it",
@@ -538,6 +569,9 @@ _WORDS: dict[str, str] = {
     "page_editor.menu.address": "Goes to",
     "page_editor.menu.add": "Add a link",
     "page_editor.drag": "Drag",
+    "script.visual.file_too_large": (
+        "That file is larger than 50 MiB (about 52 MB), so it was not sent."
+    ),
     "script.visual.nothing": "Click a heading, paragraph or any section on the page to change it.",
     "script.visual.picked": "Changing: {kind}",
     "script.visual.below": "It goes below the section you picked.",
@@ -1309,6 +1343,26 @@ _WORDS: dict[str, str] = {
     "look.journal_note": "The journal's pages, should you turn it on.",
     "look.extra_note": "Your own CSS, from the box at the bottom of the Look screen.",
     # The Look screen (look_screen.py).
+    "files_screen.title": "Your files",
+    "files_screen.about": (
+        "The songs, videos, PDFs, ZIP files and text files you have uploaded. A file goes on"
+        " your website when a page uses it."
+    ),
+    "files_screen.none": (
+        "You have not uploaded any files yet. Upload one from a video, music or download"
+        " section on a page."
+    ),
+    "files_screen.name": "File",
+    "files_screen.size": "Size",
+    "files_screen.used_by": "Used on",
+    "files_screen.unused": "No page",
+    "files_screen.remove": "Remove",
+    "files_screen.removed": "The file was moved to the bin.",
+    "files_screen.header": "the header",
+    "files_screen.footer": "the footer",
+    "files_screen.bytes": "{n} bytes",
+    "files_screen.kb": "{n} KB",
+    "files_screen.mb": "{n} MB",
     "look_screen.title": "Your site's look",
     "look_screen.about": (
         "Change a choice and the preview beside it shows it at once. Save keeps it, and your"

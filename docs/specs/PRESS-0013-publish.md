@@ -190,6 +190,7 @@ succeeded.
 2. **The guard**, unless `emptying`. `NothingToPublish` unless
    `store.list_slugs(folder, draft=False)` is non-empty.
 3. **Build.** `builder.build(folder, settings, settings.site_folder)`.
+   *PRESS-0197 § 4.7: then `KeptFolderBuilt` where the build fills a kept folder.*
 4. **Publish.** `publisher.publish(settings, settings.site_folder, key,
    MESSAGE.format(slug=…), transport)`, with the published address, or `site`
    where `entry` is `None`.

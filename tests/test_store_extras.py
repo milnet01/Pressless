@@ -851,6 +851,7 @@ _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
 # copy_to_bin reaches only _BINNABLE's folders, which photographs/ is not.
 _PRESS_0196_SURFACE = {"LOOK_CHOICES_NAME", "EXTRA_CSS_NAME", "look_path_for",
                        "read_look_file", "write_look_file", "copy_to_bin"}
+_PRESS_0197_SURFACE = {"FILES_FOLDER", "file_path_for", "list_files"}
 
 # §3 decision 10 leaves a photograph's file name to PRESS-0016 -- the archive's
 # own attachment names carry underscores and would not pass the slug rule -- so
@@ -951,12 +952,13 @@ def test_photographs_stay_where_they_are(tmp_path):
     surface = _public_names(store_module)
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
-                        | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE)
+                        | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE
+                        | _PRESS_0197_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
         f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's, "
-        f"PRESS-0195 §4.1's and PRESS-0196 §4.1's. "
+        f"PRESS-0195 §4.1's, PRESS-0196 §4.1's and PRESS-0197 §4.3's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"
@@ -1245,3 +1247,33 @@ def test_a_waiting_page_is_listed_apart(tmp_path):
     assert store_module.list_html(tmp_path, "pages") == ("about",)
     assert store_module.list_html(tmp_path, "pages", waiting=True) == ("gigs",)
     assert store_module.list_html(tmp_path, "furniture", waiting=True) == ()
+
+
+# ------------------------------------------------------- PRESS-0197 INV-4 ---
+
+
+def test_files_are_named_and_binned_like_writing(tmp_path):
+    """PRESS-0197 INV-4: file_path_for refuses every name photograph_path_for
+    refuses, list_files passes a refused one over as list_photographs does,
+    and move_to_bin takes a kept file.
+
+    Breaks when a refused name is accepted, or files/ is not binnable."""
+    for description, name in {**_NAMES_THAT_REACH_OUTSIDE,
+                              **_NAMES_WINDOWS_WOULD_NOT_KEEP}.items():
+        with pytest.raises(StoreError):
+            store_module.file_path_for(tmp_path, name)
+            pytest.fail(f"{description} ({name!r}) was accepted for a file")
+    kept = store_module.file_path_for(tmp_path, "a.pdf")
+    assert kept == tmp_path / "files" / "a.pdf"
+
+    kept.parent.mkdir()
+    kept.write_bytes(b"%PDF- made up")
+    if os.name != "nt":
+        (kept.parent / "a?.pdf").write_bytes(b"x")
+        with pytest.warns(StoreNotice, match=r"a\?\.pdf"):
+            assert store_module.list_files(tmp_path) == ("a.pdf",)
+
+    binned = store_module.move_to_bin(tmp_path, kept)
+    assert not kept.exists()
+    assert binned.read_bytes() == b"%PDF- made up"
+    assert binned.parent.name == "files"

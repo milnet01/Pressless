@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Upload songs, videos, PDFs, ZIP files and text files** (PRESS-0197)
+  A video, music or download section now has an *Upload a file* button
+  and a list of the files you have uploaded. A file a page uses goes on
+  your website exactly as uploaded, up to 50 MiB. A new Files screen
+  lists every uploaded file and the pages using it, and removes one no
+  page uses.
+
 - **A page can hold its own CSS, for anyone who knows how to write it** (PRESS-0273)
   Add "Your own CSS" from the list of sections. It styles the whole page
   it is on, or every page when placed in the header or footer, and shows

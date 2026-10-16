@@ -18,6 +18,8 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
     visual editor show their fallbacks, a script piece among them inert
   PRESS-0273: a style piece shows as its code, and its CSS reaches the
     preview frame but never the Face's own page
+  PRESS-0197 s10: INV-10's upload half -- a file uploaded from a music
+    section's panel sets the field to ../files/<name>
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -67,6 +69,7 @@ from pressless import (  # noqa: E402
     credentials,
     editor,
     face,
+    files_screen,
     marks,
     page_editor,
     publishing,
@@ -107,6 +110,7 @@ def main() -> int:
             publishing.register(served, folder, transport=tp._github())
             undo.register(served, folder, transport=tp._github())
             page_editor.register(served, folder, transport=tp._github())
+            files_screen.register(served, folder)
             parts = urllib.parse.urlsplit(served.url)
             secret = urllib.parse.parse_qs(parts.query)["t"][0]
             origin = f"http://{parts.netloc}"
@@ -488,6 +492,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
         pieces(page, origin, folder)
+        kept_files(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -509,6 +514,34 @@ VISUAL_PAGE = (
     "<div>code part</div><!-- /pressless:code -->\n"
     "<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
     "</body></html>\n")
+
+
+def kept_files(page, origin: str, folder: Path) -> None:
+    """PRESS-0197 INV-10: a file uploaded from a music section's panel."""
+    store.write_html(folder, store.PAGES_FOLDER, "songs",
+                     VISUAL_PAGE.replace("<title>Visual", "<title>Songs"))
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "songs", waiting=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{origin}/page?kind=pages&name=songs", wait_until="networkidle")
+    page.select_option("#add-kind", "music")
+    page.fill("#add-address", "typed.mp3")
+    page.locator("[data-act=add]").click()
+    page.locator("#file-file").set_input_files(
+        {"name": "My Song.mp3", "mimeType": "audio/mpeg", "buffer": b"ID3 a made-up song"})
+    page.wait_for_timeout(1600)
+    page.wait_for_function("document.getElementById('save-status').textContent !== "
+                           "'Saving'", timeout=5000)
+    music = [s.fields.get("src") for s in blocks.read("songs", store.read_html(waiting)).sections
+             if s.kind == "music"]
+    kept = folder / "files" / "my-song.mp3"
+    check("PRESS-0197 INV-10: an upload from the panel sets ../files/<name>",
+          music == ["../files/my-song.mp3"] and kept.is_file(), f"{music} kept={kept.is_file()}")
+    page.goto(f"{origin}/files", wait_until="networkidle")
+    listed = page.locator("table.kept-files").inner_text()
+    check("PRESS-0197 s4.4: the Files screen names the page using the file",
+          "my-song.mp3" in listed and "songs" in listed, listed)
+    check("PRESS-0197: the upload raised no script error", not errors, str(errors))
 
 
 def visual_editor(page, origin: str, folder: Path) -> None:

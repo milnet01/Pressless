@@ -864,3 +864,31 @@ def test_a_page_style_reaches_the_preview_alone(tmp_path):
         status, _, preview = browser.request("GET", address)
     assert status == 200, preview
     assert f"<style>{css}</style>" in preview, preview
+
+
+# ------------------------------------------------------ PRESS-0197 INV-10 ---
+
+
+def test_the_panel_offers_kept_files_by_kind(tmp_path):
+    """PRESS-0197 INV-10, the listing half; the upload half is a row in
+    scripts/by-hand-browser-checks.py. Breaks when a section lists another
+    kind, or the address lacks ../ on a page in pages/."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    for name, data in (("a.mp3", b"ID3 made up"), ("a.mp4", b"\0\0\0\x18ftyp made up"),
+                       ("a.pdf", b"%PDF- made up")):
+        target = store.file_path_for(folder, name)
+        target.parent.mkdir(exist_ok=True)
+        target.write_bytes(data)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=coded")
+    assert status == 200, text
+
+    def listed(kind: str) -> list[str]:
+        found = re.search(f'<datalist id="{kind}-list">(.*?)</datalist>', text, re.S)
+        assert found, f"no list for the {kind} section"
+        return re.findall(r'<option value="([^"]*)"', found.group(1))
+
+    assert listed("music") == ["../files/a.mp3"]
+    assert listed("video") == ["../files/a.mp4"]
+    assert listed("download") == ["../files/a.mp3", "../files/a.mp4", "../files/a.pdf"]

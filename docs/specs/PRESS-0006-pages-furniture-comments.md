@@ -199,6 +199,8 @@ def list_photographs(folder: Path) -> tuple[str, ...]: ...
 class DanglingReply(StoreError): ...
 ```
 
+*PRESS-0197 § 4.3: the Store also holds `files/`, with `file_path_for` and `list_files`.*
+
 `kind` is `PAGES_FOLDER` or `FURNITURE_FOLDER`, and any other value
 raises `StoreError`. **Under `FURNITURE_FOLDER` the name must be one of
 `FURNITURE_NAMES`, and any other raises `StoreError`**: decision 2 gives

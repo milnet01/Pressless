@@ -22,6 +22,7 @@ from pressless import (
     dashboard,
     editor,
     face,
+    files_screen,
     github_setup,
     google_setup,
     insights,
@@ -215,8 +216,6 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     "page_editor.py": {
         "Enter": "a key's name, as the browser reports it",
         "Backspace": "a key's name, as the browser reports it",
-        "video music": "the section kinds a panel control serves",
-        "button download": "the section kinds a panel control serves",
         "picture enlarge": "the section kinds a panel control serves",
         "button download top countdown": "the section kinds a panel control serves",
     },
@@ -244,7 +243,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                          "Date:", "Categories:", "Tags:", "Categories[", "Tags["), _FIELDS),
         "occupied": _MESSAGE,
         **dict.fromkeys(("a slug", "a template name", "a comments slug", "an address",
-                         "extra name", "already holds"), _MESSAGE),
+                         "extra name", "already holds", "a photograph", "a file"),
+                        _MESSAGE),
     },
     "updating.py": {"The update check stopped at step": "a log line"},
     "usage.py": {
@@ -379,6 +379,7 @@ def _served(folder: Path) -> face.Face:
     undo.register(served, folder)
     page_editor.register(served, folder)
     look_screen.register(served, folder)
+    files_screen.register(served, folder)
     pressing.register(served)
     updating.register(served, folder)
     restarting.register(served, lambda: None)
@@ -420,6 +421,8 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
     starter.fill(folder, OWN)
     store.write(folder, store.Entry(slug=OWN, title=OWN, date=datetime(2020, 1, 2),
                                     categories=(), tags=(), body=OWN, extra=()), draft=True)
+    (folder / store.FILES_FOLDER).mkdir()
+    (folder / store.FILES_FOLDER / f"{OWN}.pdf").write_bytes(b"%PDF- made up")
     served = _served(folder)
     try:
         browser = Browser(served)
@@ -430,7 +433,8 @@ def _pages(tmp_path: Path, monkeypatch) -> dict[str, str]:
                 ("visitor numbers setup", google_setup.PAGE), ("the dashboard", dashboard.PAGE),
                 ("the report page", report.ADDRESS), ("the cheat sheet", cheatsheet.ADDRESS),
                 ("a template", "/template?name=poem"), ("restarting", restarting.PATH),
-                ("the Look screen", look_screen.ADDRESS)):
+                ("the Look screen", look_screen.ADDRESS),
+                ("the Files screen", files_screen.ADDRESS)):
             status, _, page = browser.request("GET", address)
             assert status == 200, (name, status)
             if name == "the list":

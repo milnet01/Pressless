@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import hashlib
 import html
 import json
@@ -599,3 +600,37 @@ def test_confirming_the_replace_forgets_the_refusal(tmp_path, monkeypatch):
     assert status == 200
     assert refused and "Replace the site on GitHub" in refused
     assert pressing.state()["failure"] is None
+
+
+# ------------------------------------------------------- PRESS-0197 INV-8 ---
+
+
+def test_a_kept_folder_the_build_fills_stops_the_publish(tmp_path):
+    """PRESS-0197 INV-8. Breaks when the file is dropped silently, or the
+    Publisher is reached."""
+    page = ("<html><body><main><!-- pressless:page -->\n"
+            '<!-- pressless:download --><p class="pressless-download">'
+            '<a href="files/a.pdf" download>A</a></p><!-- /pressless:download -->\n'
+            "<!-- /pressless:page --></main></body></html>\n")
+    for case, kept, refused in (("kept", ("CNAME", "Files"), True),
+                                ("not kept", ("CNAME",), False)):
+        base = tmp_path / case
+        base.mkdir()
+        folder = _folder(base)
+        store.write(folder, _entry("seaside"), draft=False)
+        store.write_html(folder, store.PAGES_FOLDER, "index", page)
+        kept_file = store.file_path_for(folder, "a.pdf")
+        kept_file.parent.mkdir()
+        kept_file.write_bytes(b"%PDF- made up")
+        saved = dataclasses.replace(_settings(folder), untouchable=kept)
+        github = _github()
+        if refused:
+            with pytest.raises(publishing.KeptFolderBuilt) as caught:
+                publishing.publish(folder, saved, KEY, entry=None, transport=github)
+            assert github.requests == [], "the Publisher was reached"
+            sentence = face.sentence_for(caught.value, publishing=True)
+            assert "Files" in sentence.what and "Files" in sentence.next, sentence
+        else:
+            publishing.publish(folder, saved, KEY, entry=None, transport=github)
+            assert github.requests
+            assert (saved.site_folder / "files" / "a.pdf").is_file()

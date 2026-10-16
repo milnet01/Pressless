@@ -88,6 +88,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 *PRESS-0126 § 4.6 adds `look` to `ROOT_OUTPUT`, and `stylesheets(folder)` to the page shell.*
 
+*PRESS-0197 § 4.6 adds `files` to `ROOT_OUTPUT`, and copies each kept file a page names byte for byte.*
+
 ```python
 # src/pressless/builder.py
 

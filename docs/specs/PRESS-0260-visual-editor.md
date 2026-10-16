@@ -55,6 +55,7 @@ save. The words view is retired; the code view stays.
    box. The user, 2026-10-13.
 6. **Video, music and download take a typed address.** Uploading those
    files is later work. The user, 2026-10-13.
+   *PRESS-0197 § 4.5: they also choose or upload a kept file.*
 7. **Moving a section between columns, or out of them, is later work.**
    The user, 2026-10-13.
 8. **The older specs are brought into line with the code that retires
@@ -252,6 +253,8 @@ The panel lists `store.list_photographs` and offers the entry editor's
 *Add a photograph*, which posts to `/photograph` as the entry editor
 does. A chosen photograph's `src` is `builder.web_photograph(name)`,
 with `../` before it on a page in `pages/`.
+
+*PRESS-0197 § 4.5 and § 4.6 do the same for the video, music and download sections' kept files.*
 
 - **The Builder publishes it.** `_Build.fixed_page`, building the site
   folder, calls `web_copy` for each picture section of the page whose

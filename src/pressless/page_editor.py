@@ -28,6 +28,7 @@ from pressless import (
     builder,
     choices,
     editor,
+    files,
     github_setup,
     menu,
     pressing,
@@ -431,7 +432,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         else:
             failure = None
             view = _view(kind, asked_view)
-            shown, sections, photographs, links = text, None, (), None
+            shown, sections, photographs, links, kept = text, None, (), None, ()
             try:
                 builder.furniture_spans(name, text)
             except builder.BuildStopped as exc:
@@ -454,6 +455,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                     sections = outline(blocks.read(name, shown))
                     try:
                         photographs = store.list_photographs(folder)
+                        kept = store.list_files(folder)
                     except store.StoreError as exc:
                         broken = face.fail(exc, publishing=False)
             preview, preview_failure = _preview(face, folder, kind, name, shown, show,
@@ -470,7 +472,7 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
         kind, name, view, show, waiting, base, text, held, bool(entries), broken,
         preview, preview_failure, builder.stylesheets(folder),
         face.view_site(), starter.unpublished(folder), sections, photographs,
-        remembered.true_colours, links)
+        remembered.true_colours, links, kept=kept)
 
 
 def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
@@ -478,7 +480,8 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
           preview: str | None, failure: str | None, sheets: tuple[str, ...],
           visit: str, off_site: bool, sections: list[dict] | None = None,
           photographs: tuple[str, ...] = (), undimmed: bool = False,
-          links: list[tuple[str, str]] | None = None) -> str:
+          links: list[tuple[str, str]] | None = None,
+          kept: tuple[str, ...] = ()) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -545,7 +548,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
 {reshape}{_menu_panel(links, held) if links is not None
-          else _panel(kind, name, sections, photographs) if view == VISUAL else
+          else _panel(kind, name, sections, photographs, kept) if view == VISUAL else
           _code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>')}
 </form>
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
@@ -588,7 +591,7 @@ _KIND_WORDS = {
 
 
 def _panel(kind: str, name: str, sections: list[dict] | None,
-           photographs: tuple[str, ...]) -> str:
+           photographs: tuple[str, ...], kept: tuple[str, ...] = ()) -> str:
     """PRESS-0260 § 4.3: the side panel, every control in place from the
     start; the script shows the ones the picked section's kind uses, inside a
     panel of fixed size, so nothing beside it moves."""
@@ -606,12 +609,21 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     choices = "".join(
         f'<option value="{attr(up + builder.web_photograph(photo))}">{html.escape(photo)}</option>'
         for photo in photographs)
+    # PRESS-0197 § 4.5: each of the three sections lists the kept files of
+    # its own kinds, by the address the site will use.
+    lists = "".join(
+        f'<datalist id="{section}-list">' + "".join(
+            f'<option value="{attr(up + builder.web_file(held))}">{html.escape(held)}</option>'
+            for held in kept
+            if "." + held.rpartition(".")[2].lower() in accept.split(","))
+        + "</datalist>" for section, accept in files.ACCEPT.items())
     kinds = "".join(f'<option value="{kind}">{say(_KIND_WORDS[kind])}</option>'
                     for kind in _KINDS)
     columns = "".join(f'<button type="button" data-act="add-to" data-column="{number}">'
                       f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
                       "</button>" for number in range(4))
-    data = _script_json({"sections": sections or [], "up": up})
+    data = _script_json({"sections": sections or [], "up": up, "accept": files.ACCEPT,
+                         "largest": builder.FILE_LARGEST})
     return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}">
 <script type="application/json" id="sections">{data}</script>
 <p id="picked" role="status">{say("script.visual.nothing")}</p>
@@ -627,8 +639,13 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <input type="file" id="photograph-file" hidden
  accept="{PHOTOGRAPH_TYPES}"></p>
 {field("page_editor.panel.photograph", "src", "picture enlarge", ' list="photograph-list"')}
-{field("page_editor.panel.address", "src", "video music")}
-{field("page_editor.panel.address", "href", "button download")}
+{lists}<p data-for="video music download"><button type="button" data-act="file">{
+    say("page_editor.panel.add_file")}</button>
+<input type="file" id="file-file" hidden></p>
+{field("page_editor.panel.address", "src", "video", ' list="video-list"')}
+{field("page_editor.panel.address", "src", "music", ' list="music-list"')}
+{field("page_editor.panel.address", "href", "button")}
+{field("page_editor.panel.address", "href", "download", ' list="download-list"')}
 {field("page_editor.panel.alt", "alt", "picture enlarge")}
 {field("page_editor.panel.caption", "caption", "picture enlarge")}
 {field("page_editor.panel.ends", "to", "countdown", ' type="datetime-local"')}
@@ -2286,6 +2303,44 @@ _VISUAL_SCRIPT = r"""
     document.getElementById("photograph-list").append(option);
     picked.fields.src = address;
     field("src").value = address;
+    touch(picked);
+  });
+
+  // ---- a kept file (PRESS-0197 § 4.5) ------------------------------------
+  const filer = document.getElementById("file-file");
+  act("file").addEventListener("click", () => {
+    if (!picked || !given.accept[picked.kind]) return;
+    filer.accept = given.accept[picked.kind];
+    filer.value = "";
+    filer.click();
+  });
+  filer.addEventListener("change", async () => {
+    const file = filer.files[0];
+    if (!file || !picked || !given.accept[picked.kind]) return;
+    const said = document.getElementById("panel-said");
+    if (file.size > given.largest) {
+      said.textContent = say("script.visual.file_too_large");
+      return;
+    }
+    const answer = await fetch("/file?name=" + encodeURIComponent(file.name),
+                               {method: "POST", body: file});
+    const reply = await answer.text();
+    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
+    const name = JSON.parse(reply).name;
+    const address = up + "files/" + encodeURIComponent(name);
+    const suffix = name.slice(name.lastIndexOf("."));
+    Object.keys(given.accept).forEach((section) => {
+      const list = document.getElementById(section + "-list");
+      if (!given.accept[section].split(",").includes(suffix)
+          || [...list.options].some((option) => option.value === address)) return;
+      const option = document.createElement("option");
+      option.value = address; option.textContent = name;
+      list.append(option);
+    });
+    const place = picked.kind === "download" ? "href" : "src";
+    if (picked.kind === "video") picked.fields = {src: address};
+    else picked.fields[place] = address;
+    panel.querySelector("[data-for]:not([hidden]) [data-field=" + place + "]").value = address;
     touch(picked);
   });
 

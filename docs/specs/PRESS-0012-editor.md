@@ -254,6 +254,8 @@ it wraps, whose scripts the file policy does not reach.
 | `.woff` | `font/woff` |
 | anything else | `application/octet-stream` |
 
+*PRESS-0197 § 4.4 adds the nine kinds of its § 4.1, `.txt` among them.*
+
 A fixed table, because `mimetypes` reads the Windows registry, which another
 program can change. Source:
 https://docs.python.org/3/library/mimetypes.html#mimetypes.init

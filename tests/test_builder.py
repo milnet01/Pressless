@@ -1629,3 +1629,50 @@ def test_a_page_style_is_published_verbatim(tmp_path):
     published = (into / "index.html").read_text(encoding="utf-8")
     assert f"<style>{code}</style>" in published, published
     assert "pieces.js" not in published, "a style piece is not a ready-made piece"
+
+
+# ------------------------------------------------------- PRESS-0197 INV-6 ---
+
+
+def _kept_file(folder: Path, name: str, data: bytes) -> None:
+    target = store.file_path_for(folder, name)
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(data)
+
+
+def test_named_files_are_published_byte_for_byte(tmp_path):
+    """PRESS-0197 INV-6. Breaks when an unnamed file is published, a named
+    one is altered, or a changed one is published.
+
+    The page's download links into photographs/, which is not a picture
+    section, so that photograph is not published. The header's download
+    names a file by href, from the furniture."""
+    music = ('<!-- pressless:music --><audio controls preload="metadata" '
+             'src="../files/a.mp3"></audio><!-- /pressless:music -->')
+    download = ('<!-- pressless:download --><p class="pressless-download">'
+                '<a href="../photographs/p.jpg" download>A</a></p>'
+                '<!-- /pressless:download -->')
+    page = SECTIONED.replace("<!-- /pressless:page -->",
+                             music + download + "<!-- /pressless:page -->")
+    folder = _store(tmp_path, pages={"index": SECTIONED, "about": page})
+    # The header names one too, by a download's href.
+    store.write_html(folder, store.FURNITURE_FOLDER, "header", (
+        '<header class="site"><!-- pressless:page -->\n<!-- pressless:download -->'
+        '<p class="pressless-download"><a href="{{UP}}files/b.pdf" download>B</a></p>'
+        "<!-- /pressless:download -->\n<!-- /pressless:page --></header>\n"))
+    _kept_file(folder, "b.pdf", b"%PDF- made up")
+    song = b"ID3 a made-up song"
+    _kept_file(folder, "a.mp3", song)
+    _kept_file(folder, "unused.pdf", b"%PDF- made up")
+    _photograph(folder, "p.jpg", _image("JPEG"))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    published = [name for name in _files(into)
+                 if name.split("/")[0] in ("files", "photographs")]
+    assert published == ["files/a.mp3", "files/b.pdf"], published
+    assert (into / "files" / "a.mp3").read_bytes() == song
+
+    _kept_file(folder, "a.mp3", b"%PDF- no longer music")
+    with pytest.raises(BuildStopped, match="a.mp3"):
+        build(folder, _settings(), into)
+    assert (into / "files" / "a.mp3").read_bytes() == song, "a failed build changed the site"

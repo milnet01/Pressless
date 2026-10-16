@@ -757,6 +757,14 @@ def test_the_look_is_builder_output():
     assert setup.untouchable(("look", "CNAME")) == ("CNAME",)
 
 
+def test_files_is_builder_output():
+    """PRESS-0197 INV-7. Breaks when "files" is not in ROOT_OUTPUT, a kept
+    entry the root still holds is dropped, or one it no longer holds is kept."""
+    assert setup.untouchable(("files", "CNAME")) == ("CNAME",)
+    assert setup.untouchable(("files", "CNAME"), kept=("files",)) == ("CNAME", "files")
+    assert setup.untouchable(("CNAME",), kept=("files",)) == ("CNAME",)
+
+
 # PRESS-0199 INV-7, INV-8 (docs/specs/PRESS-0199-counting-code.md §§ 4.4, 4.5).
 
 

@@ -27,6 +27,7 @@ from pressless import (
     builder,
     cheatsheet,
     choices,
+    files,
     paths,
     photographs,
     pressing,
@@ -87,6 +88,16 @@ SENTENCES[photographs.NotAPhotograph] = Sentence(
     "failure.photographs.NotAPhotograph.what",
     Site.UNCHANGED,
     "failure.photographs.NotAPhotograph.next",
+)
+SENTENCES[files.NotAllowed] = Sentence(
+    "failure.files.NotAllowed.what",
+    Site.UNCHANGED,
+    "failure.files.NotAllowed.next",
+)
+SENTENCES[files.TooLarge] = Sentence(
+    "failure.files.TooLarge.what",
+    Site.UNCHANGED,
+    "failure.files.TooLarge.next",
 )
 
 # Every write, preview and publish runs under it; a threading.Lock cannot be

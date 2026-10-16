@@ -106,12 +106,14 @@ _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.
 SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
 
 
-def untouchable(root: Iterable[str]) -> tuple[str, ...]:
+def untouchable(root: Iterable[str], kept: Iterable[str] = ()) -> tuple[str, ...]:
     """The root entries the Builder does not produce, compared with casefold
-    on both sides (§ 4.7, PRESS-0009 § 4.4). ROOT_OUTPUT is read at call time,
-    never copied."""
+    on both sides (§ 4.7, PRESS-0009 § 4.4), and each entry of `kept` the root
+    still holds, so a folder kept before the Builder took its name stays kept
+    (PRESS-0197 § 4.7). ROOT_OUTPUT is read at call time, never copied."""
     produced = {name.casefold() for name in builder.ROOT_OUTPUT}
-    return tuple(sorted(e for e in root if e.rstrip("/").casefold() not in produced))
+    keep = {name.rstrip("/").casefold() for name in kept}
+    return tuple(sorted(e for e in root if e.rstrip("/").casefold() not in produced - keep))
 
 
 def register(face: Face, folder: Path, *,
@@ -232,7 +234,8 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
 
     done = _save_sequence(face, folder, candidate, identity, key, transport,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
-                          look=answers["look"], choice=None, where=None)
+                          look=answers["look"], choice=None, where=None,
+                          kept=saved.untouchable)
     if isinstance(done, publisher.RemoteStateMissing):
         return _form(values, {"repository": say("setup.hint.no_such_repository")},
                      google_on=_google_on(saved), start=box, look=answers["look"],
@@ -251,7 +254,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    starter_ticked: bool, choice: credentials.Choice | None,
                    look: str = "",
                    where: shortcuts.Places | None, signed_in: bool = False,
-                   narrow: str = "") -> str | publisher.RemoteStateMissing:
+                   narrow: str = "", kept: tuple[str, ...] = (),
+                   ) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
     (PRESS-0213 § 4.6), save, and say it is done. `candidate` already
@@ -293,7 +297,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         return render_notices(filling) + fill_failure
 
     # Step 5: save, last.
-    final = dataclasses.replace(candidate, untouchable=untouchable(entries))
+    final = dataclasses.replace(candidate, untouchable=untouchable(entries, kept))
     with face.capture() as notices:
         try:
             settings.save(folder, final)

@@ -31,6 +31,7 @@ from pressless import (
     dashboard,
     editor,
     face,
+    files_screen,
     github_setup,
     google_setup,
     look_screen,
@@ -194,6 +195,7 @@ def _serve_once(folder: Path) -> bool:
         undo.register(served, folder)
         page_editor.register(served, folder)
         look_screen.register(served, folder)
+        files_screen.register(served, folder)
         pressing.register(served)
         updating.register(served, folder)
         restarting.register(served, restart.set)

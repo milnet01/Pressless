@@ -293,7 +293,10 @@ def sentence_for(
     # Where the Face named no secret, the sentence says "that secret".
     noun = secret or say("failure.unnamed_secret")
     link = (entry.link[0], say(entry.link[1])) if entry.link else None
-    return Sentence(say(entry.what, secret=noun), entry.site, say(entry.next), link)
+    # A failure may carry the words for its sentence's other gaps.
+    slots = getattr(failure, "slots", {})
+    return Sentence(say(entry.what, secret=noun, **slots), entry.site,
+                    say(entry.next, **slots), link)
 
 
 def details_for(failure: BaseException) -> str:
@@ -409,6 +412,16 @@ _FILE_TYPES = {
     ".ico": "image/x-icon",
     ".woff2": "font/woff2",
     ".woff": "font/woff",
+    # PRESS-0197 § 4.1: the kept files' kinds.
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".pdf": "application/pdf",
+    ".zip": "application/zip",
+    ".txt": "text/plain; charset=utf-8",
 }
 
 # Every wrapped page carries this, so a frame on a Face page can only show an
@@ -853,6 +866,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         f'{themes.picker(theme)}{visit}<a href="/setup">{say("face.settings")}</a>'
         # PRESS-0196 § 4.4: beside Settings.
         f'<a href="/look">{say("face.look")}</a>'
+        # PRESS-0197 § 4.4: beside Look.
+        f'<a href="/files">{say("face.files")}</a>'
         # PRESS-0179: on every screen, failure pages included.
         f'<a href="/report">{say("face.report")}</a>'
         # PRESS-0262 § 4.3: beside Report a problem.

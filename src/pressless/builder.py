@@ -33,7 +33,7 @@ from pressless import blocks, marks, store
 from pressless.settings import Settings
 
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
-               "sitemap.xml", "robots.txt", "look")
+               "sitemap.xml", "robots.txt", "look", "files")
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
 STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
@@ -147,6 +147,44 @@ def photograph_format(path: Path) -> str | None:
     except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
         return None
     return fmt if fmt in _REENCODED or fmt == "GIF" else None
+
+
+def web_file(name: str) -> str:
+    """The address of a kept file, from the site's root (PRESS-0197 § 4.6)."""
+    return f"{store.FILES_FOLDER}/{quote(name, safe='')}"
+
+
+# PRESS-0197 § 3 decision 2: git warns above 50 MiB.
+FILE_LARGEST = 50 * 1024 * 1024
+
+
+def _utf8_text(data: bytes) -> bool:
+    try:
+        return "\0" not in data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+
+
+# PRESS-0197 § 4.1: each kept suffix, and how its bytes begin.
+_FILE_KINDS = {
+    ".mp3": lambda d: d[:3] == b"ID3" or (d[:1] == b"\xff" and d[1:2] >= b"\xe0"),
+    ".ogg": lambda d: d[:4] == b"OggS",
+    ".wav": lambda d: d[:4] == b"RIFF" and d[8:12] == b"WAVE",
+    ".m4a": lambda d: d[4:8] == b"ftyp",
+    ".mp4": lambda d: d[4:8] == b"ftyp",
+    ".webm": lambda d: d[:4] == b"\x1a\x45\xdf\xa3",
+    ".pdf": lambda d: d[:5] == b"%PDF-",
+    ".zip": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06"),
+    ".txt": _utf8_text,
+}
+
+
+def file_allowed(name: str, data: bytes) -> bool:
+    """Whether `data` is the § 4.1 kind `name`'s suffix says, so a file is
+    refused when it is added and re-checked when it is published."""
+    _, dot, suffix = name.rpartition(".")
+    test = _FILE_KINDS.get("." + suffix.lower()) if dot else None
+    return test is not None and test(data)
 
 
 def build(folder: Path, settings: Settings, into: Path, *,
@@ -446,33 +484,80 @@ def _fill_fixed_page(name: str, text: str, depth: int, furniture: _Furniture) ->
 # --------------------------------------------------------------- the build --
 
 
-def _held_pictures(folder: Path, relative: str, text: str) -> list[str]:
-    """PRESS-0260 § 4.6: the photographs the Store holds that the page's
-    picture sections name, by `src` read from the page's place."""
+def _site_place(relative: str, address: str) -> str | None:
+    """`address` as written on the page at `relative`, read as the path from
+    the site's root, unquoted; None where it leaves the site or carries a
+    query (PRESS-0260 § 4.6)."""
+    # A made-up host, since urljoin resolves only the schemes it knows.
+    parts = urlsplit(urljoin(f"http://pages.invalid/{relative}", address))
+    if (parts.scheme, parts.netloc) != ("http", "pages.invalid") or parts.query:
+        return None
+    return unquote(parts.path)
+
+
+def _named(relative: str, text: str, subfolder: str, held: set[str],
+           kinds: tuple[str, ...] | None, fields: tuple[str, ...]) -> list[str]:
+    """The names in `held` that the page's sections of `kinds` (None: every
+    kind) address under `subfolder` by one of `fields`."""
     page = blocks.read(relative, text)
     if page is None:
         return []
-    held = set(store.list_photographs(folder))
     found = []
+    prefix = f"/{subfolder}/"
 
     def walk(sections) -> None:
         for section in sections:
             for part in section.parts:
                 walk(part)
-            if section.kind not in (blocks.PICTURE, blocks.ENLARGE):
+            if kinds is not None and section.kind not in kinds:
                 continue
-            # A made-up host, since urljoin resolves only the schemes it knows.
-            address = urlsplit(urljoin(f"http://pages.invalid/{relative}",
-                                       section.fields["src"]))
-            if (address.scheme, address.netloc) != ("http", "pages.invalid") or address.query:
-                continue
-            place = unquote(address.path)
-            prefix = f"/{store.PHOTOGRAPHS_FOLDER}/"
-            if place.startswith(prefix) and place[len(prefix):] in held:
-                found.append(place[len(prefix):])
+            for field in fields:
+                place = (_site_place(relative, section.fields[field])
+                         if field in section.fields else None)
+                if place and place.startswith(prefix) and place[len(prefix):] in held:
+                    found.append(place[len(prefix):])
 
     walk(page.sections)
     return found
+
+
+def _held_pictures(folder: Path, relative: str, text: str) -> list[str]:
+    """PRESS-0260 § 4.6: the photographs the Store holds that the page's
+    picture sections name, by `src` read from the page's place."""
+    return _named(relative, text, store.PHOTOGRAPHS_FOLDER,
+                  set(store.list_photographs(folder)),
+                  (blocks.PICTURE, blocks.ENLARGE), ("src",))
+
+
+def _held_files(folder: Path, relative: str, text: str) -> list[str]:
+    """PRESS-0197 § 4.6: the kept files any section names, by `src` or `href`."""
+    return _named(relative, text, store.FILES_FOLDER,
+                  set(store.list_files(folder)), None, ("src", "href"))
+
+
+def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
+    """Each kept file a page names, and the pages naming it (PRESS-0197 § 4.6):
+    the header, the footer and every fixed page, published and waiting, so a
+    page still being edited keeps its files."""
+    folder = Path(folder)
+    named: dict[str, list[str]] = {}
+    texts: list[tuple[str, str, str]] = []
+    for waiting in (False, True):
+        for name in ("header", "footer"):
+            path = store.html_path_for(folder, store.FURNITURE_FOLDER, name, waiting=waiting)
+            if path.is_file():
+                texts.append((name, "index.html",
+                              store.read_html(path).replace("{{UP}}", "")))
+        for name in store.list_html(folder, store.PAGES_FOLDER, waiting=waiting):
+            path = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=waiting)
+            relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
+            texts.append((name, relative, store.read_html(path)))
+    for page, relative, text in texts:
+        for held in _held_files(folder, relative, text):
+            pages = named.setdefault(held, [])
+            if page not in pages:
+                pages.append(page)
+    return {held: tuple(pages) for held, pages in named.items()}
 
 
 class _Build:
@@ -487,6 +572,7 @@ class _Build:
         self.today = today
         self.files: list[str] = []
         self.copied: set[str] = set()
+        self.copied_files: set[str] = set()
         self.marked = ""  # the furniture file whose marks stay, for its preview alone
         self.furniture_pieces = False  # whether the header or footer holds a piece
         self.pieces_linked = False     # whether any page written links pieces.js
@@ -527,6 +613,8 @@ class _Build:
                 for photograph in _held_pictures(self.folder, "index.html",
                                                  text.replace("{{UP}}", "")):
                     self.web_copy(photograph)
+                for kept in _held_files(self.folder, "index.html", text.replace("{{UP}}", "")):
+                    self.file_copy(kept)
             held[name] = text if self.marked == name else blocks.unmarked(name, text)
         self.furniture_pieces = any(_has_piece(furniture[name]) for name in ("header", "footer"))
         self.furniture = _Furniture(held["header"], furniture["navigation"],
@@ -611,6 +699,8 @@ class _Build:
         if self.photo_src is None:
             for held in _held_pictures(self.folder, relative, text):
                 self.web_copy(held)
+            for held in _held_files(self.folder, relative, text):
+                self.file_copy(held)
         filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
                                   self.furniture)
         self.write_text(relative, self.counted(self.enhanced(
@@ -786,6 +876,27 @@ class _Build:
         copy.save(target, fmt, **options)
         self.files.append(relative)
         self.copied.add(name)
+
+    # -- kept files (PRESS-0197 § 4.6) --
+
+    def file_copy(self, name: str) -> None:
+        """Copied byte for byte, once, after the checks `files.add` made."""
+        if name in self.copied_files:
+            return
+        if name.startswith("."):
+            raise BuildStopped(
+                f"the file {name} begins with a dot, and a publish refuses such a name")
+        original = store.file_path_for(self.folder, name)
+        try:
+            if original.stat().st_size > FILE_LARGEST:
+                raise BuildStopped(f"the file {name} is larger than 50 MiB")
+            data = original.read_bytes()
+        except OSError as exc:
+            raise BuildStopped(f"the file {name} could not be read: {_why(exc)}") from None
+        if not file_allowed(name, data):
+            raise BuildStopped(f"the file {name} is not the kind of file its name says")
+        self.write_bytes(f"{store.FILES_FOLDER}/{name}", data)
+        self.copied_files.add(name)
 
     # -- listings --
 

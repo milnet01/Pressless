@@ -62,6 +62,7 @@ publishing key, derives the untouchable list, and saves Settings last.
    His answers are filled in, and an empty key box keeps the saved key. Saving
    derives the untouchable list again. That is the button
    `docs/design.md` offers after setup.
+   *PRESS-0197 § 4.7: a save also keeps a kept entry the repository still holds.*
 4. **The site folder is chosen for him.** Decided by the user 2026-09-17: a
    folder named `site` inside Pressless's own folder. He is never asked.
 5. **(decided here) Setup lives in the Face, as `src/pressless/setup.py`.**
@@ -97,7 +98,7 @@ SITE_FOLDER = "site"                  # inside Pressless's own folder
 GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
 KEY = "your publishing key"           # the {secret} noun (PRESS-0011 § 4.2)
 
-def untouchable(root: Iterable[str]) -> tuple[str, ...]: ...
+def untouchable(root: Iterable[str]) -> tuple[str, ...]: ...  # kept=: PRESS-0197 § 4.7
 def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None) -> None: ...
 ```

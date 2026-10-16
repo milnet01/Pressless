@@ -91,6 +91,21 @@ SENTENCES[WouldReplaceASite] = Sentence(
     "failure.publishing.WouldReplaceASite.next",
 )
 
+class KeptFolderBuilt(Exception):
+    """The built site fills a folder Settings keeps on GitHub, which a publish
+    would leave as it was (PRESS-0197 § 4.7)."""
+
+    def __init__(self, message: str, folder: str) -> None:
+        super().__init__(message)
+        self.slots = {"folder": folder}
+
+
+SENTENCES[KeptFolderBuilt] = Sentence(
+    "failure.publishing.KeptFolderBuilt.what",
+    Site.UNCHANGED,
+    "failure.publishing.KeptFolderBuilt.next",
+)
+
 # GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).
 _A_SITE = frozenset({"index.html", "index.md"})
 
@@ -158,6 +173,15 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
                 and not store.list_slugs(folder, draft=False)):
             raise NothingToPublish("no published entry would remain")
         builder.build(folder, settings, settings.site_folder)
+        # PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a
+        # build filling one would be dropped in silence.
+        kept = {name.rstrip("/").casefold(): name.rstrip("/") for name in settings.untouchable}
+        produced = {name.casefold() for name in builder.ROOT_OUTPUT}
+        for child in sorted(settings.site_folder.iterdir()):
+            if child.name.casefold() in produced and child.name.casefold() in kept:
+                folder_name = kept[child.name.casefold()]
+                raise KeptFolderBuilt(f"the build fills {folder_name}, which Settings keeps",
+                                      folder_name)
 
     def finish() -> bool:
         if moved is None or not moved.copy:
