@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import io
 import json
+import time
 import zipfile
 from pathlib import Path
 
@@ -22,6 +23,15 @@ def _own(tmp_path: Path) -> Path:
         (own / "sites" / name).mkdir(parents=True)
     sites.choose(own, "site-1")
     return own
+
+
+def _settled(restarts: list[int], count: int) -> list[int]:
+    """The restart is asked for after the answer is sent, on the server's own
+    thread, so the answer can arrive first. Waits up to five seconds."""
+    deadline = time.monotonic() + 5
+    while len(restarts) < count and time.monotonic() < deadline:
+        time.sleep(0.01)
+    return restarts
 
 
 def _serve(own: Path, restarts: list[int]) -> tuple[face.Face, Browser]:
@@ -46,7 +56,7 @@ def test_sites_keep_their_own_writing(tmp_path: Path) -> None:
         assert status == 200 and "Pressless is restarting." in page
     finally:
         served.stop()
-    assert restarts == [1]
+    assert _settled(restarts, 1) == [1]
     served, browser = _serve(own, restarts)
     try:
         assert "Seaside-Walk" not in browser.request("GET", "/")[2]
@@ -88,7 +98,7 @@ def test_the_screen_lists_each_site_by_name_and_starts_a_new_one(tmp_path: Path)
     finally:
         served.stop()
     assert json.loads((own / OPEN).read_text(encoding="utf-8"))["open"] == "site-3"
-    assert (own / "sites" / "site-3").is_dir() and restarts == [1]
+    assert (own / "sites" / "site-3").is_dir() and _settled(restarts, 1) == [1]
 
 
 # ------------------------------------------------------------ PRESS-0224 ----
@@ -134,7 +144,7 @@ def test_an_opened_file_becomes_the_next_site(tmp_path: Path) -> None:
         assert status == 200 and b"Pressless is restarting." in page
     finally:
         served.stop()
-    assert restarts == [1]
+    assert _settled(restarts, 1) == [1]
     assert json.loads((own / OPEN).read_text(encoding="utf-8"))["open"] == "site-3"
     assert (own / "sites" / "site-3" / "drafts" / "seaside-walk.txt").is_file()
     assert not list(own.glob(".upload-*"))

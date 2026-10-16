@@ -605,6 +605,15 @@ def players_picked(page, origin: str, folder: Path) -> None:
     check("PRESS-0287: picking players raised no script error", not errors, str(errors))
 
 
+def _restarted(count: int) -> int:
+    """The restart is asked for after the answer is sent, so the page can
+    show first. Waits up to five seconds for `count` restarts."""
+    deadline = time.monotonic() + 5
+    while len(RESTARTS) < count and time.monotonic() < deadline:
+        time.sleep(0.01)
+    return len(RESTARTS)
+
+
 def sites_listed(page, origin: str, folder: Path) -> None:
     """PRESS-0223 INV-9: the Sites screen names each site, and Open chooses
     another and restarts. That the restart opens it is INV-6's test."""
@@ -617,7 +626,7 @@ def sites_listed(page, origin: str, folder: Path) -> None:
     page.wait_for_load_state("networkidle")
     opened = json.loads((sites_own / "sites.json").read_text(encoding="utf-8"))["open"]
     check("PRESS-0223: Open chooses the other site and restarts",
-          opened == "site-2" and RESTARTS == [1]
+          opened == "site-2" and _restarted(1) == 1
           and "Pressless is restarting." in page.locator("main").inner_text(),
           f"open={opened} restarts={RESTARTS}")
 
@@ -644,7 +653,7 @@ def site_file(page, origin: str, folder: Path) -> None:
     opened = sites.open_site(sites_own)
     check("PRESS-0224: Open makes the file a new site and restarts",
           opened != shown and (opened / "drafts" / "saved-and-opened.txt").is_file()
-          and len(RESTARTS) == before + 1, f"opened={opened.name}")
+          and _restarted(before + 1) == before + 1, f"opened={opened.name}")
 
 
 def move_wizard(page, origin: str) -> None:
