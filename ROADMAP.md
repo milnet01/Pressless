@@ -5156,6 +5156,11 @@ documents go on the site beside the photographs.
   4.1 amended). The no-reload half is open: the two views are separate
   server pages and the visual script builds its model once at load, so a
   switch in place needs a design choice, put to the user.
+  User 2026-10-16: the no-reload half gets a short spec with one review
+  round, then is built in 0.10.0. The spec settles the hard cases first:
+  code the visual view cannot read, unsaved typing at the switch, the
+  menu and furniture views, and that the visual script builds its model
+  once at load.
   **Layman:** Moving between editing the page and seeing its code is instant, and the button says which one you get.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
