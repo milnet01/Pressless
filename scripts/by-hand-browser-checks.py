@@ -611,6 +611,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
 
     page.goto(f"{origin}/page?kind=pages&name=visual", wait_until="networkidle")
     frame = page.frame_locator("#preview")
+    nothing = page.locator("#picked").text_content()
     sandbox = page.locator("#preview").get_attribute("sandbox") or ""
     title = page.evaluate("document.getElementById('preview').contentDocument.title")
     check("PRESS-0260 INV-5: the frame runs no script of the page's",
@@ -769,6 +770,20 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     said = page.locator("#panel-said").text_content()
     check("PRESS-0260 s4.3: fewer columns is refused while the last holds a section",
           page.locator("[data-field=count]").input_value() == "3" and bool(said), said)
+    frame.locator("h3", has_text="Title words").click()
+    page.keyboard.press("Escape")
+    escaped = page.locator("#picked").text_content()
+    frame.locator("div", has_text="new code").click()
+    box = page.locator("#preview").bounding_box()
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] - 8)
+    outside = page.locator("#picked").text_content()
+    frame.locator("div", has_text="new code").click()
+    page.locator("[data-act=remove]").focus()
+    page.keyboard.press("Escape")
+    in_panel = page.locator("#picked").text_content()
+    check("PRESS-0280: Escape in the page or the panel, or a click outside every section, "
+          "unpicks it", escaped == outside == in_panel == nothing,
+          f"{escaped!r} {outside!r} {in_panel!r}")
     check("PRESS-0260: the visual view raised no script error", not errors, str(errors))
 
 

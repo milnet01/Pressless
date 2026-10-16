@@ -5013,10 +5013,13 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0280] **A picked section in the visual editor can be unpicked.**
+- ✅ [PRESS-0280] **A picked section in the visual editor can be unpicked.**
   Found in the Edge hand check of 2026-10-16: once a section is picked,
   the only way to leave it is to pick another. Fix: Escape, or a click
   outside every section, unpicks it and the panel says nothing is picked.
+  2026-10-16: Escape in the page or the panel, or a click outside
+  every section, unpicks. by-hand-browser-checks.py's PRESS-0280 row
+  holds it in Chrome.
   **Layman:** Pressing Escape, or clicking an empty part of the page, lets go of the part you picked.
   Kind: fix.
   Source: user-hand-check-2026-10-16.

@@ -217,6 +217,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     "page_editor.py": {
         "Enter": "a key's name, as the browser reports it",
         "Backspace": "a key's name, as the browser reports it",
+        "Escape": "a key's name, as the browser reports it",
         "picture enlarge": "the section kinds a panel control serves",
         "button download top countdown": "the section kinds a panel control serves",
     },

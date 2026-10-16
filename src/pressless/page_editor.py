@@ -1793,8 +1793,16 @@ _VISUAL_SCRIPT = r"""
     event.preventDefault();
     let found = null;
     each(model, (item) => { if (item.marked && inside(item, event.target)) found = item; });
-    if (found && found !== picked) show(found, true);
+    if (found !== picked) show(found, Boolean(found));
   }
+  // PRESS-0280: Escape lets go of the picked section, in the page or the panel.
+  function letGo(event) {
+    if (event.key !== "Escape" || !picked) return false;
+    event.preventDefault();
+    show(null, false);
+    return true;
+  }
+  panel.addEventListener("keydown", letGo);
   function mark(item, on) {
     for (const at of item ? between(item) : []) {
       if (at.nodeType === Node.ELEMENT_NODE) {
@@ -2232,6 +2240,7 @@ _VISUAL_SCRIPT = r"""
     frame.contentDocument.execCommand("insertText", false, words);
   }
   function keyed(event) {
+    if (letGo(event)) return;
     if (!picked || !picked.el || !picked.el.contains(event.target)) return;
     const doc = frame.contentDocument;
     const selection = doc.getSelection();
