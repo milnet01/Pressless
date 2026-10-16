@@ -1,6 +1,6 @@
 """The Face's colour themes, and which one he chose (PRESS-0190).
 
-A theme is the Face's eleven colours and nothing else; the shapes are the
+A theme is the Face's colours and nothing else; the shapes are the
 same in all of them. The choice is kept in theme.json in Pressless's own
 folder, not in the browser: the Face's port changes every run, and a browser
 keeps its storage per port, so a choice kept there would be lost each start.
@@ -23,7 +23,7 @@ FOLLOW = "follow"  # no theme of its own: light or dark as the computer is set
 
 # The custom properties every theme sets, in the order Theme.colours holds them.
 NAMES = ("paper", "sheet", "ink", "soft", "line", "amber", "amber-ink",
-         "press", "on-press", "alert")
+         "press", "on-press", "alert", "code-tag", "code-attr", "code-value")
 
 
 @dataclass(frozen=True)
@@ -50,64 +50,93 @@ _TV = "themes.group.tv"
 
 # Colours in NAMES order:
 #      paper   sheet   ink     soft    line    amber   amber-ink press on-press alert
+#      then code-tag code-attr code-value (PRESS-0283): each reads on paper and
+#      sheet and stands apart from the ink and from the other two.
 THEMES = (
     _theme("light", "themes.light", _BASIC, False,
-           "#f4efe6 #fffdf8 #2b2620 #6b6255 #d9cfbf #b97a1c #8a5a12 #2b2620 #f4efe6 #b3412c"),
+           "#f4efe6 #fffdf8 #2b2620 #6b6255 #d9cfbf #b97a1c #8a5a12 #2b2620 #f4efe6 #b3412c "
+           "#925c0c #0a764a #9513ec"),
     _theme("dark", "themes.dark", _BASIC, True,
-           "#1d1a16 #28241f #f4efe6 #b5aa99 #3e382f #e9a23b #f0b95e #e9a23b #1d1a16 #e27a62"),
+           "#1d1a16 #28241f #f4efe6 #b5aa99 #3e382f #e9a23b #f0b95e #e9a23b #1d1a16 #e27a62 "
+           "#ec9313 #13ec93 #bc6df3"),
     _theme("contrast-light", "themes.contrast_light", _BASIC, False,
-           "#ffffff #ffffff #000000 #1f1f1f #000000 #0040c0 #0033a0 #000000 #ffffff #b00000"),
+           "#ffffff #ffffff #000000 #1f1f1f #000000 #0040c0 #0033a0 #000000 #ffffff #b00000 "
+           "#104dc6 #aa0e42 #266308"),
     _theme("contrast-dark", "themes.contrast_dark", _BASIC, True,
-           "#000000 #000000 #ffffff #e6e6e6 #ffffff #ffd400 #ffe14d #ffd400 #000000 #ff6b6b"),
+           "#000000 #000000 #ffffff #e6e6e6 #ffffff #ffd400 #ffe14d #ffd400 #000000 #ff6b6b "
+           "#ecc713 #13ecc7 #db68f3"),
     # Games
     _theme("wasteland", "themes.wasteland", _GAMES, True,
-           "#0d1a0f #142417 #b8ffb8 #7fcf83 #2a4a2e #3cff6a #7dff9a #3cff6a #0d1a0f #ff7b6b"),
+           "#0d1a0f #142417 #b8ffb8 #7fcf83 #2a4a2e #3cff6a #7dff9a #3cff6a #0d1a0f #ff7b6b "
+           "#13ec46 #987bf4 #ef6034"),
     _theme("forest-hero", "themes.forest_hero", _GAMES, False,
-           "#eef3e2 #fbfdf5 #1f2a1a #4f5d45 #c9d4b4 #8a6a0c #6b5200 #2e5e2a #fbfdf5 #a8322b"),
+           "#eef3e2 #fbfdf5 #1f2a1a #4f5d45 #c9d4b4 #8a6a0c #6b5200 #2e5e2a #fbfdf5 #a8322b "
+           "#84650b #0a765a #aa12de"),
     _theme("silver-sword", "themes.silver_sword", _GAMES, True,
-           "#16181b #202327 #e6e6e6 #a9adb3 #34383e #d9483a #ff8a7d #c0392b #ffffff #ff8a7d"),
+           "#16181b #202327 #e6e6e6 #a9adb3 #34383e #d9483a #ff8a7d #c0392b #ffffff #ff8a7d "
+           "#f15f50 #13ec26 #8a80f5"),
     _theme("neon-city", "themes.neon_city", _GAMES, True,
-           "#0b0b14 #15152a #f2f2f2 #a8a8c8 #2b2b4a #fcee0a #fcee0a #fcee0a #0b0b14 #ff4f86"),
+           "#0b0b14 #15152a #f2f2f2 #a8a8c8 #2b2b4a #fcee0a #fcee0a #fcee0a #0b0b14 #ff4f86 "
+           "#ecdf13 #13ecdf #e121ed"),
     _theme("blocky-overworld", "themes.blocky_overworld", _GAMES, False,
-           "#e8e1d3 #f7f3ea #2d2416 #5e5140 #cbbfa8 #4f8a2b #356118 #3f7322 #ffffff #a23b2a"),
+           "#e8e1d3 #f7f3ea #2d2416 #5e5140 #cbbfa8 #4f8a2b #356118 #3f7322 #ffffff #a23b2a "
+           "#0061c2 #7f00ff #c20061"),
     _theme("pipe-land", "themes.pipe_land", _GAMES, False,
-           "#fff8e7 #ffffff #1b1b3a #4a4a6a #f0d9a8 #d8231f #b3121a #c81d19 #ffffff #8a1010"),
+           "#fff8e7 #ffffff #1b1b3a #4a4a6a #f0d9a8 #d8231f #b3121a #c81d19 #ffffff #8a1010 "
+           "#d91612 #0a7f0d #1813ec"),
     _theme("speed-zone", "themes.speed_zone", _GAMES, True,
-           "#0b1f4b #12306b #ffffff #c3d0f0 #2a4c8f #ffd400 #ffd400 #ffd400 #0b1f4b #ff8a8a"),
+           "#0b1f4b #12306b #ffffff #c3d0f0 #2a4c8f #ffd400 #ffd400 #ffd400 #0b1f4b #ff8a8a "
+           "#ecc713 #13ecc7 #df76f4"),
     _theme("ringworld", "themes.ringworld", _GAMES, True,
-           "#1a2124 #232c30 #e3ece8 #9fb3ab #36444a #5fd38d #7fe0a5 #5fd38d #102016 #ff8a65"),
+           "#1a2124 #232c30 #e3ece8 #9fb3ab #36444a #5fd38d #7fe0a5 #5fd38d #102016 #ff8a65 "
+           "#13ec69 #ae80f5 #ed7526"),
     _theme("test-chamber", "themes.test_chamber", _GAMES, False,
-           "#f2f4f5 #ffffff #1d2326 #50595e #d3d9dc #c85d00 #9a4700 #0a6ebd #ffffff #b3261e"),
+           "#f2f4f5 #ffffff #1d2326 #50595e #d3d9dc #c85d00 #9a4700 #0a6ebd #ffffff #b3261e "
+           "#a5540d #0a7674 #2113ec"),
     _theme("bonfire", "themes.bonfire", _GAMES, True,
-           "#120f0c #1c1813 #e8dcc8 #a8987e #3a3127 #ff8c1a #ffad5c #ff8c1a #120f0c #ff6f59"),
+           "#120f0c #1c1813 #e8dcc8 #a8987e #3a3127 #ff8c1a #ffad5c #ff8c1a #120f0c #ff6f59 "
+           "#ec7f13 #13ec7f #ab63f2"),
     _theme("valley-farm", "themes.valley_farm", _GAMES, False,
-           "#f6ecd2 #fff8e6 #3b2a17 #6b5536 #dcc79a #3f8f3a #2d6b29 #8b4a1c #fff8e6 #a8322b"),
+           "#f6ecd2 #fff8e6 #3b2a17 #6b5536 #dcc79a #3f8f3a #2d6b29 #8b4a1c #fff8e6 #a8322b "
+           "#0066cc #7f00ff #cc0066"),
     # Films
     _theme("hyperspace", "themes.hyperspace", _FILMS, True,
-           "#05070d #0e1320 #f0f0f0 #a5adbf #24304a #ffe81f #ffe81f #ffe81f #05070d #ff6b6b"),
+           "#05070d #0e1320 #f0f0f0 #a5adbf #24304a #ffe81f #ffe81f #ffe81f #05070d #ff6b6b "
+           "#ecd613 #13ecd6 #d926ed"),
     _theme("digital-rain", "themes.digital_rain", _FILMS, True,
-           "#000a00 #031503 #b6ffb6 #6fdc6f #0f3a0f #00ff41 #00ff41 #00ff41 #001a00 #ff6b6b"),
+           "#000a00 #031503 #b6ffb6 #6fdc6f #0f3a0f #00ff41 #00ff41 #00ff41 #001a00 #ff6b6b "
+           "#13ec4a #8b68f3 #ec4a13"),
     _theme("replicant-night", "themes.replicant_night", _FILMS, True,
-           "#0d0a14 #181226 #f1e9ff #b5a6cc #33284a #ff4fa3 #ff7ab9 #ff4fa3 #0d0a14 #ff9a6b"),
+           "#0d0a14 #181226 #f1e9ff #b5a6cc #33284a #ff4fa3 #ff7ab9 #ff4fa3 #0d0a14 #ff9a6b "
+           "#ef348d #7bec13 #2685ed"),
     _theme("middle-realm", "themes.middle_realm", _FILMS, False,
-           "#efe4c8 #f9f2df #2b1d0e #5e4a2e #d4c296 #8a6d1d #6b520f #2f4a23 #f9f2df #8f2a1c"),
+           "#efe4c8 #f9f2df #2b1d0e #5e4a2e #d4c296 #8a6d1d #6b520f #2f4a23 #f9f2df #8f2a1c "
+           "#7b5d0a #096d52 #9d11d0"),
     _theme("dream-house", "themes.dream_house", _FILMS, False,
-           "#fff0f6 #ffffff #3a0a26 #6e3a57 #f7c6dc #d6247f #a3165f #c21c72 #ffffff #b0213a"),
+           "#fff0f6 #ffffff #3a0a26 #6e3a57 #f7c6dc #d6247f #a3165f #c21c72 #ffffff #b0213a "
+           "#cb1070 #41760a #106bc1"),
     _theme("spice-desert", "themes.spice_desert", _FILMS, False,
-           "#efdcb5 #f8ead0 #2e1d0b #5f4423 #d2b57f #a8521a #8a4210 #2e3f6e #f8ead0 #9c2a1a"),
+           "#efdcb5 #f8ead0 #2e1d0b #5f4423 #d2b57f #a8521a #8a4210 #2e3f6e #f8ead0 #9c2a1a "
+           "#97430c #086860 #1314ec"),
     # TV
     _theme("upside-down", "themes.upside_down", _TV, True,
-           "#0a0606 #170c0c #f3e6e6 #bba2a2 #3a1d1d #e50914 #ff6b70 #e50914 #ffffff #ffb347"),
+           "#0a0606 #170c0c #f3e6e6 #bba2a2 #3a1d1d #e50914 #ff6b70 #e50914 #ffffff #ffb347 "
+           "#ef3942 #1eec13 #6d73f3"),
     _theme("desert-lab", "themes.desert_lab", _TV, False,
-           "#f1ead2 #fbf6e6 #1f2a1a #4e5a42 #d8cca6 #1f8a70 #146b56 #2f6f3a #ffffff #9a2f1f"),
+           "#f1ead2 #fbf6e6 #1f2a1a #4e5a42 #d8cca6 #1f8a70 #146b56 #2f6f3a #ffffff #9a2f1f "
+           "#097158 #a511d4 #7b5f0a"),
     _theme("winter-is-near", "themes.winter_is_near", _TV, False,
-           "#e9edf1 #f8fafc #1b2430 #4b5869 #c9d3de #3d6a99 #2a4e75 #1b2430 #f8fafc #9e2b25"),
+           "#e9edf1 #f8fafc #1b2430 #4b5869 #c9d3de #3d6a99 #2a4e75 #1b2430 #f8fafc #9e2b25 "
+           "#0f64bd #cb1610 #616d09"),
     _theme("yellow-town", "themes.yellow_town", _TV, False,
-           "#fff7cc #fffdf0 #1f2a44 #4a5571 #f0dc80 #2a7ab8 #1d5a8a #1f2a44 #fff7cc #b3261e"),
+           "#fff7cc #fffdf0 #1f2a44 #4a5571 #f0dc80 #2a7ab8 #1d5a8a #1f2a44 #fff7cc #b3261e "
+           "#0f6eb8 #cb1079 #47760a"),
     _theme("time-box", "themes.time_box", _TV, True,
-           "#0d1b3d #13254f #eef3ff #aab8d9 #2b4277 #6fb7ff #8cc7ff #6fb7ff #0d1b3d #ff8a7a"),
+           "#0d1b3d #13254f #eef3ff #aab8d9 #2b4277 #6fb7ff #8cc7ff #6fb7ff #0d1b3d #ff8a7a "
+           "#3e96ef #f25aa6 #80ec13"),
     _theme("bounty-hunter", "themes.bounty_hunter", _TV, True,
-           "#1b1d1f #26292c #e9ecef #a4abb3 #3b4045 #9fb4c7 #c5d4e2 #9fb4c7 #1b1d1f #ff8a65"),
+           "#1b1d1f #26292c #e9ecef #a4abb3 #3b4045 #9fb4c7 #c5d4e2 #9fb4c7 #1b1d1f #ff8a65 "
+           "#3998ef #f25fac #85ec13"),
 )
 
 _BY_KEY = {theme.key: theme for theme in THEMES}

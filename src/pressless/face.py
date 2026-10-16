@@ -770,8 +770,10 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   scrollbar-gutter: stable; }
 .face .code-box > :last-child::selection {
   background: color-mix(in srgb, var(--amber) 35%, transparent); }
-.face .code-box .k-tag { color: var(--amber-ink); }
-.face .code-box .k-attr, .face .code-box .k-note { color: var(--soft); }
+.face .code-box .k-tag { color: var(--code-tag); }
+.face .code-box .k-attr { color: var(--code-attr); }
+.face .code-box .k-value { color: var(--code-value); }
+.face .code-box .k-note { color: var(--soft); }
 .face #panel .panel-add { border-bottom: 1px solid var(--line); margin-bottom: .75rem;
   padding-bottom: .5rem; }
 .face main:has(> #editor), .face main:has(> #look) { display: flex; flex-direction: column; }

@@ -52,6 +52,38 @@ def test_every_theme_can_be_read(theme: themes.Theme) -> None:
     assert not failures, failures
 
 
+CODE = ("code-tag", "code-attr", "code-value")
+# How far apart two colours must sit to read as different, as the straight
+# distance between them in 0-255 RGB. Measured against pairs a reader confuses:
+# two blues 40 apart look alike, a blue and an orange are over 200 apart.
+APART = 90
+
+
+def _distance(one: str, two: str) -> float:
+    return sum((int(one[i:i + 2], 16) - int(two[i:i + 2], 16)) ** 2
+               for i in (1, 3, 5)) ** 0.5
+
+
+@pytest.mark.parametrize("theme", themes.THEMES, ids=lambda theme: theme.key)
+def test_every_theme_colours_code_readably_and_apart(theme: themes.Theme) -> None:
+    """PRESS-0283. Breaks when a code colour is faint on the code box's paper
+    or a sheet, or sits so near the ink or another code colour that tags,
+    names and values do not stand apart."""
+    colours = dict(zip(themes.NAMES, theme.colours, strict=True))
+    failures = []
+    for name in CODE:
+        for ground in ("paper", "sheet"):
+            ratio = _contrast(colours[name], colours[ground])
+            if ratio < TEXT:
+                failures.append(f"{name} on {ground}: {ratio:.2f}")
+    shown = ("ink", *CODE)
+    for at, one in enumerate(shown):
+        for two in shown[at + 1:]:
+            if _distance(colours[one], colours[two]) < APART:
+                failures.append(f"{one} near {two}: {_distance(colours[one], colours[two]):.0f}")
+    assert not failures, failures
+
+
 def test_the_high_contrast_themes_reach_aaa() -> None:
     for key in ("contrast-light", "contrast-dark"):
         theme = themes.find(key)

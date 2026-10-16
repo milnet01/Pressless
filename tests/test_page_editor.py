@@ -652,10 +652,11 @@ def test_the_colours_cover_every_letter_once(text, tmp_path):
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_tags_attributes_text_and_notes_take_their_own_colours(tmp_path):
-    """PRESS-0261. Breaks when a tag, an attribute or a note is coloured as
-    something else, or a script's code is coloured as HTML."""
+    """PRESS-0261, and PRESS-0283 for the value. Breaks when a tag, an
+    attribute, its value or a note is coloured as something else, or a
+    script's code is coloured as HTML."""
     pieces = _coloured('<a href="x">Hi</a><!-- n --><script>a<b</script>', tmp_path)
-    assert pieces == [("<a", "tag"), (" ", ""), ("href", "attr"), ("=", ""), ('"x"', ""),
+    assert pieces == [("<a", "tag"), (" ", ""), ("href", "attr"), ("=", ""), ('"x"', "value"),
                       (">", "tag"), ("Hi", ""), ("</a", "tag"), (">", "tag"),
                       ("<!-- n -->", "note"), ("<script", "tag"), (">", "tag"),
                       ("a<b", ""), ("</script", "tag"), (">", "tag")]
@@ -663,13 +664,14 @@ def test_tags_attributes_text_and_notes_take_their_own_colours(tmp_path):
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
 def test_a_style_is_coloured_as_css(tmp_path):
-    """PRESS-0261. Breaks when a selector, a property or a value takes
-    another's colour, a colon in a selector included."""
+    """PRESS-0261, and PRESS-0283 for the value's own colour. Breaks when a
+    selector, a property or a value takes another's colour, a colon in a
+    selector included."""
     pieces = _coloured("<style>p a:hover { color: red; } /* c */</style>", tmp_path)
     # A space shows no colour, so its own is not asserted.
     inner = [piece for piece in pieces[2:-2] if piece[0].strip()]
     assert inner == [("p a", "tag"), (":", "tag"), ("hover ", "tag"), ("{", ""),
-                     (" color", "attr"), (":", ""), (" red", ""), (";", ""), ("}", ""),
+                     (" color", "attr"), (":", ""), (" red", "value"), (";", ""), ("}", ""),
                      ("/* c */", "note")]
 
 

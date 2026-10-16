@@ -914,7 +914,10 @@ def code_colours(page, origin: str) -> None:
               top: [area.scrollTop, copy.scrollTop],
               tags: copy.querySelectorAll('.k-tag').length,
               attrs: copy.querySelectorAll('.k-attr').length,
-              letters: getComputedStyle(area).webkitTextFillColor};
+              letters: getComputedStyle(area).webkitTextFillColor,
+              shown: ['.k-tag', '.k-attr', '.k-value'].map((kind) => copy.querySelector(kind))
+                .map((span) => span && getComputedStyle(span).color),
+              ink: c.color};
     }""")
     check("PRESS-0261: the copy holds the box's text, coloured, as he types",
           seen["text"] and seen["tags"] > 4 and seen["attrs"] > 0, str(seen))
@@ -924,6 +927,9 @@ def code_colours(page, origin: str) -> None:
           str(seen))
     check("PRESS-0261: the box's own letters are transparent over the copy",
           seen["letters"] == "rgba(0, 0, 0, 0)", seen["letters"])
+    check("PRESS-0283: tags, names and values each show their own colour, none the ink",
+          None not in seen["shown"] and len({*seen["shown"], seen["ink"]}) == 4,
+          f"{seen['shown']} ink={seen['ink']}")
 
 
 def true_colours_kept(page, origin: str) -> None:

@@ -1335,10 +1335,10 @@ def _code_box(textarea: str) -> str:
 # PRESS-0261: colour in the code boxes. A coloured copy of the code sits behind
 # each box, whose own letters are transparent, so typing, the caret and a
 # selection stay the browser's own. Colour is the only difference, since a bold
-# or italic letter would be wider than the one above it. The colours are the
-# theme's ink, soft and amber-ink, which every theme is tested to keep readable.
-# HTML is coloured as tags, attributes and text; a <style> holds CSS, coloured
-# as selectors, properties and values; a <script> stays plain.
+# or italic letter would be wider than the one above it. Each theme has its own
+# code colours, tested readable and apart (PRESS-0283); a note takes its soft.
+# HTML is coloured as tags, attributes, values and text; a <style> holds CSS,
+# coloured as selectors, properties and values; a <script> stays plain.
 _CODE_SCRIPT = r"""
 (() => {
   const COPIED = ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight",
@@ -1377,7 +1377,7 @@ _CODE_SCRIPT = r"""
         const part = ATTRIBUTE.exec(text);
         if (!part) { put(text[at]); at += 1; continue; }
         if (part[1]) put(part[1]);
-        else if (part[2]) { put(part[2], "attr"); put(part[3]); put(part[4]); }
+        else if (part[2]) { put(part[2], "attr"); put(part[3]); put(part[4], "value"); }
         else put(part[0], "tag");
         closed = Boolean(part[6]);
         at = ATTRIBUTE.lastIndex;
@@ -1404,7 +1404,7 @@ _CODE_SCRIPT = r"""
         if (kind) { pieces.push([words, kind]); continue; }
         if (opening) { pieces.push([words, "tag"]); continue; }
         if (property && words === ":") { property = false; pieces.push([words, ""]); continue; }
-        pieces.push([words, property ? "attr" : ""]);
+        pieces.push([words, property ? "attr" : depth > 0 && !opening ? "value" : ""]);
       }
       held.length = 0;
     };

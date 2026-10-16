@@ -5072,12 +5072,18 @@ documents go on the site beside the photographs.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0283] **Code boxes are coloured more strongly, with colours each theme keeps readable.**
+- ✅ [PRESS-0283] **Code boxes are coloured more strongly, with colours each theme keeps readable.**
   Asked by the user at the Edge hand check of 2026-10-16. PRESS-0261
   colours code with the theme's ink, soft and amber-ink only, which reads
   as faint. Each theme gains its own code colours, each tested readable
   in light and dark as the existing colours are.
   User decision 2026-10-16: in 0.10.0, the their-own-look release.
+  2026-10-16: every theme carries code-tag, code-attr and code-value
+  colours, each at least 4.5:1 on paper and sheet and at least 90 apart
+  in RGB from the ink and each other
+  (tests/test_themes.py::test_every_theme_colours_code_readably_and_apart).
+  Values are coloured as their own kind in HTML and CSS; notes keep
+  soft. A browser row checks the three show distinct colours.
   **Layman:** Code shown in Pressless is coloured more clearly, so tags, names and values stand apart.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
