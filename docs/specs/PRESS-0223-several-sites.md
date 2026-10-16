@@ -279,8 +279,8 @@ lands.
 ## 9. Out of scope
 
 - Listing the sites in a GitHub account and adding one from there (the
-  user, 2026-10-05) — deferred; not yet queued.
-- Removing a site — deferred; not yet queued.
+  user, 2026-10-05) — PRESS-0290.
+- Removing a site — PRESS-0291.
 - Saving and opening a site as one file — PRESS-0224.
 
 ## 10. What checks this

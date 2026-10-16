@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=289 -->
+<!-- ants-roadmap-id-high-water: PRESS=291 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -11635,6 +11635,24 @@ already-built code ships in whichever release comes next.
   **Layman:** Before a review, Claude can check that nothing in the reviewers' notes names the writer, in one step.
   Kind: chore.
   Source: in-session-2026-10-16 PRESS-0197 review.
+
+- 📋 [PRESS-0290] **The Sites screen lists the sites in a GitHub account, and adds one from there.**
+  The user's idea of 2026-10-05, recorded on PRESS-0223 and left out of it
+  (docs/specs/PRESS-0223-several-sites.md section 9): list the account's
+  public repositories with Pages switched on, and start a site from one
+  rather than typing its repository in setup.
+  **Layman:** Instead of typing in each website, Pressless can show the websites already in your GitHub account and let you add one.
+  Kind: feature.
+  Source: PRESS-0223-spec-section-9-2026-10-16.
+
+- 📋 [PRESS-0291] **A site can be removed from the Sites screen.**
+  Left out of PRESS-0223 (docs/specs/PRESS-0223-several-sites.md section
+  9). Today a site made by mistake stays in the list. Removing one should
+  keep a copy first, as the bin does for an entry, and never remove the
+  site that is open.
+  **Layman:** A website you no longer want can be taken off the list of sites.
+  Kind: feature.
+  Source: PRESS-0223-spec-section-9-2026-10-16.
 
 ## Milestones
 
