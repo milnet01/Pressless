@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0227 — The site's icon and its sharing picture
 
-**Status:** spec draft (2026-10-16).
+**Status:** accepted (2026-10-16).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0227 (split from PRESS-0213 by the user's
 decision of 2026-10-03).
@@ -17,9 +17,9 @@ a picture that shows when someone shares a link to the site.
 
 After this ships, the Settings page chooses two pictures: the site's
 icon and its sharing picture. Each is a photograph, uploaded there as a
-picture section uploads one. A publish gives every page of the site an
-icon link and a sharing-picture tag. With neither chosen, the Builder
-inserts nothing.
+picture section uploads one. A publish gives every page of the site but
+a forwarding page an icon link and a sharing-picture tag. With neither
+chosen, the Builder inserts nothing.
 
 ## 2. Problem
 
@@ -87,10 +87,12 @@ class Identity:
 - a *Remove* button that empties the hidden input and hides the picture.
 
 A refused upload shows the answer's sentence beside the row and leaves
-the hidden input as it was. `_FIELDS` gains `site_icon` and
-`site_picture`; `_IDENTITY_FIELDS` maps `icon` and `picture` to them;
-`setup._identity` builds all four fields; `_values_from` reads them from
-`read_identity`. Each row has help beside it (`_HELP_PARAGRAPHS`).
+the hidden input as it was. A refused name gets the row's hint, shown as
+`wizard.field` shows one: `_HINTS` gains `site_icon` and `site_picture`,
+each worded "Choose the picture again, or remove it." `_FIELDS` gains
+`site_icon` and `site_picture`; `_IDENTITY_FIELDS` maps `icon` and
+`picture` to them; `setup._identity` builds all four fields;
+`_values_from` reads them from `read_identity`. Each row has help beside it (`_HELP_PARAGRAPHS`).
 
 The wizard's `check_site` keeps the Store's `icon` and `picture`, through
 `dataclasses.replace` on the identity `read_identity` returns, so a
@@ -105,7 +107,8 @@ first run over a carried folder does not drop them.
   `web_copy` does, with the same `BuildStopped` sentences for a missing or
   unreadable one. It writes `site-icon.png`: the first frame,
   `ImageOps.exif_transpose`, then `ImageOps.fit` to `ICON_SIDE = 180`
-  pixels square, centred, saved as PNG.
+  pixels square, centred, converted to `RGBA` and saved as PNG. PNG
+  cannot hold a CMYK JPEG's mode.
 - **Picture chosen.** `web_copy(name)` publishes it as any photograph.
 
 `_Build.identified(text, depth)` returns `text` with these inserted by
@@ -121,16 +124,19 @@ first run over a carried folder does not drop them.
 `up` is `"../" * depth`. `address` is `settings.site_address` with its
 trailing `/` removed; `og:image` needs an absolute address. The two icon
 lines are left out where no icon is chosen, or where the text already
-matches `_OWN_ICON`, a `<link` whose `rel` holds the word `icon`, any
-case. The two picture lines are left out where no picture is chosen, or
-where the text already holds `og:image`. A preview build inserts neither.
+matches `_OWN_ICON`, a `<link` whose `rel` matches `\bicon\b`, any
+case, so `shortcut icon` and `apple-touch-icon` both count. The two
+picture lines are left out where no picture is chosen, or where the text
+already holds `og:image`. A preview build inserts neither, and nor does a
+forwarding page, which goes through neither `page` nor `fixed_page`.
 
 ### 4.4 A repository's own `site-icon.png`
 
 PRESS-0197 § 4.7's two rules cover it unchanged, since both read
 `ROOT_OUTPUT` at call time: a new setup no longer keeps a root
 `site-icon.png`, and a saved list that still keeps one makes a publish
-with an icon chosen raise `KeptFolderBuilt`.
+with an icon chosen raise `KeptFolderBuilt`. That error's words call
+the entry a folder; they are reworded to fit a file too.
 
 ## 5. Invariants
 
@@ -146,15 +152,16 @@ with an icon chosen raise `KeptFolderBuilt`.
   `tests/test_store_extras.py::test_an_identity_without_pictures_is_written_as_before`.
   *Breaks when:* empty keys are written, or the key order changes.
 - **INV-3** — With an icon chosen, the built site holds `site-icon.png`,
-  a 180 by 180 PNG made from a 300 by 200 photograph; an entry page at
-  depth 2 links `../../site-icon.png` as `icon` and `apple-touch-icon`,
+  a 180 by 180 PNG made from a 300 by 200 photograph;
+  `blog/archive/index.html`, at depth 2, links `../../site-icon.png` as
+  `icon` and `apple-touch-icon`,
   and `index.html` links `site-icon.png`. *Test:*
   `tests/test_builder.py::test_the_icon_is_square_and_on_every_page`.
   *Breaks when:* the icon is not square, a page lacks the link, or `up`
   is wrong.
 - **INV-4** — With a picture chosen and `site_address`
-  `https://example.org/`, every page holds `<meta property="og:image"
-  content="https://example.org/photographs/<name>">` and the
+  `https://example.org/`, every page but a forward holds `<meta
+  property="og:image" content="https://example.org/photographs/<name>">` and the
   `twitter:card` tag, and the site holds `photographs/<name>`. *Test:*
   `tests/test_builder.py::test_the_sharing_picture_is_absolute_on_every_page`.
   *Breaks when:* the address is relative, doubled at the `/`, or a page
