@@ -5053,11 +5053,15 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0282] **A music, video or download section can be added by uploading the file, with no address typed first.**
+- ✅ [PRESS-0282] **A music, video or download section can be added by uploading the file, with no address typed first.**
   Found in the Edge hand check of 2026-10-16: Add refuses a music
   section with "Type its address first", so a person wanting to upload
   a song must invent an address before Upload a file appears.
   User decision 2026-10-16: in 0.10.0, the any-file release.
+  2026-10-16: Add with no address on a music, video or download section
+  opens the file chooser, and the upload's answer becomes the new
+  section's address, on the page or in a column. Locked by the
+  added_by_upload row in scripts/by-hand-browser-checks.py.
   **Layman:** To add a song or video, you pick the file; you no longer make up an address first.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.

@@ -2000,36 +2000,52 @@ _VISUAL_SCRIPT = r"""
     fragment.append(item.start, item.el, item.end);
     if (where === "after") anchor.after(fragment); else anchor.before(fragment);
   }
-  act("add").addEventListener("click", () => {
-    const kind = document.getElementById("add-kind").value;
-    const address = document.getElementById("add-address").value.trim();
-    if (ADDRESSED.includes(kind) && !address) {
-      document.getElementById("panel-said").textContent = say("script.visual.needs_address");
+  // Adds below `at`, or at the page's end; with a column, into that column of
+  // `at`, which is a columns section.
+  function addTo(kind, address, at, column) {
+    document.getElementById("add-address").value = "";
+    if (column !== undefined) {
+      at.parts[column].push(made(kind, address, at, column));
+      touch(at);
       return;
     }
-    const parent = picked ? picked.parent : null;
-    const list = picked ? listOf(picked) : model;
-    const item = made(kind, address, parent, picked ? picked.column : undefined);
-    place(item, list, picked ? list.indexOf(picked) + 1 : list.length);
-    document.getElementById("add-address").value = "";
+    const parent = at ? at.parent : null;
+    const list = at ? listOf(at) : model;
+    const item = made(kind, address, parent, at ? at.column : undefined);
+    place(item, list, at ? list.indexOf(at) + 1 : list.length);
     touch(parent || item);
     item.changed = true;
     show(item, true);
+  }
+  // PRESS-0282: a section playing or offering a file is added by choosing
+  // the file, so Add with no address asks for it, and the upload's answer
+  // is the address. Every other kind needs its address typed.
+  const FILED = ["video", "music", "download"];
+  let adding = null;
+  function asked(kind, address, column) {
+    if (!ADDRESSED.includes(kind) || address) return false;
+    if (FILED.includes(kind)) {
+      adding = {kind, at: picked, column};
+      filer.accept = given.accept[kind];
+      filer.value = "";
+      filer.click();
+    } else {
+      document.getElementById("panel-said").textContent = say("script.visual.needs_address");
+    }
+    return true;
+  }
+  act("add").addEventListener("click", () => {
+    const kind = document.getElementById("add-kind").value;
+    const address = document.getElementById("add-address").value.trim();
+    if (!asked(kind, address)) addTo(kind, address, picked);
   });
   panel.querySelectorAll("[data-act=add-to]").forEach((button) => {
     button.addEventListener("click", () => {
       const kind = document.getElementById("add-kind").value;
       const address = document.getElementById("add-address").value.trim();
       if (!picked || !IN_COLUMN.includes(kind)) return;
-      if (ADDRESSED.includes(kind) && !address) {
-        document.getElementById("panel-said").textContent = say("script.visual.needs_address");
-        return;
-      }
       const column = Number(button.dataset.column);
-      const item = made(kind, address, picked, column);
-      picked.parts[column].push(item);
-      document.getElementById("add-address").value = "";
-      touch(picked);
+      if (!asked(kind, address, column)) addTo(kind, address, picked, column);
     });
   });
   act("add-picture").addEventListener("click", () => {
@@ -2330,13 +2346,18 @@ _VISUAL_SCRIPT = r"""
   const filer = document.getElementById("file-file");
   act("file").addEventListener("click", () => {
     if (!picked || !given.accept[picked.kind]) return;
+    adding = null;
     filer.accept = given.accept[picked.kind];
     filer.value = "";
     filer.click();
   });
+  filer.addEventListener("cancel", () => { adding = null; });
   filer.addEventListener("change", async () => {
     const file = filer.files[0];
-    if (!file || !picked || !given.accept[picked.kind]) return;
+    const adds = adding;
+    adding = null;
+    const kind = adds ? adds.kind : picked && picked.kind;
+    if (!file || !given.accept[kind]) return;
     const said = document.getElementById("panel-said");
     if (file.size > given.largest) {
       said.textContent = say("script.visual.file_too_large");
@@ -2357,6 +2378,11 @@ _VISUAL_SCRIPT = r"""
       option.value = address; option.textContent = name;
       list.append(option);
     });
+    if (adds) {
+      addTo(adds.kind, address, adds.at, adds.column);
+      return;
+    }
+    if (!picked || picked.kind !== kind) return;
     const place = picked.kind === "download" ? "href" : "src";
     if (picked.kind === "video") picked.fields = {src: address};
     else picked.fields[place] = address;

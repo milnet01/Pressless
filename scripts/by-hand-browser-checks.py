@@ -499,6 +499,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         pieces(page, origin, folder)
         kept_files(page, origin, folder)
         players_picked(page, origin, folder)
+        added_by_upload(page, origin, folder)
         settings_pictures(page, origin, folder)
 
         print("\n  console during the run:")
@@ -585,6 +586,44 @@ def players_picked(page, origin: str, folder: Path) -> None:
     check("PRESS-0287: a click on a music, video or YouTube player picks its section",
           named == ["Changing: Music", "Changing: Video", "Changing: Video"], str(named))
     check("PRESS-0287: picking players raised no script error", not errors, str(errors))
+
+
+def added_by_upload(page, origin: str, folder: Path) -> None:
+    """PRESS-0282: Add with no address asks for the file, and the upload
+    becomes the new section's address."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+    store.write_html(folder, store.PAGES_FOLDER, "uploads",
+                     VISUAL_PAGE.replace("<title>Visual", "<title>Uploads"))
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "uploads", waiting=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{origin}/page?kind=pages&name=uploads", wait_until="networkidle")
+    asked = []
+    # The Face checks a file's first bytes against its name.
+    for kind, name, start in (("music", "Tune.mp3", b"ID3"),
+                              ("download", "Notes.pdf", b"%PDF-1.4")):
+        page.select_option("#add-kind", kind)
+        page.fill("#add-address", "")
+        try:
+            with page.expect_file_chooser(timeout=3000) as chooser:
+                page.locator("[data-act=add]").click()
+            chooser.value.set_files({"name": name, "mimeType": "application/octet-stream",
+                                     "buffer": start + b" made-up bytes"})
+            asked.append(kind)
+        except PlaywrightTimeout:
+            continue  # no chooser opened: the failure this row reports
+        page.wait_for_timeout(1600)
+    page.wait_for_function("document.getElementById('save-status').textContent !== "
+                           "'Saving'", timeout=5000)
+    found = {s.kind: s.fields.get("src") or s.fields.get("href")
+             for s in blocks.read("uploads", store.read_html(waiting)).sections
+             if s.kind in ("music", "download")} if waiting.is_file() else {}
+    check("PRESS-0282: Add with no address asks for the file, and the upload is its address",
+          asked == ["music", "download"]
+          and found == {"music": "../files/tune.mp3", "download": "../files/notes.pdf"},
+          f"asked={asked} found={found}")
+    check("PRESS-0282: adding by upload raised no script error", not errors, str(errors))
 
 
 def settings_pictures(page, origin: str, folder: Path) -> None:
