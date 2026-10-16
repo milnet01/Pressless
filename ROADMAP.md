@@ -5002,11 +5002,13 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-16.
   Lanes: Face.
 
-- 📋 [PRESS-0279] **The visual editor's "Changing: ..." line stays in sight while the panel scrolls.**
+- ✅ [PRESS-0279] **The visual editor's "Changing: ..." line stays in sight while the panel scrolls.**
   Found in the Edge hand check of 2026-10-16: #picked is the panel's
   first line, and the panel scrolls inside itself, so after a pick the
   line was above the panel's visible top and the user could not see what
   was picked. Fix: keep it pinned at the panel's top.
+  2026-10-16: #picked is sticky at the panel's top.
+  by-hand-browser-checks.py's PRESS-0279 row holds it in Chrome.
   **Layman:** The line saying which part of the page you are changing no longer scrolls out of sight.
   Kind: fix.
   Source: user-hand-check-2026-10-16.

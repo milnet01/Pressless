@@ -754,6 +754,8 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   background: var(--sheet); }
 .face #panel [hidden], .face #panel .panel-row[hidden] { display: none; }
 .face #panel #picked, .face #panel #panel-said { min-height: 3.1em; }
+.face #panel #picked { position: sticky; top: -.5rem; z-index: 1; margin-top: 0;
+  padding: .5rem 0; background: var(--sheet); }
 .face #panel .panel-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .face :where(#panel textarea) { min-height: 12rem; font: .9em/1.4 ui-monospace, Consolas,
   "DejaVu Sans Mono", monospace; }

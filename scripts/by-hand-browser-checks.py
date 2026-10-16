@@ -705,6 +705,16 @@ def visual_editor(page, origin: str, folder: Path) -> None:
              if page.locator(f"#panel [data-act={act}]").first.is_visible()]
     check("PRESS-0288: a code section's panel shows no Bold, Italic, Link or Add to column",
           not shown, str(shown))
+    in_sight = page.evaluate("""() => {
+      const panel = document.getElementById('panel');
+      panel.scrollTop = panel.scrollHeight;
+      const line = document.getElementById('picked').getBoundingClientRect();
+      const at = document.elementFromPoint(line.left + 4, line.top + line.height / 2);
+      return [panel.scrollTop, at ? at.id || at.tagName : null];
+    }""")
+    page.evaluate("document.getElementById('panel').scrollTop = 0")
+    check("PRESS-0279: the Changing line stays in sight when the panel scrolls",
+          in_sight[0] > 0 and in_sight[1] == "picked", str(in_sight))
     code = page.locator("[data-field=code]")
     shown = code.input_value()
     check("PRESS-0260 s4.5: the panel shows a code section's HTML without its marks",
