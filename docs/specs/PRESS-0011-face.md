@@ -145,6 +145,8 @@ The Face writes the log there and opens it for the Open folder button.
 `docs/specs/PRESS-0012-editor.md` § 4.3, which also replaces the page at `/`.
 `add_to_list`, `list_pieces`, `note` and `after_reply` are added by
 `docs/specs/PRESS-0023-self-update.md` §§ 4.4 and 4.9.
+`add_upload` and `Download` are added by
+`docs/specs/PRESS-0224-site-file.md` § 4.5.
 
 ### 4.2 The error contract
 

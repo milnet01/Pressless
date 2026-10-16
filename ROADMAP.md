@@ -4874,7 +4874,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-03.
   Lanes: face, store, settings.
 
-- 📋 [PRESS-0224] **A whole site saves to one file, and such a file opens again as a site.**
+- ✅ [PRESS-0224] **A whole site saves to one file, and such a file opens again as a site.**
   The user asked on 2026-10-03, with PRESS-0223. Shares its file with
   PRESS-0221's backup: one format, one reader, so a backup and a saved
   site are the same kind of file. The publishing key is never in the
@@ -4890,6 +4890,13 @@ documents go on the site beside the photographs.
   Spec review 2026-10-16: one cold round (the user's budget), two lanes;
   6 verified, 6 fixed, none deferred. Spec accepted (744455f); the fixes
   are read by no lane, so implementation is their reader.
+  2026-10-16: built to docs/specs/PRESS-0224-site-file.md. sitefile.save
+  writes the open site as a plain .zip with a manifest, no key and no
+  path; sitefile.open_into checks every member first and opens the file
+  as a new site, or in place of an unused one. The Face gained
+  add_upload, which streams a body to disk past the 64 MiB page ceiling,
+  and Download. The Sites screen has Save this site to a file and Open a
+  site file.
   **Layman:** You can save everything about one site, its writing, photographs and settings, as a single file, and open that file later or on another computer.
   Kind: feature.
   Source: user-request-2026-10-03.

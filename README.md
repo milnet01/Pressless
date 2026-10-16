@@ -130,6 +130,12 @@ into `sites/site-1`. An older version run afterwards finds no site and
 offers setup. Moving everything in `sites/site-1` back up into
 `Pressless-data` gives that version its site again.
 
+**To keep a copy of a site, or move it to another computer, save it to
+one file.** On the Sites screen, **Save this site to a file** saves its
+writing, photographs and settings. **Open a site file** in Pressless on
+the other computer opens it as a site. The publishing key is never in
+the file, so Settings asks for it once.
+
 ## Moving an existing blog in
 
 **You cannot bring your own blog in yet.** You start with an empty site

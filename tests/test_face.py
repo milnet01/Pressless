@@ -988,3 +988,74 @@ def test_an_oversize_registered_post_body_is_refused(tmp_path: Path) -> None:
     finally:
         served.stop()
     assert raw.split(b"\r\n", 1)[0].split(b" ")[1] == b"413"
+
+
+# ------------------------------------------------------------ PRESS-0224 ----
+
+
+def test_an_upload_streams_past_the_page_ceiling(tmp_path: Path, monkeypatch) -> None:
+    """PRESS-0224 INV-7. Breaks when the body is read whole, or the file is
+    left behind. The ceiling is lowered so the test sends kilobytes, not 64 MiB."""
+    monkeypatch.setattr(face, "_MAX_BODY", 1024)
+    into = tmp_path / "own"
+    into.mkdir()
+    body = bytes(range(256)) * 20
+    seen: list[tuple[bytes, bool]] = []
+
+    def took(path: Path) -> str:
+        seen.append((path.read_bytes(), path.parent == into))
+        return "<p>taken</p>"
+
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", took, into)
+        served.add_page("POST", "/page", lambda request: "<p>page</p>")
+        client = _Client(served)
+        status, _, page = client.raw("POST", "/up", body)
+        assert status == 200 and b"taken" in page
+        assert client.raw("POST", "/page", body)[0] == 413
+    finally:
+        served.stop()
+    assert seen == [(body, True)]
+    assert not list(into.glob(".upload-*"))
+
+
+def test_an_upload_needs_the_session(tmp_path: Path) -> None:
+    """PRESS-0224 INV-8. Breaks when the upload route skips a check a page
+    gets, or writes a byte before it."""
+    into = tmp_path / "own"
+    into.mkdir()
+    sent = tmp_path / "sent.zip"
+    sent.write_bytes(b"a file")
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", lambda path: "<p>taken</p>", into)
+        served.add_page("GET", "/down", lambda request: face.Download(sent, "Site.zip"))
+        client = _Client(served)
+        assert client.raw("POST", "/up", b"x" * 100, cookie=False)[0] == 403
+        assert client.raw("POST", "/up", b"x" * 100,
+                          origin="http://pressless.example")[0] == 403
+        assert client.raw("GET", "/down", cookie=False)[0] == 403
+    finally:
+        served.stop()
+    assert not list(into.glob(".upload-*"))
+    assert sent.read_bytes() == b"a file"
+
+
+def test_a_download_is_sent_as_an_attachment_and_removed(tmp_path: Path) -> None:
+    """PRESS-0224 § 4.5. Breaks when the file is answered inline, its name is
+    not quoted for the browser, or it is left behind."""
+    sent = tmp_path / ".saving-1.zip"
+    sent.write_bytes(b"PK zip bytes")
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/down", lambda request: face.Download(sent, "Mé Site 2026.zip"))
+        status, headers, data = _Client(served).raw("GET", "/down")
+    finally:
+        served.stop()
+    assert status == 200 and data == b"PK zip bytes"
+    disposition = headers["Content-Disposition"]
+    assert disposition.startswith("attachment;")
+    assert "filename*=UTF-8''M%C3%A9%20Site%202026.zip" in disposition
+    assert "frame-ancestors 'self'" in headers["Content-Security-Policy"]
+    assert not sent.exists()

@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A whole site saves to one file, and opens again as a site** (PRESS-0224)
+  On the Sites screen, *Save this site to a file* downloads its writing,
+  photographs and settings as one .zip file, which any computer can
+  open. *Open a site file* turns such a file into a new site, on this
+  computer or another. The publishing key never goes in the file.
+
 - **One copy of Pressless looks after several websites** (PRESS-0223)
   A new Sites screen, in the bar beside Your writing, lists your sites,
   starts a new one, and opens another, which restarts Pressless in a new

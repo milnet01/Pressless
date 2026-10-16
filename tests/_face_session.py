@@ -79,3 +79,24 @@ class Browser:
                     response.read().decode("utf-8", "replace"))
         finally:
             conn.close()
+
+    def raw(self, method: str, path: str, body: bytes = b"", *, cookie: bool = True,
+            origin: str | None = "own") -> tuple[int, dict[str, str], bytes]:
+        """As `request`, with `body` sent as it is and the answer's bytes kept,
+        as a file upload or a download is (PRESS-0224 § 4.5)."""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=self.timeout)
+        try:
+            conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
+            conn.putheader("Host", self.host)
+            if cookie:
+                conn.putheader("Cookie", self.cookie)
+            if method == "POST":
+                if origin:
+                    conn.putheader("Origin", self.origin if origin == "own" else origin)
+                conn.putheader("Content-Type", "application/octet-stream")
+                conn.putheader("Content-Length", str(len(body)))
+            conn.endheaders(body if method == "POST" else None)
+            response = conn.getresponse()
+            return response.status, dict(response.getheaders()), response.read()
+        finally:
+            conn.close()

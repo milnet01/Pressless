@@ -484,9 +484,9 @@ publish — genuinely attractive — and every unfinished poem or half-built
 page would be readable by anyone who guessed the address. That is S7
 broken in the worst way: not a draft appearing as a page, but a draft
 appearing and nobody noticing. **The cost is real and the user should
-be told it: unfinished work is not backed up.** Backing drafts up
-somewhere that is not their public site is a good later item; it is not
-this one.
+be told it: publishing does not back up unfinished work.** A whole site,
+drafts included, saves to one file from the Sites screen instead
+(PRESS-0224).
 
 **Pressless's own folder sits beside the program file, not under the
 home directory.** Decided with the user 2026-08-25. It holds the

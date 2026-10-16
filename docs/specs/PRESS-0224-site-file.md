@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0224 — A whole site saves to one file, and opens again
 
-**Status:** accepted (2026-10-16). Gated for one round, the user's budget for a new spec; every verified finding fixed.
+**Status:** accepted (2026-10-16).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0224 (user-request-2026-10-03).
 
@@ -71,7 +71,8 @@ def save(site: Path, target: Path) -> None: ...
 def check(source: Path, room: int) -> None: ...      # raises Refused
 def open_into(source: Path, own: Path) -> Path: ...  # the new site
 
-class Refused(Exception): ...   # what failed, never a path
+class Refused(Exception): ...   # what failed, never a path; `newer` where
+                                # a newer Pressless made the file
 ```
 
 `KEPT` and `LEFT_OUT` together are exactly PRESS-0223's `SITE_NAMES`.
@@ -79,7 +80,8 @@ What is left out is a key, something rebuilt on demand, or where the user
 was last.
 
 `<name>` is the site's name (PRESS-0223 § 4.6) with every character but
-letters, digits, spaces and hyphens removed, else `Pressless site`.
+letters, digits, spaces and hyphens removed and its spaces collapsed, else
+`Pressless site`.
 
 ### 4.2 Saving
 
@@ -166,7 +168,8 @@ class Download:
 
 `POST /sites/open-file` is an upload into `own`; its handler calls
 `open_into`, and answers with the restart's *going* page, or the Sites
-screen with the refusal's sentence.
+screen with the refusal's sentence. `sites_screen` gives `Refused` its
+`Face.fail` sentence (`docs/design.md` § Errors).
 
 ### 4.6 The Sites screen
 

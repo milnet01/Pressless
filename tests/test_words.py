@@ -211,6 +211,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Pressless": "the app's name", "Press less": "the app's name, in the bar",
         **dict.fromkeys(("Content-Type", "Content-Length", "Cache-Control",
                          "Content-Security-Policy", "X-Content-Type-Options", "Set-Cookie",
+                         "Content-Disposition",
                          "Location", "Host", "Origin", "Cookie", "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
     },

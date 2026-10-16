@@ -21,6 +21,7 @@ import http.cookies
 import http.server
 import os
 import secrets
+import shutil
 import subprocess
 import sys
 import threading
@@ -384,7 +385,15 @@ class Reply:
     location: str | None = None
 
 
-Page = Callable[[Request], "str | Reply"]  # a str is the page's HTML body
+@dataclass(frozen=True)
+class Download:
+    """A page's answer sent as a file the browser saves (PRESS-0224 § 4.5):
+    sent in pieces, then deleted."""
+    path: Path
+    name: str   # the name the browser saves it under
+
+
+Page = Callable[[Request], "str | Reply | Download"]  # a str is the page's HTML body
 Locate = Callable[[str], Path]
 
 # PRESS-0268: no served file runs a script, so a preview page opened outside
@@ -1043,6 +1052,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._choose_true_colours(face)
             return
 
+        upload = face._uploads.get(parts.path) if method == "POST" else None
+        if upload is not None:
+            self._take_upload(face, upload, parts.path, query)
+            return
         registered = face._pages.get((method, parts.path))
         if registered is None:
             self._drain()
@@ -1064,6 +1077,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send(413, "", "text/plain")
             return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
+        self._answer_then(face, page, request, publishing)
+
+    def _answer_then(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
+        """Answer, then run what the page asked to run after (PRESS-0023 § 4.9)."""
         face._reply.after = []
         try:
             self._answer(face, page, request, publishing)
@@ -1130,10 +1147,86 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             location = (("Location", body.location),) if body.location is not None else ()
             self._send_bytes(body.status, body.body, body.content_type, location)
             return
+        if isinstance(body, Download):
+            self._send_download(face, body)
+            return
         if request.method == "GET":
             usage.report("screen", screen=request.path)   # the registered path, no query
         self._send(200, _page(body, face._theme, face.live_address()), "text/html",
                    (("Content-Security-Policy", _FRAMES_POLICY),))
+
+    def _take_upload(self, face: Face, upload: tuple[Callable[[Path], str], Path],
+                     path: str, query: dict[str, str]) -> None:
+        """PRESS-0224 § 4.5: the body is a file, copied to disk in pieces, never
+        held whole, and handed to the route's handler as a page is answered.
+        Every check a page gets has run before this."""
+        handler, into = upload
+        length = _length(self.headers.get("Content-Length"))
+        if length is None:
+            self._send(400, "", "text/plain")
+            return
+        if length > _room(into):
+            self._drain()
+            self._send(413, "", "text/plain")
+            return
+        taken = Path(into) / f".upload-{secrets.token_hex(8)}"
+        failure: OSError | None = None
+        try:
+            try:
+                with open(taken, "wb") as out:
+                    left = length
+                    while left > 0:
+                        piece = self.rfile.read(min(left, _PIECE))
+                        if not piece:
+                            break
+                        out.write(piece)
+                        left -= len(piece)
+            except OSError as exc:
+                failure = exc
+            if failure is None and left > 0:
+                self._send(400, "", "text/plain")   # the sender stopped part way
+                return
+
+            def page(request: Request) -> str:
+                if failure is not None:
+                    raise failure
+                return handler(taken)
+
+            self._answer_then(face, page, Request("POST", path, query, b""), False)
+        finally:
+            taken.unlink(missing_ok=True)
+
+    def _send_download(self, face: Face, download: Download) -> None:
+        """PRESS-0224 § 4.5: the file as an attachment, sent in pieces and
+        then deleted, sent or not."""
+        try:
+            try:
+                handle = open(download.path, "rb")  # noqa: SIM115 -- closed below
+                size = os.fstat(handle.fileno()).st_size
+            except OSError as exc:
+                self._send(500, _page(face.fail(exc, publishing=False), face._theme,
+                                      face.live_address()), "text/html",
+                           (("Content-Security-Policy", _FRAMES_POLICY),))
+                return
+            with handle:
+                plain = "".join(c if c.isascii() and (c.isalnum() or c in " ._-") else "_"
+                                for c in download.name)
+                quoted = urllib.parse.quote(download.name, safe="")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip"
+                                 if download.name.lower().endswith(".zip")
+                                 else "application/octet-stream")
+                self.send_header("Content-Length", str(size))
+                self.send_header("Content-Disposition",
+                                 f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Security-Policy", _ANCESTORS_POLICY)
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                while piece := handle.read(_PIECE):
+                    self.wfile.write(piece)
+        finally:
+            download.path.unlink(missing_ok=True)
 
     def _send_file(self, method: str, path: str, face: Face) -> None:
         """The longest registered prefix's file, or 404 (PRESS-0012 § 4.3)."""
@@ -1170,6 +1263,19 @@ _THEME_LIMIT = 64
 # refused with 413 before a byte is read.
 _MAX_BODY = 64 * 1024 * 1024
 
+# PRESS-0224 § 4.5: an upload or a download moves in pieces of this size, and
+# an upload is refused where it would leave the drive less than _SPARE free.
+_PIECE = 64 * 1024
+_SPARE = 1024 * 1024 * 1024
+
+
+def _room(folder: Path) -> int:
+    """The bytes an upload into `folder` may take."""
+    try:
+        return shutil.disk_usage(folder).free - _SPARE
+    except OSError:
+        return -1
+
 
 class Face:
     """The running server. Made by `serve`; one per launch."""
@@ -1179,6 +1285,7 @@ class Face:
         # Pressless's own folder; the settings and choices are the open site's.
         self._folder = Path(folder)
         self._site = Path(site) if site is not None else self._folder
+        self._uploads: dict[str, tuple[Callable[[Path], str], Path]] = {}
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
         self._secret = secrets.token_urlsafe(32)
@@ -1217,6 +1324,12 @@ class Face:
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
         """Register `page` for `method` and `path`, replacing any before it."""
         self._pages[(method.upper(), path)] = (page, publishing)
+
+    def add_upload(self, path: str, handler: Callable[[Path], str], into: Path) -> None:
+        """Register a POST `path` whose body is a file, copied to `into` in
+        pieces and handed to `handler` by path, then deleted (PRESS-0224
+        § 4.5). The handler's answer is a page's."""
+        self._uploads[path] = (handler, Path(into))
 
     def add_return_page(self, path: str, page: Page) -> None:
         """Register `page` for GET `path`, reached WITHOUT the session cookie.

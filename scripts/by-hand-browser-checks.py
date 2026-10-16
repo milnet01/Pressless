@@ -514,6 +514,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         players_picked(page, origin, folder)
         added_by_upload(page, origin, folder)
         sites_listed(page, origin, folder)
+        site_file(page, origin, folder)
         enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
 
@@ -618,6 +619,31 @@ def sites_listed(page, origin: str, folder: Path) -> None:
           opened == "site-2" and RESTARTS == [1]
           and "Pressless is restarting." in page.locator("main").inner_text(),
           f"open={opened} restarts={RESTARTS}")
+
+
+def site_file(page, origin: str, folder: Path) -> None:
+    """PRESS-0224 INV-10: Save downloads the open site as one file, and Open
+    with that file makes it a new site and restarts."""
+    sites_own = folder.parent / "sites-own"
+    shown = sites.open_site(sites_own)
+    store.write(shown, tp._entry("saved-and-opened"), draft=True)
+    before = len(RESTARTS)
+    page.goto(f"{origin}/sites", wait_until="networkidle")
+    with page.expect_download() as saving:
+        page.get_by_text("Save this site to a file").click()
+    saved = Path(saving.value.path())
+    check("PRESS-0224: Save downloads the site as a .zip",
+          saving.value.suggested_filename.endswith(".zip") and saved.stat().st_size > 0,
+          saving.value.suggested_filename)
+    with page.expect_file_chooser() as chooser:
+        page.locator("#open-site-file").click()
+    chooser.value.set_files(str(saved))
+    page.wait_for_function("document.body.innerText.includes('Pressless is restarting.')",
+                           timeout=10000)
+    opened = sites.open_site(sites_own)
+    check("PRESS-0224: Open makes the file a new site and restarts",
+          opened != shown and (opened / "drafts" / "saved-and-opened.txt").is_file()
+          and len(RESTARTS) == before + 1, f"opened={opened.name}")
 
 
 def added_by_upload(page, origin: str, folder: Path) -> None:

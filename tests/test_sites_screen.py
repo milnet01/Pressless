@@ -2,13 +2,16 @@
 # site that is not there.
 from __future__ import annotations
 
+import datetime
+import io
 import json
+import zipfile
 from pathlib import Path
 
 from _face_session import Browser
 from test_publishing import _entry
 
-from pressless import editor, face, sites, sites_screen, store
+from pressless import editor, face, sitefile, sites, sites_screen, store
 
 OPEN = "sites.json"
 
@@ -86,3 +89,52 @@ def test_the_screen_lists_each_site_by_name_and_starts_a_new_one(tmp_path: Path)
         served.stop()
     assert json.loads((own / OPEN).read_text(encoding="utf-8"))["open"] == "site-3"
     assert (own / "sites" / "site-3").is_dir() and restarts == [1]
+
+
+# ------------------------------------------------------------ PRESS-0224 ----
+
+
+def test_save_downloads_the_site(tmp_path: Path) -> None:
+    """PRESS-0224 INV-9. Breaks when the file is answered inline, or left in
+    the folder."""
+    own = _own(tmp_path)
+    site = own / "sites" / "site-1"
+    store.write_identity(site, store.Identity("Sea & Sky!"))
+    store.write(site, _entry("seaside-walk"), draft=True)
+    restarts: list[int] = []
+    served, browser = _serve(own, restarts)
+    try:
+        status, headers, data = browser.raw("GET", "/sites/save")
+    finally:
+        served.stop()
+    assert status == 200
+    stamp = datetime.date.today().isoformat()
+    assert headers["Content-Disposition"].startswith(
+        f'attachment; filename="Sea Sky {stamp}.zip"')
+    with zipfile.ZipFile(io.BytesIO(data)) as saved:
+        assert "drafts/seaside-walk.txt" in saved.namelist()
+    assert not list(own.glob(".saving-*"))
+
+
+def test_an_opened_file_becomes_the_next_site(tmp_path: Path) -> None:
+    """PRESS-0224 § 4.5: the upload opens the file as a site and restarts;
+    a refused file shows the screen again and changes nothing."""
+    origin = _own(tmp_path / "a")
+    store.write(origin / "sites" / "site-1", _entry("seaside-walk"), draft=True)
+    saved = tmp_path / "saved.zip"
+    sitefile.save(origin / "sites" / "site-1", saved)
+    own = _own(tmp_path / "b")
+    store.write(own / "sites" / "site-1", _entry("own-writing"), draft=True)
+    restarts: list[int] = []
+    served, browser = _serve(own, restarts)
+    try:
+        status, _, page = browser.raw("POST", "/sites/open-file", b"not a zip")
+        assert status == 200 and b"could not be opened" in page and restarts == []
+        status, _, page = browser.raw("POST", "/sites/open-file", saved.read_bytes())
+        assert status == 200 and b"Pressless is restarting." in page
+    finally:
+        served.stop()
+    assert restarts == [1]
+    assert json.loads((own / OPEN).read_text(encoding="utf-8"))["open"] == "site-3"
+    assert (own / "sites" / "site-3" / "drafts" / "seaside-walk.txt").is_file()
+    assert not list(own.glob(".upload-*"))

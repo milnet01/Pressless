@@ -259,6 +259,8 @@ _WORDS: dict[str, str] = {
     "failure.files.TooLarge.next": (
         "Make the file smaller, or put it somewhere else and type its address instead."
     ),
+    "failure.sitefile.Refused.what": "Pressless could not open that file as a site.",
+    "failure.sitefile.Refused.next": "Choose a file Pressless saved, and open it again.",
     "failure.files_screen.FileInUse.what": (
         "That file is used on {pages}, so it was not removed."
     ),
@@ -1241,6 +1243,24 @@ _WORDS: dict[str, str] = {
     "sites_screen.new": "Start a new site",
     "sites_screen.unnamed": "New site",
     "sites_screen.not_a_site": "That site is not here any more. Choose one from the list.",
+    "sites_screen.file_title": "Save or open a whole site",
+    "sites_screen.file_about": (
+        "A whole site, its writing, photographs and settings, saves as one file. Open that "
+        "file here, or in Pressless on another computer, and it becomes a site again. The "
+        "publishing key is not in the file, so Settings asks for it once the site opens."
+    ),
+    "sites_screen.save": "Save this site to a file",
+    "sites_screen.open_file": "Open a site file",
+    "sites_screen.file_unnamed": "Pressless site",
+    "sites_screen.file_refused": (
+        "That file could not be opened as a site. No site has changed. Choose a file "
+        "Pressless saved."
+    ),
+    "sites_screen.file_newer": (
+        "A newer Pressless saved that file. No site has changed. Update Pressless, then "
+        "open the file again."
+    ),
+    "script.sites.opening": "Opening…",
     # Suggest or report a problem (report.py). The issue form it fills stays English.
     "report.what": (
         "This opens a new issue on Pressless's page on GitHub, with a short form already "
