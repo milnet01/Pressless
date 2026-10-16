@@ -53,6 +53,7 @@ import tempfile
 import threading
 import time
 import urllib.parse
+import wave
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -497,6 +498,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         furniture_views(page, origin, folder)
         pieces(page, origin, folder)
         kept_files(page, origin, folder)
+        players_picked(page, origin, folder)
         settings_pictures(page, origin, folder)
 
         print("\n  console during the run:")
@@ -547,6 +549,42 @@ def kept_files(page, origin: str, folder: Path) -> None:
     check("PRESS-0197 s4.4: the Files screen names the page using the file",
           "my-song.mp3" in listed and "songs" in listed, listed)
     check("PRESS-0197: the upload raised no script error", not errors, str(errors))
+
+
+def players_picked(page, origin: str, folder: Path) -> None:
+    """PRESS-0287: a click on a player picks its section."""
+    tone = folder / "files" / "tone.wav"
+    tone.parent.mkdir(exist_ok=True)
+    with wave.open(str(tone), "wb") as sound:
+        sound.setnchannels(1)
+        sound.setsampwidth(2)
+        sound.setframerate(8000)
+        sound.writeframes(b"\0\0" * 8000)
+    players = (
+        '<!-- pressless:music --><audio controls preload="metadata" src="../files/tone.wav">'
+        "</audio><!-- /pressless:music -->\n"
+        '<!-- pressless:video --><video controls preload="metadata" src="../files/tone.wav">'
+        "</video><!-- /pressless:video -->\n"
+        '<!-- pressless:video --><iframe src="https://www.youtube-nocookie.com/embed/aaaaaaaaaaa"'
+        ' title="YouTube video" allowfullscreen loading="lazy"></iframe>'
+        "<!-- /pressless:video -->\n")
+    store.write_html(folder, store.PAGES_FOLDER, "players", VISUAL_PAGE.replace(
+        "<title>Visual", "<title>Players").replace("<!-- /pressless:page -->",
+                                                    players + "<!-- /pressless:page -->"))
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(f"{origin}/page?kind=pages&name=players", wait_until="networkidle")
+    frame = page.frame_locator("#preview")
+    named = []
+    for player in ("audio", "video", "iframe"):
+        frame.locator("p", has_text="First paragraph.").click()
+        box = frame.locator(player).bounding_box()
+        # On the control bar, where a player's own controls take the click.
+        page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] - 12)
+        named.append(page.locator("#picked").text_content())
+    check("PRESS-0287: a click on a music, video or YouTube player picks its section",
+          named == ["Changing: Music", "Changing: Video", "Changing: Video"], str(named))
+    check("PRESS-0287: picking players raised no script error", not errors, str(errors))
 
 
 def settings_pictures(page, origin: str, folder: Path) -> None:

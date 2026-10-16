@@ -5092,7 +5092,7 @@ documents go on the site beside the photographs.
   Kind: ux.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0287] **A music or video section can be picked in the visual editor by clicking its player.**
+- ✅ [PRESS-0287] **A music or video section can be picked in the visual editor by clicking its player.**
   Found in the Edge hand check of 2026-10-16: once added and left, a
   music section cannot be picked again. A click on the player's native
   controls never reaches the frame document's capturing click handler
@@ -5106,6 +5106,10 @@ documents go on the site beside the photographs.
   pointer-events: none }` would hand the click to the section around the
   player. Prove the defect red in a browser row first; the published site
   never gets this style.
+  2026-10-16: the lead alone fails: a player has no wrapper, so the
+  click lands on the page. The frame's style now turns players' clicks
+  off and a click on no section finds one by where it fell. Browser row
+  red first; Chrome and Firefox 100/100. Edge not run; it is Chromium.
   **Layman:** Clicking a song or video player on the page picks it, so you can change or remove it.
   Kind: fix.
   Source: user-hand-check-2026-10-16.

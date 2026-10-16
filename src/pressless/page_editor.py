@@ -1697,7 +1697,9 @@ _VISUAL_SCRIPT = r"""
   const STYLE = "[data-pressless-picked]{box-shadow:0 0 0 3px #e9a23b}"
     + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}"
     + "script[data-pressless-code],style[data-pressless-code]{display:block;white-space:pre-wrap;"
-    + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}";
+    + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}"
+    // PRESS-0287: a player's own controls keep its click, so the frame takes it.
+    + "audio,video,iframe{pointer-events:none}";
   function pair() {
     const doc = frame.contentDocument;
     if (!doc || !doc.body) return;
@@ -1793,8 +1795,17 @@ _VISUAL_SCRIPT = r"""
     event.preventDefault();
     let found = null;
     each(model, (item) => { if (item.marked && inside(item, event.target)) found = item; });
+    // PRESS-0287: a click through a player lands on what holds it, so find the
+    // section by where the click fell.
+    if (!found) each(model, (item) => { if (item.marked && under(item, event)) found = item; });
     if (found !== picked) show(found, Boolean(found));
   }
+  const under = (item, event) => between(item).some((at) => {
+    if (at.nodeType !== Node.ELEMENT_NODE) return false;
+    const box = at.getBoundingClientRect();
+    return event.clientX >= box.left && event.clientX <= box.right
+      && event.clientY >= box.top && event.clientY <= box.bottom;
+  });
   // PRESS-0280: Escape lets go of the picked section, in the page or the panel.
   function letGo(event) {
     if (event.key !== "Escape" || !picked) return false;
