@@ -3665,6 +3665,13 @@ it decides how pages, the menu and the look are held.
   site served the new homepage. /setup/google showed the sign-in button
   without the review notice (PRESS-0243). Chrome 155: home and an editor
   loaded with no page errors. Box folder, browsers and helpers removed.
+  Owed before 0.10.0 ships (2026-10-16): by-hand Firefox and Edge
+  checks of PRESS-0273, PRESS-0197 and PRESS-0278's screens, and of
+  PRESS-0227's Settings rows once built (docs/working-here.md
+  § Windows and browser checks). Chrome passed for each. At the 0.10.0
+  release, message the ants-projects-hub-website session with the
+  version number: it already holds the About page's independence
+  wording (PRESS-0278).
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
