@@ -34,6 +34,7 @@ from pressless import (  # noqa: E402
     insights,
     publisher,
     settings,
+    sites,
     store,
     updater,
 )
@@ -163,11 +164,16 @@ def main() -> int:
               file=sys.stderr)
         return 2
     folder = practice_folder()
-    if not (folder / settings.FILE_NAME).exists():
-        seed(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    # PRESS-0223: the practice site is site-1, like any other; an older
+    # practice copy's is moved in first, so it is not seeded twice.
+    sites.move_in(folder)
+    site = sites.open_site(folder)
+    if not (site / settings.FILE_NAME).exists():
+        seed(site)
     disarm()
     real_serve = face.serve
-    face.serve = lambda served_folder: real_serve(served_folder, port)
+    face.serve = lambda served_folder, **kwargs: real_serve(served_folder, port, **kwargs)
     signal.signal(signal.SIGTERM, _stop)
     print(f"Practice copy of Pressless, in {folder}. It never publishes.", flush=True)
     try:

@@ -125,3 +125,24 @@ def test_a_sigterm_while_starting_exits_0(main_without_serving):
         return 0
 
     assert run(serve) == 0
+
+
+def test_the_practice_site_is_seeded_once_inside_sites(main_without_serving, tmp_path):
+    """PRESS-0223: the practice copy's site is site-1, like any other. Breaks
+    when a second start seeds again at the top, or the port wrapper refuses
+    the launcher's site."""
+    from pressless import face
+
+    run, _ = main_without_serving
+    unwrapped = face.serve
+
+    def serve(folder):
+        face.serve(folder, site=folder / "sites" / "site-1").stop()
+        return 0
+
+    assert run(serve) == 0
+    face.serve = unwrapped   # each start is its own process
+    assert run(serve) == 0
+    own = tmp_path / _practice().FOLDER_NAME
+    assert settings.load(own / "sites" / "site-1").repository == "practice/not-a-real-repository"
+    assert not (own / "settings.json").exists()

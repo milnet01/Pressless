@@ -410,6 +410,7 @@ _WORDS: dict[str, str] = {
     "face.view_site": "View your site",
     "face.your_writing": "Your writing",  # the way back to the list
     "face.settings": "Settings",
+    "face.sites": "Sites",
     "face.look": "Look",
     "face.files": "Files",
     "face.report": "Suggest or report a problem",
@@ -1229,6 +1230,17 @@ _WORDS: dict[str, str] = {
     "restarting.back": "Go back to Settings",
     "restarting.going.title": "Pressless is restarting.",
     "restarting.going": "It opens again in a new tab in a moment. You can close this one.",
+    # The Sites screen (sites_screen.py, PRESS-0223).
+    "sites_screen.title": "Your sites",
+    "sites_screen.about": (
+        "Pressless can look after more than one website. Opening another one restarts "
+        "Pressless in a new tab, so save anything you are writing first."
+    ),
+    "sites_screen.open_now": "(open now)",
+    "sites_screen.open": "Open",
+    "sites_screen.new": "Start a new site",
+    "sites_screen.unnamed": "New site",
+    "sites_screen.not_a_site": "That site is not here any more. Choose one from the list.",
     # Suggest or report a problem (report.py). The issue form it fills stays English.
     "report.what": (
         "This opens a new issue on Pressless's page on GitHub, with a short form already "

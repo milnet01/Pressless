@@ -124,6 +124,12 @@ Put it anywhere else and it starts with an empty `Pressless-data`
 folder. Your writing stays beside the old copy, and that folder is the
 only place it is kept.
 
+**From 0.10.0, `Pressless-data` keeps each site in its own folder**,
+under `sites`. Its first start moves the one site an older version kept
+into `sites/site-1`. An older version run afterwards finds no site and
+offers setup. Moving everything in `sites/site-1` back up into
+`Pressless-data` gives that version its site again.
+
 ## Moving an existing blog in
 
 **You cannot bring your own blog in yet.** You start with an empty site

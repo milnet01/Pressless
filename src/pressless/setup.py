@@ -33,6 +33,7 @@ from pressless import (
     restarting,
     settings,
     shortcuts,
+    sites,
     starter,
     store,
     usage,
@@ -43,7 +44,6 @@ from pressless.store import StoreError
 from pressless.words import say
 
 SITE_FOLDER = "site"                  # inside Pressless's own folder
-GITHUB_ACCOUNT = "github"             # the account the publishing key is filed under
 
 # The answers a refused SettingsError can name; any other key is a failure.
 _ANSWERED = ("repository", "site_address", "measurement_id")
@@ -125,15 +125,18 @@ def untouchable(root: Iterable[str], kept: Iterable[str] = ()) -> tuple[str, ...
 
 
 def register(face: Face, folder: Path, *,
+             own: Path | None = None,
              transport: publisher.Transport | None = None,
              shortcut_places: Callable[[], shortcuts.Places | None] = shortcuts.places,
              ) -> None:
     """Add `GET /setup`, `POST /setup` and `POST /setup/shortcuts` to `face`.
-    `folder` is Pressless's own folder, the one `face.serve` was handed;
-    `shortcut_places` says where this copy's shortcuts go (PRESS-0183).
+    `folder` is the open site's folder, and `own` Pressless's own, where the
+    usage-report answer is kept (PRESS-0223 § 4.4); `folder` where none is
+    named. `shortcut_places` says where this copy's shortcuts go (PRESS-0183).
     On first run `/setup` is the setup wizard (PRESS-0212)."""
     folder = Path(folder)
-    first_run = _first_run_wizard(face, folder, transport, shortcut_places)
+    own = Path(own) if own is not None else folder
+    first_run = _first_run_wizard(face, folder, transport, shortcut_places, own)
 
     def page(request: Request) -> str:
         return _setup(face, folder, request, transport, shortcut_places, first_run)
@@ -346,7 +349,8 @@ def _candidate(folder: Path, saved: settings.Settings | None,
                values: dict[str, str]) -> settings.Settings:
     """§ 4.5. First run's store is a placeholder, replaced before saving."""
     if saved is None:
-        kept = settings.Credentials(store="keyring", github_account=GITHUB_ACCOUNT,
+        kept = settings.Credentials(store="keyring",
+                                    github_account=sites.account("github", folder),
                                     google_account=None)
         property_id = None
     else:
@@ -682,8 +686,10 @@ def _other_account(signed_in: str, typed: str) -> str:
 
 
 def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport | None,
-                      shortcut_places: Callable[[], shortcuts.Places | None]
-                      ) -> wizard.Wizard:
+                      shortcut_places: Callable[[], shortcuts.Places | None],
+                      own: Path | None = None) -> wizard.Wizard:
+    own = own if own is not None else folder
+
     def repository(answers: wizard.Answers) -> str:
         return f"{answers.get('account', '')}/{answers.get('repository', '')}"
 
@@ -710,7 +716,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     def key_for(answers: wizard.Answers) -> str | wizard.Stop:
         """The key in hand: a hand-made key, or the pass a sign-in buys."""
         try:
-            return github_setup.token(folder, answers.get("store", ""), GITHUB_ACCOUNT)
+            return github_setup.token(folder, answers.get("store", ""),
+                                      sites.account("github", folder))
         except _CREDENTIAL_FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         except publisher.PublishError as exc:
@@ -774,7 +781,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not store:
                 choice = credentials.choose()
                 kept.update(store=choice.store, store_name=choice.name)
-            credentials.write(kept["store"], folder, GITHUB_ACCOUNT, typed)
+            credentials.write(kept["store"], folder, sites.account("github", folder), typed)
         except _CREDENTIAL_FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc))
         return kept
@@ -864,7 +871,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if not kept.get("store"):
                 choice = credentials.choose()
                 kept.update(store=choice.store, store_name=choice.name)
-            credentials.write(kept["store"], folder, GITHUB_ACCOUNT, pressed.refresh)
+            credentials.write(kept["store"], folder, sites.account("github", folder),
+                              pressed.refresh)
         except _CREDENTIAL_FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         github_setup.hold(pressed)
@@ -909,14 +917,16 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
 
     def check_reports(answers: wizard.Answers):
         try:
-            usage.set_answer(folder, answers.get("reports") == "yes")
+            usage.set_answer(own, answers.get("reports") == "yes")
         except OSError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
 
-    # PRESS-0262 § 4.3: straight after welcome, in a copy that can send.
+    # PRESS-0262 § 4.3: straight after welcome, in a copy that can send. The
+    # answer is the machine's, so a later site's setup does not ask again.
     reports = ((wizard.Step("reports", "usage.title", ("reports",), _show_reports,
-                            check_reports),) if usage.can_send() else ())
+                            check_reports),)
+               if usage.can_send() and usage.answer(own) is None else ())
     pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
     site = wizard.Step("site", "setup.step.site",
                        ("site_name", "site_description", "start", "look"),

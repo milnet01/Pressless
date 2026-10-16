@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0223 — Pressless holds several sites
 
-**Status:** accepted (2026-10-16). Gated for one round, the user's budget for a new spec; every verified finding fixed.
+**Status:** accepted (2026-10-16).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0223 (user-request-2026-10-03).
 
@@ -68,8 +68,9 @@ Pressless-data/
   pressless.lock  theme.json  usage.json  usage-sent.json
 ```
 
-A new module, `src/pressless/sites.py`, owns the layout. It imports
-`paths` and nothing else of Pressless's, so every part may use it.
+A new module, `src/pressless/sites.py`, owns the layout. It imports no
+part of Pressless, only `safe_write` (PRESS-0141), so every part may use
+it.
 
 ```python
 SITES_FOLDER = "sites"
@@ -136,6 +137,9 @@ pass, so a restart opens whichever site `OPEN_FILE` now names.
   `settings.load`.
 - **`usage.register(served, own, site=site)`**: `usage.json` stays in
   `own`, and its question loads the site's settings.
+- **`setup.register(served, site, own=own)`**: setup's reports step
+  writes the answer to `own`, and is left out where `own` already holds
+  one, so a later site's setup does not ask again.
 - **`face.serve(own, site=site)`**: `Face` gains `site`, which
   `Face.live_address` reads settings from and `Face`'s true-colours
   route remembers choices in. The details box's copy and open buttons
@@ -150,7 +154,8 @@ folder.
 ```python
 # src/pressless/sites.py
 def account(kind: str, site: Path) -> str:
-    """'github' or 'google' for site-1; 'github-site-2' and so on after."""
+    """'github' or 'google' for site-1, and for a folder that is no
+    numbered site; 'github-site-2' and so on after."""
 ```
 
 `setup` and `google_setup` use `sites.account("github", site)` and
@@ -163,7 +168,8 @@ touches no keyring.
 ### 4.6 The Sites screen
 
 `src/pressless/sites_screen.py`, at `/sites`, linked from every screen's
-top bar after Settings.
+top bar after Your writing. Look and View your site keep their places
+beside Settings (PRESS-0196, PRESS-0232).
 
 - A list of the sites, the open one marked. Each shows its name:
   `store.read_identity`'s `name`, else `settings`' `repository`, else

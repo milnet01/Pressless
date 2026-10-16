@@ -62,8 +62,8 @@ class _Opened:
         self.links = []
         real_serve = main_module.face.serve
 
-        def serve(folder):
-            served = real_serve(folder)
+        def serve(folder, **kwargs):
+            served = real_serve(folder, **kwargs)
             self.faces.append(served)
             return served
 
@@ -119,7 +119,8 @@ def test_the_double_click_opens_pressless(monkeypatch, tmp_path, capsys):
         assert route in pages, route
     assert urllib.parse.urlsplit(opened.links[0]).path == "/setup"
 
-    folder = artefact.parent / _FOLDER_NAME
+    # PRESS-0223: a site's settings are in its own folder; the first is site-1.
+    folder = artefact.parent / _FOLDER_NAME / "sites" / "site-1"
     settings.save(folder, settings.Settings(
         site_folder=folder / "site", repository="owner/owner.github.io",
         site_address="https://example.org",
@@ -389,3 +390,56 @@ def test_a_shortcut_that_cannot_be_refreshed_is_logged_not_fatal(monkeypatch, tm
     monkeypatch.setattr(main_module.shortcuts, "refresh", refuse)
     main_module._refresh_shortcuts(_Served())
     assert noted == ["a shortcut could not be refreshed: ShortcutError"]
+
+
+# ------------------------------------------------------------ PRESS-0223 ----
+
+# § 4.4: which parts take the site's folder, and which Pressless's own.
+_SITE_PARTS = ("setup", "github_setup", "google_setup", "dashboard", "editor", "templates",
+               "publishing", "undo", "page_editor", "look_screen", "files_screen")
+_OWN_PARTS = ("updating", "sites_screen")
+
+
+def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys):
+    """PRESS-0223 INV-6. Breaks when a part keeps the old site, or the log
+    moves into a site."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    own = artefact.parent / _FOLDER_NAME
+    for name in ("site-1", "site-2"):
+        (own / "sites" / name).mkdir(parents=True)
+    calls: list[tuple[str, object, dict]] = []
+    real_serve = main_module.face.serve
+
+    def serve(folder, **kwargs):
+        calls.append(("face", folder, kwargs))
+        return real_serve(folder, **kwargs)
+
+    monkeypatch.setattr(main_module.face, "serve", serve)
+    for name in (*_SITE_PARTS, *_OWN_PARTS, "usage"):
+        monkeypatch.setattr(getattr(main_module, name), "register",
+                            lambda served, folder, *args, _name=name, **kwargs:
+                            calls.append((_name, folder, kwargs)))
+    monkeypatch.setattr(main_module.webbrowser, "open", lambda url: True)
+    monkeypatch.setattr(main_module, "_refresh_shortcuts", lambda served: None)
+    passes = iter([True, False])
+
+    def wait(restart):
+        main_module.sites.choose(own, "site-2")   # what POST /sites/open does
+        return next(passes)
+
+    monkeypatch.setattr(main_module, "_wait", wait)
+    assert main_module.main([]) == 0
+
+    for number, site in ((0, own / "sites" / "site-1"), (1, own / "sites" / "site-2")):
+        made = [call for call in calls if call[0] == "face"][number]
+        assert made[1] == own and made[2] == {"site": site}, made
+        for name in _SITE_PARTS:
+            assert [c[1] for c in calls if c[0] == name][number] == site, name
+        for name in _OWN_PARTS:
+            assert [c[1] for c in calls if c[0] == name][number] == own, name
+        usage_call = [c for c in calls if c[0] == "usage"][number]
+        assert usage_call[1] == own and usage_call[2] == {"site": site}
+    assert (own / "pressless.log").is_file()
+    assert not list((own / "sites").glob("*/pressless.log"))

@@ -217,13 +217,16 @@ class _Opener:
         return time.time()
 
 
-def register(face: Face, folder: Path, *,
+def register(face: Face, folder: Path, *, site: Path | None = None,
              transport: insights.Transport | None = None) -> None:
     """Keep `folder`, Pressless's own folder, and the transport for `report`;
     add the Usage reports screen and, for a current user never asked, the
-    question above the list at /."""
+    question above the list at /. `site` is the open site's folder, whose
+    settings say he is set up (PRESS-0223 § 4.4); `folder` where none is
+    named."""
     global _folder, _transport, _note, _session
     folder = Path(folder)
+    site = Path(site) if site is not None else folder
     with _LOCK:
         _folder = folder
         _transport = transport if transport is not None else _Opener()
@@ -242,16 +245,16 @@ def register(face: Face, folder: Path, *,
     face.add_page("GET", ADDRESS, screen)
     face.add_page("POST", f"{ADDRESS}/yes", yes)
     face.add_page("POST", f"{ADDRESS}/no", no)
-    face.add_to_list(lambda: _question(face, folder), above=True)
+    face.add_to_list(lambda: _question(face, folder, site), above=True)
 
 
-def _question(face: Face, folder: Path) -> str:
+def _question(face: Face, folder: Path, site: Path) -> str:
     """§ 4.3: asked once, above the list, of a user set up before reports
     existed. Recorded as no before it shows, so leaving it is no."""
     if not can_send() or answer(folder) is not None:
         return ""
     try:
-        settings.load(folder)
+        settings.load(site)
     except (settings.NotSetUp, settings.SettingsError):
         return ""
     try:

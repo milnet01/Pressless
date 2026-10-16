@@ -259,7 +259,9 @@ no filtering, no configuration — a plain-English record has one kind of line.
   a full disk raises, and a suite exercising only `open_log` stays green
   against either written outside its `try`.
 
-- **INV-4** — The log sits in the same folder as the settings file.
+- **INV-4** — *amended by PRESS-0223: the log sits in Pressless's own
+  folder, and the settings file in the open site's.* The log sits in the
+  same folder as the settings file.
   *Test:* `tests/test_log.py::test_log_sits_beside_the_settings_file` —
   assert `path_for(folder).parent == folder`, and that the file lands beside a
   `settings.json` written into the same folder. The test writes the name

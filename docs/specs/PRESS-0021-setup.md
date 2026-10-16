@@ -201,9 +201,11 @@ and nothing is logged. No request is made, except for § 4.6 step 2's refusal.
 | `daily_prompt_filter` | the answer, `""` when the box is empty | the answer, `""` when the box is empty |
 | `untouchable` | `()` until § 4.6 step 2 | `()` until § 4.6 step 2 |
 | `credentials.store` | `"keyring"` until § 4.6 step 3 replaces it | the saved value |
-| `credentials.github_account` | `GITHUB_ACCOUNT` | the saved value |
+| `credentials.github_account` | `sites.account("github", folder)` (PRESS-0223 § 4.5) | the saved value |
 | `credentials.google_account` | `None` | the saved value |
 | `analytics_property_id` | `None` | the saved value |
+
+`folder` is the open site's folder (PRESS-0223 § 4.4).
 
 **An empty filter hides nothing.** The Builder excludes an entry when
 `fnmatch.fnmatchcase(tag, pattern)` holds for one of its tags. With `""` that

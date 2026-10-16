@@ -21,13 +21,12 @@ import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
-from pressless import credentials, google_signin, insights, settings, starter
+from pressless import credentials, google_signin, insights, settings, sites, starter
 from pressless.face import Face, Reply, Request, message_box, render_notices
 from pressless.google_signin import AccessToken, Attempt, Property
 from pressless.store import StoreError
 from pressless.words import say
 
-GOOGLE_ACCOUNT = "google"                 # the account the refresh token is filed under
 RETURN_PATH = "/setup/google/back"        # the redirect_uri's path
 
 PAGE = "/setup/google"
@@ -262,9 +261,9 @@ def _choose(state: _State, request: Request) -> str:
         return _show(state, hint=say("google_setup.list_expired"))
     if chosen not in {p.id for p in pending.properties}:
         return _show(state, hint=say("google_setup.choose_hint"))
+    filed = sites.account("google", state.folder)   # PRESS-0223 § 4.5
     try:
-        credentials.write(saved.credentials.store, state.folder, GOOGLE_ACCOUNT,
-                          pending.refresh_token)
+        credentials.write(saved.credentials.store, state.folder, filed, pending.refresh_token)
     except _CREDENTIAL_FAILURES as exc:
         return shown + state.face.fail(exc, publishing=False,
                                        secret=say("failure.secret.google_sign_in"))
@@ -285,7 +284,7 @@ def _choose(state: _State, request: Request) -> str:
         measurement_id = found[0]
     candidate = dataclasses.replace(
         saved,
-        credentials=dataclasses.replace(saved.credentials, google_account=GOOGLE_ACCOUNT),
+        credentials=dataclasses.replace(saved.credentials, google_account=filed),
         analytics_property_id=chosen,
         measurement_id=measurement_id,
     )
@@ -367,7 +366,8 @@ def _off(state: _State) -> str:
     # stops the other or the save; the page says what may remain.
     removed = True
     try:
-        credentials.delete(saved.credentials.store, state.folder, GOOGLE_ACCOUNT)
+        credentials.delete(saved.credentials.store, state.folder,
+                           sites.account("google", state.folder))
     except _CREDENTIAL_FAILURES:
         removed = False
     try:

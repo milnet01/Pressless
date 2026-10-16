@@ -45,6 +45,8 @@ from pressless import (
     settings,
     setup,
     shortcuts,
+    sites,
+    sites_screen,
     templates,
     undo,
     updating,
@@ -165,6 +167,11 @@ def _serve(folder: Path) -> int:
         print(say("main.already"))
         return 3
     try:
+        # PRESS-0223 § 4.3: behind the lock, so no second Pressless moves it.
+        stopped = sites.move_in(folder)
+        if stopped is not None:
+            print(stopped)
+            return 1
         return _serve_held(folder)
     finally:
         held.close()
@@ -176,14 +183,18 @@ def _serve_held(folder: Path) -> int:
     return 0
 
 
-def _serve_once(folder: Path) -> bool:
+def _serve_once(own: Path) -> bool:
     """One Face, from start to stop. True where he asked for a restart
-    (PRESS-0203): the caller then serves a new one, behind the same lock."""
+    (PRESS-0203): the caller then serves a new one, behind the same lock.
+    Each pass opens the site sites.json names now, so opening another site is
+    a restart (PRESS-0223 § 4.4): the machine's parts take Pressless's own
+    folder, and the site's take the site's."""
     restart = threading.Event()
     again = False
-    served = face.serve(folder)
+    folder = sites.open_site(own)
+    served = face.serve(own, site=folder)
     try:
-        setup.register(served, folder)
+        setup.register(served, folder, own=own)
         github_setup.register(served, folder)
         google_setup.register(served, folder)
         dashboard.register(served, folder)
@@ -191,7 +202,7 @@ def _serve_once(folder: Path) -> bool:
         cheatsheet.register(served)
         report.register(served)
         about.register(served)
-        usage.register(served, folder)
+        usage.register(served, own, site=folder)
         templates.register(served, folder)
         publishing.register(served, folder)
         undo.register(served, folder)
@@ -199,8 +210,9 @@ def _serve_once(folder: Path) -> bool:
         look_screen.register(served, folder)
         files_screen.register(served, folder)
         pressing.register(served)
-        updating.register(served, folder)
+        updating.register(served, own)
         restarting.register(served, restart.set)
+        sites_screen.register(served, own, restart.set)
         _refresh_shortcuts(served)
 
         first = "/"

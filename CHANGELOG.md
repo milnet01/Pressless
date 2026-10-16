@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **One copy of Pressless looks after several websites** (PRESS-0223)
+  A new Sites screen, in the bar beside Your writing, lists your sites,
+  starts a new one, and opens another, which restarts Pressless in a new
+  tab. Each site keeps its own writing, settings and publishing key. The
+  first start moves the site you have into `Pressless-data/sites/site-1`.
+
 - **Choose your site's icon and its sharing picture** (PRESS-0227)
   The Settings page has two new rows. The icon shows in a browser's tab
   beside your site's name; Pressless cuts its middle to a square. The

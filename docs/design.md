@@ -473,6 +473,11 @@ also published.
 | **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder, whose stylesheet the Builder writes from the look's draft and which every preview is styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, the `wizards` folder where a wizard keeps how far it got, never a key (PRESS-0212), and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
+**Pressless's own folder keeps one folder per site, under `sites/`**
+(PRESS-0223). Each holds that site's share of the row above. The log, the
+updater's files, the lock, the theme, the usage answers and `sites.json`,
+which names the open site, stay at the top.
+
 **Drafts are outside the site folder because of the measurement above,
 and for no other reason.** Inside it they would be backed up by every
 publish — genuinely attractive — and every unfinished poem or half-built

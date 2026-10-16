@@ -4841,7 +4841,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-09-28.
   Lanes: face, settings.
 
-- 📋 [PRESS-0223] **Pressless holds several sites, and you create, open and switch between them.**
+- ✅ [PRESS-0223] **Pressless holds several sites, and you create, open and switch between them.**
   The user asked on 2026-10-03 for saving and loading a Pressless project
   before 1.0.0, and chose both several sites and one-file save and open.
   Today one copy holds one site, in the Pressless-data folder beside the
@@ -4861,6 +4861,14 @@ documents go on the site beside the photographs.
   Spec review 2026-10-16: one cold round (the user's budget), two lanes;
   5 verified, 5 fixed, none deferred. Spec accepted (a8fc42d); the fixes
   are read by no lane, so implementation is their reader.
+  2026-10-16: built to docs/specs/PRESS-0223-several-sites.md.
+  Pressless-data/sites/site-N per site, sites.json names the open one,
+  the first start moves an older install's site into site-1, each site
+  files its key under its own name, and a Sites screen opens another by
+  restarting. The build also moved the usage-report answer to the
+  machine folder through setup, and fixed the practice copy for the new
+  layout. Listing a GitHub account's sites and removing a site stay
+  unqueued (spec section 9).
   **Layman:** One copy of Pressless can look after more than one website, and you pick which one you are working on, like opening files in a word processor.
   Kind: feature.
   Source: user-request-2026-10-03.

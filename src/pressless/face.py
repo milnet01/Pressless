@@ -884,6 +884,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         # PRESS-0281: first, so every screen leads back to the list.
         f'{themes.picker(theme)}<a href="/">{say("face.your_writing")}</a>'
+        # PRESS-0223 § 4.6: beside it, the sites he can open.
+        f'<a href="/sites">{say("face.sites")}</a>'
         f'{visit}<a href="/setup">{say("face.settings")}</a>'
         # PRESS-0196 § 4.4: beside Settings.
         f'<a href="/look">{say("face.look")}</a>'
@@ -1106,7 +1108,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if said not in (b"0", b"1"):
             self._send(400, "", "text/plain")
             return
-        if not choices.remember(face._folder, true_colours=said == b"1"):
+        if not choices.remember(face._site, true_colours=said == b"1"):
             face._log.note("the true-colours choice could not be saved")
             self._send(500, "", "text/plain")
             return
@@ -1172,8 +1174,11 @@ _MAX_BODY = 64 * 1024 * 1024
 class Face:
     """The running server. Made by `serve`; one per launch."""
 
-    def __init__(self, folder: Path, port: int = 0) -> None:
+    def __init__(self, folder: Path, port: int = 0, *, site: Path | None = None) -> None:
+        # PRESS-0223 § 4.4: the log and the theme are the machine's, in
+        # Pressless's own folder; the settings and choices are the open site's.
         self._folder = Path(folder)
+        self._site = Path(site) if site is not None else self._folder
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
         self._secret = secrets.token_urlsafe(32)
@@ -1248,7 +1253,7 @@ class Face:
         or where the settings file cannot be read: the page still renders, and
         the failure is told where the settings are used."""
         try:
-            return settings.load(self._folder).site_address
+            return settings.load(self._site).site_address
         except (settings.NotSetUp, settings.SettingsError):
             return ""
 
@@ -1311,7 +1316,7 @@ class Face:
         self._log.close()
 
 
-def serve(folder: Path, port: int = 0) -> Face:
+def serve(folder: Path, port: int = 0, *, site: Path | None = None) -> Face:
     """Start the Face on 127.0.0.1, on a port the system chooses.
 
     A caller naming `port` gets that port or the bind's OSError; only the
@@ -1319,5 +1324,7 @@ def serve(folder: Path, port: int = 0) -> Face:
 
     Opens no browser and prints nothing: the launcher (PRESS-0013 § 4.5) owns
     which page opens first and the link printed where no browser opens.
+    `site` is the open site's folder (PRESS-0223 § 4.4), `folder` where none
+    is named.
     """
-    return Face(folder, port)
+    return Face(folder, port, site=site)

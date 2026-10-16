@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import functools
 import io
+import json
 import sys
 import tempfile
 import threading
@@ -77,12 +78,15 @@ from pressless import (  # noqa: E402
     publishing,
     settings,
     setup,
+    sites,
+    sites_screen,
     store,
     templates,
     undo,
 )
 
 RESULTS: list[tuple[str, bool, str]] = []
+RESTARTS: list[int] = []
 OPTIONS = argparse.Namespace(browser="chrome", cdp=None, port=0, site_port=0)
 
 
@@ -116,6 +120,15 @@ def main() -> int:
             files_screen.register(served, folder)
             setup.register(served, folder, transport=tp._github(),
                            shortcut_places=lambda: None)
+            # PRESS-0223: the Sites screen over a Pressless-data of its own,
+            # holding two sites; a restart is only recorded.
+            sites_own = Path(tmp) / "sites-own"
+            for number, named in ((1, "The First Site"), (2, "The Second Site")):
+                site = sites_own / "sites" / f"site-{number}"
+                site.mkdir(parents=True)
+                store.write_identity(site, store.Identity(named))
+            sites.choose(sites_own, "site-1")
+            sites_screen.register(served, sites_own, lambda: RESTARTS.append(1))
             parts = urllib.parse.urlsplit(served.url)
             secret = urllib.parse.parse_qs(parts.query)["t"][0]
             origin = f"http://{parts.netloc}"
@@ -500,6 +513,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         kept_files(page, origin, folder)
         players_picked(page, origin, folder)
         added_by_upload(page, origin, folder)
+        sites_listed(page, origin, folder)
         enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
 
@@ -587,6 +601,23 @@ def players_picked(page, origin: str, folder: Path) -> None:
     check("PRESS-0287: a click on a music, video or YouTube player picks its section",
           named == ["Changing: Music", "Changing: Video", "Changing: Video"], str(named))
     check("PRESS-0287: picking players raised no script error", not errors, str(errors))
+
+
+def sites_listed(page, origin: str, folder: Path) -> None:
+    """PRESS-0223 INV-9: the Sites screen names each site, and Open chooses
+    another and restarts. That the restart opens it is INV-6's test."""
+    sites_own = folder.parent / "sites-own"
+    page.goto(f"{origin}/sites", wait_until="networkidle")
+    listed = page.locator("ul.sites").inner_text()
+    check("PRESS-0223: the Sites screen names each site, the open one marked",
+          "The First Site (open now)" in listed and "The Second Site" in listed, listed)
+    page.locator("ul.sites button").click()
+    page.wait_for_load_state("networkidle")
+    opened = json.loads((sites_own / "sites.json").read_text(encoding="utf-8"))["open"]
+    check("PRESS-0223: Open chooses the other site and restarts",
+          opened == "site-2" and RESTARTS == [1]
+          and "Pressless is restarting." in page.locator("main").inner_text(),
+          f"open={opened} restarts={RESTARTS}")
 
 
 def added_by_upload(page, origin: str, folder: Path) -> None:
