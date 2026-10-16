@@ -870,7 +870,9 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         '<script type="application/json" id="pressless-words">'
         f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        f'{themes.picker(theme)}{visit}<a href="/setup">{say("face.settings")}</a>'
+        # PRESS-0281: first, so every screen leads back to the list.
+        f'{themes.picker(theme)}<a href="/">{say("face.your_writing")}</a>'
+        f'{visit}<a href="/setup">{say("face.settings")}</a>'
         # PRESS-0196 § 4.4: beside Settings.
         f'<a href="/look">{say("face.look")}</a>'
         # PRESS-0197 § 4.4: beside Look.

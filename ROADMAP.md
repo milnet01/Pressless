@@ -5024,11 +5024,12 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0281] **Every screen's top bar leads back to Your writing.**
+- ✅ [PRESS-0281] **Every screen's top bar leads back to Your writing.**
   Found in the Edge hand check of 2026-10-16: on /about the bar holds
   View your site, Settings, Look, Files, Report, Usage reports and About,
   but nothing back to the list at /; the Pressless name is not a link.
   The user had to ask how to get back.
+  2026-10-16: a Your writing link leads the bar on every page (135945b).
   **Layman:** From Settings, About or any other screen, one click takes you back to your list.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
