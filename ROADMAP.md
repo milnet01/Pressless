@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=278 -->
+<!-- ants-roadmap-id-high-water: PRESS=288 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3672,6 +3672,14 @@ it decides how pages, the menu and the look are held.
   release, message the ants-projects-hub-website session with the
   version number: it already holds the About page's independence
   wording (PRESS-0278).
+  2026-10-16, later: the Edge and Firefox rows owed before 0.10.0 ran on
+  the Windows box over VNC, by the user, against this session's source
+  (portable Python, throwaway folder): PRESS-0227's Settings rows,
+  PRESS-0273's style piece, PRESS-0197's upload and Files screen,
+  PRESS-0278's About page. All passed in both. Found on the way and filed
+  in 0.10.0: PRESS-0279 to PRESS-0288 (six defects, fixed next; two
+  user-placed enhancements; the view switch and buttons the user asked for). Still owed at
+  the 0.10.0 release: the hub message (PRESS-0278).
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -4894,7 +4902,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-03.
   Lanes: face, store.
 
-- 📋 [PRESS-0227] **Site identity, second half: the icon in the browser tab and the picture shown when the site is shared.**
+- ✅ [PRESS-0227] **Site identity, second half: the icon in the browser tab and the picture shown when the site is shared.**
   Split from PRESS-0213 by the user's 2026-10-03 decision: both need
   file uploads, which PRESS-0197 brings in 0.10.0. PRESS-0213 shipped
   the name and description in identity/identity.json
@@ -4906,6 +4914,10 @@ documents go on the site beside the photographs.
   accepted (2026-10-16). The six fixes were read by no lane;
   implementation is the next reader. Loop log:
   docs/reviews/PRESS-0227-site-icon-and-picture-loop-log.md.
+  Shipped 2026-10-16 in 2fdac35, to the accepted spec, with three
+  clauses the build settled folded back. Gate: Linux 1252 passed, Windows
+  box 1164 passed. INV-9 in Chrome (script), Edge and Firefox (the user,
+  on the Windows box).
   **Layman:** They pick the little picture in the browser tab and the picture people see when the site is shared.
   Kind: feature.
   Source: user-decision-2026-10-03 PRESS-0213.
@@ -4989,6 +5001,113 @@ documents go on the site beside the photographs.
   Kind: feature.
   Source: user-request-2026-10-16.
   Lanes: Face.
+
+- 📋 [PRESS-0279] **The visual editor's "Changing: ..." line stays in sight while the panel scrolls.**
+  Found in the Edge hand check of 2026-10-16: #picked is the panel's
+  first line, and the panel scrolls inside itself, so after a pick the
+  line was above the panel's visible top and the user could not see what
+  was picked. Fix: keep it pinned at the panel's top.
+  **Layman:** The line saying which part of the page you are changing no longer scrolls out of sight.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0280] **A picked section in the visual editor can be unpicked.**
+  Found in the Edge hand check of 2026-10-16: once a section is picked,
+  the only way to leave it is to pick another. Fix: Escape, or a click
+  outside every section, unpicks it and the panel says nothing is picked.
+  **Layman:** Pressing Escape, or clicking an empty part of the page, lets go of the part you picked.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0281] **Every screen's top bar leads back to Your writing.**
+  Found in the Edge hand check of 2026-10-16: on /about the bar holds
+  View your site, Settings, Look, Files, Report, Usage reports and About,
+  but nothing back to the list at /; the Pressless name is not a link.
+  The user had to ask how to get back.
+  **Layman:** From Settings, About or any other screen, one click takes you back to your list.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0282] **A music, video or download section can be added by uploading the file, with no address typed first.**
+  Found in the Edge hand check of 2026-10-16: Add refuses a music
+  section with "Type its address first", so a person wanting to upload
+  a song must invent an address before Upload a file appears.
+  User decision 2026-10-16: in 0.10.0, the any-file release.
+  **Layman:** To add a song or video, you pick the file; you no longer make up an address first.
+  Kind: enhancement.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0283] **Code boxes are coloured more strongly, with colours each theme keeps readable.**
+  Asked by the user at the Edge hand check of 2026-10-16. PRESS-0261
+  colours code with the theme's ink, soft and amber-ink only, which reads
+  as faint. Each theme gains its own code colours, each tested readable
+  in light and dark as the existing colours are.
+  User decision 2026-10-16: in 0.10.0, the their-own-look release.
+  **Layman:** Code shown in Pressless is coloured more clearly, so tags, names and values stand apart.
+  Kind: enhancement.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0284] **The page editor's own heading keeps Pressless's colour, never the site's.**
+  Found in the Edge hand check of 2026-10-16: on the style-check page
+  in the Forest hero theme the editor's h1 was near-invisible. The editor
+  links the site's stylesheets into the Face (PRESS-0178), the site's look
+  sets `h1 { color: var(--heading) }` (look.py), and `.face h1` sets no
+  colour, so the site's heading colour reaches the Face.
+  **Layman:** The page name at the top of the editor is always easy to read, whatever your site's look.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0285] **The editor switches between the page and its code without reloading, and the switch says what it does.**
+  From the Edge hand check of 2026-10-16. The code view's switch back
+  reads "Back to the page" (page_editor.show_visual), which the user read
+  as leaving the editor, and found no way back. Each switch is a page
+  load. The user asked for a seamless switch with no reload.
+  Filed in 0.10.0, as the user placed the hand check's other requests.
+  User decision 2026-10-16: the code view's switch reads "View editor",
+  not "Back to the page" -- the code is the page too, in another form.
+  Sentence case, as every other button's words are.
+  **Layman:** Moving between editing the page and seeing its code is instant, and the button says which one you get.
+  Kind: enhancement.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0286] **The top bar's links are shown as buttons.**
+  Asked by the user at the Edge hand check of 2026-10-16: the bar's
+  links work, but buttons would look more professional. Each theme must
+  keep them readable, light and dark; the layout must not shift.
+  Filed in 0.10.0, as the user placed the hand check's other requests.
+  Widened by the user the same day: the editor's own navigation links
+  (Your writing, Show me the code / Back to the page) are buttons too.
+  Among the editor's many buttons the user missed the plain-link switch.
+  **Layman:** Settings, Look, Files and the other places at the top look like buttons, which reads as more finished.
+  Kind: ux.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0287] **A music or video section can be picked in the visual editor by clicking its player.**
+  Found in the Edge hand check of 2026-10-16: once added and left, a
+  music section cannot be picked again. A click on the player's native
+  controls never reaches the frame document's capturing click handler
+  (page_editor.py, doc.addEventListener("click", clicked, true)), so the
+  section stays unreachable: no Upload a file, no Remove. Chrome's
+  by-hand row never clicks a player, which is why it passed. Check the
+  fix in Edge, Chrome and Firefox; the published site's players must
+  stay playable.
+  **Layman:** Clicking a song or video player on the page picks it, so you can change or remove it.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
+
+- 📋 [PRESS-0288] **The visual editor's panel shows Bold, Italic and Link only for the sections they work on.**
+  Seen in the Edge and Firefox hand checks of 2026-10-16: with a music
+  or CSS section picked, the panel still shows Bold, Italic and Link, and
+  earlier Add to column 1-3. The script sets `hidden` on each [data-for]
+  part not meant for the kind, but face.py's `.face #panel .panel-row
+  { display: flex }` overrides the hidden attribute, so every panel-row
+  part shows for every kind.
+  User suggestion 2026-10-16: put the Add list first in the panel, above
+  Bold, Italic and Link, since it decides what can be done. Do it with
+  this fix unless the fixed panel shows it unneeded; show the user both.
+  **Layman:** The panel stops showing buttons that do nothing for the part you picked.
+  Kind: fix.
+  Source: user-hand-check-2026-10-16.
 
 ## 0.11.0 — anyone can bring their site in
 
