@@ -52,8 +52,16 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         sites.choose(own, sites.new_site(own).name)
         return _going(face, restart)
 
-    def save(request: Request) -> Download:
+    def save(request: Request) -> Download | str:
+        # PRESS-0221: the move wizard saves each site by name; with none, the
+        # open one.
+        named = request.query.get("site")
         site = sites.open_site(own)
+        if named is not None:
+            held = {path.name: path for path in sites.all_sites(own)}
+            if named not in held:
+                return _screen(own, say("sites_screen.not_a_site"))
+            site = held[named]
         target = own / f".saving-{secrets.token_hex(8)}.zip"
         try:
             sitefile.save(site, target)
@@ -139,7 +147,60 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
             f'<form method="post" action="{ADDRESS}/backups"><label>'
             f'{say("sites_screen.backups.folder")} <input name="folder" value="{value}" '
             'autocomplete="off"></label> '
-            f'<button>{say("sites_screen.backups.use")}</button></form>')
+            f'<button>{say("sites_screen.backups.use")}</button></form>'
+            + _move_wizard(own))
+
+
+def _move_wizard(own: Path) -> str:
+    """PRESS-0221: the move to a new computer, as a dialog over this screen
+    (the user, 2026-10-05), one step at a time. Each site saves to its own
+    file, which the new computer opens on its Sites screen."""
+    def attr(value: str) -> str:
+        return html.escape(value, quote=True)
+
+    saves = "".join(
+        f'<a href="{ADDRESS}/save?site={attr(site.name)}">'
+        f'{html.escape(say("sites_screen.move.save_one", site=sitefile.name_of(site)))}'
+        "</a>" for site in sites.all_sites(own))
+    steps = (
+        ("sites_screen.move.step_save", f'<p>{say("sites_screen.move.save")}</p>'
+                                        f'<p class="nav">{saves}</p>'),
+        ("sites_screen.move.step_carry", f'<p>{say("sites_screen.move.carry")}</p>'),
+        ("sites_screen.move.step_open", f'<p>{say("sites_screen.move.open")}</p>'),
+    )
+    shown = "".join(
+        f'<section data-step="{number}"{"" if number == 1 else " hidden"}>'
+        f'<h3>{say(title)}</h3>{body}</section>'
+        for number, (title, body) in enumerate(steps, start=1))
+    return (f'<p><button type="button" data-help="move-wizard" aria-haspopup="dialog">'
+            f'{say("sites_screen.move.button")}</button></p>'
+            f'<dialog id="move-wizard" aria-labelledby="move-wizard-title">'
+            f'<h2 id="move-wizard-title">{say("sites_screen.move.title")}</h2>{shown}'
+            f'<p><button type="button" data-move="back" disabled>{say("wizard.back")}</button> '
+            f'<button type="button" data-move="next">{say("wizard.next")}</button> '
+            f'<button type="button" data-close>{say("wizard.close")}</button></p>'
+            f"</dialog><script>{_MOVE_SCRIPT}</script>")
+
+
+# PRESS-0221: Next and Back show one step of the dialog at a time; the Face's
+# own script opens it and closes it.
+_MOVE_SCRIPT = r"""
+(() => {
+  const box = document.getElementById("move-wizard");
+  const steps = [...box.querySelectorAll("[data-step]")];
+  const back = box.querySelector("[data-move=back]");
+  const next = box.querySelector("[data-move=next]");
+  let at = 0;
+  const show = () => {
+    steps.forEach((step, number) => { step.hidden = number !== at; });
+    back.disabled = at === 0;
+    next.disabled = at === steps.length - 1;
+  };
+  back.addEventListener("click", () => { at = Math.max(0, at - 1); show(); });
+  next.addEventListener("click", () => { at = Math.min(steps.length - 1, at + 1); show(); });
+  box.addEventListener("close", () => { at = 0; show(); });
+})();
+"""
 
 
 # PRESS-0224 § 4.6: the chosen file is sent as the body, and the answer, the

@@ -4937,7 +4937,7 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-03.
   Lanes: store, face.
 
-- 📋 [PRESS-0221] **A wizard moves Pressless to a new computer, or makes a backup of everything it keeps.**
+- ✅ [PRESS-0221] **A wizard moves Pressless to a new computer, or makes a backup of everything it keeps.**
   Chosen under PRESS-0220. The Pressless-data folder is the only place his
   drafts and photograph originals are kept (README, Upgrading without
   losing anything), and moving it by hand is easy to get wrong.
@@ -4954,6 +4954,14 @@ documents go on the site beside the photographs.
   since they share one file; one review round.
   2026-10-16, corrected: no spec. A dialog over PRESS-0224's save and
   open; this bullet and its tests are the contract.
+  2026-10-16: Move Pressless to a new computer, on the Sites screen, is
+  a modal dialog of three steps (Next and Back): save each site to a
+  file (GET /sites/save?site=site-N), carry the files across, open each
+  there with Open a site file, then enter the key in Settings. Setup's
+  welcome step on a new computer points to the Sites screen; opening
+  there replaces the fresh install's unused site. Locked by the
+  PRESS-0221 tests in tests/test_sites_screen.py and
+  tests/test_setup.py, and the move_wizard browser row.
   **Layman:** A guided step-by-step makes a backup of your writing and settings, or moves Pressless to a new computer without losing anything.
   Kind: feature.
   Source: user-request-2026-10-03.

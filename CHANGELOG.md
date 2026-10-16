@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A step-by-step guide moves Pressless to a new computer** (PRESS-0221)
+  *Move Pressless to a new computer*, on the Sites screen, saves each
+  site to a file, says how to carry the files across, and how to open
+  them there. On the new computer, setup's first screen points to the
+  same place.
+
 - **Pressless backs up every site by itself, each day** (PRESS-0225)
   Each day it saves every site to a file and keeps the last seven, in a
   Pressless-backups folder beside the program or a folder you choose on

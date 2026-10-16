@@ -1628,3 +1628,12 @@ def test_settings_choose_the_icon_and_picture(tmp_path, monkeypatch):
     with _setup_page(carried, _GitHub()) as browser:
         _first_run(browser)
     assert store.read_identity(carried) == store.Identity("A Journal", "", "a.png", "b.jpg")
+
+
+def test_a_new_computer_is_pointed_at_its_site_file(tmp_path):
+    """PRESS-0221: on a new computer, setup's first screen says a site saved
+    on the old one opens on the Sites screen. Breaks when the way in is lost."""
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        page = browser.get()[1]
+    assert _step(page) == "welcome"
+    assert 'href="/sites"' in page and "Open a site file" in page

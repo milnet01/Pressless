@@ -165,3 +165,46 @@ def test_the_screen_sets_where_backups_go_and_says_what_went_wrong(tmp_path: Pat
     finally:
         served.stop()
     assert backups.folder_of(own) == chosen and restarts == []
+
+
+# ------------------------------------------------------------ PRESS-0221 ----
+
+
+def test_the_move_wizard_saves_each_site_and_says_what_comes_next(tmp_path: Path) -> None:
+    """PRESS-0221. Breaks when the wizard is a page of its own rather than a
+    dialog, a site has no way to be saved from it, or a step is missing."""
+    own = _own(tmp_path)
+    store.write_identity(own / "sites" / "site-2", store.Identity("Hill Notes"))
+    restarts: list[int] = []
+    served, browser = _serve(own, restarts)
+    try:
+        page = browser.request("GET", "/sites")[2]
+    finally:
+        served.stop()
+    assert 'data-help="move-wizard"' in page
+    wizard = page.split('<dialog id="move-wizard"', 1)[1].split("</dialog>", 1)[0]
+    assert wizard.count('data-step="') == 3
+    assert 'href="/sites/save?site=site-1"' in wizard
+    assert 'href="/sites/save?site=site-2"' in wizard and "Hill Notes" in wizard
+    assert "Open a site file" in wizard and "publishing key" in wizard
+
+
+def test_save_takes_any_site_and_refuses_one_that_is_not_there(tmp_path: Path) -> None:
+    """PRESS-0221: the wizard saves each site, open or not. Breaks when the
+    open site is saved in another's place, or a bad name reaches a path."""
+    own = _own(tmp_path)
+    second = own / "sites" / "site-2"
+    store.write_identity(second, store.Identity("Hill Notes"))
+    store.write(second, _entry("on-the-hill"), draft=True)
+    restarts: list[int] = []
+    served, browser = _serve(own, restarts)
+    try:
+        status, headers, data = browser.raw("GET", "/sites/save?site=site-2")
+        refused = browser.raw("GET", "/sites/save?site=../site-2")
+    finally:
+        served.stop()
+    assert status == 200 and "Hill Notes" in headers["Content-Disposition"]
+    with zipfile.ZipFile(io.BytesIO(data)) as saved:
+        assert "drafts/on-the-hill.txt" in saved.namelist()
+    assert refused[0] == 200 and b"That site is not here any more." in refused[2]
+    assert not list(own.glob(".saving-*"))

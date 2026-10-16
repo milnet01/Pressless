@@ -515,6 +515,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         added_by_upload(page, origin, folder)
         sites_listed(page, origin, folder)
         site_file(page, origin, folder)
+        move_wizard(page, origin)
         enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
 
@@ -644,6 +645,31 @@ def site_file(page, origin: str, folder: Path) -> None:
     check("PRESS-0224: Open makes the file a new site and restarts",
           opened != shown and (opened / "drafts" / "saved-and-opened.txt").is_file()
           and len(RESTARTS) == before + 1, f"opened={opened.name}")
+
+
+def move_wizard(page, origin: str) -> None:
+    """PRESS-0221: the move opens as a dialog over the Sites screen, one step
+    at a time, and each site saves from it."""
+    page.goto(f"{origin}/sites", wait_until="networkidle")
+    box = page.locator("#move-wizard")
+    page.locator("[data-help=move-wizard]").click()
+    shown = lambda: box.locator("[data-step]:visible").get_attribute("data-step")  # noqa: E731
+    seen = [box.evaluate("d => d.open && d.matches(':modal')"), shown()]
+    box.locator("[data-move=next]").click()
+    seen.append(shown())
+    box.locator("[data-move=next]").click()
+    seen += [shown(), box.locator("[data-move=next]").is_disabled()]
+    box.locator("[data-move=back]").click()
+    seen.append(shown())
+    box.locator("[data-close]").click()
+    page.locator("[data-help=move-wizard]").click()
+    seen.append(shown())
+    check("PRESS-0221: the move is a dialog, one step at a time, starting again on reopening",
+          seen == [True, "1", "2", "3", True, "2", "1"], str(seen))
+    with page.expect_download() as saving:
+        box.locator("a[href*='/sites/save?site=']").first.click()
+    check("PRESS-0221: a site saves from the dialog",
+          saving.value.suggested_filename.endswith(".zip"), saving.value.suggested_filename)
 
 
 def added_by_upload(page, origin: str, folder: Path) -> None:

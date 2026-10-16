@@ -134,7 +134,8 @@ offers setup. Moving everything in `sites/site-1` back up into
 one file.** On the Sites screen, **Save this site to a file** saves its
 writing, photographs and settings. **Open a site file** in Pressless on
 the other computer opens it as a site. The publishing key is never in
-the file, so Settings asks for it once.
+the file, so Settings asks for it once. **Move Pressless to a new
+computer**, on the same screen, walks through it a step at a time.
 
 **Pressless also makes a backup of every site by itself each day**, and
 keeps the last seven. They go to a `Pressless-backups` folder beside

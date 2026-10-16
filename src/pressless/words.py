@@ -807,6 +807,11 @@ _WORDS: dict[str, str] = {
         "Some steps happen on GitHub's own pages. Keep this page open beside them. If you "
         "close Pressless partway, it starts again where you left off."
     ),
+    "setup.welcome.moving": (
+        "Moving Pressless from another computer? Use Open a site file on the Sites screen "
+        "for each site you saved there, instead of these steps."
+    ),
+    "setup.welcome.sites": "Go to the Sites screen",
     "setup.account.have": "If you already have a GitHub account, type its name below.",
     "setup.account.make": "If not, make one:",
     "setup.account.need": "You need a GitHub account. If you do not have one yet, make one now:",
@@ -1261,6 +1266,25 @@ _WORDS: dict[str, str] = {
         "open the file again."
     ),
     "script.sites.opening": "Opening…",
+    "sites_screen.move.button": "Move Pressless to a new computer",
+    "sites_screen.move.title": "Move Pressless to a new computer",
+    "sites_screen.move.step_save": "1. Save each site to a file",
+    "sites_screen.move.save": (
+        "Save every site you want to take. Each one downloads as a file, usually into "
+        "your Downloads folder."
+    ),
+    "sites_screen.move.save_one": "Save {site}",
+    "sites_screen.move.step_carry": "2. Take the files to the new computer",
+    "sites_screen.move.carry": (
+        "Copy the files onto a USB stick, or into a cloud folder both computers reach. "
+        "Then download Pressless on the new computer and start it."
+    ),
+    "sites_screen.move.step_open": "3. Open each file there",
+    "sites_screen.move.open": (
+        "On the new computer, go to the Sites screen and use Open a site file for each "
+        "file. The publishing key is never in a file, so enter it in Settings once each "
+        "site opens."
+    ),
     "sites_screen.backups.title": "Daily backups",
     "sites_screen.backups.about": (
         "Each day Pressless saves every site to a file by itself, and keeps the last seven "
