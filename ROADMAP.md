@@ -4965,12 +4965,13 @@ documents go on the site beside the photographs.
   Source: user-request-2026-10-15.
   Lanes: Builder, Face.
 
-- 🚧 [PRESS-0278] **An About page that shows the version, and says Pressless is independent of GitHub, Google and WordPress.**
+- ✅ [PRESS-0278] **An About page that shows the version, and says Pressless is independent of GitHub, Google and WordPress.**
   The version showed nowhere in the app but the report form. The
   house-style disclaimer, from the hub website session, goes on the
   About page and on setup's welcome step, before anything is
   published. Its last clause names GitHub Pages, the one host
   Pressless publishes to. The README carries it too.
+  Shipped in 3126271.
   **Layman:** An About button shows which Pressless you have, and says who does and does not stand behind it.
   Kind: feature.
   Source: user-request-2026-10-16.
