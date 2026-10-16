@@ -277,3 +277,11 @@ What the build settled, recorded rather than decided here:
   could not reach the page as written.
 - **The editor shows a `script` section's code in the frame**, by a style the
   editor adds there, so it can be picked; the sandbox keeps it from running.
+- **PRESS-0273 adds a `style` kind**, built without a spec (the user,
+  2026-10-16): the user's CSS verbatim in a `<style>`, whose `code` field,
+  code box and placement are the `script` kind's. It styles the whole page
+  it sits on, every page from the header or footer. It is refused where its
+  code holds `</style`. Unlike a script it takes effect in the preview, which
+  still shows it as its code. It reaches only the frame, never a Face
+  screen's own document, and the preview's policy keeps refusing pictures
+  and fonts from other sites, as the panel says.

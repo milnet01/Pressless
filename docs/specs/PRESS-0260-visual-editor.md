@@ -163,7 +163,7 @@ frame, at a fixed place and size. It shows:
   its list, the button it cannot use is shown disabled, never hidden.
 
 *Amended by PRESS-0217:* the Add list and this table gain its six kinds
-(PRESS-0217 § 4.1, § 4.2).
+(PRESS-0217 § 4.1, § 4.2), and PRESS-0273's `style` kind (PRESS-0217 § 14).
 
 A picked columns section's panel also offers **Add to column N** for
 each column, and a picked row of pictures **Add a picture**. A row of

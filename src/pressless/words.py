@@ -523,6 +523,9 @@ _WORDS: dict[str, str] = {
     "page_editor.panel.columns": "How many columns",
     "page_editor.panel.add_to_column": "Add to column {number}",
     "page_editor.panel.code": "Its code",
+    "page_editor.panel.style_note": (
+        "It styles the whole page it is on, or every page from the header or footer. "
+        "Pictures and fonts from other websites show on your published site, not here."),
     "page_editor.panel.add": "Add:",
     "page_editor.panel.add_button": "Add",
     "page_editor.panel.move_up": "Move up",
@@ -561,6 +564,7 @@ _WORDS: dict[str, str] = {
     "script.visual.kind.top": "Back to top",
     "script.visual.kind.countdown": "Countdown",
     "script.visual.kind.script": "Your own script",
+    "script.visual.kind.style": "Your own CSS",
     "script.visual.top_label": "Back to top",
     "page_editor.newest": "Your newest entry",
     "page_editor.show_on": "Show it on:",

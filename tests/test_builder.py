@@ -1613,3 +1613,19 @@ def test_a_user_script_is_published_verbatim(tmp_path):
     published = (into / "index.html").read_text(encoding="utf-8")
     assert f"<script>{code}</script>" in published, published
     assert "pieces.js" not in published, "a script piece is not a ready-made piece"
+
+
+def test_a_page_style_is_published_verbatim(tmp_path):
+    """PRESS-0273: a style piece's CSS reaches the published page as written,
+    and it is not a ready-made piece, so it links no pieces.js."""
+    code = "main > p { color: red; }\n.a::before { content: \"<&amp;>\"; }"
+    try:
+        piece = blocks.section_html(blocks.Section("style", {"code": code}))
+    except blocks.SectionRefused:
+        piece = ""
+    page = SECTIONED.replace("<!-- /pressless:page -->", piece + "<!-- /pressless:page -->")
+    into = tmp_path / "site"
+    build(_store(tmp_path, pages={"index": page}), _settings(), into)
+    published = (into / "index.html").read_text(encoding="utf-8")
+    assert f"<style>{code}</style>" in published, published
+    assert "pieces.js" not in published, "a style piece is not a ready-made piece"

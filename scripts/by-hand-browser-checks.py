@@ -16,6 +16,8 @@ Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
     changed, moved and added in its list
   PRESS-0217 s10: the pieces behave on the published site, and in the
     visual editor show their fallbacks, a script piece among them inert
+  PRESS-0273: a style piece shows as its code, and its CSS reaches the
+    preview frame but never the Face's own page
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -827,7 +829,8 @@ def drag_sections(page, origin: str, folder: Path) -> None:
 
 
 # PRESS-0217: every piece, a script piece that would set the title if it ran,
-# and enough page below them that back to top has somewhere to come back from.
+# a style piece (PRESS-0273) colouring the page's paragraphs, and enough
+# page below them that back to top has somewhere to come back from.
 _FORMS = ROOT / "tests" / "features" / "blocks" / "forms"
 PIECES_PAGE = (
     "<!doctype html><html><head><title>Pieces</title></head><body>\n"
@@ -836,6 +839,8 @@ PIECES_PAGE = (
                 for kind in ("slideshow", "questions", "enlarge", "countdown"))
     + "\n<!-- pressless:script --><script>document.title = 'RAN';</script>"
     "<!-- /pressless:script -->\n"
+    "<!-- pressless:style --><style>main p { color: rgb(1, 2, 3); }</style>"
+    "<!-- /pressless:style -->\n"
     + "<!-- pressless:text --><p>Further down.</p><!-- /pressless:text -->\n" * 60
     + (_FORMS / "top-1.html").read_text(encoding="utf-8").strip()
     + "\n<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
@@ -860,7 +865,7 @@ def pieces(page, origin: str, folder: Path) -> None:
           title == "Pieces" and shown == 2 and answers == 2
           and frame.locator(".pressless-slideshow-turn").count() == 0,
           f"title={title!r} slides={shown} answers={answers}")
-    code = frame.locator("script[data-pressless-script]")
+    code = frame.locator("script[data-pressless-code]")
     box = code.bounding_box() if code.count() else None
     if box:
         code.click()
@@ -869,6 +874,19 @@ def pieces(page, origin: str, folder: Path) -> None:
           bool(box) and box["height"] > 0 and picked == "Changing: Your own script"
           and "RAN" in (page.locator("[data-field=code]:visible").input_value() or ""),
           f"box={box} picked={picked!r}")
+    sheet = frame.locator("style[data-pressless-code]")
+    box = sheet.bounding_box() if sheet.count() else None
+    if box:
+        sheet.click()
+    picked = page.locator("#picked").text_content()
+    applied = frame.locator("main p").last.evaluate("p => getComputedStyle(p).color")
+    leaked = page.evaluate("[...document.querySelectorAll('*')].some("
+                           "(at) => getComputedStyle(at).color === 'rgb(1, 2, 3)')")
+    check("PRESS-0273: a style piece shows as its code, is picked by a click, and its CSS "
+          "styles the preview alone",
+          bool(box) and box["height"] > 0 and picked == "Changing: Your own CSS"
+          and applied == "rgb(1, 2, 3)" and not leaked,
+          f"box={box} picked={picked!r} applied={applied} leaked={leaked}")
     page.select_option("#add-kind", "countdown")
     page.locator("[data-act=add]").click()
     page.locator("[data-field=label]:visible").fill("Until then")

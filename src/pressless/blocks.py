@@ -27,7 +27,7 @@ from types import MappingProxyType
 __all__ = [
     "BUTTON", "CODE", "COLUMNS", "COUNTDOWN", "DOWNLOAD", "ENLARGE", "HEADING", "KINDS",
     "MUSIC", "PICTURE", "PICTURES", "PIECES", "PIECES_SCRIPT", "QUESTIONS", "SCRIPT",
-    "SLIDESHOW", "TEXT", "TOP", "VIDEO",
+    "SLIDESHOW", "STYLE", "TEXT", "TOP", "VIDEO",
     "Page", "Section", "SectionRefused",
     "adopt", "inline", "read", "section_html", "unmarked", "write",
 ]
@@ -39,9 +39,11 @@ VIDEO, MUSIC, DOWNLOAD, COLUMNS = "video", "music", "download", "columns"
 SLIDESHOW, QUESTIONS, ENLARGE, TOP, COUNTDOWN = (
     "slideshow", "questions", "enlarge", "top", "countdown")
 SCRIPT = "script"
+# PRESS-0273: the writer's own CSS, for the whole page it sits on.
+STYLE = "style"
 PIECES = (SLIDESHOW, QUESTIONS, ENLARGE, TOP, COUNTDOWN)
 KINDS = (TEXT, HEADING, PICTURE, PICTURES, BUTTON, VIDEO, MUSIC, DOWNLOAD, COLUMNS,
-         *PIECES, SCRIPT)
+         *PIECES, SCRIPT, STYLE)
 CODE = "code"
 
 _PAGE, _COLUMN = "page", "column"
@@ -54,6 +56,7 @@ _WHEN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2
 # What would end a script element early or change how a browser reads where
 # it ends; HTML's rule, not a reading of the script.
 _SCRIPT_END = re.compile(r"</script|<!--", re.IGNORECASE)
+_STYLE_END = re.compile(r"</style", re.IGNORECASE)
 _VOID = frozenset(("area", "base", "br", "col", "embed", "hr", "img", "input", "link",
                    "meta", "source", "track", "wbr"))
 
@@ -231,6 +234,7 @@ _FIELDS = {
     TOP: ({"label"}, set()),
     COUNTDOWN: ({"to", "label"}, set()),
     SCRIPT: ({"code"}, set()),
+    STYLE: ({"code"}, set()),
 }
 
 # The kinds that hold other sections, which no column or answer holds.
@@ -264,6 +268,8 @@ def _check(section: Section) -> None:
         raise SectionRefused(f"a countdown's end, {fields['to']!r}, is not a date and a time")
     if kind == SCRIPT and _SCRIPT_END.search(fields["code"]):
         raise SectionRefused("a script section cannot hold </script or <!--")
+    if kind == STYLE and _STYLE_END.search(fields["code"]):
+        raise SectionRefused("a style section cannot hold </style")
     _check_parts(section)
 
 
@@ -379,6 +385,7 @@ _WRITERS: dict[str, Callable[[Section], str]] = {
                           f'{_text(s.fields["to"].replace("T", " "))}</time></p>'),
     # PRESS-0217 § 4.4: the writer's code verbatim, never read or changed.
     SCRIPT: lambda s: f"<script>{s.fields['code']}</script>",
+    STYLE: lambda s: f"<style>{s.fields['code']}</style>",
 }
 
 
@@ -475,6 +482,8 @@ _READERS: dict[str, Callable[[str], dict[str, str] | None]] = {
     COUNTDOWN: _read_countdown,
     SCRIPT: lambda inner: ((found := re.fullmatch(r"<script>(.*)</script>", inner, re.S))
                            and {"code": found.group(1)}),
+    STYLE: lambda inner: ((found := re.fullmatch(r"<style>(.*)</style>", inner, re.S))
+                          and {"code": found.group(1)}),
 }
 
 # §4.5: every form each kind has been written in, oldest first, as a reader

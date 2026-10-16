@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A page can hold its own CSS, for anyone who knows how to write it** (PRESS-0273)
+  Add "Your own CSS" from the list of sections. It styles the whole page
+  it is on, or every page when placed in the header or footer, and shows
+  in the preview. Pictures and fonts from other websites show only on the
+  published site.
+
 - **A Look screen changes your site's colours, fonts, text size, page width and layout, with a live preview** (PRESS-0196)
   Colours are set for light and dark. A text colour that is hard to
   read is warned about, and still saved. Three gentle effects can be

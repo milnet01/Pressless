@@ -58,6 +58,8 @@ EVERY_KIND = (
     Section(blocks.COUNTDOWN, {"to": "2026-12-25T18:00", "label": ""}),
     Section(blocks.SCRIPT, {"code": "if (a < b && c > 'd') { x = \"&amp;\"; }\n"}),
     Section(blocks.SCRIPT, {"code": ""}),
+    Section(blocks.STYLE, {"code": "main > p { color: red; }\na::before { content: '<!--&'; }"}),
+    Section(blocks.STYLE, {"code": ""}),
     Section(blocks.COLUMNS, parts=((Section(blocks.SCRIPT, {"code": "1"}),),
                                    (Section(blocks.COUNTDOWN, {"to": "2027-01-01T00:00",
                                                                "label": "x"}),))),
@@ -396,7 +398,7 @@ def test_new_pages_are_all_sections(tmp_path):
 # The kinds are spelled out rather than read from `blocks`, since the names
 # are what a page's marks hold.
 
-PIECES = ("slideshow", "questions", "enlarge", "top", "countdown", "script")
+PIECES = ("slideshow", "questions", "enlarge", "top", "countdown", "script", "style")
 
 
 def _form(kind: str) -> str:
@@ -456,7 +458,9 @@ def test_a_malformed_piece_is_refused():
                  Section("countdown", {"to": "2026-12-25T18:00:30+02:00", "label": "x"}),
                  Section("slideshow", parts=((_picture(1),),)),
                  Section("questions", parts=(_question("Why?", answer),)),
-                 Section("script", {"code": ""})):
+                 Section("script", {"code": ""}),
+                 Section("style", {"code": ""}),
+                 Section("style", {"code": "a::after { content: '<!--'; }"})):
         assert _written(good), good
     for bad in (Section("countdown", {"to": "next Tuesday", "label": ""}),
                 Section("countdown", {"to": "2026-12-25", "label": ""}),
@@ -472,6 +476,8 @@ def test_a_malformed_piece_is_refused():
                 Section("top", {}),
                 Section("script", {"code": "</script><p>out</p>"}),
                 Section("script", {"code": "a = '<!--';"}),
+                Section("style", {"code": "</style><p>out</p>"}),
+                Section("style", {"code": "p {} </STYLE >"}),
                 Section(blocks.COLUMNS, parts=((_form_section("slideshow"),), (answer,)))):
         assert not _written(bad), bad
 

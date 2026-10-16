@@ -840,3 +840,27 @@ def test_the_piece_preview_runs_no_script(tmp_path):
     assert status == 200, preview
     assert "pieces.js" not in preview, "the preview links the pieces' script"
     assert '<script>document.title = "a < b && c";</script>' in preview
+
+
+def test_a_page_style_reaches_the_preview_alone(tmp_path):
+    """PRESS-0273: a style piece is picked like any section and its CSS
+    reaches the preview frame, never the Face's own document, so no CSS of
+    the user's can hide or restyle the controls that would fix it."""
+    piece = (PIECE_FORMS / "style-1.html").read_text(encoding="utf-8")
+    css = re.search(r"<style>(.*)</style>", piece).group(1)
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "styled", AREA_BEFORE + piece + AREA_AFTER)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page?kind=pages&name=styled")
+        assert status == 200, text
+        given = json.loads(text.split('id="sections">', 1)[1].split("</script>", 1)[0])
+        assert [item["kind"] for item in given["sections"] if len(item["path"]) == 1] == [
+            "style"], given
+        own = re.findall(r"<style\b[^>]*>(.*?)</style>", text, re.S)
+        assert not any("a < b" in sheet for sheet in own), "the CSS reached the Face's page"
+        frame = re.search(r"<iframe\b[^>]*>", text).group(0)
+        assert re.findall(r'\bsandbox="([^"]*)"', frame) == ["allow-same-origin"], frame
+        address = html.unescape(re.search(r'\bsrc="([^"]*)"', frame).group(1))
+        status, _, preview = browser.request("GET", address)
+    assert status == 200, preview
+    assert f"<style>{css}</style>" in preview, preview

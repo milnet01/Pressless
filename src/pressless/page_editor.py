@@ -570,7 +570,7 @@ def _drag() -> str:
 
 _KINDS = (blocks.TEXT, blocks.HEADING, blocks.PICTURE, blocks.PICTURES, blocks.BUTTON,
           blocks.VIDEO, blocks.MUSIC, blocks.DOWNLOAD, blocks.COLUMNS, *blocks.PIECES,
-          blocks.SCRIPT)
+          blocks.SCRIPT, blocks.STYLE)
 # Each kind's name on the screen; the script reads the same keys by kind.
 _KIND_WORDS = {
     blocks.TEXT: "script.visual.kind.text", blocks.HEADING: "script.visual.kind.heading",
@@ -583,6 +583,7 @@ _KIND_WORDS = {
     blocks.QUESTIONS: "script.visual.kind.questions",
     blocks.ENLARGE: "script.visual.kind.enlarge", blocks.TOP: "script.visual.kind.top",
     blocks.COUNTDOWN: "script.visual.kind.countdown", blocks.SCRIPT: "script.visual.kind.script",
+    blocks.STYLE: "script.visual.kind.style",
 }
 
 
@@ -639,8 +640,9 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <label data-for="columns">{say("page_editor.panel.columns")} <select data-field="count">{
     "".join(f'<option value="{count}">{count}</option>' for count in range(2, 5))}</select></label>
 <p class="panel-row" data-for="columns">{columns}</p>
-<label data-for="code script">{say("page_editor.panel.code")}
+<label data-for="code script style">{say("page_editor.panel.code")}
 {_code_box('<textarea data-field="code" rows="10" spellcheck="false"></textarea>')}</label>
+<p data-for="style">{say("page_editor.panel.style_note")}</p>
 <div class="panel-add"><label>{say("page_editor.panel.add")}
  <select id="add-kind">{kinds}</select></label>
 <label>{say("page_editor.panel.address")} <input id="add-address" autocomplete="off"
@@ -1543,7 +1545,7 @@ _VISUAL_SCRIPT = r"""
   const up = given.up;
   const KINDS = ["text", "heading", "picture", "pictures", "button", "video", "music",
                  "download", "columns", "slideshow", "questions", "enlarge", "top",
-                 "countdown", "script"];
+                 "countdown", "script", "style"];
   // The kinds holding other sections, which no column or answer holds; a row
   // of them holds pictures alone.
   const HOLDERS = ["columns", "pictures", "slideshow", "questions"];
@@ -1673,10 +1675,11 @@ _VISUAL_SCRIPT = r"""
 
   // ---- the frame (§ 4.2) -----------------------------------------------
   // PRESS-0217 § 4.2: a script section is shown as its code, which the
-  // sandbox keeps from running, so it can be picked like any other.
+  // sandbox keeps from running, so it can be picked like any other; a style
+  // section (PRESS-0273) is shown the same way, and its CSS applies too.
   const STYLE = "[data-pressless-picked]{box-shadow:0 0 0 3px #e9a23b}"
     + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}"
-    + "script[data-pressless-script]{display:block;white-space:pre-wrap;"
+    + "script[data-pressless-code],style[data-pressless-code]{display:block;white-space:pre-wrap;"
     + "font:12px/1.4 monospace;border:1px #888 dashed;padding:4px;min-height:1.4em}";
   function pair() {
     const doc = frame.contentDocument;
@@ -1712,9 +1715,9 @@ _VISUAL_SCRIPT = r"""
       if (!HOLDERS.includes(entry.kind)) skip = closing;
       if (!item || item.kind !== entry.kind) return;
       item.start = mark.at; item.end = marks[closing].at;
-      if (item.kind === "script") {
-        const code = between(item).find((at) => at.localName === "script");
-        if (code) code.setAttribute("data-pressless-script", "");
+      if (item.kind === "script" || item.kind === "style") {
+        const code = between(item).find((at) => at.localName === item.kind);
+        if (code) code.setAttribute("data-pressless-code", "");
       }
       if (item.kind === "text" || item.kind === "heading") {
         item.el = item.start.nextSibling;
@@ -1919,7 +1922,7 @@ _VISUAL_SCRIPT = r"""
       : kind === "enlarge" ? {src: address, alt: ""}
       : kind === "top" ? {label: say("script.visual.top_label")}
       : kind === "countdown" ? {to: weekAhead(), label: ""}
-      : kind === "script" ? {code: ""} : {};
+      : kind === "script" || kind === "style" ? {code: ""} : {};
     const parts = kind === "columns" ? [[], []]
       : ROWS.includes(kind) || kind === "questions" ? [[]] : [];
     const item = node(kind, fields, null, true, undefined, parts, parent);
