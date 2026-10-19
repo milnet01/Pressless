@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=292 -->
+<!-- ants-roadmap-id-high-water: PRESS=293 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3687,6 +3687,20 @@ it decides how pages, the menu and the look are held.
   (3) Windows box: an old-layout Pressless-data moving into
   sites/site-1 on first start, the restart opening the other site in a
   new tab, and the daily backup landing beside it. (4) The hub message.
+  2026-10-19, 0.10.0 cut (bdb0476, tag v0.10.0 pushed). Gate on the
+  bumped tree: Linux 1338 passed, 4 skipped; Windows box 1248 passed.
+  GitHub CI and Release green; the draft holds the Windows zip and the
+  AppImage, notes match the changelog. Not signed yet.
+  (1) passed: windows-gate.sh --browsers on bdb0476. Firefox 120/120;
+  Edge 118/120, then 120/120 on a rerun (PRESS-0293, a timing flake).
+  (2) and (3) staged for the user over VNC: the draft zip unpacked to
+  the box's Desktop\Pressless-check beside an old-layout Pressless-data
+  made by 0.9.1's own settings.save and starter.fill. Steps given: start
+  it, look at the top bar in Edge, Sites, Start a new site, Open the
+  other, see it reopen in a new tab. After, check over SSH that
+  Pressless-data\sites\site-1 exists and Pressless-check\Pressless-backups
+  holds a backup; then delete Pressless-check.
+  Then python3 scripts/sign-release.py v0.10.0, then (4) the hub message.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -11691,6 +11705,19 @@ already-built code ships in whichever release comes next.
   **Layman:** A website you no longer want can be taken off the list of sites.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.
+
+- 📋 [PRESS-0293] **switch_in_place's frame row failed once in Edge on the box, then passed.**
+  2026-10-19, on the 0.10.0 release commit (bdb0476), Edge 155 on the
+  box: "PRESS-0285 INV-2: code typed in the box shows in the frame at
+  once" failed with back=True, and INV-3 failed after it. The saved copy
+  held "Added in code too", so the save landed. The frame did not show
+  it within the row's 50 x 100 ms wait. A rerun of Edge alone gave
+  120/120. The app saves before it sets frame.src (page_editor.py, the
+  switch handler), so the likely cause is a slow frame load. Fix: wait
+  for the frame's load after the switch, not a fixed count.
+  **Layman:** One browser check sometimes fails on the Windows box by chance, though nothing is wrong with Pressless.
+  Kind: test.
+  Source: found-while-releasing-0.10.0-2026-10-19.
 
 ## Milestones
 
