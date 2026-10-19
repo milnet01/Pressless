@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-19
+
+**Theme:** their own look, and any file
+
 ### Added
 
 - **An About page shows which Pressless you have** (PRESS-0278)
