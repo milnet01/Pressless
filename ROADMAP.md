@@ -5161,6 +5161,10 @@ documents go on the site beside the photographs.
   code the visual view cannot read, unsaved typing at the switch, the
   menu and furniture views, and that the visual script builds its model
   once at load.
+  2026-10-19: the no-reload spec,
+  docs/specs/PRESS-0285-switch-without-reload.md, passed its one review
+  round (the user's budget). Two lanes; 7 findings verified and fixed
+  (439c857). It is accepted and ready to build. No findings deferred.
   **Layman:** Moving between editing the page and seeing its code is instant, and the button says which one you get.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.
