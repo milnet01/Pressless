@@ -13,6 +13,7 @@ save refuses a file this window did not see, as the entry editor's does.
 """
 from __future__ import annotations
 
+import dataclasses
 import difflib
 import hashlib
 import html
@@ -282,6 +283,7 @@ def register(face: Face, folder: Path, *,
         return lambda request: handler(face, folder, editor.LOCK, request)
 
     face.add_page("GET", "/page", route(_open))
+    face.add_page("GET", "/page/view", route(_switch))  # PRESS-0285
     face.add_page("POST", "/page/save", route(_save))
     face.add_page("POST", "/page/discard", route(_discard))
     face.add_page("POST", "/page/publish",
@@ -403,6 +405,83 @@ def _json(value: dict) -> Reply:
     return Reply(json.dumps(value).encode("utf-8"), _JSON)
 
 
+@dataclasses.dataclass(frozen=True)
+class _Opened:
+    """What opening a file in a view gives (PRESS-0285 § 4.1)."""
+    view: str
+    text: str
+    base: str
+    waiting: bool
+    show: str | None
+    held: tuple[str, ...]
+    entries: bool
+    sections: list[dict] | None
+    links: list[tuple[str, str]] | None
+    photographs: tuple[str, ...]
+    kept: tuple[str, ...]
+    broken: str | None
+    preview: str | None
+    failure: str | None
+
+
+def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
+             asked_show: str, notices: list) -> _Opened:
+    """§ 4.5 and PRESS-0285 § 4.1: read the file, decide the view it can have,
+    and build its preview. Writes nothing, and raises `store.StoreError`. Takes
+    no lock; the caller holds LOCK and captures the notices."""
+    path, waiting = _read(folder, kind, name)
+    text = store.read_html(path)
+    base = _digest(path)
+    show = _show(folder, kind, name, asked_show)
+    # PRESS-0214 § 4.5: no newest entry to show a change on while the
+    # journal is off.
+    entries = store.list_slugs(folder, draft=False) if store.journal_on(folder) else ()
+    held = store.list_html(folder, store.PAGES_FOLDER)
+    view, broken = _view(kind, asked_view), None
+    shown, sections, links, photographs, kept = text, None, None, (), ()
+    try:
+        builder.furniture_spans(name, text)
+    except builder.BuildStopped as exc:
+        view, broken = CODE, face.fail(exc, publishing=False)
+    if view == VISUAL and _menu(kind, name):
+        try:
+            links = menu.links(text)
+        except menu.Unusual:
+            view = CODE
+            notices.append(say("notice.page_editor.menu_code_only"))
+    elif view == VISUAL:
+        # PRESS-0260 § 4.1: adopted in memory only; nothing is written.
+        shown = _area(kind, name, text)
+        if shown is None:
+            view, shown = CODE, text
+            notices.append(say("notice.page_editor.furniture_code_only"
+                               if kind == store.FURNITURE_FOLDER
+                               else "notice.page_editor.code_only"))
+        else:
+            sections = outline(blocks.read(name, shown))
+    # PRESS-0285 § 4.3: the side panel is on the page in either view.
+    if broken is None:
+        try:
+            photographs = store.list_photographs(folder)
+            kept = store.list_files(folder)
+        except store.StoreError as exc:
+            broken = face.fail(exc, publishing=False)
+    preview, failure = _preview(face, folder, kind, name, shown, show,
+                                marks=sections is not None)
+    return _Opened(view, text, base, waiting, show, held, bool(entries), sections, links,
+                   photographs, kept, broken, preview, failure)
+
+
+def _remember(folder: Path, kind: str, name: str, request: Request) -> None:
+    """PRESS-0263: the view and the page shown on, as asked."""
+    changes: dict[str, object] = {"page": (kind, name)}
+    if "view" in request.query:
+        changes["view"] = _view(kind, request.query["view"])
+    if kind == store.FURNITURE_FOLDER and "show" in request.query:
+        changes["shown_on"] = request.query["show"]
+    choices.remember(folder, **changes)
+
+
 def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
     """§ 4.5."""
     kind, name = request.query.get("kind", ""), request.query.get("name", "")
@@ -410,78 +489,63 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     held = pressing.holding()
     if held is not None:
         return held
-    broken = None
     # PRESS-0263: an address that names no view, or no page to show the
     # furniture on, takes the one he chose last.
     remembered = choices.read(folder)
-    asked_view = request.query.get("view", remembered.view)
-    asked_show = request.query.get("show", remembered.shown_on)
     with lock, face.capture() as notices:
         try:
-            path, waiting = _read(folder, kind, name)
-            text = store.read_html(path)
-            base = _digest(path)
-            show = _show(folder, kind, name, asked_show)
-            # PRESS-0214 § 4.5: no newest entry to show a change on while the
-            # journal is off.
-            entries = (store.list_slugs(folder, draft=False)
-                       if store.journal_on(folder) else ())
-            held = store.list_html(folder, store.PAGES_FOLDER)
+            opened = _opening(face, folder, kind, name, request.query.get("view", remembered.view),
+                              request.query.get("show", remembered.shown_on), notices)
         except store.StoreError as exc:
             failure: Exception | None = exc
         else:
             failure = None
-            view = _view(kind, asked_view)
-            shown, sections, photographs, links, kept = text, None, (), None, ()
-            try:
-                builder.furniture_spans(name, text)
-            except builder.BuildStopped as exc:
-                view, broken = CODE, face.fail(exc, publishing=False)
-            if view == VISUAL and _menu(kind, name):
-                try:
-                    links = menu.links(text)
-                except menu.Unusual:
-                    view = CODE
-                    notices.append(say("notice.page_editor.menu_code_only"))
-            elif view == VISUAL:
-                # PRESS-0260 § 4.1: adopted in memory only; nothing is written.
-                shown = _area(kind, name, text)
-                if shown is None:
-                    view, shown = CODE, text
-                    notices.append(say("notice.page_editor.furniture_code_only"
-                                       if kind == store.FURNITURE_FOLDER
-                                       else "notice.page_editor.code_only"))
-                else:
-                    sections = outline(blocks.read(name, shown))
-                    try:
-                        photographs = store.list_photographs(folder)
-                        kept = store.list_files(folder)
-                    except store.StoreError as exc:
-                        broken = face.fail(exc, publishing=False)
-            preview, preview_failure = _preview(face, folder, kind, name, shown, show,
-                                                marks=sections is not None)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
-    changes: dict[str, object] = {"page": (kind, name)}
-    if "view" in request.query:
-        changes["view"] = _view(kind, request.query["view"])
-    if kind == store.FURNITURE_FOLDER and "show" in request.query:
-        changes["shown_on"] = request.query["show"]
-    choices.remember(folder, **changes)
+    _remember(folder, kind, name, request)
     return render_notices(notices) + _page(
-        kind, name, view, show, waiting, base, text, held, bool(entries), broken,
-        preview, preview_failure, builder.stylesheets(folder),
-        face.view_site(), starter.unpublished(folder), sections, photographs,
-        remembered.true_colours, links, kept=kept)
+        kind, name, opened, builder.stylesheets(folder), face.view_site(),
+        starter.unpublished(folder), remembered.true_colours)
 
 
-def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base: str,
-          box: str, held: tuple[str, ...], has_entries: bool, broken: str | None,
-          preview: str | None, failure: str | None, sheets: tuple[str, ...],
-          visit: str, off_site: bool, sections: list[dict] | None = None,
-          photographs: tuple[str, ...] = (), undimmed: bool = False,
-          links: list[tuple[str, str]] | None = None,
-          kept: tuple[str, ...] = ()) -> str:
+def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """PRESS-0285 § 4.2: what the other view needs, as opening it would give,
+    so the switch changes view without loading the page."""
+    kind, name = request.query.get("kind", ""), request.query.get("name", "")
+    remembered = choices.read(folder)
+    with lock, face.capture() as notices:
+        try:
+            opened = _opening(face, folder, kind, name, request.query.get("view", ""),
+                              request.query.get("show", remembered.shown_on), notices)
+        except store.StoreError as exc:
+            failure: Exception | None = exc
+        else:
+            failure = None
+    if failure is not None:
+        return _failed(face, notices, failure)
+    _remember(folder, kind, name, request)
+    reply: dict[str, object] = {
+        "view": opened.view, "address": _page_address(kind, name, view=opened.view),
+        "base": opened.base, "waiting": opened.waiting, "broken": opened.broken or "",
+        "notices": render_notices(notices), "preview": opened.preview,
+        "failure": opened.failure}
+    if opened.view == CODE:
+        reply["text"] = opened.text
+    elif opened.links is not None:
+        reply["links"] = opened.links
+    else:
+        reply["sections"] = opened.sections
+    return _json(reply)
+
+
+def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit: str,
+          off_site: bool, undimmed: bool = False) -> str:
+    """The editor, carrying both views; the one not shown is hidden
+    (PRESS-0285 § 4.3)."""
+    view, show, waiting, base, held = (opened.view, opened.show, opened.waiting,
+                                       opened.base, opened.held)
+    menu_file = _menu(kind, name)
+
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -494,17 +558,19 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
         title = say("editor.pages.home") if name == HOME else name
     else:
         title = say(_LABELS[name]) if name in _LABELS else name
-    switch = ""
-    if broken is None:
-        other, label = ((CODE, say("page_editor.show_code")) if view == VISUAL
-                        else (VISUAL, say("page_editor.show_visual")))
-        switch = f'<p class="nav">{link(label, _page_address(kind, name, view=other))}</p>'
+    # PRESS-0285 § 4.3: one link to each view, in one place, the one to the
+    # view shown hidden; the script swaps them.
+    switch = '<p class="nav">' + "".join(
+        f'<a data-switch="{to}" href="{attr(_page_address(kind, name, view=to))}"'
+        f'{" hidden" if to == view else ""}>{say(key)}</a>'
+        for to, key in ((CODE, "page_editor.show_code"),
+                        (VISUAL, "page_editor.show_visual"))) + "</p>"
     picker = ""
     if kind == store.FURNITURE_FOLDER:
         choices = [link(say("editor.pages.home") if page == HOME else page,
                         _page_address(kind, name, show=page), page == show)
                    for page in held]
-        if has_entries:
+        if opened.entries:
             choices.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
                                 show is None))
         picker = f"<p>{say('page_editor.show_on')} " + " ".join(choices) + "</p>"
@@ -537,7 +603,7 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
 <p data-when="0"{' hidden' if waiting else ''}>{say("page_editor.standing")}</p>
 </div>
 {switch}{picker}
-<div id="broken">{broken or ""}</div>
+<div id="broken">{opened.broken or ""}</div>
 {message_box("notices")}
 <p id="save-hint"></p>
 <form id="editor" data-kind="{attr(kind)}" data-name="{attr(name)}" data-view="{attr(view)}"
@@ -547,19 +613,20 @@ def _page(kind: str, name: str, view: str, show: str | None, waiting: bool, base
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
-{reshape}{_menu_panel(links, held) if links is not None
-          else _panel(kind, name, sections, photographs, kept) if view == VISUAL else
-          _code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(box)}</textarea>')}
+{reshape}{_menu_panel(opened.links or [], held, hidden=view == CODE) if menu_file
+          else _panel(kind, name, opened.sections, opened.photographs, opened.kept,
+                      hidden=view == CODE)}
+{_code_box(f'<textarea name="text" rows="24">{chr(10)}{html.escape(opened.text)}</textarea>',
+           hidden=view == VISUAL)}
 </form>
-{message_box("failure", (failure or "") + (ended or ""), forgets=True)}
+{message_box("failure", (opened.failure or "") + (ended or ""), forgets=True)}
 <div id="undo-result"></div>
 <div id="proof">{true_colours(undimmed)}
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
- src="{attr(preview or 'about:blank')}"></iframe>{_drag() if sections is not None else ""}</div>
+ src="{attr(opened.preview or 'about:blank')}"></iframe>{"" if menu_file else _drag()}</div>
 <script>{_PAGE_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
-{f"<script>{_VISUAL_SCRIPT}</script>" if sections is not None else ""}
-{f"<script>{_MENU_SCRIPT}</script>" if links is not None else ""}
+<script>{_MENU_SCRIPT if menu_file else _VISUAL_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""
 
 
@@ -591,7 +658,8 @@ _KIND_WORDS = {
 
 
 def _panel(kind: str, name: str, sections: list[dict] | None,
-           photographs: tuple[str, ...], kept: tuple[str, ...] = ()) -> str:
+           photographs: tuple[str, ...], kept: tuple[str, ...] = (), *,
+           hidden: bool = False) -> str:
     """PRESS-0260 § 4.3: the side panel, every control in place from the
     start; the script shows the ones the picked section's kind uses, inside a
     panel of fixed size, so nothing beside it moves."""
@@ -624,7 +692,8 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
                       "</button>" for number in range(4))
     data = _script_json({"sections": sections or [], "up": up, "accept": files.ACCEPT,
                          "largest": builder.FILE_LARGEST})
-    return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}">
+    return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}"{
+        " hidden" if hidden else ""}>
 <script type="application/json" id="sections">{data}</script>
 <p id="picked" role="status">{say("script.visual.nothing")}</p>
 <div class="panel-add"><label>{say("page_editor.panel.add")}
@@ -684,7 +753,8 @@ def _shape(kind: str, name: str, text: str) -> dict:
     return {"sections": outline(blocks.read(name, text))}
 
 
-def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...]) -> str:
+def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...], *,
+                hidden: bool = False) -> str:
     """PRESS-0216 § 4.4: the menu's links, in order, each with its words and
     where it goes; the script fills the list from the links it is given."""
     def attr(value: str) -> str:
@@ -705,7 +775,8 @@ def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...]) -> str:
            f'<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>'
            f'<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button>'
            "</li>")
-    return f"""<aside id="panel" aria-label="{attr(say("page_editor.menu.title"))}">
+    return f"""<aside id="panel" aria-label="{attr(say("page_editor.menu.title"))}"{
+        " hidden" if hidden else ""}>
 <script type="application/json" id="links">{data}</script>
 <datalist id="page-list">{places}</datalist>
 <template id="link-row">{row}</template>
@@ -1138,7 +1209,8 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
   let timer = null, inFlight = null, dirty = false, stopped = false;
 
   // The visual view's snapshot of the page, or null in the code view.
-  const posting = () => window.presslessVisual ? window.presslessVisual.post() : null;
+  const posting = () => state.view !== "code" && window.presslessVisual
+    ? window.presslessVisual.post() : null;
   const fields = (posted = posting()) => {
     const data = new URLSearchParams();
     for (const name of ["kind", "name", "view", "show", "waiting", "base"]) {
@@ -1228,6 +1300,65 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
       event.preventDefault();
       await settle();
       if (!stopped) window.location.href = link.href;
+    });
+  });
+
+  // PRESS-0285 § 4.4: the switch changes view in place. The view being left
+  // takes nothing more, what was typed is saved, and the route answers with
+  // what opening the other view would show.
+  const codeBox = form.elements.text.closest(".code-box");
+  const panel = document.getElementById("panel");
+  const frame = document.getElementById("preview");
+  const part = (view) => view === "code" ? codeBox : panel;
+  let switching = false;
+  document.querySelectorAll("a[data-switch]").forEach((link) => {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
+      if (switching || stopped) return;
+      switching = true;
+      part(state.view).inert = frame.inert = true;
+      const free = () => {
+        codeBox.inert = panel.inert = frame.inert = false;
+        switching = false;
+      };
+      await settle();
+      if (stopped) { free(); return; }
+      let switched;
+      inFlight = new Promise((resolve) => { switched = resolve; });
+      try {
+        const asked = new URLSearchParams({kind: state.kind, name: state.name,
+                                           view: link.dataset.switch, show: state.show});
+        const answer = await fetch("/page/view?" + asked);
+        const text = await answer.text();
+        if (answer.status !== 200) { stop(text); return; }
+        const reply = JSON.parse(text);
+        adopt(reply);
+        if (reply.view !== state.view) {
+          state.view = form.dataset.view = reply.view;
+          codeBox.hidden = reply.view !== "code";
+          panel.hidden = reply.view === "code";
+          document.querySelectorAll("a[data-switch]").forEach((each) => {
+            each.hidden = each.dataset.switch === reply.view;
+          });
+          if (reply.view === "code") {
+            form.elements.text.value = reply.text;
+            window.presslessCode.paint();
+          } else {
+            window.presslessVisual.open(reply.sections || reply.links);
+          }
+          history.replaceState(null, "", reply.address);
+        }
+        document.getElementById("broken").innerHTML = reply.broken;
+        document.getElementById("failure").innerHTML = reply.failure || "";
+        frame.src = reply.preview ? reply.preview + "?n=" + Date.now() : "about:blank";
+      } catch (error) {
+        stop("");
+      } finally {
+        free();
+        inFlight = null;
+        switched();
+        if (dirty && !stopped) schedule();
+      }
     });
   });
 
@@ -1327,9 +1458,10 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
 """
 
 
-def _code_box(textarea: str) -> str:
+def _code_box(textarea: str, *, hidden: bool = False) -> str:
     """PRESS-0261: a code box, with the coloured copy _CODE_SCRIPT paints."""
-    return f'<div class="code-box"><pre aria-hidden="true"></pre>{textarea}</div>'
+    return (f'<div class="code-box"{" hidden" if hidden else ""}>'
+            f'<pre aria-hidden="true"></pre>{textarea}</div>')
 
 
 # PRESS-0261: colour in the code boxes. A coloured copy of the code sits behind
@@ -1475,8 +1607,14 @@ _MENU_SCRIPT = r"""
   const list = document.getElementById("menu-links");
   const row = document.getElementById("link-row");
   const frame = document.getElementById("preview");
-  const given = JSON.parse(document.getElementById("links").textContent).links;
-  const links = given.map(([words, href], at) => ({at, words, href, kept: {words, href}}));
+  const links = [];
+  // PRESS-0285 § 4.5: the links are taken at load, and again at each switch
+  // into this view.
+  function open(given) {
+    links.splice(0, links.length,
+                 ...given.map(([words, href], at) => ({at, words, href, kept: {words, href}})));
+    draw(null, "");
+  }
 
   function draw(link, act) {
     list.replaceChildren(...links.map((each, at) => {
@@ -1541,8 +1679,8 @@ _MENU_SCRIPT = r"""
       },
     };
   }
-  window.presslessVisual = {post};
-  draw(null, "");
+  window.presslessVisual = {post, open};
+  open(JSON.parse(document.getElementById("links").textContent).links);
 })();
 """
 
@@ -1582,26 +1720,39 @@ _VISUAL_SCRIPT = r"""
     changed: path === null, rev: 0, start: null, end: null, el: null});
   const model = [];
   const byPath = new Map();
-  for (const item of given.sections) {
-    const parent = item.path.length === 1 ? null : byPath.get(key(item.path.slice(0, 1)));
-    const made = node(item.kind, item.fields, item.path, item.marked, item.code,
-                      Array.from({length: item.parts}, () => []), parent);
-    made.changed = false;
-    byPath.set(key(item.path), made);
-    if (parent) {
-      made.column = item.path[1];
-      parent.parts[item.path[1]].push(made);
-    } else {
-      model.push(made);
-    }
-  }
   let removed = [];
   let picked = null;
   let destinations = [];  // where the picked section may be moved to (PRESS-0264)
   let dragging = null;  // the section being dragged, and where it would land (PRESS-0265)
   let editing = null;
-  let frameSections = given.sections;
+  let frameSections = [];
   let waitingPreview = null;
+  // PRESS-0285 § 4.5: the model is built from an outline at load, and again
+  // at each switch into this view, from the file as the switch read it.
+  function open(sections) {
+    if (picked) show(null, false);
+    model.length = 0;
+    byPath.clear();
+    removed = [];
+    destinations = [];
+    dragging = editing = waitingPreview = null;
+    line.hidden = true;
+    for (const item of sections) {
+      const parent = item.path.length === 1 ? null : byPath.get(key(item.path.slice(0, 1)));
+      const made = node(item.kind, item.fields, item.path, item.marked, item.code,
+                        Array.from({length: item.parts}, () => []), parent);
+      made.changed = false;
+      byPath.set(key(item.path), made);
+      if (parent) {
+        made.column = item.path[1];
+        parent.parts[item.path[1]].push(made);
+      } else {
+        model.push(made);
+      }
+    }
+    frameSections = sections;
+  }
+  open(given.sections);
 
   const listOf = (item) => item.parent ? item.parent.parts[item.column] : model;
   const each = (list, visit) => list.forEach((item) => {
@@ -1688,7 +1839,7 @@ _VISUAL_SCRIPT = r"""
       },
     };
   }
-  window.presslessVisual = {post};
+  window.presslessVisual = {post, open};
 
   // ---- the frame (§ 4.2) -----------------------------------------------
   // PRESS-0217 § 4.2: a script section is shown as its code, which the
@@ -1702,7 +1853,8 @@ _VISUAL_SCRIPT = r"""
     + "audio,video,iframe{pointer-events:none}";
   function pair() {
     const doc = frame.contentDocument;
-    if (!doc || !doc.body) return;
+    // PRESS-0285 § 4.5: idle while the code view shows.
+    if (!doc || !doc.body || document.getElementById("editor").dataset.view === "code") return;
     const style = doc.createElement("style");
     style.textContent = STYLE;
     doc.head.appendChild(style);

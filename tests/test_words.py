@@ -351,7 +351,9 @@ OWN = "zz"
 def _unmarked(page: str, *, comments: bool = False) -> list[str]:
     """English a reader sees that no marker holds. Markup is stripped,
     keeping title, alt, placeholder and aria-label; so are scripts, styles,
-    and the details Show details holds (decision 4)."""
+    the details Show details holds (decision 4), and the box holding his own
+    file, which the page editor carries in either view (PRESS-0285 § 4.3)."""
+    page = re.sub(r'<textarea name="text"[^>]*>.*?</textarea>', " ", page, flags=re.S)
     page = re.sub(r"<script\b.*?</script>|<style\b.*?</style>|<pre>.*?</pre>"
                   r"|<!-- *[A-Z]+:(?:START|END)\b.*?-->", " ", page, flags=re.S)
     if not comments:

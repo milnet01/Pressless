@@ -509,6 +509,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
+        switch_in_place(page, origin, folder)
         pieces(page, origin, folder)
         kept_files(page, origin, folder)
         players_picked(page, origin, folder)
@@ -1328,6 +1329,113 @@ def furniture_views(page, origin: str, folder: Path) -> None:
               '<nav>\n  <a href="{{UP}}pages/visual.html" data-nav="visual">Visual</a>\n'
               '  <a href="{{UP}}index.html" data-nav="Home">Start</a>\n'
               '  <a href="https://example.org/">Shop</a>\n</nav>'), waiting("navigation"))
+
+
+SWITCH_PAGE = (
+    "<!doctype html><html><head><title>Switch</title></head><body>\n"
+    "<!-- HEADER:START -->\n<!-- HEADER:END -->\n<main><!-- pressless:page -->\n"
+    "<!-- pressless:text --><p>Before words.</p><!-- /pressless:text -->\n"
+    "<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
+    "</body></html>\n")
+
+
+def switch_in_place(page, origin: str, folder: Path) -> None:
+    """PRESS-0285 INV-1 to INV-4 and INV-7: the switch changes view with no
+    page load, carrying what was typed across."""
+    store.write_html(folder, store.PAGES_FOLDER, "switch", SWITCH_PAGE)
+    waiting = store.html_path_for(folder, store.PAGES_FOLDER, "switch", waiting=True)
+    box = page.locator("textarea[name=text]")
+
+    def copy() -> str:
+        return store.read_html(waiting) if waiting.is_file() else ""
+
+    def saved() -> None:
+        page.wait_for_timeout(1600)
+        page.wait_for_function("document.getElementById('save-status').textContent !== "
+                               "'Saving'", timeout=5000)
+
+    def switch(to: str) -> bool:
+        """Click the switch to `to`; True once that view shows and nothing is inert."""
+        link = page.locator(f"a[data-switch={to}]")
+        if link.count() != 1 or not link.is_visible():
+            return False
+        link.click()
+        try:
+            page.wait_for_function(
+                "to => document.getElementById('editor').dataset.view === to"
+                " && !document.querySelector('[inert]')", arg=to, timeout=5000)
+        except Exception:  # noqa: BLE001 -- the check says what it saw
+            return False
+        return True
+
+    def kept() -> bool:
+        return page.evaluate("window.pressless0285 === 1")
+
+    page.goto(f"{origin}/page?kind=pages&name=switch&view=visual", wait_until="networkidle")
+    page.evaluate("window.pressless0285 = 1")
+    page.frame_locator("#preview").locator("p", has_text="Before words.").click()
+    page.keyboard.press("End")
+    page.keyboard.type(" typed")
+    went = switch("code")
+    shown = box.input_value() if box.is_visible() else ""
+    check("PRESS-0285 INV-2: words typed in the frame show in the code box at once",
+          went and "<p>Before words. typed</p>" in shown and "Before words. typed" in copy(),
+          f"went={went} box={shown[-160:]!r}")
+    check("PRESS-0285 INV-1: the switch to the code loads no new page",
+          went and kept() and "view=code" in page.url, page.url)
+
+    added = "<!-- pressless:text --><p>Added in code</p><!-- /pressless:text -->\n"
+    if went:
+        box.fill(shown.replace("<!-- /pressless:page -->", added + "<!-- /pressless:page -->"))
+        saved()
+    check("PRESS-0285 INV-4: after a switch, code typed into the box is saved",
+          "<p>Added in code</p>" in copy(), copy()[-200:])
+
+    if went:
+        box.fill(box.input_value().replace("Added in code", "Added in code too"))
+    back = switch("visual")
+    frame = page.frame_locator("#preview")
+    added_shown = back and frame.locator("p", has_text="Added in code too").count() == 1
+    check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
+          added_shown, f"back={back}")
+    check("PRESS-0285 INV-1: the switch to the page loads no new page",
+          back and kept() and page.locator("#panel").is_visible(), page.url)
+
+    if added_shown:
+        frame.locator("p", has_text="Added in code too").click()
+        page.keyboard.press("End")
+        page.keyboard.type(" more")
+        saved()
+    check("PRESS-0285 INV-3: a section added in the code is picked and saved, the "
+          "other kept byte for byte",
+          "<!-- pressless:text --><p>Before words. typed</p><!-- /pressless:text -->"
+          in copy() and "Added in code too more" in copy()
+          and page.locator("#save-status").text_content() != "Not saved", copy()[-300:])
+
+    for name, part in (("header", "#panel"), ("navigation", "#menu-links")):
+        page.goto(f"{origin}/page?kind=furniture&name={name}&view=visual",
+                  wait_until="networkidle")
+        page.evaluate("window.pressless0285 = 1")
+        there = switch("code") and box.is_visible()
+        again = there and switch("visual") and page.locator(part).is_visible()
+        check(f"PRESS-0285 INV-1: the {name} switches both ways with no new page",
+              there and again and kept(), f"code={there} back={again}")
+
+    page.goto(f"{origin}/page?kind=pages&name=switch&view=code", wait_until="networkidle")
+    store.write_html(folder, store.PAGES_FOLDER, "switch", SWITCH_PAGE, waiting=True)
+    box.fill(box.input_value().replace("Before words.", "Refused words."))
+    asked = page.locator("a[data-switch=visual]")
+    if asked.count() == 1:
+        asked.click()
+        page.wait_for_timeout(2500)
+    failure = page.locator("#failure").text_content() or ""
+    check("PRESS-0285 INV-7: a refused save leaves the code view, saying why",
+          page.evaluate("document.getElementById('editor').dataset.view") == "code"
+          and box.is_visible() and failure.strip() != ""
+          and page.locator("[inert]").count() == 0, failure[:120])
+    # PRESS-0263 remembers the view last asked for; the rows after this one
+    # open pages without naming one.
+    page.goto(f"{origin}/page?kind=pages&name=switch&view=visual", wait_until="networkidle")
 
 
 def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:

@@ -234,6 +234,8 @@ editor's.
 
 - A **Show me the code** button, or **Back to the words**, reloads the page in
   the other view. The furniture shows neither.
+  *Amended by PRESS-0285:* the switch changes view in place, with no page
+  load (PRESS-0285 § 4.4).
 - The furniture shows the picker: a link per fixed page, and one for his
   newest entry where he has one. Each reloads the page with that `show`.
 - With a waiting copy it shows **Bin this proof** and says its changes are

@@ -75,6 +75,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   and dark. A site made before this release keeps its light-only
   stylesheet.
 
+### Changed
+
+- **The editor switches between the page and its code without reloading** (PRESS-0285)
+  *View editor* and *Show me the code* change the view in place. What
+  you typed just before is saved first and shows in the other view.
+
 ## [0.9.1] - 2026-10-15
 
 **Theme:** pages, menus and the homepage are theirs

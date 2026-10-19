@@ -792,7 +792,11 @@ def test_an_unusual_menu_opens_in_the_code_view(tmp_path):
         page = browser.request("GET", "/page?kind=furniture&name=navigation")[2]
         status = _links(browser, folder, [{"at": 0, "words": "Home",
                                            "href": "{{UP}}index.html"}])[0]
-    assert 'id="menu-links"' not in page and "</textarea>" in page
+    # PRESS-0285 § 4.3: the menu panel is on the page, hidden, listing nothing.
+    assert _opened(page)[0] == "code" and "</textarea>" in page
+    assert re.search(r'<aside id="panel"[^>]*\bhidden>', page), page
+    assert json.loads(re.search(r'id="links">(.*?)</script>', page, re.S).group(1)) == {
+        "links": []}
     assert html.escape(words.say("notice.page_editor.menu_code_only")) in page
     assert status == 409
     assert not _waiting(folder, "furniture", "navigation").exists()
@@ -903,3 +907,65 @@ def test_the_panel_offers_kept_files_by_kind(tmp_path):
     assert listed("music") == ["../files/a.mp3"]
     assert listed("video") == ["../files/a.mp4"]
     assert listed("download") == ["../files/a.mp3", "../files/a.mp4", "../files/a.pdf"]
+
+
+# ------------------------------------------------------ PRESS-0285 § 5 ------
+# docs/specs/PRESS-0285-switch-without-reload.md: the switch asks
+# GET /page/view, which answers as opening the file in that view does.
+
+UNUSUAL_MENU = '<ul><li><a href="{{UP}}index.html">Home</a></li></ul>'
+
+
+def _opened(page: str) -> tuple[str, list | None, list | None]:
+    """The view an opened page shows, and the outline or links it holds there."""
+    view = re.search(r'<form id="editor"[^>]*\bdata-view="([^"]*)"', page).group(1)
+    if view == "code":
+        return view, None, None
+    sections = re.search(r'id="sections">(.*?)</script>', page, re.S)
+    links = re.search(r'id="links">(.*?)</script>', page, re.S)
+    return (view, json.loads(sections.group(1))["sections"] if sections else None,
+            json.loads(links.group(1))["links"] if links else None)
+
+
+def test_a_switch_answers_as_opening_does(tmp_path):
+    """INV-5. Breaks when the route decides the view by its own rules and
+    drops `_open`'s fallback for an unusual menu."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "coded", CODED)
+    store.write_html(folder, store.PAGES_FOLDER, "plain", UNMARKED)
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation", UNUSUAL_MENU)
+    # Each case with the view opening grants it: about has no main to adopt,
+    # and the menu is not one <nav> of links.
+    asked = [("pages", "coded", "visual", "visual"), ("pages", "coded", "code", "code"),
+             ("pages", "plain", "visual", "visual"), ("pages", "about", "visual", "code"),
+             ("furniture", "header", "visual", "visual"),
+             ("furniture", "navigation", "visual", "code")]
+    with _pages(folder) as browser:
+        for kind, name, view, expected in asked:
+            query = f"kind={kind}&name={name}&view={view}"
+            status, _, page = browser.request("GET", f"/page?{query}")
+            assert status == 200, page
+            status, _, text = browser.request("GET", f"/page/view?{query}")
+            assert status == 200, (query, text)
+            reply = json.loads(text)
+            granted, sections, links = _opened(page)
+            assert granted == expected, query
+            assert (reply["view"], reply.get("sections"), reply.get("links")) == (
+                granted, sections, links), query
+            if granted == "code":
+                assert reply["text"] == _live(folder, kind, name).read_bytes().decode(
+                    "utf-8"), query
+
+
+def test_a_switch_writes_nothing(tmp_path):
+    """INV-6. Breaks when the route writes the adopted text."""
+    folder = _folder(tmp_path)
+    store.write_html(folder, store.PAGES_FOLDER, "plain", UNMARKED)
+    live = _live(folder, "pages", "plain")
+    before = _digest(live)
+    with _pages(folder) as browser:
+        status, _, text = browser.request("GET", "/page/view?kind=pages&name=plain&view=visual")
+    assert status == 200, text
+    assert json.loads(text)["view"] == "visual"
+    assert _digest(live) == before
+    assert not _waiting(folder, "pages", "plain").exists()

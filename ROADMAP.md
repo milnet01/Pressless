@@ -5142,7 +5142,7 @@ documents go on the site beside the photographs.
   Kind: fix.
   Source: user-hand-check-2026-10-16.
 
-- 📋 [PRESS-0285] **The editor switches between the page and its code without reloading, and the switch says what it does.**
+- ✅ [PRESS-0285] **The editor switches between the page and its code without reloading, and the switch says what it does.**
   From the Edge hand check of 2026-10-16. The code view's switch back
   reads "Back to the page" (page_editor.show_visual), which the user read
   as leaving the editor, and found no way back. Each switch is a page
@@ -5165,6 +5165,11 @@ documents go on the site beside the photographs.
   docs/specs/PRESS-0285-switch-without-reload.md, passed its one review
   round (the user's budget). Two lanes; 7 findings verified and fixed
   (439c857). It is accepted and ready to build. No findings deferred.
+  2026-10-19: the no-reload half shipped, to
+  docs/specs/PRESS-0285-switch-without-reload.md (accepted after one
+  review round). The switch asks GET /page/view and changes view in
+  place; the typing is saved first. Chrome rows pass (switch_in_place);
+  Firefox and Edge are hand-check rows owed before release.
   **Layman:** Moving between editing the page and seeing its code is instant, and the button says which one you get.
   Kind: enhancement.
   Source: user-hand-check-2026-10-16.

@@ -103,6 +103,8 @@ takes the same rule as a page.
 
 The switch link offers *Show me the code* in the visual view and
 *View editor* (`page_editor.show_visual`) in the code view (PRESS-0285).
+*Amended by PRESS-0285:* the switch changes view in place, with no page
+load (PRESS-0285 § 4.4).
 
 ### 4.2 The frame
 
@@ -124,6 +126,8 @@ pairing each marked section with the outline's next marked entry.
 Between an opening mark and its closing mark lie the section's nodes.
 The script keeps a model of the page: per section its kind, its fields
 as shown, its path, and whether the user changed it.
+*Amended by PRESS-0285:* the script builds that model again at each
+switch into the visual view (PRESS-0285 § 4.5).
 
 **The preview loads nothing from elsewhere, and this item keeps it
 so.** `face.FILES_POLICY` blocks a YouTube frame, and a picture, video
