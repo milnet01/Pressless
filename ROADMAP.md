@@ -3680,6 +3680,13 @@ it decides how pages, the menu and the look are held.
   in 0.10.0: PRESS-0279 to PRESS-0288 (six defects, fixed next; two
   user-placed enhancements; the view switch and buttons the user asked for). Still owed at
   the 0.10.0 release: the hub message (PRESS-0278).
+  2026-10-19: owed before the 0.10.0 release. (1) On the release
+  commit, run scripts/windows-gate.sh wintest --browsers edge firefox;
+  both browsers gave 120 of 120 at a1be862. (2) Edge by hand: the top
+  bar's links shown as buttons (PRESS-0286); no browser row covers it.
+  (3) Windows box: an old-layout Pressless-data moving into
+  sites/site-1 on first start, the restart opening the other site in a
+  new tab, and the daily backup landing beside it. (4) The hub message.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
