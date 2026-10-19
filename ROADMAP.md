@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=291 -->
+<!-- ants-roadmap-id-high-water: PRESS=292 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5245,6 +5245,23 @@ documents go on the site beside the photographs.
   **Layman:** Choosing a photograph for a picture that enlarges when clicked now puts it in, instead of doing nothing.
   Kind: fix.
   Source: found-while-working-PRESS-0282-2026-10-16.
+
+- ✅ [PRESS-0292] **The browser checks run on the Windows box in Edge and Firefox, with no one at the screen.**
+  The user asked for a way to run the Edge and Firefox hand checks
+  without them. scripts/windows-gate.sh gains --browsers: it copies the
+  tree as the gate does and runs scripts/by-hand-browser-checks.py on
+  the box, in a Playwright environment of its own, beside the gate's
+  portable Python. by-hand-browser-checks.py gains --browser edge, the
+  installed Edge. Firefox is Playwright's build of it, not the installed
+  Firefox. Probed 2026-10-19: both launch headless over SSH on the box.
+  2026-10-19: shipped. On the box, Edge 155 ran 120 of 120 and
+  Playwright's Firefox 146 ran 120 of 120. The first Edge run failed
+  two PRESS-0285 checks: they read the frame before its new preview
+  loaded, and now wait for it. The plain gate sends the box the same
+  PowerShell as before, compared byte for byte.
+  **Layman:** The checks that used to need someone clicking through Edge and Firefox on the Windows computer now run by themselves.
+  Kind: test.
+  Source: user-request-2026-10-19.
 
 ## 0.11.0 — anyone can bring their site in
 

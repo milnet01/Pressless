@@ -27,13 +27,17 @@ Run it by hand before a release:
 
     python3 scripts/by-hand-browser-checks.py
     python3 scripts/by-hand-browser-checks.py --browser firefox
+    python3 scripts/by-hand-browser-checks.py --browser edge
     python3 scripts/by-hand-browser-checks.py --cdp http://127.0.0.1:19222 \
         --port 47501 --site-port 47502
 
 Firefox is Playwright's own build (`playwright install firefox`); it cannot
-drive the system Firefox. `--cdp` drives a browser already started with a
-debugging port -- Edge on the Windows box, through an SSH tunnel -- which
-reaches this machine only where both ports are forwarded back to it
+drive the system Firefox. Edge and Chrome are the installed ones. On the
+Windows box all three run unattended through
+`scripts/windows-gate.sh <box> --browsers edge firefox` (PRESS-0292).
+`--cdp` drives a browser already started with a debugging port -- Edge
+on the Windows box, through an SSH tunnel -- which reaches this machine
+only where both ports are forwarded back to it
 (`ssh -R 47501:127.0.0.1:47501 -R 47502:127.0.0.1:47502 <box>`).
 
 It drives a throwaway instance -- temp folder, recording transport double --
@@ -97,7 +101,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="PRESS-0133's browser rows, driven.")
-    parser.add_argument("--browser", choices=("chrome", "firefox"), default="chrome")
+    parser.add_argument("--browser", choices=("chrome", "edge", "firefox"), default="chrome")
     parser.add_argument("--cdp", help="drive the browser at this debugging address instead")
     parser.add_argument("--port", type=int, default=0, help="the Face's port")
     parser.add_argument("--site-port", type=int, default=0, help="the built site's port")
@@ -155,6 +159,11 @@ def run(origin: str, secret: str, folder: Path) -> None:
             page.set_viewport_size({"width": 1280, "height": 720})
         elif OPTIONS.browser == "firefox":
             browser = pw.firefox.launch(headless=True)
+            page = browser.new_page()
+        elif OPTIONS.browser == "edge" or sys.platform != "linux":
+            # PRESS-0292: the installed Edge or Chrome, found by its channel.
+            browser = pw.chromium.launch(
+                channel="msedge" if OPTIONS.browser == "edge" else "chrome", headless=True)
             page = browser.new_page()
         else:
             browser = pw.chromium.launch(executable_path="/usr/bin/google-chrome",
@@ -1395,14 +1404,20 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
         box.fill(box.input_value().replace("Added in code", "Added in code too"))
     back = switch("visual")
     frame = page.frame_locator("#preview")
-    added_shown = back and frame.locator("p", has_text="Added in code too").count() == 1
+    added = frame.locator("p", has_text="Added in code too")
+    # The frame loads the new preview after the switch ends.
+    for _ in range(50 if back else 0):
+        if added.count() == 1:
+            break
+        page.wait_for_timeout(100)
+    added_shown = back and added.count() == 1
     check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
           added_shown, f"back={back}")
     check("PRESS-0285 INV-1: the switch to the page loads no new page",
           back and kept() and page.locator("#panel").is_visible(), page.url)
 
     if added_shown:
-        frame.locator("p", has_text="Added in code too").click()
+        added.click()
         page.keyboard.press("End")
         page.keyboard.type(" more")
         saved()

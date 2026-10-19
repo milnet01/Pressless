@@ -249,11 +249,20 @@ file, and delete the task afterwards.
 pipe.** Check the packaged program from a console, or with
 `--self-check`, which prints and exits.
 
-**A browser check runs through Playwright and the system Chrome.** The
-Claude-in-Chrome extension is not connected on this machine; the
-`playwright` Python package is installed and drives
-`/usr/bin/google-chrome` headless. It says nothing about Windows, which
-stays the Windows box's by-hand row.
+**A browser check runs through Playwright.** The Claude-in-Chrome
+extension is not connected on this machine; the `playwright` Python
+package is installed and drives `/usr/bin/google-chrome` headless, or
+its own Firefox build with `--browser firefox`.
+
+**On the Windows box the same checks run unattended** (PRESS-0292):
+
+```bash
+scripts/windows-gate.sh wintest --browsers edge firefox
+```
+
+Edge is the box's installed one. Firefox is Playwright's build of it,
+never the installed Firefox, which Playwright cannot drive. The
+script's docstring names what still needs a person.
 
 ## Editing the roadmap
 

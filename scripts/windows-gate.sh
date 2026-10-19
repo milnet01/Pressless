@@ -2,6 +2,13 @@
 # The suite on real Windows, before a push (PRESS-0192).
 #
 #   scripts/windows-gate.sh <ssh-host>
+#   scripts/windows-gate.sh <ssh-host> --browsers edge firefox
+#
+# With --browsers it runs scripts/by-hand-browser-checks.py instead of the
+# suite, once per browser named: chrome, edge or firefox (PRESS-0292). They
+# run in %USERPROFILE%\pressless-browsers\venv, made from the portable Python
+# below and kept between runs with Playwright's Firefox, so the suite's own
+# Python never gains Playwright. Edge and Chrome are the box's installed ones.
 #
 # local-ci.sh calls this where the machine-local key ants.pressless.windowsHost
 # names a Windows machine. GitHub never does: its own Windows job is the same
@@ -23,7 +30,20 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
-host=${1:?usage: windows-gate.sh <ssh-host>}
+usage="usage: windows-gate.sh <ssh-host> [--browsers <browser>...]"
+host=${1:?$usage}
+shift
+browsers=()
+if (($#)); then
+    [[ $1 == --browsers && $# -gt 1 ]] || { echo "$usage" >&2; exit 64; }
+    shift
+    for browser; do
+        case $browser in
+            chrome|edge|firefox) browsers+=("\"$browser\"") ;;
+            *) echo "windows gate: no browser called $browser" >&2; exit 64 ;;
+        esac
+    done
+fi
 # Inside .git: on the repository's own disk, never /tmp, which is RAM here.
 scratch=$(mktemp -d "$(git rev-parse --path-format=absolute --git-common-dir)/windows-gate.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
@@ -36,6 +56,37 @@ project = tomllib.load(open("pyproject.toml", "rb"))["project"]
 print(" ".join(f'"{d}"' for d in project["dependencies"] + project["optional-dependencies"]["dev"]))
 PY
 )
+
+if ((${#browsers[@]} == 0)); then
+    body=$(cat <<EOF
+    & \$python -m pip install --quiet --disable-pip-version-check $deps
+    if (\$LASTEXITCODE -ne 0) { throw "pip could not install the dependencies" }
+    & \$python -m pytest --version
+    & \$python -m pytest -ra -q -p no:cacheprovider
+    \$code = \$LASTEXITCODE
+EOF
+)
+else
+    # The same Playwright as this machine's, where it has one.
+    playwright=$(python3 -c 'import importlib.metadata as m; print("==" + m.version("playwright"))' \
+        2>/dev/null || true)
+    list=$(IFS=,; echo "${browsers[*]}")
+    body=$(cat <<EOF
+    \$root = "\$env:USERPROFILE\\pressless-browsers"
+    \$venv = "\$root\\venv\\Scripts\\python.exe"
+    if (-not (Test-Path \$venv)) { & \$python -m venv "\$root\\venv" }
+    if (-not (Test-Path \$venv)) { throw "no Playwright environment at \$venv" }
+    & \$venv -m pip install --quiet --disable-pip-version-check $deps "playwright$playwright"
+    if (\$LASTEXITCODE -ne 0) { throw "pip could not install the dependencies" }
+    \$code = 0
+    foreach (\$browser in @($list)) {
+        if (\$browser -eq "firefox") { & \$venv -m playwright install firefox | Out-Null }
+        & \$venv scripts\\by-hand-browser-checks.py --browser \$browser
+        if (\$LASTEXITCODE -ne 0) { \$code = 1 }
+    }
+EOF
+)
+fi
 
 git ls-files -co --exclude-standard -z | python3 -c '
 import sys, zipfile
@@ -57,11 +108,7 @@ try {
     if (\$LASTEXITCODE -ne 0) { throw "git could not clone the bundle" }
     Expand-Archive -Force "\$env:USERPROFILE\\$run.zip" \$work
     Set-Location \$work
-    & \$python -m pip install --quiet --disable-pip-version-check $deps
-    if (\$LASTEXITCODE -ne 0) { throw "pip could not install the dependencies" }
-    & \$python -m pytest --version
-    & \$python -m pytest -ra -q -p no:cacheprovider
-    \$code = \$LASTEXITCODE
+$body
 } catch {
     Write-Output "windows gate: \$_"
 } finally {
