@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **An About page shows which Pressless you have** (PRESS-0278)
+  It names the version, and says Pressless is independent of GitHub,
+  Google and WordPress.
+
+- **A music, video or download section can be added by uploading the file** (PRESS-0282)
+  You pick the file; no address is typed first.
+
 - **A step-by-step guide moves Pressless to a new computer** (PRESS-0221)
   *Move Pressless to a new computer*, on the Sites screen, saves each
   site to a file, says how to carry the files across, and how to open
@@ -77,9 +84,35 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **The top bar's links are shown as buttons** (PRESS-0286)
+
+- **Code is coloured more strongly** (PRESS-0283)
+  Tags, names and values stand apart, in colours each theme keeps
+  readable.
+
 - **The editor switches between the page and its code without reloading** (PRESS-0285)
   *View editor* and *Show me the code* change the view in place. What
   you typed just before is saved first and shows in the other view.
+
+### Fixed
+
+- **Every screen's top bar leads back to Your writing** (PRESS-0281)
+
+- **The visual editor's "Changing" line stays in sight while the panel scrolls** (PRESS-0279)
+
+- **A picked section can be unpicked** (PRESS-0280)
+  Press Escape, or click outside every section.
+
+- **Clicking a song or video player in the visual editor picks its section** (PRESS-0287)
+  So it can be changed or removed. The published site's players still
+  play.
+
+- **The visual editor's panel shows Bold, Italic and Link only for the sections they work on** (PRESS-0288)
+  The Add list now sits first, under the Changing line.
+
+- **A picture that enlarges when clicked takes the photograph chosen with Add photograph** (PRESS-0289)
+
+- **The page editor's own heading stays readable whatever the site's look** (PRESS-0284)
 
 ## [0.9.1] - 2026-10-15
 
