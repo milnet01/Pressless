@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0285 — The editor switches between the page and its code in place
 
-**Status:** spec draft (2026-10-19).
+**Status:** accepted (2026-10-19).
 **Kind:** enhancement.
 **Source:** ROADMAP PRESS-0285 (user-hand-check-2026-10-16; the user's
 answers 2026-10-16).
@@ -66,7 +66,7 @@ one function, called by `_open` and by the switch route alike. Given
 the kind, name, asked view and `show`, it returns the view granted, the
 file's text, `base`, `waiting`, the outline or the menu's links, the
 photographs and kept files, any `broken` failure, the notices and the
-preview. Its rules are `_open`'s today, unchanged.
+preview. Its rules are `_open`'s today, but for the listing § 4.3 moves.
 
 It writes nothing. A page with no area is adopted in memory, as
 PRESS-0260 § 4.1 step 2 says.
@@ -79,25 +79,27 @@ JSON:
 | Key | Holds |
 |---|---|
 | `view` | the view granted: `visual` or `code` |
+| `address` | the address that opens the file in the view granted, as `_page_address(kind, name, view=…)` writes it |
 | `base`, `waiting` | as a save's reply |
 | `text` | the file's text, in the code view |
 | `sections` | `outline`'s list, in a page's or furniture file's visual view |
 | `links` | `menu.links`, in the menu's visual view |
-| `broken` | the furniture failure `_open` shows in `#broken`, or `""` |
+| `broken` | the failure `_open` shows in `#broken`, or `""` |
 | `notices`, `preview`, `failure` | as a save's reply |
 
 It remembers the asked view by `choices.remember`, as `_open` does.
 A `store.StoreError` answers 409 with the failure, as a refused save
-does. It does not hold during a press: a save from the same window is
-not held either.
+does. Unlike `_open`, it never answers with `pressing.holding`'s page;
+a save does not either.
 
 ### 4.3 The page carries both views
 
 For a page or a furniture file, `_page` writes the code box and the
 side panel; for the menu, the code box and the menu panel. The view not
-showing is `hidden`. Every view's script is on the page, and
-`_drag` beside the frame wherever the side panel is. `_open` lists the
-photographs and kept files in either view, for the panel.
+showing is `hidden`. A page or a furniture file carries `_VISUAL_SCRIPT`
+and `_drag`; the menu carries `_MENU_SCRIPT`. `_open` lists the
+photographs and kept files in either view, for the panel. A listing
+failure is `broken` in either view.
 
 The switch is two links in one place, `data-switch="visual"` and
 `data-switch="code"`, one `hidden`. Each keeps its `href`, the address
@@ -118,18 +120,20 @@ the switch has today, so a link opened in a new tab still works.
    address in the address bar with `history.replaceState`. Into the
    code view it fills the box with `text` and repaints its colours;
    into the visual view, `presslessVisual.open` takes `sections`, or
-   the menu script's `open` takes `links`.
+   `links` for the menu.
 5. Either way it adopts `base`, `waiting` and `notices` as after a
    save, fills `#broken` and the failure box, sets the frame to
    `preview`, and removes `inert`.
 
 ### 4.5 The visual and menu scripts open again
 
-`_VISUAL_SCRIPT` gains `open(given)`: it empties `model`, `byPath` and
-`removed`, lets go of the picked section, forgets `editing`,
-`dragging` and a waiting preview, and builds the model from `given` as
-the load does now. The load calls it. `_MENU_SCRIPT` gains the same for
-its `links`.
+`_VISUAL_SCRIPT` gains `open(sections)`, taking `outline`'s list: it
+empties `model`, `byPath` and `removed`, lets go of the picked section,
+forgets `editing`, `dragging` and a waiting preview, and builds the
+model and `frameSections` from the list as the load does now. `up`,
+`accept` and `largest` stay as read at load. The load calls it with
+`given.sections`. `_MENU_SCRIPT` gains the same for its `links`. Each
+script offers it as `presslessVisual.open`.
 
 **While the code view shows, both are idle.** `posting()` in
 `_PAGE_SCRIPT` gives `null` where `state.view` is `code`, so a save
@@ -173,8 +177,8 @@ no `contenteditable`.
   *Test:* `tests/test_page_editor.py::test_a_switch_answers_as_opening_does`:
   for a page, an unmarked page, a page that cannot be adopted, the
   header and an unusual menu, the route's `view` and `sections` or
-  `links` equal those of `GET /page` with the same `view`, and its
-  `text` is the file.
+  `links` equal those of `GET /page` with the same `view`. Where it
+  grants the code view, its `text` is the file.
   *Breaks when:* the route decides the view by its own rules and drops
   `_open`'s fallback for an unusual menu.
 
@@ -197,8 +201,8 @@ no `contenteditable`.
 | The visual view cannot read the code | The code view stays, with the notice opening gives (§ 3 decision 5) |
 | The save before the switch is refused | The view stays; the failure box says why (INV-7) |
 | The file has gone | The view stays; the failure box says so, and saving stops |
-| The preview fails to build | The switch happens; the failure shows where the frame was, as at opening |
-| A press runs | The switch happens; Press to site stays disabled, as today |
+| The preview fails to build | The switch happens; the failure box says why, as at opening |
+| A press runs | The switch waits until the press lets go of `editor.LOCK`, as a save does |
 
 ## 7. Tests
 
