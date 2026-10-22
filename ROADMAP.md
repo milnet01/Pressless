@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=293 -->
+<!-- ants-roadmap-id-high-water: PRESS=294 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5371,6 +5371,21 @@ it can then be changed.
   brought in; the export steps' wording against WordPress's screen), a
   look at the wizard in a browser, and the Hub privacy policy check (§
   11: Import contacts the user's old site).
+  2026-10-22 hand runs (podman WordPress 6.x, Twenty Twenty-Five and
+  Twenty Twenty-One with a menu, exported through Tools > Export): the
+  export steps match WordPress's screen word for word; both sites came
+  across; the wizard reads cleanly in Chrome. Three defects found, and
+  decided by the user 2026-10-22, each on my recommendation:
+  1. A private, draft, pending or scheduled page became a live page.
+     It now arrives as a draft entry, listed in the Report.
+  2. A post's featured image was copied but unused and unreported. It
+     now opens the post's body.
+  3. A draft with no post_name took its post id as its slug ("9"). It
+     now takes its title first, the id only where nothing survives.
+  The spec amendment is owed a review-contract round before the build.
+  Report wording for general users is filed as its own item.
+  Hub privacy policy: it names only GitHub and Google as what Pressless
+  contacts, so it owes an Import section at release.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
@@ -11798,6 +11813,21 @@ already-built code ships in whichever release comes next.
   **Layman:** One browser check sometimes fails on the Windows box by chance, though nothing is wrong with Pressless.
   Kind: test.
   Source: found-while-releasing-0.10.0-2026-10-19.
+
+- 📋 [PRESS-0294] **Import's Report in words anyone can read.**
+  Found in PRESS-0125's hand run, 2026-10-22. The Report shows lines
+  such as "harbour-at-dawn: the class attribute of <img>." and "a <li>,
+  its words kept." A general user cannot act on either. Decide which
+  dropped details are worth a line at all (a class attribute changes
+  nothing they see), and say the rest in plain words: "a heading", "a
+  list", "a picture's description". The Report's lines come from
+  PRESS-0007's Dropped rows, which the maintainer's run shares, so the
+  wording change reaches both. Decided by the user 2026-10-22: after
+  PRESS-0125's release, not before.
+  **Layman:** After bringing a WordPress site in, the list of what changed should make sense to someone who has never seen web code.
+  Kind: ux.
+  Source: user-decision-2026-10-22 PRESS-0125 hand run.
+  Lanes: Import.
 
 ## Milestones
 

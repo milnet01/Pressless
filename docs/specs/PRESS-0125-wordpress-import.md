@@ -79,6 +79,10 @@ on every part of the site is edited in Pressless. Sign of success: S13.
    and PRESS-0161 fixes too**, since the code is shared. Its markup test
    stays the sibling generator's (§ 4.5), because that is what its readers
    saw.
+9. **The hand runs' three fixes**, the user, 2026-10-22: a page
+   WordPress had not published arrives as a draft entry; a draft with no
+   slug takes its title's; a featured image opens its post (§ 4.5). Each
+   is Import's run only.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -187,7 +191,25 @@ Other members are ignored.
 `draft`, `private`, `pending` or `future` as a draft. A `pending` or
 `future` post adds a Report line: "arrived as a draft: it was waiting for
 review" or "…: it was scheduled for <date>". In Import's run `_items`
-takes no `page` item: § 4.6 carries pages, apart from the entries' slugs.
+takes a `page` item only where its status is one of those four drafts'
+statuses: it arrives as a draft entry, ranked as a page by PRESS-0007
+decision 5, and the Report lists it as a page WordPress had not
+published. A Pressless page is always on the site, so a page its writer
+kept off the web stays a draft. § 4.6 carries every other page.
+
+**A draft's slug.** In Import's run a draft whose `post_name` resolves
+to nothing takes `resolve_slug` of its title, and its post id only where
+that is empty too. WordPress leaves a draft's `post_name` empty until it
+is published, so the post id would become its address. A published item
+keeps PRESS-0007 § 4.4's rule unchanged: its address is live.
+
+**The featured image.** In Import's run, a post or draft whose
+`_thumbnail_id` postmeta names an attachment the photograph lookup
+answers for gains `{photo: <name>}` as its body's first line, unless the
+body already holds that mark. One the lookup does not answer for is
+listed, as "its featured image, which was not brought in". WordPress
+themes show the featured image above the post, so this is where a reader
+saw it.
 
 **Which body is markup.** `convert` takes `markup: Callable[[str], bool]`,
 and passes a body `markup` rejects through `autop` before converting it.
@@ -222,7 +244,7 @@ written with `parent=""` and listed, so `store.write_comments` accepts it.
 
 ### 4.6 Pages and the menu
 
-Each `page` item becomes `pages/<slug>.html` in `starter.new_page`'s
+Each `page` item whose status is `publish` becomes `pages/<slug>.html` in `starter.new_page`'s
 shape, its title as the title, the stylesheets of the look chosen, and its
 body in place of the area after § 4.5's markup rule. The page that
 becomes `index` sits at the root, its links without `../`, as
@@ -380,6 +402,27 @@ fetch's reason among them — are `pressless_import`'s English.
   title of `<script>` and a control character.
   *Breaks when:* a slug or title is written raw.
 
+- **INV-15** — A page WordPress had not published never becomes a
+  Pressless page: it arrives as a draft entry, listed. *Test:*
+  `tests/test_importer.py::test_an_unpublished_page_arrives_as_a_draft`
+  — one fixture per status (`draft`, `private`, `pending`, `future`)
+  beside a published page.
+  *Breaks when:* § 4.6 takes every page status, so the page is published
+  at the next publish.
+
+- **INV-16** — A draft with no `post_name` takes its title's slug.
+  *Test:* `tests/test_importer.py::test_a_draft_with_no_slug_takes_its_title`
+  — a draft and a published post, each with an empty `post_name`: the
+  draft takes its title's slug, the published post its post id.
+  *Breaks when:* the post id is the fallback for both, or the title for both.
+
+- **INV-17** — A featured image opens its post's body, once. *Test:*
+  `tests/test_importer.py::test_a_featured_image_opens_the_body` — one
+  post whose featured image is held, one whose body already shows it, and
+  one whose image is not held.
+  *Breaks when:* `_thumbnail_id` is not read, the mark is written twice,
+  or the missing image is not listed.
+
 ## 6. Failure modes
 
 | Breaks | What happens |
@@ -398,8 +441,9 @@ fetch's reason among them — are `pressless_import`'s English.
 
 - `tests/test_importer.py` — the pure parts: reading (INV-2), files
   that cannot be had (INV-5), the ZIP (INV-6), whole-or-nothing (INV-7),
-  markup (INV-8), statuses (INV-9), comments (INV-10), splits (INV-11)
-  and the menu (INV-13).
+  markup (INV-8), statuses (INV-9), comments (INV-10), splits (INV-11),
+  the menu (INV-13), unpublished pages (INV-15), draft slugs (INV-16)
+  and featured images (INV-17).
 - `tests/test_importer_fetch.py` — the fetch (INV-3, INV-4), through a
   fake resolver and a recording opener; no network.
 - `tests/test_network_timeouts.py` walks `src/pressless_import/` too, so
@@ -456,6 +500,9 @@ Each named test is seen to fail against today's code before its change.
 | INV-12 | **nothing** — authorship cannot be tested; the code review is the only check |
 | INV-13 | `tests/test_importer.py::test_the_menu_points_at_carried_pages` |
 | INV-14 | `tests/test_importing.py::test_the_report_escapes_what_it_names` |
+| INV-15 | `tests/test_importer.py::test_an_unpublished_page_arrives_as_a_draft` |
+| INV-16 | `tests/test_importer.py::test_a_draft_with_no_slug_takes_its_title` |
+| INV-17 | `tests/test_importer.py::test_a_featured_image_opens_the_body` |
 | The export steps' wording | **nothing** — WordPress's screens change; § 7's hand run |
 
 ## 11. Cross-doc impact
