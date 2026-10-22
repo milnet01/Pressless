@@ -5391,6 +5391,15 @@ it can then be changed.
   two dismissed; nothing deferred. Row 2 of
   docs/reviews/PRESS-0125-wordpress-import-loop-log.md. The build may
   proceed.
+  2026-10-22: the three fixes built in 9e40bcc (INV-15 to INV-17, red
+  first; gate green on Linux with the archive tests, and on the Windows
+  box). Both hand runs repeated on fresh Pressless folders: the private
+  and unpublished pages arrive as drafts and are listed, the draft takes
+  its title's slug, the featured image opens its post. Spec § 7's hand
+  runs, the export wording and the browser look are done. The Hub's
+  privacy-policy text was sent to ants-projects-hub-website (message
+  813), held until release; tell that session when the release is out.
+  Kit to rerun: claude-scratch/press-0125-wp (up.sh, fill.sh, walk.py).
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
