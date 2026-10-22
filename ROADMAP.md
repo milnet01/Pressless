@@ -11717,7 +11717,7 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.
 
-- 📋 [PRESS-0293] **switch_in_place's frame row failed once in Edge on the box, then passed.**
+- ✅ [PRESS-0293] **switch_in_place's frame row failed once in Edge on the box, then passed.**
   2026-10-19, on the 0.10.0 release commit (bdb0476), Edge 155 on the
   box: "PRESS-0285 INV-2: code typed in the box shows in the frame at
   once" failed with back=True, and INV-3 failed after it. The saved copy
@@ -11726,6 +11726,9 @@ already-built code ships in whichever release comes next.
   120/120. The app saves before it sets frame.src (page_editor.py, the
   switch handler), so the likely cause is a slow frame load. Fix: wait
   for the frame's load after the switch, not a fixed count.
+  2026-10-22, 4ef2a26: the check now waits up to 15 s for the
+  paragraph itself. With every preview load held 7 s, the old check
+  failed INV-2 and INV-3 as on the box, and the new one passes.
   **Layman:** One browser check sometimes fails on the Windows box by chance, though nothing is wrong with Pressless.
   Kind: test.
   Source: found-while-releasing-0.10.0-2026-10-19.
