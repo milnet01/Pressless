@@ -5353,6 +5353,9 @@ it can then be changed.
   2026-10-22: the spec took its one review round (user budget); every
   verified finding is fixed in 5e333d9 and the spec is accepted, not
   converged. Rows: docs/reviews/PRESS-0125-wordpress-import-loop-log.md.
+  PRESS-0007's amendment gated 2026-10-22, one round by the user's budget:
+  ten verified, ten fixed, one dismissed, not converged (commit 37cdd8e;
+  loop log row 5).
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
