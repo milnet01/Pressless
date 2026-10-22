@@ -38,18 +38,22 @@ from pressless.paths import PREVIEW_ASSETS
 from ._html import Lookup, autop, convert, is_markup, visible_lines, wordpress_markup
 
 __all__ = [
+    "IMPORT_FOLDER",
     "Dropped",
     "Export",
     "ImportStopped",
     "Lookup",
     "Report",
     "autop",
+    "bring_in",
     "convert",
+    "finish",
     "is_markup",
     "main",
     "read",
     "resolve_slug",
     "run",
+    "unpack_media",
     "visible_lines",
     "wordpress_markup",
 ]
@@ -57,7 +61,7 @@ __all__ = [
 
 @dataclass(frozen=True)
 class Dropped:
-    slug: str   # the entry it happened in, by its Store slug
+    slug: str   # the entry it happened in, by its Store slug; or pages/<name>, or navigation
     what: str   # the construct, and where it matters the address
 
 
@@ -76,6 +80,7 @@ class Report:
     unfetched: tuple[tuple[str, str], ...] = ()   # (upload path, why it is not held)
     menus: tuple[str, ...] = ()                   # the menu carried first, then any other
     other_types: tuple[tuple[str, int], ...] = ()  # (post type not carried, how many)
+    files: int = 0                                # kept in files/, not photographs
 
 
 class ImportStopped(Exception):
@@ -461,6 +466,25 @@ def _differences(body: str, text: str) -> list[str]:
     return found
 
 
+def _convert(item: _Item, markup: Callable[[str], bool], by_address: Lookup,
+             by_id: Lookup, old_site: str) -> str:
+    """One body in marks, what it dropped and every difference the self-check
+    found listed on the item. A body `markup` rejects is compared as `autop`
+    gives it, since that is what a reader saw (PRESS-0125 § 4.5)."""
+    source = item.body if markup(item.body) else autop(item.body)
+    try:
+        text, whats = convert(source, by_address, by_id, old_site=old_site)
+        differences = _differences(source, text)
+    except RecursionError:
+        # Every unclosed tag nests the next, and the tree is walked
+        # recursively (PRESS-0135).
+        raise ImportStopped(
+            f"post {item.post_id}'s body is nested too deeply to convert") from None
+    item.dropped.extend(whats)
+    item.dropped.extend(differences)
+    return text
+
+
 # ------------------------------------------------------------- the run ----
 
 
@@ -585,17 +609,7 @@ def run(export: Path, originals: Path, live_site: Path, templates: Path,
     bodies = {}
     for item in items:
         if is_markup(item.body):
-            try:
-                text, whats = convert(item.body, by_address, by_id, old_site=old_site)
-                differences = _differences(item.body, text)
-            except RecursionError:
-                # Every unclosed tag nests the next, and the tree is walked
-                # recursively (PRESS-0135).
-                raise ImportStopped(
-                    f"post {item.post_id}'s body is nested too deeply to convert") from None
-            item.dropped.extend(whats)
-            item.dropped.extend(differences)
-            bodies[item.post_id] = text
+            bodies[item.post_id] = _convert(item, is_markup, by_address, by_id, old_site)
         else:
             if _GALLERY.search(item.body):
                 item.dropped.append("a [gallery] shortcode, kept as written")
@@ -716,3 +730,8 @@ def main(argv: list[str]) -> int:
         return 1
     print(_describe(report, Path(argv[4]).name))
     return 0
+
+
+# The Import anyone runs (PRESS-0125) builds on everything above, so it is
+# imported last.
+from ._bring import IMPORT_FOLDER, bring_in, finish, unpack_media  # noqa: E402

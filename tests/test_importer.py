@@ -60,7 +60,7 @@ def _comment(identifier, *, parent="0", approved="1", kind="", email="", ip="",
 
 def _item(post_id, *, kind="post", status="publish", slug="", title="A title",
           date="2012-05-01 10:00:00", body="", categories=(), tags=(),
-          comments=(), attachment=""):
+          comments=(), attachment="", menu_order=0, extra=""):
     terms = "".join(
         f'<category domain="category" nicename="{name}"><![CDATA[{name}]]></category>'
         for name in categories
@@ -77,6 +77,8 @@ def _item(post_id, *, kind="post", status="publish", slug="", title="A title",
         f"<wp:post_name><![CDATA[{slug}]]></wp:post_name>"
         f"<wp:status><![CDATA[{status}]]></wp:status>"
         f"<wp:post_type><![CDATA[{kind}]]></wp:post_type>"
+        f"<wp:menu_order>{menu_order}</wp:menu_order>"
+        + extra
         + (f"<wp:attachment_url><![CDATA[{UPLOADS}/{attachment}]]></wp:attachment_url>"
            if attachment else "")
         + terms
@@ -809,6 +811,10 @@ _ALLOWED_IMPORTS = {
     "urllib", "urllib.parse",           # decoding a slug and an address -- never fetching
     "xml", "xml.etree", "xml.etree.ElementTree",  # the export
     "pressless", "pressless.marks", "pressless.paths", "pressless.store",
+    # PRESS-0125: the Import anyone runs writes a whole site through the
+    # parts that own each piece, and unpacks a media download.
+    "pressless.blocks", "pressless.builder", "pressless.look", "pressless.menu",
+    "pressless.sitefile", "pressless.starter", "pressless.templates", "zipfile",
 }
 
 
@@ -1075,3 +1081,299 @@ def test_a_classic_post_keeps_its_paragraphs():
     assert autop("a\nb") == "<p>a<br>\nb</p>", "a lone newline is a line break"
     assert autop("<pre>a\n\nb</pre>") == "<pre>a\n\nb</pre>", "pre is left alone"
     assert autop("<ul>\n<li>a</li>\n</ul>\n\nNext") == "<ul>\n<li>a</li>\n</ul>\n<p>Next</p>"
+
+
+# ------------------------------------ PRESS-0125: the Import anyone runs ----
+
+
+def _bring(tmp_path: Path, export_text: str, media: dict[str, bytes] | None = None, *,
+           unfetched: dict[str, str] | None = None, look: str = "meadow"):
+    """bring_in over a site folder holding the export and `media` in its own
+    import folder, as the wizard leaves them."""
+    from pressless_import import bring_in
+
+    site = tmp_path / "site"
+    held = site / "import"
+    _files(held / "media", media or {})
+    (held / "export.xml").write_text(export_text, encoding="utf-8")
+    report = bring_in(held / "export.xml", held / "media", site, look,
+                      unfetched=unfetched or {})
+    return site, report
+
+
+def _jpeg() -> bytes:
+    import io
+
+    from PIL import Image
+    out = io.BytesIO()
+    Image.new("RGB", (4, 3), "teal").save(out, "JPEG")
+    return out.getvalue()
+
+
+def _meta(key, value):
+    return (f"<wp:postmeta><wp:meta_key><![CDATA[{key}]]></wp:meta_key>"
+            f"<wp:meta_value><![CDATA[{value}]]></wp:meta_value></wp:postmeta>")
+
+
+def test_a_missing_original_is_listed_and_the_entry_carried(tmp_path):
+    """PRESS-0125 INV-5: a file that cannot be had never stops Import -- one
+    attachment answering 404 is listed, its entry is written with no
+    `{photo:` mark, and the site builds.
+
+    Breaks when the mark is written, so every publish stops on it."""
+    from test_builder import _settings
+    from test_importer_fetch import GLOBAL, _Answer, _Network
+
+    from pressless import builder
+    from pressless_import import fetch, read
+
+    export_text = _export(
+        _item(20, kind="attachment", status="inherit", attachment="2012/05/gone.jpg"),
+        _item(21, kind="attachment", status="inherit", attachment="2012/05/here.jpg"),
+        _item(1, slug="pictures", body=f'<p>x</p><img src="{UPLOADS}/2012/05/gone.jpg">'
+                                       f'<img src="{UPLOADS}/2012/05/here.jpg">'),
+    )
+    export = tmp_path / "export.xml"
+    export.write_text(export_text, encoding="utf-8")
+    base = f"{SITE_HOST}/wp-content/uploads/2012/05"
+    network = _Network({SITE_HOST: [GLOBAL]}, {f"{base}/gone.jpg": _Answer(404),
+                                               f"{base}/here.jpg": _Answer(200, _jpeg())})
+    fetched = tmp_path / "fetched"
+    missing = fetch.fetch_all(read(export), fetched, lambda: 10**12,
+                              resolve=network.resolve, connect=network.connect)
+
+    site, report = _bring(tmp_path, export_text,
+                          {path.relative_to(fetched).as_posix(): path.read_bytes()
+                           for path in fetched.rglob("*") if path.is_file()},
+                          unfetched=missing)
+
+    body = store.read(store.path_for(site, "pictures", draft=False)).body
+    assert "{photo: here.jpg}" in body and "{photo: gone" not in body, body
+    assert dict(report.unfetched)["2012/05/gone.jpg"] == "the old site answered 404", (
+        report.unfetched)
+    builder.build(site, _settings(site_folder=site), tmp_path / "built")
+    assert (tmp_path / "built" / "photographs").is_dir()
+
+
+def test_a_media_zip_fills_gaps_only(tmp_path):
+    """PRESS-0125 INV-6: a media download fills only missing places, matched
+    by place; a member that would leave import/media/ refuses the download.
+
+    Breaks when members are matched by bare name."""
+    import zipfile
+
+    from pressless_import import unpack_media
+
+    media = tmp_path / "media"
+    _files(media, {"2012/05/fetched.jpg": b"fetched"})
+    missing = ("2012/05/fetched.jpg", "2013/06/gap.jpg", "2014/07/other.jpg")
+
+    def download(*members) -> Path:
+        made = tmp_path / f"media-{len(list(tmp_path.glob('media-*')))}.zip"
+        with zipfile.ZipFile(made, "w") as out:
+            for member in members:
+                if isinstance(member, zipfile.ZipInfo):
+                    out.writestr(member, "x")
+                else:
+                    out.writestr(member, f"from the download: {member}")
+        return made
+
+    link = zipfile.ZipInfo("uploads/2013/06/gap.jpg")
+    link.external_attr = 0o120777 << 16
+    for refused in (download("../x.jpg"), download("/abs.jpg"), download(link),
+                    download("a\\..\\b.jpg")):
+        with pytest.raises(ImportStopped):
+            unpack_media(refused, media, missing, lambda: 10**9)
+        assert not (media / "2013").exists(), "a refused download writes nothing"
+
+    filled = unpack_media(download("wp-content/uploads/2012/05/fetched.jpg",
+                                   "elsewhere/gap.jpg", "uploads/2013/06/gap.jpg",
+                                   "2014/07/other.jpg.bak"),
+                          media, missing, lambda: 10**9)
+
+    assert filled == ("2013/06/gap.jpg",), filled
+    assert (media / "2012/05/fetched.jpg").read_bytes() == b"fetched"
+    assert (media / "2013/06/gap.jpg").read_text() == "from the download: uploads/2013/06/gap.jpg"
+    assert not (media / "2014").exists()
+    with pytest.raises(ImportStopped):
+        unpack_media(download("uploads/2014/07/other.jpg"), media, missing, lambda: 3)
+
+
+def test_a_stop_leaves_the_store_empty(tmp_path):
+    """PRESS-0125 INV-7: a Store refusal while writing leaves the Store
+    holding no site, and the fetched files where they were.
+
+    Breaks when files are written straight into the site's folder."""
+    with pytest.raises(ImportStopped):
+        _bring(tmp_path, _export(
+            _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+            _item(1, slug="one"), _item(2, slug="two", categories=("a,b",))),
+            {"2012/05/a.jpg": _jpeg()})
+    site = tmp_path / "site"
+    assert not store.holds_a_site(site)
+    assert not (site / "import" / "work").exists()
+    assert (site / "import" / "media" / "2012" / "05" / "a.jpg").is_file(), (
+        "a fetched file is never lost to a stop")
+
+
+def test_a_stop_during_the_moves_finishes_next_start(tmp_path, monkeypatch):
+    """PRESS-0125 INV-7: a stop part way through the moves leaves
+    import/moving, and finishing them later gives the whole site."""
+    import os
+
+    import pressless_import
+
+    real = os.rename
+    calls = []
+
+    def flaky(source, target):
+        if (tmp_path / "site" / "import" / "moving").exists():
+            calls.append(target)
+            if len(calls) == 2:
+                raise OSError(5, "the drive went away")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "rename", flaky)
+    export_text = _export(
+        _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+        _item(1, slug="one", comments=[_comment(101)]),
+        _item(5, kind="page", slug="about", title="About"))
+    with pytest.raises(ImportStopped):
+        _bring(tmp_path, export_text, {"2012/05/a.jpg": _jpeg()})
+    site = tmp_path / "site"
+    assert (site / "import" / "moving").is_file()
+    monkeypatch.setattr(os, "rename", real)
+
+    assert pressless_import.finish(site) is None
+
+    assert store.list_slugs(site, draft=False) == ("one",)
+    assert store.list_photographs(site) == ("a.jpg",)
+    assert store.list_html(site, store.PAGES_FOLDER) == ("index",), "the one page is the front"
+    assert store.read_comments(store.comments_path_for(site, "one"))
+    for gone in ("moving", "work", "media"):
+        assert not (site / "import" / gone).exists(), gone
+    assert (site / "import" / "export.xml").is_file()
+
+
+_PAGES_EXPORT = (
+    _item(10, kind="page", slug="welcome", title="A site", menu_order=2,
+          body=f'<p>Hello.</p><img src="{UPLOADS}/2012/05/a-300x200.jpg" alt="">'
+               f'<a href="{UPLOADS}/2012/05/notes.pdf">notes</a>'),
+    _item(11, kind="page", slug="about", title="About", menu_order=1,
+          body=f'<!-- wp:paragraph --><p>Us.</p><!-- /wp:paragraph -->'
+               f'<img src="{UPLOADS}/2012/05/gone.jpg">'),
+    _item(12, kind="page", status="trash", slug="binned", title="Binned"),
+    _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+    _item(21, kind="attachment", status="inherit", attachment="2012/05/notes.pdf"),
+    _item(1, slug="one", body="Words.\n\nMore."),
+    _item(30, kind="wp_block", slug="reused"), _item(31, kind="wp_block", slug="again"),
+)
+
+
+def test_pages_come_across_in_the_starter_shape(tmp_path):
+    """PRESS-0125 § 4.6 and § 4.7: each page in new_page's shape with the
+    look's stylesheet; the page titled as the site sits at the root; an
+    uploads address Import holds points at the Store's copy, and one it does
+    not hold stays and is listed; the furniture, templates, look and journal
+    are written."""
+    from pressless import blocks, look
+
+    site, report = _bring(tmp_path, _export(*_PAGES_EXPORT),
+                          {"2012/05/a.jpg": _jpeg(), "2012/05/notes.pdf": b"%PDF- notes"})
+
+    assert sorted(store.list_html(site, store.PAGES_FOLDER)) == ["about", "index"]
+    index = store.read_html(store.html_path_for(site, store.PAGES_FOLDER, "index"))
+    about = store.read_html(store.html_path_for(site, store.PAGES_FOLDER, "about"))
+    assert 'href="look/style.css"' in index and 'href="../look/style.css"' in about
+    assert 'src="photographs/a.jpg"' in index and 'href="files/notes.pdf"' in index, index
+    assert f"{UPLOADS}/2012/05/gone.jpg" in about
+    assert any("gone.jpg" in what for d in report.dropped for what in [d.what]
+               if d.slug == "pages/about"), report.dropped
+    assert blocks.read("index", index) is not None, "Blocks reads the page's area"
+    assert store.list_photographs(site) == ("a.jpg",) and store.list_files(site) == ("notes.pdf",)
+    for name in ("header", "footer", "navigation"):
+        assert store.html_path_for(site, store.FURNITURE_FOLDER, name).is_file(), name
+    assert store.list_templates(site), "the starter's templates"
+    assert look.read(site) == look.defaults("meadow")
+    assert store.journal_on(site)
+    entry = store.read(store.path_for(site, "one", draft=False))
+    assert entry.body == "Words.\n\nMore.", "a classic post keeps its paragraphs"
+    assert dict(report.other_types) == {"wp_block": 2}, report.other_types
+    assert report.pages == ("about", "index")
+
+
+def test_an_export_with_no_pages_or_posts_takes_the_starter_home(tmp_path):
+    """§ 4.6: where the export holds no page, the starter's index is written;
+    with no post, the journal is off (§ 6)."""
+    site, _report = _bring(tmp_path, _export(_item(5, kind="page", status="trash",
+                                                   slug="binned")))
+    assert store.list_html(site, store.PAGES_FOLDER) == ("index",)
+    assert not store.journal_on(site)
+
+
+def test_bring_in_refuses_a_store_holding_a_site(tmp_path):
+    """PRESS-0125 INV-1, its Import half: nothing is written over a site."""
+    site = tmp_path / "site"
+    site.mkdir()
+    store.write(site, store.Entry(slug="his", title="", date=__import__("datetime").datetime(
+        2020, 1, 2), categories=(), tags=(), body="Words.", extra=()), draft=False)
+    with pytest.raises(ImportStopped):
+        _bring(tmp_path, _export(_item(1, slug="one")))
+    assert store.list_slugs(site, draft=False) == ("his",)
+
+
+def _nav_item(post_id, order, *, title="", kind="post_type", object_id="", url="",
+              parent="0", menu="main"):
+    return _item(post_id, kind="nav_menu_item", title=title, menu_order=order,
+                 extra=(f'<category domain="nav_menu" nicename="{menu}">'
+                        f"<![CDATA[{menu.title()}]]></category>"
+                        + _meta("_menu_item_type", kind)
+                        + _meta("_menu_item_object_id", object_id)
+                        + _meta("_menu_item_url", url)
+                        + _meta("_menu_item_menu_item_parent", parent)))
+
+
+def test_the_menu_points_at_carried_pages(tmp_path):
+    """PRESS-0125 INV-13: the menu's links reach carried pages and entries,
+    read by menu.links, from either source.
+
+    Breaks when links keep the old site's addresses."""
+    from pressless import menu
+
+    pages_and_post = (
+        _item(10, kind="page", slug="home", title="Home"),
+        _item(11, kind="page", slug="about", title="About"),
+        _item(1, slug="one", title="A post", date="2012-05-01 10:00:00"),
+    )
+    expected = [("Home", "{{UP}}index.html"), ("About", "{{UP}}pages/about.html"),
+                ("A post", "{{UP}}blog/2012/05/01/one/index.html"),
+                ("Elsewhere", "https://elsewhere.example.org/")]
+    links = (
+        '<!-- wp:navigation-link {"label":"Home","type":"page","id":10,'
+        f'"url":"{SITE}/","kind":"post-type"}} /-->'
+        '<!-- wp:navigation-link {"label":"About","type":"page","id":11,'
+        f'"url":"{SITE}/about/","kind":"post-type"}} /-->'
+        '<!-- wp:navigation-link {"label":"A post","type":"post","id":1,'
+        f'"url":"{SITE}/one/","kind":"post-type"}} /-->'
+        '<!-- wp:navigation-link {"label":"Elsewhere",'
+        '"url":"https://elsewhere.example.org/","kind":"custom"} /-->')
+    sources = {
+        "wp_navigation": (_item(40, kind="wp_navigation", title="Header", body=links),),
+        "nav_menu_item": (
+            _nav_item(50, 1, object_id="10"), _nav_item(51, 2, object_id="11"),
+            _nav_item(52, 3, object_id="1"),
+            _nav_item(53, 4, title="Elsewhere", kind="custom",
+                      url="https://elsewhere.example.org/"),
+            _nav_item(54, 5, title="Under about", object_id="11", parent="51"),
+            _nav_item(60, 1, object_id="10", menu="footer")),
+    }
+    for name, items in sources.items():
+        site, report = _bring(tmp_path / name, _export(*pages_and_post, *items))
+        navigation = store.read_html(store.html_path_for(site, store.FURNITURE_FOLDER,
+                                                         "navigation"))
+        read = menu.links(navigation)
+        assert [link for link in read if link[0] != "Under about"] == expected, (name, read)
+        assert report.menus, (name, report)
+    assert report.menus == ("Main", "Footer"), report.menus
+    assert read[2] == ("Under about", "{{UP}}pages/about.html"), "a child follows its parent"
+    assert any("Under about" in d.what for d in report.dropped), report.dropped
