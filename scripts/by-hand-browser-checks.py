@@ -1351,6 +1351,8 @@ SWITCH_PAGE = (
 def switch_in_place(page, origin: str, folder: Path) -> None:
     """PRESS-0285 INV-1 to INV-4 and INV-7: the switch changes view with no
     page load, carrying what was typed across."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
     store.write_html(folder, store.PAGES_FOLDER, "switch", SWITCH_PAGE)
     waiting = store.html_path_for(folder, store.PAGES_FOLDER, "switch", waiting=True)
     box = page.locator("textarea[name=text]")
@@ -1405,11 +1407,13 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
     back = switch("visual")
     frame = page.frame_locator("#preview")
     added = frame.locator("p", has_text="Added in code too")
-    # The frame loads the new preview after the switch ends.
-    for _ in range(50 if back else 0):
-        if added.count() == 1:
-            break
-        page.wait_for_timeout(100)
+    # The frame loads the new preview after the switch ends, and a slow load
+    # on the box once outlasted a fixed count of polls (PRESS-0293).
+    if back:
+        try:
+            added.first.wait_for(timeout=15000)
+        except PlaywrightTimeout:  # the check says what it saw
+            pass
     added_shown = back and added.count() == 1
     check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
           added_shown, f"back={back}")
