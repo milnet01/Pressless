@@ -10,17 +10,32 @@
 # documentation-only push has no code check to run -- but this repository is
 # public and must not name the writer, and a name leaks through prose more
 # easily than through code. That sweep is never skipped.
+#
+# --sweep FILE... runs the same pattern over the files named, and nothing
+# else. A review packet sits outside the tree, so no surface below reads it
+# (PRESS-0277).
 set -Eeuo pipefail
-cd "$(dirname "$0")/.."
-
-DOCS_ONLY=0
-[[ ${1-} == --docs ]] && DOCS_ONLY=1
 
 step() { printf '\n=== %s ===\n' "$1"; }
 fail() {
     printf 'FAILED: %s\n' "$1" >&2
     exit 1
 }
+
+DOCS_ONLY=0
+SWEEP=()
+case ${1-} in
+--docs) DOCS_ONLY=1 ;;
+--sweep)
+    shift
+    (($#)) || fail "--sweep needs one or more files"
+    for file in "$@"; do
+        [[ -f $file && -r $file ]] || fail "--sweep cannot read $file"
+        SWEEP+=("$(realpath "$file")")
+    done
+    ;;
+esac
+cd "$(dirname "$0")/.."
 
 # ── Leak sweep ──────────────────────────────────────────────────────────────
 # Four surfaces, because a push publishes all four: the tree, the files in
@@ -59,6 +74,13 @@ scan() {
     }
     printf 'clean: %s\n' "$what"
 }
+if ((${#SWEEP[@]})); then
+    for file in "${SWEEP[@]}"; do
+        # shellcheck disable=SC2094  # scan only names the file in its message
+        scan "$file" <"$file"
+    done
+    exit 0
+fi
 git grep -n -iE "$PAT" -- . | scan "tree"
 git log --all --format='%H %s%n%b' | scan "commit messages"
 # An annotated tag carries a message of its own, which no commit log shows.

@@ -306,3 +306,9 @@ Split the read from the write, or reuse the brief half of the previous
 packet. Do not reach for the bypass token or relaunch with the unlock
 variable: neither is warranted, because no edit to that surface is
 intended.
+
+**Sweep a packet with the gate's own pattern before a lane reads it.**
+A packet sits outside the tree, so `--docs` never reads it. Run
+`./scripts/local-ci.sh --sweep <file>...` instead. It applies the
+script's pattern and the machine-local `leakPatterns` key to the files
+named, and nothing else, so the pattern is never retyped by hand.
