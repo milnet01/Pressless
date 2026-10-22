@@ -5319,7 +5319,7 @@ it can then be changed.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: setup, Publisher, Import.
 
-- 🚧 [PRESS-0125] **An Import anyone can run, to bring their own WordPress site in.**
+- ✅ [PRESS-0125] **An Import anyone can run, to bring their own WordPress site in.**
   PRESS-0007's Import runs on the maintainer's machine only. It reads
   the photograph originals and the sibling generator's header and footer
   templates, which a general user does not have. design.md rule 9 records
@@ -5400,6 +5400,8 @@ it can then be changed.
   privacy-policy text was sent to ants-projects-hub-website (message
   813), held until release; tell that session when the release is out.
   Kit to rerun: claude-scratch/press-0125-wp (up.sh, fill.sh, walk.py).
+  2026-10-22: shipped. Everything the body listed as owed before
+  release is done; it ships in 0.10.1.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.

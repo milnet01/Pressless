@@ -12,6 +12,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Bring your own WordPress site into Pressless** (PRESS-0125)
+  When a new site is set up empty, Pressless offers to bring a WordPress
+  site in: its posts, pages, menu, comments, photographs and files. It
+  shows how to make WordPress's export file, then fetches each photograph
+  and file from the old site while it is still online. A page or post
+  that was not published arrives as a draft. A report lists anything that
+  did not come across. Import also keeps lists, links and italics, and
+  no longer stops on one broken comment or missing photograph
+  (PRESS-0156, PRESS-0157, PRESS-0158, PRESS-0161).
+
 ## [0.10.0] - 2026-10-19
 
 **Theme:** their own look, and any file
