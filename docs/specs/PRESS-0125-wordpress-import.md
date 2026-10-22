@@ -7,8 +7,9 @@ budget; every verified finding fixed, not converged.
 **Source:** ROADMAP PRESS-0125 (user decisions 2026-09-17, 2026-10-02 and
 2026-10-22).
 
-**Changes:** PRESS-0007 § 3 decisions 3 and 11, § 4.2, § 4.3, § 4.5,
-§ 4.6, § 4.7, § 4.8, INV-8, INV-10 and § 6, and `docs/design.md` rule 9
+**Changes:** PRESS-0007 § 3 decisions 3 and 11, § 4.1, § 4.2, § 4.3,
+§ 4.5, § 4.6, § 4.7, § 4.8, INV-6, INV-7, INV-8, INV-10 and § 6, and
+`docs/design.md` rule 9
 (§ 11). **Carries:** PRESS-0156,
 PRESS-0157, PRESS-0158 and PRESS-0161, each decided by the user
 2026-09-26.
@@ -447,7 +448,10 @@ Each named test is seen to fail against today's code before its change.
   carries the package; § 4.3 gains § 4.5's splits and drops, and
   `is_markup` becomes the maintainer's run's choice; § 4.5, § 4.7, § 6
   and INV-8 list a missing original and carry on; § 4.6 carries a
-  dangling reply; § 4.8 and INV-10 exempt `pressless_import.fetch`.
+  dangling reply; § 4.8 and INV-10 exempt `pressless_import.fetch`;
+  § 4.1 points at this spec's `Report` fields and `markup` argument;
+  INV-6's and INV-7's tests gain a missing original and a reply whose
+  parent is not carried.
 - **`docs/design.md`**, amended in the same change: rule 9 lets Import
   fetch the files the export names and write its own `import` folder, and
   "one site per copy" gives way to PRESS-0223's sites; the parts table,
