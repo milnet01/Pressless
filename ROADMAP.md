@@ -5386,6 +5386,11 @@ it can then be changed.
   Report wording for general users is filed as its own item.
   Hub privacy policy: it names only GitHub and Google as what Pressless
   contacts, so it owes an Import section at release.
+  Gate on the hand runs' amendment (841a739), 2026-10-22: one round by
+  the user's budget, not converged. Six verified findings fixed in 255a6a3,
+  two dismissed; nothing deferred. Row 2 of
+  docs/reviews/PRESS-0125-wordpress-import-loop-log.md. The build may
+  proceed.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
