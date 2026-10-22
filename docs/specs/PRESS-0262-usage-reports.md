@@ -271,8 +271,11 @@ custom dimension; the document lists them.
   `src/pressless/_usage_key.py`.
   *Breaks when:* `.gitignore` loses the line.
 
-- **INV-9** — Only `publisher.py`, `insights.py`, `updater.py` and
-  `usage.py` import a network module.
+- **INV-9** — Within `src/pressless/`, only `publisher.py`,
+  `insights.py`, `updater.py` and `usage.py` import a network module.
+  Outside it, `pressless_import.fetch` is the one network module
+  (PRESS-0125 § 4.4, amended 2026-10-22), and
+  `tests/test_importer.py::test_import_reaches_no_network` holds it.
   *Test:* `tests/test_network_confined.py::test_only_four_modules_reach_the_network`.
   *Breaks when:* a fifth module opens a socket. This replaces
   PRESS-0023 INV-8.
@@ -330,7 +333,7 @@ Each test is seen failing before the code it locks exists.
 | INV-6 | `tests/test_usage.py::test_no_forgets_the_client` |
 | INV-7 | `tests/test_usage.py::test_the_list_is_what_was_sent` |
 | INV-8 | `git check-ignore` |
-| INV-9 | `tests/test_network_confined.py::test_only_four_modules_reach_the_network` |
+| INV-9 | `tests/test_network_confined.py::test_only_four_modules_reach_the_network`, `tests/test_importer.py::test_import_reaches_no_network` |
 | § 4.7's procedure | **nothing** — a document a session follows; read when it is run |
 
 ## 11. Cross-doc impact

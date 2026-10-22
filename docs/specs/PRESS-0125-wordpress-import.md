@@ -2,7 +2,8 @@
 # PRESS-0125 — Anyone brings their WordPress site in
 
 **Status:** accepted (2026-10-22). Gated for one round by the user's
-budget; every verified finding fixed, not converged.
+budget; every verified finding fixed, not converged. Built 2026-10-22;
+§§ 4.2 to 4.8 and § 6 record what the build settled.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0125 (user decisions 2026-09-17, 2026-10-02 and
 2026-10-22).
@@ -100,11 +101,13 @@ setup's done page where the starter was not filled, and on the list page
 |------|-------|-------------------|
 | `export` | How to make the file: WordPress's **Tools → Export**, **All content**, **Download Export File**; and a file box | an export is held and reads (§ 4.3) |
 | `media` | Counts read from the export, then fetching (§ 4.4) with progress | the fetch has ended |
-| `gaps` | Only where files are missing: the list, how to download the uploads folder, and a ZIP box | none; Next without a ZIP carries on |
+| `gaps` | The files missing, how to download the uploads folder, and a ZIP box; where none is missing, that it says so | none; Next without a ZIP carries on |
 | `look` | The looks, as setup's site step shows them | one of `starter.LOOKS` |
-| `bring` | **Bring it in**, then the Report (§ 4.8) | Import has written (§ 4.7) |
+| `bring` | What Next does, then the Report (§ 4.8) | Import has written (§ 4.7) |
 
-The two file boxes post to `Face.add_upload` routes, `/import/export` and
+A wizard shows every step, so `gaps` is never skipped, and Next on
+`bring` is what brings the site in. The two file boxes post to
+`Face.add_upload` routes, `/import/export` and
 `/import/media`, so neither file is held in memory. Every `import/` path
 here is in the open site's folder under `sites/`, never the Builder's
 site folder. The export is kept as `import/export.xml`; `import/` is
@@ -115,10 +118,12 @@ site file never carries the export.
 ### 4.3 Reading the export
 
 `pressless_import` gains `read(export) -> Export`, used by both runs.
-Before parsing, it refuses any export carrying a `<!DOCTYPE` or
-`<!ENTITY` declaration (`ImportStopped`, "this is not a WordPress export
+Before parsing, it refuses any export whose prolog — what comes before
+the root element — holds a `<!DOCTYPE` or `<!ENTITY` declaration, or
+does not begin with markup (`ImportStopped`, "is not a WordPress export
 Pressless can read"): WordPress writes neither, and both are how an XML
-file expands past its size. An export over `EXPORT_LARGEST = 256 MiB` is
+file expands past its size. A post's body quoting one is not in the
+prolog, and reads. An export over `EXPORT_LARGEST = 256 MiB` is
 refused at upload. The S314 exemption in `pyproject.toml` stays, now
 resting on that refusal.
 
@@ -144,10 +149,12 @@ package that reaches the network; the maintainer's `run` never calls it
 (PRESS-0007 INV-10, as amended).
 
 For each attachment, the address is its `attachment_url`, and its place is
-`_upload_path` of that address, checked as `_photographs` checks it; a
-place it would stop on is refused, as below. The file goes to
-`import/media/<place>`. A file already there is not fetched again, so a
-stopped fetch resumes.
+`_upload_path` of that address, checked as `_photographs` checks it, each
+part of it a single name the Store would hold; a place it would stop on
+is refused, as below. The file goes to `import/media/<place>`. A file
+already there is not fetched again, so a stopped fetch resumes.
+`fetch.fetch_all` returns each place not fetched with why, and the wizard
+keeps that in `import/unfetched.json` once the fetch has ended.
 
 A fetch:
 
@@ -167,10 +174,11 @@ A fetch:
 A refused or failed fetch is one Report line, naming the place and why
 ("the old site answered 404"). It never stops Import.
 
-**The media ZIP** fills gaps by place: a member whose name ends in
+**The media ZIP** (`pressless_import.unpack_media`) fills gaps by place: a member whose name ends in
 `<YYYY>/<MM>/<name>` matching a missing place is unpacked to it. Members
-are checked first as `sitefile` checks a site file — no absolute name,
-backslash, drive, `..` or link — and their total must fit `room()`.
+are checked first by `sitefile.stays_inside` and `sitefile.is_link`, as a
+site file's are — no absolute name, backslash, drive, `..` or link — and
+the members taken must fit `room()`.
 Other members are ignored.
 
 ### 4.5 Entries
@@ -203,7 +211,10 @@ each listed.
 **A picture with no original in `photographs/`** — neither fetched nor
 unpacked from the ZIP — is not written as a `{photo: …}` mark, because the Builder stops
 on a photograph the folder lacks. The lookups return `None` for it, so it
-takes the converter's existing "no attachment" path and is listed.
+takes the converter's existing "no attachment" path and is listed. They
+return `None` too for a held file `builder.photograph_format` refuses,
+which goes to `files/`; a held file `builder.file_allowed` refuses as
+well is listed and not carried.
 
 **A dangling reply** — one whose parent is not among the comments Import
 carries — is
@@ -236,15 +247,18 @@ Where the export holds no page, the starter's `index` is written.
 
 A link to a carried page becomes `{{UP}}pages/<slug>.html`, or
 `{{UP}}index.html` for the front page, and a link to a carried entry
-`{{UP}}` + `builder._entry_path(entry)` + `/index.html`; any other
+`{{UP}}` + `builder.entry_path(entry)` + `/index.html`; any other
 address stays as written. A child (`_menu_item_menu_item_parent` not
 `0`) joins the list after its parent and is listed. The links are written into the
-starter's navigation shape, so `menu.links` reads them.
+starter's navigation shape by `menu.arranged`, so `menu.links` reads
+them. A link no menu may hold is left out and listed; a menu left with
+no link keeps the starter's Home link.
 
 ### 4.7 Writing, whole or not at all
 
-`pressless_import.bring_in(export, media, into, look) -> Report` does the
-work, in this order: read and resolve slugs (PRESS-0007 § 4.4); convert
+`pressless_import.bring_in(export, media, into, look, *, unfetched=None)
+-> Report` does the work, `unfetched` being `fetch_all`'s answer, in this
+order: read and resolve slugs (PRESS-0007 § 4.4); convert
 every body; write every Store file into `import/work/` through Store
 calls, moving each held file from `import/media/` into
 `photographs/`, or into `files/` where `builder.photograph_format`
@@ -258,8 +272,9 @@ each file moves in alone, and a file already there is kept.
 A stop before the moves deletes `import/work/` and leaves the Store
 empty. `import/moving` is an empty file written before the first move
 and deleted after the last. While it exists,
-`importing.finish_moves(folder)`, which `__main__` calls at start as it
-calls `sites.move_in`, moves what is left in `import/work/`; the wizard
+`importing.finish_moves(folder)`, which `__main__` calls at start for
+every site as it calls `sites.move_in`, moves what is left in
+`import/work/` through `pressless_import.finish`; the wizard
 cannot, since `holds_a_site` is True once a move lands. After the last move,
 `import/media/` and `import/work/` are deleted, and `import/export.xml`
 and `import/report.txt` stay.
@@ -267,11 +282,13 @@ and `import/report.txt` stay.
 ### 4.8 The Report
 
 `Report` gains `waiting` (pending and scheduled posts), `unfetched`
-(place and reason), `menus` and `other_types`. The Face shows it after
-**Bring it in**, every value HTML-escaped and passed through
-`_printable`; it is also written to `import/report.txt`. Its words are
-`import.report.*` keys in the words table (PRESS-0242). Each line names
-the entry, page or file, and what happened to it.
+(place and reason), `menus`, `other_types` and `files` (held files kept
+in `files/`). The Face shows it after **Bring it in**, each line passed
+through `pressless_import.printable` and then HTML-escaped; it is also
+written to `import/report.txt`. Its words are `import.report.*` keys in
+the words table (PRESS-0242). Each line names the entry, page or file,
+and what happened to it. A line's values — the converter's notes and a
+fetch's reason among them — are `pressless_import`'s English.
 
 ## 5. Invariants
 
@@ -370,7 +387,7 @@ the entry, page or file, and what happened to it.
 | The file is not an export | `export` step says so; nothing is kept |
 | The old site is gone | every fetch fails and is listed; `gaps` offers the ZIP |
 | A fetch hangs | stops at 30 seconds, listed |
-| The disk fills | fetching stops before the spare is reached; the step says how much room is needed |
+| The disk fills | fetching stops before the spare is reached; each file left is listed as having no room |
 | Pressless closes while fetching | the next visit resumes; held files are kept |
 | Pressless closes during the moves | the next start finishes them (§ 4.7) |
 | A slug cannot be held | as PRESS-0007 § 4.4: the item takes `<slug>-<post id>`, listed |
@@ -457,7 +474,7 @@ Each named test is seen to fail against today's code before its change.
   "one site per copy" gives way to PRESS-0223's sites; the parts table,
   § Setup's three starts and *What Import brings across* say where the
   files come from; the disk table names the `import` folder.
-- **PRESS-0262** INV-9, amended when this is built: it holds within
+- **PRESS-0262** INV-9, amended in the build: it holds within
   `src/pressless/`, and `pressless_import.fetch` is the one network
   module outside it.
 - **The privacy policy on the Hub**, if it lists what Pressless contacts:
