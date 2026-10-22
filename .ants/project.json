@@ -8,6 +8,7 @@
     "source_roots": [
         "src"
     ],
+    "spec_test_clause_coverage": true,
     "specs_dir": "docs/specs",
     "test_roots": [
         "tests"
