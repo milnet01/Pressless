@@ -344,6 +344,14 @@ def _place(item, ns) -> str:
         # Joined onto a folder and copied into the Store: an absolute path
         # replaces the folder outright, and `..` climbs out of it (PRESS-0135).
         raise ImportStopped(f"attachment {post_id}'s address leaves the uploads folder")
+    try:
+        # Each part one name a Windows folder keeps too, as the Store asks of
+        # a photograph's: a decoded backslash is a separator there.
+        for part in upload_path.split("/"):
+            store.photograph_path_for(Path(), part)
+    except store.StoreError:
+        raise ImportStopped(f"attachment {post_id}'s address names no place a folder "
+                            f"can hold") from None
     return upload_path
 
 

@@ -17,6 +17,13 @@ import ast
 from pathlib import Path
 
 _SRC = Path(__file__).resolve().parent.parent / "src" / "pressless"
+# PRESS-0125 § 7: Import's fetch opens the network too, from beside Pressless.
+_WALKED = (_SRC, _SRC.parent / "pressless_import")
+
+
+# Opening a connection directly, as Import's fetch does to connect to the
+# address it checked (PRESS-0125 § 4.4); each takes `timeout`.
+_CONNECTIONS = ("HTTPConnection", "HTTPSConnection", "create_connection")
 
 
 def _opens_the_network(call: ast.Call) -> bool:
@@ -28,9 +35,9 @@ def _opens_the_network(call: ast.Call) -> bool:
     """
     func = call.func
     if isinstance(func, ast.Name):
-        return func.id == "urlopen"
+        return func.id in ("urlopen", *_CONNECTIONS)
     if isinstance(func, ast.Attribute):
-        if func.attr == "urlopen":
+        if func.attr == "urlopen" or func.attr in _CONNECTIONS:
             return True
         if func.attr == "open":
             root = func.value
@@ -92,7 +99,7 @@ def test_every_network_open_passes_a_timeout():
     unmatched: list[str] = []
     opening_modules: list[str] = []
 
-    for source in sorted(_SRC.rglob("*.py")):
+    for source in sorted(path for root in _WALKED for path in root.rglob("*.py")):
         tree = ast.parse(source.read_text(encoding="utf-8"))
         found_here = 0
         for node in ast.walk(tree):

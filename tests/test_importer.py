@@ -821,12 +821,14 @@ def _is_module(name: str) -> bool:
 
 def test_import_reaches_no_network():
     """INV-10: Import reaches no network -- every module of pressless_import
-    imports only what the allowlist names, compared by full dotted name, so
-    `urllib.parse` is admitted and `urllib.request` is not.
+    but `fetch`, which PRESS-0125 § 4.4 owns, imports only what the allowlist
+    names, compared by full dotted name, so `urllib.parse` is admitted and
+    `urllib.request` is not.
 
-    Breaks when a picture is fetched from the old site (spec §5)."""
+    Breaks when a module other than `fetch` gains a network import (spec §5)."""
     package = Path(pressless_import.__file__).parent
-    modules = sorted(package.glob("*.py"))
+    modules = sorted(path for path in package.glob("*.py") if path.name != "fetch.py")
+    assert (package / "fetch.py").is_file(), "the one exempt module is where it is named"
     seen = set()
     for module in modules:
         tree = ast.parse(module.read_text(encoding="utf-8"))
@@ -853,6 +855,27 @@ def test_import_reaches_no_network():
         f"the walk saw no import of the export's parser, so it is not reading "
         f"pressless_import at all: {sorted(seen)!r}"
     )
+
+
+def test_run_reaches_no_network(tmp_path, monkeypatch):
+    """INV-10: the maintainer's run completes with every socket refused, a
+    picture whose original is missing included -- it is listed, never fetched.
+
+    Breaks when a picture is fetched from the old site by the maintainer's run."""
+    import socket
+
+    def refused(*args, **kwargs):
+        raise AssertionError("the maintainer's run opened a socket")
+
+    monkeypatch.setattr(socket, "socket", refused)
+    monkeypatch.setattr(socket, "create_connection", refused)
+    monkeypatch.setattr(socket, "getaddrinfo", refused)
+    export, originals, into = _world(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2012/05/gone.jpg"),
+        _item(1, slug="one", body=f'<p>x</p><img src="{UPLOADS}/2012/05/gone.jpg">'),
+    ))
+    report = _run(export, originals, into)
+    assert report.unfetched and store.list_slugs(into, draft=False) == ("one",)
 
 
 @pytest.mark.parametrize("attachment",
