@@ -143,8 +143,6 @@ decision later:**
 - **No new comments.** Comments already on a site stay as a read-only
   record. A site of plain files cannot take comments without an outside
   service.
-- **One site per copy of Pressless.** Someone with two sites keeps two
-  Pressless folders.
 - **GitHub Pages is the only place a site is published.** Pressless does
   as much of the GitHub setup as it can, and gives step-by-step help for
   the rest.

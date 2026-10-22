@@ -95,3 +95,11 @@ alone. Nothing in the first version is built for that person, but nothing
 should be built in a way that locks them out either." On 2026-09-17
 (PRESS-0124) the user ruled that no design should cater only for him,
 and on 2026-10-02 that both are served equally.
+
+## One site per copy dropped 2026-10-22
+
+The not-doing list read "One site per copy of Pressless. Someone with
+two sites keeps two Pressless folders." PRESS-0223 (accepted and built
+2026-10-16) gave Pressless several sites, one folder each under
+`sites/`, so the exclusion no longer held. It was removed when
+`docs/design.md` rule 9 was amended for PRESS-0125.
