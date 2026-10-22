@@ -27,7 +27,7 @@ import sys
 import tempfile
 import unicodedata
 import xml.etree.ElementTree as ET
-from collections.abc import Callable
+from collections.abc import Callable, Container
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -130,6 +130,8 @@ class _Item:
     tags: tuple[str, ...]
     body: str
     comments: tuple[store.Comment, ...]
+    featured: str      # the featured image's attachment id, or ""
+    page: bool
     slug: str = ""
     dropped: list[str] = field(default_factory=list)
 
@@ -258,9 +260,12 @@ def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
 _DRAFT_STATUSES = ("draft", "private", "pending", "future")
 
 
-def _items(channel, ns, *, pages: bool = True) -> list[_Item]:
-    """Every carried post, and every page where `pages` (PRESS-0125 § 4.5
-    carries pages apart)."""
+def _items(channel, ns, *, page_statuses: Container[str] | None = None,
+           titled_drafts: bool = False) -> list[_Item]:
+    """Every carried post, and every page whose status is in `page_statuses`,
+    or every page where that is None. With `titled_drafts`, a draft whose
+    post_name resolves to nothing takes its title's slug before its post id:
+    WordPress names a draft only when it is published (PRESS-0125 § 4.5)."""
     items = []
     for item in channel.findall("item"):
         kind, status = _field(item, "post_type", ns), _field(item, "status", ns)
@@ -268,11 +273,17 @@ def _items(channel, ns, *, pages: bool = True) -> list[_Item]:
             rank, draft = 0, False
         elif kind == "post" and status in _DRAFT_STATUSES:
             rank, draft = 1, True
-        elif kind == "page" and pages:
+        elif kind == "page" and (page_statuses is None or status in page_statuses):
             rank, draft = 2, True
         else:
             continue
         post_id = _field(item, "post_id", ns)
+        title = (item.findtext("title") or "").strip()
+        wanted = resolve_slug(_field(item, "post_name", ns), "")
+        if not wanted and draft and titled_drafts:
+            wanted = resolve_slug(title, "")
+        meta = {_field(each, "meta_key", ns): _field(each, "meta_value", ns)
+                for each in item.findall("wp:postmeta", ns)}
         date = _date(_field(item, "post_date", ns), post_id)
         waiting = {"pending": "", "future": date.strftime("%Y-%m-%d %H:%M")}.get(status)
         comments, listed = _comments(item, ns)
@@ -288,13 +299,15 @@ def _items(channel, ns, *, pages: bool = True) -> list[_Item]:
             rank=rank,
             draft=draft,
             waiting=waiting if kind == "post" else None,
-            wanted=resolve_slug(_field(item, "post_name", ns), post_id),
-            title=(item.findtext("title") or "").strip(),
+            wanted=wanted or post_id,
+            title=title,
             date=date,
             categories=tuple(categories),
             tags=tuple(tags),
             body=item.findtext("content:encoded", "", ns) or "",
             comments=comments,
+            featured=meta.get("_thumbnail_id", ""),
+            page=kind == "page",
             dropped=listed,
         ))
     return items

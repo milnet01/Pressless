@@ -1377,3 +1377,67 @@ def test_the_menu_points_at_carried_pages(tmp_path):
     assert report.menus == ("Main", "Footer"), report.menus
     assert read[2] == ("Under about", "{{UP}}pages/about.html"), "a child follows its parent"
     assert any("Under about" in d.what for d in report.dropped), report.dropped
+
+
+@pytest.mark.parametrize("status", ["draft", "private", "pending", "future"])
+def test_an_unpublished_page_arrives_as_a_draft(tmp_path, status):
+    """PRESS-0125 INV-15: a page WordPress had not published becomes a draft
+    entry, listed, beside a published page that becomes a Pressless page;
+    with no post carried, the journal stays off (§ 4.7).
+
+    Breaks when § 4.6 takes every page status, so the page is published at
+    the next publish."""
+    site, report = _bring(tmp_path, _export(
+        _item(1, kind="page", slug="about", title="About", body="<p>Hello.</p>"),
+        _item(2, kind="page", status=status, slug="secret", title="Secret",
+              body="<p>Only for me.</p>")))
+
+    assert store.list_html(site, store.PAGES_FOLDER) == ("index",)
+    assert store.list_slugs(site, draft=True) == ("secret",)
+    assert store.read(store.path_for(site, "secret", draft=True)).body == "Only for me."
+    assert report.pages == ("index",) and report.drafts == 1
+    assert any(d.slug == "secret" and "page" in d.what for d in report.dropped), report.dropped
+    assert not store.journal_on(site)
+
+
+def test_a_draft_with_no_slug_takes_its_title(tmp_path):
+    """PRESS-0125 INV-16 (§ 4.5): an item arriving as a draft, an unpublished
+    page included, with an empty post_name takes its title's slug; a
+    published post with an empty post_name keeps PRESS-0007's post id.
+
+    Breaks when the post id is the fallback for both, or the title for both."""
+    site, _report = _bring(tmp_path, _export(
+        _item(7, status="draft", title="Half written"),
+        _item(8, kind="page", status="private", title="Private notes"),
+        _item(9, title="Live one")))
+
+    assert store.list_slugs(site, draft=True) == ("half-written", "private-notes")
+    assert store.list_slugs(site, draft=False) == ("9",)
+
+
+def test_a_featured_image_opens_the_body(tmp_path):
+    """PRESS-0125 INV-17 (§ 4.5): a post's featured image is its body's first
+    line; one the body already shows, captioned, is not added again; one not
+    brought in is listed.
+
+    Breaks when _thumbnail_id is not read, the mark is written twice, or the
+    missing image is not listed."""
+    site, report = _bring(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+        _item(21, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+        _item(22, kind="attachment", status="inherit", attachment="2012/05/gone.jpg"),
+        _item(1, slug="one", body="<p>Words.</p>", extra=_meta("_thumbnail_id", "20")),
+        _item(2, slug="two", extra=_meta("_thumbnail_id", "21"),
+              body=f'<figure><img src="{UPLOADS}/2012/05/b.jpg">'
+                   "<figcaption>Late light</figcaption></figure><p>More.</p>"),
+        _item(3, slug="three", body="<p>Plain.</p>", extra=_meta("_thumbnail_id", "22"))),
+        {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+
+    def body(slug):
+        return store.read(store.path_for(site, slug, draft=False)).body
+
+    assert body("one") == "{photo: a.jpg}\n\nWords.", body("one")
+    assert body("two").count("{photo: b.jpg") == 1, body("two")
+    assert body("three") == "Plain.", body("three")
+    assert any(d.slug == "three" and "featured image" in d.what for d in report.dropped), (
+        report.dropped)

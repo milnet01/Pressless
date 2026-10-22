@@ -25,6 +25,7 @@ from urllib.parse import urlparse
 from pressless import blocks, builder, look, menu, sitefile, starter, store, templates
 
 from . import (
+    _DRAFT_STATUSES,
     _RESIZED,
     Dropped,
     ImportStopped,
@@ -50,8 +51,9 @@ _MOVING = "moving"
 _MISSING = "its original is missing"
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
 _CARRIED_TYPES = frozenset({"post", "page", "attachment", "nav_menu_item", "wp_navigation"})
-_PAGE_STATUSES = frozenset({"publish", "draft", "private", "pending", "future"})
 _NAVIGATION = "navigation"
+_UNPUBLISHED_PAGE = "a page WordPress had not published, so it arrived as a draft"
+_NO_FEATURED = "its featured image, which could not be placed"
 
 
 # ---------------------------------------------------------- pages (§ 4.6) ----
@@ -71,10 +73,12 @@ class _Page:
 
 
 def _pages(channel, ns) -> list[_Page]:
+    """Each published page. A Pressless page is always on the site, so a page
+    WordPress kept off the web is a draft entry instead (§ 4.5)."""
     pages = []
     for item in channel.findall("item"):
         if (_field(item, "post_type", ns) != "page"
-                or _field(item, "status", ns) not in _PAGE_STATUSES):
+                or _field(item, "status", ns) != "publish"):
             continue
         post_id = _field(item, "post_id", ns)
         title = (item.findtext("title") or "").strip()
@@ -380,7 +384,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
 
     read_in = read(export)
     channel, ns = read_in.channel, read_in.ns
-    items = _items(channel, ns, pages=False)
+    items = _items(channel, ns, page_statuses=_DRAFT_STATUSES, titled_drafts=True)
     renamed = _resolve(items)
     pages = _pages(channel, ns)
     renamed += _name_pages(pages, (channel.findtext("title") or "").strip())
@@ -408,6 +412,11 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
 
     bodies = {item.post_id: _convert(item, wordpress_markup, by_address, by_id, old_site)
               for item in items}
+    for item in items:
+        if item.page:
+            item.dropped.insert(0, _UNPUBLISHED_PAGE)
+        if item.featured:
+            bodies[item.post_id] = _featured(item, bodies[item.post_id], by_id)
     entries = {item.post_id: store.Entry(
         slug=item.slug, title=item.title, date=item.date, categories=item.categories,
         tags=item.tags, body=bodies[item.post_id], extra=()) for item in items}
@@ -454,7 +463,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         doing = "the templates"
         templates.seed(work)
         doing = "the journal switch"
-        store.write_journal(work, bool(items))
+        store.write_journal(work, any(not item.page for item in items))
         for place, (folder, name) in kept.items():
             doing = f"the file {place}"
             target = (store.photograph_path_for(work, name) if folder == store.PHOTOGRAPHS_FOLDER
@@ -514,6 +523,18 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         menus=menus,
         other_types=tuple(sorted(other.items())),
     )
+
+
+def _featured(item: _Item, body: str, by_id) -> str:
+    """§ 4.5: the featured image opens the body, where WordPress themes show
+    it, unless the body already shows that photograph."""
+    name = by_id(item.featured)
+    if name is None:
+        item.dropped.append(_NO_FEATURED)
+        return body
+    if f"{{photo: {name}}}" in body or f"{{photo: {name} |" in body:
+        return body
+    return f"{{photo: {name}}}\n\n{body}" if body else f"{{photo: {name}}}"
 
 
 def _links(channel, ns, items: list[_Item]) -> list[str]:
