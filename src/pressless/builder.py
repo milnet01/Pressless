@@ -814,7 +814,7 @@ class _Build:
     # -- an entry --
 
     def entry_page(self, entry: store.Entry) -> None:
-        relative = _entry_path(entry)
+        relative = entry_path(entry)
         depth = relative.count("/") + 1
         up = "../" * depth
         doc = marks.parse(entry.body)
@@ -965,7 +965,7 @@ class _Build:
             label, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">
         <p class="post-meta">{self.meta(entry, up)}</p>
-        <h2><a href="{up}{_entry_path(entry)}/index.html">{label}</a></h2>{excerpt_row}
+        <h2><a href="{up}{entry_path(entry)}/index.html">{label}</a></h2>{excerpt_row}
       </article>"""
 
     def listing(self, relative: str, depth: int, heading: str, intro: str,
@@ -1031,7 +1031,7 @@ class _Build:
         for year in sorted(years, reverse=True):
             rows = "\n".join(
                 f"          <li><time>{_short_date(entry.date)}</time> "
-                f'<a href="../../{_entry_path(entry)}/index.html">'
+                f'<a href="../../{entry_path(entry)}/index.html">'
                 f"{html.escape(entry.title or _long_date(entry.date))}</a></li>"
                 for entry in years[year])
             blocks.append(
@@ -1062,7 +1062,7 @@ class _Build:
             if new not in entries or new in filtered or old in entries:
                 continue
             target = entries[new]
-            relative = _entry_path(target)
+            relative = entry_path(target)
             title = html.escape(target.title or _long_date(target.date))
             self.write_text(f"{relative.rsplit('/', 1)[0]}/{old}/index.html", f"""<!doctype html>
 <html lang="en">
@@ -1150,7 +1150,7 @@ class _Build:
         if journal:
             urls += [(f"{address}/blog/index.html", None),
                      (f"{address}/blog/archive/index.html", None)]
-        urls += [(f"{address}/{_entry_path(entry)}/index.html", _iso_day(entry.date))
+        urls += [(f"{address}/{entry_path(entry)}/index.html", _iso_day(entry.date))
                  for entry in shown]
         lines = "\n".join(
             f"  <url><loc>{html.escape(loc, quote=False)}</loc>"
@@ -1169,8 +1169,10 @@ class _Build:
                         f"Sitemap: {address}/sitemap.xml\n")
 
 
-def _entry_path(entry: store.Entry) -> str:
-    """§4.3: dated by the entry's own date, never the build's."""
+def entry_path(entry: store.Entry) -> str:
+    """§4.3: an entry's address from the site's root, without its
+    `/index.html`, dated by the entry's own date, never the build's. Public
+    because Import links a menu to an entry by it (PRESS-0125 § 4.6)."""
     when = entry.date
     return f"blog/{when.year:04d}/{when.month:02d}/{when.day:02d}/{entry.slug}"
 

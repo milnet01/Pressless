@@ -26,7 +26,7 @@ LISTED = ('<nav><ul>\n'
 
 
 def _menus():
-    return {"starter": starter._navigation(), "one line": ONE_LINE, "four": FOUR}
+    return {"starter": starter.navigation(), "one line": ONE_LINE, "four": FOUR}
 
 
 @pytest.mark.parametrize("kind", ["starter", "one line", "four"])

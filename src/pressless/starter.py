@@ -23,10 +23,11 @@ MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
 # user (§ 4.3). The header and footer name the site by placeholder, so a
 # rename in the Store reaches every page (PRESS-0213 § 4.6). Their words are
 # looked up when a site is filled; the {{...}} placeholders and the data-nav
-# names are the Builder's, and stay.
+# names are the Builder's, and stay. Import writes the same header, footer and
+# navigation shape (PRESS-0125 § 4.6, § 4.7).
 
 
-def _header() -> str:
+def header() -> str:
     return (f"<!-- {say('starter.header_note')} -->\n"
             + '<header class="site">\n'
             + '  <a class="site-name" href="{{UP}}index.html">{{SITE_NAME}}</a>\n'
@@ -35,7 +36,7 @@ def _header() -> str:
             + "</header>\n")
 
 
-def _navigation() -> str:
+def navigation() -> str:
     primary = html.escape(say("starter.menu"), quote=True)
     return (f'  <nav class="primary" aria-label="{primary}">\n'
             + '    <a href="{{UP}}index.html" data-nav="Home">' + say("starter.home") + "</a>\n"
@@ -43,7 +44,7 @@ def _navigation() -> str:
             + "</a>\n  </nav>")
 
 
-def _footer() -> str:
+def footer() -> str:
     return (f"<!-- {say('starter.footer_note')} -->\n"
             + '<footer class="site">\n'
             + "  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>\n"
@@ -117,15 +118,28 @@ _NEW_PAGE = _PRIVACY.replace('page="privacy"', 'page="{page}"')
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
 
 
-def new_page(name: str, title: str, sheets: tuple[str, ...]) -> str:
+def new_page(name: str, title: str, sheets: tuple[str, ...], *,
+             main: str | None = None, root: bool = False) -> str:
     """PRESS-0195 § 4.3: a page he adds, in the Privacy page's shape -- the
     site's stylesheets from depth 1, a header pair naming the page, his title
-    as the title and heading, and one paragraph to replace."""
-    links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
+    as the title and heading, and one paragraph to replace. Import passes a
+    page's own body as `main`, in place of the heading and paragraph, and
+    `root` for the page that sits at the root (PRESS-0125 § 4.6)."""
+    up = "" if root else "../"
+    links = "\n  ".join(f'<link rel="stylesheet" href="{up}{html.escape(sheet, quote=True)}">'
                         for sheet in sheets)
     return _NEW_PAGE.format(title=html.escape(title), links=links,
                             page=html.escape(name, quote=True),
-                            area=_area(title, _words("starter.new_page.words")))
+                            area=_area(title, _words("starter.new_page.words"))
+                            if main is None else main)
+
+
+def home_page(site_name: str) -> str:
+    """The starter's Home page, which sits at the root."""
+    name = html.escape(site_name, quote=True)
+    return _PAGE.format(title=name, up="", page="Home",
+                        area=_area(say("starter.welcome", name=site_name),
+                                   _words("starter.home.words")))
 
 
 def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
@@ -210,12 +224,10 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
 
     name = html.escape(site_name, quote=True)
     files = (
-        (store.FURNITURE_FOLDER, "header", _header()),
-        (store.FURNITURE_FOLDER, "navigation", _navigation()),
-        (store.FURNITURE_FOLDER, "footer", _footer()),
-        (store.PAGES_FOLDER, "index", _PAGE.format(
-            title=name, up="", page="Home",
-            area=_area(say("starter.welcome", name=site_name), _words("starter.home.words")))),
+        (store.FURNITURE_FOLDER, "header", header()),
+        (store.FURNITURE_FOLDER, "navigation", navigation()),
+        (store.FURNITURE_FOLDER, "footer", footer()),
+        (store.PAGES_FOLDER, "index", home_page(site_name)),
         (store.PAGES_FOLDER, "about", _PAGE.format(
             title=say("starter.about.title", name=name), up="../", page="about",
             area=_area(say("starter.about"), _words("starter.about.words")))),

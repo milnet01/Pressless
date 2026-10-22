@@ -96,18 +96,24 @@ def save(site: Path, target: Path) -> None:
             made.write(path, name, compress_type=kind)
 
 
-def _allowed(name: str) -> bool:
-    """A member name that stays inside the site: relative, with no `..`,
-    backslash or drive, under a kept name or the manifest."""
+def stays_inside(name: str) -> bool:
+    """A zip member name that stays inside the folder it is unpacked into:
+    relative, with no `..`, backslash or drive. Import's media download is
+    checked by it too (PRESS-0125 § 4.4)."""
     if name.startswith("/") or "\\" in name or _DRIVE.match(name):
         return False
     parts = PurePosixPath(name).parts
-    if not parts or ".." in parts:
-        return False
-    return name == MANIFEST or parts[0] in KEPT
+    return bool(parts) and ".." not in parts
 
 
-def _is_link(info: zipfile.ZipInfo) -> bool:
+def _allowed(name: str) -> bool:
+    """A member name that stays inside the site, under a kept name or the
+    manifest."""
+    return stays_inside(name) and (name == MANIFEST or PurePosixPath(name).parts[0] in KEPT)
+
+
+def is_link(info: zipfile.ZipInfo) -> bool:
+    """Whether a zip member is a symbolic link."""
     return stat.S_ISLNK(info.external_attr >> 16)
 
 
@@ -135,7 +141,7 @@ def check(source: Path, room: int) -> None:
     for info in infos:
         if not _allowed(info.filename):
             raise Refused("the file holds a name outside a site")
-        if _is_link(info):
+        if is_link(info):
             raise Refused("the file holds a link")
     if sum(info.file_size for info in infos) > room:
         raise Refused("the file is larger than the room on this drive")

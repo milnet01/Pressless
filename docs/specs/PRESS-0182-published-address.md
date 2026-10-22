@@ -27,7 +27,7 @@ the new one, through every later press, rename and undo.
    *"Only a draft's address can be changed here."* for a published entry,
    and PRESS-0012 §4.11 says the editor never changes one.
 2. **A rename would break every shared link.** An entry's page is
-   `blog/YYYY/MM/DD/<slug>/index.html` (`builder._entry_path`). A new slug
+   `blog/YYYY/MM/DD/<slug>/index.html` (`builder.entry_path`). A new slug
    is a new page, and the old page leaves the site at the next press
    because the Publisher removes what the Builder no longer produces.
 3. **Nothing lasting records an old address.** `docs/design.md` § What may
@@ -161,7 +161,7 @@ by key, it writes a forwarding page, except where:
 "An entry `build` writes a page for" is `read_entries`' map, `change`
 included.
 
-The page goes at `_entry_path` of the target with the key in place of its
+The page goes at `entry_path` of the target with the key in place of its
 slug: `blog/YYYY/MM/DD/<old>/index.html`, dated by the target. The target
 is the sibling folder `../<new>/index.html`.
 
