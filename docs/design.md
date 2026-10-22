@@ -99,8 +99,9 @@ which marks cannot express without becoming HTML.
    writing or publishing may depend on it. If Google is unreachable, or
    the user never sets it up at all, every sign but S11 still holds —
    the dashboard is the only thing that says so.
-9. **Import may read what the user points it at, may fetch from the old
-   site the files that export names, and writes only into an empty Store
+9. **Import may read what the user points it at, may fetch each file
+   that export names from the address it names (PRESS-0125 § 4.4), and
+   writes only into an empty Store
    and its own `import` folder — and nothing else.** The Face starts it,
    as one of setup's three starts (§ Setup's three starts), and nothing
    depends on it once it has run. It never runs over a Store that holds a
@@ -373,6 +374,9 @@ sets the limit and the kinds of file.
 Import declines to bring is outside Pressless, so every question below
 is settled the same way: carry it, and let the Builder decide what to
 publish. **What could not come across is listed item by item** (S13).
+Two things are not carried, both listed: a kind of WordPress content
+Pressless has no place for, as one line per kind with its count, and a
+post's `script` and `style` contents (PRESS-0125).
 
 - **Every post, with the fields the Builder reads**: title, slug, date,
   categories and tags. Dropping any of them costs the site its
@@ -390,11 +394,13 @@ publish. **What could not come across is listed item by item** (S13).
   shows, so no reader's words are lost. Commenter names are published,
   as they are on WordPress; their email addresses and IP addresses are
   not, and Import must not carry them into the Store at all.
-- **The photographs and files, and every image reference rewritten to
-  the picture mark.** Import fetches them from the old site while it is
-  online, and a media download fills what it could not fetch
-  (PRESS-0125). Skipped, every imported entry goes on pointing at the
-  site the user is leaving.
+- **The photographs and files, and every image reference to a file
+  Import holds rewritten to the picture mark.** Import fetches them from
+  the old site while it is online, and a media download fills what it
+  could not fetch (PRESS-0125). A file neither brings is listed, and its
+  references are not made picture marks, since the Builder stops on a
+  photograph it lacks. Skipped, every imported entry goes on pointing at
+  the site the user is leaving.
 - **The pages, as HTML.** Whatever no section fits, Blocks reads as a
   code section, still editable (§ Pages, and how they are held). The
   site's menu becomes the navigation file.
@@ -731,3 +737,4 @@ about.
 | 15 | 2026-09-11 | 3, cold — genre pinned `adr`; gating rule 9 and *What Import brings across* for the user's decision that the maintainer runs Import (PRESS-0007). Packet carried PRESS-0006 § 3, PRESS-0005 § 3 decisions 4 and 5, and the PRESS-0007 and PRESS-0021 roadmap entries. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 0 | 6 | n/a | **Seven verified: five fixed, two surfaced. One loop only, by user instruction: not converged.** All three lanes: nothing said what the handed folder carries; it is the Store, and setup writes Settings. Two lanes: which copy of the furniture Import takes, and the Store shape cited to the Builder rather than PRESS-0006. One each: the untouchable files are not fixed pages, and an empty Store offers neither setup nor publishing. Surfaced on PRESS-0008 and PRESS-0015: where filtered Daily Prompt entries go, and what undoing the first publish does. Five of seven inside the gated span. |
 | 16 | 2026-09-17 | 3, cold — genre pinned `adr`; gating rule 9 for PRESS-0124 (setup on an empty install, the guard moved to publishing). Packet carried the PRESS-0021 amendment, PRESS-0007 § 1–3, the Publisher's empty-site refusal and an executed build on an empty folder. Windows, PyInstaller, GitHub and Analytics unrunnable | 1 | 1 | 2 | n/a | **Four verified, four fixed after three user decisions, none dismissed. One loop only, by user instruction: not converged.** All three lanes: an empty install does not build an empty site, it stops on a missing `header.html` (executed), and nothing supplied its furniture, pages or templates; the user chose a starter set, PRESS-0126. The guard as written blocked binning the last entry, undo, and a first publish; it now counts the entry being published and exempts both. All four inside the gated span. |
 | 17 | 2026-10-02 | 2, cold — genre pinned `adr`; gating the whole-document rewrite for PRESS-0198. Packet carried discovery, all five ADRs, the history file, project CLAUDE.md, the cited roadmap items, `settings.py`'s fields, and PRESS-0005, 0008, 0009, 0013, 0015, 0023 and 0182 windows. Windows, PyInstaller, GitHub, Analytics and Firebase unrunnable | 0 | 7 | 8 | n/a | **Fifteen verified, fifteen fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** Both lanes: undo said nothing of an item that has a draft, and the untouchable list could be derived before setup fills the Store or keep a replaced site live. Others: drafts listed three ways, the take-in dropped added files, the journal guard undefined, undo's draft rule against PRESS-0015, Privacy possibly a draft, previews styled from a copy the look never reaches. Three came from lanes' open questions. The armed change is the whole document, so no in-span share. |
+| 18 | 2026-10-22 | 2, cold, every lane every question, through `neutral-lane` — genre pinned `adr`; gating PRESS-0125's amendment (rule 9, the parts table's Import row, § Setup's three starts, the photographs bullet, the `import` folder). One round by the user's budget. Packet carried PRESS-0125 §§ 1–4, 8, 9, 11, PRESS-0007 § 4.8 and INV-10, PRESS-0223 §§ 4.1–4.2, discovery's S13, all six ADRs and the `sites`, `sitefile`, `face` and `store` windows | 0 | 3 | 0 | n/a | **Three verified, three fixed, none dismissed; capped by the budget, not converged, and no lane read the fixes.** Rule 9 let Import fetch only "from the old site", where PRESS-0125 fetches any address the export names. The photographs bullet made every image a picture mark, where an unfetched one must not be, or the build stops. The section intro said everything is carried, where PRESS-0125 lists other content kinds by count and drops a post's script and style — outside the span, fixed as the record of PRESS-0125's gated decision. Two of three in the span; calm, none on this run's text. A spec call to the Builder's private `_entry_path` breaks rule 7 and is the spec's, noted on PRESS-0125. Six open questions; none became a finding. |
