@@ -1,5 +1,7 @@
 """Reading a WordPress markup body (PRESS-0007 §4.3): whether a body is
-markup at all, the marks it becomes, and the lines a reader sees.
+markup at all, the marks it becomes, and the lines a reader sees. A classic
+body that is not markup is first given its paragraphs (`autop`, PRESS-0125
+§ 4.5).
 
 Nothing here touches a disk. What a picture's address resolves to comes
 from the lookups the caller passes, exactly as Marks takes `photo_src`.
@@ -55,6 +57,44 @@ _USED = {"a": {"href"}, "img": {"src", "alt"}, "figure": {"class"}, "source": {"
 def is_markup(body: str) -> bool:
     """§4.3: exactly where today's generator passes a body through."""
     return "<!-- wp:" in body or bool(_HAS_TAGS.search(body))
+
+
+def wordpress_markup(body: str) -> bool:
+    """PRESS-0125 § 4.5: as WordPress decides it. Block content is markup;
+    any other body is a classic post, which WordPress gives paragraphs."""
+    return "<!-- wp:" in body
+
+
+# The tags autop leaves a run of text alone around: a run holding one is
+# already laid out by its own markup.
+_BLOCK_TAG = re.compile(
+    r"</?(?:address|article|aside|audio|blockquote|dd|details|div|dl|dt|fieldset"
+    r"|figcaption|figure|footer|form|h[1-6]|header|hr|iframe|li|main|nav|ol|p|pre"
+    r"|section|table|tbody|td|tfoot|th|thead|tr|ul|video)\b", re.I)
+_PRE = re.compile(r"<pre\b.*?</pre\s*>", re.I | re.S)
+_BLANK_LINE = re.compile(r"\n[ \t]*\n")
+
+
+def autop(body: str) -> str:
+    """A classic post as WordPress shows it, written from PRESS-0125 § 4.5's
+    description of that behaviour and never from WordPress's code (INV-12
+    there): a blank line ends a paragraph and a lone newline is a line break,
+    outside <pre> and runs holding a block-level tag."""
+    text = body.replace("\r\n", "\n").replace("\r", "\n")
+    parts, position = [], 0
+    for found in _PRE.finditer(text):
+        parts.append(_paragraphs(text[position:found.start()]))
+        parts.append(found.group(0))
+        position = found.end()
+    parts.append(_paragraphs(text[position:]))
+    return "\n".join(part for part in parts if part)
+
+
+def _paragraphs(text: str) -> str:
+    runs = (run.strip("\n") for run in _BLANK_LINE.split(text))
+    return "\n".join(
+        run if _BLOCK_TAG.search(run) else "<p>" + run.replace("\n", "<br>\n") + "</p>"
+        for run in runs if run.strip())
 
 
 # ------------------------------------------------------------- the tree ----
@@ -149,14 +189,21 @@ def _plain_text(element: _Element) -> str:
 
 # ------------------------------------------------------------ the lines ----
 
-_SPLITS = frozenset({"br", "img", "div", "p", "blockquote", "figure"}) | _HEADINGS
+# PRESS-0161: a list item, a table's row or cell, a rule and a preformatted
+# block each make a line too (PRESS-0125 § 4.5).
+_LINES = frozenset({"li", "tr", "td", "th", "hr"})
+_SPLITS = (frozenset({"br", "img", "div", "p", "blockquote", "figure", "pre"})
+           | _HEADINGS | _LINES)
+# What a reader never sees, so neither function hands it on.
+_HIDDEN = frozenset({"script", "style"})
 
 
 def visible_lines(markup: str) -> tuple[str, ...]:
     """§4.3's instrument: the lines a reader sees. A new line at each <br>,
-    <img>, <div> and heading, and at each paragraph, quotation and figure
-    boundary; character references decoded, block comments removed, and
-    whitespace inside a line collapsed."""
+    <img>, <div>, heading, <li>, <tr>, <td>, <th> and <hr>, at each paragraph,
+    quotation, figure and <pre> boundary, and at each newline inside <pre>;
+    character references decoded, block comments and script and style
+    contents removed, and whitespace inside a line collapsed."""
     lines: list[str] = []
     current: list[str] = []
 
@@ -166,19 +213,23 @@ def visible_lines(markup: str) -> tuple[str, ...]:
             lines.append(text)
         current.clear()
 
-    def walk(node):
+    def walk(node, preformatted: bool):
         if isinstance(node, str):
-            current.append(node)
-        elif isinstance(node, _Element):
+            pieces = node.split("\n") if preformatted else [node]
+            for number, piece in enumerate(pieces):
+                if number:
+                    end_line()
+                current.append(piece)
+        elif isinstance(node, _Element) and node.tag not in _HIDDEN:
             splits = node.tag in _SPLITS
             if splits:
                 end_line()
             for child in node.children:
-                walk(child)
+                walk(child, preformatted or node.tag == "pre")
             if splits:
                 end_line()
 
-    walk(_tree(markup))
+    walk(_tree(markup), False)
     end_line()
     return tuple(lines)
 
@@ -227,6 +278,7 @@ class _Converter:
         self._by_id = by_id
         self._old_site = old_site.lower().removeprefix("www.")
         self._caption: str | None = None
+        self._preformatted = 0
         self.dropped: list[str] = []
 
     # The table, row by row.
@@ -239,6 +291,9 @@ class _Converter:
             self._text(node, style, blocks)
             return
         tag = node.tag
+        if tag in _HIDDEN:
+            self.dropped.append(f"a <{tag}> and what it held, dropped")
+            return
         style = self._attributes(node, style)
         if tag == "br":
             blocks.line_break()
@@ -268,7 +323,15 @@ class _Converter:
         else:
             if tag not in _KNOWN:
                 self.dropped.append(f"a <{tag}>, its words kept")
+            # PRESS-0161: a line of its own, as a paragraph is.
+            breaks = tag in _LINES or tag == "pre"
+            if breaks:
+                blocks.end_paragraph()
+            self._preformatted += tag == "pre"
             self._children(node, style, blocks)
+            self._preformatted -= tag == "pre"
+            if breaks:
+                blocks.end_paragraph()
 
     def _children(self, node: _Element, style: _Style, blocks: _Blocks):
         for child in node.children:
@@ -285,6 +348,13 @@ class _Converter:
         self.dropped.append(f"a social link, which today's site does not show: {address}")
 
     def _text(self, text: str, style: _Style, blocks: _Blocks):
+        if self._preformatted:
+            # Each of its newlines is a line; its spaces are the writer's.
+            for number, piece in enumerate(text.split("\n")):
+                if number:
+                    blocks.line_break()
+                blocks.text(piece.replace("\t", " "), style)
+            return
         text = _HTML_SPACE.sub(" ", text)
         start = 0
         for found in _GALLERY.finditer(text):
@@ -526,12 +596,17 @@ def _marks(blocks: list[tuple], dropped: list[str]) -> str:
 
 
 def convert(body: str, picture_by_address: Lookup, picture_by_id: Lookup, *,
-            old_site: str = "") -> tuple[str, tuple[str, ...]]:
+            old_site: str = "", markup: Callable[[str], bool] | None = None,
+            ) -> tuple[str, tuple[str, ...]]:
     """One markup body in marks, and what it could not carry (§4.3).
 
     `old_site` is the WordPress site's host: a link to one of its pages is
-    not a link to another site, and keeps only its words.
+    not a link to another site, and keeps only its words. A body `markup`
+    rejects is passed through `autop` first (PRESS-0125 § 4.5); with no
+    `markup`, the body converts as it is.
     """
+    if markup is not None and not markup(body):
+        body = autop(body)
     converter = _Converter(picture_by_address, picture_by_id, old_site)
     blocks = _Blocks()
     converter.walk(_tree(body), _PLAIN, blocks)

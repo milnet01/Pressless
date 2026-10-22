@@ -166,6 +166,8 @@ def test_every_carried_item_lands_once(tmp_path):
         _item(2, status="draft", slug="a-draft"),
         _item(3, status="private", slug="a-private"),
         _item(4, status="trash", slug="binned"),
+        _item(8, status="pending", slug="for-review"),
+        _item(9, status="future", slug="scheduled"),
         _item(5, kind="page", slug="about"),
         _item(6, kind="attachment", status="inherit", slug="a-picture",
               attachment="2012/05/a.jpg"),
@@ -179,10 +181,11 @@ def test_every_carried_item_lands_once(tmp_path):
         f"{store.list_slugs(into, draft=False)!r}"
     )
     drafts = store.list_slugs(into, draft=True)
-    assert sorted(drafts) == ["a-draft", "a-private", "about"], (
-        f"the draft, the private post and the page arrive as drafts, once each: {drafts!r}"
+    assert sorted(drafts) == ["a-draft", "a-private", "about", "for-review", "scheduled"], (
+        f"the draft, the private, pending and scheduled posts and the page arrive as "
+        f"drafts, once each: {drafts!r}"
     )
-    assert (report.published, report.drafts) == (1, 3), f"the report's counts: {report!r}"
+    assert (report.published, report.drafts) == (1, 5), f"the report's counts: {report!r}"
 
 
 # ------------------------------------------------------------ INV-2 -------
@@ -385,6 +388,14 @@ def test_visible_lines_breaks_where_a_reader_sees_one():
         ("<p>a<!-- wp:paragraph -->b</p>", ("ab",)),
         ("<p>a \n\t b</p>", ("a b",)),
         ("<p>a <strong>b</strong> <em>c</em></p>", ("a b c",)),
+        # PRESS-0125 § 4.5's splits (INV-11 there): each list item, row, cell,
+        # rule and preformatted line is a line of its own.
+        ("<ul><li>one</li><li>two</li></ul>", ("one", "two")),
+        ("<table><tr><td>a</td><td>b</td></tr><tr><th>c</th></tr></table>",
+         ("a", "b", "c")),
+        ("a<hr>b", ("a", "b")),
+        ("<pre>one\ntwo</pre>", ("one", "two")),
+        ("a<script>var shown = 1;</script>b<style>p {}</style>", ("ab",)),
     ]
     for markup, lines in cases:
         assert visible_lines(markup) == lines, (
@@ -473,6 +484,28 @@ def test_photographs_arrive_under_their_names(tmp_path):
     assert report.photographs == 3, f"the report's count: {report!r}"
 
 
+def test_an_absent_original_is_listed_and_its_picture_kept_as_a_link(tmp_path):
+    """INV-6, as PRESS-0125 amended it (PRESS-0158): an attachment whose
+    original is absent is listed, and its picture keeps its address as a link.
+
+    Breaks when a missing original stops Import or gets a picture mark."""
+    address = f"{UPLOADS}/2012/05/gone.jpg"
+    export, originals, into = _world(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2012/05/gone.jpg"),
+        _item(1, slug="pictures", body=f'<p>x</p><img src="{address}">'),
+    ))
+
+    report = _run(export, originals, into)
+
+    written = store.read(store.path_for(into, "pictures", draft=False)).body
+    assert "{photo:" not in written, f"no mark names a file that is not there: {written!r}"
+    assert f"{{link: {address}}}" in written, f"the picture keeps its address: {written!r}"
+    assert [place for place, _why in report.unfetched] == ["2012/05/gone.jpg"], (
+        f"the missing original is listed by its upload path: {report.unfetched!r}"
+    )
+    assert report.photographs == 0 and not store.list_photographs(into)
+
+
 # ------------------------------------------------------------ INV-7 -------
 
 
@@ -495,22 +528,29 @@ def test_comments_follow_their_entry(tmp_path):
             _comment(102, parent="101", **contact(2)),
             _comment(103, kind="pingback", **contact(3)),
             _comment(104, approved="0", **contact(4)),
+            # PRESS-0158: its parent is the unapproved one, which is not carried.
+            _comment(105, parent="104", **contact(6)),
         ]),
     ))
 
     report = _run(export, originals, into)
 
     draft_comments = store.read_comments(store.comments_path_for(into, "same-31"))
-    assert [(c.identifier, c.parent) for c in draft_comments] == [("101", ""), ("102", "101")], (
-        f"the approved comment and its reply, 0 read as top level, and neither the "
-        f"pingback nor the unapproved one: {draft_comments!r}"
+    assert [(c.identifier, c.parent) for c in draft_comments] == [
+        ("101", ""), ("102", "101"), ("105", "")], (
+        f"the approved comment and its reply, 0 read as top level, a reply whose parent "
+        f"is not carried at the top, and neither the pingback nor the unapproved one: "
+        f"{draft_comments!r}"
     )
     live_comments = store.read_comments(store.comments_path_for(into, "same"))
     assert [c.identifier for c in live_comments] == ["501"], f"{live_comments!r}"
-    assert report.comments == 3, f"the report's count: {report!r}"
+    assert report.comments == 4, f"the report's count: {report!r}"
+    assert any("105" in what for what in _whats(report, "same-31")), (
+        f"the reply carried at the top is listed: {report.dropped!r}"
+    )
 
     written = b"".join(path.read_bytes() for path in into.rglob("*") if path.is_file())
-    for n in range(1, 6):
+    for n in range(1, 7):
         for value in contact(n).values():
             assert value.encode() not in written, (
                 f"a commenter's contact value reached a file Import wrote (fixture {n})"
@@ -550,22 +590,19 @@ def test_nothing_is_made_when_it_stops(tmp_path, capsys):
         f"main's words never name a full filesystem path: {said!r}"
     )
 
-    # A missing original stops it before anything is made.
-    missing = tmp_path / "missing"
-    missing.mkdir()
-    export, originals, into = _world(missing, _export(
-        _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
-        _item(1, slug="one"),
-    ))
-    _stops(missing, export, originals, into)
+    # An export that cannot be read stops it before anything is made.
+    unreadable = tmp_path / "unreadable"
+    unreadable.mkdir()
+    export, originals, into = _world(unreadable, "<rss><channel>")
+    _stops(unreadable, export, originals, into)
     assert not into.exists()
 
-    # A refusal the Store raises while writing -- a reply whose parent the
-    # export does not carry -- stops it and removes the folder of step 5.
+    # A refusal the Store raises while writing -- a category holding the
+    # list's own separator -- stops it and removes the folder of step 5.
     refused = tmp_path / "refused"
     refused.mkdir()
     export, originals, into = _world(refused, _export(
-        _item(1, slug="one", comments=[_comment(101, parent="999")]),
+        _item(1, slug="one"), _item(2, slug="two", categories=("a,b",)),
     ))
     _stops(refused, export, originals, into)
     assert not into.exists()
@@ -878,3 +915,140 @@ def test_a_report_prints_no_control_characters(tmp_path, monkeypatch, capsys):
     for stream in (printed.out, printed.err):
         assert "\x1b" not in stream and "‮" not in stream, repr(stream)
         assert "\\x1b" in stream, repr(stream)
+
+
+# ------------------------------------- PRESS-0125: what both runs share ----
+#
+# docs/specs/PRESS-0125-wordpress-import.md § 5. These hold for the
+# maintainer's run as for the Import anyone runs, since the code is shared
+# (§ 3 decision 8).
+
+
+def test_an_export_declaring_entities_is_refused(tmp_path, monkeypatch):
+    """PRESS-0125 INV-2: an export declaring a DOCTYPE or an entity is
+    refused before parsing, wherever in the prolog the declaration sits.
+
+    Breaks when the check reads only the first line, and the declaration
+    follows a comment."""
+    import xml.etree.ElementTree as ET
+
+    def parsed(*args, **kwargs):
+        raise AssertionError("the export reached xml.etree")
+
+    monkeypatch.setattr(ET, "fromstring", parsed)
+    monkeypatch.setattr(ET, "parse", parsed)
+    valid = _export(_item(1, slug="one"))
+    head, rest = valid.split("\n", 1)
+    nested = ('<!DOCTYPE rss [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;">]>\n')
+    for text in (head + "\n<!-- a comment first -->\n" + nested + rest,
+                 head + "\n" + '<!DOCTYPE rss SYSTEM "x.dtd">\n' + rest,
+                 head + "\n<!-- one -->\n<!ENTITY lone 'x'>\n" + rest):
+        export = tmp_path / "export.xml"
+        export.write_text(text, encoding="utf-8")
+        with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+            pressless_import.read(export)
+
+
+def test_a_post_body_naming_a_doctype_is_still_read(tmp_path):
+    """The refusal reads the prolog, not the body: a post quoting an HTML
+    page's `<!DOCTYPE html>` inside its CDATA is still an export."""
+    export = tmp_path / "export.xml"
+    export.write_text(_export(_item(1, slug="one", body="<p>&lt;!DOCTYPE html&gt;</p>"
+                                    "<!DOCTYPE html>")), encoding="utf-8")
+    assert pressless_import.read(export).channel.find("item") is not None
+
+
+def test_waiting_posts_arrive_as_drafts(tmp_path):
+    """PRESS-0125 INV-9: pending and scheduled posts arrive as drafts, each
+    listed with how it was waiting.
+
+    Breaks when _items keeps its three statuses."""
+    export, originals, into = _world(tmp_path, _export(
+        _item(1, status="pending", slug="for-review"),
+        _item(2, status="future", slug="scheduled", date="2031-02-03 04:05:00"),
+        _item(3, status="draft", slug="plain-draft"),
+    ))
+
+    report = _run(export, originals, into)
+
+    assert sorted(store.list_slugs(into, draft=True)) == ["for-review", "plain-draft",
+                                                          "scheduled"]
+    assert sorted(report.waiting) == [("for-review", ""),
+                                      ("scheduled", "2031-02-03 04:05")], (
+        f"each waiting post is listed with what it waited for: {report.waiting!r}"
+    )
+
+
+def test_a_dangling_reply_is_carried(tmp_path):
+    """PRESS-0125 INV-10: a reply whose parent is not among the comments
+    carried is written at the top level and listed.
+
+    Breaks when the reply is dropped, or written as is and refused."""
+    export, originals, into = _world(tmp_path, _export(
+        _item(1, slug="one", comments=[_comment(101), _comment(102, parent="999")]),
+    ))
+
+    report = _run(export, originals, into)
+
+    comments = store.read_comments(store.comments_path_for(into, "one"))
+    assert [(c.identifier, c.parent) for c in comments] == [("101", ""), ("102", "")]
+    assert any("102" in what for what in _whats(report, "one")), report.dropped
+
+
+def test_a_comment_that_cannot_be_held_is_listed_and_skipped(tmp_path):
+    """PRESS-0125 § 4.3: a comment whose date cannot be read, or whose
+    identifier is empty or repeated, is listed and skipped; Import carries on."""
+    export, originals, into = _world(tmp_path, _export(
+        _item(1, slug="one", comments=[
+            _comment(101), _comment(102, date="not a date"), _comment(""),
+            _comment(101, content="the same identifier again")]),
+    ))
+
+    report = _run(export, originals, into)
+
+    comments = store.read_comments(store.comments_path_for(into, "one"))
+    assert [c.identifier for c in comments] == ["101"]
+    assert comments[0].body == "Lovely.", "the first of a repeated identifier is kept"
+    assert len([w for w in _whats(report, "one") if "comment" in w]) == 3, report.dropped
+
+
+def test_script_and_style_are_dropped_and_listed():
+    """PRESS-0125 INV-11: script and style contents never reach a body, and
+    each is listed; list items, cells, rules and preformatted lines each keep
+    their own line in the conversion, as `visible_lines` sees them.
+
+    Breaks when only one of the two functions gains the splits."""
+    text, dropped = convert("<p>a</p><script>var shown = 1;</script><style>p {}</style>"
+                            "<p>b</p>", _by_address, _by_id)
+    assert "shown" not in text and "{}" not in text, text
+    assert any("<script>" in what for what in dropped), dropped
+    assert any("<style>" in what for what in dropped), dropped
+
+    for markup in ("<ul><li>one</li><li>two</li></ul>",
+                   "<table><tr><td>one</td><td>two</td></tr></table>",
+                   "<p>one</p><hr><p>two</p>",
+                   "<pre>one\ntwo</pre>"):
+        text, _dropped = convert(markup, _by_address, _by_id)
+        shown = visible_lines(render(text, lambda name: name))
+        assert shown == ("one", "two") == visible_lines(markup), (markup, text, shown)
+
+
+def test_a_classic_post_keeps_its_paragraphs():
+    """PRESS-0125 INV-8: a classic body keeps its paragraphs; block content
+    converts as it is.
+
+    Breaks when `is_markup` decides, so the `em` makes it one paragraph."""
+    from pressless_import import autop, wordpress_markup
+
+    classic = "One <em>word</em>.\n\nTwo."
+    text, _dropped = convert(classic, _by_address, _by_id, markup=wordpress_markup)
+    assert text == "One *word*.\n\nTwo.", text
+    assert visible_lines(autop(classic)) == ("One word.", "Two.")
+
+    blocks = ("<!-- wp:paragraph --><p>One <em>word</em>.\n\nTwo.</p><!-- /wp:paragraph -->")
+    text, _dropped = convert(blocks, _by_address, _by_id, markup=wordpress_markup)
+    assert text == "One *word*. Two.", f"block content converts as it is: {text!r}"
+
+    assert autop("a\nb") == "<p>a<br>\nb</p>", "a lone newline is a line break"
+    assert autop("<pre>a\n\nb</pre>") == "<pre>a\n\nb</pre>", "pre is left alone"
+    assert autop("<ul>\n<li>a</li>\n</ul>\n\nNext") == "<ul>\n<li>a</li>\n</ul>\n<p>Next</p>"
