@@ -1,7 +1,8 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0125 — Anyone brings their WordPress site in
 
-**Status:** spec draft (2026-10-22).
+**Status:** accepted (2026-10-22). Gated for one round by the user's
+budget; every verified finding fixed, not converged.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0125 (user decisions 2026-09-17, 2026-10-02 and
 2026-10-22).
@@ -103,9 +104,12 @@ setup's done page where the starter was not filled, and on the list page
 | `bring` | **Bring it in**, then the Report (§ 4.8) | Import has written (§ 4.7) |
 
 The two file boxes post to `Face.add_upload` routes, `/import/export` and
-`/import/media`, so neither file is held in memory. The export is kept as
-`import/export.xml` in the site's folder; `import/` is never published,
-since the Builder reads only the Store's own folders.
+`/import/media`, so neither file is held in memory. Every `import/` path
+here is in the open site's folder under `sites/`, never the Builder's
+site folder. The export is kept as `import/export.xml`; `import/` is
+never published, since the Builder reads only the Store's own folders.
+`import` joins `sites.SITE_NAMES` and `sitefile.LEFT_OUT`, so a saved
+site file never carries the export.
 
 ### 4.3 Reading the export
 
@@ -129,7 +133,8 @@ What is carried, by `wp:post_type`:
 
 Comments are read as `pressless_import._comments` reads them: approved
 only, and `comment_author_email` and `comment_author_IP` never read
-(PRESS-0006 INV-4).
+(PRESS-0006 INV-4). A comment whose date cannot be read, or whose
+identifier is empty or repeated, is listed and skipped.
 
 ### 4.4 Fetching the files
 
@@ -138,21 +143,24 @@ package that reaches the network; the maintainer's `run` never calls it
 (PRESS-0007 INV-10, as amended).
 
 For each attachment, the address is its `attachment_url`, and its place is
-`_upload_path` of that address, checked as `_photographs` checks it. The
-file goes to `import/media/<place>`. A file already there is not fetched
-again, so a stopped fetch resumes.
+`_upload_path` of that address, checked as `_photographs` checks it; a
+place it would stop on is refused, as below. The file goes to
+`import/media/<place>`. A file already there is not fetched again, so a
+stopped fetch resumes.
 
 A fetch:
 
 - uses only an `http` or `https` address the export names as an
   `attachment_url`;
 - resolves the host, and refuses unless every address it resolves to is
-  global (`ipaddress.ip_address(...).is_global`); each redirect, at most
+  global (`ipaddress.ip_address(...).is_global`), and connects to an
+  address it checked, never resolving again; each redirect, at most
   five, is checked the same way;
 - sends no cookie and no `Authorization` header, and a `User-Agent` of
   `Pressless/<version>`;
 - stops at 30 seconds without data, and at `builder.FILE_LARGEST` bytes;
-- refuses to start where `face._room(folder)` would leave less than
+- refuses to start where `room()` is below zero. `importing.py` passes
+  `room`, answering `face._room(folder)`, which already keeps
   `face._SPARE` free.
 
 A refused or failed fetch is one Report line, naming the place and why
@@ -161,7 +169,7 @@ A refused or failed fetch is one Report line, naming the place and why
 **The media ZIP** fills gaps by place: a member whose name ends in
 `<YYYY>/<MM>/<name>` matching a missing place is unpacked to it. Members
 are checked first as `sitefile` checks a site file — no absolute name,
-backslash, drive, `..` or link — and their total must fit `face._room`.
+backslash, drive, `..` or link — and their total must fit `room()`.
 Other members are ignored.
 
 ### 4.5 Entries
@@ -169,16 +177,21 @@ Other members are ignored.
 `_items` carries a post whose status is `publish` as published, and
 `draft`, `private`, `pending` or `future` as a draft. A `pending` or
 `future` post adds a Report line: "arrived as a draft: it was waiting for
-review" or "…: it was scheduled for <date>". Pages keep PRESS-0007's rule.
+review" or "…: it was scheduled for <date>". In Import's run `_items`
+takes no `page` item: § 4.6 carries pages, apart from the entries' slugs.
 
-**Which body is markup.** `convert` takes `markup: Callable[[str], bool]`.
+**Which body is markup.** `convert` takes `markup: Callable[[str], bool]`,
+and passes a body `markup` rejects through `autop` before converting it.
 Import's run passes `wordpress_markup`: a body holding `<!-- wp:` is block
-content and converts as it is. Any other body first passes `autop`, which
-does what WordPress's `wpautop` does to a classic post — a blank line
+content and converts as it is. `autop` does what WordPress's `wpautop`
+does to a classic post — a blank line
 ends a paragraph and a lone newline is a line break, outside `pre` and
-block-level tags. **`autop` is written from that described behaviour and
-never translated from WordPress's source**, which is GPL-licensed. The
-maintainer's run passes `is_markup`, unchanged.
+block-level tags. The self-check compares such a body's conversion with
+`autop(body)`, not the raw body. **`autop` is written from that described
+behaviour and never translated from WordPress's source**, which is
+GPL-licensed. The maintainer's run passes `is_markup`, unchanged, and
+never hands `convert` a body `is_markup` rejects: that body is written
+byte for byte (PRESS-0007 § 4.3).
 
 **Splitting.** `visible_lines`' `_SPLITS` gains `li`, `tr`, `td`, `th`,
 `hr` and `pre`, and the converter makes a line at each of them too, as
@@ -186,28 +199,31 @@ it does at the elements in its `_PARAGRAPHS`. Inside `pre` each newline
 is a line. `script` and `style` elements are dropped with their contents,
 each listed.
 
-**A picture with no original** — fetched, unpacked from the ZIP, or
-neither — is not written as a `{photo: …}` mark, because the Builder stops
+**A picture with no original in `photographs/`** — neither fetched nor
+unpacked from the ZIP — is not written as a `{photo: …}` mark, because the Builder stops
 on a photograph the folder lacks. The lookups return `None` for it, so it
 takes the converter's existing "no attachment" path and is listed.
 
-**A dangling reply** — one whose parent the export does not carry — is
+**A dangling reply** — one whose parent is not among the comments Import
+carries — is
 written with `parent=""` and listed, so `store.write_comments` accepts it.
 
 ### 4.6 Pages and the menu
 
 Each `page` item becomes `pages/<slug>.html` in `starter.new_page`'s
 shape, its title as the title, the stylesheets of the look chosen, and its
-body in place of the area after § 4.5's markup rule. Addresses under the
-old site's uploads folder whose file Import holds are rewritten to
-`../` + `builder.web_photograph(name)`; others stay and are listed. Blocks
+body in place of the area after § 4.5's markup rule. The page that
+becomes `index` sits at the root, its links without `../`, as
+`starter.fill` writes it. Addresses under the old site's uploads folder
+whose file Import holds are rewritten to the page's `../`, or nothing for
+`index`, + `builder.web_photograph(name)`, or `builder.web_file(name)` for
+a file in `files/`; others stay and are listed. Blocks
 reads what sections it can, and the rest is a code section (design.md
 § Pages, and how they are held).
 
 **The front page.** A page whose slug is `home` or whose title is the
-site's own becomes `index`; otherwise, where posts were carried, the
-journal is the front page, as for any Pressless site; otherwise the first
-page by `wp:menu_order`.
+site's own becomes `index`; otherwise the first page by `wp:menu_order`.
+Where the export holds no page, the starter's `index` is written.
 
 **The menu.** One menu is read, and the Report names it and any other:
 
@@ -217,9 +233,11 @@ page by `wp:menu_order`.
   from its `_menu_item_type`, `_menu_item_object_id` and `_menu_item_url`
   postmeta, in `wp:menu_order`.
 
-A link to a carried page or entry points at it; any other address stays
-as written. A child (`_menu_item_menu_item_parent` not `0`) joins the
-list after its parent and is listed. The links are written into the
+A link to a carried page becomes `{{UP}}pages/<slug>.html`, or
+`{{UP}}index.html` for the front page, and a link to a carried entry
+`{{UP}}` + `builder._entry_path(entry)` + `/index.html`; any other
+address stays as written. A child (`_menu_item_menu_item_parent` not
+`0`) joins the list after its parent and is listed. The links are written into the
 starter's navigation shape, so `menu.links` reads them.
 
 ### 4.7 Writing, whole or not at all
@@ -228,14 +246,20 @@ starter's navigation shape, so `menu.links` reads them.
 work, in this order: read and resolve slugs (PRESS-0007 § 4.4); convert
 every body; write every Store file into `import/work/` through Store
 calls, moving each held file from `import/media/` into
-`photographs/`; write the starter's header, footer and templates, the
+`photographs/`, or into `files/` where `builder.photograph_format`
+returns `None`; write the starter's header, footer and templates, the
 look (`look.save(look.defaults(layout), "")`) and the journal switch, on
 where any post was carried; then move each folder in `import/work/` into
-the site's folder, by rename.
+the site's folder, by rename. Where the site's folder already holds that
+folder — `templates/`, which `templates.register` seeds at every launch —
+each file moves in alone, and a file already there is kept.
 
 A stop before the moves deletes `import/work/` and leaves the Store
-empty. A stop part way through the moves leaves `import/moving`; the next
-start finishes them, as `sites.move_in` does. After the last move,
+empty. `import/moving` is an empty file written before the first move
+and deleted after the last. While it exists,
+`importing.finish_moves(folder)`, which `__main__` calls at start as it
+calls `sites.move_in`, moves what is left in `import/work/`; the wizard
+cannot, since `holds_a_site` is True once a move lands. After the last move,
 `import/media/` and `import/work/` are deleted, and `import/export.xml`
 and `import/report.txt` stay.
 
@@ -269,8 +293,9 @@ the entry, page or file, and what happened to it.
   `http` or `https`, at a global address, redirects included. *Test:*
   `tests/test_importer_fetch.py` — a fake resolver answering `127.0.0.1`,
   `10.0.0.1` or `169.254.169.254`, a `file:` address, and a redirect from
-  a global host to `127.0.0.1`, are each refused and listed, with no
-  connection opened.
+  a global host to `127.0.0.1`, and a resolver whose second answer is
+  `127.0.0.1`, are each refused and listed, with no connection opened to
+  a refused address.
   *Breaks when:* only the first hop is checked.
 
 - **INV-4** — A fetch sends no cookie and no `Authorization` header.
@@ -328,7 +353,8 @@ the entry, page or file, and what happened to it.
 - **INV-13** — The menu's links reach carried pages and entries.
   *Test:* `tests/test_importer.py::test_the_menu_points_at_carried_pages`
   — one fixture per source (`wp_navigation`, `nav_menu_item`): each link
-  to a carried page reads as `pages/<slug>.html` through `menu.links`.
+  to a carried page reads as `{{UP}}pages/<slug>.html` through
+  `menu.links`.
   *Breaks when:* links keep the old site's addresses.
 
 - **INV-14** — Every value in the Report page is escaped. *Test:*
@@ -358,6 +384,8 @@ the entry, page or file, and what happened to it.
   and the menu (INV-13).
 - `tests/test_importer_fetch.py` — the fetch (INV-3, INV-4), through a
   fake resolver and a recording opener; no network.
+- `tests/test_network_timeouts.py` walks `src/pressless_import/` too, so
+  § 4.4's 30-second stop is checked.
 - `tests/test_importing.py` — the wizard's routes on a Face test
   instance (INV-1, INV-14).
 - INV-12 has no test (§ 10).
@@ -425,6 +453,9 @@ Each named test is seen to fail against today's code before its change.
   "one site per copy" gives way to PRESS-0223's sites; the parts table,
   § Setup's three starts and *What Import brings across* say where the
   files come from; the disk table names the `import` folder.
+- **PRESS-0262** INV-9, amended when this is built: it holds within
+  `src/pressless/`, and `pressless_import.fetch` is the one network
+  module outside it.
 - **The privacy policy on the Hub**, if it lists what Pressless contacts:
   Import contacts the user's old site. Checked when this ships.
 - **CHANGELOG**, at release.
