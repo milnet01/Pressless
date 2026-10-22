@@ -3701,6 +3701,17 @@ it decides how pages, the menu and the look are held.
   Pressless-data\sites\site-1 exists and Pressless-check\Pressless-backups
   holds a backup; then delete Pressless-check.
   Then python3 scripts/sign-release.py v0.10.0, then (4) the hub message.
+  2026-10-22, the 0.10.0 draft zip on the Windows box, driven from
+  Linux over Edge 155's debug port (not by hand):
+  - passed (2): the top bar's nine links are buttons: 1px border,
+    round ends, no underline. At 1280 wide the bar wraps to two rows.
+  - passed (3): first start moved the old-layout Pressless-data into
+    sites\site-1, and a backup zip landed in Pressless-backups beside it.
+    Sites listed the moved site. Start a new site restarted into site-2's
+    setup in a new tab; Open on the other did the same with site-1.
+    The old port refused within 3 seconds of a restart.
+  Box folder, Edge profile and task removed. Owed: sign-release.py
+  v0.10.0, then (4) the hub message.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
