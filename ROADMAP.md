@@ -11667,13 +11667,21 @@ already-built code ships in whichever release comes next.
   Source: hand-check-2026-10-15 0.9.0 draft, Windows box.
   Lanes: Face, Publishing.
 
-- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, once Pillow reads the format itself.**
+- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
   Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
   Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
   and the BSD readers need numpy. Most browsers do not show JPEG XL,
   so the original is kept and the web copy is published as WebP or
   AVIF. Re-check Pillow's release notes at each dependency sweep.
-  **Layman:** You will be able to add JPEG XL photographs once the picture library Pressless uses can read them without making the download much bigger.
+  Decided by the user 2026-10-22: JPEG XL support is a plugin the user
+  downloads separately from Pressless, so it no longer waits on Pillow.
+  Kept apart, the GPL-3.0 reader or a numpy-backed BSD one never ships
+  inside Pressless or grows its download. The design has no plugin
+  mechanism yet, so this item designs the first one: how the packaged
+  app finds and loads it, matching the bundled Python on each system,
+  and checking that the download is the genuine one before it runs.
+  Needs a spec before building.
+  **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
   Lanes: Builder, Face.
