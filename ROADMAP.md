@@ -3712,6 +3712,17 @@ it decides how pages, the menu and the look are held.
     The old port refused within 3 seconds of a restart.
   Box folder, Edge profile and task removed. Owed: sign-release.py
   v0.10.0, then (4) the hub message.
+  2026-10-22, 0.10.1 (c1fe0b3): gate on the bumped tree green, Linux 1394
+  passed, Windows box 1299. windows-gate.sh --browsers on c1fe0b3: Edge
+  155 120/120, Firefox 146 120/120. Draft zip on the box, driven over
+  Edge's debug port: console window shown; the vault key served setup;
+  a real publish through the Publish button reached the live test site;
+  the Import offer and /import's five steps ran on an empty copy in
+  Edge, a non-WordPress file was refused, a small export came in; Chrome
+  155 loaded home, an editor and /import with no page errors. Box
+  cleaned; the github@ and google@Pressless vault entries were kept,
+  as the next round needs them. Signed and published; hub told
+  (message 819).
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -11840,6 +11851,9 @@ already-built code ships in whichever release comes next.
   PRESS-0007's Dropped rows, which the maintainer's run shares, so the
   wording change reaches both. Decided by the user 2026-10-22: after
   PRESS-0125's release, not before.
+  2026-10-22, from the 0.10.1 box round: Import's step 2 says "1 pages"
+  (words.py import.media.counts has no singular). Fix it with this
+  item's wording pass.
   **Layman:** After bringing a WordPress site in, the list of what changed should make sense to someone who has never seen web code.
   Kind: ux.
   Source: user-decision-2026-10-22 PRESS-0125 hand run.
