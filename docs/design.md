@@ -26,7 +26,7 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Settings** | What is true of this machine and this copy of Pressless rather than of the site: where the site folder is, the site's address, which repository to publish to, the Daily Prompt filter, the untouchable list, where **both** secrets are kept, the measurement id the counting code carries, and the property id Insights is queried by. | Everything. It depends on nothing. |
 | **Credentials** | Keeping the two secrets themselves — the GitHub publishing key or GitHub sign-in, and the Google reporting authorisation — in the operating system's keyring, or in an owner-only file where there is no keyring. Where a file cannot be made private to one user — Windows, where the read-only flag is all there is — there is no fallback: setup stops and says so. Hands one back when asked. | Settings, the Store, GitHub, Google, the browser — everything it needs is handed to it. |
 | **Store** | Everything that shapes the site: entries as marked text, the pages, the templates, the header, footer and menu, the look, the user's own script, the site's identity, the historical comments, and the photographs and files the site uses. Drafts kept apart from what is published. Reads, writes, lists. | GitHub, the browser |
-| **Import** | Turning a site from elsewhere — a WordPress export with its media download, or a folder of web pages — into Store files, and listing, item by item, what could not come across (S13). Runs into an empty Store only (rule 9). | GitHub, the browser, the Face |
+| **Import** | Turning a site from elsewhere — a WordPress export, its files fetched from the old site or taken from a media download, or a folder of web pages — into Store files, and listing, item by item, what could not come across (S13). Runs into an empty Store only (rule 9). | GitHub, the browser, the Face |
 | **Marks** | The entries' small styling language. Turns marked-up text into a structure, and a structure into HTML. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
 | **Blocks** | The pages' language. Owns the table of ready-made sections a page is built from, the interactive pieces included; reads a stored page into its sections, and turns sections into HTML. Anything it cannot read as a section is a code section, kept byte-for-byte. Pure calculation, touches no disk and no network. | Files, GitHub, the browser |
 | **Builder** | Turning the Store plus Settings into a finished site folder: every page through Blocks, without its marks, every entry through Marks, the menu, the stylesheet the look gives, the counting code, and the photographs, files and scripts the site uses. This is `build_blog.py` re-homed and separated from its first writer. | GitHub, the browser, where the writing came from |
@@ -99,12 +99,14 @@ which marks cannot express without becoming HTML.
    writing or publishing may depend on it. If Google is unreachable, or
    the user never sets it up at all, every sign but S11 still holds —
    the dashboard is the only thing that says so.
-9. **Import may read what the user points it at and write into an empty
-   Store — and nothing else.** The Face starts it, as one of setup's
-   three starts (§ Setup's three starts), and nothing depends on it once
-   it has run. It never runs over a Store that holds a site: one site per
-   copy of Pressless, as discovery fixes. Decided with the user
-   2026-10-02. The maintainer's Import that brought the first writer's
+9. **Import may read what the user points it at, may fetch from the old
+   site the files that export names, and writes only into an empty Store
+   and its own `import` folder — and nothing else.** The Face starts it,
+   as one of setup's three starts (§ Setup's three starts), and nothing
+   depends on it once it has run. It never runs over a Store that holds a
+   site; with several sites (PRESS-0223), it brings one into a site whose
+   Store is empty. Decided with the user 2026-10-02; the fetch,
+   2026-10-22. The maintainer's Import that brought the first writer's
    site in (PRESS-0007) is this part's first form; PRESS-0125 is the one
    anyone runs.
 10. **Only the Face reaches Credentials.** It fetches a secret and hands
@@ -135,8 +137,8 @@ ways, and only one:
   added file, and each published web-sized photograph as its original.
   The Builder's naming rule maps a published name back to the original
   name the marks use, and the take-in asks it to.
-- **An Import** (S13): a WordPress export with its media download, or a
-  folder of web pages.
+- **An Import** (S13): a WordPress export, its files fetched from the old
+  site or taken from a media download, or a folder of web pages.
 
 **A publish refuses when it would replace a site by accident**, and the
 live site is unchanged. Both checks run before the build.
@@ -389,10 +391,10 @@ publish. **What could not come across is listed item by item** (S13).
   as they are on WordPress; their email addresses and IP addresses are
   not, and Import must not carry them into the Store at all.
 - **The photographs and files, and every image reference rewritten to
-  the picture mark.** They come from the media download, and Pressless's
-  setup steps tell the user, one step at a time, how to get it from
-  WordPress (PRESS-0125). Skipped, every imported entry goes on pointing
-  at the site the user is leaving.
+  the picture mark.** Import fetches them from the old site while it is
+  online, and a media download fills what it could not fetch
+  (PRESS-0125). Skipped, every imported entry goes on pointing at the
+  site the user is leaving.
 - **The pages, as HTML.** Whatever no section fits, Blocks reads as a
   code section, still editable (§ Pages, and how they are held). The
   site's menu becomes the navigation file.
@@ -470,7 +472,7 @@ also published.
 | Where | What lives there | Published? |
 |---|---|---|
 | **The site folder** — what the Builder writes and the Publisher is handed | Everything the Builder writes, `content/` included: the published entries, pages, templates, header, footer, menu, look, identity, site-wide script and historical comments, in their source form; and the web-sized photographs, added files and scripts the site uses | **Yes**, all of it |
-| **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder, whose stylesheet the Builder writes from the look's draft and which every preview is styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, the `wizards` folder where a wizard keeps how far it got, never a key (PRESS-0212), and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
+| **Pressless's own folder**, outside the site folder | All the user's work — published and draft alike, kept apart — photograph originals and added files, the settings file, the rolling log, the Insights cache, the preview folder, whose stylesheet the Builder writes from the look's draft and which every preview is styled from, the bin, the fetch area a state of the repository is laid out in, emptied when the sequence reading it ends, the updater's `updates.json` and `update.log`, the `wizards` folder where a wizard keeps how far it got, never a key (PRESS-0212), the `import` folder where an Import keeps the export, the files it fetched and its Report (PRESS-0125), and the `pressless.lock` that keeps a second Pressless off the folder — and, only where there is no keyring, the credential file ADR-0003 falls back to, owner-readable and nothing else | **Never** |
 | **The operating system's keyring** | Both credentials — the publishing key and the Google authorisation | Never |
 
 **Pressless's own folder keeps one folder per site, under `sites/`**

@@ -1,6 +1,6 @@
 # PRESS-0007 — Import: twelve years carried across, once, with nothing lost
 
-**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11; decisions 10, 12 and 13 built 2026-09-17. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget: four verified, four fixed, not converged.
+**Status:** accepted (2026-09-11). Two cold-eyes loops, both folded in, nothing deferred — the run reached the spec cap of 2. A calm cap: three of loop 2's eight findings landed on text loop 1 wrote. Built only after PRESS-0004's link and quote marks. Amended 2026-09-11 after a census of the export: §4.3 carries a hex colour set on a paragraph, link, `<div>` or heading, and lists a social-link block's address. Gated for one loop by the user's amendment budget; not converged. Built 2026-09-11; decisions 10, 12 and 13 built 2026-09-17. Amended 2026-09-17 once PRESS-0008 was accepted: decision 10 settled, decisions 12 and 13 added, §4.9 written. Gated for one loop by the same budget: four verified, four fixed, not converged. Amended 2026-10-22 by PRESS-0125, which reuses this code for an Import anyone runs: pending and scheduled posts arrive as drafts, a missing original and a dangling reply are listed and the run carries on, lists, tables and preformatted text keep their lines, and script and style contents are dropped.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0007 (`docs/design.md` § The parts, rule 9, *What
 Import brings across*).
@@ -52,6 +52,8 @@ nothing in his copy of Pressless runs Import.
 3. **Everything is carried** (`docs/design.md` *What Import brings
    across*): published posts as published entries, drafts and private posts
    as drafts, trashed posts never. Daily Prompt entries keep their tag.
+   Pending and scheduled posts arrive as drafts, each listed (PRESS-0157,
+   decided by the user 2026-09-26).
 4. **(decided here) The WordPress pages come across as drafts.** They are
    his writing, and the rule is to carry it. The live site's own pages
    replace them on the site (decision 10).
@@ -89,10 +91,9 @@ nothing in his copy of Pressless runs Import.
     site's folder is carried. **The maintainer runs Import once, after both halves
     are built**, since decision 8 forbids adding to a folder already made.
 11. **(decided here) Import is a package of its own, `pressless_import`,
-    beside `pressless` and outside it.** Nothing in Pressless imports it, so
-    it can be deleted without changing what the others do (rule 9), and the
-    Face's walk of `pressless`'s failure types (PRESS-0011 INV-1) never
-    meets it. The packaged program does not carry it.
+    beside `pressless` and outside it.** The Face's walk of `pressless`'s
+    failure types (PRESS-0011 INV-1) never meets it. Amended 2026-10-22:
+    PRESS-0125's wizard imports it, so the packaged program carries it.
 12. **Import copies the live site's `assets/` folder once into `INTO`, for
     previews only.** Decided by the user 2026-09-13 (PRESS-0008 §14). The
     Face serves that copy beside a preview page and never publishes it
@@ -169,8 +170,10 @@ which is a place in the export rather than on his machine.
 - The export's `wp:` namespace is read off the document, not pinned. WXR
   has shipped several.
 - An item is carried where its `post_type` is `post` and its status is
-  `publish`, `draft` or `private`, or its `post_type` is `page`. Every other
-  item type is WordPress's own machinery and is not his writing.
+  `publish`, `draft`, `private`, `pending` or `future`, or its `post_type`
+  is `page`. Every other item type is WordPress's own machinery and is not
+  his writing. A `pending` or `future` post is a draft, and
+  `Report.dropped` says how it arrived (PRESS-0125 § 4.5).
 - The date is `wp:post_date`, the wall clock the export carries, with no
   zone added (PRESS-0005 §4.2).
 - Categories and tags are each `<category>`'s `nicename`, by its domain.
@@ -183,7 +186,9 @@ which is a place in the export rather than on his machine.
 rather than running `wpautop()` over it** (PRESS-0004 §2): it holds
 `<!-- wp:`, or a `<` followed by `p`, `div`, `img`, `a`, `blockquote`,
 `figure`, `ul`, `ol`, `h1` to `h6`, `iframe`, `em` or `strong` and then a word
-boundary, in any case. That is `is_markup`.
+boundary, in any case. That is `is_markup`. It is this run's test, passed
+to `convert`; the Import anyone runs decides as WordPress did (PRESS-0125
+§ 4.5).
 
 **Every other body is plain, and is written byte for byte.** It is already
 the Store's format, and Marks renders it as today's `wpautop()` does:
@@ -233,11 +238,17 @@ picture with no attachment keeps its address as a link. A picture's `alt` is
 listed with its text and the picture's Store name, one line per picture
 (decision 13).
 
+**Two exceptions to that** (PRESS-0161, decided by the user 2026-09-26):
+`li`, `tr`, `td`, `th`, `hr` and `pre` each end a line, a `pre`'s own
+newlines included; and `script` and `style` are dropped with their
+contents, each listed.
+
 **Import checks its own work.** For each converted body it compares
 `visible_lines` of the WordPress body with `visible_lines` of what
 `marks.render` gives the converted body. Visible lines split at each `<br>`,
-`<img>`, `<div>` and `<h1>` to `<h6>`, and at each paragraph, quotation and
-figure boundary, with character references decoded, block comments removed
+`<img>`, `<div>`, `<h1>` to `<h6>`, `<li>`, `<tr>`, `<td>`, `<th>`, `<hr>`
+and `<pre>`, at each newline inside `<pre>`, and at each paragraph,
+quotation and figure boundary, with character references decoded, block comments removed
 and whitespace inside a line collapsed. Today's generator passes a markup
 body through as it is, so the body's own text is what the live site shows,
 and the check needs nothing but the body.
@@ -273,8 +284,8 @@ is recorded in `Report.renamed_slugs`.
 ### 4.5 Photographs
 
 Every attachment's original is at `ORIGINALS/<YYYY>/<MM>/<name>`, the same
-path WordPress uploaded it to. Import copies each one — every attachment,
-videos included — byte for byte to the Store's photographs folder under
+path WordPress uploaded it to. Import copies each one it finds — every
+attachment, videos included — byte for byte to the Store's photographs folder under
 decision 6's name. It never re-encodes or resizes one: the Builder makes
 the web copies (PRESS-0008).
 
@@ -293,27 +304,31 @@ named for that item's Store slug (PRESS-0006 §4.1).
 `comment_id` fills `identifier`; a `comment_parent` of `0` becomes `""`
 (PRESS-0006 §4.2). **The comment's email address and IP address are never
 read into anything Import holds**, so no route can write them into the
-Store (PRESS-0006 INV-4).
+Store (PRESS-0006 INV-4). A reply whose parent the export does not carry
+is carried with `parent` `""` and listed, so the Store accepts the set
+(PRESS-0158, decided by the user 2026-09-26).
 
 ### 4.7 Order of work
 
 1. Refuse unless `INTO` does not exist.
 2. Read the export; resolve every slug and its collisions (§4.4).
-3. Trace every picture, and check every original exists (§4.5). Read the
-   fixed pages and the templates, and check `assets/` exists (§4.9).
+3. Trace every picture, and list each original that is missing (§4.5);
+   its pictures take the no-attachment path of §4.3 (PRESS-0158). Read
+   the fixed pages and the templates, and check `assets/` exists (§4.9).
 4. Convert every markup body (§4.3), and build every entry and comment set.
 5. Write everything into a new folder beside `INTO`, through the Store's
    own calls, and copy the originals and the preview copy into it.
 6. Only when every write has succeeded, rename that folder to `INTO`.
 
 **Any failure stops Import with `ImportStopped` and removes the folder of
-step 5**, whether it is a missing original, an unreadable export or a
-refusal the Store raises during step 5. So `INTO` appears whole or not at
+step 5**, whether it is an unreadable export or a refusal the Store
+raises during step 5. So `INTO` appears whole or not at
 all, and the Store's own refusals need no copy here (design rule 7).
 
 ### 4.8 What Import never does
 
-- It never reaches the network. Nothing it reads is fetched.
+- It never reaches the network. Nothing it reads is fetched. (The Import
+  anyone runs fetches media; PRESS-0125 § 4.4 owns that.)
 - It never writes outside the folder of step 5 and `INTO`, and never
   changes the export, an original, the live site's folder or a template.
 - It never reads Settings or Credentials, and never writes a settings
@@ -441,12 +456,14 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
 
 - **INV-8** — `INTO` appears whole or not at all.
   *Test:* `tests/test_importer.py::test_nothing_is_made_when_it_stops` — an
-  existing `INTO`, a missing original, and a reply whose parent the export
-  does not carry, which the Store refuses during writing; each raises
+  existing `INTO`, an unreadable export, and a write the Store refuses
+  during writing; each raises
   `ImportStopped`, leaves no `INTO` where there was none, changes an
   existing one not at all, and leaves no folder of step 5 behind.
   *Breaks when:* entries are written into `INTO` directly, or the folder of
-  step 5 survives a failure.
+  step 5 survives a failure. (Amended 2026-10-22: a missing original and a
+  dangling reply no longer stop Import, so they left the fixture;
+  PRESS-0125 INV-5 and INV-10 lock what happens to them.)
 
 - **INV-9** — What Import could not convert is in `Report.dropped`, by entry.
   *Test:* `tests/test_importer.py::test_what_is_dropped_is_reported` — a
@@ -457,12 +474,15 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
   *Breaks when:* an unknown tag is removed without a record, or an `alt` is
   listed without its text or its picture.
 
-- **INV-10** — Import reaches no network.
+- **INV-10** — Import reaches no network. Amended 2026-10-22: every module
+  but `pressless_import.fetch`, which PRESS-0125 § 4.4 owns, and `run`
+  never calls that one.
   *Test:* `tests/test_importer.py::test_import_reaches_no_network` — walks
-  every module of `pressless_import` for its imports and admits only an
-  allowlist, as PRESS-0004 INV-7's test does, comparing full dotted names so
-  that `urllib.parse` is admitted and `urllib.request` is not.
-  *Breaks when:* a picture is fetched from the old site.
+  every module of `pressless_import` but `fetch` for its imports and admits
+  only an allowlist, as PRESS-0004 INV-7's test does, comparing full dotted
+  names so that `urllib.parse` is admitted and `urllib.request` is not.
+  *Breaks when:* a picture is fetched from the old site by the maintainer's
+  run, or a module other than `fetch` gains a network import.
 
 - **INV-11** — Each fixed page is the live page with its marker pairs emptied
   and its stamps removed, and nothing else changed; and `header` with
@@ -500,7 +520,8 @@ that `INTO/<PREVIEW_ASSETS>/` holds what `assets/` holds. A live site with no
 | A fixed page's markers do not pair, or `pages/` holds a file that is not a fixed page or holds `index.html` | Stops, naming the file; nothing is made |
 | The header template holds no navigation element, or more than one | Stops, naming the file; nothing is made |
 | The export cannot be read, or is not a WXR export | Stops; nothing is made |
-| An original is missing | Stops, naming the file by its own name; nothing is made |
+| An original is missing | Listed; its pictures take the no-attachment path, and Import carries on |
+| A reply's parent is not in the export | Carried as a top-level comment; listed |
 | The Store refuses a write | Stops, naming the entry by its slug; the folder of step 5 is removed |
 | A slug is contested | Decision 5; recorded in the report |
 | A slug the Store refuses | Treated as contested; recorded |
@@ -582,6 +603,8 @@ mutation-probed once it lands.
 
 ## 11. Cross-doc impact
 
+- PRESS-0125 — amends this spec, 2026-10-22: decision 3, decision 11,
+  §4.2, §4.3, §4.5, §4.6, §4.7, §4.8, INV-8, INV-10 and §6.
 - `docs/design.md` — rule 9 and *What Import brings across* amended
   2026-09-11 for decision 1, and gated.
 - PRESS-0004 — §3 decision 4 adds the link and quote marks, and gated.

@@ -5340,6 +5340,16 @@ it can then be changed.
   editor, since what a page becomes is decided there.
   2026-10-03: the Import anyone runs is a wizard under PRESS-0220, with
   PRESS-0218 and PRESS-0210 as its other two starting points.
+  Decided by the user 2026-10-22, replacing the media half of the
+  2026-10-02 decision: Import fetches each photograph and file from the
+  old site while it is still online, by the addresses the export
+  carries. What it cannot fetch is listed, and a media download can fill
+  the gaps. Self-hosted WordPress has no one-step media download.
+  Also 2026-10-22: design.md rule 9 already lets the Face start Import
+  (rewritten 2026-10-02), so this body's first paragraph is history.
+  2026-10-22: spec drafted, docs/specs/PRESS-0125-wordpress-import.md,
+  with PRESS-0007 and docs/design.md amended beside it. Review owed
+  before building.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
@@ -5359,6 +5369,8 @@ it can then be changed.
   Waits on PRESS-0125's spec, as decided; the current Import runs only
   on the maintainer's machine, so nothing is built for it before then.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
+  2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
+  section 4.5 (INV-8) and PRESS-0007 section 4.3. Review owed.
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
@@ -5375,6 +5387,8 @@ it can then be changed.
   as drafts, and say in the Report how each arrived.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
+  2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
+  section 4.5 (INV-9) and PRESS-0007 section 4.2. Review owed.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
@@ -5390,6 +5404,9 @@ it can then be changed.
   missing original in the Report and carry on.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
+  2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
+  sections 4.5 (INV-5, INV-10) and PRESS-0007 sections 4.6, 4.7 and 6.
+  Review owed.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
@@ -5412,6 +5429,8 @@ it can then be changed.
   visible_lines; drop script and style contents with a listing.
   Waits on PRESS-0125's spec, as decided; nothing is built before then.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
+  2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
+  section 4.5 (INV-11) and PRESS-0007 section 4.3. Review owed.
   **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
