@@ -5319,7 +5319,7 @@ it can then be changed.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: setup, Publisher, Import.
 
-- 📋 [PRESS-0125] **An Import anyone can run, to bring their own WordPress site in.**
+- 🚧 [PRESS-0125] **An Import anyone can run, to bring their own WordPress site in.**
   PRESS-0007's Import runs on the maintainer's machine only. It reads
   the photograph originals and the sibling generator's header and footer
   templates, which a general user does not have. design.md rule 9 records
@@ -5362,12 +5362,21 @@ it can then be changed.
   private name, which design rule 7 forbids from pressless_import. Give
   the Builder a public call for an entry's address, or have the Face
   hand it in.
+  2026-10-22: built, af1c654 to b6a353c: the shared fixes, fetch.py, the
+  public Builder, starter and sitefile calls, bring_in, the /import
+  wizard, and the spec's as-built record (builder.entry_path replaced
+  _entry_path). PRESS-0262 INV-9 amended. The gate passed on Linux and
+  the Windows box. Still owed before release: spec § 7's hand runs (a
+  fresh block-theme WordPress site and a classic-menu one, exported and
+  brought in; the export steps' wording against WordPress's screen), a
+  look at the wizard in a browser, and the Hub privacy policy check (§
+  11: Import contacts the user's old site).
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
   Lanes: Import, Face.
 
-- 📋 [PRESS-0156] **Import decides what counts as HTML by the first writer's archive, and a link or italic word erases every paragraph for other blogs.**
+- ✅ [PRESS-0156] **Import decides what counts as HTML by the first writer's archive, and a link or italic word erases every paragraph for other blogs.**
   _html.py treats any post holding p, em, a, img and similar tags as
   markup and collapses its newlines. That matches PRESS-0007 section
   4.3, whose premise is the sibling generator passing such bodies
@@ -5383,12 +5392,15 @@ it can then be changed.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
   section 4.5 (INV-8) and PRESS-0007 section 4.3. Review owed.
+  2026-10-22: built in af1c654. convert takes markup; a body
+  wordpress_markup rejects goes through autop, written from PRESS-0125 §
+  4.5's description. Test: test_a_classic_post_keeps_its_paragraphs.
   **Layman:** Opening Import to other WordPress blogs would flatten many of their posts into single paragraphs.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #34.
   Lanes: import.
 
-- 📋 [PRESS-0157] **Import skips pending and scheduled posts without a word.**
+- ✅ [PRESS-0157] **Import skips pending and scheduled posts without a word.**
   pressless_import keeps only publish, draft and private posts;
   pending and future ones, and other post types, are skipped with
   nothing in the Report. docs/design.md says everything is carried,
@@ -5401,12 +5413,15 @@ it can then be changed.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
   section 4.5 (INV-9) and PRESS-0007 section 4.2. Review owed.
+  2026-10-22: built in af1c654. Pending and scheduled posts arrive as
+  drafts, each in Report.waiting. Test:
+  test_waiting_posts_arrive_as_drafts.
   **Layman:** Posts waiting for review or scheduled for later would vanish on import with no mention.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #39.
   Lanes: import.
 
-- 📋 [PRESS-0158] **One dangling reply or one missing photograph original stops a whole import.**
+- ✅ [PRESS-0158] **One dangling reply or one missing photograph original stops a whole import.**
   An approved reply to a trashed parent (the Store's DanglingReply) or
   an attachment whose original is missing stops the run, as PRESS-0007
   INV-8 requires. For a general user's old blog that cannot be edited,
@@ -5419,12 +5434,17 @@ it can then be changed.
   2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
   sections 4.5 (INV-5, INV-10) and PRESS-0007 sections 4.6, 4.7 and 6.
   Review owed.
+  2026-10-22: built in af1c654. A missing original is listed in
+  Report.unfetched and its pictures stay links; a dangling reply goes to
+  the top, listed; a comment the Store cannot hold is listed and
+  skipped. Tests: test_a_dangling_reply_is_carried,
+  test_an_absent_original_is_listed_and_its_picture_kept_as_a_link.
   **Layman:** A years-old blog with one broken comment or missing picture could not be imported at all.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #40.
   Lanes: import.
 
-- 📋 [PRESS-0161] **Import runs list items and table cells together, and shows script and style text as words.**
+- ✅ [PRESS-0161] **Import runs list items and table cells together, and shows script and style text as words.**
   _html.py splits lines only at br, img, div, p, blockquote, figure and
   headings, the list PRESS-0007 section 4.3 gives. So <li>one</li>
   <li>two</li> becomes "onetwo", table cells fuse, pre loses its line
@@ -5443,6 +5463,10 @@ it can then be changed.
   Confirmed 2026-10-03: still waits on PRESS-0125's spec.
   2026-10-22: written into docs/specs/PRESS-0125-wordpress-import.md
   section 4.5 (INV-11) and PRESS-0007 section 4.3. Review owed.
+  2026-10-22: built in af1c654. li, tr, td, th, hr and pre keep their
+  lines in the converter and visible_lines; script and style are
+  dropped, listed. The archive's INV-5 self-check passed with the new
+  splits. Test: test_script_and_style_are_dropped_and_listed.
   **Layman:** A bulleted list in an imported post comes out as one run-on line, and hidden page code can appear as visible text.
   Kind: review-fix.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
