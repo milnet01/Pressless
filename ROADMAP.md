@@ -5356,6 +5356,12 @@ it can then be changed.
   PRESS-0007's amendment gated 2026-10-22, one round by the user's budget:
   ten verified, ten fixed, one dismissed, not converged (commit 37cdd8e;
   loop log row 5).
+  2026-10-22: docs/design.md's amendment gated for one round (loop 18 of
+  its log): three Q2 findings fixed, not converged. Open for the build:
+  § 4.6 builds entry links with builder._entry_path, the Builder's
+  private name, which design rule 7 forbids from pressless_import. Give
+  the Builder a public call for an entry's address, or have the Face
+  hand it in.
   **Layman:** Someone with a WordPress blog can move it into Pressless themselves, without asking the maintainer.
   Kind: feature.
   Source: user-decision-2026-09-17 PRESS-0124 fork 3.
