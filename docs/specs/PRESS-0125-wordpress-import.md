@@ -195,10 +195,11 @@ takes a `page` item only where its status is one of those four drafts'
 statuses: it arrives as a draft entry, ranked as a page by PRESS-0007
 decision 5, and the Report lists it as a page WordPress had not
 published. A Pressless page is always on the site, so a page its writer
-kept off the web stays a draft. § 4.6 carries every other page.
+kept off the web stays a draft. § 4.6 carries a `publish` page; a page
+of any other status is not carried.
 
-**A draft's slug.** In Import's run a draft whose `post_name` resolves
-to nothing takes `resolve_slug` of its title, and its post id only where
+**A draft's slug.** In Import's run an item arriving as a draft, an
+unpublished page included, whose `post_name` resolves to nothing takes `resolve_slug` of its title, and its post id only where
 that is empty too. WordPress leaves a draft's `post_name` empty until it
 is published, so the post id would become its address. A published item
 keeps PRESS-0007 § 4.4's rule unchanged: its address is live.
@@ -206,8 +207,8 @@ keeps PRESS-0007 § 4.4's rule unchanged: its address is live.
 **The featured image.** In Import's run, a post or draft whose
 `_thumbnail_id` postmeta names an attachment the photograph lookup
 answers for gains `{photo: <name>}` as its body's first line, unless the
-body already holds that mark. One the lookup does not answer for is
-listed, as "its featured image, which was not brought in". WordPress
+converted body already holds a `{photo:` mark naming it, captioned or
+not. One the lookup does not answer for is listed. WordPress
 themes show the featured image above the post, so this is where a reader
 saw it.
 
@@ -257,7 +258,7 @@ reads what sections it can, and the rest is a code section (design.md
 
 **The front page.** A page whose slug is `home` or whose title is the
 site's own becomes `index`; otherwise the first page by `wp:menu_order`.
-Where the export holds no page, the starter's `index` is written.
+Where § 4.6 carries no page, the starter's `index` is written.
 
 **The menu.** One menu is read, and the Report names it and any other:
 
@@ -286,7 +287,7 @@ calls, moving each held file from `import/media/` into
 `photographs/`, or into `files/` where `builder.photograph_format`
 returns `None`; write the starter's header, footer and templates, the
 look (`look.save(look.defaults(layout), "")`) and the journal switch, on
-where any post was carried; then move each folder in `import/work/` into
+where any `post` item was carried; then move each folder in `import/work/` into
 the site's folder, by rename. Where the site's folder already holds that
 folder — `templates/`, which `templates.register` seeds at every launch —
 each file moves in alone, and a file already there is kept.
