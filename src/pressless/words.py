@@ -261,6 +261,12 @@ _WORDS: dict[str, str] = {
     ),
     "failure.sitefile.Refused.what": "Pressless could not open that file as a site.",
     "failure.sitefile.Refused.next": "Choose a file Pressless saved, and open it again.",
+    "failure.pressless_import.ImportStopped.what": (
+        "Pressless could not bring your WordPress site in."
+    ),
+    "failure.pressless_import.ImportStopped.next": (
+        "The details below say why. If it keeps happening, send them to whoever helps you."
+    ),
     "failure.files_screen.FileInUse.what": (
         "That file is used on {pages}, so it was not removed."
     ),
@@ -1105,6 +1111,89 @@ _WORDS: dict[str, str] = {
         "can read, in the Pressless-data folder."
     ),
     "setup.onward": "Go to your list",
+    # PRESS-0125: the Import wizard. Each report line's values come from the
+    # export, and the page escapes the whole line.
+    "import.offer": (
+        "Have a WordPress site? <a href=\"{link}\">Bring it into Pressless</a>: its "
+        "posts, pages, menu, comments, photographs and files."
+    ),
+    "import.step.export": "Your WordPress export",
+    "import.step.media": "Your photographs and files",
+    "import.step.gaps": "Anything missing",
+    "import.step.look": "A look",
+    "import.step.bring": "Bring it in",
+    "import.export.how": (
+        "Pressless reads the file WordPress makes of your whole site. To make it, sign "
+        "in to your WordPress site and:"
+    ),
+    "import.export.1": "Choose <b>Tools</b>, then <b>Export</b>.",
+    "import.export.2": "Choose <b>All content</b>.",
+    "import.export.3": (
+        "Press <b>Download Export File</b>. Your browser saves a file ending in .xml."
+    ),
+    "import.export.choose": "Choose the export file",
+    "import.export.held": "Pressless has your export. Press Next.",
+    "import.export.none": "Choose your WordPress export file first.",
+    "import.export.refused": (
+        "That file is not a WordPress export Pressless can read, so it was not kept. "
+        "Choose the .xml file WordPress made."
+    ),
+    "import.export.too_large": (
+        "That file is larger than any WordPress export Pressless reads, so it was not kept."
+    ),
+    "import.media.counts": (
+        "Your export holds {posts} posts, {pages} pages and {files} photographs and files."
+    ),
+    "import.media.fetching": (
+        "Pressless is copying them from your old site: {done} of {total} so far. Keep this "
+        "page open; if Pressless closes, it carries on from here next time."
+    ),
+    "import.media.done": "Every photograph and file came across. Press Next.",
+    "import.media.missing": (
+        "{count} could not be copied from your old site. Press Next to see which."
+    ),
+    "import.media.wait": "Pressless is still copying. Wait until it says it has finished.",
+    "import.gaps.none": "Nothing is missing. Press Next.",
+    "import.gaps.list": "These {count} could not be copied from your old site:",
+    "import.gaps.how": (
+        "If you can, download the folder <b>wp-content/uploads</b> from your web host as "
+        "one ZIP file: most hosts' File Manager can compress a folder and download it. "
+        "Then choose that ZIP here, and Pressless takes what is missing from it. Or press "
+        "Next to go on without them; each is listed at the end."
+    ),
+    "import.gaps.choose": "Choose the ZIP file",
+    "import.gaps.filled": "{count} were taken from the ZIP file.",
+    "import.gaps.refused": (
+        "That file could not be used. Choose a ZIP file of the uploads folder."
+    ),
+    "import.look": (
+        "Your WordPress theme does not come across, so choose how your site looks. You "
+        "can change it later on the Look screen."
+    ),
+    "import.look.choose": "Choose one of the looks.",
+    "import.bring": (
+        "Press Next to bring your site in. It is written all at once, and nothing is on "
+        "the web until you publish it."
+    ),
+    "import.report.title": "Your site is in Pressless",
+    "import.report.about": (
+        "This is what came across, and everything that did not come across as written. "
+        "It is also kept in the import folder, as report.txt."
+    ),
+    "import.report.counts": (
+        "{published} published entries, {drafts} drafts, {comments} comments, "
+        "{photographs} photographs and {files} files."
+    ),
+    "import.report.pages": "Pages: {pages}.",
+    "import.report.menu": "The menu came from {menu}.",
+    "import.report.other_menus": "Other menus, not brought in: {menus}.",
+    "import.report.review": "{slug} arrived as a draft: it was waiting for review.",
+    "import.report.scheduled": "{slug} arrived as a draft: it was scheduled for {date}.",
+    "import.report.unfetched": "{place} did not come across: {why}.",
+    "import.report.renamed": "{wanted} was already taken, so it is now {given}.",
+    "import.report.renamed_file": "{place} shared its name, so it is now {name}.",
+    "import.report.other_type": "{count} items of the kind {kind} were not brought in.",
+    "import.report.dropped": "{where}: {what}.",
     "setup.google.on": (
         "Visitor numbers are on: <a href=\"/setup/google\">change the site or turn them "
         "off</a>."

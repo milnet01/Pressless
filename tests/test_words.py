@@ -159,8 +159,9 @@ def _asked() -> dict[str, str]:
         for node in _strings(tree, _docstrings(tree)):
             found = [node.value] if KEY.fullmatch(node.value) else QUOTED_KEY.findall(node.value)
             for key in found:
-                # usage.json is a file's name, not a key (PRESS-0262).
-                if key.split(".", 1)[0] in prefixes and not key.endswith(".json"):
+                # usage.json and Import's report.txt are files' names, not keys
+                # (PRESS-0262, PRESS-0125).
+                if key.split(".", 1)[0] in prefixes and not key.endswith((".json", ".txt")):
                     asked.setdefault(key, f"{path.name}:{node.lineno}")
     return asked
 

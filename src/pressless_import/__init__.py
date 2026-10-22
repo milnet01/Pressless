@@ -1,17 +1,19 @@
-"""Import — twelve years carried across, once, with nothing lost (PRESS-0007).
+"""Import — a WordPress site carried into Pressless's own files.
 
-The maintainer runs it once, on the machine holding the WordPress export and
-the photograph originals, and hands the writer the folder it made
-(`docs/design.md` rule 9). Nothing in Pressless imports this package, so it
-can be deleted without changing what anything else does, and the packaged
-program does not carry it.
+Two runs share this reading and converting. The maintainer's `run`
+(PRESS-0007) turns the first writer's export, originals and live site into a
+new folder, once. `bring_in` (PRESS-0125, in `_bring`) is the Import anyone
+runs, which the Face's wizard (`pressless.importing`) starts on an empty
+Store, and `fetch` is the one module that reaches the network, for it alone
+(`docs/design.md` rule 9).
 
-It writes through the Store's own calls and keeps no copy of the Store's
-rules: a value the Store refuses stops the import, and the folder it was
-filling is removed, so INTO appears whole or not at all (§4.7).
+Both write through the Store's own calls and keep no copy of the Store's
+rules: a value the Store refuses stops the import, and what it was filling
+is removed, so the result appears whole or not at all.
 
-The contract is `docs/specs/PRESS-0007-import.md`; the section and INV-N
-references below are to it.
+The contracts are `docs/specs/PRESS-0007-import.md` and
+`docs/specs/PRESS-0125-wordpress-import.md`; a bare section or INV-N
+reference below is to PRESS-0007.
 """
 from __future__ import annotations
 
@@ -50,6 +52,7 @@ __all__ = [
     "finish",
     "is_markup",
     "main",
+    "printable",
     "read",
     "resolve_slug",
     "run",
@@ -703,10 +706,10 @@ def _describe(report: Report, into: str) -> str:
     if report.dropped:
         lines.append("Not carried as written -- read these before handing the folder over:")
         lines.extend(f"  {d.slug}: {d.what}" for d in report.dropped)
-    return "\n".join(_printable(line) for line in lines)
+    return "\n".join(printable(line) for line in lines)
 
 
-def _printable(text: str) -> str:
+def printable(text: str) -> str:
     """`text` with every control and format character escaped. Alt text,
     addresses and upload paths come from the export, and one carrying ESC or a
     direction override could rewrite the report on the terminal (PRESS-0135)."""
@@ -726,7 +729,7 @@ def main(argv: list[str]) -> int:
     try:
         report = run(*(Path(arg) for arg in argv))
     except ImportStopped as exc:
-        print(f"Import stopped: {_printable(str(exc))}", file=sys.stderr)
+        print(f"Import stopped: {printable(str(exc))}", file=sys.stderr)
         return 1
     print(_describe(report, Path(argv[4]).name))
     return 0

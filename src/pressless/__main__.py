@@ -36,6 +36,7 @@ from pressless import (
     files_screen,
     github_setup,
     google_setup,
+    importing,
     look_screen,
     page_editor,
     paths,
@@ -170,6 +171,10 @@ def _serve(folder: Path) -> int:
     try:
         # PRESS-0223 § 4.3: behind the lock, so no second Pressless moves it.
         stopped = sites.move_in(folder)
+        # PRESS-0125 § 4.7: an Import stopped part way through its moves
+        # finishes before anything reads that site.
+        for site in sites.all_sites(folder):
+            stopped = stopped or importing.finish_moves(site)
         if stopped is not None:
             print(stopped)
             return 1
@@ -215,6 +220,7 @@ def _serve_once(own: Path) -> bool:
         updating.register(served, own)
         restarting.register(served, restart.set)
         sites_screen.register(served, own, restart.set)
+        importing.register(served, folder)
         _refresh_shortcuts(served)
 
         first = "/"

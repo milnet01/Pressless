@@ -105,7 +105,7 @@ def test_every_site_name_is_kept_or_left_out() -> None:
     assert sitefile.KEPT | sitefile.LEFT_OUT == sites.SITE_NAMES
     assert not sitefile.KEPT & sitefile.LEFT_OUT
     assert {"credentials.json", "site", "preview", "fetch", "insights.json", "wizards",
-            "choices.json"} == sitefile.LEFT_OUT
+            "choices.json", "import"} == sitefile.LEFT_OUT
 
 
 # ------------------------------------------------------------------ INV-2 ---

@@ -22,9 +22,11 @@ from pressless.words import say
 MANIFEST = "pressless-site.json"
 FORMAT = "pressless-site"
 VERSION = 1
-# § 4.1: a key, what is rebuilt on demand, and where he was last stay out.
+# § 4.1: a key, what is rebuilt on demand, and where he was last stay out;
+# and Import's own folder, so a saved site never carries the export
+# (PRESS-0125 § 4.2).
 LEFT_OUT = frozenset({"credentials.json", "site", "preview", "fetch", "insights.json",
-                      "wizards", "choices.json"})
+                      "wizards", "choices.json", "import"})
 KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})

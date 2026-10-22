@@ -13,6 +13,7 @@ import test_usage
 from _face_session import Browser
 from test_credentials import _Store, _use
 
+import pressless_import
 from pressless import __main__ as main_module
 from pressless import (
     backups,
@@ -101,7 +102,8 @@ def test_every_name_is_on_one_side() -> None:
                   store.IDENTITY_FOLDER, store.LOOK_FOLDER, settings.FILE_NAME,
                   credentials.FILE_NAME, setup.SITE_FOLDER, editor.PREVIEW_FOLDER,
                   paths.PREVIEW_ASSETS, starter.MARKER, insights.CACHE_NAME,
-                  undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME}
+                  undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME,
+                  pressless_import.IMPORT_FOLDER}
     machine_names = {log.FILE_NAME, log.OLD_NAME, updater.FILE_NAME, installer.LOG_NAME,
                      main_module._LOCK_NAME, themes.FILE_NAME, usage.FILE_NAME,
                      usage.SENT_NAME, backups.FILE_NAME, OPEN, SITES}

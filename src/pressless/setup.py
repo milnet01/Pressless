@@ -112,6 +112,7 @@ def _settings_help(name: str) -> str:
 _CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
 SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
+IMPORT = "/import"                    # PRESS-0125: the Import wizard, one of the three starts
 
 
 def untouchable(root: Iterable[str], kept: Iterable[str] = ()) -> tuple[str, ...]:
@@ -320,8 +321,13 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     if failed is not None:
         return render_notices(filling) + render_notices(notices) + failed
     privacy, privacy_failure = _privacy(face, folder, final)
+    try:
+        empty = not store.holds_a_site(folder)
+    except StoreError:
+        empty = False
     return (render_notices(filling) + render_notices(notices) + privacy_failure
-            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow) + privacy
+            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty)
+            + privacy
             + (_shortcut_form(where, (True, True)) if where else ""))
 
 
@@ -567,7 +573,8 @@ def _starter_box(start: bool | None, look: str = "") -> str:
 
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,
-          filled: bool = False, *, signed_in: bool = False, narrow: str = "") -> str:
+          filled: bool = False, *, signed_in: bool = False, narrow: str = "",
+          empty: bool = False) -> str:
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
@@ -582,6 +589,10 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
             stored += f"<p>{say('setup.done.in_a_file')}</p>"
     started = (f"<p>{say('setup.done.starter')}</p><p>{say('setup.starter.publish')}</p>"
                if filled else "")
+    # PRESS-0125 § 4.1: where the starter was not filled and the Store holds
+    # no site, Import is offered.
+    if not filled and empty:
+        started = f'<p id="import-offer">{say("import.offer", link=IMPORT)}</p>'
     return (f"<h1>{say('setup.done')}</h1>"
             + f"<p>{say('setup.done.address', link=_site_link(final.site_address))}</p>"
             + started + left_alone + stored + narrow
