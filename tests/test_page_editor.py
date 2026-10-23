@@ -969,3 +969,35 @@ def test_a_switch_writes_nothing(tmp_path):
     assert json.loads(text)["view"] == "visual"
     assert _digest(live) == before
     assert not _waiting(folder, "pages", "plain").exists()
+
+
+# ------------------------------------------------------------- PRESS-0306 ---
+
+_ALLOWED_HARNESS = """%s
+const asked = JSON.parse(require("fs").readFileSync(0, "utf8"));
+process.stdout.write(JSON.stringify(asked.map(allowed)));
+"""
+# A browser drops outer controls and spaces and any tab or line break before
+# it reads a scheme; each of these is still javascript: to it.
+_ADDRESSES = ("https://example.org", "MAILTO:a@example.org", "pages/about.html", "#top",
+              "javascript:go()", " JavaScript:go()", "java\tscript:go()", "java\nscript:go()",
+              "\x01javascript:go()", "javascript:go()\x00", "data:text/html,x", "ftp://x")
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
+    """PRESS-0306: the visual view's link check agrees with
+    blocks.address_allowed, so a link it accepts is never refused at the save.
+    Breaks when the browser reads the scheme without removing a tab, a line
+    break or a leading control first."""
+    script = page_editor._VISUAL_SCRIPT
+    start = script.index("const allowed = ")
+    end = script.index("\n  function inline(", start)
+    harness = tmp_path / "allowed.js"
+    harness.write_text(_ALLOWED_HARNESS % script[start:end], encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)],  # noqa: S603
+                         input=json.dumps(_ADDRESSES).encode("utf-8"),
+                         capture_output=True, check=True, timeout=30)
+    browser = dict(zip(_ADDRESSES, json.loads(run.stdout), strict=True))
+    server = {address: blocks.address_allowed(address, mailto=True) for address in _ADDRESSES}
+    assert browser == server

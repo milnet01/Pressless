@@ -1756,8 +1756,14 @@ _VISUAL_SCRIPT = r"""
   // ---- § 4.4: the words, read from the element's nodes ----------------
   const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/ /g, " ");
-  const allowed = (href) => /^(https?:|mailto:)/i.test(href.trim())
-    || !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(href.trim());
+  // blocks.address_allowed's rule, which the save holds to: the scheme read as
+  // a browser reads it, outer spaces and controls stripped, tabs and line
+  // breaks removed (PRESS-0306).
+  const allowed = (href) => {
+    const folded = href.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, "").replace(/[\t\n\r]/g, "");
+    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(folded);
+    return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase());
+  };
   function inline(element) {
     let out = "";
     const walk = (parent, linked) => {
