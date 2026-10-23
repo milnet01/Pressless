@@ -50,13 +50,15 @@ def footer() -> str:
             + "  <p>&copy; {{YEAR}} {{SITE_NAME}}</p>\n"
             + "</footer>\n")
 
+# Every page the starter or the editor writes, in one shape. `links` is the
+# page's stylesheet links; `page` names it to the header pair.
 _PAGE = """<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title}</title>
-  <link rel="stylesheet" href="{up}look/style.css">
+  {links}
 </head>
 <body>
   <!-- HEADER:START page="{page}" -->
@@ -69,6 +71,17 @@ _PAGE = """<!doctype html>
 </body>
 </html>
 """
+
+
+def _links(sheets: tuple[str, ...], up: str) -> str:
+    """One stylesheet link per sheet, each from the root by way of `up`."""
+    return "\n  ".join(f'<link rel="stylesheet" href="{up}{html.escape(sheet, quote=True)}">'
+                       for sheet in sheets)
+
+
+# Home and About are written by `fill`, which always writes the style code,
+# so builder.stylesheets would answer this one sheet for them.
+_OWN_SHEET = (builder.STYLE_CODE,)
 
 
 def _area(heading: str, *paragraphs: str) -> str:
@@ -91,30 +104,6 @@ def _words(key: str) -> str:
 LOOKS = look.LAYOUTS
 
 
-# PRESS-0199 § 4.5: the disclosure counting needs, in the starter pages'
-# shape. `fill` does not write it; `add_privacy` does, while counting is on.
-_PRIVACY = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title}</title>
-  {links}
-</head>
-<body>
-  <!-- HEADER:START page="privacy" -->
-  <!-- HEADER:END -->
-  <main class="page">
-{area}
-  </main>
-  <!-- FOOTER:START -->
-  <!-- FOOTER:END -->
-</body>
-</html>
-"""
-
-_NEW_PAGE = _PRIVACY.replace('page="privacy"', 'page="{page}"')
-
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
 
 
@@ -125,10 +114,7 @@ def new_page(name: str, title: str, sheets: tuple[str, ...], *,
     as the title and heading, and one paragraph to replace. Import passes a
     page's own body as `main`, in place of the heading and paragraph, and
     `root` for the page that sits at the root (PRESS-0125 § 4.6)."""
-    up = "" if root else "../"
-    links = "\n  ".join(f'<link rel="stylesheet" href="{up}{html.escape(sheet, quote=True)}">'
-                        for sheet in sheets)
-    return _NEW_PAGE.format(title=html.escape(title), links=links,
+    return _PAGE.format(title=html.escape(title), links=_links(sheets, "" if root else "../"),
                             page=html.escape(name, quote=True),
                             area=_area(title, _words("starter.new_page.words"))
                             if main is None else main)
@@ -137,18 +123,18 @@ def new_page(name: str, title: str, sheets: tuple[str, ...], *,
 def home_page(site_name: str) -> str:
     """The starter's Home page, which sits at the root."""
     name = html.escape(site_name, quote=True)
-    return _PAGE.format(title=name, up="", page="Home",
+    return _PAGE.format(title=name, links=_links(_OWN_SHEET, ""), page="Home",
                         area=_area(say("starter.welcome", name=site_name),
                                    _words("starter.home.words")))
 
 
 def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
-    """The Privacy page, linking each stylesheet from depth 1."""
-    links = "\n  ".join(f'<link rel="stylesheet" href="../{html.escape(sheet, quote=True)}">'
-                      for sheet in sheets)
-    return _PRIVACY.format(
+    """The Privacy page, linking each stylesheet from depth 1: the disclosure
+    counting needs (PRESS-0199 § 4.5). `fill` does not write it;
+    `add_privacy` does, while counting is on."""
+    return _PAGE.format(
         title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
-        links=links,
+        links=_links(sheets, "../"), page="privacy",
         # The policy's words hold links, so they go in as HTML; the rest are text.
         area=_area(say("starter.privacy"), _words("starter.privacy.counting"),
                    _words("starter.privacy.counted"), say("starter.privacy.policy"),
@@ -229,7 +215,8 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
         (store.FURNITURE_FOLDER, "footer", footer()),
         (store.PAGES_FOLDER, "index", home_page(site_name)),
         (store.PAGES_FOLDER, "about", _PAGE.format(
-            title=say("starter.about.title", name=name), up="../", page="about",
+            title=say("starter.about.title", name=name), links=_links(_OWN_SHEET, "../"),
+            page="about",
             area=_area(say("starter.about"), _words("starter.about.words")))),
     )
     for kind, file_name, text in files:
