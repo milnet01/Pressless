@@ -126,9 +126,11 @@ def reaches(token: str, installation: Installation, repository: str,
   `urn:ietf:params:oauth:grant-type:device_code` to
   `https://github.com/login/oauth/access_token`. GitHub's `error` field maps
   as named above; `device_flow_disabled` is a `SignInRefused`, as is a
-  401 or 403 from any request this module makes (PRESS-0233).
+  403 from any request this module makes and a 401 from any but `refresh`
+  (PRESS-0233).
 - `refresh` POSTs `client_id`, `grant_type` `refresh_token` and the refresh
-  token to the same address. Any `error` answer is `SignedOut`. GitHub
+  token to the same address. Any `error` answer, or a 400 or 401, is
+  `SignedOut`. GitHub
   returns a new refresh token and the old one stops working.
 - Every request to `github.com` sends `Accept: application/json`.
 - `login` reads `GET /user`'s `login`.
@@ -316,12 +318,12 @@ push gate's secret scanner does not mistake them.
   *Breaks when:* the step polls a dead code and shows GitHub's error.
 
 - **INV-6** — The *repository* step writes nothing to an existing
-  repository. After a 422, no non-GET request names it, whether its root
-  holds files or the repository is not Public.
+  repository. After a 422 the step sends no non-GET request naming it,
+  whether its root holds files or the repository is not Public.
   *Test:* `test_a_taken_name_is_left_alone`.
   *Breaks when:* the step writes to an existing repository, a `.nojekyll`
-  or a first file. Taking its site in is PRESS-0218's, after the user sees
-  what comes across.
+  or a first file. What the *pages* step then writes is PRESS-0218's
+  (its INV-1).
 
 - **INV-7** — A lost answer does not make a second repository. A 422 over a
   Public repository whose root answers `()` advances, and `/user/repos` is
@@ -333,7 +335,7 @@ push gate's secret scanner does not mistake them.
 - **INV-8** — The *repository* step moves on only once the app reaches the
   new repository. With `repository_selection` `selected`, `reaches` reads the
   installation's repositories, and a repository missing there is a `Hint`;
-  with `all`, nothing is sent.
+  with `all`, `reaches` sends nothing.
   *Test:* `test_the_new_repository_is_reached`, both selections and a
   repository added after the hint.
   *Breaks when:* the step moves on regardless, so the *pages* step meets a
@@ -349,7 +351,8 @@ push gate's secret scanner does not mistake them.
   *Breaks when:* a step writes another file, setting or repository.
 
 - **INV-10** — Without a registered app, first run is PRESS-0212's wizard.
-  With `CLIENT_ID` empty the step names are `welcome`, `account`,
+  Where PRESS-0262's `reports` step is not offered (it follows `welcome`
+  where it is), with `CLIENT_ID` empty the step names are `welcome`, `account`,
   `repository`, `key`, `pages`, `site`, and with both constants set they are
   `welcome`, `signin`, `install`, `repository`, `pages`, `site`.
   *Test:* `test_the_steps_follow_the_registration`.
@@ -392,7 +395,7 @@ push gate's secret scanner does not mistake them.
 | The browser is signed in to another account | a hint naming both accounts; Next starts again | the step, nothing stored |
 | The person clicks Cancel on GitHub | a hint that the sign-in was cancelled; Next starts again | the step |
 | The app is not installed | the install hint and link | the stored refresh token |
-| The name is taken by a repository with files | a hint to choose another name | the stored refresh token |
+| The name is taken by a repository that is not Public | a hint to choose another name | the stored refresh token |
 | The create's answer is lost | Next again finds the empty repository and goes on | everything before |
 | The new refresh token cannot be stored | the credential failure's sentence; the next renewal signs Pressless out | the site, unchanged |
 | Six months unused | `SignedOut`'s sentence and the link to sign in again | the site, unchanged |
@@ -460,6 +463,7 @@ publish again, and record what is shown. CI cannot reach GitHub.
 | INV-11 | `tests/test_github_setup.py::test_a_lapsed_sign_in_says_sign_in_again` |
 | INV-12 | `tests/test_github_setup.py::test_signing_in_again_replaces_the_pass` |
 | INV-13 | `tests/test_setup.py::test_signing_in_again_sits_behind_the_faces_boundary` |
+| INV-14 | `tests/test_setup.py::test_the_account_signed_in_is_the_one_named` |
 | § 4.1 GitHub's real answers to the device flow, refresh and installation requests | **nothing** in CI — the by-hand run of § 7 |
 | § 4.3 the instructions match GitHub's pages | **nothing** — read by hand in § 7's run; GitHub changes its pages without notice |
 
@@ -475,7 +479,8 @@ Each spec edit is a pointer to this spec beside the clause it changes.
   box, and `/setup/github`. § 4.6 step 1 — the key is read with
   `github_setup.token`.
 - `docs/design.md` § The parts — the Publisher row: it also signs in to
-  GitHub, makes the repository and adds it to the installation; the
+  GitHub, makes the repository and checks the app's installation reaches
+  it; the
   Credentials row: the GitHub secret is a publishing key or a sign-in.
 - `docs/working-here.md` — a section on registering the GitHub App.
 - `README.md` § Getting started — the person signs in to GitHub rather than

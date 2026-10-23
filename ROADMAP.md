@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=333 -->
+<!-- ants-roadmap-id-high-water: PRESS=334 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3993,6 +3993,10 @@ it decides how pages, the menu and the look are held.
   tagged; the code is complete. Its last check, the whole-wizard run
   with the packaged build on the Windows box, is owed on the 0.8.0
   release draft and is tracked in PRESS-0133, which stays open.
+  2026-10-23: second review round, one loop (the user's budget), gating
+  PRESS-0218's edit to § 4.3 step 2 and INV-6. Eight findings verified,
+  seven fixed (most recording the shipped code), one filed as
+  PRESS-0334; no lane read the fixes.
   **Layman:** Instead of making a GitHub key by hand, you sign in with GitHub once, and Pressless creates your site's repository and puts it on the web for you.
   Kind: feature.
   Source: user request 2026-10-05.
@@ -5329,6 +5333,11 @@ it can then be changed.
   accepted after one review round (the user's budget). Ten findings
   fixed; one awaits the user: no Store call reverses a kept photograph,
   so § 4.3's reversal and INV-7 cannot be built as written.
+  2026-10-23: second review round, one loop (the user's budget), on the
+  amendment for the user's two answers. Ten findings verified and fixed,
+  one dismissed; no lane read the fixes. The finding left for the user
+  in round 1 is settled by § 3 decision 5. Spec accepted; rows in
+  docs/reviews/PRESS-0218-take-in-github-site-loop-log.md.
   **Layman:** Someone whose site is already on GitHub, the first writer included, just points Pressless at it and carries on from there.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -12311,6 +12320,32 @@ already-built code ships in whichever release comes next.
   Kind: refactor.
   Source: session-2026-10-23 readability pass.
   Lanes: Import.
+
+- 📋 [PRESS-0334] **Signing in again at /setup/github checks no account name.**
+  Found by both cold lanes of PRESS-0231's second review round
+  (2026-10-23), outside the change that round gated, so filed here
+  rather than fixed.
+
+  PRESS-0231 § 4.4 says `/setup/github` "runs the *signin* step's
+  sequence on its own, with the saved store". That sequence holds step 0
+  (the `account` box) and step 3's check that `login` matches it, and
+  § 3 decision 7 says a sign-in to any other account is refused and
+  nothing is stored. INV-14 scopes the check to first run. The page has
+  no `account` field, so the spec does not say what it compares against.
+
+  The code: `github_setup._page` stores the refresh token without
+  calling `github_signin.login`, so a sign-in to another account
+  replaces a working secret with one that cannot reach the repository.
+
+  Recommended fix: compare `login` with the owner in Settings'
+  `repository`, refuse a mismatch with a `Hint` naming both, store
+  nothing; amend § 4.4 and § 3 decision 7 to say so, and add a test.
+  The alternative is to scope decision 7 to first run and record the
+  code as it is. The direction is the user's.
+  **Layman:** If someone signs in again from Settings while their browser is signed in to a different GitHub account, Pressless keeps that sign-in, and publishing then fails.
+  Kind: review-fix.
+  Source: review-contract PRESS-0231 row 2, 2026-10-23.
+  Lanes: Setup, Publisher.
 
 ## Milestones
 
