@@ -159,3 +159,38 @@ Sweep: searched docs/, tests/, CLAUDE.md and README.md for `_MEDIA`,
 `removeprefix("www.")`. Nothing was stale outside frozen records. The
 `_context` hit in `tests/test_certificates.py` showed the fetch missing
 from PRESS-0142's certifi rule; fixed as PRESS-0327.
+
+## lane-02 page editor
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `page_editor.py` `_gatherer` written three times | MEDIUM | fixed (43db56b) — `face.gatherer` |
+| `page_editor.py` `_PAGE_SCRIPT` copies `_EDITOR_SCRIPT` | MEDIUM | fixed (897daa3) — one `editor.LEAVING_SCRIPT`; comments name the twin and the differences |
+| `page_editor.py` `_KINDS` and the script's `KINDS`/`HOLDERS` copies | MEDIUM | fixed (fcc575a) — `blocks.KINDS`, `blocks.HOLDERS`, handed to the script |
+| `menu.py` two readings and two writings of a link's words | MEDIUM | fixed (6379aae) — writing through `menu._written`; reading queued PRESS-0328, as PRESS-0195 pins it |
+| `page_editor.py` `_menu_panel` builds page addresses by hand | LOW | fixed (20dd454) — `menu.address`; `_removed`'s looser search kept on purpose |
+| `blocks.py` `_FORMS` comment misleads for holder kinds | MEDIUM | fixed (ad3faa8) |
+| `page_editor.py` `_pressed` size and nested publish step | MEDIUM | fixed (a1aa6e0) — `_publish_or_put_back` |
+| `page_editor.py` `_reshaped` bare OutcomeUnknown arm | MEDIUM | fixed (a1aa6e0) — the helper's docstring says why |
+| `page_editor.py` "a failure here" comment | LOW | fixed (a1aa6e0) |
+| `page_editor.py` `put_sections` held-paths loop rules | MEDIUM | fixed (20dd454) — comment |
+| `page_editor.py` `_view` unused `kind` | LOW | fixed (20dd454) |
+| `page_editor.py` `finish` returns True on failure | LOW | fixed (a1aa6e0) — `kept_after_binning` |
+| `page_editor.py` `_menu` named like a noun | LOW | fixed (20dd454) — `_is_menu` |
+| `page_editor.py` `_refused` beside `_REFUSED` | LOW | fixed (20dd454) — `_reshape_hint` |
+| `page_editor.py` `HOME` comment | LOW | fixed (20dd454) |
+| `blocks.py` `read`/`unmarked` unused `name` | LOW | fixed (20dd454) — docstrings; PRESS-0215 pins the signatures |
+| `page_editor.py` `_switch` differs from `_open` unsaid | LOW | fixed (20dd454) — docstring |
+| `page_editor.py` browser `allowed` copy of `address_allowed` | LOW | fixed (b323a09) — made to match, with a node test |
+| tool: `choices` shadowed in `_page` and `_panel` | — | fixed (20dd454) |
+| tool: `notices: list[str]` holds Notice | — | fixed (a1aa6e0) |
+| tool: unused arguments | — | fixed (20dd454) — as the `_view` and `blocks` rows |
+| lead PRESS-0297 rename leaves the old data-nav | — | dropped — the page's marker keeps the old name too, so they match |
+| lead PRESS-0306 browser and server link checks disagree | — | real; fixed, shipped (b323a09) |
+| lead PRESS-0307 a hand-made `_newest` page | — | dropped — the Store's name rule refuses `_` |
+
+Sweep: searched docs/, tests/, scripts/, CLAUDE.md and README.md for
+`_menu`, `_refused`, `finish()`, `_view(kind`, `_gatherer`, the
+script's `KINDS`/`HOLDERS` lists, `quote=False` and the leaving
+handlers. Only shipped roadmap records and specs naming kept names
+matched; nothing was stale.
