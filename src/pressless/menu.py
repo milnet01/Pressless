@@ -30,6 +30,12 @@ def _address(name: str) -> str:
     return f"{_PAGES}{name}.html"
 
 
+def _written(words: str) -> str:
+    """A link's words as every edit here writes them: escaped, quotes too
+    (PRESS-0195 § 4.2)."""
+    return html.escape(words)
+
+
 def _links(text: str) -> list[re.Match]:
     """Every link, read with the comments blanked out so a commented-out link
     is not one; the blanking keeps every offset."""
@@ -84,7 +90,7 @@ def add(text: str, name: str, words: str) -> str:
     after = (pages or links)[-1]
     space = text[_before(text, after.start()):after.start()]
     link = (f'<a href="{_address(name)}" data-nav="{html.escape(name)}">'
-            f"{html.escape(words)}</a>")
+            f"{_written(words)}</a>")
     return text[:after.end()] + space + link + text[after.end():]
 
 
@@ -106,7 +112,7 @@ def rename(text: str, old: str, new: str, old_words: tuple[str, ...],
         if html.unescape(inside).strip() in old_words:
             lead = inside[:len(inside) - len(inside.lstrip())]
             trail = inside[len(inside.rstrip()):]
-            text = (text[:link.start(1)] + lead + html.escape(new_words) + trail
+            text = (text[:link.start(1)] + lead + _written(new_words) + trail
                     + text[link.end(1):])
         found = _href(link)
         value = 1 if found.group(1) is not None else 2
@@ -153,7 +159,7 @@ def _changed(text: str, link: re.Match, words: str, address: str) -> str:
         inside = text[link.start(1):link.end(1)]
         lead = inside[:len(inside) - len(inside.lstrip())]
         trail = inside[len(inside.rstrip()):]
-        own = (own[:link.start(1) - at] + lead + html.escape(words, quote=False) + trail
+        own = (own[:link.start(1) - at] + lead + _written(words) + trail
                + own[link.end(1) - at:])
     if address != html.unescape(_href_value(link) or ""):
         tag_end = link.start(1) - at
@@ -198,7 +204,7 @@ def arranged(text: str, posted: object) -> str:
             nav = _nav(address)
             marked = f' data-nav="{html.escape(nav)}"' if nav is not None else ""
             pieces.append(f'{space}<a href="{html.escape(address)}"{marked}>'
-                          f"{html.escape(words.strip(), quote=False)}</a>")
+                          f"{_written(words.strip())}</a>")
             continue
         if (not isinstance(at, int) or isinstance(at, bool) or not 0 <= at < len(held)
                 or at in seen):

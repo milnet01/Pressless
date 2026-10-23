@@ -143,6 +143,19 @@ def test_a_changed_or_new_link_carries_its_page_name():
     assert '\n  <a href="{{UP}}index.html" data-nav="Home">Start</a>\n</nav>' in written
 
 
+
+def test_every_edit_writes_a_links_words_alike():
+    """Breaks when the menu view and Add or Rename escape a link's words
+    differently, so one edit writes a quote bare and another as &quot;."""
+    words = 'Tom & "Jo"'
+    escaped = 'Tom &amp; &quot;Jo&quot;'
+    assert f">{escaped}</a>" in menu.add(ONE_LINE, "gigs", words)
+    assert f">{escaped}</a>" in menu.rename(ONE_LINE, "about", "gigs", ("About",), words)
+    changed = [{"at": 0, "words": "Home", "href": "{{UP}}index.html"},
+               {"at": 1, "words": words, "href": "{{UP}}pages/about.html"},
+               {"at": None, "words": words, "href": "{{UP}}pages/gigs.html"}]
+    assert menu.arranged(ONE_LINE, changed).count(f">{escaped}</a>") == 2
+
 @pytest.mark.parametrize("posted", [
     [{"at": 7, "words": "Home", "href": "{{UP}}index.html"}],
     [{"at": 0, "words": "Home", "href": "{{UP}}index.html"},

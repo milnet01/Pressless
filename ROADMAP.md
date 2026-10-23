@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=327 -->
+<!-- ants-roadmap-id-high-water: PRESS=328 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5821,6 +5821,19 @@ it can then be changed.
   Fixed in e38192c; the test failed red on its assertion first.
   **Layman:** Bringing a site in from a secure old site works in the Linux download, not only from source.
   Kind: fix.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0328] **Renaming a page misses a menu link whose words sit inside a tag.**
+  menu.rename compares a link's raw inside, unescaped and trimmed, with
+  old_words. The menu view reads words through menu._words, which also
+  strips tags. So a link written <a ...><span>About</span></a> shows as
+  About in the menu view, but Rename leaves its words alone.
+  Not fixed now: PRESS-0195 § 4.2 pins rename's comparison, and reading
+  through _words would also replace the span with plain words. Needs a
+  decision and that spec amended. Lead from lane-02-page-editor.md; the
+  writing half of the finding was fixed as one menu._written helper.
+  **Layman:** If a menu link's words are wrapped in extra code, renaming the page keeps the old words on the link.
+  Kind: review-fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
