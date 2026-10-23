@@ -992,14 +992,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self._drain()
         self._send(403, say("face.forbidden"), "text/plain")
 
-    def _drain(self) -> None:
-        """Read and drop a body that will not be used, so the answer arrives.
+    def _drain(self, left: int | None = None) -> None:
+        """Read and drop a body that will not be used, so the answer arrives:
+        the `left` bytes still unread, or by default the whole declared body.
 
         Closing a socket with unread bytes resets it, and the sender sees a
         dropped connection rather than the answer: WinError 10053 on Windows
         CI, a broken pipe on Linux for a body past the socket buffers.
         """
-        left = _length(self.headers.get("Content-Length")) or 0
+        if left is None:
+            left = _length(self.headers.get("Content-Length")) or 0
         while left > 0:
             chunk = self.rfile.read(min(left, 64 * 1024))
             if not chunk:
@@ -1171,18 +1173,21 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         taken = Path(into) / f".upload-{secrets.token_hex(8)}"
         failure: OSError | None = None
+        left = length
         try:
             try:
                 with open(taken, "wb") as out:
-                    left = length
                     while left > 0:
                         piece = self.rfile.read(min(left, _PIECE))
                         if not piece:
                             break
-                        out.write(piece)
                         left -= len(piece)
+                        out.write(piece)
             except OSError as exc:
+                # PRESS-0304: the rest is read and dropped, or the failure
+                # page never arrives.
                 failure = exc
+                self._drain(left)
             if failure is None and left > 0:
                 self._send(400, "", "text/plain")   # the sender stopped part way
                 return

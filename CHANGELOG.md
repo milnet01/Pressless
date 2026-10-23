@@ -23,6 +23,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A file that cannot be saved now says why** (PRESS-0304)
+  When a large file you add cannot be written to your computer, for
+  example because the drive is full, Pressless now shows its explanation.
+  Before, the browser could show only a dropped connection.
+
 - **A setup step no longer shows a meaningless code** (PRESS-0301)
   The step that says which GitHub permissions to choose ended with an
   internal reference number in brackets. It now ends at the sentence.

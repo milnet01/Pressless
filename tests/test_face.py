@@ -1020,6 +1020,35 @@ def test_an_upload_streams_past_the_page_ceiling(tmp_path: Path, monkeypatch) ->
     assert not list(into.glob(".upload-*"))
 
 
+def test_a_failed_upload_write_still_answers_with_its_page(tmp_path: Path,
+                                                           monkeypatch) -> None:
+    """PRESS-0304. Breaks when the rest of the body is left unread after the
+    write fails: the socket closes with bytes unread, and the sender sees a
+    dropped connection rather than the failure page. The body is far past
+    the socket buffers, so an unread one cannot hide in them."""
+    real_open = open
+
+    def full_drive(path, *args, **kwargs):
+        if ".upload-" in str(path):
+            raise OSError(28, "No space left on device")
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(face, "open", full_drive, raising=False)
+    into = tmp_path / "own"
+    into.mkdir()
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", lambda path: "<p>taken</p>", into)
+        try:
+            status, _, page = _Client(served).raw("POST", "/up", b"x" * (8 * 1024 * 1024))
+        except OSError as exc:
+            status, page = 0, repr(exc).encode()
+    finally:
+        served.stop()
+    assert status == 500, page
+    assert not list(into.glob(".upload-*"))
+
+
 def test_an_upload_needs_the_session(tmp_path: Path) -> None:
     """PRESS-0224 INV-8. Breaks when the upload route skips a check a page
     gets, or writes a byte before it."""
