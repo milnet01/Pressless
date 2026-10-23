@@ -6,9 +6,11 @@ never produces HTML, never reaches the network, and never opens the site
 folder (§4.6) — so it imports neither `pressless.marks` nor any network
 module (INV-1).
 
-Every read and write names UTF-8 and LF explicitly. Python's default text
-encoding is the locale's — cp1252 on Windows — and its default newline is
-the platform's, so an unnamed write would produce CRLF in cp1252 there. A
+Every read and write names UTF-8 and its line-ending rule explicitly: LF,
+or no translation at all for pages and the look's files, which are written
+as given. Python's default text encoding is the locale's — cp1252 on
+Windows — and its default newline is the platform's, so an unnamed write
+would produce CRLF in cp1252 there. A
 changed line ending is a changed file to git, and every publish would then
 look as though it had touched the whole site (§4.2).
 """
@@ -113,9 +115,10 @@ class SlugInUse(StoreError):
 def path_for(folder: Path, slug: str, *, draft: bool) -> Path:
     """Where the entry at `slug` sits, published or draft.
 
-    The slug is checked here rather than in each caller: this is the one
-    place a slug becomes a file name, so guarding it once covers write,
-    exists, publish and unpublish alike (§4.2).
+    The slug is checked here rather than in each caller, so guarding it once
+    covers write, publish and unpublish alike (§4.2). The check itself is
+    _refuse_illegal_slug, which exists and the other kinds' path_for calls
+    also make.
     """
     _refuse_illegal_slug(slug, "a slug")
     subfolder = DRAFTS_FOLDER if draft else PUBLISHED_FOLDER
