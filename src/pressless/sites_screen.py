@@ -32,7 +32,9 @@ SENTENCES[sitefile.Refused] = Sentence(
 
 
 def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
-    """Add `GET /sites`, `POST /sites/open` and `POST /sites/new` to `face`.
+    """Add the Sites screen's routes to `face`: `GET /sites`, `POST
+    /sites/open`, `POST /sites/new`, `GET /sites/save`, `POST
+    /sites/backups` and the upload `POST /sites/open-file`.
     `own` is Pressless's own folder; `restart` runs once the answer is sent,
     as restarting.register's does."""
     own = Path(own)
@@ -78,9 +80,6 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
                                     else "sites_screen.file_refused"))
         return _going(face, restart)
 
-    face.add_page("GET", ADDRESS, screen)
-    face.add_page("POST", f"{ADDRESS}/open", open_one)
-    face.add_page("POST", f"{ADDRESS}/new", start)
     def keep_backups_in(request: Request) -> str:
         form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
         try:
@@ -91,6 +90,9 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
             return _screen(own, face.fail(exc, publishing=False), raw=True)
         return _screen(own, say("sites_screen.backups.chosen"))
 
+    face.add_page("GET", ADDRESS, screen)
+    face.add_page("POST", f"{ADDRESS}/open", open_one)
+    face.add_page("POST", f"{ADDRESS}/new", start)
     face.add_page("GET", f"{ADDRESS}/save", save)
     face.add_page("POST", f"{ADDRESS}/backups", keep_backups_in)
     face.add_upload(f"{ADDRESS}/open-file", open_file, own)
