@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=332 -->
+<!-- ants-roadmap-id-high-water: PRESS=333 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5962,6 +5962,27 @@ it can then be changed.
   **Layman:** The design notes for the secrets file do not yet say it now refuses to overwrite a damaged file.
   Kind: doc-fix.
   Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0333] **Setup takes over a site that GitHub Actions builds, in the same repository.**
+  Split out of PRESS-0218 by the user 2026-10-23, so that spec stays
+  small. Such a site's pages are not files in the repository, so taking
+  it in means downloading the live site and replacing its build.
+  Decided by the user 2026-10-23: the same repository. Pressless asks
+  first, switches GitHub Pages to its own publishing, and removes the
+  build workflow file, which stays in the repository's history. The
+  custom domain stays. Needs no extra GitHub permission. The pages
+  themselves come in as PRESS-0210 brings in a folder of web pages.
+  Until this ships, setup keeps the PRESS-0229 refusal.
+  User, 2026-10-23: the takeover warns before it changes anything.
+  The user is always told what is about to change: GitHub Pages
+  switching to Pressless's publishing, the build workflow file being
+  removed (and that it stays in the repository's history), and the
+  custom domain staying. Nothing changes until they confirm, and they
+  are told afterwards what was changed.
+  **Layman:** Someone whose GitHub site is made by its own build script can switch it to Pressless and keep the same web address.
+  Kind: feature.
+  Source: user-decision-2026-10-23 PRESS-0218.
+  Lanes: setup, Publisher, Import.
 
 ## 0.12.0 — more figures, and likes
 
