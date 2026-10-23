@@ -105,6 +105,8 @@ SENTENCES[files.TooLarge] = Sentence(
 LOCK = threading.Lock()
 
 # PRESS-0235 § 4.5: a press-row line rendered while a press runs; the script asks.
+# Shared with page_editor; its spec names it with the underscore, as PRESS-0235
+# and PRESS-0242 name _UNDO_SCRIPT and _EDITOR_SCRIPT, and PRESS-0017 _names_of.
 _RUNNING = ' data-press="running"'
 _JSON = "application/json"
 _HTML = "text/html; charset=utf-8"
@@ -208,11 +210,11 @@ def _replaced(folder: Path, entry: store.Entry) -> str | None:
     return named
 
 
-def _digest(path: Path) -> str:
+def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _form(request: Request) -> dict[str, str]:
+def form_fields(request: Request) -> dict[str, str]:
     """Every POST body is form-encoded, read as setup reads its own (§ 4.4)."""
     fields = urllib.parse.parse_qs(request.body.decode("utf-8"), keep_blank_values=True)
     return {name: values[0] for name, values in fields.items()}
@@ -234,7 +236,8 @@ _LEFT_OUT = {"categories": "notice.editor.left_out.categories",
 def _names_of(folder: Path, value: str, box: str) -> tuple[str, ...]:
     """§ 4.8 step 3: a part the Store takes is kept, any other becomes an
     address, and repeats are dropped. A part that leaves nothing the Store would
-    take is left out, and a notice names it."""
+    take is left out, and a notice names it. Templates call it too; PRESS-0017
+    names it with the underscore."""
     names: list[str] = []
     for part in value.split(","):
         typed = part.strip()
@@ -266,12 +269,12 @@ def _preview(face: Face, folder: Path, entry: store.Entry, *, draft: bool
     return PREVIEW_ADDRESS + relative, None
 
 
-def _failed(face: Face, notices: list[str], failure: Exception) -> Reply:
+def failed(face: Face, notices: list[str], failure: Exception) -> Reply:
     body = render_notices(notices) + face.fail(failure, publishing=False)
     return Reply(body.encode("utf-8"), _HTML, status=409)
 
 
-def _json(value: dict) -> Reply:
+def json_reply(value: dict) -> Reply:
     return Reply(json.dumps(value).encode("utf-8"), _JSON)
 
 
@@ -324,7 +327,7 @@ def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         try:
             store.write_journal(folder, not store.journal_on(folder))
         except store.StoreError as exc:
-            return _failed(face, notices, exc)
+            return failed(face, notices, exc)
     pressing.forget()  # PRESS-0235 decision 6
     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
 
@@ -475,7 +478,7 @@ def _pages(folder: Path, hint: str = "") -> str:
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
-    form = _form(request)
+    form = form_fields(request)
     title, chosen = form.get("title", ""), form.get("template", "")
     with lock, face.capture() as notices:
         try:
@@ -485,7 +488,7 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
                      else store.Entry(slug="", title="", date=datetime.now(),
                                       categories=(), tags=(), body="", extra=()))
         except store.StoreError as exc:
-            return _failed(face, notices, exc)
+            return failed(face, notices, exc)
         slug = free_address(folder, address_for(title))
         store.write(folder, store.Entry(
             slug=slug, title=title.strip(), date=datetime.now().replace(microsecond=0),
@@ -515,7 +518,7 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                 raise store.EntryNotFound(f"there is no entry {slug!r}")
             path = store.path_for(folder, slug, draft=draft)
             entry = store.read(path)
-            base = _digest(path)
+            base = digest(path)
         except (store.StoreError, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
@@ -614,7 +617,7 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
     slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
     path = store.path_for(folder, slug, draft=draft)
     entry = store.read(path)
-    if _digest(path) != base:
+    if digest(path) != base:
         raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
     extra = entry.extra
     written_slug = slug
@@ -629,14 +632,14 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
         slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
         categories=_names_of(folder, form.get("categories", ""), "categories"),
         tags=_names_of(folder, form.get("tags", ""), "tags"), body=body, extra=extra)
-    digest = _digest(store.write(folder, written, draft=True))
+    new_base = digest(store.write(folder, written, draft=True))
     pressing.forget()  # PRESS-0235 decision 6
-    return written, digest
+    return written, new_base
 
 
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.8."""
-    form = _form(request)
+    form = form_fields(request)
     with lock, face.capture() as notices:
         try:
             written, new_base = save(folder, form)
@@ -647,8 +650,8 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             preview, preview_failure = _preview(face, folder, written, draft=True)
             missing = photographs.missing(folder, written.body)
     if failure is not None:
-        return _failed(face, notices, failure)
-    return _json({"slug": written.slug, "draft": True, "base": new_base, "preview": preview,
+        return failed(face, notices, failure)
+    return json_reply({"slug": written.slug, "draft": True, "base": new_base, "preview": preview,
                   "failure": preview_failure, "notices": render_notices(notices),
                   "missing": missing})
 
@@ -664,14 +667,14 @@ def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
-    return _json({"name": name, "notices": render_notices(notices)})
+        return failed(face, notices, failure)
+    return json_reply({"name": name, "notices": render_notices(notices)})
 
 
 def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.9, and PRESS-0182 § 4.2 for a published entry: its old address
     forwards to the new one."""
-    form = _form(request)
+    form = form_fields(request)
     slug, base, address = form.get("slug", ""), form.get("base", ""), form.get(
         "address", "").strip()
     # A request without `draft` has PRESS-0012 § 4.9's shape, from before a
@@ -690,8 +693,8 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
-    return _json({"slug": slug, "draft": draft, "base": base, "preview": None,
+        return failed(face, notices, failure)
+    return json_reply({"slug": slug, "draft": draft, "base": base, "preview": None,
                   "failure": None, "notices": render_notices(notices), "hint": hint})
 
 
@@ -724,7 +727,7 @@ def _move(folder: Path, entry: store.Entry, slug: str, address: str, base: str, 
     """Move `entry`, at `slug`, to `address`, with its forwards and comments, and return
     the moved file's digest: the window's new base. `base` must still match."""
     path = store.path_for(folder, slug, draft=draft)
-    if _digest(path) != base:
+    if digest(path) != base:
         raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
     # The order leaves two copies, never none (§ 4.2).
     store.write(folder, dataclasses.replace(entry, slug=address), draft=draft)
@@ -743,12 +746,12 @@ def _move(folder: Path, entry: store.Entry, slug: str, address: str, base: str, 
         store.write_comments(folder, address, store.read_comments(comments))
         store.move_to_bin(folder, comments)
     store.move_to_bin(folder, path)
-    return _digest(store.path_for(folder, address, draft=draft))
+    return digest(store.path_for(folder, address, draft=draft))
 
 
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.10."""
-    form = _form(request)
+    form = form_fields(request)
     slug, base = form.get("slug", ""), form.get("base", "")
     with lock, face.capture() as notices:
         try:
@@ -756,7 +759,7 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
                 raise ChangedElsewhere(f"the draft {slug} is not there")
             path = store.path_for(folder, slug, draft=True)
             named = _replaced(folder, store.read(path))
-            if named is None or _digest(path) != base:
+            if named is None or digest(path) != base:
                 raise ChangedElsewhere(f"the draft {slug} is not the working copy this "
                                        "window read")
             store.move_to_bin(folder, path)
@@ -765,7 +768,7 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
+        return failed(face, notices, failure)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(named))
 
 
@@ -775,14 +778,14 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
     one leaves the site at the next press, and undoing that press brings it
     back. The entry goes first, so an interruption leaves at most a draft or a
     comments file behind, never an entry half thrown away."""
-    form = _form(request)
+    form = form_fields(request)
     slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
     with lock, face.capture() as notices:
         try:
             if slug not in store.list_slugs(folder, draft=draft):
                 raise ChangedElsewhere(f"the entry {slug} is not there")
             path = store.path_for(folder, slug, draft=draft)
-            if _digest(path) != base:
+            if digest(path) != base:
                 raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
             if draft:
                 named = _replaced(folder, store.read(path))
@@ -807,8 +810,8 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
-    return _json({"thrown": True, "notices": render_notices(notices)})
+        return failed(face, notices, failure)
+    return json_reply({"thrown": True, "notices": render_notices(notices)})
 
 
 # PRESS-0015 s 4.6. Both pages carry this. Neither reloads itself (s 4.2):

@@ -96,7 +96,7 @@ def _open(face: Face, folder: Path, request: Request) -> str:
         try:
             path = store.template_path_for(folder, name)
             template = store.read(path)
-            base = editor._digest(path)
+            base = editor.digest(path)
         except store.StoreError as exc:
             return render_notices(notices) + face.fail(exc, publishing=False)
     return render_notices(notices) + _page(template, base)
@@ -131,14 +131,14 @@ def _checked(folder: Path, name: str, base: str) -> tuple[Path, store.Entry]:
     """The template as this window last saw it, or ChangedElsewhere."""
     path = store.template_path_for(folder, name)
     template = store.read(path)
-    if editor._digest(path) != base:
+    if editor.digest(path) != base:
         raise editor.ChangedElsewhere(f"the template {name} changed since this window read it")
     return path, template
 
 
 def _save(face: Face, folder: Path, request: Request) -> str | Reply:
     """§ 4.4."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     name = form.get("name", "")
     with editor.LOCK, face.capture() as notices:
         try:
@@ -150,9 +150,9 @@ def _save(face: Face, folder: Path, request: Request) -> str | Reply:
                 tags=editor._names_of(folder, form.get("tags", ""), "tags"),
                 body=body, extra=template.extra)
             store.write_template(folder, written)
-            base = editor._digest(path)
+            base = editor.digest(path)
         except (store.StoreError, editor.ChangedElsewhere) as exc:
-            return editor._failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
     return render_notices(notices) + _page(written, base)
 
 
@@ -160,7 +160,7 @@ def _new(face: Face, folder: Path, request: Request) -> Reply:
     """§ 4.5: a free name is one no file sits at, so on Windows a hand-named
     Poem.txt answers for poem and is not overwritten. A name the Store
     refuses, such as `con`, is passed over (PRESS-0311)."""
-    typed = editor._form(request).get("name", "")
+    typed = editor.form_fields(request).get("name", "")
     wanted = editor.address_for(typed)
     with editor.LOCK, face.capture() as notices:
         try:
@@ -170,17 +170,17 @@ def _new(face: Face, folder: Path, request: Request) -> Reply:
                 slug=name, title=typed.strip(), date=datetime.now().replace(microsecond=0),
                 categories=(), tags=(), body="", extra=()))
         except store.StoreError as exc:
-            return editor._failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_address(name))
 
 
 def _bin(face: Face, folder: Path, request: Request) -> Reply:
     """§ 4.5."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
             path, _ = _checked(folder, form.get("name", ""), form.get("base", ""))
             store.move_to_bin(folder, path)
         except (store.StoreError, editor.ChangedElsewhere) as exc:
-            return editor._failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")

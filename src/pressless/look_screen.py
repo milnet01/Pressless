@@ -146,14 +146,14 @@ def _imported() -> str:
 def _preview(face: Face, folder: Path, request: Request) -> Reply:
     """§ 4.4's live preview: the style code the form makes, and its warnings.
     Writes nothing."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
             _refuse_without_style_code(folder)
             choices, extra = _posted(form)
         except (NoStyleCode, LookRefused) as exc:
-            return editor._failed(face, notices, exc)
-    return editor._json({"css": look.css(choices, extra), "warnings": look.warnings(choices)})
+            return editor.failed(face, notices, exc)
+    return editor.json_reply({"css": look.css(choices, extra), "warnings": look.warnings(choices)})
 
 
 def _save(face: Face, folder: Path, request: Request) -> Reply:
@@ -161,7 +161,7 @@ def _save(face: Face, folder: Path, request: Request) -> Reply:
     screen was drawn, or where choices.json cannot be read (§ 4.1). Style code
     the choices did not make is copied into the bin first, and left in place
     until look.save replaces it last (INV-7)."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
             _refuse_without_style_code(folder)
@@ -173,7 +173,7 @@ def _save(face: Face, folder: Path, request: Request) -> Reply:
                 store.copy_to_bin(folder, store.style_code_path(folder))
             look.save(folder, choices, extra)
         except (store.StoreError, editor.ChangedElsewhere, NoStyleCode, LookRefused) as exc:
-            return editor._failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=f"{ADDRESS}?{SAVED}=1")
 
 

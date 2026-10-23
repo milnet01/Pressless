@@ -97,14 +97,14 @@ def _pressless(folder: Path, transport: _Transport) -> Iterator[_Quick]:
 
 def _entry_form(folder: Path) -> dict[str, str]:
     path = store.path_for(folder, "seaside", draft=False)
-    return {"slug": "seaside", "draft": "0", "base": page_editor._digest(path),
+    return {"slug": "seaside", "draft": "0", "base": editor.digest(path),
             "title": "Seaside", "categories": "", "tags": "", "body": "Words."}
 
 
 def _page_form(folder: Path) -> dict[str, str]:
     path = store.html_path_for(folder, "pages", "about")
     return {"kind": "pages", "name": "about", "view": page_editor.CODE, "show": "",
-            "waiting": "0", "base": page_editor._digest(path),
+            "waiting": "0", "base": editor.digest(path),
             "text": store.read_html(path)}
 
 

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import dataclasses
 import difflib
-import hashlib
 import html
 import json
 import re
@@ -90,8 +89,6 @@ SENTENCES[menu.Refused] = Sentence(
 
 _LABELS = {"header": "editor.pages.header", "footer": "editor.pages.footer",
            "navigation": "editor.pages.navigation"}
-_JSON = "application/json"
-_HTML = "text/html; charset=utf-8"
 
 
 # ------------------------------------------- the sections (PRESS-0260 § 4.5) ---
@@ -306,10 +303,6 @@ def register(face: Face, folder: Path, *,
                   lambda request: _reshape(face, folder, request, transport, renaming=True))
 
 
-def _digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def _page_address(kind: str, name: str, **more: str) -> str:
     return "/page?" + urllib.parse.urlencode({"kind": kind, "name": name, **more})
 
@@ -373,7 +366,7 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     path = copy if waiting else store.html_path_for(folder, kind, name)
     if not path.is_file():
         raise store.EntryNotFound(f"there is no {kind} file {name}")
-    if _digest(path) != form.get("base", ""):
+    if editor.digest(path) != form.get("base", ""):
         raise editor.ChangedElsewhere(f"the {kind} file {name} changed since this window read it")
     if not waiting and copy.is_file():
         raise editor.ChangedElsewhere(f"the {kind} file {name} gained a waiting copy")
@@ -396,7 +389,7 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
         except ValueError:
             raise SectionsUnreadable(f"the save of {name} does not name its sections") from None
         new = put_sections(name, adopted, posted, removed)
-    digest = _digest(store.write_html(folder, kind, name, new, waiting=True))
+    digest = editor.digest(store.write_html(folder, kind, name, new, waiting=True))
     pressing.forget()  # PRESS-0235 decision 6
     return new, digest
 
@@ -404,15 +397,6 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
 # What a save refuses with, writing nothing (PRESS-0260 § 4.5).
 _REFUSED = (store.StoreError, editor.ChangedElsewhere, builder.BuildStopped,
             SectionsUnreadable, blocks.SectionRefused, menu.Refused, menu.Unusual)
-
-
-def _failed(face: Face, notices: list[str], failure: Exception) -> Reply:
-    body = render_notices(notices) + face.fail(failure, publishing=False)
-    return Reply(body.encode("utf-8"), _HTML, status=409)
-
-
-def _json(value: dict) -> Reply:
-    return Reply(json.dumps(value).encode("utf-8"), _JSON)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -441,7 +425,7 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
     no lock; the caller holds LOCK and captures the notices."""
     path, waiting = _read(folder, kind, name)
     text = store.read_html(path)
-    base = _digest(path)
+    base = editor.digest(path)
     show = _show(folder, kind, name, asked_show)
     # PRESS-0214 § 4.5: no newest entry to show a change on while the
     # journal is off.
@@ -537,7 +521,7 @@ def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
+        return editor.failed(face, notices, failure)
     _remember(folder, kind, name, request)
     reply: dict[str, object] = {
         "view": opened.view, "address": _page_address(kind, name, view=opened.view),
@@ -550,7 +534,7 @@ def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
         reply["links"] = opened.links
     else:
         reply["sections"] = opened.sections
-    return _json(reply)
+    return editor.json_reply(reply)
 
 
 def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit: str,
@@ -802,7 +786,7 @@ def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...], *,
 
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     kind, name = form.get("kind", ""), form.get("name", "")
     visual = _view(form.get("view", "")) == VISUAL
     with lock, face.capture() as notices:
@@ -818,23 +802,23 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
                 face, folder, kind, name, new, _show(folder, kind, name, form.get("show", "")),
                 marks=visual)
     if failure is not None:
-        return _failed(face, notices, failure)
+        return editor.failed(face, notices, failure)
     reply = {"waiting": True, "base": base, "preview": preview, "failure": preview_failure,
              "notices": render_notices(notices)}
     if visual:
         # § 4.5: after a save the posted list is the file's.
         reply.update(_shape(kind, name, new))
-    return _json(reply)
+    return editor.json_reply(reply)
 
 
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.8."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
     kind, name = form.get("kind", ""), form.get("name", "")
     with lock, face.capture() as notices:
         try:
             copy = store.html_path_for(folder, kind, name, waiting=True)
-            if not copy.is_file() or _digest(copy) != form.get("base", ""):
+            if not copy.is_file() or editor.digest(copy) != form.get("base", ""):
                 raise editor.ChangedElsewhere(
                     f"the waiting copy of {name} is not the one this window read")
             store.move_to_bin(folder, copy)
@@ -843,7 +827,7 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         else:
             failure = None
     if failure is not None:
-        return _failed(face, notices, failure)
+        return editor.failed(face, notices, failure)
     # PRESS-0195 § 4.3: a page never pressed had only this copy, so its editor
     # has nothing left to open.
     live = store.html_path_for(folder, kind, name)
@@ -854,11 +838,11 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
 def _publish(face: Face, folder: Path, request: Request,
              transport: publisher.Transport | None) -> Reply:
     """§ 4.7, run as a press (PRESS-0235 § 4.4)."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
 
     def busy(said: str) -> Reply:
         """Nothing saved: the page keeps the file it posted (PRESS-0235 § 4.4)."""
-        return _json({"published": False, "waiting": form.get("waiting") == "1",
+        return editor.json_reply({"published": False, "waiting": form.get("waiting") == "1",
                       "base": form.get("base", ""), "failure": None,
                       "notices": "", "busy": True, "said": said})
 
@@ -880,7 +864,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
         except _REFUSED as exc:
             told(pressing.Outcome(say("script.press.not_published"),
                                   face.fail(exc, publishing=False)))
-            return _failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
 
         copy = store.html_path_for(folder, kind, name, waiting=True)
 
@@ -936,7 +920,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     if _view(form.get("view", "")) == VISUAL:
         # Live or waiting, the file the next save reads holds what was written.
         reply.update(_shape(kind, name, new))
-    return _json(reply)
+    return editor.json_reply(reply)
 
 
 # ------------------------------------------- adding, removing, renaming ---
@@ -1040,7 +1024,7 @@ def _name_refused(folder: Path, page: str, moving: str = "") -> str | None:
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.3: the page's waiting copy, and nothing else."""
-    named = editor._form(request).get("name", "").strip()
+    named = editor.form_fields(request).get("name", "").strip()
     page = editor.name_address(named)
     with lock, face.capture() as notices:
         try:
@@ -1051,7 +1035,7 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
                                  waiting=True)
                 pressing.forget()
         except store.StoreError as exc:
-            return _failed(face, notices, exc)
+            return editor.failed(face, notices, exc)
     location = ("/?" + urllib.parse.urlencode({"page_hint": refused}) if refused
                 else _page_address(store.PAGES_FOLDER, page))
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
@@ -1117,11 +1101,11 @@ def _renamed(folder: Path, name: str, to: str, changes: _Changes) -> None:
 def _reshape(face: Face, folder: Path, request: Request,
              transport: publisher.Transport | None, *, renaming: bool) -> Reply:
     """§ 4.4, run as a press (PRESS-0235 § 4.4)."""
-    form = editor._form(request)
+    form = editor.form_fields(request)
 
     def busy(said: str) -> Reply:
         """Nothing written (PRESS-0235 § 4.4)."""
-        return _json({"published": False, "failure": None, "hint": None, "notices": "",
+        return editor.json_reply({"published": False, "failure": None, "hint": None, "notices": "",
                       "busy": True, "said": said,
                       "address": _page_address(store.PAGES_FOLDER, form.get("name", ""))})
 
@@ -1171,7 +1155,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
     notices.extend(_menu_said(said, published, unknown))
     told(pressing.Outcome(say("script.press.published") if published
                           else say("script.press.not_published"), failure))
-    return _json({"published": published, "failure": failure,
+    return editor.json_reply({"published": published, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})
 
@@ -1200,8 +1184,8 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
     """The file the page saves to next, read from disk after the publish."""
     copy = store.html_path_for(folder, kind, name, waiting=True)
     if copy.is_file():
-        return True, _digest(copy)
-    return False, _digest(store.html_path_for(folder, kind, name))
+        return True, editor.digest(copy)
+    return False, editor.digest(store.html_path_for(folder, kind, name))
 
 
 # The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
