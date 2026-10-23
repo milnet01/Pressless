@@ -76,11 +76,11 @@ def main(argv: list[str]) -> int:
     _unbundle_environment()
     print("pressless: ok")
     try:
-        folder = paths.ensure(paths.own_folder())
+        own = paths.ensure(paths.own_folder())
         # Relative, so the report names no full path (docs/design.md
         # § Logging): a correct build prints Pressless-data, and anything else
         # is the misplacement PRESS-0022 INV-2 names.
-        print(f"folder: {os.path.relpath(folder, paths.artefact_path().parent)}")
+        print(f"folder: {os.path.relpath(own, paths.artefact_path().parent)}")
     except (paths.NotPackaged, paths.FolderUnusable) as exc:
         print(f"folder: unanswered -- {exc}")
         return 1
@@ -95,7 +95,7 @@ def main(argv: list[str]) -> int:
     if argv == ["--self-check"]:
         return 0
     try:
-        return _serve(folder)
+        return _serve(own)
     except Exception as exc:  # noqa: BLE001 -- the last resort at launch
         # A traceback names full paths, which the console must not carry
         # (PRESS-0011 § 4.5's rule, reached before handle_error exists).
@@ -140,10 +140,11 @@ def _lock_now(handle: BinaryIO) -> None:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
-def _hold(folder: Path) -> BinaryIO | None:
-    """The folder's lock, held for the life of the process (PRESS-0023 § 4.11),
-    or None where another Pressless holds it. Never waits."""
-    handle = open(folder / _LOCK_NAME, "a+b")  # noqa: SIM115 -- open while held
+def _hold(own: Path) -> BinaryIO | None:
+    """The lock on Pressless's own folder, held for the life of the process
+    (PRESS-0023 § 4.11), or None where another Pressless holds it. Never
+    waits."""
+    handle = open(own / _LOCK_NAME, "a+b")  # noqa: SIM115 -- open while held
     try:
         _lock_now(handle)
     except OSError as exc:
@@ -162,29 +163,29 @@ def _hold(folder: Path) -> BinaryIO | None:
 _HELD = frozenset({errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES, errno.EDEADLK})
 
 
-def _serve(folder: Path) -> int:
+def _serve(own: Path) -> int:
     """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
-    held = _hold(folder)
+    held = _hold(own)
     if held is None:
         print(say("main.already"))
         return 3
     try:
         # PRESS-0223 § 4.3: behind the lock, so no second Pressless moves it.
-        stopped = sites.move_in(folder)
+        stopped = sites.move_in(own)
         # PRESS-0125 § 4.7: an Import stopped part way through its moves
         # finishes before anything reads that site.
-        for site in sites.all_sites(folder):
+        for site in sites.all_sites(own):
             stopped = stopped or importing.finish_moves(site)
         if stopped is not None:
             print(stopped)
             return 1
-        return _serve_held(folder)
+        return _serve_held(own)
     finally:
         held.close()
 
 
-def _serve_held(folder: Path) -> int:
-    while _serve_once(folder):
+def _serve_held(own: Path) -> int:
+    while _serve_once(own):
         print(say("restarting.going.title"))
     return 0
 
@@ -277,8 +278,8 @@ def _refresh_shortcuts(served: face.Face) -> None:
 
 
 def _wait(restart: threading.Event) -> bool:
-    """Block until the console window is closed or interrupted, or until
-    `restart` is set. True on a restart."""
+    """Block until `restart` is set, then return True. Closing the console
+    kills the process and an interrupt raises, so it never returns False."""
     restart.wait()
     return True
 

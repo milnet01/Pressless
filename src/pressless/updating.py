@@ -67,12 +67,12 @@ class Updates:
             self._thread.join(timeout)
 
 
-def register(face: Face, folder: Path, *, artefact: Path | None = None,
+def register(face: Face, own: Path, *, artefact: Path | None = None,
              platform: str | None = None, running: str = __version__,
              transport: updater.Transport | None = None) -> Updates:
     """Add the offer, the switch and their routes to `face`, and start the
-    check where this is a packaged run. `folder` is Pressless's own folder."""
-    folder = Path(folder)
+    check where this is a packaged run. `own` is Pressless's own folder."""
+    own = Path(own)
     if artefact is None:
         try:
             artefact = paths.artefact_path()
@@ -83,7 +83,7 @@ def register(face: Face, folder: Path, *, artefact: Path | None = None,
 
     def shown() -> updater.Offer | None:
         offer = state.offer
-        if offer is None or state.later or updater.read_state(folder)[1] == offer.version:
+        if offer is None or state.later or updater.read_state(own)[1] == offer.version:
             return None
         return offer
 
@@ -94,31 +94,31 @@ def register(face: Face, folder: Path, *, artefact: Path | None = None,
     def skip(request: Request) -> Reply:
         offer = shown()
         if offer is not None:
-            updater.write_state(folder, check=updater.read_state(folder)[0], skip=offer.version)
+            updater.write_state(own, check=updater.read_state(own)[0], skip=offer.version)
         return _home()
 
     def checking(request: Request) -> Reply:
         form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
         wanted = (form.get("check") or ["true"])[0] != "false"
-        updater.write_state(folder, check=wanted, skip=updater.read_state(folder)[1])
+        updater.write_state(own, check=wanted, skip=updater.read_state(own)[1])
         return _home()
 
     def update_now(request: Request) -> str | Reply:
         offer = shown()
         if offer is None or artefact is None:
             return _home()
-        return _update_now(face, folder, offer, artefact, platform, transport)
+        return _update_now(face, own, offer, artefact, platform, transport)
 
     face.add_page("POST", "/update", update_now)
     face.add_page("POST", "/update/later", later)
     face.add_page("POST", "/update/skip", skip)
     face.add_page("POST", "/update/checking", checking)
     face.add_to_list(lambda: _offer_html(shown()), above=True)
-    face.add_to_list(lambda: _switch_html(updater.read_state(folder)[0]), above=False)
+    face.add_to_list(lambda: _switch_html(updater.read_state(own)[0]), above=False)
 
     if artefact is not None:
         def look() -> None:
-            found = updater.check(folder, running, platform, transport)
+            found = updater.check(own, running, platform, transport)
             if isinstance(found, updater.Offer):
                 state.offer = found
             elif found.step > 1:
@@ -158,7 +158,7 @@ def _switch_html(checking: bool) -> str:
             f"<button>{say(label)}</button></form>")
 
 
-def _update_now(face: Face, folder: Path, offer: updater.Offer, artefact: Path,
+def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
                 platform: str, transport: updater.Transport | None) -> str:
     """§ 4.9's five steps."""
     try:
@@ -173,10 +173,10 @@ def _update_now(face: Face, folder: Path, offer: updater.Offer, artefact: Path,
     editor.LOCK.acquire()
     try:
         if platform == "windows":
-            installer.apply_windows(artefact, staged, folder)
+            installer.apply_windows(artefact, staged, own)
             started = True
         else:
-            started = installer.apply_linux(artefact, staged, folder)
+            started = installer.apply_linux(artefact, staged, own)
     except installer.UpdateError as exc:
         editor.LOCK.release()
         return face.fail(exc, publishing=False)
