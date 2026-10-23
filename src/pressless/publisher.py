@@ -995,7 +995,10 @@ def _is_protected(path: str, untouchable: tuple[str, ...]) -> bool:
 
 # §4.5's Windows check, measured on a Windows 10 box with CreateFileW
 # (PRESS-0164). A device is judged on the part before the first dot with
-# trailing spaces removed, case ignored, so `nul .jpg` reaches one.
+# trailing spaces removed, case ignored, so `nul .jpg` reaches one. store.py
+# keeps the same list, and INV-1 forbids importing it: a newly measured
+# device goes into both. The backslash is forbidden here because a fetched
+# path segment has had no other check.
 _ON_WINDOWS = os.name == "nt"
 _WINDOWS_DEVICES = frozenset(
     ["con", "prn", "aux", "nul", "conin$", "conout$"]

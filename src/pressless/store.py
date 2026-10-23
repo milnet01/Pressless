@@ -62,14 +62,18 @@ _LEGAL_SLUG = re.compile(r"\A[a-z0-9-]+\Z")
 # names whatever the extension, so opening `nul.txt` there reaches the null
 # device rather than failing -- the write appears to succeed and the entry is
 # gone, which is worse than a refusal. One rule rather than one per system is
-# what makes an entry that saves on one machine save on the other. The set is
-# lower case only because _LEGAL_SLUG has already refused anything else
-# (PRESS-0067).
-_RESERVED_NAMES = frozenset(
-    ("con", "prn", "aux", "nul")
-    + tuple(f"com{number}" for number in range(1, 10))
-    + tuple(f"lpt{number}" for number in range(1, 10))
-)
+# what makes an entry that saves on one machine save on the other (PRESS-0067).
+#
+# The list was measured on a Windows 10 box with CreateFileW (PRESS-0164). A
+# device is judged on the part before the first dot with trailing spaces
+# removed, case ignored, so `nul .jpg` reaches one; `com0`, `lpt0` and
+# `clock$` are ordinary files. A slug is tested against it whole: _LEGAL_SLUG
+# has already refused dots, capitals, `$` and the superscripts.
+# publisher.py keeps its own copy, because PRESS-0009 INV-1 lets it import
+# only settings; a newly measured device goes into both.
+_WINDOWS_DEVICES = frozenset(
+    ["con", "prn", "aux", "nul", "conin$", "conout$"]
+    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
 
 
 class StoreError(Exception):
@@ -1257,13 +1261,8 @@ def _single_name(name: str, what: str) -> str:
     return name
 
 
-# §3 decision 10's refusals, measured on a Windows 10 box with CreateFileW
-# (PRESS-0164). A device is judged on the part before the first dot with
-# trailing spaces removed, case ignored, so `nul .jpg` reaches one; `com0`,
-# `lpt0` and `clock$` are ordinary files.
-_WINDOWS_DEVICES = frozenset(
-    ["con", "prn", "aux", "nul", "conin$", "conout$"]
-    + [f"{port}{n}" for port in ("com", "lpt") for n in "123456789\u00b9\u00b2\u00b3"])
+# §3 decision 10's refusals, beside _WINDOWS_DEVICES. No backslash here, unlike
+# publisher.py's set: _single_name has already refused every separator.
 _WINDOWS_FORBIDDEN = frozenset('<>:"|?*') | {chr(n) for n in range(32)}
 
 
@@ -1323,7 +1322,7 @@ def _refuse_illegal_slug(name: str, what: str) -> None:
             f"{name!r} is not {what}: one or more of a-z, 0-9 and '-', "
             f"and nothing else"
         )
-    if name in _RESERVED_NAMES:
+    if name in _WINDOWS_DEVICES:
         raise StoreError(
             f"{name!r} is not {what}: Windows reserves it as a device name, "
             f"so a file called {name}{FILE_SUFFIX} there is not a file. It is "
