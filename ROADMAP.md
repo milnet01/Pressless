@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=295 -->
+<!-- ants-roadmap-id-high-water: PRESS=325 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5551,6 +5551,186 @@ it can then be changed.
   Kind: feature.
   Source: user-request-2026-10-03.
   Lanes: face, publisher.
+
+- 📋 [PRESS-0296] **A broken test suite on Windows can pass the push gate as "box not reachable".**
+  scripts/windows-gate.sh:66 and :124 with local-ci.sh:226 — pytest exits 2 when interrupted (e.g. collection errors), the same code unreachable() uses. Premise confirmed. Lead from docs/reviews/review-readability-2026-10-23/lane-09-tooling.md.
+  **Layman:** If the tests break on Windows, the safety check before publishing the code may wrongly let it through.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0297] **Renaming a page leaves its menu link unmarked as the current page.**
+  menu.py:99-114 — rename keeps the old data-nav; builder.py:431 marks by data-nav. Premise confirmed. Lead from lane-02-page-editor.md.
+  **Layman:** After a page is renamed, the menu may stop highlighting it when a visitor is on it.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0298] **The Journal's menu link may never be marked as the current page.**
+  builder.py:755 passes page="Journal"; no menu Pressless writes carries data-nav="Journal" (menu._nav). Premise confirmed. Lead from lane-05-build-publish.md.
+  **Layman:** On the journal, the menu may not highlight the Journal link.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0299] **Opening a saved site file can delete the open site if a rename fails.**
+  sitefile.py:211 — rmtree(target) runs before opening.rename(target) when target == current; docstring promises sites/ is left as it was. Order confirmed. Lead from lane-07-app-sites-update.md.
+  **Layman:** In a rare failure, opening a saved site file could lose the site that was open.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0300] **local-ci.sh runs the full gate on an unknown argument instead of refusing.**
+  scripts/local-ci.sh:27 — no *) branch, so --doc runs the full gate. Confirmed. Lead from lane-09-tooling.md.
+  **Layman:** A typo when running the code checks silently runs a different check.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0301] **A setup step shows an internal ticket number on screen.**
+  words.py:906, setup.new_key.5 — "…to switch your site on (PRESS-0230)." Confirmed. Lead from lane-01-face.md.
+  **Layman:** One setup instruction shows the user a meaningless code (PRESS-0230).
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0302] **Four copies of the Windows check can drift, leaving a rename without its retry.**
+  store.py:512 picks the move by store._is_windows(); patiently retries only on safe_write._is_windows(). Four definitions confirmed. Lead from lane-04-store.md.
+  **Layman:** On Windows, a small inconsistency could make saving files less reliable.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0303] **Sign-in not yet finished raises an error the callers do not catch.**
+  github_setup.py:75-76 raises untyped RuntimeError; six callers (page_editor x2, setup x2, undo, publishing) — whether they catch it is unchecked. Lead from lane-06-setup-signin-insights.md.
+  **Layman:** If GitHub setup is half-done, some screens may show a crash instead of a plain message.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0304] **A failed upload may never show its failure page.**
+  face.py:1185 _take_upload does not drain the request body before the 500 page; _drain's docstring says that resets the connection. Unchecked. Lead from lane-01-face.md.
+  **Layman:** When saving an uploaded file fails, the user may see a dropped connection instead of an explanation.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0305] **A failure message with a slot named secret would crash the message itself.**
+  face.py:299 — say(entry.what, secret=noun, **slots) raises TypeError if slots holds secret. Unchecked. Lead from lane-01-face.md.
+  **Layman:** One rare kind of error message could crash instead of showing.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0306] **The link checks in the page editor and the server disagree.**
+  page_editor.py:1770 — browser allowed() accepts addresses address_allowed refuses (e.g. a scheme split by a tab). Unchecked. Lead from lane-02-page-editor.md.
+  **Layman:** A link the editor accepts may be refused only when saving.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0307] **A hand-made pages/_newest.html may clash with the editor's "newest" marker.**
+  page_editor.py:60 NEWEST = "_newest" relies on name_address; whether store refuses pages/_newest.html is unchecked. Lead from lane-02-page-editor.md.
+  **Layman:** A specially named page made outside Pressless could confuse the page editor.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0308] **Making a new entry can fail with no failure page.**
+  editor.py:492-496 — free_address and store.write sit outside the try; a StoreError escapes instead of the 409 page. Unchecked. Lead from lane-03-editor.md.
+  **Layman:** Creating a new entry may fail without telling the user why.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0309] **Changing an entry's address can race with an autosave.**
+  editor.py:1062 — the address button does not set inFlight before posting /address. Unchecked. Lead from lane-03-editor.md.
+  **Layman:** Changing a web address while the entry autosaves might save the old address.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0310] **The address field is used without the null check made just above it.**
+  editor.py:902 vs :890 — either the check is dead or this line can throw. Unchecked. Lead from lane-03-editor.md.
+  **Layman:** A small browser-side slip that could stop the editor screen working.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0311] **A new template named like a reserved Windows word fails instead of numbering.**
+  templates.py:169 — template_path_for raising on a refused name fails the request instead of trying con-2. Unchecked. Lead from lane-03-editor.md.
+  **Layman:** Some template names (like "con") may fail to save instead of getting a number added.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0312] **A failed copy into the bin leaves a partial copy that blocks a retry.**
+  store.py:393 — copy_to_bin opens with xb then writes; a partial copy stays and a same-second retry hits FileExistsError. Unchecked. Lead from lane-04-store.md.
+  **Layman:** If keeping an old copy fails midway, trying again straight away may fail too.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0313] **An "outcome unknown" publish message can name the wrong request.**
+  publisher.py:765 — OutcomeUnknown always says "the reference update", even for the start-file or .nojekyll PUT. Unchecked. Lead from lane-05-build-publish.md.
+  **Layman:** An error after publishing may describe the wrong step.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0314] **Rewording a Look note could make every saved look count as not made here.**
+  look.py:216 / :284 — css() writes say('look.style_note') and two other notes into saved style code. Unchecked. Lead from lane-05-build-publish.md.
+  **Layman:** Changing one sentence in the app could make it throw away people's saved site looks.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0315] **A forwarding page after a rename may land under the wrong date folder.**
+  builder.py:1067 — written under the new entry's date folder, assuming the old address shared it. Unchecked. Lead from lane-05-build-publish.md.
+  **Layman:** After an entry's address changes, the old link might not forward correctly.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0316] **Choosing or switching off a Google property can raise an uncaught settings error.**
+  google_setup.py:291-293 and :382-383 — settings.check / save not caught after the refresh token is written. Unchecked. Lead from lane-06-setup-signin-insights.md.
+  **Layman:** Choosing a visitor-count property could crash a screen if settings fail to save.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0317] **Writing the secrets file silently replaces a malformed field the reader refuses.**
+  credentials.py:359-365 _write_file. Unchecked. Lead from lane-06-setup-signin-insights.md.
+  **Layman:** A damaged secrets file is quietly overwritten on save but refused on read.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0318] **A failed first step of the update check is never logged.**
+  updating.py:124 — looks the same as the switch being off, including _Urllib() ssl/certifi failures. Unchecked. Lead from lane-07-app-sites-update.md.
+  **Layman:** If checking for updates fails at once, nothing records why.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0319] **A dropped connection leaves the Sites and Import buttons stuck with no message.**
+  sites_screen.py:218 and importing.py:291 — await fetch has no catch. Reported by two lanes (07, 08). Unchecked.
+  **Layman:** If the connection drops while opening or importing a site, the button stays stuck.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0320] **Two messages on the Sites and Backups screens skip the words table.**
+  sites.py:122, backups.py:110 — hard-coded English rather than say(). Unchecked. Lead from lane-07-app-sites-update.md.
+  **Layman:** A few sentences are hard-coded, so they would not change with the rest of the app's wording.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0321] **Import progress counts are written without the lock.**
+  importing.py:99-100 — progress writes state.done/total off-lock while show_media reads them. Lane thinks it harmless. Lead from lane-08-import.md.
+  **Layman:** The import progress count may very rarely show a wrong number.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0322] **Import finds a refused file's reason by coincidence, not by key.**
+  fetch.py:154 and _bring.py:474 — lookup by upload place, but refused attachments are keyed by full address. Lead from lane-08-import.md.
+  **Layman:** The import report gets one reason right only by luck.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0323] **Import's safe fetch relies on a private Python field.**
+  fetch.py:48 — _Checked.connect uses HTTPSConnection._context. Unchecked. Lead from lane-08-import.md.
+  **Layman:** A future Python update could break importing files.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0324] **A Google secret pasted with a trailing newline fails the release step.**
+  scripts/write_google_secret.py:51 refuses it; write_usage_key.py accepts it. Workflow pre-strip unchecked. Lead from lane-09-tooling.md.
+  **Layman:** A small copy-paste slip could break making a release.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0325] **The Windows gate fails if a tracked file is deleted but not staged.**
+  scripts/windows-gate.sh:91 — git ls-files -co lists it, zipfile.write raises. Unchecked; the global pre-push may use a clean worktree. Lead from lane-09-tooling.md.
+  **Layman:** The Windows test run can fail for a reason unrelated to the code.
+  Kind: investigate.
+  Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
 
