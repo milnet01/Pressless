@@ -103,3 +103,32 @@ Sweep: searched docs/, tests/, CLAUDE.md and README.md for
 `photo_src is None`, "refused as web_copy" and the OutcomeUnknown
 "reference update" claim. Nothing was stale. `test_words.py`'s CSS
 allow-list lacked the new look.py constants; fixed (b148268).
+
+## lane-07 app, sites and update
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `starter.py` `MARKER` said Pressless's own folder | HIGH | fixed (0b3ea13) |
+| `__main__.py` `folder` flips meaning | MEDIUM | fixed (bdbe57f) — now `own`, in `updating.register` too |
+| `sites_screen.py` / `importing.py` file box scripts | MEDIUM | fixed (9a5c1a9) — one `face.file_box` |
+| `starter.py` `_PAGE` / `_PRIVACY` skeletons | MEDIUM | fixed (a1267ae) — output byte for byte unchanged |
+| `__main__.py` / `installer.py` loader-path loop | MEDIUM | fixed (2a62b18) — `installer.restore_loader_paths` |
+| `sites_screen.py` `register` docstring | MEDIUM | fixed (104494a) |
+| `installer.py` module docstring | LOW | fixed (1540444) |
+| `updater.py` `_SIG_SIZES` cap | LOW | fixed (1540444) |
+| `updater.py` tag spelling check | LOW | fixed (1540444) |
+| `updating.py` `found.step > 1` | LOW | fixed (1540444) |
+| `updater.py` "rule 7" | LOW | fixed (1540444) |
+| `__main__.py` `_wait` docstring | LOW | fixed (bdbe57f) |
+| `updater.py` `PLATFORMS` unused | tool | fixed (1540444) — removed |
+| lead PRESS-0299 open site lost on a failed rename | — | real; fixed, shipped (abc6be9) |
+| lead PRESS-0318 step 1 failure never logged | — | real for the opener; fixed, shipped (1540444) |
+| lead PRESS-0319 file box stuck on a drop | — | real; fixed, shipped (9a5c1a9) |
+| lead PRESS-0320 hard-coded English | — | real; backups half fixed (090f94a); sites half spec-pinned by PRESS-0223, left open with a note |
+
+Sweep: searched docs/, tests/, CLAUDE.md and README.md for
+`_OPEN_SCRIPT`, `_SEND_SCRIPT`, `_file_box`, `open-site-file`,
+`_PRIVACY`, `_NEW_PAGE`, `PLATFORMS`, `rmtree(target)` and
+`updating.register` with `folder`. Nothing was stale outside frozen
+records. `scripts/by-hand-browser-checks.py` clicked `#open-site-file`;
+fixed (9a5c1a9).

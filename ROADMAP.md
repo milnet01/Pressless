@@ -5579,8 +5579,10 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0299] **Opening a saved site file can delete the open site if a rename fails.**
+- ✅ [PRESS-0299] **Opening a saved site file can delete the open site if a rename fails.**
   sitefile.py:211 — rmtree(target) runs before opening.rename(target) when target == current; docstring promises sites/ is left as it was. Order confirmed. Lead from lane-07-app-sites-update.md.
+  Real. Fixed in abc6be9: the target moves aside and comes back
+  if the rename fails; the failure path is tested.
   **Layman:** In a rare failure, opening a saved site file could lose the site that was open.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5718,20 +5720,29 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0318] **A failed first step of the update check is never logged.**
+- ✅ [PRESS-0318] **A failed first step of the update check is never logged.**
   updating.py:124 — looks the same as the switch being off, including _Urllib() ssl/certifi failures. Unchecked. Lead from lane-07-app-sites-update.md.
+  Real for the opener only: read_state never raises. Fixed in
+  1540444: the opener is built at step 2, which is logged.
   **Layman:** If checking for updates fails at once, nothing records why.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0319] **A dropped connection leaves the Sites and Import buttons stuck with no message.**
+- ✅ [PRESS-0319] **A dropped connection leaves the Sites and Import buttons stuck with no message.**
   sites_screen.py:218 and importing.py:291 — await fetch has no catch. Reported by two lanes (07, 08). Unchecked.
+  Real. Fixed in 9a5c1a9: both screens share face.file_box, which
+  restores the button and shows a message when the send fails.
   **Layman:** If the connection drops while opening or importing a site, the button stays stuck.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
 - 📋 [PRESS-0320] **Two messages on the Sites and Backups screens skip the words table.**
   sites.py:122, backups.py:110 — hard-coded English rather than say(). Unchecked. Lead from lane-07-app-sites-update.md.
+  Real. backups.py half fixed in 090f94a. The sites.py half waits on
+  PRESS-0223: that spec says sites imports only safe_write and that
+  move_in returns the sentence, so it cannot read the words table
+  without a spec change. Needs a decision: let sites import words, or
+  have move_in return the failure for __main__ to word.
   **Layman:** A few sentences are hard-coded, so they would not change with the rest of the app's wording.
   Kind: investigate.
   Source: review-readability-2026-10-23.
