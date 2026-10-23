@@ -626,7 +626,8 @@ class _Reading:
 
 def read(name: str, html: str) -> Page | None:
     """The page's sections area as sections, or None where it has none
-    (§4.2). `name` is the page's, for the caller's messages."""
+    (§4.2). `name`, the page's, is not read: PRESS-0215 § 4.1's signature
+    keeps it."""
     marks = _marks(html, _scan(html))
     opening = next((mark for mark in marks if not mark.closing and mark.name == _PAGE), None)
     if opening is None:
@@ -755,7 +756,8 @@ def _sections_of(html: str, events, start: int, end: int) -> str:
 
 def unmarked(name: str, html: str) -> str:
     """§4.7: `html` with every mark-shaped comment removed. A mark alone on
-    its line takes the line with it. `name` is the page's."""
+    its line takes the line with it. `name`, the page's, is not read:
+    PRESS-0215 § 4.1's signature keeps it."""
     cuts = []
     for mark in _marks(html, _scan(html)):
         line_start = html.rfind("\n", 0, mark.start) + 1

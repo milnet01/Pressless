@@ -127,6 +127,12 @@ _PAGE = re.compile(r"\{\{UP\}\}pages/([a-z0-9-]+)\.html")
 _NAV = re.compile(r"""\s+data-nav\s*=\s*(?:"[^"]*"|'[^']*')""", re.IGNORECASE)
 
 
+def address(page: str) -> str:
+    """The address a menu link to the fixed page `page` holds: the homepage's
+    at the site's root, any other under pages/. `_nav` reads it back."""
+    return _HOME if page == "index" else _address(page)
+
+
 class Refused(ValueError):
     """A menu save names a link the menu does not hold, or one it may not write."""
 

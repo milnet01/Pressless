@@ -168,3 +168,12 @@ def test_a_menu_post_naming_no_link_is_refused(posted):
     """PRESS-0216 § 4.4. Breaks when a bad entry is skipped and the rest written."""
     with pytest.raises(menu.Refused):
         menu.arranged(ODD, posted)
+
+
+def test_a_page_address_reads_back_as_its_page():
+    """The menu panel offers menu.address for each page. Breaks when it and
+    _nav disagree, so a link picked from the list loses its data-nav."""
+    assert menu.address("index") == "{{UP}}index.html"
+    assert menu.address("about") == "{{UP}}pages/about.html"
+    assert menu._nav(menu.address("index")) == "Home"
+    assert menu._nav(menu.address("about")) == "about"

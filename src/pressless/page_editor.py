@@ -57,7 +57,9 @@ from pressless.words import say
 
 VISUAL = "visual"
 CODE = "code"
-HOME = "index"                      # the fixed page furniture previews first
+# The homepage's file name: never removed or renamed, addressed as the
+# site's root, and the page furniture previews first.
+HOME = "index"
 NEWEST = "_newest"                  # a `show` naming his newest entry; no page name holds "_"
 
 
@@ -158,7 +160,7 @@ def _area(kind: str, name: str, text: str) -> str | None:
     return blocks.adopt(text, builder.furniture_spans(name, text), element)
 
 
-def _menu(kind: str, name: str) -> bool:
+def _is_menu(kind: str, name: str) -> bool:
     """Whether the file is the menu, whose visual view is its list of links
     (PRESS-0216 § 4.4)."""
     return kind == store.FURNITURE_FOLDER and name == "navigation"
@@ -212,6 +214,11 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
     named = kept + gone
     if len(set(named)) != len(named):
         raise SectionsUnreadable(f"the save of {name} names a section twice")
+    # The script's post() sends a changed section fresh, children and all, and
+    # puts its old path in `removed`; an unchanged one goes as `keep`. So every
+    # held section is named once: a kept top-level section brings its children
+    # with it, so naming one of them as well names it twice; and a child left
+    # unnamed is fine only because its top-level section was named.
     for path in held:
         top = path[:1]
         if path in named:
@@ -219,6 +226,8 @@ def put_sections(name: str, text: str, posted: object, removed: object) -> str:
                 raise SectionsUnreadable(f"the save of {name} names a section twice")
         elif not (len(path) == 3 and top in named):
             raise SectionsUnreadable(f"the save of {name} leaves out section {list(path)}")
+    # A kept top-level section keeps the whitespace before it; any other gets
+    # a line break.
     gaps = tuple(page.gaps[item["keep"][0]] if isinstance(item, dict) and "keep" in item
                  and len(item["keep"]) == 1 else "\n" for item in posted) + (page.gaps[-1],)
     wanted = blocks.Page(page.before, sections, gaps, page.after)
@@ -305,7 +314,7 @@ def _page_address(kind: str, name: str, **more: str) -> str:
     return "/page?" + urllib.parse.urlencode({"kind": kind, "name": name, **more})
 
 
-def _view(kind: str, asked: str) -> str:
+def _view(asked: str) -> str:
     """A page or a furniture file opens in the visual view unless the code was
     asked for (PRESS-0260 § 4.1, PRESS-0216 § 3 decision 5), so an old
     `view=words` address opens the visual view."""
@@ -369,9 +378,9 @@ def _write(folder: Path, form: dict[str, str]) -> tuple[str, str]:
     if not waiting and copy.is_file():
         raise editor.ChangedElsewhere(f"the {kind} file {name} gained a waiting copy")
     text = store.read_html(path)
-    if _view(kind, form.get("view", "")) == CODE:
+    if _view(form.get("view", "")) == CODE:
         new = put_code(text, form.get("text", ""))
-    elif _menu(kind, name):
+    elif _is_menu(kind, name):
         try:
             posted = json.loads(form.get("links", ""))
         except ValueError:
@@ -438,13 +447,13 @@ def _opening(face: Face, folder: Path, kind: str, name: str, asked_view: str,
     # journal is off.
     entries = store.list_slugs(folder, draft=False) if store.journal_on(folder) else ()
     held = store.list_html(folder, store.PAGES_FOLDER)
-    view, broken = _view(kind, asked_view), None
+    view, broken = _view(asked_view), None
     shown, sections, links, photographs, kept = text, None, None, (), ()
     try:
         builder.furniture_spans(name, text)
     except builder.BuildStopped as exc:
         view, broken = CODE, face.fail(exc, publishing=False)
-    if view == VISUAL and _menu(kind, name):
+    if view == VISUAL and _is_menu(kind, name):
         try:
             links = menu.links(text)
         except menu.Unusual:
@@ -477,7 +486,7 @@ def _remember(folder: Path, kind: str, name: str, request: Request) -> None:
     """PRESS-0263: the view and the page shown on, as asked."""
     changes: dict[str, object] = {"page": (kind, name)}
     if "view" in request.query:
-        changes["view"] = _view(kind, request.query["view"])
+        changes["view"] = _view(request.query["view"])
     if kind == store.FURNITURE_FOLDER and "show" in request.query:
         changes["shown_on"] = request.query["show"]
     choices.remember(folder, **changes)
@@ -511,7 +520,12 @@ def _open(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
 
 def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """PRESS-0285 § 4.2: what the other view needs, as opening it would give,
-    so the switch changes view without loading the page."""
+    so the switch changes view without loading the page.
+
+    Two differences from `_open`, both meant. During a press it answers no
+    holding page: it waits for the lock, as a save does (PRESS-0285 § 6). And
+    the switch always names the view it wants, so the remembered one is never
+    read."""
     kind, name = request.query.get("kind", ""), request.query.get("name", "")
     remembered = choices.read(folder)
     with lock, face.capture() as notices:
@@ -545,7 +559,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
     (PRESS-0285 § 4.3)."""
     view, show, waiting, base, held = (opened.view, opened.show, opened.waiting,
                                        opened.base, opened.held)
-    menu_file = _menu(kind, name)
+    menu_file = _is_menu(kind, name)
 
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
@@ -568,13 +582,13 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
                         (VISUAL, "page_editor.show_visual"))) + "</p>"
     picker = ""
     if kind == store.FURNITURE_FOLDER:
-        choices = [link(say("editor.pages.home") if page == HOME else page,
-                        _page_address(kind, name, show=page), page == show)
-                   for page in held]
+        shows = [link(say("editor.pages.home") if page == HOME else page,
+                      _page_address(kind, name, show=page), page == show)
+                 for page in held]
         if opened.entries:
-            choices.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
-                                show is None))
-        picker = f"<p>{say('page_editor.show_on')} " + " ".join(choices) + "</p>"
+            shows.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
+                              show is None))
+        picker = f"<p>{say('page_editor.show_on')} " + " ".join(shows) + "</p>"
     # PRESS-0195 § 4.4: every fixed page but the homepage.
     reshape = ""
     if kind == store.PAGES_FOLDER and name != HOME:
@@ -674,7 +688,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     # at the site's root by the Builder's own placeholder.
     up = "{{UP}}" if kind == store.FURNITURE_FOLDER else "../" if name != HOME else ""
     # § 4.6: a held photograph is offered by the address the site will use.
-    choices = "".join(
+    photograph_options = "".join(
         f'<option value="{attr(up + builder.web_photograph(photo))}">{html.escape(photo)}</option>'
         for photo in photographs)
     # PRESS-0197 § 4.5: each of the three sections lists the kept files of
@@ -710,7 +724,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 <button type="button" data-act="link">{say("page_editor.panel.link")}</button></div>
 <label data-for="heading">{say("page_editor.panel.level")} <select data-field="level">{
     "".join(f'<option value="{level}">{level}</option>' for level in range(1, 7))}</select></label>
-<datalist id="photograph-list">{choices}</datalist>
+<datalist id="photograph-list">{photograph_options}</datalist>
 <p data-for="picture enlarge"><button type="button" data-act="photograph">{
     say("editor.add_photograph")}</button>
 <input type="file" id="photograph-file" hidden
@@ -750,7 +764,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
 def _shape(kind: str, name: str, text: str) -> dict:
     """What a visual view's script holds of the file just written: the menu's
     links, or the sections."""
-    if _menu(kind, name):
+    if _is_menu(kind, name):
         return {"links": menu.links(text)}
     return {"sections": outline(blocks.read(name, text))}
 
@@ -763,9 +777,8 @@ def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...], *,
         return html.escape(value, quote=True)
 
     def place(page: str) -> str:
-        address = "{{UP}}index.html" if page == HOME else f"{{{{UP}}}}pages/{page}.html"
         label = say("editor.pages.home") if page == HOME else builder.label(page)
-        return f'<option value="{attr(address)}">{html.escape(label)}</option>'
+        return f'<option value="{attr(menu.address(page))}">{html.escape(label)}</option>'
 
     places = "".join(place(page) for page in pages)
     data = _script_json({"links": links})
@@ -791,7 +804,7 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
     """§ 4.6."""
     form = editor._form(request)
     kind, name = form.get("kind", ""), form.get("name", "")
-    visual = _view(kind, form.get("view", "")) == VISUAL
+    visual = _view(form.get("view", "")) == VISUAL
     with lock, face.capture() as notices:
         try:
             new, base = _write(folder, form)
@@ -920,7 +933,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
 
     reply = {"published": published, "waiting": waiting, "base": base,
              "failure": failure, "notices": render_notices(notices), "busy": False}
-    if _view(kind, form.get("view", "")) == VISUAL:
+    if _view(form.get("view", "")) == VISUAL:
         # Live or waiting, the file the next save reads holds what was written.
         reply.update(_shape(kind, name, new))
     return _json(reply)
@@ -1044,7 +1057,7 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
 
 
-def _refused(folder: Path, form: dict[str, str], renaming: bool,
+def _reshape_hint(folder: Path, form: dict[str, str], renaming: bool,
              saved: settings.Settings) -> str | None:
     """§ 4.4's refusals, as a words key; None where the change may go ahead."""
     name = form.get("name", "")
@@ -1130,7 +1143,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
     with editor.LOCK:
         try:
             saved = gathered(lambda: settings.load(folder))
-            hint = gathered(lambda: _refused(folder, form, renaming, saved))
+            hint = gathered(lambda: _reshape_hint(folder, form, renaming, saved))
             if hint is None:
                 key = github_setup.token(folder, saved.credentials.store,
                                          saved.credentials.github_account)
