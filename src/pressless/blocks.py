@@ -491,7 +491,10 @@ _READERS: dict[str, Callable[[str], dict[str, str] | None]] = {
 
 # §4.5: every form each kind has been written in, oldest first, as a reader
 # beside its writer. The last is the one `section_html` writes. A change to a
-# kind's HTML adds a form here and never removes one.
+# kind's HTML adds a form here and never removes one. The kinds that hold
+# other sections have no reader here: `_Reading.candidate` and `questions`
+# read them in their current HTML only, so an older form of one needs a reader
+# there, changed together with its writer.
 _FORMS: dict[str, tuple[tuple[Callable, Callable[[Section], str]], ...]] = {
     kind: ((_READERS.get(kind), _WRITERS[kind]),) for kind in (*KINDS, _COLUMN)
 }
