@@ -857,7 +857,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              transport: publisher.Transport | None,
              told: Callable[[pressing.Outcome], None]) -> Reply:
     kind, name = form.get("kind", ""), form.get("name", "")
-    notices: list[str] = []
+    notices: list[str | Notice] = []
     said: list[str] = []
     gathered = gatherer(face.capture, notices)
 
@@ -871,8 +871,9 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
 
         copy = store.html_path_for(folder, kind, name, waiting=True)
 
-        def finish() -> bool:
-            """§ 4.7 step 5: True where the copy could not be binned."""
+        def kept_after_binning() -> bool:
+            """§ 4.7 step 5: bins the waiting copy; True where it could not be
+            binned and is left behind."""
             try:
                 gathered(lambda: store.move_to_bin(folder, copy))
             except Exception:  # noqa: BLE001 -- never replaces the publish's result
@@ -893,19 +894,14 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
                 if not gathered(lambda: _edit_menu(folder, changes,
                                                    lambda text: menu.add(text, name, words))):
                     said.append(say("notice.pages.menu_unusual"))
-            try:
-                publishing.publish(folder, saved, key, entry=None, capture=face.capture,
-                                   notices=notices, transport=transport)
-            except publisher.OutcomeUnknown:
-                if finish():
+            def unknown() -> None:
+                if kept_after_binning():
                     notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
                                           Site.UNKNOWN))
-                raise
-            except BaseException:
-                # A failure here is raised in place of the original (§ 4.7).
-                gathered(changes.put_back)
-                raise
-            kept = finish()
+
+            _publish_or_put_back(face, folder, saved, key, changes, notices, transport,
+                                 gathered, unknown)
+            kept = kept_after_binning()
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = (face.fail(exc, publishing=False,
                                              secret=say("failure.secret.publishing_key"))
@@ -1143,15 +1139,8 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                     gathered(lambda: _renamed(folder, name, to, changes))
                 else:
                     gathered(lambda: _removed(folder, name, changes, said))
-                try:
-                    publishing.publish(folder, saved, key, entry=None, capture=face.capture,
-                                       notices=notices, transport=transport)
-                except publisher.OutcomeUnknown:
-                    raise
-                except BaseException:
-                    # A failure here is raised in place of the original.
-                    gathered(changes.put_back)
-                    raise
+                _publish_or_put_back(face, folder, saved, key, changes, notices, transport,
+                                     gathered)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             unknown = isinstance(exc, publisher.OutcomeUnknown)
             failure = (face.fail(exc, publishing=False,
@@ -1172,6 +1161,26 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
     return _json({"published": published, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})
+
+
+def _publish_or_put_back(face: Face, folder: Path, saved: settings.Settings, key: str,
+                         changes: _Changes, notices: list,
+                         transport: publisher.Transport | None,
+                         gathered: Callable, unknown: Callable[[], None] = lambda: None
+                         ) -> None:
+    """Publish what `changes` wrote, and on a failure put every file back
+    before raising it. If putting back fails, that failure replaces the
+    publish's (§ 4.7). An unknown outcome puts nothing back: the site may
+    already hold the new files (PRESS-0195 INV-10). `unknown` runs first."""
+    try:
+        publishing.publish(folder, saved, key, entry=None, capture=face.capture,
+                           notices=notices, transport=transport)
+    except publisher.OutcomeUnknown:
+        unknown()
+        raise
+    except BaseException:
+        gathered(changes.put_back)
+        raise
 
 
 def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
