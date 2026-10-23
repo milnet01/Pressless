@@ -180,11 +180,14 @@ def test_follow_takes_the_theme_off(tmp_path: Path) -> None:
     assert "data-theme=" not in page.split("<head>")[0]
 
 
-@pytest.mark.parametrize("body", ["no-such-theme", '"><script>', "x" * 200])
-def test_a_theme_that_does_not_exist_is_refused(tmp_path: Path, body: str) -> None:
+@pytest.mark.parametrize(("body", "status"), [("no-such-theme", 400), ('"><script>', 400),
+                                              ("x" * 200, 413)])
+def test_a_theme_that_does_not_exist_is_refused(tmp_path: Path, body: str, status: int) -> None:
+    """Breaks when a body too long to be a key is answered other than as an
+    over-long page body is, with 413."""
     served = face.serve(tmp_path)
     try:
-        assert _post_theme(served, session_cookie(served.url), body) == 400
+        assert _post_theme(served, session_cookie(served.url), body) == status
     finally:
         served.stop()
     assert not (tmp_path / FILE_NAME).exists()

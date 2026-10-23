@@ -964,6 +964,28 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_page(self, face: Face, status: int, body: str) -> None:
+        """`body` wrapped in the Face's frame, carrying the frames policy."""
+        self._send(status, _page(body, face._theme, face.live_address()), "text/html",
+                   (("Content-Security-Policy", _FRAMES_POLICY),))
+
+    def _body_length(self, limit: int) -> int | None:
+        """The declared body length, or None once the request is refused.
+
+        An unparseable or negative length gets 400 unread: read(-1) would wait
+        for the client to close, holding this thread (PRESS-0162). A length
+        past `limit` is drained and gets 413, never read into memory.
+        """
+        length = _length(self.headers.get("Content-Length"))
+        if length is None:
+            self._send(400, "", "text/plain")
+            return None
+        if length > limit:
+            self._drain()
+            self._send(413, "", "text/plain")
+            return None
+        return length
+
     def _refuse(self) -> None:
         self._drain()
         self._send(403, say("face.forbidden"), "text/plain")
@@ -1040,9 +1062,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             try:
                 _open_folder(face._folder)
             except FolderNotOpened as exc:
-                self._send(500, _page(face.fail(exc, publishing=False), face._theme,
-                                      face.live_address()), "text/html",
-                           (("Content-Security-Policy", _FRAMES_POLICY),))
+                self._send_page(face, 500, face.fail(exc, publishing=False))
                 return
             self._send(204, "", "text/plain")
             return
@@ -1063,19 +1083,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send_file(method, parts.path, face)
             return
         page, publishing = registered
-        length = _length(self.headers.get("Content-Length")) if method == "POST" else 0
+        length = self._body_length(_MAX_BODY) if method == "POST" else 0
         if length is None:
-            # Unparseable or negative: read(-1) would wait for the client to
-            # close, holding this thread (PRESS-0162).
-            self._send(400, "", "text/plain")
-            return
-        if length > _MAX_BODY:
-            # A client-declared Content-Length past the ceiling is drained and
-            # refused rather than read whole into memory, as an over-long theme
-            # or true-colours body already is. The cap sits well above any real
-            # page save or photograph, so only a runaway or forged length hits it.
-            self._drain()
-            self._send(413, "", "text/plain")
             return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
         self._answer_then(face, page, request, publishing)
@@ -1095,10 +1104,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _choose_theme(self, face: Face) -> None:
         """PRESS-0190: remember the theme the picker has already applied."""
-        length = _length(self.headers.get("Content-Length"))
-        if length is None or length > _THEME_LIMIT:
-            self._drain()
-            self._send(400, "", "text/plain")
+        length = self._body_length(_CHOICE_LIMIT)
+        if length is None:
             return
         key = self.rfile.read(length).decode("utf-8", "replace")
         if not themes.known(key):
@@ -1117,10 +1124,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     def _choose_true_colours(self, face: Face) -> None:
         """PRESS-0263: remember the preview's true-colours switch, which the
         page has already applied."""
-        length = _length(self.headers.get("Content-Length"))
-        if length is None or length > _THEME_LIMIT:
-            self._drain()
-            self._send(400, "", "text/plain")
+        length = self._body_length(_CHOICE_LIMIT)
+        if length is None:
             return
         said = self.rfile.read(length)
         if said not in (b"0", b"1"):
@@ -1140,9 +1145,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             # the message, which can hold paths and names.
             usage.report("failure", error=type(exc).__name__, screen=request.path,
                          publishing="yes" if publishing else "no")
-            self._send(500, _page(face.fail(exc, publishing=publishing), face._theme,
-                                  face.live_address()), "text/html",
-                       (("Content-Security-Policy", _FRAMES_POLICY),))
+            self._send_page(face, 500, face.fail(exc, publishing=publishing))
             return
         if isinstance(body, Reply):
             location = (("Location", body.location),) if body.location is not None else ()
@@ -1153,8 +1156,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         if request.method == "GET":
             usage.report("screen", screen=request.path)   # the registered path, no query
-        self._send(200, _page(body, face._theme, face.live_address()), "text/html",
-                   (("Content-Security-Policy", _FRAMES_POLICY),))
+        self._send_page(face, 200, body)
 
     def _take_upload(self, face: Face, upload: tuple[Callable[[Path], str], Path],
                      path: str, query: dict[str, str]) -> None:
@@ -1162,13 +1164,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         held whole, and handed to the route's handler as a page is answered.
         Every check a page gets has run before this."""
         handler, into = upload
-        length = _length(self.headers.get("Content-Length"))
+        length = self._body_length(_room(into))
         if length is None:
-            self._send(400, "", "text/plain")
-            return
-        if length > _room(into):
-            self._drain()
-            self._send(413, "", "text/plain")
             return
         taken = Path(into) / f".upload-{secrets.token_hex(8)}"
         failure: OSError | None = None
@@ -1205,18 +1202,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 handle = open(download.path, "rb")  # noqa: SIM115 -- closed below
                 size = os.fstat(handle.fileno()).st_size
             except OSError as exc:
-                self._send(500, _page(face.fail(exc, publishing=False), face._theme,
-                                      face.live_address()), "text/html",
-                           (("Content-Security-Policy", _FRAMES_POLICY),))
+                self._send_page(face, 500, face.fail(exc, publishing=False))
                 return
             with handle:
                 plain = "".join(c if c.isascii() and (c.isalnum() or c in " ._-") else "_"
                                 for c in download.name)
                 quoted = urllib.parse.quote(download.name, safe="")
                 self.send_response(200)
-                self.send_header("Content-Type", "application/zip"
-                                 if download.name.lower().endswith(".zip")
-                                 else "application/octet-stream")
+                self.send_header("Content-Type", _FILE_TYPES.get(
+                    Path(download.name).suffix.lower(), "application/octet-stream"))
                 self.send_header("Content-Length", str(size))
                 self.send_header("Content-Disposition",
                                  f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quoted}")
@@ -1255,8 +1249,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 # tests/conftest.py shortens it: the suite starts and stops hundreds of servers.
 _POLL_SECONDS = 0.5
 
-# The longest theme key with room to spare; a longer body is not a key.
-_THEME_LIMIT = 64
+# The longest body the theme and true-colours routes take: the longest theme
+# key with room to spare. A longer body is no choice of either.
+_CHOICE_LIMIT = 64
 
 # The ceiling on a registered page's POST body, read whole into memory. It sits
 # far above any real page save (capped at ~60 KB client-side) or photograph, and
