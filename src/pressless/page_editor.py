@@ -862,8 +862,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
         try:
             new, _ = gathered(lambda: _write(folder, form))
         except _REFUSED as exc:
-            told(pressing.Outcome(say("script.press.not_published"),
-                                  face.fail(exc, publishing=False)))
+            told(pressing.ended(pressing.PUBLISH, False, face.fail(exc, publishing=False)))
             return editor.failed(face, notices, exc)
 
         copy = store.html_path_for(folder, kind, name, waiting=True)
@@ -911,8 +910,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             notices.extend(_menu_said(said, True, False))
             if kept:
                 notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
-        told(pressing.Outcome(say("script.press.published"), None) if published
-             else pressing.Outcome(say("script.press.not_published"), failure))
+        told(pressing.ended(pressing.PUBLISH, published, failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
     reply = {"published": published, "waiting": waiting, "base": base,
@@ -1153,8 +1151,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
             address = "/"
     published = hint is None and failure is None
     notices.extend(_menu_said(said, published, unknown))
-    told(pressing.Outcome(say("script.press.published") if published
-                          else say("script.press.not_published"), failure))
+    told(pressing.ended(pressing.PUBLISH, published, failure))
     return editor.json_reply({"published": published, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})

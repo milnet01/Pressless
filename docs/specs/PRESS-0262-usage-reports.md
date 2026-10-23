@@ -160,7 +160,7 @@ test. It cuts any value longer than 100 characters to its first 100.
 | `screen` | the Face's `_answer`, for a `GET` whose page returns HTML rather than a `Reply` | `screen`: the registered path, never the query |
 | `wizard_step` | `wizard.Wizard` when it shows a step | `wizard`: the wizard's name; `step`: the step's name |
 | `wizard_done` | `wizard.Wizard` when a step's check returns `Done` | `wizard`: the wizard's name |
-| `press` | `pressing.run`, once the record ends | `kind`: the press's kind; `ended`: `done` where the outcome's words are `script.press.published`'s or `script.press.undone`'s, else `failed` |
+| `press` | `pressing.run`, once the record ends | `kind`: the press's kind; `ended`: `done` where the outcome says the press succeeded (`pressing.Outcome.done`), else `failed`; never read from the outcome's words, so rewording them changes nothing |
 | `failure` | the Face's `_answer`, in its last-resort catch | `error`: `type(exc).__name__`; `screen`: the registered path; `publishing`: `yes` or `no` |
 
 `app_version` is `pressless.__version__`. `system` is `system()`.

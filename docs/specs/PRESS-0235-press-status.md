@@ -83,8 +83,10 @@ def register(face: Face) -> None: ...    # GET /press, POST /press/forget
 
 One record per process, behind its own lock, held only to read or change the
 record. `start` checks and marks running in one step, so two presses arriving
-together cannot both start. `Outcome` holds the line's words and the failure's
-HTML (`face.fail`'s output, or None). `forget` does nothing while a press
+together cannot both start. `Outcome` holds the line's words, the failure's
+HTML (`face.fail`'s output, or None), and `done`, whether the press
+succeeded. `pressing.ended(kind, done, failure)` makes one with the
+press kind's own words. `forget` does nothing while a press
 runs, since every publish saves first. Nothing is written to disk; a restart
 starts with no record.
 

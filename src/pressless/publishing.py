@@ -321,7 +321,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             written, _ = gathered(lambda: editor.save(folder, form))
         except (store.StoreError, editor.ChangedElsewhere, editor.TooManyCopies) as exc:
             failed = face.fail(exc, publishing=False)
-            told(pressing.Outcome(say("script.press.not_published"), failed))
+            told(pressing.ended(pressing.PUBLISH, False, failed))
             body = render_notices(notices) + failed
             return Reply(body.encode("utf-8"), "text/html; charset=utf-8", status=409)
 
@@ -341,8 +341,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             published = True
             if result.copy_kept:
                 notices.append(Notice(say("notice.publishing.kept_copy"), Site.UPDATED))
-        told(pressing.Outcome(say("script.press.published"), None) if published
-             else pressing.Outcome(say("script.press.not_published"), failure))
+        told(pressing.ended(pressing.PUBLISH, published, failure))
         slug, draft, base = gathered(lambda: _left(folder, written))
 
     return Reply(json.dumps({

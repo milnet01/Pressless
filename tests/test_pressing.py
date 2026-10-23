@@ -151,6 +151,21 @@ def test_one_press_at_a_time():
     assert pressing.start(pressing.UNDO) is True
 
 
+def test_the_usage_report_reads_whether_a_press_succeeded(monkeypatch):
+    """PRESS-0262 § 4.4, PRESS-0326. Breaks when pressing.run judges a press by
+    its outcome's words, so new success words count as a failure."""
+    reported = []
+    monkeypatch.setattr(pressing.usage, "report",
+                        lambda name, **values: reported.append((name, values)))
+    pressing.run(pressing.PUBLISH, None, lambda told: told(
+        pressing.Outcome("Published, in words written later.", done=True)))
+    pressing.run(pressing.UNDO, None, lambda told: told(
+        pressing.Outcome(pressing.say("script.press.undone"))))
+    pressing.forget()
+    assert reported == [("press", {"kind": "publish", "ended": "done"}),
+                        ("press", {"kind": "undo", "ended": "failed"})]
+
+
 # ------------------------------------------------------------------ INV-2 ---
 
 

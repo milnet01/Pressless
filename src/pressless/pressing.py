@@ -22,14 +22,25 @@ PUBLISH, UNDO = "publish", "undo"
 # Every press-row line has one home, the words table's `script.press.` keys,
 # which Python and the scripts both read (§ 4.3, PRESS-0242).
 _RUNNING = {PUBLISH: "script.press.publishing", UNDO: "script.press.undoing"}
+_DONE = {PUBLISH: "script.press.published", UNDO: "script.press.undone"}
 _FAILED = {PUBLISH: "script.press.not_published", UNDO: "script.press.not_undone"}
 
 
 @dataclass(frozen=True)
 class Outcome:
-    """How a press ended: the line's words, and the failure's HTML or None."""
+    """How a press ended: the line's words, the failure's HTML or None, and
+    whether it succeeded, which the usage report reads (PRESS-0262 § 4.4)."""
     said: str
     failure: str | None = None
+    done: bool = False
+
+
+def ended(kind: str, done: bool, failure: str | None = None) -> Outcome:
+    """How a press of `kind` ended, in that kind's own words: succeeded where
+    `done`, else failed with `failure`."""
+    if done:
+        return Outcome(say(_DONE[kind]), None, done=True)
+    return Outcome(say(_FAILED[kind]), failure)
 
 
 # One record per process. _LOCK is held only to read or change it, never for a
@@ -86,13 +97,12 @@ def run(kind: str, busy: Callable[[str], Reply],
     it, with the failed words. Only a press that started ends it."""
     if not start(kind):
         return busy(state()["said"])
-    ended = [Outcome(say(_FAILED[kind]))]
+    told = [ended(kind, False)]
     try:
-        return press(lambda outcome: ended.append(outcome))
+        return press(lambda outcome: told.append(outcome))
     finally:
-        end(ended[-1])
-        done = ended[-1].said in (say("script.press.published"), say("script.press.undone"))
-        usage.report("press", kind=kind, ended="done" if done else "failed")
+        end(told[-1])
+        usage.report("press", kind=kind, ended="done" if told[-1].done else "failed")
 
 
 def register(face: Face) -> None:

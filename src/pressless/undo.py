@@ -517,8 +517,7 @@ def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
         else:
             failure = None
             summary = _summary(result)
-        told(pressing.Outcome(say("script.press.undone"), None) if failure is None
-             else pressing.Outcome(say("script.press.not_undone"), failure))
+        told(pressing.ended(pressing.UNDO, failure is None, failure))
 
     return Reply(json.dumps({
         "undone": failure is None, "failure": failure,
