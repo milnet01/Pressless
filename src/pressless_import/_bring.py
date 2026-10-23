@@ -51,7 +51,7 @@ from ._html import _host, autop, bare_host, wordpress_markup
 
 IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
-_MEDIA = "media"
+MEDIA_FOLDER = "media"     # in IMPORT_FOLDER: the fetched files; finish deletes it
 _MOVING = "moving"
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
 _CARRIED_TYPES = frozenset({"post", "page", "attachment", "nav_menu_item", "wp_navigation"})
@@ -588,5 +588,5 @@ def finish(into: Path) -> str | None:
                 f"{exc.strerror or type(exc).__name__}. Nothing was lost. Close anything "
                 "using that folder and start Pressless again.")
     shutil.rmtree(work, ignore_errors=True)
-    shutil.rmtree(held_folder / _MEDIA, ignore_errors=True)
+    shutil.rmtree(held_folder / MEDIA_FOLDER, ignore_errors=True)
     return None

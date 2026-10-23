@@ -37,7 +37,6 @@ SENTENCES[pressless_import.ImportStopped] = Sentence(
 )
 EXPORT_LARGEST = 256 * 1024 * 1024    # § 4.3: refused at upload
 _EXPORT = "export.xml"
-_MEDIA = "media"
 _UNFETCHED = "unfetched.json"         # what the fetch could not have, once it ended
 _REPORT = "report.txt"
 
@@ -71,6 +70,7 @@ def register(face: Face, folder: Path) -> None:
     """Add /import, its two file boxes, and the list page's offer."""
     folder = Path(folder)
     held = folder / pressless_import.IMPORT_FOLDER
+    media = held / pressless_import.MEDIA_FOLDER
 
     def empty() -> bool:
         try:
@@ -101,7 +101,7 @@ def register(face: Face, folder: Path) -> None:
 
         def run() -> None:
             try:
-                left = fetch.fetch_all(pressless_import.read(held / _EXPORT), held / _MEDIA,
+                left = fetch.fetch_all(pressless_import.read(held / _EXPORT), media,
                                        room, progress=progress)
                 safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
                                        prefix=".unfetched-")
@@ -174,7 +174,7 @@ def register(face: Face, folder: Path) -> None:
 
     def check_bring(answers: wizard.Answers):
         try:
-            report = pressless_import.bring_in(held / _EXPORT, held / _MEDIA, folder,
+            report = pressless_import.bring_in(held / _EXPORT, media, folder,
                                                answers.get("look", ""), unfetched=missing())
         except pressless_import.ImportStopped as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
@@ -229,7 +229,7 @@ def register(face: Face, folder: Path) -> None:
             return to_the_list()
         left = missing()
         try:
-            filled = pressless_import.unpack_media(taken, held / _MEDIA, tuple(left), room)
+            filled = pressless_import.unpack_media(taken, media, tuple(left), room)
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.gaps.refused")))
         for place in filled:

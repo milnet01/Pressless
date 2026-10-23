@@ -42,6 +42,7 @@ from ._html import Lookup, autop, convert, is_markup, visible_lines, wordpress_m
 
 __all__ = [
     "IMPORT_FOLDER",
+    "MEDIA_FOLDER",
     "Dropped",
     "Export",
     "ImportStopped",
@@ -771,4 +772,4 @@ def main(argv: list[str]) -> int:
 
 # The Import anyone runs (PRESS-0125) builds on everything above, so it is
 # imported last.
-from ._bring import IMPORT_FOLDER, bring_in, finish, unpack_media  # noqa: E402
+from ._bring import IMPORT_FOLDER, MEDIA_FOLDER, bring_in, finish, unpack_media  # noqa: E402
