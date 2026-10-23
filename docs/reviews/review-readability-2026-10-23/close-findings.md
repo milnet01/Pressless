@@ -194,3 +194,41 @@ Sweep: searched docs/, tests/, scripts/, CLAUDE.md and README.md for
 script's `KINDS`/`HOLDERS` lists, `quote=False` and the leaving
 handlers. Only shipped roadmap records and specs naming kept names
 matched; nothing was stale.
+
+## lane-03 editor
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `editor.py` autosave comment over `_UNDO_SCRIPT` | MEDIUM | fixed (897daa3) — already moved by lane-02 |
+| `editor.py` wait-for-a-save written three times | MEDIUM | fixed (aa81fee) — one `settle`/`release` |
+| `editor.py` busy-reply and View-site steps copied four times | MEDIUM | fixed (aa81fee) — `presslessPress.busy` and `viewable` |
+| `photographs.py` two name normalisers drifted | MEDIUM | fixed (844641e, 298faf3) — `photographs.folded`; each difference stated; a test holds the limits equal |
+| `templates.py` numbered-name loop written three times | LOW | fixed (7a4a90e, 298faf3) — `photographs.first_free` |
+| `editor.py` `_named`/`_replaces`/`_replaced` | MEDIUM | fixed (406ef97) — `_draft_replaces`, `replaces_field`; `_replaced` kept (PRESS-0015) |
+| `editor.py` underscore helpers used across modules | MEDIUM | fixed (5291ffe) — page_editor's copies gone; spec-named ones kept, commented |
+| `editor.py` `_list` return expression | MEDIUM | fixed (0846854) |
+| `editor.py` `_address` thread | MEDIUM | fixed (406ef97) — `_address_refused` and `_move` |
+| `editor.py` `_address` draft default | LOW | fixed (406ef97) — comment: the request shape predates PRESS-0182 |
+| `editor.py` `published, waiting` | LOW | fixed (406ef97) — `hide_published`, `hide_waiting` |
+| `editor.py` `UNDONE` comment | LOW | fixed (406ef97) |
+| `editor.py` `_replaces` copied in publishing | LOW | fixed (406ef97) |
+| `marks.py` Mark comments omit value marks | LOW | fixed (268dda8) |
+| `marks.py` Quote points at Photo's missing reason | LOW | fixed (268dda8) |
+| `marks.py` `_closer_table` cache unexplained | LOW | fixed (268dda8) |
+| `marks.py` `_as_block` assumes photo | LOW | fixed (268dda8) — comment on `_BLOCK_MARKS` |
+| `marks.py` `_try_wrap` name | LOW | fixed (268dda8) — `_try_inline` |
+| `photographs.py` `keep`'s FALLBACK | LOW | fixed (7a4a90e) — comment |
+| `files.py` shadowed `name` | LOW | fixed (6786c59) |
+| lead PRESS-0308 New's Store errors uncaught | — | real; fixed, shipped (083fbf1) |
+| lead PRESS-0309 address change races a save | — | real; fixed, shipped (aa81fee); page editor twin filed PRESS-0329 |
+| lead PRESS-0310 unchecked `addressField` | — | dropped — `_page` always draws it; dead check removed (271ce5c) |
+| lead PRESS-0311 template named `con` fails | — | real; fixed, shipped (7a4a90e) |
+
+Sweep: searched docs/, tests/, scripts/, CLAUDE.md and README.md for
+the renamed helpers (`_named`, `_replaces`, `_form`, `_failed`,
+`_json`, `_digest`, `_try_wrap`, `photographs._plain`), the moved
+busy-reply and View-site steps, and `inFlight`. Only tests matched:
+the View-site check (updated in aa81fee) and test_pressing's `_digest`
+calls (5291ffe). The
+full suite caught `first_free` and `folded` widening the Store's
+pinned surface; 298faf3 moved them.

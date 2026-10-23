@@ -5687,8 +5687,7 @@ it can then be changed.
 
 - ✅ [PRESS-0311] **A new template named like a reserved Windows word fails instead of numbering.**
   templates.py:169 — template_path_for raising on a refused name fails the request instead of trying con-2. Unchecked. Lead from lane-03-editor.md.
-  Real: New template answered 409 for "con". Fixed in 7a4a90e with
-  store.first_free, shared with free_address and photographs.keep.
+  Real: New template answered 409 for "con". Fixed in 7a4a90e with first_free (now photographs.first_free, 298faf3), shared with free_address and photographs.keep.
   **Layman:** Some template names (like "con") may fail to save instead of getting a number added.
   Kind: investigate.
   Source: review-readability-2026-10-23.
