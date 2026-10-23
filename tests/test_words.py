@@ -172,6 +172,14 @@ def test_every_key_is_in_the_table() -> None:
     assert not missing, missing
 
 
+def test_no_entry_shows_a_ticket_id() -> None:
+    """PRESS-0301. Breaks when words he reads name an internal roadmap id,
+    which means nothing to him."""
+    shown = {key: text for key, text in words.ENGLISH.items()
+             if re.search(r"\b[A-Z]+-\d{4}\b", text)}
+    assert not shown, shown
+
+
 def test_every_entry_is_used() -> None:
     """INV-4. Breaks when a moved string leaves its old entry behind. The two
     families are asked for by prefix (country., mark.), so they count whole."""

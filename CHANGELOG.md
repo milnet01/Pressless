@@ -21,6 +21,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   Settings from the old look take one line per post or page, not one per
   piece of web code. Counts read "1 post" and "1 page", never "1 pages".
 
+### Fixed
+
+- **A setup step no longer shows a meaningless code** (PRESS-0301)
+  The step that says which GitHub permissions to choose ended with an
+  internal reference number in brackets. It now ends at the sentence.
+
 ## [0.10.1] - 2026-10-22
 
 **Theme:** their own look, and any file

@@ -903,7 +903,7 @@ _WORDS: dict[str, str] = {
     "setup.new_key.5": (
         "Under <b>Repository permissions</b>, set <b>Contents</b>, <b>Pages</b> and "
         "<b>Administration</b> each to <b>Read and write</b>. Pressless needs Administration "
-        "to switch your site on (PRESS-0230)."
+        "to switch your site on."
     ),
     "setup.new_key.6": "Click <b>Generate token</b>, then copy it. GitHub shows it only once.",
     "setup.pages": (
