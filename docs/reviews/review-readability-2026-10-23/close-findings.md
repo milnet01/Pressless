@@ -223,6 +223,7 @@ matched; nothing was stale.
 | lead PRESS-0309 address change races a save | — | real; fixed, shipped (aa81fee); page editor twin filed PRESS-0329 |
 | lead PRESS-0310 unchecked `addressField` | — | dropped — `_page` always draws it; dead check removed (271ce5c) |
 | lead PRESS-0311 template named `con` fails | — | real; fixed, shipped (7a4a90e) |
+| PRESS-0329 page Remove/Rename races a save | — | fixed (efa2e44) |
 
 Sweep: searched docs/, tests/, scripts/, CLAUDE.md and README.md for
 the renamed helpers (`_named`, `_replaces`, `_form`, `_failed`,
