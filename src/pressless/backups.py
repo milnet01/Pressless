@@ -22,6 +22,7 @@ from pathlib import Path
 
 from pressless import sitefile, sites
 from pressless.safe_write import write_whole
+from pressless.words import say
 
 FILE_NAME = "backups.json"
 DEFAULT_FOLDER = "Pressless-backups"
@@ -107,8 +108,8 @@ def make_due(own: Path, today: datetime.date) -> str | None:
                 for _, old in held[:-KEEP]:
                     old.unlink()
         except (OSError, ValueError) as exc:
-            said = (f"The last backup could not be made in the {folder.name} folder: "
-                    f"{getattr(exc, 'strerror', None) or type(exc).__name__}.")
+            said = say("backups.trouble", folder=folder.name,
+                       reason=getattr(exc, "strerror", None) or type(exc).__name__)
             _write(own, trouble=said)
             return said
         if trouble(own) is not None:

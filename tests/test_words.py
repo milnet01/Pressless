@@ -201,6 +201,7 @@ _CSS = "CSS"
 # Literals that are not words on a screen, named by the constant they are
 # assigned to where they have one, else by their text, with why.
 NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
+    "backups.py": {"DEFAULT_FOLDER": "a folder's name on disk"},
     "dashboard.py": {
         "_CHANNELS": "Google's channel names, matched against its answer",
         "where": "a value Google sends",

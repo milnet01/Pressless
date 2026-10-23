@@ -1391,6 +1391,8 @@ _WORDS: dict[str, str] = {
         "file. The publishing key is never in a file, so enter it in Settings once each "
         "site opens."
     ),
+    # The last backup's failure (backups.make_due), shown below the backups folder.
+    "backups.trouble": "The last backup could not be made in the {folder} folder: {reason}.",
     "sites_screen.backups.title": "Daily backups",
     "sites_screen.backups.about": (
         "Each day Pressless saves every site to a file by itself, and keeps the last seven "

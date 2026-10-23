@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from test_publishing import _entry
 
-from pressless import backups, sites, store
+from pressless import backups, sites, store, words
 
 DAY = datetime.date(2026, 10, 16)
 
@@ -115,6 +115,21 @@ def test_a_backup_that_fails_says_so_and_leaves_nothing_half_made(
     assert _made(tmp_path / "Pressless-backups") == []
     monkeypatch.undo()
     assert backups.make_due(own, DAY) is None and backups.trouble(own) is None
+
+
+def test_a_failed_backup_takes_its_words_from_the_table(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PRESS-0320. Breaks when the sentence shown on the Sites screen is
+    written in backups.py rather than read from the words table."""
+    own = _own(tmp_path)
+
+    def fails(site: Path, target: Path) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(backups.sitefile, "save", fails)
+    with words.use({"backups.trouble": "[{folder}] [{reason}]"}):
+        said = backups.make_due(own, DAY)
+    assert said == "[Pressless-backups] [No space left on device]"
 
 
 def test_the_record_is_the_machines(tmp_path: Path) -> None:
