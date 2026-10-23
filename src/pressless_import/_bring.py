@@ -47,7 +47,7 @@ from . import (
     read,
     resolve_slug,
 )
-from ._html import autop, wordpress_markup
+from ._html import _host, autop, bare_host, wordpress_markup
 
 IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
@@ -135,17 +135,13 @@ _ADDRESSED = re.compile(r"""(\b(?:src|href|srcset|poster)\s*=\s*)(["'])(.*?)\2""
                         re.I | re.S)
 
 
-def _host(address: str) -> str:
-    return urlparse(address).netloc.lower().removeprefix("www.")
-
-
 def _addresses(body: str, up: str, held: Mapping[str, str], old_site: str
                ) -> tuple[str, list[str]]:
     """Each address under the old site's uploads folder whose file Import
     holds, pointed at the Store's copy from a page `up` from the root; any
     other is left as it is and listed."""
     listed: list[str] = []
-    old = old_site.lower().removeprefix("www.")
+    old = bare_host(old_site)
 
     def token(found: re.Match) -> str:
         address = found.group(0)

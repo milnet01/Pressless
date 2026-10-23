@@ -194,7 +194,8 @@ def _plain_text(element: _Element) -> str:
 _LINES = frozenset({"li", "tr", "td", "th", "hr"})
 _SPLITS = (frozenset({"br", "img", "div", "p", "blockquote", "figure", "pre"})
            | _HEADINGS | _LINES)
-# What a reader never sees, so neither function hands it on.
+# What a reader never sees, so neither visible_lines nor _Converter.walk
+# hands it on.
 _HIDDEN = frozenset({"script", "style"})
 
 # ----------------------------------------------------------- the report ----
@@ -296,7 +297,7 @@ class _Converter:
     def __init__(self, by_address: Lookup, by_id: Lookup, old_site: str):
         self._by_address = by_address
         self._by_id = by_id
-        self._old_site = old_site.lower().removeprefix("www.")
+        self._old_site = bare_host(old_site)
         self._caption: str | None = None
         self._preformatted = 0
         self.dropped: list[str] = []
@@ -543,8 +544,13 @@ def _replace(style: _Style, **changes) -> _Style:
     return _Style(**{**style.__dict__, **changes})
 
 
+def bare_host(netloc: str) -> str:
+    """A host as Import compares two: lower case, without a leading www."""
+    return netloc.lower().removeprefix("www.")
+
+
 def _host(address: str) -> str:
-    return urlparse(address).netloc.lower().removeprefix("www.")
+    return bare_host(urlparse(address).netloc)
 
 
 # ------------------------------------------------------------ the marks ----
