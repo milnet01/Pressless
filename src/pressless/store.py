@@ -1282,7 +1282,7 @@ def list_photographs(folder: Path) -> tuple[str, ...]:
     suffix to strip. A file photograph_path_for refuses is passed over and
     named, on INV-12's rule (PRESS-0164).
     """
-    names = _list_names(folder, PHOTOGRAPHS_FOLDER, "")
+    names = _list_names(folder, PHOTOGRAPHS_FOLDER)
     return _only_usable(tuple((name, name) for name in names),
                         Path(folder) / PHOTOGRAPHS_FOLDER,
                         lambda name: photograph_path_for(folder, name))
@@ -1291,7 +1291,7 @@ def list_photographs(folder: Path) -> tuple[str, ...]:
 def list_files(folder: Path) -> tuple[str, ...]:
     """The kept file names, sorted, whole, on list_photographs' rule
     (PRESS-0197 § 4.3)."""
-    names = _list_names(folder, FILES_FOLDER, "")
+    names = _list_names(folder, FILES_FOLDER)
     return _only_usable(tuple((name, name) for name in names),
                         Path(folder) / FILES_FOLDER,
                         lambda name: file_path_for(folder, name))
@@ -1459,16 +1459,16 @@ def _raw_names(subfolder: Path, suffix: str) -> tuple[tuple[str, str], ...]:
     that file over in silence -- the one unusable name reaching production
     today, and the answer §4.4 rejects (INV-12).
 
-    An empty `suffix` returns whole file names, which is what photographs need.
-    A missing subfolder holds nothing (§6).
+    `suffix` is lower case and matched A-Z folded, as _slugs_in matches it.
+    The entries, page and template listings share this helper; the whole-name
+    listings use _list_names. A missing subfolder holds nothing (§6).
     """
     if not subfolder.is_dir():
         return ()
-    folded = suffix.lower()
     return tuple(sorted(
-        (path.name[: -len(suffix)] if suffix else path.name, path.name)
+        (path.name[: -len(suffix)], path.name)
         for path in subfolder.iterdir()
-        if path.is_file() and (not suffix or path.name.lower().endswith(folded))
+        if path.is_file() and _folded(path.name).endswith(suffix)
     ))
 
 
@@ -1503,14 +1503,14 @@ def _only_usable(
     return tuple(usable)
 
 
-def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
-    """File names in one subfolder, sorted, opening nothing (§4.4).
+def _list_names(folder: Path, subfolder: str) -> tuple[str, ...]:
+    """Whole file names in one subfolder, sorted, opening nothing (§4.4), for
+    list_photographs and list_files. The entry, page and template listings
+    strip a suffix and use _raw_names instead.
 
     A missing subfolder lists nothing rather than raising: these folders are
     the Store's own layout rather than the caller's, so a fresh install needs
-    no setup step for them (§6). That is list_slugs' rule, shared rather than
-    restated. An empty `suffix` returns whole file names, which is what
-    list_photographs needs.
+    no setup step for them (§6), the same answer _raw_names gives.
     """
     handed = Path(folder)
     if not handed.is_dir():
@@ -1519,9 +1519,7 @@ def _list_names(folder: Path, subfolder: str, suffix: str) -> tuple[str, ...]:
     if not destination.is_dir():
         return ()
     return tuple(sorted(
-        path.name[: -len(suffix)] if suffix else path.name
-        for path in destination.iterdir()
-        if path.is_file() and path.name.endswith(suffix)
+        path.name for path in destination.iterdir() if path.is_file()
     ))
 
 
