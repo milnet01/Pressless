@@ -5611,8 +5611,13 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0302] **Four copies of the Windows check can drift, leaving a rename without its retry.**
+- ✅ [PRESS-0302] **Four copies of the Windows check can drift, leaving a rename without its retry.**
   store.py:512 picks the move by store._is_windows(); patiently retries only on safe_write._is_windows(). Four definitions confirmed. Lead from lane-04-store.md.
+  Real for tests, not for users: every copy read the same sys.platform.
+  Fixed in 991c4f4: the move reads safe_write._is_windows, the check
+  patiently already reads; the per-module seams the specs name now ask
+  safe_write. Red test:
+  test_one_windows_check_gives_a_move_its_rename_and_its_retry.
   **Layman:** On Windows, a small inconsistency could make saving files less reliable.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5692,8 +5697,11 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0312] **A failed copy into the bin leaves a partial copy that blocks a retry.**
+- ✅ [PRESS-0312] **A failed copy into the bin leaves a partial copy that blocks a retry.**
   store.py:393 — copy_to_bin opens with xb then writes; a partial copy stays and a same-second retry hits FileExistsError. Unchecked. Lead from lane-04-store.md.
+  Real. Fixed in 2ea6e71: copy_to_bin removes its own cut-short copy
+  after the close, then raises. Red test:
+  test_a_failed_copy_into_the_bin_leaves_no_part_copy.
   **Layman:** If keeping an old copy fails midway, trying again straight away may fail too.
   Kind: investigate.
   Source: review-readability-2026-10-23.

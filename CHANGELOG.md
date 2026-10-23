@@ -23,6 +23,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Saving the look again after a full disk works** (PRESS-0312)
+  Before the look replaces your own style code, Pressless keeps a copy of
+  it in the bin. If that copy failed part-way, for example on a full disk,
+  a cut-short copy stayed in the bin, and saving again straight away was
+  refused. Now nothing is left behind, and saving again works.
+
 - **Typing while an entry's address changes is saved** (PRESS-0309)
   If you kept typing while Pressless moved an entry to a new web address,
   the save of that typing could clash with the move, and the editor
