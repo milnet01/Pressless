@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pressless import credentials, google_signin, insights, settings, sites, starter
-from pressless.face import Face, Reply, Request, message_box, render_notices
+from pressless.face import Face, Reply, Request, loaded_settings, message_box, render_notices
 from pressless.google_signin import AccessToken, Attempt, Property
 from pressless.store import StoreError
 from pressless.words import say
@@ -32,7 +32,6 @@ RETURN_PATH = "/setup/google/back"        # the redirect_uri's path
 PAGE = "/setup/google"
 _REFRESH_MARGIN = 60.0   # seconds before expiry a held token stops being handed out
 _PERMISSIONS = "https://myaccount.google.com/permissions"
-_CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
 
 @dataclass(frozen=True)
@@ -107,12 +106,7 @@ def token(folder: Path) -> str:
 
 def _load(state: _State) -> tuple[settings.Settings | None, str]:
     """Settings, or None and the page to show instead."""
-    with state.face.capture() as notices:
-        try:
-            saved = settings.load(state.folder)
-        except (settings.NotSetUp, settings.SettingsError):
-            saved = None
-    shown = render_notices(notices)
+    saved, shown = loaded_settings(state.face, state.folder)
     if saved is None:
         return None, shown + f"<h1>{say('google_setup.title')}</h1><p>{say('setup.first')}</p>"
     return saved, shown
@@ -225,7 +219,7 @@ def _sites(state: _State) -> str:
         refresh = credentials.read(saved.credentials.store, state.folder, account)
         access = google_signin.access_token(refresh, transport)
         found = google_signin.properties(access.value, transport)
-    except (insights.InsightsError, *_CREDENTIAL_FAILURES) as exc:
+    except (insights.InsightsError, *credentials.FAILURES) as exc:
         return (shown + state.face.fail(exc, publishing=False,
                                         secret=say("failure.secret.google_sign_in"))
                 + _continue(moving=False))
@@ -264,7 +258,7 @@ def _choose(state: _State, request: Request) -> str:
     filed = sites.account("google", state.folder)   # PRESS-0223 § 4.5
     try:
         credentials.write(saved.credentials.store, state.folder, filed, pending.refresh_token)
-    except _CREDENTIAL_FAILURES as exc:
+    except credentials.FAILURES as exc:
         return shown + state.face.fail(exc, publishing=False,
                                        secret=say("failure.secret.google_sign_in"))
     # PRESS-0199 § 4.3: the property's web streams, read with the token in
@@ -359,7 +353,7 @@ def _off(state: _State) -> str:
         try:
             refresh = credentials.read(saved.credentials.store, state.folder, account)
             google_signin.revoke(refresh, state.transport())
-        except (insights.InsightsError, *_CREDENTIAL_FAILURES):
+        except (insights.InsightsError, *credentials.FAILURES):
             told = False
     # Whatever the revoke did, delete what Pressless kept (§ 3 decision 5):
     # the privacy policy promises Turn off removes both. Neither failure
@@ -368,7 +362,7 @@ def _off(state: _State) -> str:
     try:
         credentials.delete(saved.credentials.store, state.folder,
                            sites.account("google", state.folder))
-    except _CREDENTIAL_FAILURES:
+    except credentials.FAILURES:
         removed = False
     try:
         insights.forget(state.folder)

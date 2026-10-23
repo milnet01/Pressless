@@ -5,7 +5,8 @@ beside setup.py, because only the Face reaches Credentials (`docs/design.md`
 rule 10); talking to GitHub is `github_signin`'s, which belongs to the
 Publisher.
 
-Every GitHub secret is read through `token`. A hand-made key is handed over
+Every secret sent to GitHub is read through `token`; setup reads one
+directly only to tell a sign-in from a key. A hand-made key is handed over
 as it is. A sign-in's refresh token is never handed over: it buys a pass that
 lasts eight hours, held in memory for one launch and never written to disk.
 GitHub's refresh token works once, so renewing it and storing the new one run
@@ -20,15 +21,14 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from pressless import credentials, github_signin, publisher, settings
-from pressless.face import Face, Reply, Request, message_box, render_notices
+from pressless import credentials, github_signin, publisher
+from pressless.face import Face, Reply, Request, loaded_settings, message_box
 from pressless.github_signin import DeviceCode, Tokens
 from pressless.words import say
 
 PAGE = "/setup/github"
 _REFRESH_PREFIX = "ghr_"                 # every GitHub refresh token; no key starts so
 _REFRESH_MARGIN = 60.0   # seconds before expiry a held pass stops being handed out
-_CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
 
 class _State:
@@ -67,6 +67,11 @@ def signed_in(secret: str) -> bool:
 def token(folder: Path, store: str, account: str) -> str:
     """What to send GitHub as the key, from the secret stored under `account`
     (§ 4.2). Takes the arguments `credentials.read` takes."""
+    # A hand-made key needs no registered state, so it is handed over even
+    # before `register` runs; only a sign-in needs the lock, the clock and
+    # the held pass. Tests and the by-hand browser checks serve pages without
+    # registering this module and rely on that. The app registers it before
+    # serving, so the RuntimeError below is a wiring fault, never a writer's.
     state = _state
     with state.lock if state is not None else threading.Lock():
         secret = credentials.read(store, Path(folder), account)
@@ -157,12 +162,8 @@ def how() -> str:
 
 def _page(state: _State, request: Request) -> str | Reply:
     """§ 4.4: the sign-in sequence on its own, with the saved store."""
-    with state.face.capture() as notices:
-        try:
-            saved = settings.load(state.folder)
-        except (settings.NotSetUp, settings.SettingsError):
-            saved = None
-    shown = render_notices(notices) + f"<h1>{say('github_setup.title')}</h1>"
+    saved, shown = loaded_settings(state.face, state.folder)
+    shown += f"<h1>{say('github_setup.title')}</h1>"
     back = f'<p><a href="/setup">{say("setup.back")}</a></p>'
     if saved is None:
         return shown + f"<p>{say('setup.first')}</p>"
@@ -180,7 +181,7 @@ def _page(state: _State, request: Request) -> str | Reply:
             above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:
             above = message_box("failure", state.face.fail(exc, publishing=False))
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             above = message_box("failure", state.face.fail(
                 exc, publishing=False, secret=say("failure.secret.github_sign_in")))
     return (shown + above + how() + state.again.shown()

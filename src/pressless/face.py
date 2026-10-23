@@ -389,6 +389,18 @@ def gatherer(capture: Callable[[], AbstractContextManager[list[str]]],
     return gathered
 
 
+def loaded_settings(served: Face, folder: Path) -> tuple[settings.Settings | None, str]:
+    """The settings in `folder`, or None where there are none or they are
+    refused, and the notices loading them raised, rendered. A page showing
+    a refused file differently loads it itself."""
+    with served.capture() as notices:
+        try:
+            saved = settings.load(folder)
+        except (settings.NotSetUp, settings.SettingsError):
+            saved = None
+    return saved, render_notices(notices)
+
+
 @dataclass(frozen=True)
 class Request:
     method: str

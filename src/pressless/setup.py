@@ -111,7 +111,6 @@ def _settings_help(name: str) -> str:
     return "".join(f"<p>{say(key)}</p>" for key in _HELP_PARAGRAPHS[name])
 
 
-_CREDENTIAL_FAILURES = (credentials.NoStore, credentials.NotStored, credentials.CredentialError)
 
 SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
 IMPORT = "/import"                    # PRESS-0125: the Import wizard, one of the three starts
@@ -241,7 +240,7 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
         try:
             key = github_setup.token(folder, saved.credentials.store,
                                      saved.credentials.github_account)
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             return _credential_failure(face, exc)
         except publisher.PublishError as exc:
             return face.fail(exc, publishing=False)
@@ -290,7 +289,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         try:
             credentials.write(candidate.credentials.store, folder,
                               candidate.credentials.github_account, typed_key)
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             return _credential_failure(face, exc)
 
     # PRESS-0126 § 4.4: fill, only where the box was ticked and the starter is
@@ -537,7 +536,7 @@ def _signed_in(folder: Path, saved: settings.Settings) -> bool:
     try:
         secret = credentials.read(saved.credentials.store, folder,
                                   saved.credentials.github_account)
-    except _CREDENTIAL_FAILURES:
+    except credentials.FAILURES:
         return False
     return github_setup.signed_in(secret)
 
@@ -735,7 +734,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         try:
             return github_setup.token(folder, answers.get("store", ""),
                                       sites.account("github", folder))
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
@@ -803,7 +802,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                 choice = credentials.choose()
                 kept.update(store=choice.store, store_name=choice.name)
             credentials.write(kept["store"], folder, sites.account("github", folder), typed)
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc))
         return kept
 
@@ -899,7 +898,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                 kept.update(store=choice.store, store_name=choice.name)
             credentials.write(kept["store"], folder, sites.account("github", folder),
                               pressed.refresh)
-        except _CREDENTIAL_FAILURES as exc:
+        except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         github_setup.hold(pressed)
         kept["account"] = account

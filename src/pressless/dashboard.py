@@ -26,8 +26,8 @@ import time
 import zlib
 from pathlib import Path
 
-from pressless import _flag_data, google_setup, insights, settings
-from pressless.face import Face, Request, render_notices
+from pressless import _flag_data, credentials, google_setup, insights, settings
+from pressless.face import Face, Request, loaded_settings
 from pressless.words import say
 
 PAGE = "/visitors"
@@ -121,15 +121,6 @@ def _sentence(days: int) -> str:
     return say(next(key for count, _, key in WINDOWS if count == days))
 
 
-def _settings(face: Face, folder: Path) -> tuple[settings.Settings | None, str]:
-    with face.capture() as notices:
-        try:
-            saved = settings.load(folder)
-        except (settings.NotSetUp, settings.SettingsError):
-            saved = None
-    return saved, render_notices(notices)
-
-
 def _set_up(saved: settings.Settings) -> bool:
     return bool(saved.analytics_property_id) and saved.credentials.google_account is not None
 
@@ -151,7 +142,7 @@ def _kept(folder: Path, days: int) -> insights.Report | None:
 def _card(face: Face, folder: Path) -> str:
     """The list's card. Reads the cache and never Google, so the list does not
     wait on the network (ADR-0005)."""
-    saved, _ = _settings(face, folder)
+    saved, _ = loaded_settings(face, folder)
     if saved is None or not _set_up(saved):
         return ""
     kept = insights._cached(insights.cache_path(folder), DEFAULT_DAYS)
@@ -169,7 +160,7 @@ def _card(face: Face, folder: Path) -> str:
 def _show(face: Face, folder: Path, request: Request,
           client: insights.Transport | None) -> str:
     days = _days(request.query.get("days", ""))
-    saved, shown = _settings(face, folder)
+    saved, shown = loaded_settings(face, folder)
     head = _STYLE + f'<h1>{say("dashboard.title")}</h1>'
     if saved is None:
         return shown + head + f'<p>{say("setup.first")}</p>'
@@ -182,7 +173,7 @@ def _show(face: Face, folder: Path, request: Request,
         report = _kept(folder, days)
         if report is None:
             return shown + head + face.fail(exc, publishing=False)
-    except (insights.InsightsError, *google_setup._CREDENTIAL_FAILURES) as exc:
+    except (insights.InsightsError, *credentials.FAILURES) as exc:
         return (shown + head
                 + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
                 + _sign_in_again())

@@ -54,6 +54,10 @@ class CredentialError(Exception):
     """A store we will not act on."""
 
 
+# Every failure this module raises, for a caller that catches them all.
+FAILURES = (NoStore, NotStored, CredentialError)
+
+
 def _why(exc: OSError) -> str:
     """The reason an OSError carries, never its own words.
 
