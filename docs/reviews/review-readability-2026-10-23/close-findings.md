@@ -261,3 +261,42 @@ Sweep: searched src/, tests/, docs/, CLAUDE.md and README.md for
 route through the Store's check, which would have failed on the Windows
 box; fixed in 3d4eb01. Notice tests patching the Store's check stay
 right.
+
+## lane-06 setup, sign-in and insights
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `setup.py` header "never reads the Store" | MEDIUM | fixed (095a0f7) |
+| `settings.py` `load` and `save` file checks | MEDIUM | fixed (71cbd63, 5102539) — `_read` |
+| `settings.py` and `credentials.py` `_why` copy comment | MEDIUM | fixed (71cbd63) — the real reason is INV-1; a shared copy needs INV-1 changed |
+| `insights.py` HTTP client copies | MEDIUM | queued PRESS-0331 — INV-1 import limits and specs naming `_Urllib`; 0b3ea13 named the twins |
+| `setup.py` `_first_run_wizard` flows | MEDIUM | fixed (095a0f7) — each inner check labelled by flow |
+| `github_setup.py` `token` before `register` | MEDIUM | fixed (ee6abd3) |
+| `github_setup`, `google_setup`, `dashboard` settings-or-None blocks | LOW | fixed (ee6abd3) — `face.loaded_settings` |
+| `setup.py` `_CREDENTIAL_FAILURES` copies | LOW | fixed (ee6abd3) — `credentials.FAILURES`; the two `_REFRESH_MARGIN`s are each service's own, kept |
+| `credentials.py` `_write_file` version check | LOW | fixed (e8986eb) — judged through `_secrets` |
+| `settings.py` `_MEASUREMENT_ID` under the address comment | LOW | fixed (71cbd63) |
+| `google_setup.py` `_pending` | LOW | fixed (e852985) — `_unverified_warning` |
+| `usage.py` `VERSION` | LOW | fixed (e852985) — `FILE_VERSION` |
+| `setup.py` `check_site` `kept` | LOW | fixed (095a0f7) — `store_kind`; the proposed `store` shadows the module; `box` left, its uses sit in separate functions |
+| `github_setup.py` header "every GitHub secret" | LOW | fixed (ee6abd3) |
+| `google_signin.py` `PAGE_LIMIT` and page size | LOW | fixed (e852985) — `_PAGE_SIZE` |
+| `insights.py` header "one question" | LOW | fixed (e852985) |
+| `insights.py` `Transport` "tests are its only other caller" | LOW | fixed (e852985) |
+| `dashboard.py` `DEFAULT_DAYS` | LOW | fixed (e852985) |
+| `settings.py` `Credentials.google_account` | LOW | fixed (71cbd63) |
+| `settings.py` "is blocker for" | LOW | fixed (71cbd63) |
+| `github_signin.py` `_POLL_ERRORS` | LOW | fixed (e852985) — `_DEVICE_ERRORS` |
+| `google_setup.py` `_counting` argument | LOW | fixed (e852985) — `kept_id` |
+| `settings.py` unused `target` (tool note) | — | fixed (71cbd63) |
+| `github_signin.py` `login` parameter shadows `login()` (tool note) | — | dismissed — PRESS-0231 names the parameter, and `installation` never calls `login()` |
+| lead PRESS-0303 untyped RuntimeError | — | dropped — the app registers `github_setup` before serving |
+| lead PRESS-0316 uncaught SettingsError | — | dropped — the Face's last-resort catch says its sentence |
+| lead PRESS-0317 write replaces a refused `secrets` | — | real; fixed, shipped (e8986eb) |
+
+Sweep: searched src/, tests/, docs/, CLAUDE.md and README.md for
+`_CREDENTIAL_FAILURES`, `_POLL_ERRORS`, `usage.VERSION`,
+`dashboard._settings`, `_pending()`, "never reads the Store" and "is
+blocker for". One stale use: a test docstring naming `_POLL_ERRORS`,
+fixed in e852985. PRESS-0021's own "never reads the Store" lines are
+the spec's, already annotated by its PRESS-0126 note; not edited.
