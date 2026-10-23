@@ -2442,6 +2442,17 @@ def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
     assert _no_writes(transport)
 
 
+def test_a_server_error_names_the_request_it_answered(tmp_path):
+    """PRESS-0313. Breaks when a server error on the start write is described
+    as an answer to the reference update, which was never sent."""
+    folder = _site(tmp_path / "site", {"index.html": b"<html>x</html>"})
+    with pytest.raises(OutcomeUnknown) as raised:
+        publish(_settings(), folder, "a-token", "m", transport=_EmptyRepository(
+            _listing([]), start=(502, {}, b'{"message": "Bad Gateway"}')))
+    assert "reference update" not in str(raised.value)
+    assert "/contents/" in str(raised.value)
+
+
 # ----------------------------------------------------------------- INV-12 ---
 
 

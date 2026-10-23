@@ -112,7 +112,8 @@ class Unreachable(PublishError):
 
 
 class OutcomeUnknown(PublishError):
-    """The reference update was attempted and its result is unknown."""
+    """A write that may have moved the branch (the reference update, the start
+    file or `.nojekyll`) was attempted and its result is unknown."""
 
 
 class Refused(PublishError):
@@ -694,8 +695,9 @@ class _Session:
                     method, url, body, headers
                 )
             except OSError as exc:
-                # The reference update is the one request whose failure
-                # leaves the site's state genuinely unknown (§6).
+                # A write that may have moved the branch (the reference
+                # update, the start file, `.nojekyll`) leaves the site's
+                # state genuinely unknown when it fails (§6).
                 failure = OutcomeUnknown if outcome_unknown else Unreachable
                 raise failure(
                     f"no answer from GitHub for {method} {_without_account(url)}"
@@ -758,7 +760,7 @@ class _Session:
                 )
             if outcome_unknown and status >= 500:
                 # An answer, but not one that says whether the branch moved:
-                # a gateway can fail after the update was applied, which
+                # a gateway can fail after the write was applied, which
                 # leaves the site exactly as unknown as a dropped connection
                 # does. §6's OutcomeUnknown row reads "no answer" and this is
                 # its other route (PRESS-0046). Every other status is a
@@ -766,8 +768,9 @@ class _Session:
                 # before it acts -- so those keep their own type and their
                 # row's "unchanged".
                 raise OutcomeUnknown(
-                    f"GitHub answered {status} to the reference update, so "
-                    f"whether the site moved is unknown"
+                    f"GitHub answered {status} to {method} "
+                    f"{_without_account(url)}, so whether the site moved is "
+                    f"unknown"
                 )
             if empty_ok and status in (409, 422) and _says_empty(data):
                 # GitHub's answer for a repository with no commits (PRESS-0127
