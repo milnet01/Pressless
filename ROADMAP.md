@@ -5587,8 +5587,10 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0301] **A setup step shows an internal ticket number on screen.**
+- ✅ [PRESS-0301] **A setup step shows an internal ticket number on screen.**
   words.py:906, setup.new_key.5 — "…to switch your site on (PRESS-0230)." Confirmed. Lead from lane-01-face.md.
+  Real. Fixed in c2911be: the id is gone, and
+  test_no_entry_shows_a_ticket_id guards every words entry.
   **Layman:** One setup instruction shows the user a meaningless code (PRESS-0230).
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5605,14 +5607,18 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0304] **A failed upload may never show its failure page.**
+- ✅ [PRESS-0304] **A failed upload may never show its failure page.**
   face.py:1185 _take_upload does not drain the request body before the 500 page; _drain's docstring says that resets the connection. Unchecked. Lead from lane-01-face.md.
+  Real: the client saw a broken pipe instead of the 500 page. Fixed in
+  bbb8210: the rest of the body is drained.
   **Layman:** When saving an uploaded file fails, the user may see a dropped connection instead of an explanation.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0305] **A failure message with a slot named secret would crash the message itself.**
+- ✅ [PRESS-0305] **A failure message with a slot named secret would crash the message itself.**
   face.py:299 — say(entry.what, secret=noun, **slots) raises TypeError if slots holds secret. Unchecked. Lead from lane-01-face.md.
+  Real but latent: no failure carries a secret slot today. Fixed in
+  3092738: the secret merges into the slots.
   **Layman:** One rare kind of error message could crash instead of showing.
   Kind: investigate.
   Source: review-readability-2026-10-23.
