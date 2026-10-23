@@ -1,9 +1,8 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0218 — Setup takes in a Pressless site already in a GitHub repository
 
-**Status:** accepted (2026-10-23). One review round, the user's budget
-for a new spec; its fixes were read by no lane. Amended the same day for
-the user's two answers (§ 3 decisions 5 and 6), which re-arm the gate.
+**Status:** accepted (2026-10-23). Two review rounds of one loop each,
+the user's budget; the second round's fixes were read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0218 (user decision 2026-10-02; scope settled by
 the user 2026-10-23).
@@ -125,9 +124,20 @@ class Found:
 def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found: ...
 
-def take_in(folder: Path, settings: Settings, key: str, commit: str,
+@dataclass(frozen=True)
+class TakenIn:
+    found: Found                      # what came across; the done page's counts
+    reverse: Callable[[], None]       # undoes every write take_in made (§ 4.3)
+
+def take_in(folder: Path, settings: Settings, key: str, commit: str, *,
+            capture: Callable[[], AbstractContextManager[list[str]]] = ...,
+            notices: list[str] | None = None,
             transport: publisher.Transport | None = None) -> TakenIn: ...
 ```
+
+`capture` and `notices` are undo's (`undo.undo`): `capture` wraps the
+Store writes and never the fetch, which is minutes long while a capture
+holds a process-wide lock.
 
 `look` empties the fetch area (`undo.FETCH_FOLDER`), calls `fetch_state`
 with `PREFIXES` and `commit`, reads what landed, empties the fetch area
@@ -141,7 +151,7 @@ PRESS-0213, which has no identity file (§ 3 decision 6). Both arms read
 only Pressless's own layout, `content/<kind>/<name>` with the Store's
 folder names and suffixes, so another tool's `content/` — Markdown posts
 under `content/posts/`, say — meets neither. A `content/` folder alone is
-not enough. `read_identity` raising `StoreError` counts as no identity.
+not enough.
 
 The read is undo's: `undo._read`'s body becomes a function both modules
 call, so the two cannot disagree about which `content/` paths are Store
@@ -243,12 +253,19 @@ screen in place of the name, description and starter fields:
   on GitHub;
 - what will not come across (§ 4.4).
 
+Where that `look` fails, the body is `Face.fail`'s sentence for the
+failure in place of the take-in screen.
+
 The check runs PRESS-0021 § 4.6 from step 2, with `takein.take_in` and
-that commit in the starter fill's place, `starter_ticked` false and the
-identity the take-in wrote. A failure after the take-in reverses its
-writes as § 4.3 does. A `TakeInStopped` or a `PublishError` is a `Stop`
-through `Face.fail`, and Settings is not saved. The done page says the
-site came in, with the counts.
+that commit in the starter fill's place, passed `face.capture` and called
+outside the fill's capture, and `starter_ticked` false. The identity is
+the one the take-in wrote; where it wrote none (INV-11), the identity
+check and the identity write are skipped. A failure after the take-in
+calls `TakenIn.reverse`. A `TakeInStopped` or a `PublishError` is a `Stop`
+through `Face.fail`, and Settings is not saved, except that a
+`RemoteStateMissing` from the take-in says the repository changed since
+it was shown and to go Back to *pages*. The done page says the site came
+in, with `TakenIn.found`'s counts.
 
 `take_in_commit` and `existing` are plain answers: neither ends in `key`, so
 the progress file keeps them (`wizard.is_secret`), and a resumed wizard
@@ -265,8 +282,8 @@ takes in the same state it showed.
   *Breaks when:* any step adopts the repository by writing to it — a
   `.nojekyll`, a starter, a publish.
 - **INV-2** — A repository whose root holds a site (§ 4.5 *pages*) and
-  whose fetched `content/` gives no identity through `store.read_identity` is a `Hint`
-  on the *pages* step, and no write is sent.
+  whose fetched `content/` meets neither arm of § 4.2's `made_here` test
+  is a `Hint` on the *pages* step, and no write is sent.
   *Test:* `tests/test_takein.py::test_a_site_made_elsewhere_is_refused`,
   over a fixture laid out as another site tool lays out `content/`:
   Markdown posts under `content/posts/`, and no identity.
@@ -286,7 +303,8 @@ takes in the same state it showed.
   *Breaks when:* a kind `_read` or the reconcile knows is skipped, or the
   take-in reads a second copy of `_read` that drifts.
 - **INV-5** — Nothing is written to the Store before Finish: after the
-  *pages* and *site* steps are shown, `store.holds_a_site` is false.
+  *pages* and *site* steps are shown, every folder § 4.3 writes into holds
+  the files it held before them.
   *Test:* `tests/test_takein.py::test_looking_writes_nothing`.
   *Breaks when:* `look` fills the Store, or the *site* step's body does.
 - **INV-6** — What is written is the state that was shown: `take_in`
@@ -295,8 +313,8 @@ takes in the same state it showed.
   where the double's branch moves between *pages* and Finish.
   *Breaks when:* `take_in` calls `fetch_state` with no commit.
 - **INV-7** — A failure part-way leaves the Store empty and Settings
-  unsaved: `store.holds_a_site` is false afterwards, so Finish can be
-  pressed again.
+  unsaved: afterwards every folder § 4.3 writes into holds the files it
+  held before the take-in, so Finish can be pressed again.
   *Test:* `tests/test_takein.py::test_a_failed_take_in_leaves_nothing`,
   failing the write of the last photograph, and again failing the
   Settings save after the take-in.
@@ -338,6 +356,7 @@ takes in the same state it showed.
 | That commit is gone (history rewritten) | `fetch_state` raises `RemoteStateMissing`; a `Stop` saying to go Back |
 | The Store holds a site at Finish | `TakeInStopped`, a `Stop`; nothing is written (INV-3) |
 | A fetched photograph or file name the Store refuses | Not carried, and listed (INV-9) |
+| On Windows, a fetched path Windows cannot hold | `fetch_state` raises `UnfetchablePath` before anything lands (PRESS-0009 § 4.5); the *pages* step is a `Stop` |
 | A fetched `content/` file the Store refuses | `look` raises `StoreError`; the *pages* step is a `Stop` (§ 4.4) |
 | Pressless closes between *pages* and Finish | The progress file keeps `take_in_commit`; the resumed wizard shows the same state |
 
@@ -347,7 +366,8 @@ takes in the same state it showed.
 INV-6, INV-7, INV-8, INV-9, INV-11 and INV-12, all through doubles:
 a recording GitHub double answering the tree and blob reads, and an empty
 temporary folder for the Store. INV-4 publishes a Store built from the
-starter, with a photograph, a kept file and an icon, into that double
+starter, with a published entry and its comments, a forwards file, a
+photograph, a kept file and an icon, into that double
 first, so the fixture is what a publish writes rather than a hand copy.
 INV-10's new test is in `tests/test_publisher.py` beside `fetch_previous`'s.
 Each test is seen to fail against the code before it is written: INV-1 and
