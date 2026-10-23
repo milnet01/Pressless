@@ -276,7 +276,11 @@ def contrast(one: str, two: str) -> float:
 
 def css(choices: Choices, extra: str) -> str:
     """The style code, in § 4.2's order: the palette, the four measures, the
-    layout's rules, the journal's, the effects chosen, and last their own CSS."""
+    layout's rules, the journal's, the effects chosen, and last their own CSS.
+
+    made_here compares a site's saved style code with this byte for byte. So
+    changing any rule below, or the three notes' words, makes every saved look
+    read as hand-edited (PRESS-0314); a test in test_look.py says so."""
     def declared(colours: dict[str, str]) -> str:
         return " ".join(f"--{name}: {value};" for name, value in colours.items())
     width = _FIXED_WIDTHS.get(choices.width, _OWN_WIDTH[choices.layout])
@@ -294,6 +298,9 @@ def css(choices: Choices, extra: str) -> str:
     parts += [f"/* {say('look.extra_note')} */\n", extra]
     return "".join(parts)
 
+
+# The layout, journal and effect rules below are part of every saved look:
+# see css() before changing one.
 
 # Sunrise: a warm band across the top, one centred column.
 _SUNRISE = """

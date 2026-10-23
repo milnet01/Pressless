@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -146,3 +147,26 @@ def test_save_makes_the_style_code_from_what_it_wrote(tmp_path):
         starter_look.save(tmp_path, _changed(layout), EXTRA)
         assert store.read_style_code(tmp_path) == starter_look.css(
             starter_look.read(tmp_path), starter_look.read_extra(tmp_path))
+
+
+# ------------------------------------------------------------- PRESS-0314 ---
+
+# What css() made for each layout's defaults with every effect, in 0.10.1.
+SAVED_BY_0_10_1 = {
+    "sunrise": "149c39acf5d31f03a1b806aefffb4ee44443d86b578728ce05756fe792bba113",
+    "meadow": "62b5e8efa6b18d34a71306f116b430e4b627131969beddb1eb603a0b5505a3af",
+    "harbour": "6d6b2c7592fc0052976070107d5ff1ba41c4f0f603c4960bcd94b67d3766600e",
+}
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_a_look_saved_by_an_earlier_version_still_reads_as_made_here(layout):
+    """PRESS-0314. made_here compares the saved style code with css() byte for
+    byte, so any change to css()'s rules or its three words-table notes makes
+    every saved look read as hand-edited: its next save bins a copy and warns.
+    Breaks when css() output changes. Do not update the hashes: make
+    made_here accept the earlier output first."""
+    choices = dataclasses.replace(starter_look.defaults(layout),
+                                  effects=starter_look.EFFECTS)
+    made = hashlib.sha256(starter_look.css(choices, "").encode("utf-8")).hexdigest()
+    assert made == SAVED_BY_0_10_1[layout]
