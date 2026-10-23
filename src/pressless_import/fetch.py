@@ -17,6 +17,8 @@ from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
+import certifi
+
 from pressless import __version__, builder
 
 from . import Export, ImportStopped, _field, _place
@@ -37,11 +39,12 @@ def _resolve(host: str, port: int) -> list[str]:
 
 class _Checked(http.client.HTTPSConnection):
     """HTTPS to an address already checked, the certificate checked against
-    the host's own name."""
+    the host's own name and the bundled certifi set, never the host's store
+    (PRESS-0142)."""
 
     def __init__(self, address: str, host: str, port: int) -> None:
         # Kept here, not read back from http.client's private _context.
-        self._verifying = ssl.create_default_context()
+        self._verifying = ssl.create_default_context(cafile=certifi.where())
         super().__init__(address, port, timeout=SECONDS, context=self._verifying)
         self._name = host
 

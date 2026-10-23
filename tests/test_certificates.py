@@ -37,3 +37,20 @@ def test_every_client_verifies_against_the_bundled_certificates(monkeypatch):
         assert [cafile for cafile, _ in made] == [certifi.where()], (module.__name__, made)
         assert any(h._context is made[0][1] for h in https), (
             f"{module.__name__} built the context and handed it to no handler")
+
+
+def test_the_import_fetch_verifies_against_the_bundled_certificates(monkeypatch):
+    """Breaks when the Import's safe fetch builds its context from the
+    host's store, which the AppImage cannot find (as above)."""
+    from pressless_import import fetch
+
+    made: list[object] = []
+    real = ssl.create_default_context
+
+    def recording(*args, **kwargs):
+        made.append(kwargs.get("cafile"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(ssl, "create_default_context", recording)
+    fetch._Checked("8.8.4.4", "old.example.org", 443)
+    assert made == [certifi.where()], made
