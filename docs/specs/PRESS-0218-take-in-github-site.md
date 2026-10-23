@@ -1,7 +1,9 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0218 — Setup takes in a Pressless site already in a GitHub repository
 
-**Status:** spec draft (2026-10-23).
+**Status:** accepted (2026-10-23). One review round, the user's budget
+for a new spec; its fixes were read by no lane, and one finding (how a
+kept photograph is reversed, § 4.3) awaits the user.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0218 (user decision 2026-10-02; scope settled by
 the user 2026-10-23).
@@ -112,7 +114,7 @@ class Found:
     identity: store.Identity | None
     left: tuple[str, ...]             # fetched paths that will not come across (§ 4.4)
 
-def look(folder: Path, settings: Settings, key: str,
+def look(folder: Path, settings: Settings, key: str, commit: str = "",
          transport: publisher.Transport | None = None) -> Found: ...
 
 def take_in(folder: Path, settings: Settings, key: str, commit: str,
@@ -120,7 +122,7 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str,
 ```
 
 `look` empties the fetch area (`undo.FETCH_FOLDER`), calls `fetch_state`
-with `PREFIXES` and no commit, reads what landed, empties the fetch area
+with `PREFIXES` and `commit`, reads what landed, empties the fetch area
 again and returns `Found`. It writes nothing to the Store.
 
 **`made_here` is the one test of a Pressless site:** `store.read_identity`
@@ -149,8 +151,9 @@ what was shown — and writes it through the Store's own calls:
    `photographs.keep` with `store.photograph_path_for`, and each
    `files/<name>` as the kept file `name`, through `store.file_path_for`.
    The Builder publishes both under the original's own name
-   (`builder._Build.web_copy`, `builder._Build.file_copy`), so the name
-   needs no mapping. A photograph comes across as its web copy, smaller
+   (`builder._Build.web_copy`, `builder._Build.file_copy`), so the naming
+   rule `docs/design.md` § Setup's three starts asks for maps each name to
+   itself. A photograph comes across as its web copy, smaller
    than the original it was made from.
 3. `site-icon.png`, where the identity names an icon: kept as the photograph
    `site-icon.png`, and the identity's `icon` set to that name. The Builder
@@ -166,9 +169,13 @@ The fetch area is emptied when the sequence ends, whatever happened.
 `Found.left` names, by path, every fetched path no step of § 4.3 writes,
 and the screen groups them:
 
-- a name the Store refuses (`store.photograph_path_for` and its siblings
-  raise), or a photograph `photographs.keep` refuses;
+- a `photographs/` or `files/` name the Store refuses
+  (`store.photograph_path_for`, `store.file_path_for` raise), which
+  `take_in` skips;
 - anything under `content/` that `_read` passes over.
+
+A `content/` file the Store refuses is not left behind: `_read` raises
+`StoreError`, as it does for undo, and the *pages* step is a `Stop`.
 
 And three things the repository never held, always said: drafts, which are
 never published; the full-size photograph originals; and Settings kept on
@@ -188,12 +195,16 @@ holds files is no longer `setup.hint.taken`. The answers gain
 `existing: "yes"`, and the step goes on to the installation checks as for a
 new one. Nothing is written to that repository by this step.
 
-**pages.** Before any write, where `root_entries` is not `()`:
+**pages.** Before any write, where the root holds `content` or an entry
+`publishing._A_SITE` names (the test the starter's first publish uses):
 
 - `takein.look`. Not `made_here` → a `Hint` with no field: this repository
   holds a site Pressless did not make, Pressless cannot bring it in yet, and
   to go Back and choose another (§ 3 decision 1). No write is sent.
 - `made_here` → the answers gain `take_in_commit`, `Found.commit`.
+
+Any other root goes on as a new repository, and `take_in_commit` is
+removed from the answers.
 
 Then Pages is read and switched on as today. The step's words say, before
 Next, that Next switches GitHub Pages on where it is off, which puts what
@@ -202,15 +213,18 @@ the repository holds on the web and adds one empty file, `.nojekyll`.
 **site**, where the answers carry `take_in_commit`. The body is the take-in
 screen in place of the name, description and starter fields:
 
-- what was found: the site's name, and the counts of § 4.2's `Found`;
+- what was found: the site's name, and the counts of § 4.2's `Found`,
+  from `takein.look` with `take_in_commit`;
 - that Finish copies it into Pressless on this computer and changes nothing
   on GitHub;
 - what will not come across (§ 4.4).
 
-The check runs `takein.take_in` with that commit, then PRESS-0021 § 4.6
-from step 2, with `starter_ticked` false and the identity the take-in wrote.
-A `TakeInStopped` or a `PublishError` is a `Stop` through `Face.fail`, and
-Settings is not saved. The done page says the site came in, with the counts.
+The check runs PRESS-0021 § 4.6 from step 2, with `takein.take_in` and
+that commit in the starter fill's place, `starter_ticked` false and the
+identity the take-in wrote. A failure after the take-in reverses its
+writes as § 4.3 does. A `TakeInStopped` or a `PublishError` is a `Stop`
+through `Face.fail`, and Settings is not saved. The done page says the
+site came in, with the counts.
 
 `take_in_commit` and `existing` are plain answers: neither ends in `key`, so
 the progress file keeps them (`wizard.is_secret`), and a resumed wizard
@@ -220,12 +234,14 @@ takes in the same state it showed.
 
 - **INV-1** — A take-in sends no write to GitHub but Pages being switched
   on where it was off. Over a repository whose Pages already serves its
-  root, setup from the *repository* step to Finish sends only GET requests.
+  root, setup from the *repository* step to Finish sends no non-GET
+  request naming that repository. The sign-in flow's `POST /user/repos`,
+  answered 422, names none.
   *Test:* `tests/test_takein.py::test_a_take_in_writes_nothing_to_github`.
   *Breaks when:* any step adopts the repository by writing to it — a
   `.nojekyll`, a starter, a publish.
-- **INV-2** — A repository whose root holds files and whose fetched
-  `content/` gives no identity through `store.read_identity` is a `Hint`
+- **INV-2** — A repository whose root holds a site (§ 4.5 *pages*) and
+  whose fetched `content/` gives no identity through `store.read_identity` is a `Hint`
   on the *pages* step, and no write is sent.
   *Test:* `tests/test_takein.py::test_a_site_made_elsewhere_is_refused`,
   over a fixture with a `content/` folder and no identity.
@@ -234,9 +250,12 @@ takes in the same state it showed.
   *Test:* `tests/test_takein.py::test_a_take_in_needs_an_empty_store`.
   *Breaks when:* the check is dropped, or tested after the first write.
 - **INV-4** — A take-in carries every Store file a publish put in
-  `content/`, and every published photograph and kept file byte for byte:
-  a Store published to a recording double and taken into an empty folder
-  reads back equal, kind by kind.
+  `content/`, and every photograph and kept file the publish wrote, byte
+  for byte as the repository holds it. A Store published to a recording
+  double and taken into an empty folder reads back equal for every kind
+  `content/` carries, the identity's `icon` aside (INV-8). Its photographs
+  are exactly the publish's web copies, plus `site-icon.png` where there is
+  an icon, and its kept files exactly the publish's.
   *Test:* `tests/test_takein.py::test_a_published_site_comes_back_whole`.
   *Breaks when:* a kind `_read` or the reconcile knows is skipped, or the
   take-in reads a second copy of `_read` that drifts.
@@ -279,7 +298,8 @@ takes in the same state it showed.
 | The repository moves on after *pages* | Finish takes in the commit that was shown (INV-6) |
 | That commit is gone (history rewritten) | `fetch_state` raises `RemoteStateMissing`; a `Stop` saying to go Back |
 | The Store holds a site at Finish | `TakeInStopped`, a `Stop`; nothing is written (INV-3) |
-| A fetched name the Store refuses | Not carried, and listed (INV-9) |
+| A fetched photograph or file name the Store refuses | Not carried, and listed (INV-9) |
+| A fetched `content/` file the Store refuses | `look` raises `StoreError`; the *pages* step is a `Stop` (§ 4.4) |
 | Pressless closes between *pages* and Finish | The progress file keeps `take_in_commit`; the resumed wizard shows the same state |
 
 ## 7. Tests
@@ -341,6 +361,8 @@ INV-2 against today's `check_new_repository` and `check_pages`.
   shares its body.
 - **PRESS-0212 § 4.4**: the *pages* step's take-in read and words, and the
   *site* step's take-in body (§ 4.5 here).
+- **PRESS-0021 § 4.9**: setup also writes the Store through
+  `takein.take_in`, not only through `starter.fill`.
 - **PRESS-0231 § 4.3 and INV-6**: a 422 over a repository with files goes
   on, marked `existing`; INV-6 becomes "the *repository* step writes
   nothing to an existing repository", and its *Breaks when* names a write.
