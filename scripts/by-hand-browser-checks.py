@@ -87,6 +87,7 @@ from pressless import (  # noqa: E402
     store,
     templates,
     undo,
+    words,
 )
 
 RESULTS: list[tuple[str, bool, str]] = []
@@ -97,6 +98,24 @@ OPTIONS = argparse.Namespace(browser="chrome", cdp=None, port=0, site_port=0)
 def check(name: str, ok: bool, detail: str = "") -> None:
     RESULTS.append((name, ok, detail))
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f" -- {detail}" if detail else ""))
+
+
+def wait_for_save(page, *, settle: bool = False) -> None:
+    """Wait for the editor to save what was just changed.
+
+    The editor saves a second after the last change, so wait past that, then
+    until the status stops reading its "saving" words. Those words come from
+    `words`, so a change of wording cannot turn this wait into no wait.
+
+    `settle` adds a fixed 800 ms after the save, for rows that act on the
+    preview straight away. No event marks that moment, so it is a margin.
+    """
+    page.wait_for_timeout(1600)
+    page.wait_for_function(
+        "saving => document.getElementById('save-status').textContent !== saving",
+        arg=words.say("script.editor.saving"), timeout=5000)
+    if settle:
+        page.wait_for_timeout(800)
 
 
 def main() -> int:
@@ -564,9 +583,7 @@ def kept_files(page, origin: str, folder: Path) -> None:
     page.locator("[data-act=add]").click()
     page.locator("#file-file").set_input_files(
         {"name": "My Song.mp3", "mimeType": "audio/mpeg", "buffer": b"ID3 a made-up song"})
-    page.wait_for_timeout(1600)
-    page.wait_for_function("document.getElementById('save-status').textContent !== "
-                           "'Saving'", timeout=5000)
+    wait_for_save(page)
     music = [s.fields.get("src") for s in blocks.read("songs", store.read_html(waiting)).sections
              if s.kind == "music"]
     kept = folder / "files" / "my-song.mp3"
@@ -717,8 +734,7 @@ def added_by_upload(page, origin: str, folder: Path) -> None:
         except PlaywrightTimeout:
             continue  # no chooser opened: the failure this row reports
         page.wait_for_timeout(1600)
-    page.wait_for_function("document.getElementById('save-status').textContent !== "
-                           "'Saving'", timeout=5000)
+    wait_for_save(page)
     found = {s.kind: s.fields.get("src") or s.fields.get("href")
              for s in blocks.read("uploads", store.read_html(waiting)).sections
              if s.kind in ("music", "download")} if waiting.is_file() else {}
@@ -746,9 +762,7 @@ def enlarge_photograph(page, origin: str, folder: Path) -> None:
         page.locator("[data-act=photograph]").click()
     chooser.value.set_files({"name": "Big View.png", "mimeType": "image/png",
                              "buffer": picture.getvalue()})
-    page.wait_for_timeout(1600)
-    page.wait_for_function("document.getElementById('save-status').textContent !== "
-                           "'Saving'", timeout=5000)
+    wait_for_save(page)
     src = [s.fields.get("src") for s in blocks.read("enlarged", store.read_html(waiting)).sections
            if s.kind == "enlarge"] if waiting.is_file() else []
     check("PRESS-0289: Add photograph sets an enlarge section's photograph",
@@ -811,11 +825,6 @@ def visual_editor(page, origin: str, folder: Path) -> None:
         read = blocks.read("visual", store.read_html(waiting))
         return [(s.kind, s.fields.get("html", s.source)) for s in read.sections]
 
-    def saved() -> None:
-        page.wait_for_timeout(1600)
-        page.wait_for_function("document.getElementById('save-status').textContent !== "
-                               "'Saving'", timeout=5000)
-
     page.goto(f"{origin}/page?kind=pages&name=visual", wait_until="networkidle")
     frame = page.frame_locator("#preview")
     nothing = page.locator("#picked").text_content()
@@ -835,7 +844,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.keyboard.press("Control+b")
     page.keyboard.type("bold")
     page.keyboard.press("Control+b")
-    saved()
+    wait_for_save(page)
     check("PRESS-0260 INV-9: typed words with Ctrl+B save as a text section",
           ("text", "First paragraph. More <strong>bold</strong>") in sections(), str(sections()))
 
@@ -843,7 +852,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.keyboard.type("Second")
     page.keyboard.press("Shift+Enter")
     page.keyboard.type("line")
-    saved()
+    wait_for_save(page)
     texts = [words for kind, words in sections() if kind == "text"]
     check("PRESS-0260 s4.4: Enter splits, Shift+Enter writes a br",
           texts == ["First paragraph. More <strong>bold</strong>", "Second<br>line"], str(texts))
@@ -866,7 +875,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
         }""")
     page.once("dialog", lambda dialog: dialog.accept("https://example.org/"))
     page.keyboard.press("Control+k")
-    saved()
+    wait_for_save(page)
     texts = [words for kind, words in sections() if kind == "text"]
     check("PRESS-0260 INV-9: pasting takes the plain text, and Ctrl+K links",
           texts[1:] == ['Second<br>line pasted words<a href="https://example.org/">'
@@ -880,7 +889,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
       doc.getSelection().collapse(element, 0);
     }""")
     page.keyboard.press("Backspace")
-    saved()
+    wait_for_save(page)
     joined = [words for kind, words in sections() if kind == "text"]
     check("PRESS-0260 s4.4: Backspace at the start joins it to the text above",
           joined == ["".join(texts)], str(joined))
@@ -888,13 +897,13 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.select_option("#add-kind", "button")
     page.fill("#add-address", "contact.html")
     page.locator("[data-act=add]").click()
-    saved()
+    wait_for_save(page)
     kinds = [kind for kind, _ in sections()]
     check("PRESS-0260 s4.3: Add below puts a button under the picked section",
           kinds == ["heading", "text", "button", "code"], str(kinds))
     up = page.locator("[data-act=up]")
     up.click()
-    saved()
+    wait_for_save(page)
     kinds = [kind for kind, _ in sections()]
     check("PRESS-0260 s4.3: Move up moves it", kinds == ["heading", "button", "text", "code"],
           str(kinds))
@@ -903,7 +912,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     check("PRESS-0260 s4.3: at the top, Move up is shown disabled, not hidden",
           disabled and up.is_visible(), f"disabled={disabled}")
     page.locator("[data-act=remove]").click()
-    saved()
+    wait_for_save(page)
     kinds = [kind for kind, _ in sections()]
     check("PRESS-0260 s4.3: Remove takes it away", kinds == ["heading", "text", "code"],
           str(kinds))
@@ -928,7 +937,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     check("PRESS-0260 s4.5: the panel shows a code section's HTML without its marks",
           shown == "<script>document.title = 'RAN';</script><div>code part</div>", shown)
     code.fill("<div>new code</div>")
-    saved()
+    wait_for_save(page)
     check("PRESS-0260 s3 decision 5: a code section is changed in the panel",
           ("code", "<!-- pressless:code --><div>new code</div><!-- /pressless:code -->")
           in sections(), str(sections()))
@@ -942,7 +951,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
 
     frame.locator("h2, h1", has_text="Title words").first.click()
     page.select_option("[data-field=level]", "3")
-    saved()
+    wait_for_save(page)
     heading = blocks.read("visual", store.read_html(waiting)).sections[0]
     check("PRESS-0260 s4.3: a heading's size is changed in the panel",
           heading.kind == "heading" and heading.fields["level"] == "3", str(heading))
@@ -953,8 +962,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.select_option("#add-kind", "picture")
     page.fill("#add-address", "../photographs/my%20boat.jpg")
     page.locator("[data-act=add]").click()
-    saved()
-    page.wait_for_timeout(800)
+    wait_for_save(page, settle=True)
     shown = page.evaluate("""() => {
       const img = document.getElementById('preview').contentDocument.querySelector('img');
       return img ? img.naturalWidth : -1;
@@ -968,7 +976,7 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.select_option("[data-field=count]", "3")
     page.select_option("#add-kind", "text")
     page.locator("[data-act=add-to][data-column='2']").click()
-    saved()
+    wait_for_save(page)
     columns = blocks.read("visual", store.read_html(waiting)).sections[2]
     check("PRESS-0260 s4.3: columns are added, widened, and given a section",
           columns.kind == "columns" and [len(part) for part in columns.parts] == [0, 0, 1],
@@ -1084,10 +1092,7 @@ def move_between_columns(page, origin: str, folder: Path) -> None:
         if choice:
             page.select_option("#move-to", label=choice)
             page.locator("[data-act=move-to]").click()
-            page.wait_for_timeout(1600)
-            page.wait_for_function("document.getElementById('save-status').textContent "
-                                   "!== 'Saving'", timeout=5000)
-            page.wait_for_timeout(800)
+            wait_for_save(page, settle=True)
         return offered
 
     page.goto(f"{origin}/page?kind=pages&name=split&view=visual", wait_until="networkidle")
@@ -1134,10 +1139,7 @@ def drag_sections(page, origin: str, folder: Path) -> None:
         page.mouse.move(target["x"] + 5, target["y"] + 3, steps=8)
         shown = page.locator("#drop-line").is_visible()
         page.mouse.up()
-        page.wait_for_timeout(1600)
-        page.wait_for_function("document.getElementById('save-status').textContent "
-                               "!== 'Saving'", timeout=5000)
-        page.wait_for_timeout(800)
+        wait_for_save(page, settle=True)
         return shown and outer is not None
 
     page.goto(f"{origin}/page?kind=pages&name=dragged&view=visual", wait_until="networkidle")
@@ -1213,10 +1215,7 @@ def pieces(page, origin: str, folder: Path) -> None:
     page.select_option("#add-kind", "countdown")
     page.locator("[data-act=add]").click()
     page.locator("[data-field=label]:visible").fill("Until then")
-    page.wait_for_timeout(1600)
-    page.wait_for_function("document.getElementById('save-status').textContent !== "
-                           "'Saving'", timeout=5000)
-    page.wait_for_timeout(800)
+    wait_for_save(page, settle=True)
     read = blocks.read("pieces", store.read_html(waiting)) if waiting.is_file() else None
     added = [s.fields for s in (read.sections if read else ()) if s.kind == "countdown"]
     check("PRESS-0217 s4.1: a countdown is added from the panel, a week ahead",
@@ -1228,21 +1227,15 @@ def pieces(page, origin: str, folder: Path) -> None:
         held = next(s for s in read.sections if s.kind == "questions")
         return [asked[0].fields["html"] for asked in held.parts]
 
-    def settle() -> None:
-        page.wait_for_timeout(1600)
-        page.wait_for_function("document.getElementById('save-status').textContent !== "
-                               "'Saving'", timeout=5000)
-        page.wait_for_timeout(800)
-
     # A click on a question's dt, outside its words, picks the whole piece.
     frame.locator(".pressless-questions dt").first.dispatch_event("click")
     page.locator("[data-act=add-question]").click()
-    settle()
+    wait_for_save(page, settle=True)
     grown = questions()
     frame.locator(".pressless-questions dt p").nth(2).click()
     up = page.locator("[data-act=up]").is_disabled()
     page.locator("[data-act=remove]").click()
-    settle()
+    wait_for_save(page, settle=True)
     check("PRESS-0217 s4.1: a question is added, and removing its words removes it",
           grown == ["Why?", "When?", ""] and up and questions() == ["Why?", "When?"],
           f"after adding={grown} up disabled={up} after removing={questions()}")
@@ -1306,11 +1299,6 @@ def furniture_views(page, origin: str, folder: Path) -> None:
                      '<nav>\n  <a href="{{UP}}index.html" data-nav="Home">Home</a>\n'
                      '  <a href="{{UP}}pages/visual.html" data-nav="visual">Visual</a>\n</nav>')
 
-    def saved() -> None:
-        page.wait_for_timeout(1600)
-        page.wait_for_function("document.getElementById('save-status').textContent !== "
-                               "'Saving'", timeout=5000)
-
     def waiting(name: str) -> str:
         return store.read_html(store.html_path_for(folder, store.FURNITURE_FOLDER, name,
                                                    waiting=True))
@@ -1320,7 +1308,7 @@ def furniture_views(page, origin: str, folder: Path) -> None:
     page.frame_locator("#preview").locator("p", has_text="Header words").click()
     page.keyboard.press("End")
     page.keyboard.type(" more")
-    saved()
+    wait_for_save(page)
     check("PRESS-0216: the header is typed in on the page and saved as its section",
           "<p>Header words more</p>" in waiting("header"), waiting("header"))
 
@@ -1332,7 +1320,7 @@ def furniture_views(page, origin: str, folder: Path) -> None:
     page.locator("[data-act=add-link]").click()
     rows.nth(2).locator("[data-link=words]").fill("Shop")
     rows.nth(2).locator("[data-link=href]").fill("https://example.org/")
-    saved()
+    wait_for_save(page)
     check("PRESS-0216: a menu link is renamed, moved down and a new one added",
           waiting("navigation") == (
               '<nav>\n  <a href="{{UP}}pages/visual.html" data-nav="visual">Visual</a>\n'
@@ -1359,11 +1347,6 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
 
     def copy() -> str:
         return store.read_html(waiting) if waiting.is_file() else ""
-
-    def saved() -> None:
-        page.wait_for_timeout(1600)
-        page.wait_for_function("document.getElementById('save-status').textContent !== "
-                               "'Saving'", timeout=5000)
 
     def switch(to: str) -> bool:
         """Click the switch to `to`; True once that view shows and nothing is inert."""
@@ -1398,7 +1381,7 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
     added = "<!-- pressless:text --><p>Added in code</p><!-- /pressless:text -->\n"
     if went:
         box.fill(shown.replace("<!-- /pressless:page -->", added + "<!-- /pressless:page -->"))
-        saved()
+        wait_for_save(page)
     check("PRESS-0285 INV-4: after a switch, code typed into the box is saved",
           "<p>Added in code</p>" in copy(), copy()[-200:])
 
@@ -1424,7 +1407,7 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
         added.click()
         page.keyboard.press("End")
         page.keyboard.type(" more")
-        saved()
+        wait_for_save(page)
     check("PRESS-0285 INV-3: a section added in the code is picked and saved, the "
           "other kept byte for byte",
           "<!-- pressless:text --><p>Before words. typed</p><!-- /pressless:text -->"
