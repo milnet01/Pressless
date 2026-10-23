@@ -5665,8 +5665,10 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0313] **An "outcome unknown" publish message can name the wrong request.**
+- ✅ [PRESS-0313] **An "outcome unknown" publish message can name the wrong request.**
   publisher.py:765 — OutcomeUnknown always says "the reference update", even for the start-file or .nojekyll PUT. Unchecked. Lead from lane-05-build-publish.md.
+  Real. A 5xx on the start-file or .nojekyll write was described as an
+  answer to the reference update. Fixed in 209c62a with a regression test.
   **Layman:** An error after publishing may describe the wrong step.
   Kind: investigate.
   Source: review-readability-2026-10-23.

@@ -23,6 +23,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **An unclear publish names the right step in its details** (PRESS-0313)
+  When GitHub's answer did not say whether your site was updated, the
+  details could name a step Pressless had not taken. They now name the
+  step that was actually sent.
+
 - **A file that cannot be saved now says why** (PRESS-0304)
   When a large file you add cannot be written to your computer, for
   example because the drive is full, Pressless now shows its explanation.
