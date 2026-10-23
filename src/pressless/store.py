@@ -389,8 +389,19 @@ def copy_to_bin(folder: Path, path: Path) -> Path:
     try:
         data = source.read_bytes()
         target.parent.mkdir(parents=True, exist_ok=True)
-        with open(target, "xb") as copy:
-            copy.write(data)
+        try:
+            with open(target, "xb") as copy:
+                copy.write(data)
+        except FileExistsError:
+            raise                   # not this call's file: it is left alone
+        except BaseException:
+            # This call's own cut-short copy, never a file the Store holds
+            # (INV-14). Left, it reads as his old file and refuses a retry in
+            # the same second as "already holds" (PRESS-0312). Removed after
+            # the close, because Windows refuses to remove an open file.
+            with contextlib.suppress(OSError):
+                target.unlink()
+            raise
     except FileExistsError as exc:
         raise StoreError(
             f"the bin already holds {relative.as_posix()} from this second; "

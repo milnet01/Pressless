@@ -1279,6 +1279,47 @@ def test_files_are_named_and_binned_like_writing(tmp_path):
     assert binned.parent.name == "files"
 
 
+def test_a_failed_copy_into_the_bin_leaves_no_part_copy(tmp_path, monkeypatch):
+    """PRESS-0312: a copy into the bin that fails part-way -- a full disk --
+    leaves nothing in the bin, so the bin never holds a cut-short copy that
+    reads as his old file, and trying again in the same second copies rather
+    than refusing with "the bin already holds" it.
+
+    Breaks when the copy's own half-written file is left where it failed."""
+    monkeypatch.setattr(store_module, "_now", lambda: datetime(2026, 10, 23, 9, 0, 0))  # noqa: DTZ001
+    css = store_module.style_code_path(tmp_path)
+    css.parent.mkdir()
+    css.write_bytes(b"body { color: black; }\n")
+    real_open = open
+
+    class _Full:
+        def __init__(self, handle):
+            self.handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.handle.close()
+
+        def write(self, data):
+            self.handle.write(data[:4])
+            raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(store_module, "open",
+                        lambda target, mode: _Full(real_open(target, mode)), raising=False)
+    with pytest.raises(StoreError, match="could not be copied"):
+        store_module.copy_to_bin(tmp_path, css)
+    bin_folder = tmp_path / "bin"
+    left = [path for path in bin_folder.rglob("*") if path.is_file()] if bin_folder.exists() else []
+    assert left == [], f"the failed copy left {left!r} in the bin"
+
+    monkeypatch.undo()
+    monkeypatch.setattr(store_module, "_now", lambda: datetime(2026, 10, 23, 9, 0, 0))  # noqa: DTZ001
+    copied = store_module.copy_to_bin(tmp_path, css)
+    assert copied.read_bytes() == css.read_bytes()
+
+
 # ------------------------------------------------- PRESS-0227 INV-1, INV-2 ---
 # docs/specs/PRESS-0227-site-icon-and-picture.md § 4.1.
 
