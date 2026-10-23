@@ -43,3 +43,29 @@ says why.
 Sweep: searched docs/, tests/, CLAUDE.md and README.md for `tree.zip`,
 the old row list, the Python loop and its reason, the save-wait
 expression, and each changed script's name. Nothing was stale.
+
+## lane-01 face
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `choices.py` docstring names the wrong folder | HIGH | fixed (0b3ea13) |
+| `face.py` four wrapped-page sends | MEDIUM | fixed (2151e68) |
+| `face.py` four Content-Length checks | MEDIUM | fixed (2151e68) — every over-limit body now gets 413 |
+| `words.py` 50 MiB typed by hand | MEDIUM | fixed (3434f46) |
+| `wizard.py` `is_secret` naming rule | MEDIUM | fixed (6a73eb0) — comment form |
+| `face.py` `_say` holds keys | LOW | fixed (27a86df) — now `_keys` |
+| `face.py` `_THEME_LIMIT` serves true-colours too | LOW | fixed (2151e68) — now `_CHOICE_LIMIT` |
+| `face.py` docstring's kept-state list | LOW | fixed (27a86df) |
+| `face.py` hard-wired routes shadow `add_page` | LOW | fixed (27a86df) — comment form |
+| `wizard.py` last step must return `Done` | LOW | fixed (6a73eb0) |
+| `words.py` group headers | LOW | fixed (d139327) |
+| `words.py` `_words` beside `_WORDS` | LOW | fixed (d139327) — now `_lookup` |
+| lead PRESS-0301 ticket id on screen | — | real; fixed, shipped (c2911be) |
+| lead PRESS-0304 failed upload not drained | — | real; fixed, shipped (bbb8210) |
+| lead `_send_download` `.zip` special case | — | fixed (2151e68) — reads `_FILE_TYPES` |
+| lead PRESS-0305 `secret` slot collision | — | real, latent; fixed, shipped (3092738) |
+
+Sweep: searched docs/, tests/, CLAUDE.md and README.md for
+`_THEME_LIMIT`, `_say`, `_words`, the 52 MB sentence, the download's
+content type, `is_secret`, `_drain`, and a 400 answer to an over-long
+theme. Nothing was stale.
