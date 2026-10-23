@@ -161,7 +161,21 @@ window.presslessPress = window.presslessPress || (() => {
     asking = false;
     buttons().forEach((button) => { button.disabled = false; });
   };
+  // PRESS-0235: a reply saying another press runs puts its words on the line
+  // and asks until that press ends. True where the reply said so.
+  const busy = (reply) => {
+    if (!reply.busy) return false;
+    if (line) line.textContent = reply.said;
+    ask();
+    return true;
+  };
+  // PRESS-0234: a press put something on the site, so View site can open it.
+  const viewable = () => {
+    const view = document.querySelector("button[data-view-site]");
+    if (view && view.dataset.viewSite) view.disabled = false;
+  };
   if (line && line.dataset.press) ask();
-  return {ask, asking: () => asking, standing: (given) => { standing = given; }};
+  return {ask, busy, viewable, asking: () => asking,
+          standing: (given) => { standing = given; }};
 })();
 """

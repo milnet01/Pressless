@@ -839,8 +839,7 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
       said.textContent = "";
       if (answer.status !== 200) { show("", text); return; }
       const reply = JSON.parse(text);
-      // PRESS-0235: another press runs; ask until it ends.
-      if (reply.busy) { said.textContent = reply.said; window.presslessPress.ask(); return; }
+      if (window.presslessPress.busy(reply)) return;
       said.textContent = reply.undone
         ? say("script.press.undone") : say("script.press.not_undone");
       show((reply.notices || "") + (reply.undone ? "" : reply.failure || ""),
@@ -877,7 +876,8 @@ window.presslessLeaving = (address, fields, unsaved, sending) => {
 # The entry's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved. Its
 # twin is page_editor._PAGE_SCRIPT: a fix to how either saves or presses is
-# owed to both. Here a save in flight is a flag, waited on by polling.
+# owed to both. Here a save in flight is a flag, waited on by polling, and
+# `settle` is the one place a request waits for it.
 _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
@@ -968,6 +968,22 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
     }
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(save, 1000); }
+  // Publish, address and throw post the address and base a save would post,
+  // and may move them. So each waits out a save in flight, saves a waiting
+  // change first where `first` says so, and holds saves back until its own
+  // request has answered (PRESS-0135, PRESS-0309). `release` lets them go
+  // again, saving whatever was typed meanwhile.
+  async function settle(first) {
+    clearTimeout(timer);
+    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
+    if (first && dirty && !stopped) await save();
+    clearTimeout(timer);
+    inFlight = true;
+  }
+  function release() {
+    inFlight = false;
+    if (dirty && !stopped) schedule();
+  }
 
   form.addEventListener("input", (event) => {
     if (event.target.name === "address") return;
@@ -977,11 +993,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
-    clearTimeout(timer);
-    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
-    // A save queued while this runs waits for it: it would post the address
-    // and base the publish is about to move (PRESS-0135).
-    inFlight = true;
+    await settle(false);
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = say("script.press.publishing");
@@ -992,27 +1004,18 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
       const reply = JSON.parse(text);
-      // PRESS-0235: another press runs. Nothing was saved, so the change is
-      // still to save, and the page asks until that press ends.
-      if (reply.busy) {
-        dirty = true;
-        said.textContent = reply.said;
-        window.presslessPress.ask();
-        return;
-      }
+      // Another press runs: nothing was saved, so the change is still to save.
+      if (window.presslessPress.busy(reply)) { dirty = true; return; }
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
         ? say("script.press.published") : say("script.press.not_published");
-      // PRESS-0234: there is now something to see.
-      const view = document.querySelector("button[data-view-site]");
-      if (reply.published && view && view.dataset.viewSite) view.disabled = false;
+      if (reply.published) window.presslessPress.viewable();
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
       publish.disabled = window.presslessPress.asking();
-      inFlight = false;
-      if (dirty && !stopped) schedule();
+      release();
     }
   });
 
@@ -1060,15 +1063,11 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
   const button = document.querySelector("button[data-editor=address]");
   if (button) {
     button.addEventListener("click", async () => {
-      // Settle first: the address change reads the base a save in flight is
-      // about to replace (PRESS-0135).
-      clearTimeout(timer);
-      while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
-      if (dirty && !stopped) await save();
-      if (stopped) return;
-      // PRESS-0182: asked first, since links to it are out in the world.
-      if (state.draft === "0" && !window.confirm(say("script.editor.confirm_address"))) return;
+      await settle(true);
       try {
+        if (stopped) return;
+        // PRESS-0182: asked first, since links to it are out in the world.
+        if (state.draft === "0" && !window.confirm(say("script.editor.confirm_address"))) return;
         const data = new URLSearchParams();
         data.set("slug", state.slug); data.set("draft", state.draft);
         data.set("base", state.base);
@@ -1081,6 +1080,8 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
         if (!reply.hint) adopt(reply);
       } catch (error) {
         stop("");
+      } finally {
+        release();
       }
     });
   }
@@ -1092,12 +1093,9 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
     const question = say(form.dataset.onSite === "1"
       ? "script.editor.confirm_throw_entry" : "script.editor.confirm_throw_draft");
     if (!window.confirm(question)) return;
-    clearTimeout(timer);
-    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
-    if (dirty && !stopped) await save();
-    if (stopped) return;
-    inFlight = true;
+    await settle(true);
     try {
+      if (stopped) return;
       const data = new URLSearchParams();
       data.set("slug", state.slug); data.set("draft", state.draft); data.set("base", state.base);
       const answer = await fetch("/throw", {method: "POST", body: data});
@@ -1108,7 +1106,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
     } catch (error) {
       stop("");
     } finally {
-      inFlight = false;
+      release();
     }
   });
 })();

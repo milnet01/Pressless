@@ -15,6 +15,8 @@ import hashlib
 import html
 import json
 import re
+import shutil
+import subprocess
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -23,8 +25,21 @@ import pytest
 from _face_session import Browser
 from test_setup import _saved
 
-from pressless import editor, face, marks, page_editor, publishing, settings, setup, starter, store
+from pressless import (
+    editor,
+    face,
+    marks,
+    page_editor,
+    pressing,
+    publishing,
+    settings,
+    setup,
+    starter,
+    store,
+)
 from pressless.words import say
+
+_NODE = shutil.which("node")
 
 PREVIEW = "preview"
 REPLACES = "Replaces"
@@ -808,8 +823,10 @@ def test_view_your_site_sits_by_press_to_site_in_both_editors(tmp_path):
         # PRESS-0235: the words come from the table, so the anchor is their use.
         after = script.split('say("script.press.published")', 1)[1]
         added = after.split("} catch", 1)[0]
-        assert 'document.querySelector("button[data-view-site]")' in added, name
-        assert "view.disabled = false" in added, name
+        assert "window.presslessPress.viewable()" in added, name
+    viewable = pressing.SCRIPT.split("const viewable = ", 1)[1].split("};", 1)[0]
+    assert 'document.querySelector("button[data-view-site]")' in viewable
+    assert "view.disabled = false" in viewable
 
 
 def test_the_list_names_the_site_it_edits(tmp_path):
@@ -849,3 +866,72 @@ def test_messages_open_over_the_page_and_status_lines_keep_room(tmp_path):
         assert re.search(rf'<dialog class="message"[^>]*><div id="{inner}">', shown), inner
     assert '<p id="undo-status" class="press-status"' in listing
     assert "dialog.message" in face._SCRIPT and "showModal" in face._SCRIPT
+
+
+# ------------------------------------------------------------- PRESS-0309 ---
+
+# The entry's script under node, on a stand-in page: every element is a plain
+# object, `fetch` is recorded, and /address answers only when told to.
+_RACE_HARNESS = """
+const made = {};
+const element = (key) => made[key] || (made[key] = {
+  key, dataset: {}, hidden: false, textContent: "", innerHTML: "", value: "",
+  disabled: false, handlers: {}, elements: null,
+  addEventListener(type, handler) { this.handlers[type] = handler; },
+  remove() {}, appendChild() {}, focus() {}, setSelectionRange() {}, click() {},
+});
+const form = element("#editor");
+form.dataset = {slug: "old", draft: "1", base: "b1", missing: "[]", onSite: "0"};
+form.elements = new Proxy({}, {get: (_, name) => element("field " + name)});
+globalThis.window = globalThis;
+window.addEventListener = () => {};
+window.confirm = () => true;
+globalThis.history = {replaceState() {}};
+globalThis.document = {
+  getElementById: (id) => element("#" + id),
+  querySelector: (selector) => element(selector),
+  querySelectorAll: () => [],
+};
+globalThis.say = (key) => key;
+const posts = [];
+let answerAddress;
+globalThis.fetch = (address, request) => {
+  const fields = Object.fromEntries(new URLSearchParams(request.body.toString()));
+  posts.push({address, fields, during: answerAddress !== undefined});
+  const reply = address === "/address"
+    ? new Promise((resolve) => { answerAddress = resolve; })
+    : Promise.resolve({slug: fields.slug, draft: true, base: "saved", notices: ""});
+  return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
+};
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+%s
+(async () => {
+  element('input[name=address]').value = "new";
+  element("button[data-editor=address]").handlers.click();
+  while (answerAddress === undefined) await pause(10);
+  form.elements.body.value = "typed while the address changed";
+  form.handlers.input({target: {name: "body"}});
+  await pause(1300);
+  answerAddress({slug: "new", draft: true, base: "b2", notices: "", hint: null});
+  answerAddress = undefined;
+  await pause(1300);
+  process.stdout.write(JSON.stringify(posts));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_an_edit_during_an_address_change_is_saved_at_the_new_address(tmp_path):
+    """PRESS-0309: typing while /address runs posts no save beside it, which
+    would carry the address and base the change is moving. The edit is saved
+    once the change answers, under the new address and base. Breaks when the
+    address button posts without holding saves back."""
+    harness = tmp_path / "race.js"
+    harness.write_text(_RACE_HARNESS % editor._EDITOR_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    posts = json.loads(run.stdout)
+    assert [post["address"] for post in posts if post["during"]] == []
+    saves = [post["fields"] for post in posts if post["address"] == "/save"]
+    assert saves and saves[-1]["slug"] == "new" and saves[-1]["base"] == "b2"
+    assert saves[-1]["body"] == "typed while the address changed"

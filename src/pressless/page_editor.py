@@ -1383,23 +1383,15 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
       const text = await answer.text();
       if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
       const reply = JSON.parse(text);
-      // PRESS-0235: another press runs. Nothing was saved, so the change is
-      // still to save, and the page asks until that press ends.
-      if (reply.busy) {
-        dirty = true;
-        said.textContent = reply.said;
-        window.presslessPress.ask();
-        return;
-      }
+      // Another press runs: nothing was saved, so the change is still to save.
+      if (window.presslessPress.busy(reply)) { dirty = true; return; }
       if (reply.published) form.dataset.offSite = "0";
       adopt(reply);
       if (posted) posted.saved(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published ? say("script.press.published")
         : say("script.press.not_published");
-      // PRESS-0234: there is now something to see.
-      const view = document.querySelector("button[data-view-site]");
-      if (reply.published && view && view.dataset.viewSite) view.disabled = false;
+      if (reply.published) window.presslessPress.viewable();
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
@@ -1433,11 +1425,9 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
         const text = await answer.text();
         if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
         const reply = JSON.parse(text);
-        if (reply.busy) {
-          said.textContent = reply.said;
-          window.presslessPress.ask();
-          return;
-        }
+        // Another press runs. The settle above saved everything, so nothing
+        // is left to save.
+        if (window.presslessPress.busy(reply)) return;
         document.getElementById("notices").innerHTML = reply.notices;
         hint.textContent = reply.hint || "";
         document.getElementById("failure").innerHTML = reply.failure || "";
