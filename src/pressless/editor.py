@@ -941,8 +941,9 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
     document.getElementById("notices").innerHTML = reply.notices;
     if ("missing" in reply) showMissing(reply.missing);
     // PRESS-0182: a proof's address cannot change, so its page offers none.
+    // _page always draws the field, hidden where it does not apply.
     const addressField = document.getElementById("address");
-    if (addressField && state.draft === "1" && form.dataset.draft === "0") {
+    if (state.draft === "1" && form.dataset.draft === "0") {
       addressField.hidden = true;
     }
     // PRESS-0128: a press puts a draft on his site without reloading the page.
