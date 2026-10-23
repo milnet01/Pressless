@@ -88,7 +88,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 ```python
 # src/pressless/starter.py — new; the Face's, as templates.py is
-MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
+MARKER = "starter-unpublished"   # in the site's folder; empty file
 
 def offered(folder: Path) -> bool: ...         # § 4.4
 LOOKS = ("sunrise", "meadow", "harbour")     # PRESS-0239

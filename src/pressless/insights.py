@@ -192,6 +192,8 @@ class Transport(Protocol):
     def now(self) -> float: ...
 
 
+# _NoCrossOriginAuth, _origin, _Urllib and _no_answer are twins of
+# publisher.py's, kept apart by INV-1. A fix to one copy is owed to the other.
 class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     """A redirect handler that drops the key when the origin changes.
 

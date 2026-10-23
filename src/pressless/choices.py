@@ -1,7 +1,8 @@
 """What Pressless remembers of his choices between visits (PRESS-0263).
 
-Kept in choices.json in Pressless's own folder, beside theme.json and for the
-same reason: the Face's port changes every run, and a browser keeps its
+Kept in choices.json in the open site's folder, unlike theme.json, which is
+the machine's. A file rather than the browser's storage for the reason
+theme.json is one: the Face's port changes every run, and a browser keeps its
 storage per port. Nothing here is sent anywhere. A missing or unreadable file
 reads as no choices, and a choice that cannot be written is only forgotten.
 """

@@ -3,7 +3,7 @@
 Setup offers it on a Store that holds no site, and `fill` copies it in: a
 header, footer and menu, a Home and an About page, the templates, and the
 stylesheet of the look chosen (PRESS-0239), with the journal off. Nothing is
-written over a file the Store already holds. A marker in Pressless's own
+written over a file the Store already holds. A marker in the site's
 folder says the starter has not been published yet, which is what lets
 publishing refuse to replace a site already on GitHub
 (docs/specs/PRESS-0126-starter-site.md).
@@ -17,7 +17,7 @@ from pathlib import Path
 from pressless import blocks, builder, look, store, templates
 from pressless.words import say
 
-MARKER = "starter-unpublished"   # in Pressless's own folder; empty file
+MARKER = "starter-unpublished"   # in the site's folder; empty file
 
 # Shipped to every install, so they name nobody and assume nothing about the
 # user (§ 4.3). The header and footer name the site by placeholder, so a

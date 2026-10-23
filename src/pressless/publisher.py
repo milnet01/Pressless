@@ -198,6 +198,10 @@ class Transport(Protocol):
     def wait(self, seconds: float) -> None: ...
 
 
+# _NoCrossOriginAuth, _origin, _Urllib and _no_answer each have a twin in
+# insights.py, which its own INV-1 keeps from importing this module. A fix to
+# one copy is owed to the other: the redirect handler is what keeps the key
+# from leaving GitHub.
 class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
     """A redirect handler that drops the key when the origin changes.
 

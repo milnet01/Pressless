@@ -27,6 +27,7 @@ from pressless import blocks, builder, look, menu, sitefile, starter, store, tem
 from . import (
     _DRAFT_STATUSES,
     _RESIZED,
+    MISSING,
     Dropped,
     ImportStopped,
     Report,
@@ -52,7 +53,6 @@ IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
 _MEDIA = "media"
 _MOVING = "moving"
-_MISSING = "its original is missing"
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
 _CARRIED_TYPES = frozenset({"post", "page", "attachment", "nav_menu_item", "wp_navigation"})
 _NAVIGATION = "navigation"
@@ -472,7 +472,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         waiting=_waiting(items),
         unfetched=tuple(dict(
             (place, unfetched.get(place, "it was not fetched, nor in the media download")
-             if why == _MISSING else why) for place, why in unheld).items()),
+             if why == MISSING else why) for place, why in unheld).items()),
         menus=menus,
         other_types=_other_types(channel, ns),
     )

@@ -96,6 +96,9 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 _RESIZED = re.compile(r"-\d+x\d+(?=\.[^./]+$)")
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
 _UPLOADS = "/uploads/"
+# A Report reason _bring.bring_in matches to put the fetch's own reason in its
+# place, so it is spelled once.
+MISSING = "its original is missing"
 
 # §4.9, matched as today's generator matches them.
 _START = re.compile(r"<!--\s*(HEADER|FOOTER):START[^>]*?-->")
@@ -421,7 +424,7 @@ def _photographs(channel, ns, originals: Path, *, strict: bool = True,
             continue
         if not (originals / upload_path).is_file():
             # PRESS-0158: listed, and its pictures take the no-attachment path.
-            unheld.append((upload_path, "its original is missing"))
+            unheld.append((upload_path, MISSING))
             continue
         names[upload_path] = name
         by_id_path[post_id] = upload_path
