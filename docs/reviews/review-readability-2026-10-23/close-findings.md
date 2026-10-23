@@ -232,3 +232,32 @@ the View-site check (updated in aa81fee) and test_pressing's `_digest`
 calls (5291ffe). The
 full suite caught `first_free` and `folded` widening the Store's
 pinned surface; 298faf3 moved them.
+
+## lane-04 store
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `undo.py` `captured`, five notice wrappers | MEDIUM | fixed (43db56b) — `face.gatherer` |
+| `undo.py` `_restore_other_kinds` copies | MEDIUM | fixed (953700e) — `_restore_one`; options kept apart |
+| `undo.py` identity held as a dict | LOW | fixed (953700e) — one value or None |
+| `store.py` seven read-and-decode copies | MEDIUM | fixed (53e4b8c) — `_read_bytes`, `_read_text`, `_read_json` |
+| `store.py` three Windows device lists | MEDIUM | fixed (db5b4cd) — one Store list; publisher's copy kept by PRESS-0009 INV-1, each names the other |
+| `store.py` `_list_names` docstring and suffix | MEDIUM | fixed (fd04dbe) |
+| `store.py` `_raw_names` `.lower()` | LOW | fixed (fd04dbe) — `_folded` |
+| `store.py` `path_for` "the one place" | LOW | fixed (3782149) |
+| `store.py` header "LF" | LOW | fixed (3782149) |
+| `store.py` four `_is_windows` copies | LOW | fixed (991c4f4) — the per-module seams the specs name ask `safe_write` |
+| `undo.py` `settings` parameter shadows the module | LOW | dismissed — PRESS-0015 § 4 pins `settings: Settings`, and `publishing.publish` has the same shape |
+| `undo.py` `_FORWARDS[name][1]` | LOW | fixed (953700e) — named tuple |
+| `store.py` `_list_names` unused suffix (tool note) | — | fixed (fd04dbe) |
+| lead: PRESS-0005 names one `_list_names` caller of two | — | fixed (fd04dbe) |
+| lead PRESS-0302 move and retry read two checks | — | real; fixed, shipped (991c4f4, 3d4eb01) |
+| lead PRESS-0312 failed bin copy blocks a retry | — | real; fixed, shipped (2ea6e71) |
+
+Sweep: searched src/, tests/, docs/, CLAUDE.md and README.md for
+`_RESERVED_NAMES`, `_list_names(`, `state.identity`, `_FORWARDS[`,
+`_read_mapping`, "one place a slug becomes", and every patch of
+`store._is_windows`. One stale use: the POSIX-move test still forced its
+route through the Store's check, which would have failed on the Windows
+box; fixed in 3d4eb01. Notice tests patching the Store's check stay
+right.
