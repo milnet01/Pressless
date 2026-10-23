@@ -1182,13 +1182,15 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
     return False, _digest(store.html_path_for(folder, kind, name))
 
 
-# The page's script (§ 4.5), PRESS-0012 § 4.7's with this page's fields. A
-# change saves about a second after the last one, never two saves at once, and
-# on leaving only where a change is unsaved. A switch of view or a picker link
-# waits for a save in flight and saves an unsaved change first. In the visual
-# view, _VISUAL_SCRIPT supplies what is posted and is told what was saved
-# (PRESS-0260 § 4.5).
-_PAGE_SCRIPT = pressing.SCRIPT + """
+# The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
+# after the last one, never two saves at once, and on leaving only where a
+# change is unsaved. Its twin is editor._EDITOR_SCRIPT, and both leave through
+# editor.LEAVING_SCRIPT. They differ in their fields, in what a reply updates,
+# and here a save in flight is a promise to await, not a flag to poll. A switch
+# of view or a picker link waits for a save in flight and saves an unsaved
+# change first. In the visual view, _VISUAL_SCRIPT supplies what is posted and
+# is told what was saved (PRESS-0260 § 4.5).
+_PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,
@@ -1272,18 +1274,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + """
   form.addEventListener("input", changed);
   // The visual view's changes happen in the frame and the panel.
   window.presslessPage = {changed};
-  window.addEventListener("pagehide", () => {
-    if (stopped || inFlight || !dirty) return;
-    fetch("/page/save", {method: "POST", body: fields(), keepalive: true}).catch(() => {});
-  });
-  // A keepalive request carries at most 64 KiB, so a larger unsaved change
-  // cannot be sent as the page goes; the browser asks before leaving instead
-  // (PRESS-0135).
-  window.addEventListener("beforeunload", (event) => {
-    if (!stopped && dirty && new Blob([fields().toString()]).size > 60000) {
-      event.preventDefault();
-    }
-  });
+  window.presslessLeaving("/page/save", fields, () => !stopped && dirty, () => inFlight);
   document.querySelectorAll("a[data-page-link]").forEach((link) => {
     link.addEventListener("click", async (event) => {
       event.preventDefault();

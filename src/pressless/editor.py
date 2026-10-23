@@ -798,8 +798,6 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
     return _json({"thrown": True, "notices": render_notices(notices)})
 
 
-# The page's script (§ 4.7). A change saves about a second after the last one,
-# never two saves at once, and on leaving only where a change is unsaved.
 # PRESS-0015 s 4.6. Both pages carry this. Neither reloads itself (s 4.2):
 # the reply is the only place the summary and the gathered notices exist, and a
 # reload throws both away before he has read them. So the box is replaced with
@@ -858,7 +856,29 @@ _UNDO_SCRIPT = pressing.SCRIPT + """
 """
 
 
-_EDITOR_SCRIPT = pressing.SCRIPT + """
+# PRESS-0012 § 4.7 and PRESS-0135: both editors' leaving, the entry's here and
+# page_editor._PAGE_SCRIPT's. An unsaved change goes with the page unless a
+# save is in flight. A keepalive request carries at most 64 KiB, so where the
+# change is larger the browser asks before leaving instead. `unsaved` says a
+# change waits and saving has not stopped; `sending` says a save is in flight.
+LEAVING_SCRIPT = """
+window.presslessLeaving = (address, fields, unsaved, sending) => {
+  window.addEventListener("pagehide", () => {
+    if (!unsaved() || sending()) return;
+    fetch(address, {method: "POST", body: fields(), keepalive: true}).catch(() => {});
+  });
+  window.addEventListener("beforeunload", (event) => {
+    if (unsaved() && new Blob([fields().toString()]).size > 60000) event.preventDefault();
+  });
+};
+"""
+
+
+# The entry's script (§ 4.7). A change saves about a second after the last one,
+# never two saves at once, and on leaving only where a change is unsaved. Its
+# twin is page_editor._PAGE_SCRIPT: a fix to how either saves or presses is
+# owed to both. Here a save in flight is a flag, waited on by polling.
+_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {slug: form.dataset.slug, draft: form.dataset.draft, base: form.dataset.base};
@@ -953,18 +973,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + """
     if (event.target.name === "address") return;
     dirty = true; schedule();
   });
-  window.addEventListener("pagehide", () => {
-    if (stopped || inFlight || !dirty) return;
-    fetch("/save", {method: "POST", body: fields(), keepalive: true}).catch(() => {});
-  });
-  // A keepalive request carries at most 64 KiB, so a larger unsaved change
-  // cannot be sent as the page goes; the browser asks before leaving instead
-  // (PRESS-0135).
-  window.addEventListener("beforeunload", (event) => {
-    if (!stopped && dirty && new Blob([fields().toString()]).size > 60000) {
-      event.preventDefault();
-    }
-  });
+  window.presslessLeaving("/save", fields, () => !stopped && dirty, () => inFlight);
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
