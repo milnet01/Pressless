@@ -8,8 +8,9 @@ prose; the sentences live here, keyed by the failure's class, and their words
 in the words table (PRESS-0242).
 
 Nothing here keeps state between requests (`docs/design.md` § State) beyond
-what the server itself needs: the secret made at launch, the pages later items
-add, and the log it holds open.
+what the server itself needs: the secret made at launch, whether its link is
+spent, the pages later items add, the log it holds open, and the chosen theme,
+which a request may change.
 """
 
 from __future__ import annotations
@@ -86,8 +87,9 @@ class FolderNotOpened(Exception):
     """The platform's opener is missing or failed (§ 6)."""
 
 
-def _say(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
-         link: tuple[str, str] | None = None) -> Sentence:
+def _keys(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
+          link: tuple[str, str] | None = None) -> Sentence:
+    """A SENTENCES entry: it holds words keys, which sentence_for looks up."""
     return Sentence(what, site, next_step, link)
 
 
@@ -95,69 +97,69 @@ def _say(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
 # Unreachable, Refused and RateLimited (§ 4.2). Each Publisher type's next step
 # follows the answer PRESS-0009 § 4.1 pairs with it.
 SENTENCES: dict[type[Exception], Sentence] = {
-    paths.NotPackaged: _say(
+    paths.NotPackaged: _keys(
         "failure.paths.NotPackaged.what",
         "failure.paths.NotPackaged.next",
     ),
-    paths.FolderUnusable: _say(
+    paths.FolderUnusable: _keys(
         "failure.paths.FolderUnusable.what",
         "failure.paths.FolderUnusable.next",
     ),
-    store.StoreError: _say("failure.store.StoreError.what", "failure.again"),
-    store.EntryNotFound: _say(
+    store.StoreError: _keys("failure.store.StoreError.what", "failure.again"),
+    store.EntryNotFound: _keys(
         "failure.store.EntryNotFound.what",
         "failure.store.EntryNotFound.next",
     ),
-    store.SlugInUse: _say(
+    store.SlugInUse: _keys(
         "failure.store.SlugInUse.what",
         "failure.store.SlugInUse.next",
     ),
-    store.DanglingReply: _say(
+    store.DanglingReply: _keys(
         "failure.store.DanglingReply.what",
         "failure.store.DanglingReply.next",
     ),
-    blocks.SectionRefused: _say("failure.blocks.SectionRefused.what", "failure.again"),
-    builder.BuildStopped: _say(
+    blocks.SectionRefused: _keys("failure.blocks.SectionRefused.what", "failure.again"),
+    builder.BuildStopped: _keys(
         "failure.builder.BuildStopped.what",
         "failure.builder.BuildStopped.next",
     ),
-    builder.SiteFolderUnusable: _say(
+    builder.SiteFolderUnusable: _keys(
         "failure.builder.SiteFolderUnusable.what",
         "failure.again",
     ),
-    insights.InsightsError: _say(
+    insights.InsightsError: _keys(
         "failure.insights.InsightsError.what",
         "failure.insights.InsightsError.next",
     ),
-    insights.NotConfigured: _say(
+    insights.NotConfigured: _keys(
         "failure.insights.NotConfigured.what",
         "failure.insights.NotConfigured.next",
     ),
-    insights.Unreachable: _say(
+    insights.Unreachable: _keys(
         "failure.insights.Unreachable.what",
         "failure.insights.Unreachable.next",
     ),
-    insights.Refused: _say(
+    insights.Refused: _keys(
         "failure.insights.Refused.what",
         "failure.insights.Refused.next",
     ),
-    insights.RateLimited: _say(
+    insights.RateLimited: _keys(
         "failure.insights.RateLimited.what",
         "failure.insights.RateLimited.next",
     ),
-    google_signin.Declined: _say(
+    google_signin.Declined: _keys(
         "failure.google_signin.Declined.what",
         "failure.google_signin.Declined.next",
     ),
-    google_signin.Expired: _say(
+    google_signin.Expired: _keys(
         "failure.google_signin.Expired.what",
         "failure.google_signin.Expired.next",
     ),
-    credentials.NoStore: _say(
+    credentials.NoStore: _keys(
         "failure.credentials.NoStore.what",
         "failure.credentials.NoStore.next",
     ),
-    credentials.NotStored: _say(
+    credentials.NotStored: _keys(
         "failure.credentials.NotStored.what",
         "failure.credentials.NotStored.next",
     ),
@@ -165,112 +167,112 @@ SENTENCES: dict[type[Exception], Sentence] = {
     # read and re-entering fixes nothing -- a locked keyring, or on Windows a
     # program started over a remote connection, which the vault refuses
     # (PRESS-0120, PRESS-0162). So it names reaching, and the unlock first.
-    credentials.CredentialError: _say(
+    credentials.CredentialError: _keys(
         "failure.credentials.CredentialError.what",
         "failure.credentials.CredentialError.next",
     ),
-    settings.NotSetUp: _say(
+    settings.NotSetUp: _keys(
         "failure.settings.NotSetUp.what",
         "failure.settings.NotSetUp.next",
     ),
-    settings.SettingsError: _say(
+    settings.SettingsError: _keys(
         "failure.settings.SettingsError.what",
         "failure.settings.SettingsError.next",
     ),
-    publisher.PublishError: _say(
+    publisher.PublishError: _keys(
         "failure.publisher.PublishError.what",
         "failure.again",
     ),
-    publisher.Unreachable: _say(
+    publisher.Unreachable: _keys(
         "failure.publisher.Unreachable.what",
         "failure.publisher.Unreachable.next",
     ),
-    publisher.OutcomeUnknown: _say(
+    publisher.OutcomeUnknown: _keys(
         "failure.publisher.OutcomeUnknown.what",
         "failure.publisher.OutcomeUnknown.next",
         Site.UNKNOWN,
     ),
-    publisher.Refused: _say(
+    publisher.Refused: _keys(
         "failure.publisher.Refused.what",
         "failure.publisher.Refused.next",
     ),
-    publisher.SignInRefused: _say(
+    publisher.SignInRefused: _keys(
         "failure.publisher.SignInRefused.what",
         "failure.publisher.SignInRefused.next",
         link=("/setup/github", "failure.publisher.SignInRefused.link"),
     ),
-    publisher.RepositoryMissing: _say(
+    publisher.RepositoryMissing: _keys(
         "failure.publisher.RepositoryMissing.what",
         "failure.publisher.RepositoryMissing.next",
     ),
-    publisher.Conflict: _say(
+    publisher.Conflict: _keys(
         "failure.publisher.Conflict.what",
         "failure.publisher.Conflict.next",
     ),
-    publisher.TooLarge: _say(
+    publisher.TooLarge: _keys(
         "failure.publisher.TooLarge.what",
         "failure.publisher.TooLarge.next",
     ),
-    publisher.RateLimited: _say(
+    publisher.RateLimited: _keys(
         "failure.publisher.RateLimited.what",
         "failure.publisher.RateLimited.next",
     ),
-    publisher.NoPreviousState: _say(
+    publisher.NoPreviousState: _keys(
         "failure.publisher.NoPreviousState.what",
         "failure.publisher.NoPreviousState.next",
     ),
-    publisher.SiteFolderMissing: _say(
+    publisher.SiteFolderMissing: _keys(
         "failure.publisher.SiteFolderMissing.what",
         "failure.publisher.SiteFolderMissing.next",
     ),
-    publisher.StrayFile: _say(
+    publisher.StrayFile: _keys(
         "failure.publisher.StrayFile.what",
         "failure.publisher.StrayFile.next",
     ),
-    publisher.SiteWouldBeEmptied: _say(
+    publisher.SiteWouldBeEmptied: _keys(
         "failure.publisher.SiteWouldBeEmptied.what",
         "failure.publisher.SiteWouldBeEmptied.next",
     ),
-    publisher.FetchNotWritten: _say(
+    publisher.FetchNotWritten: _keys(
         "failure.publisher.FetchNotWritten.what",
         "failure.publisher.FetchNotWritten.next",
     ),
-    publisher.UnfetchablePath: _say(
+    publisher.UnfetchablePath: _keys(
         "failure.publisher.UnfetchablePath.what",
         "failure.publisher.UnfetchablePath.next",
     ),
-    publisher.RepositoryMoved: _say(
+    publisher.RepositoryMoved: _keys(
         "failure.publisher.RepositoryMoved.what",
         "failure.publisher.RepositoryMoved.next",
     ),
-    publisher.RemoteStateMissing: _say(
+    publisher.RemoteStateMissing: _keys(
         "failure.publisher.RemoteStateMissing.what",
         "failure.publisher.RemoteStateMissing.next",
     ),
     # PRESS-0231 § 4.2. The sign-in step words the first three as hints; these
     # are for anywhere else they reach.
-    github_signin.Pending: _say(
+    github_signin.Pending: _keys(
         "failure.github_signin.Pending.what",
         "failure.github_signin.Pending.next",
     ),
-    github_signin.Expired: _say(
+    github_signin.Expired: _keys(
         "failure.github_signin.Expired.what",
         "failure.github_signin.Expired.next",
     ),
-    github_signin.Declined: _say(
+    github_signin.Declined: _keys(
         "failure.github_signin.Declined.what",
         "failure.github_signin.Declined.next",
     ),
-    github_signin.SignedOut: _say(
+    github_signin.SignedOut: _keys(
         "failure.github_signin.SignedOut.what",
         "failure.github_signin.SignedOut.next",
         link=("/setup/github", "failure.github_signin.SignedOut.link"),
     ),
-    FolderNotOpened: _say(
+    FolderNotOpened: _keys(
         "failure.face.FolderNotOpened.what",
         "failure.face.FolderNotOpened.next",
     ),
-    shortcuts.ShortcutError: _say(
+    shortcuts.ShortcutError: _keys(
         "failure.shortcuts.ShortcutError.what",
         "failure.again",
     ),
@@ -1318,7 +1320,11 @@ class Face:
         self._thread.start()
 
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
-        """Register `page` for `method` and `path`, replacing any before it."""
+        """Register `page` for `method` and `path`, replacing any before it.
+
+        The Face's own routes (/folder/location, /folder/open, /theme and
+        /true-colours) and an upload's path answer first, so a page
+        registered at one of those is never reached."""
         self._pages[(method.upper(), path)] = (page, publishing)
 
     def add_upload(self, path: str, handler: Callable[[Path], str], into: Path) -> None:
