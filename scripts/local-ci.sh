@@ -99,20 +99,9 @@ if ((DOCS_ONLY)); then
     exit 0
 fi
 
-# ── The interpreter ─────────────────────────────────────────────────────────
-# Resolved, never named. The release workflow runs this file on windows-latest
-# too (PRESS-0022 § 7 step 1), where the installer ships python.exe and creates
-# no python3 -- and a python3 that IS on PATH there can be a store alias that
-# runs nothing. So each candidate must actually run. On Linux python3 wins, as
-# it always did.
-PY=
-for candidate in python3 python; do
-    if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys' 2>/dev/null; then
-        PY=$candidate
-        break
-    fi
-done
-[[ -n $PY ]] || fail "no working python3 or python on PATH"
+# ── The interpreter ── scripts/python.sh says why it is resolved, not named.
+# shellcheck source=scripts/python.sh
+. scripts/python.sh
 
 # ── What is about to run ────────────────────────────────────────────────────
 # REPORTED, never enforced. The dev floors in pyproject.toml are open on

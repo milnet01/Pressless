@@ -18,14 +18,8 @@ cd "$(dirname "$0")/.."
     exit 1
 }
 
-PY=
-for candidate in python3 python; do
-    if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys' 2>/dev/null; then
-        PY=$candidate
-        break
-    fi
-done
-[[ -n $PY ]] || { echo "no working python3 or python on PATH" >&2; exit 1; }
+# shellcheck source=scripts/python.sh
+. scripts/python.sh
 
 work=build/freeze
 appdir=build/AppDir
