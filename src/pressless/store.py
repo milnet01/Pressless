@@ -209,17 +209,9 @@ def read(path: Path) -> Entry:
     still there, which is S2 (INV-5).
     """
     target = Path(path)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError as exc:
-        raise EntryNotFound(f"there is no entry {target.stem!r}") from exc
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+    text = _read_text(target)
+    if text is None:
+        raise EntryNotFound(f"there is no entry {target.stem!r}")
     # Notepad offers to save UTF-8 with a byte-order mark. Kept, it becomes
     # part of the first field's name and the title moves to extra in silence.
     # One is dropped; write never emits one (§4.2, INV-16).
@@ -621,6 +613,47 @@ def _parse_date(value: str, target: Path) -> datetime:
         ) from exc
 
 
+def _read_bytes(target: Path) -> bytes | None:
+    """The file's bytes; None where there is no file. Every Store reader
+    starts here, so each raises the same StoreError without a full path
+    (PRESS-0005 § 4.4); each states its own answer for a missing file."""
+    try:
+        return target.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
+
+
+def _read_text(target: Path) -> str | None:
+    """The file decoded as UTF-8; None where there is no file. Never decoded
+    with a replacement character: that would silently change his file on the
+    next save (PRESS-0006 § 6)."""
+    data = _read_bytes(target)
+    if data is None:
+        return None
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+
+
+# What _read_json answers for a missing file. Not None: a file holding
+# `null` is a damaged file, never an absent one.
+_NO_FILE = object()
+
+
+def _read_json(target: Path) -> object:
+    """The file's JSON value; _NO_FILE where there is no file."""
+    data = _read_bytes(target)
+    if data is None:
+        return _NO_FILE
+    try:
+        return json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
+
+
 def _why(exc: Exception) -> str:
     """The reason an error carries, never its own words.
 
@@ -762,19 +795,10 @@ def read_html(path: Path) -> str:
     all, which is what lets the code view hand him his own file (INV-1).
     """
     target = Path(path)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError as exc:
-        raise StoreError(f"there is no file {target.name}") from exc
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        # Not decoded with a replacement character: that would silently change
-        # his page on the next save (§6).
-        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+    html = _read_text(target)
+    if html is None:
+        raise StoreError(f"there is no file {target.name}")
+    return html
 
 
 def write_html(folder: Path, kind: str, name: str, html: str, *,
@@ -859,17 +883,9 @@ def read_comments(path: Path) -> tuple[Comment, ...]:
     reordering at rest makes the file no longer what was written (INV-6).
     """
     target = Path(path)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError:
+    text = _read_text(target)
+    if text is None:
         return ()
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
     try:
         carried = json.loads(text)
     except ValueError as exc:
@@ -986,16 +1002,9 @@ def write_page_forwards(folder: Path, forwards: dict[str, str]) -> Path:
 def _read_mapping(target: Path, check) -> dict[str, str]:
     """A forwards file: a JSON object of names, each put to `check`, none
     mapped to itself."""
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError:
+    carried = _read_json(target)
+    if carried is _NO_FILE:
         return {}
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-    try:
-        carried = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
     if not isinstance(carried, dict) or not all(
             isinstance(value, str) for value in carried.values()):
         raise StoreError(f"{target.name} is not an object of addresses")
@@ -1025,16 +1034,9 @@ def options_path_for(folder: Path) -> Path:
 def read_options(folder: Path) -> dict:
     """The site-wide options; {} where there is no file (PRESS-0214 § 4.1)."""
     target = options_path_for(folder)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError:
+    carried = _read_json(target)
+    if carried is _NO_FILE:
         return {}
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-    try:
-        carried = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
     if not isinstance(carried, dict):
         raise StoreError(f"{target.name} is not an object of options")
     return carried
@@ -1114,16 +1116,9 @@ def _refuse_identity(target: Path, problem: str) -> NoReturn:
 def read_identity(folder: Path) -> Identity | None:
     """The site's identity; None where there is no file (PRESS-0213 § 4.1)."""
     target = identity_path_for(folder)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError:
+    carried = _read_json(target)
+    if carried is _NO_FILE:
         return None
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-    try:
-        carried = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise StoreError(f"{target.name} is not readable JSON: {exc}") from exc
     if not isinstance(carried, dict):
         raise StoreError(f"{target.name} is not an object")
     name = carried.get("name")
@@ -1175,17 +1170,7 @@ def read_style_code(folder: Path) -> str | None:
 def read_look_file(folder: Path, name: str) -> str | None:
     """One of the look's files, decoded and otherwise untouched; None where
     the Store holds none (PRESS-0196 § 4.1)."""
-    target = look_path_for(folder, name)
-    try:
-        data = target.read_bytes()
-    except FileNotFoundError:
-        return None
-    except OSError as exc:
-        raise StoreError(f"{target.name} could not be read: {_why(exc)}") from exc
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise StoreError(f"{target.name} is not UTF-8: {exc}") from exc
+    return _read_text(look_path_for(folder, name))
 
 
 def write_style_code(folder: Path, css: str) -> Path:
