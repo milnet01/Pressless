@@ -62,9 +62,9 @@ def _why(exc: OSError) -> str:
     Pressless shows or writes down. `strerror` is the reason alone. It is
     absent on an OSError raised without one, so the type stands in.
 
-    Deliberately duplicated in the parts that need it rather than shared:
-    §5 INV-1 has this module import no other part of Pressless, and a
-    shared helper would be a new part the design does not have.
+    Copied rather than shared: §5 INV-1 lets this module import no
+    `pressless` module but `safe_write`, whose contract is the file-writing
+    steps alone, so a shared copy would need INV-1 changed first.
     """
     return exc.strerror or type(exc).__name__
 

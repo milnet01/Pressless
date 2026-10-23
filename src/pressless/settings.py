@@ -39,12 +39,13 @@ _NAME_CHARS = frozenset(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
 )
 
+_MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
+
 # §4.3: http or https, a host of ASCII letters, digits, "." and "-", an optional
 # port, and "/"-separated path segments, with an optional trailing "/". The
 # address is joined into sitemap.xml and robots.txt (PRESS-0008 §4.9), where a
 # query, a fragment, a "%" or whitespace carries an address the site does not
 # serve. A pattern rather than a parse, because INV-1 keeps urllib out.
-_MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
 _SITE_ADDRESS = re.compile(
     r"https?://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:/[A-Za-z0-9._~-]+)*/?"
 )
@@ -56,7 +57,8 @@ class Credentials:
 
     store: str                    # "keyring" or "file" -- ADR-0003's two paths
     github_account: str           # the keyring account name, or the file's key name
-    google_account: str | None    # None where the dashboard was declined
+    google_account: str | None    # the keyring account name, or the file's key
+                                  # name; None where the dashboard was declined
 
 
 @dataclass(frozen=True)
@@ -81,8 +83,8 @@ class SettingsNotice(UserWarning):
     """Something the caller should know that is not a failure (§4.1).
 
     Emitted where the filesystem would not grant the file owner-only (INV-8).
-    Its own category rather than the Store's `StoreNotice`, because Settings is
-    blocker for the Store and may not import from it.
+    Its own category rather than the Store's `StoreNotice`, because Settings
+    may import no other part, the Store included (§5 INV-1).
 
     One notice per save. Suppressing repeats is the caller's: the default
     warnings filter shows a repeat once, but a caller that CAPTURES sees every
@@ -119,9 +121,9 @@ def _why(exc: OSError) -> str:
     Pressless shows or writes down. `strerror` is the reason alone, and it
     is absent on an OSError raised without one, so the type stands in.
 
-    Deliberately not shared with the other parts that need it: §5 INV-1 has
-    this module import no other part of Pressless, and a shared helper would
-    be a new part the design does not have.
+    Copied rather than shared: §5 INV-1 lets this module import no
+    `pressless` module but `safe_write`, whose contract is the file-writing
+    steps alone, so a shared copy would need INV-1 changed first.
     """
     return exc.strerror or type(exc).__name__
 
@@ -145,24 +147,24 @@ def retired_site_name(folder: Path) -> str | None:
     return name
 
 
-def load(folder: Path) -> Settings:
-    """Read the settings file in `folder`.
+def _read(target: Path, *, saving: bool) -> dict | None:
+    """The settings file's raw mapping, or None where there is no file.
 
-    Raises NotSetUp where there is no file, and SettingsError for a file
-    there is no safe way to act on. The two are distinguishable on purpose:
-    sending a writer to setup over a file he could have fixed overwrites it
-    (§5 INV-2). Nothing here writes.
+    load() and save() judge the file by this one check, so a file one refuses
+    the other refuses too (PRESS-0053). `saving` picks the wording: a refused
+    save says what saving over the file would do. Raises SettingsError for a
+    file that cannot be read, decoded, parsed, is not an object, or carries a
+    version other than this build's.
     """
-    target = path_for(folder)
     try:
         text = target.read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise NotSetUp("there is no settings file") from exc
+    except FileNotFoundError:
+        return None
     except UnicodeDecodeError as exc:
-        # A UnicodeDecodeError is a ValueError and NOT an OSError, so it
-        # escaped both arms below and left load()/save() raising something
-        # in neither of this module's families -- §4.3 has this row, and
-        # the Face has nothing to report it with (PRESS-0049).
+        # A UnicodeDecodeError is a ValueError and NOT an OSError, so without
+        # this arm it escaped as something in neither of this module's
+        # families -- §4.3 has this row, and the Face has nothing to report
+        # it with (PRESS-0049).
         raise SettingsError(
             "the settings file is not readable as UTF-8, so it cannot be parsed: "
             f"{exc}"
@@ -175,36 +177,57 @@ def load(folder: Path) -> Settings:
     try:
         raw = json.loads(text)
     except (ValueError, RecursionError) as exc:
-        # RecursionError is not a ValueError, so deeply nested JSON escaped
-        # both arms and left load() raising something in neither of this
-        # module's families -- §4.3 has this row (PRESS-0066), the same
-        # family as PRESS-0049 and far cheaper.
-        raise SettingsError(f"the settings file is not valid JSON: {exc}") from exc
+        # RecursionError is not a ValueError, so deeply nested JSON needs its
+        # own arm -- §4.3 has this row (PRESS-0066).
+        lost = (", so saving over it would discard what could not be parsed"
+                if saving else "")
+        raise SettingsError(f"the settings file is not valid JSON{lost}: {exc}") from exc
     if not isinstance(raw, dict):
         raise SettingsError(f"the settings file holds {type(raw).__name__}, not an object")
 
     version = raw.get("version")
     # The type is checked as well as the value. A bool IS an int in Python, so
-    # `!=` alone accepted `true`, and a float 1.0 compares equal to 1 too --
-    # both loaded as if the file said 1. §4.3 refuses anything that is not the
-    # number 1, and this gate guards every future migration (PRESS-0066).
+    # `!=` alone accepted `true`, and a float 1.0 compares equal to 1 too.
+    # §4.3 refuses anything that is not the number 1 (PRESS-0066). A save
+    # refuses it too: carrying unknown keys forward under this build's own
+    # version stamp would relabel a file another Pressless wrote (PRESS-0053).
     if type(version) is not int or version != FILE_VERSION:
+        if saving:
+            raise SettingsError(
+                f"the settings file has version {version!r}; this Pressless "
+                f"writes version {FILE_VERSION}, and saving over it would "
+                "relabel a file written by another"
+            )
         raise SettingsError(
             f"the settings file has version {version!r}; this Pressless reads "
             f"version {FILE_VERSION}"
         )
+    return raw
 
-    site_folder = _required(raw, "site_folder", str, target)
-    repository = _required(raw, "repository", str, target)
-    site_address = _required(raw, "site_address", str, target)
-    daily_prompt_filter = _required(raw, "daily_prompt_filter", str, target)
-    untouchable = _required(raw, "untouchable", list, target)
-    credentials = _required(raw, "credentials", dict, target)
-    store = _required(credentials, "store", str, target, "credentials.")
-    github_account = _required(credentials, "github_account", str, target, "credentials.")
-    google_account = _optional(credentials, "google_account", str, target, "credentials.")
-    analytics_property_id = _optional(raw, "analytics_property_id", str, target)
-    measurement_id = _optional(raw, "measurement_id", str, target)
+
+def load(folder: Path) -> Settings:
+    """Read the settings file in `folder`.
+
+    Raises NotSetUp where there is no file, and SettingsError for a file
+    there is no safe way to act on. The two are distinguishable on purpose:
+    sending a writer to setup over a file he could have fixed overwrites it
+    (§5 INV-2). Nothing here writes.
+    """
+    raw = _read(path_for(folder), saving=False)
+    if raw is None:
+        raise NotSetUp("there is no settings file")
+
+    site_folder = _required(raw, "site_folder", str)
+    repository = _required(raw, "repository", str)
+    site_address = _required(raw, "site_address", str)
+    daily_prompt_filter = _required(raw, "daily_prompt_filter", str)
+    untouchable = _required(raw, "untouchable", list)
+    credentials = _required(raw, "credentials", dict)
+    store = _required(credentials, "store", str, "credentials.")
+    github_account = _required(credentials, "github_account", str, "credentials.")
+    google_account = _optional(credentials, "google_account", str, "credentials.")
+    analytics_property_id = _optional(raw, "analytics_property_id", str)
+    measurement_id = _optional(raw, "measurement_id", str)
 
     loaded = Settings(
         site_folder=Path(site_folder),
@@ -321,50 +344,7 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
     site name's move to the Store does (PRESS-0213 § 4.3).
     """
     target = path_for(folder)
-    carried = {}
-    try:
-        existing = target.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        pass
-    except UnicodeDecodeError as exc:
-        # A UnicodeDecodeError is a ValueError and NOT an OSError, so it
-        # escaped both arms below and left load()/save() raising something
-        # in neither of this module's families -- §4.3 has this row, and
-        # the Face has nothing to report it with (PRESS-0049).
-        raise SettingsError(
-            "the settings file is not readable as UTF-8, so it cannot be parsed: "
-            f"{exc}"
-        ) from exc
-    except OSError as exc:
-        raise SettingsError(
-            f"the settings file could not be read: {_why(exc)}"
-        ) from exc
-    else:
-        try:
-            carried = json.loads(existing)
-        except (ValueError, RecursionError) as exc:
-            raise SettingsError(
-                "the settings file is not valid JSON, so saving over it would discard "
-                f"what could not be parsed: {exc}"
-            ) from exc
-        if not isinstance(carried, dict):
-            raise SettingsError(f"the settings file holds {type(carried).__name__}, not an object")
-        carried_version = carried.get("version")
-        # The same test load() makes, type and value (§4.2). Comparing with
-        # != alone left the two ends disagreeing: a file load() refuses was
-        # one save() accepted, relabelled and carried forward -- PRESS-0053's
-        # harm by the route PRESS-0066 closed on the read side only.
-        if type(carried_version) is not int or carried_version != FILE_VERSION:
-            # The read path refuses a version this build does not read
-            # "rather than guessing at it", and the write path guessed:
-            # unknown keys were carried forward under a version stamp of
-            # this build's own, so an older Pressless relabelled a file a
-            # later one wrote and neither could then read it (PRESS-0053).
-            raise SettingsError(
-                f"the settings file has version {carried_version!r}; this Pressless "
-                f"writes version {FILE_VERSION}, and saving over it would "
-                "relabel a file written by another"
-            )
+    carried = _read(target, saving=True) or {}
 
     data = {key: value for key, value in carried.items() if key not in retire}
     data.update({
@@ -429,7 +409,7 @@ def _report_a_wide_grant(handle: int, target: Path) -> None:
                       stacklevel=2)
 
 
-def _required(mapping: dict, key: str, kind: type, target: Path, prefix: str = ""):
+def _required(mapping: dict, key: str, kind: type, prefix: str = ""):
     if key not in mapping:
         raise SettingsError(f"the settings file is missing {prefix}{key}")
     value = mapping[key]
@@ -441,7 +421,7 @@ def _required(mapping: dict, key: str, kind: type, target: Path, prefix: str = "
     return value
 
 
-def _optional(mapping: dict, key: str, kind: type, target: Path, prefix: str = ""):
+def _optional(mapping: dict, key: str, kind: type, prefix: str = ""):
     """Absent and null both read as None (§4.2). Two fields carry a declined
     dashboard, and ADR-0005 makes that step declinable — requiring either
     would leave a declined setup unable to load at all."""
