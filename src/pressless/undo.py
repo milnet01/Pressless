@@ -18,7 +18,6 @@ from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import TypeVar
 
 from pressless import (
     editor,
@@ -30,14 +29,21 @@ from pressless import (
     settings,
     store,
 )
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, render_notices
+from pressless.face import (
+    SENTENCES,
+    Face,
+    Reply,
+    Request,
+    Sentence,
+    Site,
+    gatherer,
+    render_notices,
+)
 from pressless.words import say
 
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
 CONTENT = "content/"        # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
-
-_T = TypeVar("_T")
 
 
 class NothingToUndo(Exception):
@@ -86,14 +92,7 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
     gathered = notices if notices is not None else []
     fetch = folder / FETCH_FOLDER
 
-    def captured(step: Callable[[], _T]) -> _T:
-        caught: list[str] | None = None
-        try:
-            with capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                gathered.extend(caught)
+    captured = gatherer(capture, gathered)
 
     _empty(fetch)                                                        # step 1
     try:
@@ -511,14 +510,7 @@ def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
              told: Callable[[pressing.Outcome], None]) -> Reply:
     notices: list[str] = []
 
-    def gathered(step: Callable[[], _T]) -> _T:
-        caught: list[str] | None = None
-        try:
-            with face.capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                notices.extend(caught)
+    gathered = gatherer(face.capture, notices)
 
     with editor.LOCK:
         try:

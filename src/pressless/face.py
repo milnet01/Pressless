@@ -29,8 +29,10 @@ import threading
 import urllib.parse
 import warnings
 from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeVar
 
 from pressless import (
     blocks,
@@ -367,6 +369,24 @@ def render_notices(notices: list[str | Notice]) -> str:
         for notice in shown
     )
     return f'<ul class="notices">{items}</ul>'
+
+
+_T = TypeVar("_T")
+
+
+def gatherer(capture: Callable[[], AbstractContextManager[list[str]]],
+             notices: list) -> Callable[[Callable[[], _T]], _T]:
+    """Run a step inside `capture`, adding what it caught to `notices`
+    whether the step returns or raises."""
+    def gathered(step: Callable[[], _T]) -> _T:
+        caught: list[str] | None = None
+        try:
+            with capture() as caught:
+                return step()
+        finally:
+            if caught is not None:
+                notices.extend(caught)
+    return gathered
 
 
 @dataclass(frozen=True)

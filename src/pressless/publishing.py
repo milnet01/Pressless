@@ -20,7 +20,6 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TypeVar
 
 from pressless import (
     builder,
@@ -40,6 +39,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    gatherer,
     message_box,
     render_notices,
 )
@@ -53,7 +53,6 @@ MESSAGE = "Publish {slug}"     # the commit message; {slug} is the entry's addre
 # whose list labels it (PRESS-0015 § 4.6) and which this module imports.
 UNDONE = editor.UNDONE
 
-_T = TypeVar("_T")
 
 
 class NothingToPublish(Exception):
@@ -147,14 +146,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     folder = Path(folder)
     gathered = notices if notices is not None else []
 
-    def captured(step: Callable[[], _T]) -> _T:
-        caught: list[str] | None = None
-        try:
-            with capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                gathered.extend(caught)
+    captured = gatherer(capture, gathered)
 
     # PRESS-0214 § 4.3: before the move, so nothing has moved to put back.
     if entry is not None and not captured(lambda: store.journal_on(folder)):
@@ -321,14 +313,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
              told: Callable[[pressing.Outcome], None]) -> Reply:
     notices: list[str] = []
 
-    def gathered(step: Callable[[], _T]) -> _T:
-        caught: list[str] | None = None
-        try:
-            with face.capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                notices.extend(caught)
+    gathered = gatherer(face.capture, notices)
 
     with editor.LOCK:
         try:

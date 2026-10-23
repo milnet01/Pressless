@@ -47,6 +47,7 @@ from pressless.face import (
     Request,
     Sentence,
     Site,
+    gatherer,
     message_box,
     render_notices,
     true_colours,
@@ -858,7 +859,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     kind, name = form.get("kind", ""), form.get("name", "")
     notices: list[str] = []
     said: list[str] = []
-    gathered = _gatherer(face, notices)
+    gathered = gatherer(face.capture, notices)
 
     with editor.LOCK:
         try:
@@ -927,19 +928,6 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
         # Live or waiting, the file the next save reads holds what was written.
         reply.update(_shape(kind, name, new))
     return _json(reply)
-
-
-def _gatherer(face: Face, notices: list):
-    """A step's notices, captured and added to `notices` whatever it does."""
-    def gathered(step):
-        caught: list[str] | None = None
-        try:
-            with face.capture() as caught:
-                return step()
-        finally:
-            if caught is not None:
-                notices.extend(caught)
-    return gathered
 
 
 # ------------------------------------------- adding, removing, renaming ---
@@ -1139,7 +1127,7 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
     name, to = form.get("name", ""), form.get("to", "").strip()
     notices: list = []
     said: list[str] = []
-    gathered = _gatherer(face, notices)
+    gathered = gatherer(face.capture, notices)
     hint: str | None = None
     failure: str | None = None
     unknown = False
