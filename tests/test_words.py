@@ -241,6 +241,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "_WINDOWS_SCRIPT": "PowerShell",
     },
     "look.py": {"_SUNRISE": _CSS, "_MEADOW": _CSS, "_HARBOUR": _CSS, "_JOURNAL_RULES": _CSS,
+                "_LINK_RULES": _CSS, "_HEADER_LINK_RULES": _CSS, "_NAV_LINK_RULES": _CSS,
+                "_PICTURE_RULE": _CSS, "_NO_EMPTY_DESCRIPTION": _CSS,
                 "_EFFECT_RULES": _CSS, "FONTS": _CSS, "_PALETTES": _CSS,
                 ":root { color-scheme: light dark;": _CSS,
                 **dict.fromkeys(("an effect is not one Pressless offers",
