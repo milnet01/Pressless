@@ -48,7 +48,8 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 -- an address, n
 REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 ACCOUNTS_URL = "https://analyticsadmin.googleapis.com/v1beta/accountSummaries"
 ATTEMPT_SECONDS = 600.0  # how long a sign-in may take on Google's page
-PAGE_LIMIT = 10          # accountSummaries pages followed, at 200 accounts each
+PAGE_LIMIT = 10          # pages followed per list: accounts, and a property's streams
+_PAGE_SIZE = "200"       # entries asked for per page, on both lists
 STREAMS_URL = "https://analyticsadmin.googleapis.com/v1beta/properties/{}/dataStreams"
 # settings.check's pattern (PRESS-0199 § 4.1), restated because this module
 # imports only insights (INV-1); an id it would refuse is never returned.
@@ -166,7 +167,7 @@ def properties(token: str, client: Transport | None = None) -> tuple[Property, .
     found: list[Property] = []
     page_token = ""
     for _ in range(PAGE_LIMIT):
-        query = {"pageSize": "200"}
+        query = {"pageSize": _PAGE_SIZE}
         if page_token:
             query["pageToken"] = page_token
         answer = _answer(transport, "GET", f"{ACCOUNTS_URL}?{urllib.parse.urlencode(query)}",
@@ -200,7 +201,7 @@ def measurement_ids(token: str, property_id: str, site_address: str,
     found: list[tuple[str, str]] = []
     page_token = ""
     for _ in range(PAGE_LIMIT):
-        query = {"pageSize": "200"}
+        query = {"pageSize": _PAGE_SIZE}
         if page_token:
             query["pageToken"] = page_token
         answer = _answer(transport, "GET",

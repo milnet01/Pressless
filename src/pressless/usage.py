@@ -46,7 +46,7 @@ SENT_NAME = "usage-sent.json"    # the last reports sent, newest last
 KEPT = 50                        # how many SENT_NAME holds
 ADDRESS = "/usage"
 ENDPOINT = "https://region1.google-analytics.com/mp/collect"
-VERSION = 1
+FILE_VERSION = 1                 # FILE_NAME's format, not the app's version
 TIMEOUT_SECONDS = 5
 _LONGEST = 100                   # a longer value is cut to this many characters
 
@@ -90,7 +90,7 @@ def _record(folder: Path) -> dict | None:
         record = json.loads(text)
     except ValueError:
         return {}
-    if (not isinstance(record, dict) or record.get("version") != VERSION
+    if (not isinstance(record, dict) or record.get("version") != FILE_VERSION
             or not isinstance(record.get("yes"), bool)):
         return {}
     return record
@@ -113,7 +113,7 @@ def set_answer(folder: Path, yes: bool) -> None:
     with _LOCK:
         safe_write.write_whole(
             folder / FILE_NAME,
-            json.dumps({"version": VERSION, "yes": yes, "client": client}) + "\n",
+            json.dumps({"version": FILE_VERSION, "yes": yes, "client": client}) + "\n",
             prefix=".usage-")
         if not yes:
             (folder / SENT_NAME).unlink(missing_ok=True)

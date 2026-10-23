@@ -7,8 +7,9 @@ the Google access token as an argument and never reaches Credentials, which is
 what keeps docs/design.md rule 10 true. Obtaining and refreshing that token is
 setup's work, not this module's.
 
-It answers one question — how many people read the site over the last so many
-days, and from which countries — and it is the one part of Pressless allowed a
+It answers how the site was read over the last so many days, in four tables:
+readers by country with their total, readers over time, the pages read, and
+where readers came from. It is the one part of Pressless allowed a
 cache (ADR-0005, docs/design.md § State), because Google limits how often it
 will answer. The cache is one file, holding the last reply for each window
 asked for with the time it was fetched, and deleting it costs nothing but a
@@ -172,7 +173,9 @@ class RateLimited(InsightsError):
 
 
 class Transport(Protocol):
-    """The one seam. Tests are its only other caller.
+    """The one seam to Google. google_signin and google_setup take it too,
+    and `usage._Opener` and the tests' doubles implement it, so a change here
+    reaches all of them.
 
     Two things about it are part of the contract, because a test double must
     supply both. It returns the response HEADERS alongside the status, and it

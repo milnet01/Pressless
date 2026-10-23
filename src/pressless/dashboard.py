@@ -32,7 +32,8 @@ from pressless.words import say
 
 PAGE = "/visitors"
 
-# (days, the button's key, the sentence's key). 28 is Insights' default.
+# (days, the button's key, the sentence's key). 28 is Insights' default,
+# and DEFAULT_DAYS must be one of these: _sentence finds no key otherwise.
 WINDOWS = (
     (7, "dashboard.window.7", "dashboard.window.7.phrase"),
     (28, "dashboard.window.28", "dashboard.window.28.phrase"),

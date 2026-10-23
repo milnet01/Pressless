@@ -146,7 +146,7 @@ def _show(state: _State, hint: str = "") -> str:
                 + _button("/off", say("google_setup.turn_off")) + privacy() + back)
     return (shown + head
             + f"<p>{say('google_setup.offer')}</p>"
-            + _pending()
+            + _unverified_warning()
             + _button("/start", say("google_setup.sign_in")) + privacy() + back)
 
 
@@ -156,7 +156,7 @@ def privacy() -> str:
     return f"<p>{say('google_setup.privacy', url=url)}</p>"
 
 
-def _pending() -> str:
+def _unverified_warning() -> str:
     """Google's unverified-app warning, explained while its review runs (PRESS-0200)."""
     if google_signin.APPROVED:
         return ""
@@ -297,10 +297,11 @@ def _choose(state: _State, request: Request) -> str:
                 privacy = (f"<p>{say('google_setup.privacy_failed')}</p>"
                            + state.face.fail(exc, publishing=False))
         privacy = render_notices(privacy_notices) + privacy
+    # The id Settings held and still holds; None where the switch replaced it.
+    kept_id = saved.measurement_id if removed is None else None
     return (shown + render_notices(notices) + lookup_failure
             + f"<h1>{say('google_setup.ready')}</h1>"
-            + _counting(saved.measurement_id if removed is None else None, found,
-                        lookup_failure != "", removed)
+            + _counting(kept_id, found, lookup_failure != "", removed)
             + privacy
             + f'<p><a href="/">{say("script.undo.back")}</a></p>')
 
