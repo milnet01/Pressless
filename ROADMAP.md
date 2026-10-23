@@ -5552,8 +5552,10 @@ it can then be changed.
   Source: user-request-2026-10-03.
   Lanes: face, publisher.
 
-- 📋 [PRESS-0296] **A broken test suite on Windows can pass the push gate as "box not reachable".**
+- ✅ [PRESS-0296] **A broken test suite on Windows can pass the push gate as "box not reachable".**
   scripts/windows-gate.sh:66 and :124 with local-ci.sh:226 — pytest exits 2 when interrupted (e.g. collection errors), the same code unreachable() uses. Premise confirmed. Lead from docs/reviews/review-readability-2026-10-23/lane-09-tooling.md.
+  Fixed 2026-10-23 (0c23bcd): the remote's exit 2 becomes 1, so only
+  unreachable() exits 2. Proven with a fake ssh: 2 before, 1 after.
   **Layman:** If the tests break on Windows, the safety check before publishing the code may wrongly let it through.
   Kind: investigate.
   Source: review-readability-2026-10-23.
