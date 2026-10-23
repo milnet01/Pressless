@@ -293,13 +293,25 @@ def _read_file(folder: Path, account: str) -> str:
     return value
 
 
-def _secrets(raw: dict) -> dict:
-    """The file's secrets, refusing a file this build does not read (§4.3)."""
+def _secrets(raw: dict, *, writing: bool = False) -> dict:
+    """The file's secrets, refusing a file this build does not read (§4.3).
+
+    read(), delete() and write() all judge a file by this one check, so a
+    file one refuses the others refuse too (PRESS-0053, PRESS-0317).
+    `writing` picks the wording: a refused write says what saving over the
+    file would do.
+    """
     version = raw.get("version")
     # Type-strict, as PRESS-0001 pins it: `true == 1` and `1.0 == 1` in
     # Python, so a plain != accepts both as this build's own version
     # (PRESS-0100). One on-disk shape, one acceptance set.
     if type(version) is not int or version != FILE_VERSION:
+        if writing:
+            raise CredentialError(
+                f"the credentials file has version {version!r}; "
+                f"this Pressless writes version {FILE_VERSION}, and saving "
+                "over it would relabel a file written by another"
+            )
         raise CredentialError(
             f"the credentials file has version {version!r}; this "
             f"Pressless reads version {FILE_VERSION}"
@@ -349,25 +361,13 @@ def _write_file(folder: Path, account: str, secret: str) -> None:
     target = folder / FILE_NAME
     # Read first and replace one entry, so the other secret survives (§4.4).
     carried = _read_mapping(target) or {}
-    if carried:
-        # _read_file refuses a version this build does not read; the write
-        # path did not look, so it relabelled a later Pressless's file as
-        # this build's while keeping that build's keys (PRESS-0053). An
-        # absent file is not this case: the first save has nothing to carry.
-        carried_version = carried.get("version")
-        if type(carried_version) is not int or carried_version != FILE_VERSION:
-            raise CredentialError(
-                f"the credentials file has version {carried_version!r}; "
-                f"this Pressless writes version {FILE_VERSION}, and saving "
-                "over it would relabel a file written by another"
-            )
-    existing = carried.get("secrets")
+    # Judged as read() judges it, so a file read() refuses is never saved
+    # over: not relabelled (PRESS-0053), nor its `secrets` replaced
+    # (PRESS-0317). An absent file or an empty mapping carries nothing.
+    existing = _secrets(carried, writing=True) if carried else {}
     data = dict(carried)
     data["version"] = FILE_VERSION
-    data["secrets"] = {
-        **(existing if isinstance(existing, dict) else {}),
-        account: secret,
-    }
+    data["secrets"] = {**existing, account: secret}
     _save(target, data)
 
 

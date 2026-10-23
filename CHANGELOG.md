@@ -23,6 +23,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Saving a key never overwrites a damaged key file** (PRESS-0317)
+  Where your keys are kept in a file rather than the system keyring, and
+  the part of that file listing them is damaged, saving a key used to
+  replace that part without saying so. Now Pressless stops and says the
+  file cannot be used, and leaves it as it is.
+
 - **Saving the look again after a full disk works** (PRESS-0312)
   Before the look replaces your own style code, Pressless keeps a copy of
   it in the bin. If that copy failed part-way, for example on a full disk,

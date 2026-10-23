@@ -974,6 +974,28 @@ def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
     )
 
 
+def test_writing_over_secrets_that_are_not_an_object_is_refused(tmp_path,
+                                                               monkeypatch):
+    """PRESS-0317: read() refuses a file whose `secrets` is not an object,
+    and write() replaced that field with its own -- discarding whatever the
+    file held there. One on-disk shape, one acceptance set.
+
+    Breaks when _write_file stops judging a carried file as read() does.
+    """
+    _require_posix_modes(tmp_path)
+    _not_windows(monkeypatch)
+    held = '{"version": 1, "secrets": ["kept by hand"]}'
+    (tmp_path / FILE_NAME).write_text(held, encoding="utf-8")
+
+    with pytest.raises(CredentialError):
+        read("file", tmp_path, "publishing-key")
+    with pytest.raises(CredentialError):
+        write("file", tmp_path, "publishing-key", SENTINEL)
+    assert (tmp_path / FILE_NAME).read_text(encoding="utf-8") == held, (
+        "write() changed a credentials file read() refuses"
+    )
+
+
 # ------------------------------------------------------------ PRESS-0068 ----
 
 
