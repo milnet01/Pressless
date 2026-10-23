@@ -1701,7 +1701,8 @@ def test_a_move_whose_source_cannot_be_removed_is_undone(tmp_path, monkeypatch):
 
     Breaks when the unlink's failure is raised with the link left in place.
     """
-    monkeypatch.setattr(store_module, "_is_windows", lambda: False)
+    # The move's route is safe_write's check, not the Store's (PRESS-0302).
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: False)
     write(tmp_path, _entry("an-example"), draft=True)
     source = path_for(tmp_path, "an-example", draft=True)
     real = os.unlink
