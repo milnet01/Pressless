@@ -20,9 +20,7 @@ import os
 import re
 import stat
 import sys
-import unicodedata
 import warnings
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -139,31 +137,6 @@ def exists(folder: Path, slug: str) -> bool:
     """
     _refuse_illegal_slug(slug, "a slug")
     return any(slug in _slugs_in(folder, draft=draft) for draft in (False, True))
-
-
-def folded(text: str, keep: str = "") -> str:
-    """`text` in the names' own letters: folded to ASCII with NFKD, lower
-    case, and every run of anything but a-z, 0-9 and `keep` joined into one
-    `-`. Callers cut and strip; an entry's address and a kept file's name
-    each say what they do first."""
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    return re.sub(f"[^a-z0-9{re.escape(keep)}]+", "-", text.lower())
-
-
-def first_free(stem: str, free: Callable[[str], bool], suffix: str = "") -> str:
-    """`stem + suffix`, or the first of `stem-2`, `stem-3` … (each with
-    `suffix`) that `free` accepts. A name on which `free` raises StoreError
-    is one the Store refuses, such as the Windows device name `con`, and is
-    passed over. Each caller's `free` says what counts as taken."""
-    number = 1
-    while True:
-        name = stem + suffix if number == 1 else f"{stem}-{number}{suffix}"
-        number += 1
-        try:
-            if free(name):
-                return name
-        except StoreError:
-            continue
 
 
 def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:

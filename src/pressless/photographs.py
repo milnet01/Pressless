@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
@@ -55,7 +56,7 @@ def plain_name(filename: str, suffixes: tuple[str, ...], fallback: str) -> str:
     if suffix not in suffixes:
         suffix = suffixes[0]
     # `_` is kept, and a control character joins as `-` rather than going.
-    plain = store.folded(stem, keep="_").strip("-")
+    plain = folded(stem, keep="_").strip("-")
     return (plain[:LONGEST_NAME].strip("-") or fallback) + suffix
 
 
@@ -90,13 +91,39 @@ def keep(path_for: Callable[[str], Path], data: bytes,
 
     try:
         stem, suffix = os.path.splitext(named(staged))
-        name = store.first_free(stem, free, suffix)
+        name = first_free(stem, free, suffix)
         target = path_for(name)
         if not target.exists():
             os.replace(staged, target)
         return name
     finally:
         staged.unlink(missing_ok=True)
+
+
+def folded(text: str, keep: str = "") -> str:
+    """`text` in the names' own letters: folded to ASCII with NFKD, lower
+    case, and every run of anything but a-z, 0-9 and `keep` joined into one
+    `-`. Callers cut and strip; an entry's address and a kept file's name
+    each say what they do first. Here, not in the Store, because PRESS-0005
+    § 4.1 fixes the Store's public names; editor imports this module."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(f"[^a-z0-9{re.escape(keep)}]+", "-", text.lower())
+
+
+def first_free(stem: str, free: Callable[[str], bool], suffix: str = "") -> str:
+    """`stem + suffix`, or the first of `stem-2`, `stem-3` … (each with
+    `suffix`) that `free` accepts. A name on which `free` raises store.StoreError
+    is one the Store refuses, such as the Windows device name `con`, and is
+    passed over. Each caller's `free` says what counts as taken."""
+    number = 1
+    while True:
+        name = stem + suffix if number == 1 else f"{stem}-{number}{suffix}"
+        number += 1
+        try:
+            if free(name):
+                return name
+        except store.StoreError:
+            continue
 
 
 def missing(folder: Path, body: str) -> list[str]:

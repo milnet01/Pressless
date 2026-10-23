@@ -122,7 +122,7 @@ def name_address(name: str) -> str:
     Control and format characters go first, so `a<TAB>b` is `ab`; a kept
     file's name joins them as `-` instead (photographs.plain_name)."""
     text = "".join(ch for ch in name if unicodedata.category(ch) not in ("Cc", "Cf"))
-    return store.folded(text)[:LONGEST_ADDRESS].strip("-")
+    return photographs.folded(text)[:LONGEST_ADDRESS].strip("-")
 
 
 def free_address(folder: Path, wanted: str) -> str:
@@ -131,7 +131,7 @@ def free_address(folder: Path, wanted: str) -> str:
     # Read once, outside the loop: its StoreError must stop the search, not be
     # skipped as a refused name (PRESS-0182 § 4.2).
     forwarded = store.read_forwards(folder)
-    return store.first_free(wanted, lambda candidate: candidate not in forwarded
+    return photographs.first_free(wanted, lambda candidate: candidate not in forwarded
                             and not store.exists(folder, candidate))
 
 

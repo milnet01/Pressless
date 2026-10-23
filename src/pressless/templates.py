@@ -13,7 +13,7 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-from pressless import builder, cheatsheet, editor, store
+from pressless import builder, cheatsheet, editor, photographs, store
 from pressless.face import Face, Reply, Request, render_notices
 from pressless.words import say
 
@@ -164,7 +164,7 @@ def _new(face: Face, folder: Path, request: Request) -> Reply:
     wanted = editor.address_for(typed)
     with editor.LOCK, face.capture() as notices:
         try:
-            name = store.first_free(
+            name = photographs.first_free(
                 wanted, lambda name: not store.template_path_for(folder, name).is_file())
             store.write_template(folder, store.Entry(
                 slug=name, title=typed.strip(), date=datetime.now().replace(microsecond=0),
