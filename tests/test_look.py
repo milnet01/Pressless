@@ -161,12 +161,35 @@ SAVED_BY_0_10_1 = {
 
 @pytest.mark.parametrize("layout", starter_look.LAYOUTS)
 def test_a_look_saved_by_an_earlier_version_still_reads_as_made_here(layout):
-    """PRESS-0314. made_here compares the saved style code with css() byte for
-    byte, so any change to css()'s rules or its three words-table notes makes
-    every saved look read as hand-edited: its next save bins a copy and warns.
-    Breaks when css() output changes. Do not update the hashes: make
-    made_here accept the earlier output first."""
+    """PRESS-0314. made_here compares the saved style code with css(), the
+    notes' words aside, so any change to css()'s rules makes every saved look
+    read as hand-edited: its next save bins a copy and warns. Breaks when
+    css() output other than a note's words changes. Do not update the
+    hashes: make made_here accept the earlier output first."""
     choices = dataclasses.replace(starter_look.defaults(layout),
                                   effects=starter_look.EFFECTS)
     made = hashlib.sha256(starter_look.css(choices, "").encode("utf-8")).hexdigest()
     assert made == SAVED_BY_0_10_1[layout]
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeypatch):
+    """PRESS-0196 § 4.4 state 2, PRESS-0314. The style code saved here is
+    0.10.1's, as the hash above proves. Breaks when made_here compares the
+    notes' words, so rewording one turns every saved look hand-edited; or
+    when it ignores more than those words."""
+    choices = dataclasses.replace(starter_look.defaults(layout),
+                                  effects=starter_look.EFFECTS)
+    starter_look.save(tmp_path, choices, EXTRA)
+    saved = store.read_style_code(tmp_path)
+    assert hashlib.sha256(saved.removesuffix(EXTRA).encode("utf-8")).hexdigest() == (
+        SAVED_BY_0_10_1[layout])
+    said = starter_look.say
+    monkeypatch.setattr(starter_look, "say",
+                        lambda key: f"Reworded {key}." if key.endswith("_note") else said(key))
+    assert "Reworded" in starter_look.css(choices, EXTRA)
+    assert starter_look.made_here(tmp_path)
+    store.write_style_code(tmp_path, saved.replace("--width", "--widths", 1))
+    assert not starter_look.made_here(tmp_path)
+    store.write_style_code(tmp_path, saved.replace("*/\n", "*/\np{}\n", 1))
+    assert not starter_look.made_here(tmp_path)

@@ -214,14 +214,20 @@ def read_extra(folder: Path) -> str:
 
 
 def made_here(folder: Path) -> bool:
-    """Whether the style code is exactly what the choices beside it make (§ 4.4
-    state 1). False where there are no choices, or they cannot be read."""
+    """Whether the style code is exactly what the choices beside it make, the
+    words of its notes aside (§ 4.4 state 2): those come from the words table,
+    and rewording one must not make a saved look hand-edited (PRESS-0314).
+    False where there are no choices, or they cannot be read."""
     try:
         choices = read(folder)
     except LookUnreadable:
         return False
-    return choices is not None and store.read_style_code(folder) == css(choices,
-                                                                        read_extra(folder))
+    if choices is None:
+        return False
+    saved = store.read_style_code(folder)
+    pattern = "".join(_ANY_NOTE if isinstance(piece, _Note) else re.escape(piece)
+                      for piece in _pieces(choices, read_extra(folder)))
+    return saved is not None and re.fullmatch(pattern, saved, re.DOTALL) is not None
 
 
 def digest(folder: Path) -> str:
@@ -274,29 +280,43 @@ def contrast(one: str, two: str) -> float:
     return (light + 0.05) / (dark + 0.05)
 
 
+class _Note(str):
+    """A note's place in the style code: a CSS comment holding words-table
+    words, which made_here does not compare."""
+
+
+_ANY_NOTE = r"/\* (?:(?!\*/)[^\n])* \*/\n"   # "/* {words} */\n", any one-line words
+
+
 def css(choices: Choices, extra: str) -> str:
     """The style code, in § 4.2's order: the palette, the four measures, the
-    layout's rules, the journal's, the effects chosen, and last their own CSS.
+    layout's rules, the journal's, the effects chosen, and last their own CSS."""
+    return "".join(f"/* {say(piece)} */\n" if isinstance(piece, _Note) else piece
+                   for piece in _pieces(choices, extra))
 
-    made_here compares a site's saved style code with this byte for byte. So
-    changing any rule below, or the three notes' words, makes every saved look
-    read as hand-edited (PRESS-0314); a test in test_look.py says so."""
+
+def _pieces(choices: Choices, extra: str) -> list[str]:
+    """css()'s pieces in order, each note as its words-table key.
+
+    made_here compares a site's saved style code with these, the notes' words
+    aside. So changing any rule below makes every saved look read as
+    hand-edited (PRESS-0314); a test in test_look.py says so."""
     def declared(colours: dict[str, str]) -> str:
         return " ".join(f"--{name}: {value};" for name, value in colours.items())
     width = _FIXED_WIDTHS.get(choices.width, _OWN_WIDTH[choices.layout])
     parts = [
-        f"/* {say('look.style_note')} */\n",
+        _Note("look.style_note"),
         f":root {{ color-scheme: light dark; {declared(choices.light)} }}\n",
         f"@media (prefers-color-scheme: dark) {{ :root {{ {declared(choices.dark)} }} }}\n",
         f":root {{ --body-font: {FONTS[choices.body_font]};\n"
         f"  --heading-font: {FONTS[choices.heading_font]};\n"
         f"  --text-size: {TEXT_SIZES[choices.text_size]}; --width: {width}; }}\n",
         _LAYOUT_RULES[choices.layout], "\n",
-        f"/* {say('look.journal_note')} */\n", _JOURNAL_RULES,
+        _Note("look.journal_note"), _JOURNAL_RULES,
     ]
     parts += [_EFFECT_RULES[effect] for effect in EFFECTS if effect in choices.effects]
-    parts += [f"/* {say('look.extra_note')} */\n", extra]
-    return "".join(parts)
+    parts += [_Note("look.extra_note"), extra]
+    return parts
 
 
 # The layout, journal and effect rules below are part of every saved look:

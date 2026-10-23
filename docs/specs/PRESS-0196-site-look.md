@@ -222,6 +222,9 @@ gains a "Look" link beside Settings (`face._page`).
 2. **The site has style code that its choices did not make** — no
    `choices.json` (a site filled before this item), or a `style.css` that is
    not `look.css` of the choices and extra CSS beside it (edited by hand).
+   The words inside the notes `look.css` writes as CSS comments are not
+   compared (`look.made_here`): they come from the words table, and
+   rewording one must not turn a saved look into a hand-edited one.
    The panel opens on the choices where they are readable, else on a layout
    picker (default `sunrise`) showing `look.defaults` of the layout picked.
    It says above Save that the current stylesheet will be replaced and a
