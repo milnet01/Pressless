@@ -266,7 +266,7 @@ def _show_export(held: Path) -> str:
 
 # The step is shown again after each check, so it reloads itself until the
 # fetch has ended; a GET, never the POST that showed it.
-_RELOAD = 'setTimeout(() => location.replace("/import"), 2000);'
+_RELOAD = f"setTimeout(() => location.replace({json.dumps(ADDRESS)}), 2000);"
 
 
 def _lines(report: pressless_import.Report) -> list[str]:

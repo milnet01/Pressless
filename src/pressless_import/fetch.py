@@ -140,8 +140,9 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
               progress: Callable[[int, int], None] | None = None) -> dict[str, str]:
     """Each attachment the export names, fetched from its `attachment_url`
     into `media/<place>` where it is not there already, so a stopped fetch
-    resumes. Returns each place not held, with why; a failure never stops the
-    rest, and once the drive is full the rest are listed as such."""
+    resumes. Returns each place not held, with why -- keyed by its full
+    address where the attachment has no usable place; a failure never stops
+    the rest, and once the drive is full the rest are listed as such."""
     wanted: list[tuple[str, str | None]] = []
     missing: dict[str, str] = {}
     for item in export.channel.findall("item"):

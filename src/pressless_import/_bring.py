@@ -378,6 +378,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     if store.holds_a_site(into):
         raise ImportStopped("this site already holds a site, and Import writes only "
                             "into an empty one")
+    # The wizard's check_look refuses an unknown look first; any other
+    # caller gets the first look rather than a stop.
     layout = layout if layout in starter.LOOKS else starter.LOOKS[0]
     held_folder = into / IMPORT_FOLDER
     work = held_folder / _WORK
@@ -466,9 +468,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         pages=tuple(sorted(page.name for page in pages)) or ("index",),
         dropped=_dropped(items, pages, menu_listed),
         waiting=_waiting(items),
-        unfetched=tuple(dict(
-            (place, unfetched.get(place, "it was not fetched, nor in the media download")
-             if why == MISSING else why) for place, why in unheld).items()),
+        unfetched=_unfetched(unheld, unfetched),
         menus=menus,
         other_types=_other_types(channel, ns),
     )
@@ -524,6 +524,18 @@ def _dropped(items: list[_Item], pages: list[_Page], menu_listed: list[str]
         dropped += [Dropped(f"pages/{page.name}", what) for what in dict.fromkeys(page.dropped)]
     dropped += [Dropped(_NAVIGATION, what) for what in dict.fromkeys(menu_listed)]
     return tuple(dropped)
+
+
+def _unfetched(unheld: list[tuple[str, str]], fetched: Mapping[str, str]
+               ) -> tuple[tuple[str, str], ...]:
+    """Each attachment not held, once, with why: where its original is
+    missing, the fetch's own reason for that place takes MISSING's place."""
+    why_by_place: dict[str, str] = {}
+    for place, why in unheld:
+        if why == MISSING:
+            why = fetched.get(place, "it was not fetched, nor in the media download")
+        why_by_place[place] = why
+    return tuple(why_by_place.items())
 
 
 def _other_types(channel, ns) -> tuple[tuple[str, int], ...]:

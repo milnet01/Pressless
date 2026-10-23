@@ -77,12 +77,16 @@ class Report:
     comments: int
     photographs: int
     renamed_slugs: tuple[tuple[str, str], ...]        # (wanted, given)
-    renamed_photographs: tuple[tuple[str, str], ...]  # (upload path, Store name)
+    # (upload path, Store name): every attachment renamed, a file's as well
+    # as a photograph's, though the field's name says photographs.
+    renamed_photographs: tuple[tuple[str, str], ...]
     pages: tuple[str, ...]                            # the fixed pages carried, sorted
     dropped: tuple[Dropped, ...]
     # PRESS-0125 § 4.8.
     waiting: tuple[tuple[str, str], ...] = ()     # (slug, "" for review, else when scheduled)
-    unfetched: tuple[tuple[str, str], ...] = ()   # (upload path, why it is not held)
+    # (upload path, why it is not held); an attachment with no usable place
+    # is keyed by its full address instead, as fetch.fetch_all keys it.
+    unfetched: tuple[tuple[str, str], ...] = ()
     menus: tuple[str, ...] = ()                   # the menu carried first, then any other
     other_types: tuple[tuple[str, int], ...] = ()  # (post type not carried, how many)
     files: int = 0                                # kept in files/, not photographs
@@ -383,7 +387,8 @@ def _place(item, ns) -> str:
 
 def _photographs(channel, ns, originals: Path, *, strict: bool = True,
                  shown: Callable[[Path], bool] | None = None):
-    """Every attachment whose original is in `originals`, by its upload path,
+    """Every attachment -- a file as well as a photograph, whatever the
+    name says -- whose original is in `originals`, by its upload path,
     with its Store name; the two lookups, answering for those `shown` admits
     (all, where none is given); and each attachment not held, with why. A
     name two attachments share, compared without regard to case, takes its
@@ -506,9 +511,6 @@ def _convert(item: _Item, markup: Callable[[str], bool], by_address: Lookup,
     return text
 
 
-# ------------------------------------------------------------- the run ----
-
-
 # ------------------------------------ fixed pages and furniture (§4.9) ----
 
 
@@ -598,6 +600,9 @@ def _furniture(templates: Path) -> dict[str, str]:
         "navigation": nav.group(0)[:-len(ending)],
         "footer": texts["footer"],
     }
+
+
+# ------------------------------------------------------------- the run ----
 
 
 def _old_site(channel, ns) -> str:
