@@ -18,6 +18,7 @@ from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import NamedTuple, TypeVar
 
 from pressless import (
     editor,
@@ -44,6 +45,8 @@ from pressless.words import say
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
 CONTENT = "content/"        # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
+
+_T = TypeVar("_T")
 
 
 class NothingToUndo(Exception):
@@ -149,13 +152,20 @@ def _empty(fetch: Path) -> None:
 # --------------------------------------------------------------- reading ---
 
 
+class _ForwardsFile(NamedTuple):
+    path_for: Callable[[Path], Path]
+    read: Callable[[Path], dict[str, str]]
+    write: Callable[[Path, dict[str, str]], None]
+
+
 # Each forwards file the Store holds, by its name: where it sits, its reader
 # and its writer (PRESS-0182 § 4.4, PRESS-0195 § 4.6).
 _FORWARDS = {
-    store.FORWARDS_FILE: (store.forwards_path_for, store.read_forwards,
-                          store.write_forwards),
-    store.PAGE_FORWARDS_FILE: (store.page_forwards_path_for, store.read_page_forwards,
-                               store.write_page_forwards),
+    store.FORWARDS_FILE: _ForwardsFile(store.forwards_path_for, store.read_forwards,
+                                       store.write_forwards),
+    store.PAGE_FORWARDS_FILE: _ForwardsFile(store.page_forwards_path_for,
+                                            store.read_page_forwards,
+                                            store.write_page_forwards),
 }
 
 
@@ -175,9 +185,9 @@ class _State:
     # PRESS-0214: the fetched options; {} where the fetched state has none,
     # which is every option at its default.
     options: dict = field(default_factory=dict)
-    # PRESS-0213: the fetched identity, keyed by its file's name like forwards;
-    # empty where the fetched state has none, which keeps the Store's.
-    identity: dict[str, store.Identity] = field(default_factory=dict)
+    # PRESS-0213: the fetched identity -- the site has one identity file, so
+    # one value; None where the fetched state has none, which keeps the Store's.
+    identity: store.Identity | None = None
     # PRESS-0196 § 4.7: the fetched look files by name, as text; empty where
     # the fetched state has none, which keeps the Store's look.
     look: dict[str, str] = field(default_factory=dict)
@@ -187,6 +197,7 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
     """§ 4.3 step 4. `paths` are repository-relative and the layout under `fetch`
     is the same strings (PRESS-0009 § 4.5), so each file is `fetch / path`."""
     state = _State()
+    identity = None
     prefix = CONTENT.rstrip("/")
     for relative in paths:
         parts = PurePosixPath(relative).parts
@@ -220,18 +231,16 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
         elif kind == store.FORWARDS_FOLDER and name in _FORWARDS:
             # The fetch area's content/ is laid out as the Store is (PRESS-0182
             # § 4.4); a renamed page's forwards sit beside (PRESS-0195 § 4.6).
-            state.forwards[name] = _FORWARDS[name][1](fetch / prefix)
+            state.forwards[name] = _FORWARDS[name].read(fetch / prefix)
         elif kind == store.OPTIONS_FOLDER and name == store.OPTIONS_FILE:
             state.options.update(store.read_options(fetch / prefix))
         elif kind == store.IDENTITY_FOLDER and name == store.IDENTITY_FILE:
-            fetched = store.read_identity(fetch / prefix)
-            if fetched is not None:
-                state.identity[name] = fetched
+            identity = store.read_identity(fetch / prefix)
         elif kind == store.LOOK_FOLDER and name in _LOOK_FILES:
             text = store.read_look_file(fetch / prefix, name)
             if text is not None:
                 state.look[name] = text
-    return state
+    return dataclasses.replace(state, identity=identity)
 
 
 _LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
@@ -349,17 +358,10 @@ def _restore_look(folder: Path, fetched: dict[str, str],
             warnings.warn(store.StoreNotice("notice.undo.look_kept"), stacklevel=2)
             return
     for name in _LOOK_FILES:
-        path = store.look_path_for(folder, name)
-        remembered = store.read_look_file(folder, name)
-        wanted = fetched.get(name)
-        if remembered == wanted:
-            continue
-        if remembered is not None:
-            store.move_to_bin(folder, path)
-            reversals.append(lambda n=name, r=remembered: store.write_look_file(folder, n, r))
-        if wanted is not None:
-            store.write_look_file(folder, name, wanted)
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
+        _restore_one(folder, store.look_path_for(folder, name),
+                     store.read_look_file(folder, name), fetched.get(name),
+                     lambda text, n=name: store.write_look_file(folder, n, text),
+                     reversals)
 
 
 def _restore_other_kinds(folder: Path, state: _State,
@@ -375,39 +377,19 @@ def _restore_other_kinds(folder: Path, state: _State,
 
     for name, template in sorted(state.templates.items()):
         path = store.template_path_for(folder, name)
-        remembered = store.read(path) if path.is_file() else None
-        if remembered == template:
-            continue
-        if remembered is not None:
-            store.move_to_bin(folder, path)
-            reversals.append(lambda t=remembered: store.write_template(folder, t))
-        store.write_template(folder, template)
-        if remembered is None:
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
+        _restore_one(folder, path, store.read(path) if path.is_file() else None,
+                     template, lambda t: store.write_template(folder, t), reversals)
 
     for name, forwards in sorted(state.forwards.items()):
-        path_for, read, write = _FORWARDS[name]
-        path = path_for(folder)
-        remembered = read(folder) if path.is_file() else None
-        if remembered != forwards:
-            if remembered is not None:
-                store.move_to_bin(folder, path)
-                reversals.append(lambda f=remembered, w=write: w(folder, f))
-            write(folder, forwards)
-            if remembered is None:
-                reversals.append(lambda p=path: store.move_to_bin(folder, p))
+        kind = _FORWARDS[name]
+        path = kind.path_for(folder)
+        _restore_one(folder, path, kind.read(folder) if path.is_file() else None,
+                     forwards, lambda f, w=kind.write: w(folder, f), reversals)
 
-    for identity in state.identity.values():             # PRESS-0213 § 4.5
-        path = store.identity_path_for(folder)
-        remembered_identity = store.read_identity(folder)
-        if remembered_identity != identity:
-            if remembered_identity is not None:
-                store.move_to_bin(folder, path)
-                reversals.append(
-                    lambda i=remembered_identity: store.write_identity(folder, i))
-            store.write_identity(folder, identity)
-            if remembered_identity is None:
-                reversals.append(lambda p=path: store.move_to_bin(folder, p))
+    if state.identity is not None:                       # PRESS-0213 § 4.5
+        _restore_one(folder, store.identity_path_for(folder),
+                     store.read_identity(folder), state.identity,
+                     lambda i: store.write_identity(folder, i), reversals)
 
     _restore_look(folder, state.look, reversals)
 
@@ -427,30 +409,36 @@ def _restore_other_kinds(folder: Path, state: _State,
 
     for slug, comments in sorted(state.comments.items()):
         path = store.comments_path_for(folder, slug)
-        remembered = store.read_comments(path) if path.is_file() else None
-        if remembered == comments:
-            continue
-        if remembered is not None:
-            store.move_to_bin(folder, path)
-            reversals.append(
-                lambda s=slug, c=remembered: store.write_comments(folder, s, c))
-        store.write_comments(folder, slug, comments)
-        if remembered is None:
-            reversals.append(lambda p=path: store.move_to_bin(folder, p))
+        _restore_one(folder, path, store.read_comments(path) if path.is_file() else None,
+                     comments, lambda c, s=slug: store.write_comments(folder, s, c),
+                     reversals)
 
 
 def _restore_html(folder: Path, kind: str, name: str, html: str,
                   reversals: list[Callable[[], None]]) -> None:
     path = store.html_path_for(folder, kind, name)
-    remembered = store.read_html(path) if path.is_file() else None
-    if remembered == html:
+    _restore_one(folder, path, store.read_html(path) if path.is_file() else None,
+                 html, lambda h: store.write_html(folder, kind, name, h), reversals)
+
+
+def _restore_one(folder: Path, path: Path, remembered: _T | None, wanted: _T | None,
+                 write: Callable[[_T], None],
+                 reversals: list[Callable[[], None]]) -> None:
+    """One file of one kind (§ 4.4): nothing where `remembered` (the Store's
+    version, None where it has none) equals `wanted` (the fetched one).
+    Otherwise the Store's version goes to the bin and `wanted` is written by
+    `write`, each step recording its reversal. A `wanted` of None writes
+    nothing, which only the look's files ask for (PRESS-0196 § 4.7). The
+    options file does not come here: its absence is restored."""
+    if remembered == wanted:
         return
     if remembered is not None:
         store.move_to_bin(folder, path)
-        reversals.append(lambda h=remembered: store.write_html(folder, kind, name, h))
-    store.write_html(folder, kind, name, html)
-    if remembered is None:
-        reversals.append(lambda p=path: store.move_to_bin(folder, p))
+        reversals.append(lambda: write(remembered))
+    if wanted is not None:
+        write(wanted)
+        if remembered is None:
+            reversals.append(lambda: store.move_to_bin(folder, path))
 
 
 def _keep(folder: Path, entry: store.Entry, restored: str) -> str:
