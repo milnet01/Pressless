@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=330 -->
+<!-- ants-roadmap-id-high-water: PRESS=331 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5622,8 +5622,13 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0303] **Sign-in not yet finished raises an error the callers do not catch.**
+- 🚫 [PRESS-0303] **Sign-in not yet finished raises an error the callers do not catch.**
   github_setup.py:75-76 raises untyped RuntimeError; six callers (page_editor x2, setup x2, undo, publishing) — whether they catch it is unchecked. Lead from lane-06-setup-signin-insights.md.
+  Not real (2026-10-23). __main__._serve_once registers github_setup
+  before serving, so a page never reaches token() with _state unset; the
+  RuntimeError fires only where a test or by-hand script serves pages
+  without registering it, and those use hand-made keys, which return
+  before the check. A comment in token() now says so (PRESS-0330).
   **Layman:** If GitHub setup is half-done, some screens may show a crash instead of a plain message.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5740,14 +5745,25 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0316] **Choosing or switching off a Google property can raise an uncaught settings error.**
+- 🚫 [PRESS-0316] **Choosing or switching off a Google property can raise an uncaught settings error.**
   google_setup.py:291-293 and :382-383 — settings.check / save not caught after the refresh token is written. Unchecked. Lead from lane-06-setup-signin-insights.md.
+  Not a crash (2026-10-23). A SettingsError from _choose or _off reaches
+  the Face's last-resort catch (Handler._answer), which shows
+  SettingsError's own three-part sentence from the words table, with
+  status 500. Nothing raw reaches the screen. In _choose the stored
+  refresh token and the held list stay, so choosing again works. In _off
+  the page then omits its what-may-remain lines; too rare to be worth a
+  change.
   **Layman:** Choosing a visitor-count property could crash a screen if settings fail to save.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0317] **Writing the secrets file silently replaces a malformed field the reader refuses.**
+- ✅ [PRESS-0317] **Writing the secrets file silently replaces a malformed field the reader refuses.**
   credentials.py:359-365 _write_file. Unchecked. Lead from lane-06-setup-signin-insights.md.
+  Fixed in e8986eb: _write_file judges a carried file through _secrets,
+  as read and delete do, so a file whose secrets is not an object is
+  refused and left untouched. Red:
+  test_writing_over_secrets_that_are_not_an_object_is_refused.
   **Layman:** A damaged secrets file is quietly overwritten on save but refused on read.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5880,9 +5896,25 @@ it can then be changed.
   Kind: fix.
   Source: review-readability-2026-10-23.
 
-- 🚧 [PRESS-0330] **Setup, sign-in and Insights readability fixes from the 2026-10-23 review.**
+- ✅ [PRESS-0330] **Setup, sign-in and Insights readability fixes from the 2026-10-23 review.**
+  Shipped 2026-10-23 in 095a0f7, 71cbd63, 5102539, ee6abd3 and e852985.
+  The shared HTTPS client is queued as PRESS-0331. Ledger:
+  docs/reviews/review-readability-2026-10-23/close-findings.md, lane-06.
   **Layman:** The code behind setup, signing in and the visitor counts is made easier for the next person to read and change safely.
   Kind: refactor.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0331] **One shared HTTPS client for the Publisher, Insights, usage reports and updates.**
+  lane-06 MEDIUM, insights.py `_NoCrossOriginAuth` / `_Urllib` /
+  `_no_answer`: publisher.py holds the same client, usage `_Opener`
+  a thinner one, and updater.py a fourth `_Urllib`. Not fixed now:
+  PRESS-0019 INV-1 and PRESS-0001-style import limits let insights
+  import no Pressless module but safe_write, PRESS-0262 and PRESS-0023
+  name `_Urllib`, and the network-confinement tests walk each module's
+  imports. A shared module needs those specs amended and gated first.
+  0b3ea13 made each copy name its twin meanwhile.
+  **Layman:** The code that talks to GitHub and Google over the internet is written four times; a fix to one copy can miss the others.
+  Kind: review-fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
