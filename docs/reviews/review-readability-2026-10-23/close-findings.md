@@ -69,3 +69,37 @@ Sweep: searched docs/, tests/, CLAUDE.md and README.md for
 `_THEME_LIMIT`, `_say`, `_words`, the 52 MB sentence, the download's
 content type, `is_secret`, `_drain`, and a 400 answer to an over-long
 theme. Nothing was stale.
+
+## lane-05 build and publish
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `publisher.py` `_NoCrossOriginAuth` twins | HIGH | fixed (0b3ea13) |
+| `publishing.py` `captured` written five times | MEDIUM | fixed (43db56b) — now `face.gatherer` |
+| `look_screen.py` words dicts copy `look.py` | MEDIUM | fixed (400ed2f) — literals kept for INV-4; a test checks they match |
+| `publisher.py` "the one request" | MEDIUM | fixed (209c62a) |
+| `builder.py` `ROOT_OUTPUT` rule unstated | MEDIUM | fixed (762fb31) — comment; tuple keeps PRESS-0008's spelling |
+| `builder.py` `photo_src is None` unnamed | MEDIUM | fixed (762fb31) — `_Build.publishing` |
+| `builder.py` names hiding modules | MEDIUM | fixed (762fb31) — the two locals; the three parameters are spec-quoted signatures |
+| `builder.py` `page="Journal"` unexplained | MEDIUM | fixed (762fb31) — comment form |
+| `pressing.py` success read from words | MEDIUM | queued PRESS-0326 |
+| `look.py` `made_here` constraint unstated | MEDIUM | fixed (c15e3da) — comment and a test pinning `css()` |
+| `builder.py` `icon_copy` docstring | MEDIUM | fixed (762fb31) |
+| `look.py` layout rules written three times | LOW | fixed (2c7c774) — output byte for byte unchanged |
+| `publishing.py` `finish()` returns failure | LOW | fixed (aaa771e) — now `bin_copy_failed` |
+| `publishing.py` `entry` hides the slug | LOW | fixed (aaa771e) |
+| `look_screen.py` `_has_style_code` | LOW | fixed (aaa771e) — now `_refuse_without_style_code` |
+| `look_screen.py` script copies `STYLE_CODE` | LOW | fixed (aaa771e) |
+| `publisher.py` `FetchNotWritten` message thrice | LOW | fixed (aaa771e) |
+| `builder.py` `_entries` returns text | LOW | fixed (762fb31) — now `_entries_text` |
+| `pressing.py` `forget` caller list | LOW | fixed (aaa771e) |
+| lead PRESS-0298 Journal link never current | — | real; spec-pinned by PRESS-0216, left open with a note |
+| lead PRESS-0313 wrong request named | — | real; fixed, shipped (209c62a) |
+| lead PRESS-0314 note rewording orphans looks | — | real, latent; guarded (c15e3da), left open: PRESS-0196 state 2 |
+| lead PRESS-0315 forward under wrong date | — | not real; dropped (an address change keeps the date) |
+
+Sweep: searched docs/, tests/, CLAUDE.md and README.md for
+`_has_style_code`, `_gatherer`, `captured(`, `finish()`, `_entries`,
+`photo_src is None`, "refused as web_copy" and the OutcomeUnknown
+"reference update" claim. Nothing was stale. `test_words.py`'s CSS
+allow-list lacked the new look.py constants; fixed (b148268).
