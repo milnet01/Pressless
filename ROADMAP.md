@@ -5578,8 +5578,11 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0300] **local-ci.sh runs the full gate on an unknown argument instead of refusing.**
+- ✅ [PRESS-0300] **local-ci.sh runs the full gate on an unknown argument instead of refusing.**
   scripts/local-ci.sh:27 — no *) branch, so --doc runs the full gate. Confirmed. Lead from lane-09-tooling.md.
+  Real. Fixed in 14bf3c9: an unknown option now fails before anything
+  runs. Test: tests/test_local_ci.py,
+  test_an_unknown_option_is_refused_before_anything_runs.
   **Layman:** A typo when running the code checks silently runs a different check.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5724,12 +5727,24 @@ it can then be changed.
 
 - 📋 [PRESS-0324] **A Google secret pasted with a trailing newline fails the release step.**
   scripts/write_google_secret.py:51 refuses it; write_usage_key.py accepts it. Workflow pre-strip unchecked. Lead from lane-09-tooling.md.
+  Investigated 2026-10-23. release.yml passes the secret straight in;
+  nothing strips it. Whether GitHub keeps a pasted line break is not
+  checked here; write_usage_key.py's comment says it does.
+  Not fixed: PRESS-0122 § 4.7 says the script refuses a value holding
+  anything but letters, digits, '-' and '_', so stripping changes what
+  that spec specifies. Needs a spec amendment (and its gate) first.
+  The fix then: share write_usage_key.py's _value, which strips, from
+  write_google_secret.py beside _asks. This item also carries lane-09's
+  MEDIUM finding on the two diverged copies.
   **Layman:** A small copy-paste slip could break making a release.
-  Kind: investigate.
+  Kind: review-fix.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0325] **The Windows gate fails if a tracked file is deleted but not staged.**
+- ✅ [PRESS-0325] **The Windows gate fails if a tracked file is deleted but not staged.**
   scripts/windows-gate.sh:91 — git ls-files -co lists it, zipfile.write raises. Unchecked; the global pre-push may use a clean worktree. Lead from lane-09-tooling.md.
+  Real: reproduced, the zip step raised FileNotFoundError. Fixed in
+  b13b905: a file missing from disk is left out of the zip, and the box
+  keeps HEAD's copy. Test: tests/test_windows_gate.py.
   **Layman:** The Windows test run can fail for a reason unrelated to the code.
   Kind: investigate.
   Source: review-readability-2026-10-23.
