@@ -12,6 +12,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **The list Import shows at the end is in plain words** (PRESS-0294)
+  After a WordPress site comes in, each thing that did not come across
+  exactly is said so anyone can follow it: "a list, kept as plain lines"
+  or "a heading, kept as an ordinary paragraph", rather than web code.
+  Settings from the old look take one line per post or page, not one per
+  piece of web code. Counts read "1 post" and "1 page", never "1 pages".
+
 ## [0.10.1] - 2026-10-22
 
 **Theme:** their own look, and any file

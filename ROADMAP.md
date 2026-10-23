@@ -11841,7 +11841,7 @@ already-built code ships in whichever release comes next.
   Kind: test.
   Source: found-while-releasing-0.10.0-2026-10-19.
 
-- 📋 [PRESS-0294] **Import's Report in words anyone can read.**
+- ✅ [PRESS-0294] **Import's Report in words anyone can read.**
   Found in PRESS-0125's hand run, 2026-10-22. The Report shows lines
   such as "harbour-at-dawn: the class attribute of <img>." and "a <li>,
   its words kept." A general user cannot act on either. Decide which
@@ -11854,6 +11854,10 @@ already-built code ships in whichever release comes next.
   2026-10-22, from the 0.10.1 box round: Import's step 2 says "1 pages"
   (words.py import.media.counts has no singular). Fix it with this
   item's wording pass.
+  Shipped 2026-10-23 in dc836c7. Every Report line reworded; an entry's
+  unread attributes and styles are one line each, every one still named
+  (PRESS-0007 §4.3); counts take the singular for one, the "1 pages" on
+  step 2 included. Archive tests ran against the real export.
   **Layman:** After bringing a WordPress site in, the list of what changed should make sense to someone who has never seen web code.
   Kind: ux.
   Source: user-decision-2026-10-22 PRESS-0125 hand run.
