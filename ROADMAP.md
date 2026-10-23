@@ -5784,13 +5784,17 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0320] **Two messages on the Sites and Backups screens skip the words table.**
+- ✅ [PRESS-0320] **Two messages on the Sites and Backups screens skip the words table.**
   sites.py:122, backups.py:110 — hard-coded English rather than say(). Unchecked. Lead from lane-07-app-sites-update.md.
   Real. backups.py half fixed in 090f94a. The sites.py half waits on
   PRESS-0223: that spec says sites imports only safe_write and that
   move_in returns the sentence, so it cannot read the words table
   without a spec change. Needs a decision: let sites import words, or
   have move_in return the failure for __main__ to word.
+  Sites half shipped 2026-10-23 in 2799542. Decision: move_in returns
+  the OSError and __main__ words it via say("main.moving_in"), so sites
+  still imports only safe_write. PRESS-0223 amended to match (review
+  waived by the user); test_no_screen_writes_english reads sites.py.
   **Layman:** A few sentences are hard-coded, so they would not change with the rest of the app's wording.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5825,7 +5829,7 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0324] **A Google secret pasted with a trailing newline fails the release step.**
+- ✅ [PRESS-0324] **A Google secret pasted with a trailing newline fails the release step.**
   scripts/write_google_secret.py:51 refuses it; write_usage_key.py accepts it. Workflow pre-strip unchecked. Lead from lane-09-tooling.md.
   Investigated 2026-10-23. release.yml passes the secret straight in;
   nothing strips it. Whether GitHub keeps a pasted line break is not
@@ -5836,6 +5840,11 @@ it can then be changed.
   The fix then: share write_usage_key.py's _value, which strips, from
   write_google_secret.py beside _asks. This item also carries lane-09's
   MEDIUM finding on the two diverged copies.
+  Shipped 2026-10-23 in a59dff5. PRESS-0122 § 4.7 amended (review
+  waived by the user): the script strips surrounding whitespace before
+  its check. write_usage_key.py now imports write_google_secret.py's
+  _value, closing lane-09's finding on the two copies. release.yml
+  needs no change.
   **Layman:** A small copy-paste slip could break making a release.
   Kind: review-fix.
   Source: review-readability-2026-10-23.
@@ -5920,12 +5929,14 @@ it can then be changed.
   Kind: review-fix.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0332] **PRESS-0002's write table has no row for refusing a damaged secrets file.**
+- ✅ [PRESS-0332] **PRESS-0002's write table has no row for refusing a damaged secrets file.**
   PRESS-0317 (e8986eb) made credentials._write_file refuse a carried
   file whose `secrets` field is not an object, leaving it untouched.
   The spec's write table has no row for that refusal. Adding one
   changes what a conformer builds, so it takes rule 14's gate; not
   done in the review close-out for that reason.
+  Shipped 2026-10-23 in b2f3f29. The write table has the row, § 10
+  names the test, and the test now runs for a missing `secrets` too.
   **Layman:** The design notes for the secrets file do not yet say it now refuses to overwrite a damaged file.
   Kind: doc-fix.
   Source: review-readability-2026-10-23.

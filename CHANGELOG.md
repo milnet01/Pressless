@@ -23,6 +23,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Two messages now follow the rest of the app's wording** (PRESS-0320)
+  The message when a backup fails, on the Sites screen, and the message
+  when Pressless cannot move your site into its sites folder at start
+  were written straight into the program. They now come from the same
+  list as every other message, so they change with the rest of the
+  app's wording.
+
 - **Typing while a page is renamed or removed no longer brings it back** (PRESS-0329)
   If you kept typing while Pressless renamed or removed a page, the save
   of that typing could go to the page being moved, and write it back.
