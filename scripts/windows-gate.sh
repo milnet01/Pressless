@@ -25,7 +25,8 @@
 #
 # What is copied is what the Linux suite just ran on: HEAD as a git clone, so
 # the tests that ask git have a checkout, with the working tree's tracked and
-# not-ignored files laid over it. An ignored file, the Google secret among
+# not-ignored files laid over it. A tracked file deleted but not staged is the
+# exception: the box keeps HEAD's copy. An ignored file, the Google secret among
 # them, never leaves this machine.
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
@@ -88,13 +89,16 @@ EOF
 )
 fi
 
+# ls-files also lists a tracked file deleted but not yet staged. It is not on
+# disk to send, so it is left out, and the box keeps HEAD's copy of it.
 git ls-files -co --exclude-standard -z | python3 -c '
-import sys, zipfile
+import os, sys, zipfile
 names = [n for n in sys.stdin.buffer.read().decode().split("\0") if n]
 with zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED) as out:
     for name in names:
-        out.write(name)
-' "$scratch/tree.zip"
+        if os.path.lexists(name):
+            out.write(name)
+' "$scratch/$run.zip"
 
 cat > "$scratch/$run.ps1" <<EOF
 \$ErrorActionPreference = "Stop"
@@ -119,7 +123,6 @@ $body
 exit \$code
 EOF
 
-cp "$scratch/tree.zip" "$scratch/$run.zip"
 git bundle create -q "$scratch/$run.bundle" HEAD
 # Exit 2 means the box could not be reached, which local-ci.sh reports and
 # passes; any other non-zero is the suite's failure. ssh's own failure is 255,
