@@ -21,6 +21,7 @@ import re
 import stat
 import sys
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -137,6 +138,22 @@ def exists(folder: Path, slug: str) -> bool:
     """
     _refuse_illegal_slug(slug, "a slug")
     return any(slug in _slugs_in(folder, draft=draft) for draft in (False, True))
+
+
+def first_free(stem: str, free: Callable[[str], bool], suffix: str = "") -> str:
+    """`stem + suffix`, or the first of `stem-2`, `stem-3` … (each with
+    `suffix`) that `free` accepts. A name on which `free` raises StoreError
+    is one the Store refuses, such as the Windows device name `con`, and is
+    passed over. Each caller's `free` says what counts as taken."""
+    number = 1
+    while True:
+        name = stem + suffix if number == 1 else f"{stem}-{number}{suffix}"
+        number += 1
+        try:
+            if free(name):
+                return name
+        except StoreError:
+            continue
 
 
 def list_slugs(folder: Path, *, draft: bool) -> tuple[str, ...]:

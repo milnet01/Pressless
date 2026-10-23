@@ -79,23 +79,21 @@ def keep(path_for: Callable[[str], Path], data: bytes,
     file is never half-written under its name and the Builder reads a file
     rather than memory. A name holding other bytes moves to `-2`, `-3`; the
     same bytes return the name they are kept under."""
+    # FALLBACK only finds the folder: any name the Store accepts would do,
+    # and a kept file's own fallback would land in the same place.
     staged = _stage(path_for(FALLBACK).parent, data)
+
+    def free(name: str) -> bool:  # empty, or holding these same bytes
+        target = path_for(name)  # raises on a device name such as con.jpg
+        return not target.exists() or (target.is_file() and target.read_bytes() == data)
+
     try:
         stem, suffix = os.path.splitext(named(staged))
-        number = 1
-        while True:
-            name = stem + suffix if number == 1 else f"{stem}-{number}{suffix}"
-            number += 1
-            try:
-                target = path_for(name)
-            except store.StoreError:
-                continue  # a device name such as con.jpg; con-2.jpg is kept
-            if target.exists():
-                if target.is_file() and target.read_bytes() == data:
-                    return name
-                continue
+        name = store.first_free(stem, free, suffix)
+        target = path_for(name)
+        if not target.exists():
             os.replace(staged, target)
-            return name
+        return name
     finally:
         staged.unlink(missing_ok=True)
 

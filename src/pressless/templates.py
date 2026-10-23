@@ -158,17 +158,14 @@ def _save(face: Face, folder: Path, request: Request) -> str | Reply:
 
 def _new(face: Face, folder: Path, request: Request) -> Reply:
     """§ 4.5: a free name is one no file sits at, so on Windows a hand-named
-    Poem.txt answers for poem and is not overwritten."""
+    Poem.txt answers for poem and is not overwritten. A name the Store
+    refuses, such as `con`, is passed over (PRESS-0311)."""
     typed = editor._form(request).get("name", "")
     wanted = editor.address_for(typed)
     with editor.LOCK, face.capture() as notices:
         try:
-            number = 1
-            while True:
-                name = wanted if number == 1 else f"{wanted}-{number}"
-                if not store.template_path_for(folder, name).is_file():
-                    break
-                number += 1
+            name = store.first_free(
+                wanted, lambda name: not store.template_path_for(folder, name).is_file())
             store.write_template(folder, store.Entry(
                 slug=name, title=typed.strip(), date=datetime.now().replace(microsecond=0),
                 categories=(), tags=(), body="", extra=()))

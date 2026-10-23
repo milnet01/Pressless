@@ -128,15 +128,8 @@ def free_address(folder: Path, wanted: str) -> str:
     # Read once, outside the loop: its StoreError must stop the search, not be
     # skipped as a refused name (PRESS-0182 § 4.2).
     forwarded = store.read_forwards(folder)
-    number = 1
-    while True:
-        candidate = wanted if number == 1 else f"{wanted}-{number}"
-        try:
-            if candidate not in forwarded and not store.exists(folder, candidate):
-                return candidate
-        except store.StoreError:
-            pass  # a name the Store refuses, such as a Windows device name
-        number += 1
+    return store.first_free(wanted, lambda candidate: candidate not in forwarded
+                            and not store.exists(folder, candidate))
 
 
 def working_copy(folder: Path, slug: str) -> str | None:

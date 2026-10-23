@@ -179,6 +179,17 @@ def test_a_new_template_takes_a_free_name(tmp_path):
     assert store.read(store.template_path_for(folder, "song")).title == "Song"
 
 
+def test_a_new_template_named_like_a_windows_device_takes_the_next_name(tmp_path):
+    """PRESS-0311: the Store refuses `con` everywhere, so New template passes
+    over it to `con-2`, as a new entry's address and a kept file do. Breaks
+    when the refusal fails the request instead."""
+    folder = _folder(tmp_path)
+    with _served(folder) as browser:
+        status, headers, _ = browser.request("POST", "/template/new", {"name": "Con"})
+    assert (status, headers.get("Location")) == (303, "/template?name=con-2")
+    assert store.read(store.template_path_for(folder, "con-2")).title == "Con"
+
+
 # ------------------------------------------------------------- the pages ---
 
 
