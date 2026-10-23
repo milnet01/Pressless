@@ -5931,7 +5931,7 @@ it can then be changed.
   Kind: refactor.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0331] **One shared HTTPS client for the Publisher, Insights, usage reports and updates.**
+- ✅ [PRESS-0331] **One shared HTTPS client for the Publisher, Insights and usage reports.**
   lane-06 MEDIUM, insights.py `_NoCrossOriginAuth` / `_Urllib` /
   `_no_answer`: publisher.py holds the same client, usage `_Opener`
   a thinner one, and updater.py a fourth `_Urllib`. Not fixed now:
@@ -5940,6 +5940,13 @@ it can then be changed.
   name `_Urllib`, and the network-confinement tests walk each module's
   imports. A shared module needs those specs amended and gated first.
   0b3ea13 made each copy name its twin meanwhile.
+  Shipped 2026-10-23 in 0720fd1. src/pressless/https.py holds the
+  redirect handler, the client and the no-answer mapping once;
+  publisher._Urllib and insights._Urllib subclass it, and usage._Opener
+  builds it on first use. The Updater keeps its own: it refuses any hop
+  off https and streams a body (PRESS-0023 § 4.5). PRESS-0009 and
+  PRESS-0019 INV-1, PRESS-0262 § 4.5 and INV-9, PRESS-0023 § 4.5 and
+  INV-8, and PRESS-0122 amended (review waived by the user).
   **Layman:** The code that talks to GitHub and Google over the internet is written four times; a fix to one copy can miss the others.
   Kind: review-fix.
   Source: review-readability-2026-10-23.
