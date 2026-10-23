@@ -1,25 +1,10 @@
 """PRESS-0133 by-hand browser rows, driven rather than read.
 
-Rows satisfied here (all say "nothing in CI -- by hand, in a browser"):
-  PRESS-0013 s10: the script's waiting message and page switch (s 4.4)
-  PRESS-0012 s10: the script's timing, pagehide save, no two saves in flight (s 4.7)
-  PRESS-0012 s10 (Chrome half only): the policies block Google's script
-  PRESS-0018: the cheat sheet folds open below the box, and prints
-  PRESS-0017 s7: picking the poem opens a draft holding it
-  PRESS-0260 s10: INV-5's no-script half, INV-9, and the visual view's keys
-    and buttons (s 4.3, s 4.4)
-  PRESS-0261: the code boxes' colours line up with the letters typed over them
-  PRESS-0263: the true-colours switch is kept, and the preview starts undimmed
-  PRESS-0264: Move to takes a section between columns, out of them and back
-  PRESS-0265: a section is dragged into place with the mouse
-  PRESS-0216: the header is typed in on the page; the menu's links are
-    changed, moved and added in its list
-  PRESS-0217 s10: the pieces behave on the published site, and in the
-    visual editor show their fallbacks, a script piece among them inert
-  PRESS-0273: a style piece shows as its code, and its CSS reaches the
-    preview frame but never the Face's own page
-  PRESS-0197 s10: INV-10's upload half -- a file uploaded from a music
-    section's panel sets the field to ../files/<name>
+Each check's label starts with the roadmap item and spec section whose
+by-hand row ("nothing in CI -- by hand, in a browser") it satisfies, so
+the labels are the list:
+
+    grep -oE 'check[(]f?"PRESS-[0-9]+' scripts/by-hand-browser-checks.py | sort -u
 
 Deliberately NOT in the gate and NOT in CI, so each spec's s10 row stays
 true: it needs a browser on the machine, which local-ci.sh does not assume.
@@ -200,6 +185,12 @@ def run(origin: str, secret: str, folder: Path) -> None:
         # query, so visit it first for the cookie, then the editor page.
         page.goto(f"{origin}/?t={secret}", wait_until="networkidle")
         page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+
+        # The inline rows down to PRESS-0182's keep coming back to one
+        # entry, seaside, and change it in order: a draft, then pressed
+        # (PRESS-0013), proofed and its proof binned (PRESS-0185), then the
+        # undo (PRESS-0015). Each row starts from the state the row above
+        # left, so a new row goes where that state is the one it needs.
 
         # ---- PRESS-0012 s4.7: the page's shape -------------------------------
         box = page.locator("textarea")
@@ -531,6 +522,8 @@ def run(origin: str, secret: str, folder: Path) -> None:
               "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
               f"{binned!r} {page.url}")
 
+        # Order matters here: code_colours and true_colours_kept open the
+        # page "visual", which only visual_editor writes.
         visual_editor(page, origin, folder)
         code_colours(page, origin)
         true_colours_kept(page, origin)
@@ -918,10 +911,10 @@ def visual_editor(page, origin: str, folder: Path) -> None:
           str(kinds))
 
     frame.locator("div", has_text="code part").click()
-    shown = [act for act in ("bold", "italic", "link", "add-to")
+    offered = [act for act in ("bold", "italic", "link", "add-to")
              if page.locator(f"#panel [data-act={act}]").first.is_visible()]
     check("PRESS-0288: a code section's panel shows no Bold, Italic, Link or Add to column",
-          not shown, str(shown))
+          not offered, str(offered))
     in_sight = page.evaluate("""() => {
       const panel = document.getElementById('panel');
       panel.scrollTop = panel.scrollHeight;
@@ -933,9 +926,9 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     check("PRESS-0279: the Changing line stays in sight when the panel scrolls",
           in_sight[0] > 0 and in_sight[1] == "picked", str(in_sight))
     code = page.locator("[data-field=code]")
-    shown = code.input_value()
+    code_text = code.input_value()
     check("PRESS-0260 s4.5: the panel shows a code section's HTML without its marks",
-          shown == "<script>document.title = 'RAN';</script><div>code part</div>", shown)
+          code_text == "<script>document.title = 'RAN';</script><div>code part</div>", code_text)
     code.fill("<div>new code</div>")
     wait_for_save(page)
     check("PRESS-0260 s3 decision 5: a code section is changed in the panel",
@@ -963,13 +956,13 @@ def visual_editor(page, origin: str, folder: Path) -> None:
     page.fill("#add-address", "../photographs/my%20boat.jpg")
     page.locator("[data-act=add]").click()
     wait_for_save(page, settle=True)
-    shown = page.evaluate("""() => {
+    width = page.evaluate("""() => {
       const img = document.getElementById('preview').contentDocument.querySelector('img');
       return img ? img.naturalWidth : -1;
     }""")
     check("PRESS-0260 s4.6: a held photograph shows in the preview",
-          [kind for kind, _ in sections()][:2] == ["heading", "picture"] and shown == 40,
-          f"{[kind for kind, _ in sections()]} naturalWidth={shown}")
+          [kind for kind, _ in sections()][:2] == ["heading", "picture"] and width == 40,
+          f"{[kind for kind, _ in sections()]} naturalWidth={width}")
 
     page.select_option("#add-kind", "columns")
     page.locator("[data-act=add]").click()
@@ -1132,7 +1125,6 @@ def drag_sections(page, origin: str, folder: Path) -> None:
         """Drag `words` onto the upper half of `onto`; whether the line showed."""
         frame.locator("p", has_text=words).click()
         grip = page.locator("#drag-handle").bounding_box()
-        outer = page.locator("#preview").bounding_box()
         target = frame.locator("p", has_text=onto).bounding_box()
         page.mouse.move(grip["x"] + grip["width"] / 2, grip["y"] + grip["height"] / 2)
         page.mouse.down()
@@ -1140,7 +1132,7 @@ def drag_sections(page, origin: str, folder: Path) -> None:
         shown = page.locator("#drop-line").is_visible()
         page.mouse.up()
         wait_for_save(page, settle=True)
-        return shown and outer is not None
+        return shown
 
     page.goto(f"{origin}/page?kind=pages&name=dragged&view=visual", wait_until="networkidle")
     handle_hidden = page.locator("#drag-handle").is_hidden()
@@ -1171,6 +1163,10 @@ PIECES_PAGE = (
     + "\n<!-- /pressless:page --></main>\n<!-- FOOTER:START -->\n<!-- FOOTER:END -->\n"
     "</body></html>\n").replace("2026-12-25T18:00", "2099-12-25T18:00").replace(
         "2026-12-25 18:00", "2099-12-25 18:00")
+# The countdown fixture's date will pass, and pieces' check wants time left,
+# so it moves to 2099. A changed fixture date would leave it unmoved.
+if PIECES_PAGE.count("2099-12-25") != 2:
+    raise SystemExit("the countdown fixture's date changed; update PIECES_PAGE")
 
 
 def pieces(page, origin: str, folder: Path) -> None:
@@ -1378,9 +1374,9 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
     check("PRESS-0285 INV-1: the switch to the code loads no new page",
           went and kept() and "view=code" in page.url, page.url)
 
-    added = "<!-- pressless:text --><p>Added in code</p><!-- /pressless:text -->\n"
+    added_html = "<!-- pressless:text --><p>Added in code</p><!-- /pressless:text -->\n"
     if went:
-        box.fill(shown.replace("<!-- /pressless:page -->", added + "<!-- /pressless:page -->"))
+        box.fill(shown.replace("<!-- /pressless:page -->", added_html + "<!-- /pressless:page -->"))
         wait_for_save(page)
     check("PRESS-0285 INV-4: after a switch, code typed into the box is saved",
           "<p>Added in code</p>" in copy(), copy()[-200:])
@@ -1389,22 +1385,22 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
         box.fill(box.input_value().replace("Added in code", "Added in code too"))
     back = switch("visual")
     frame = page.frame_locator("#preview")
-    added = frame.locator("p", has_text="Added in code too")
+    added_para = frame.locator("p", has_text="Added in code too")
     # The frame loads the new preview after the switch ends, and a slow load
     # on the box once outlasted a fixed count of polls (PRESS-0293).
     if back:
         try:
-            added.first.wait_for(timeout=15000)
+            added_para.first.wait_for(timeout=15000)
         except PlaywrightTimeout:  # the check says what it saw
             pass
-    added_shown = back and added.count() == 1
+    added_shown = back and added_para.count() == 1
     check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
           added_shown, f"back={back}")
     check("PRESS-0285 INV-1: the switch to the page loads no new page",
           back and kept() and page.locator("#panel").is_visible(), page.url)
 
     if added_shown:
-        added.click()
+        added_para.click()
         page.keyboard.press("End")
         page.keyboard.type(" more")
         wait_for_save(page)
@@ -1447,10 +1443,9 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     script, the players and a followed outside link in a browser". Since
     PRESS-0268 the page's own scripts are blocked too: a same-origin file, one
     under /preview/assets/ (the live site's copied assets), and an inline one."""
-    from pressless import editor as ed
     from pressless import paths
 
-    preview = folder / ed.PREVIEW_FOLDER
+    preview = folder / editor.PREVIEW_FOLDER
     preview.mkdir(parents=True, exist_ok=True)
     (preview / "policycheck.html").write_text(
         "<!doctype html><html><head>"
@@ -1466,17 +1461,16 @@ def google_blocked(page, origin: str, folder: Path) -> tuple[bool, str]:
     assets.mkdir(parents=True, exist_ok=True)
     (assets / "ran-assets.js").write_text("window.__assets = true;", encoding="utf-8")
 
-    violations: list[str] = []
     page.goto("about:blank")
     page.add_init_script(
         "window.__v = [];"
         "document.addEventListener('securitypolicyviolation',"
         " e => window.__v.push(e.violatedDirective + ' <- ' + e.blockedURI));")
-    response = page.goto(f"{origin}{ed.PREVIEW_ADDRESS}policycheck.html",
+    response = page.goto(f"{origin}{editor.PREVIEW_ADDRESS}policycheck.html",
                          wait_until="load")
     page.wait_for_timeout(1200)
     csp = (response.headers or {}).get("content-security-policy", "")
-    violations = page.evaluate("() => window.__v || []")
+    violations: list[str] = page.evaluate("() => window.__v || []")
     google = [v for v in violations if "googletagmanager" in v]
     player = [v for v in violations if "youtube" in v]
     ran = page.evaluate("() => [window.__ran === true, window.__assets === true,"
