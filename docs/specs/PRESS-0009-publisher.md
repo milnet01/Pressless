@@ -525,10 +525,13 @@ behaviour.
 ## 5. Invariants
 
 - **INV-1** — `src/pressless/publisher.py` imports no `pressless` module
-  other than `pressless.settings`.
+  other than `pressless.settings` and `pressless.https`, the HTTPS client
+  it shares with Insights and usage reports (PRESS-0331). `https` imports
+  no `pressless` module itself, so no route to Credentials runs through it.
   *Test:* `tests/test_publisher.py::test_publisher_imports_no_forbidden_sibling`,
   walking the module's imports as
-  `tests/test_settings.py::test_settings_imports_nothing_forbidden` does.
+  `tests/test_settings.py::test_settings_imports_nothing_forbidden` does,
+  and `tests/test_https.py::test_https_imports_no_pressless_module`.
   *Breaks when:* an implementer imports `pressless.credentials` to fetch
   the key rather than taking it as an argument, which is the breach of
   rule 10 that rule 5 was rewritten to avoid.

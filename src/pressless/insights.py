@@ -28,20 +28,14 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-import http.client
 import json
 import math
-import ssl
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-import certifi
-
+from pressless import https
 from pressless.safe_write import write_whole
 from pressless.settings import Settings
 
@@ -195,78 +189,12 @@ class Transport(Protocol):
     def now(self) -> float: ...
 
 
-# _NoCrossOriginAuth, _origin, _Urllib and _no_answer are twins of
-# publisher.py's, kept apart by INV-1. A fix to one copy is owed to the other.
-class _NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
-    """A redirect handler that drops the key when the origin changes.
-
-    urllib copies every header but the content ones onto a redirect target,
-    a different host included, and follows up to ten hops -- so a redirect
-    would hand the Authorization header to whoever answered (PRESS-0052).
-    Neither service Pressless talks to legitimately redirects across
-    origins; a same-origin redirect keeps the header, so a renamed
-    repository still resolves.
-    """
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        redirected = super().redirect_request(req, fp, code, msg, headers,
-                                              newurl)
-        if redirected is None:
-            return None
-        if _origin(newurl) != _origin(req.full_url):
-            redirected.remove_header("Authorization")
-        return redirected
-
-
-def _origin(url: str) -> tuple[str, str]:
-    """Scheme, host and port -- the whole origin.
-
-    So a downgrade to cleartext, and a hop to another port on the same
-    machine, are both changes of origin. netloc carries the port.
-    """
-    parsed = urllib.parse.urlsplit(url)
-    return (parsed.scheme, parsed.netloc)
-
-
-class _Urllib:
-    """The module's own client, used when no double is handed in.
-
-    urllib.request rather than a third-party HTTP library, for the reason
-    publisher.py gives: PRESS-0022 has to carry every dependency into a
-    packaged artefact, and a convenience library here would be one bought for
-    syntax.
-    """
+class _Urllib(https.Client):
+    """The module's own client, used when no double is handed in. The
+    request is the shared client's (PRESS-0331); the clock is ours."""
 
     def __init__(self, timeout: float = TIMEOUT_SECONDS) -> None:
-        self._timeout = timeout
-        # Certificates from the bundled certifi set, never the host's store: the
-        # AppImage's OpenSSL looks where openSUSE keeps nothing (PRESS-0142).
-        context = ssl.create_default_context(cafile=certifi.where())
-        self._opener = urllib.request.build_opener(
-            _NoCrossOriginAuth, urllib.request.HTTPSHandler(context=context))
-
-    def request(self, method: str, url: str, body: bytes | None,
-                headers: dict[str, str]
-                ) -> tuple[int, dict[str, str], bytes]:
-        request = urllib.request.Request(url, data=body, headers=headers,
-                                         method=method)
-        try:
-            with self._opener.open(request,
-                                   timeout=self._timeout) as response:
-                return (response.status, dict(response.headers),
-                        response.read())
-        except urllib.error.HTTPError as error:
-            # An error STATUS is an answer, so it is returned rather than
-            # raised -- only a genuine absence of one reaches the caller as
-            # OSError, which is what the seam promises. Its body is read under
-            # the same guard as a success's (PRESS-0135).
-            answer = error
-        except (http.client.HTTPException, ValueError) as error:
-            raise _no_answer(url, error) from None
-        try:
-            return (answer.code, dict(answer.headers or {}), answer.read())
-        except (http.client.HTTPException, ValueError) as error:
-            raise _no_answer(url, error) from None
+        super().__init__(timeout)
 
     def now(self) -> float:
         return time.time()
@@ -298,17 +226,6 @@ class _Unbuilt:
 
     def now(self) -> float:
         return time.time()
-
-
-def _no_answer(url: str, error: Exception) -> OSError:
-    """A missing answer as the seam's OSError (PRESS-0040), naming only the
-    host and the type. Neither http.client failure is an OSError, and every
-    caller catches only that. Raised `from None`: http.client quotes a refused
-    header whole, key included, and a traceback prints every chained cause
-    (PRESS-0135).
-    """
-    return OSError(f"no answer from {urllib.parse.urlsplit(url).netloc} "
-                   f"({type(error).__name__})")
 
 
 def cache_path(folder: Path) -> Path:

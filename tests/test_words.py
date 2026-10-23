@@ -267,6 +267,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                         "the system's name, sent in a report and the issue form"),
         "Content-Type": _HTTP_HEADERS,
         "usage report": "a log line", "not sent:": "a log line",
+        "not sent: status": "a log line",
     },
 }
 

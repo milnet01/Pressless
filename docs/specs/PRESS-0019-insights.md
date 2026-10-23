@@ -290,13 +290,16 @@ which settled something the contract had left open. **INV-28 to INV-32 are
 PRESS-0020's amendment**, with INV-3 and INV-4 changed to the batch.
 
 - **INV-1** — `insights.py` imports no `pressless` module other than
-  `pressless.settings` and `pressless.safe_write`. The token is an argument.
+  `pressless.settings`, `pressless.safe_write` and `pressless.https`. The
+  token is an argument.
   `safe_write` carries the cache's temporary-file, sync and replace steps
   (INV-24); PRESS-0001 §4.4 owns its surface and §11 the modules that call
-  it. It imports no `pressless`
-  module itself, so no route to Credentials runs through it.
+  it. `https` is the HTTPS client shared with the Publisher and usage
+  reports (PRESS-0331). Neither imports a `pressless`
+  module itself, so no route to Credentials runs through them.
   *Test:* `tests/test_insights.py::test_insights_imports_no_forbidden_sibling`,
-  which walks `safe_write.py`'s imports too.
+  which walks `safe_write.py`'s imports too, and
+  `tests/test_https.py::test_https_imports_no_pressless_module`.
   *Breaks when:* someone fetches the token here instead of being handed it,
   which is the change `docs/design.md` rule 10 exists to stop.
   **It passes against a module that does nothing**, so it is evidence about

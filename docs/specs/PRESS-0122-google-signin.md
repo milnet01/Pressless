@@ -141,7 +141,7 @@ def revoke(refresh_token: str, client: Transport | None = None) -> None
 ```
 
 `client` defaults to the client Insights builds for itself (certifi's
-certificates, its timeout, `_NoCrossOriginAuth`). Same part, so this is
+certificates, its timeout, `https.NoCrossOriginAuth`). Same part, so this is
 not one part reaching inside another.
 
 - **`available()`** is true where `CLIENT_ID` and `CLIENT_SECRET` are both

@@ -110,11 +110,11 @@ select = [
 # That refusal is what this exemption rests on. Its archive tests read it too.
 "src/pressless_import/*" = ["S314"]
 "tests/test_importer_archive.py" = ["S101", "S314"]
-# S310: both modules build their request URL from a module-level literal
-# (`API`), so the scheme is never attacker-chosen. Suppressed rather than
-# guarded because the guard would be a second place to keep the scheme true;
-# if `request()` ever takes a URL from outside, this ignore must go. The
-# rule fires on `urllib.request.Request`; PRESS-0052 replaced the `urlopen`
-# call this comment used to name with an opener carrying a redirect handler.
-"src/pressless/publisher.py" = ["S310"]
-"src/pressless/insights.py" = ["S310"]
+# S310: every caller of the shared client builds its request URL from a
+# module-level https literal (`API`, `ENDPOINT`, the sign-in addresses), so
+# the scheme is never attacker-chosen. Suppressed rather than guarded because
+# the guard would be a second place to keep the scheme true; if a caller ever
+# takes a URL from outside, this ignore must go. The rule fires on
+# `urllib.request.Request`; PRESS-0052 replaced the `urlopen` call this
+# comment used to name with an opener carrying a redirect handler.
+"src/pressless/https.py" = ["S310"]

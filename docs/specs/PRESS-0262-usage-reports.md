@@ -176,10 +176,10 @@ read from a request's query or body, a file, Settings or the Store.
 ### 4.5 Sending
 
 `report` appends the body to `usage-sent.json`, keeping the last `KEPT`,
-and sends it on a daemon thread through an opener built as
-`insights._Urllib` builds its own: certifi's certificates and a timeout
-of 5 seconds. The thread ignores the answer, and any failure is one
-`Log.note` naming the event and the failure's type. **Nothing waits for
+and sends it on a daemon thread through the shared client `https.Client`
+(PRESS-0331), with a timeout of 5 seconds. A failure is one `Log.note`
+naming the event and the failure's type. An error status, 400 or above,
+is one naming the event and the status. **Nothing waits for
 it**: no page, press or exit is held by a report.
 
 ### 4.6 The words
@@ -271,13 +271,14 @@ custom dimension; the document lists them.
   `src/pressless/_usage_key.py`.
   *Breaks when:* `.gitignore` loses the line.
 
-- **INV-9** — Within `src/pressless/`, only `publisher.py`,
-  `insights.py`, `updater.py` and `usage.py` import a network module.
+- **INV-9** — Within `src/pressless/`, only `https.py`, the client the
+  Publisher, Insights and usage reports share (PRESS-0331), and
+  `updater.py` import a network module.
   Outside it, `pressless_import.fetch` is the one network module
   (PRESS-0125 § 4.4, amended 2026-10-22), and
   `tests/test_importer.py::test_import_reaches_no_network` holds it.
-  *Test:* `tests/test_network_confined.py::test_only_four_modules_reach_the_network`.
-  *Breaks when:* a fifth module opens a socket. This replaces
+  *Test:* `tests/test_network_confined.py::test_only_the_clients_reach_the_network`.
+  *Breaks when:* any other module opens a socket. This replaces
   PRESS-0023 INV-8.
 
 ## 6. Failure modes
@@ -333,13 +334,12 @@ Each test is seen failing before the code it locks exists.
 | INV-6 | `tests/test_usage.py::test_no_forgets_the_client` |
 | INV-7 | `tests/test_usage.py::test_the_list_is_what_was_sent` |
 | INV-8 | `git check-ignore` |
-| INV-9 | `tests/test_network_confined.py::test_only_four_modules_reach_the_network`, `tests/test_importer.py::test_import_reaches_no_network` |
+| INV-9 | `tests/test_network_confined.py::test_only_the_clients_reach_the_network`, `tests/test_importer.py::test_import_reaches_no_network` |
 | § 4.7's procedure | **nothing** — a document a session follows; read when it is run |
 
 ## 11. Cross-doc impact
 
-- PRESS-0023 INV-8 and its § 10 row name four modules, and say
-  PRESS-0262 INV-9 replaced them.
+- PRESS-0023 INV-8 and its § 10 row say PRESS-0262 INV-9 replaced them.
 - `docs/design.md` § The parts gains a **Usage** row: sending the
   reports the user agreed to, and knowing nothing of the site.
 - `docs/usage-reports.md`, new (§ 4.7).

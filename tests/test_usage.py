@@ -393,6 +393,24 @@ def test_every_screen_links_to_the_usage_screen(tmp_path):
     assert '<a href="/usage">Usage reports</a>' in page
 
 
+def test_an_error_status_is_logged_and_a_success_is_not():
+    """PRESS-0262 § 4.5, PRESS-0331: the shared client returns an error
+    status rather than raising it, so `_send` reads the status. Breaks when
+    `_send` ignores the answer again: a report Google refused then leaves no
+    log line at all."""
+    class _Answers:
+        def __init__(self, status):
+            self.status = status
+
+        def request(self, *args):
+            return self.status, {}, b""
+
+    notes: list[str] = []
+    usage._send(_Answers(400), "https://x.invalid/mp/collect", b"{}", "screen", notes.append)
+    usage._send(_Answers(204), "https://x.invalid/mp/collect", b"{}", "press", notes.append)
+    assert notes == ["usage report screen not sent: status 400"]
+
+
 def test_a_failed_send_logs_no_secret_and_no_url():
     """Security (PRESS-0262): when a report cannot be sent, the one log line
     names the event and the exception type only -- never the address, which

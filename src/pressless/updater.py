@@ -116,7 +116,7 @@ class Transport(Protocol):
 
 class _HttpsOnly(urllib.request.HTTPRedirectHandler):
     """Refuses a redirect to anything but https (INV-7). The Updater's own,
-    not publisher._NoCrossOriginAuth: the two are not shared (docs/design.md
+    not https.NoCrossOriginAuth: the two are not shared (docs/design.md
     rule 7)."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):

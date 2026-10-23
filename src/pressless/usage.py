@@ -17,19 +17,15 @@ import html
 import json
 import platform
 import secrets
-import ssl
 import threading
 import time
 import urllib.parse
-import urllib.request
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import certifi
-
-from pressless import __version__, safe_write, settings
+from pressless import __version__, https, safe_write, settings
 from pressless.words import say
 
 if TYPE_CHECKING:
@@ -186,32 +182,33 @@ def report(name: str, **params: str) -> None:
 
 def _send(transport: insights.Transport, url: str, data: bytes, name: str,
           note: Callable[[str], None]) -> None:
-    """One report. The answer is ignored; a failure is one log line naming the
-    event and the failure's type, never the address, which holds the key."""
+    """One report. A failure is one log line naming the event and the
+    failure's type, or the error status Google answered with, never the
+    address, which holds the key."""
     try:
-        transport.request("POST", url, data, {"Content-Type": "application/json"})
+        status, _, _ = transport.request("POST", url, data,
+                                         {"Content-Type": "application/json"})
     except Exception as exc:  # noqa: BLE001 -- nothing a report does may reach the user
         note(f"usage report {name} not sent: {type(exc).__name__}")
+        return
+    # The client returns an error status rather than raising it.
+    if status >= 400:
+        note(f"usage report {name} not sent: status {status}")
 
 
 class _Opener:
-    """The module's own client, built as insights._Urllib builds its own:
-    certifi's certificates and a timeout. Built on its first request, so a
-    missing certificate file is that report's failure, on its thread."""
+    """The module's own client: the shared one (PRESS-0331), with certifi's
+    certificates and our timeout. Built on its first request, so a missing
+    certificate file is that report's failure, on its thread."""
 
     def __init__(self) -> None:
-        self._opener: urllib.request.OpenerDirector | None = None
+        self._client: https.Client | None = None
 
     def request(self, method: str, url: str, body: bytes | None,
                 headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
-        if self._opener is None:
-            context = ssl.create_default_context(cafile=certifi.where())
-            self._opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=context))
-        # The address is ENDPOINT's, https, fixed above.
-        request = urllib.request.Request(url, data=body, headers=headers,  # noqa: S310
-                                         method=method)
-        with self._opener.open(request, timeout=TIMEOUT_SECONDS) as response:
-            return response.status, dict(response.headers), response.read()
+        if self._client is None:
+            self._client = https.Client(TIMEOUT_SECONDS)
+        return self._client.request(method, url, body, headers)
 
     def now(self) -> float:
         return time.time()
