@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=325 -->
+<!-- ants-roadmap-id-high-water: PRESS=326 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5568,6 +5568,13 @@ it can then be changed.
 
 - 📋 [PRESS-0298] **The Journal's menu link may never be marked as the current page.**
   builder.py:755 passes page="Journal"; no menu Pressless writes carries data-nav="Journal" (menu._nav). Premise confirmed. Lead from lane-05-build-publish.md.
+  Investigated 2026-10-23: real. A journal link added in the menu editor
+  (menu.arranged, menu.add) gets no data-nav, because menu._nav names only
+  Home and fixed pages; the starter menu has no journal link. So on a
+  menu Pressless wrote, journal pages mark no link current. Not fixed
+  now: PRESS-0216 says a new link gets data-nav only for a fixed page,
+  so the fix needs that spec amended. A comment at builder._Build.page
+  now says where data-nav="Journal" comes from (762fb31).
   **Layman:** On the journal, the menu may not highlight the Journal link.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5675,12 +5682,26 @@ it can then be changed.
 
 - 📋 [PRESS-0314] **Rewording a Look note could make every saved look count as not made here.**
   look.py:216 / :284 — css() writes say('look.style_note') and two other notes into saved style code. Unchecked. Lead from lane-05-build-publish.md.
+  Investigated 2026-10-23: real but latent. made_here compares saved
+  style code with css() byte for byte, and css() writes three
+  words-table notes. Nothing in css() or the notes changed since 0.10.1,
+  so no saved look is affected yet. A test now pins css()'s 0.10.1
+  output per layout and fails on any change (c15e3da). Not fixed now:
+  letting made_here accept earlier output (for example, matching the
+  note lines loosely) departs from PRESS-0196 § 4.4 state 2, which says
+  "not look.css of the choices". That needs a spec decision first.
   **Layman:** Changing one sentence in the app could make it throw away people's saved site looks.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0315] **A forwarding page after a rename may land under the wrong date folder.**
+- 🚫 [PRESS-0315] **A forwarding page after a rename may land under the wrong date folder.**
   builder.py:1067 — written under the new entry's date folder, assuming the old address shared it. Unchecked. Lead from lane-05-build-publish.md.
+  Not real. An address change keeps the entry's date
+  (editor._address writes dataclasses.replace(entry, slug=address)), so
+  every old address in a chain shares the target's date. A publish
+  re-dates only an unmarked new draft; a working copy takes the entry's
+  date and an undo-demoted draft keeps its own (publishing._move).
+  PRESS-0182 § 4.3 dates the forward by the target on purpose.
   **Layman:** After an entry's address changes, the old link might not forward correctly.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5755,6 +5776,17 @@ it can then be changed.
   keeps HEAD's copy. Test: tests/test_windows_gate.py.
   **Layman:** The Windows test run can fail for a reason unrelated to the code.
   Kind: investigate.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0326] **The usage report decides a press succeeded by comparing its displayed words.**
+  pressing.run counts a press as done when the outcome's words equal
+  script.press.published or script.press.undone. A new success wording,
+  or a third press kind, would be counted as failed with no error. The
+  fix is a success flag on pressing.Outcome that run reads. Not fixed
+  now: PRESS-0262 § 4.4 defines `ended` by comparing those words, so the
+  spec changes first. Lead from lane-05-build-publish.md.
+  **Layman:** Rewording what a successful publish says could make the app count it as a failure.
+  Kind: review-fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
