@@ -1538,6 +1538,30 @@ _WORDS: dict[str, str] = {
     ),
     "starter.about.title": "About — {name}",
     "starter.about.words": "Say who you are and what this site is for.",
+    "starter.this_site": "this site",
+    "starter.privacy": "Privacy",
+    "starter.privacy.title": "Privacy — {name}",
+    "starter.privacy.counting": (
+        "This site counts its visits with Google Analytics, a service run by Google. Google "
+        "Analytics uses cookies, small files your browser keeps, to tell one visit from "
+        "another."
+    ),
+    "starter.privacy.counted": (
+        "What is counted: the pages read, the country and region a visit comes from, and the "
+        "kind of device and browser used. The counts are used only to see how the site is "
+        "read."
+    ),
+    "starter.privacy.policy": (
+        "Google's own privacy policy says what Google does with this information: <a "
+        "href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>. To stop "
+        "Google Analytics counting your visits to any site, you can install Google's <a "
+        "href=\"https://tools.google.com/dlpage/gaoptout\">opt-out browser add-on</a>."
+    ),
+    "starter.privacy.questions": (
+        "Questions about your information: replace this sentence with how to reach the "
+        "person who runs this site."
+    ),
+    # The comments in the site's stylesheet (look.py).
     "look.style_note": (
         "Your site's look, made by Pressless's Look screen. Change it there:"
         " a change made here by hand is replaced at the next save, with a copy kept"
@@ -1545,7 +1569,7 @@ _WORDS: dict[str, str] = {
     ),
     "look.journal_note": "The journal's pages, should you turn it on.",
     "look.extra_note": "Your own CSS, from the box at the bottom of the Look screen.",
-    # The Look screen (look_screen.py).
+    # The Files screen (files_screen.py).
     "files_screen.title": "Your files",
     "files_screen.about": (
         "The songs, videos, PDFs, ZIP files and text files you have uploaded. A file goes on"
@@ -1566,6 +1590,7 @@ _WORDS: dict[str, str] = {
     "files_screen.bytes": "{n} bytes",
     "files_screen.kb": "{n} KB",
     "files_screen.mb": "{n} MB",
+    # The Look screen (look_screen.py).
     "look_screen.title": "Your site's look",
     "look_screen.about": (
         "Change a choice and the preview beside it shows it at once. Save keeps it, and your"
@@ -1628,29 +1653,6 @@ _WORDS: dict[str, str] = {
     ),
     "look_screen.save": "Save",
     "look_screen.preview_title": "Your homepage with this look",
-    "starter.this_site": "this site",
-    "starter.privacy": "Privacy",
-    "starter.privacy.title": "Privacy — {name}",
-    "starter.privacy.counting": (
-        "This site counts its visits with Google Analytics, a service run by Google. Google "
-        "Analytics uses cookies, small files your browser keeps, to tell one visit from "
-        "another."
-    ),
-    "starter.privacy.counted": (
-        "What is counted: the pages read, the country and region a visit comes from, and the "
-        "kind of device and browser used. The counts are used only to see how the site is "
-        "read."
-    ),
-    "starter.privacy.policy": (
-        "Google's own privacy policy says what Google does with this information: <a "
-        "href=\"https://policies.google.com/privacy\">policies.google.com/privacy</a>. To stop "
-        "Google Analytics counting your visits to any site, you can install Google's <a "
-        "href=\"https://tools.google.com/dlpage/gaoptout\">opt-out browser add-on</a>."
-    ),
-    "starter.privacy.questions": (
-        "Questions about your information: replace this sentence with how to reach the "
-        "person who runs this site."
-    ),
     # The console lines a person reads (__main__.py); the self-check report stays English.
     "main.already": (
         "Pressless is already running. Use the browser tab it opened, or close its window "
@@ -1689,7 +1691,7 @@ ENGLISH: dict[str, str] = {
 _in_use: dict[str, str] = {}
 
 
-def _words(key: str) -> str:
+def _lookup(key: str) -> str:
     found = _in_use.get(key)
     return found if found is not None else ENGLISH[key]
 
@@ -1701,7 +1703,7 @@ def say(key: str, **slots: str) -> str:
     or a gap left unfilled, raises KeyError. Slot values go in as given:
     each caller escapes what it passes.
     """
-    return _words(key).format_map(slots)
+    return _lookup(key).format_map(slots)
 
 
 @contextlib.contextmanager
@@ -1720,5 +1722,5 @@ def use(table: dict[str, str]) -> Iterator[None]:
 def for_scripts() -> str:
     """Every `script.` entry, gaps unfilled, as a JSON object safe inside
     <script>. The page's own `say` fills the gaps."""
-    chosen = {key: _words(key) for key in ENGLISH if key.startswith("script.")}
+    chosen = {key: _lookup(key) for key in ENGLISH if key.startswith("script.")}
     return json.dumps(chosen).replace("</", "<\\/")
