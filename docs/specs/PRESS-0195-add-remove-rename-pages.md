@@ -131,10 +131,14 @@ write nothing. Every menu in §5 INV-5's fixtures is plain; a menu of
 - **`remove`** deletes each link to `name`, with the whitespace run
   immediately before it. No link to `name` returns `text` unchanged.
 - **`rename`** never raises. In each link to `old` it replaces the
-  `href` value with `{{UP}}pages/<new>.html`. Where the link's text,
-  unescaped and stripped, equals one of `old_words`, it becomes
-  `new_words` through `html.escape`. `data-nav` is left alone: the page's own
-  marker still names it.
+  `href` value with `{{UP}}pages/<new>.html`. Where the link's visible
+  words equal one of `old_words`, its inside becomes `new_words` through
+  `html.escape`, keeping the whitespace around it. The visible words are
+  what the menu view shows (`menu._words`): the inside with its tags
+  removed, unescaped and stripped. So `<a …><span>About</span></a>` is
+  renamed, and its `<span>` goes with the old words, as in the menu view
+  (PRESS-0216 § 4.4). `data-nav` is left alone: the page's own marker
+  still names it.
 
 Every byte outside the changed links is kept.
 
@@ -303,11 +307,13 @@ and a four-link menu whose last link is `{{UP}}blog/index.html`.
   `{{UP}}pages/about.html.bak` is kept.
   *Test:* `tests/test_menu.py::test_remove_takes_only_that_pages_links`.
   *Breaks when:* the match is a substring rather than the whole value.
-- **INV-7** — `menu.rename` changes the `href`, and the text only where
-  it equals one of `old_words`, on a `<ul><li>` menu as well.
-  *Test:* `tests/test_menu.py::test_rename_repoints_any_menu`.
-  *Breaks when:* rename checks for a plain menu, or rewrites
-  `data-nav`.
+- **INV-7** — `menu.rename` changes the `href`, and the words only where
+  its visible words equal one of `old_words`, on a `<ul><li>` menu as
+  well.
+  *Test:* `tests/test_menu.py::test_rename_repoints_any_menu` and
+  `test_rename_reads_a_links_visible_words`.
+  *Breaks when:* rename checks for a plain menu, rewrites
+  `data-nav`, or compares a link's raw inside.
 - **INV-8** — Remove bins the live page and its waiting copy, takes its
   link out, drops page forwards to it, and the published site lacks the
   page.

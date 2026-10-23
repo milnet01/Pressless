@@ -95,6 +95,16 @@ def test_rename_repoints_any_menu():
                                     '<a href="{{UP}}pages/story.html">Our story</a>')
 
 
+def test_rename_reads_a_links_visible_words():
+    """INV-7, PRESS-0328. Breaks when rename compares a link's raw inside, so
+    words wrapped in a tag show in the menu view but are never renamed."""
+    wrapped = ('<nav><a href="{{UP}}pages/about.html" data-nav="about">\n'
+               '  <span>About &amp; us</span>\n</a></nav>')
+    renamed = menu.rename(wrapped, "about", "story", ("About & us",), "Our <story>")
+    assert renamed == ('<nav><a href="{{UP}}pages/story.html" data-nav="about">\n'
+                       '  Our &lt;story&gt;\n</a></nav>')
+
+
 def test_a_commented_out_link_is_not_a_link():
     """§ 4.2: a link inside a comment is not one, so it is neither removed
     nor counted. Breaks when the comments are not blanked before matching."""

@@ -36,6 +36,21 @@ def _written(words: str) -> str:
     return html.escape(words)
 
 
+def _words(text: str, link: re.Match) -> str:
+    """A link's visible words, as the menu view shows them: its inside with
+    the tags removed, unescaped and trimmed."""
+    return html.unescape(_TAG.sub("", text[link.start(1):link.end(1)])).strip()
+
+
+def _reworded(text: str, link: re.Match, words: str) -> str:
+    """The link's inside as `words`, written, keeping the whitespace around
+    the old inside; any tags in it go with the old words."""
+    inside = text[link.start(1):link.end(1)]
+    lead = inside[:len(inside) - len(inside.lstrip())]
+    trail = inside[len(inside.rstrip()):]
+    return lead + _written(words) + trail
+
+
 def _links(text: str) -> list[re.Match]:
     """Every link, read with the comments blanked out so a commented-out link
     is not one; the blanking keeps every offset."""
@@ -104,15 +119,13 @@ def remove(text: str, name: str) -> str:
 
 def rename(text: str, old: str, new: str, old_words: tuple[str, ...],
            new_words: str) -> str:
-    """Each link to `old` pointed at `new`, its words changed where they are
-    one of `old_words`. Any menu: only an attribute and a link's words move."""
+    """Each link to `old` pointed at `new`, its words changed where its
+    visible words are one of `old_words`. Any menu: only an attribute and a
+    link's words move."""
     for link in reversed([link for link in _links(text)
                           if _href_value(link) == _address(old)]):
-        inside = link.group(1)
-        if html.unescape(inside).strip() in old_words:
-            lead = inside[:len(inside) - len(inside.lstrip())]
-            trail = inside[len(inside.rstrip()):]
-            text = (text[:link.start(1)] + lead + _written(new_words) + trail
+        if _words(text, link) in old_words:
+            text = (text[:link.start(1)] + _reworded(text, link, new_words)
                     + text[link.end(1):])
         found = _href(link)
         value = 1 if found.group(1) is not None else 2
@@ -135,10 +148,6 @@ def address(page: str) -> str:
 
 class Refused(ValueError):
     """A menu save names a link the menu does not hold, or one it may not write."""
-
-
-def _words(text: str, link: re.Match) -> str:
-    return html.unescape(_TAG.sub("", text[link.start(1):link.end(1)])).strip()
 
 
 def links(text: str) -> list[tuple[str, str]]:
@@ -164,10 +173,7 @@ def _changed(text: str, link: re.Match, words: str, address: str) -> str:
     own = text[link.start():link.end()]
     at = link.start()
     if words != _words(text, link):
-        inside = text[link.start(1):link.end(1)]
-        lead = inside[:len(inside) - len(inside.lstrip())]
-        trail = inside[len(inside.rstrip()):]
-        own = (own[:link.start(1) - at] + lead + _written(words) + trail
+        own = (own[:link.start(1) - at] + _reworded(text, link, words)
                + own[link.end(1) - at:])
     if address != html.unescape(_href_value(link) or ""):
         tag_end = link.start(1) - at
