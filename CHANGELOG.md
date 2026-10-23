@@ -23,6 +23,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A link the page editor accepts is never refused when saving** (PRESS-0306)
+  When you add a link on the page itself, Pressless checks that its
+  address is safe. The page editor could accept a few disguised unsafe
+  addresses that the save then refused, so the page stopped saving. Now
+  the editor turns them away as you add the link, as the save does.
+
 - **Import can fetch files from a secure old site in the Linux download** (PRESS-0327)
   When bringing a WordPress site in, Pressless fetches its pictures and
   files from the old site. On some Linux systems the downloaded program

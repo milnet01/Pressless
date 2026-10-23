@@ -5560,8 +5560,15 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0297] **Renaming a page leaves its menu link unmarked as the current page.**
+- 🚫 [PRESS-0297] **Renaming a page leaves its menu link unmarked as the current page.**
   menu.py:99-114 — rename keeps the old data-nav; builder.py:431 marks by data-nav. Premise confirmed. Lead from lane-02-page-editor.md.
+  Investigated 2026-10-23: not real. Rename writes the page byte for
+  byte, so its header marker keeps page="<old name>", and rename keeps
+  data-nav="<old name>" on purpose (PRESS-0195 § 4.2, INV-7). The two
+  still match, so the renamed page's link is marked current.
+  tests/test_pages.py::test_renaming_a_page_and_back asserts both. A new
+  page cannot take the old name while the forward holds it
+  (_name_refused returns "forwarded").
   **Layman:** After a page is renamed, the menu may stop highlighting it when a visitor is on it.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5632,14 +5639,23 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0306] **The link checks in the page editor and the server disagree.**
+- ✅ [PRESS-0306] **The link checks in the page editor and the server disagree.**
   page_editor.py:1770 — browser allowed() accepts addresses address_allowed refuses (e.g. a scheme split by a tab). Unchecked. Lead from lane-02-page-editor.md.
+  Investigated 2026-10-23: real. The visual view only trimmed an
+  address, so "java<tab>script:" or a leading control passed in the
+  browser and the save refused it. The browser now folds the address as
+  blocks.address_allowed does; the server check is unchanged. A node
+  test runs both on the same addresses (b323a09).
   **Layman:** A link the editor accepts may be refused only when saving.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0307] **A hand-made pages/_newest.html may clash with the editor's "newest" marker.**
+- 🚫 [PRESS-0307] **A hand-made pages/_newest.html may clash with the editor's "newest" marker.**
   page_editor.py:60 NEWEST = "_newest" relies on name_address; whether store refuses pages/_newest.html is unchecked. Lead from lane-02-page-editor.md.
+  Investigated 2026-10-23: not real. store._LEGAL_SLUG is [a-z0-9-]+, so
+  html_path_for refuses "_newest" and list_html passes over a hand-made
+  pages/_newest.html with a StoreNotice. Checked by running both on a
+  scratch folder. No page can be named _newest.
   **Layman:** A specially named page made outside Pressless could confuse the page editor.
   Kind: investigate.
   Source: review-readability-2026-10-23.
