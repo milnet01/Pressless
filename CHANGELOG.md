@@ -23,6 +23,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Import can fetch files from a secure old site in the Linux download** (PRESS-0327)
+  When bringing a WordPress site in, Pressless fetches its pictures and
+  files from the old site. On some Linux systems the downloaded program
+  looked for certificates where the system keeps none, so a secure old
+  site's files could fail to come across. It now uses the certificates
+  it carries, as publishing already does.
+
 - **Opening a site file never loses the site that was open** (PRESS-0299)
   When a saved site was opened in place of a new, empty site, a failure at
   the last moment could leave that site missing. Now the old site is kept

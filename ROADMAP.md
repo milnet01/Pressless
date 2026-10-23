@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=326 -->
+<!-- ants-roadmap-id-high-water: PRESS=327 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5810,6 +5810,17 @@ it can then be changed.
   spec changes first. Lead from lane-05-build-publish.md.
   **Layman:** Rewording what a successful publish says could make the app count it as a failure.
   Kind: review-fix.
+  Source: review-readability-2026-10-23.
+
+- ✅ [PRESS-0327] **Import's safe fetch checks certificates against the bundled set.**
+  Found while closing PRESS-0323. fetch._Checked built its TLS context
+  from the host's store, the gap PRESS-0142 closed for the Publisher,
+  Insights and the Updater. The AppImage's OpenSSL finds no store on
+  openSUSE, so every https fetch there would fail its certificate check.
+  Fix: the context comes from certifi.where(); test_certificates covers it.
+  Fixed in e38192c; the test failed red on its assertion first.
+  **Layman:** Bringing a site in from a secure old site works in the Linux download, not only from source.
+  Kind: fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
