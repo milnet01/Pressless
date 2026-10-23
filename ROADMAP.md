@@ -5884,7 +5884,7 @@ it can then be changed.
   Kind: review-fix.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0329] **Typing while a page is removed or renamed can save it back.**
+- ✅ [PRESS-0329] **Typing while a page is removed or renamed can save it back.**
   page_editor._PAGE_SCRIPT's Remove/Rename handler awaits settle() but
   does not hold saves back while its own request runs, as the entry's
   address button did before PRESS-0309. A save scheduled meanwhile posts
@@ -5892,6 +5892,9 @@ it can then be changed.
   fixed there because it is the page editor's script. The fix is the
   publish handler's pattern: hold inFlight until the reply, then
   schedule what was typed. Test it under node as PRESS-0309's test does.
+  Fixed in efa2e44: settle and release moved to editor.SAVING_SCRIPT,
+  used by both editors; Remove and Rename hold saves back. Tested under
+  node in test_page_editor.py.
   **Layman:** If you type on a page while Pressless removes or renames it, that typing could be saved to the old page.
   Kind: fix.
   Source: review-readability-2026-10-23.

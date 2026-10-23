@@ -23,6 +23,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Typing while a page is renamed or removed no longer brings it back** (PRESS-0329)
+  If you kept typing while Pressless renamed or removed a page, the save
+  of that typing could go to the page being moved, and write it back.
+  Now saving waits until the move is done. After a rename, what you
+  typed is saved under the new name. If the page did not move, it is
+  saved where it is. A removed page takes it along, as Remove warns.
+
 - **Saving a key never overwrites a damaged key file** (PRESS-0317)
   Where your keys are kept in a file rather than the system keyring, and
   the part of that file listing them is damaged, saving a key used to
