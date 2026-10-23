@@ -158,8 +158,8 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         # emptying, refuses where the repository holds a site. The fold is
         # PRESS-0009 § 4.4's.
         if starter.unpublished(folder) and any(
-                entry.rstrip("/").casefold() in _A_SITE
-                for entry in publisher.root_entries(settings, key, transport)):
+                name.rstrip("/").casefold() in _A_SITE
+                for name in publisher.root_entries(settings, key, transport)):
             raise WouldReplaceASite("the repository already holds a site")
         if (not emptying and store.journal_on(folder)
                 and not store.list_slugs(folder, draft=False)):
@@ -175,7 +175,8 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
                 raise KeptFolderBuilt(f"the build fills {folder_name}, which Settings keeps",
                                       folder_name)
 
-    def finish() -> bool:
+    def bin_copy_failed() -> bool:
+        """Bin the working copy the move left; True where that failed."""
         if moved is None or not moved.copy:
             return False
         try:
@@ -202,7 +203,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             interrupted = True
             raise
     except publisher.OutcomeUnknown:
-        if finish():
+        if bin_copy_failed():
             gathered.append(Notice(say("notice.publishing.kept_copy_unknown"), Site.UNKNOWN))
         raise
     except BaseException:
@@ -217,7 +218,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
             warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
     captured(forget_the_starter)
-    return Published(outcome, finish())
+    return Published(outcome, bin_copy_failed())
 
 
 @dataclass

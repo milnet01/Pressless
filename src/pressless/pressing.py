@@ -57,9 +57,9 @@ def end(outcome: Outcome) -> None:
 
 
 def forget() -> None:
-    """An ended outcome stops being shown: a save, OK on its failure box, the
-    journal switch or a Settings save (§ 3 decision 6). Nothing while a press
-    runs, since every publish saves first."""
+    """An ended outcome stops being shown (§ 3 decision 6); each screen whose
+    action ends it calls this. Nothing while a press runs, since every
+    publish saves first."""
     global _outcome
     with _LOCK:
         if _running is None:

@@ -582,6 +582,11 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     if _ON_WINDOWS:
         _refuse_what_windows_cannot_hold(listing, prefix)
     into = Path(into)
+
+    def not_written(exc: OSError) -> FetchNotWritten:
+        return FetchNotWritten(
+            f"the previous state could not be written to the fetch area: {_why(exc)}")
+
     try:
         # Staged inside `into` rather than beside it, so the move at the end
         # is a rename on one filesystem rather than a copy that can fail
@@ -591,10 +596,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     except OSError as exc:
         # A full disk, or a folder that cannot be written. §4.1 says every
         # failure is one of the types above (PRESS-0073).
-        raise FetchNotWritten(
-            f"the previous state could not be written to the fetch area: "
-            f"{_why(exc)}"
-        ) from exc
+        raise not_written(exc) from exc
 
     try:
         written = []
@@ -621,10 +623,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(_content_of(blob))
             except OSError as exc:
-                raise FetchNotWritten(
-                    f"the previous state could not be written to the fetch "
-                    f"area: {_why(exc)}"
-                ) from exc
+                raise not_written(exc) from exc
             written.append(path)
 
         try:
@@ -635,10 +634,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
             for path in written:
                 os.replace(staging / path, into / path)
         except OSError as exc:
-            raise FetchNotWritten(
-                f"the previous state could not be written to the fetch area: "
-                f"{_why(exc)}"
-            ) from exc
+            raise not_written(exc) from exc
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 

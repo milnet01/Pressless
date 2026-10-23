@@ -10,6 +10,7 @@ document, so the site's CSS reaches only the frame (INV-10).
 from __future__ import annotations
 
 import html
+import json
 from pathlib import Path
 
 from pressless import builder, editor, look, page_editor, settings, setup, store
@@ -74,7 +75,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", ADDRESS + "/save", route(_save))
 
 
-def _has_style_code(folder: Path) -> None:
+def _refuse_without_style_code(folder: Path) -> None:
     """§ 4.5: NoStyleCode where the site has none."""
     if not store.style_code_path(folder).is_file():
         raise NoStyleCode("the site has no style code; its look is its own stylesheets")
@@ -148,7 +149,7 @@ def _preview(face: Face, folder: Path, request: Request) -> Reply:
     form = editor._form(request)
     with editor.LOCK, face.capture() as notices:
         try:
-            _has_style_code(folder)
+            _refuse_without_style_code(folder)
             choices, extra = _posted(form)
         except (NoStyleCode, LookRefused) as exc:
             return editor._failed(face, notices, exc)
@@ -163,7 +164,7 @@ def _save(face: Face, folder: Path, request: Request) -> Reply:
     form = editor._form(request)
     with editor.LOCK, face.capture() as notices:
         try:
-            _has_style_code(folder)
+            _refuse_without_style_code(folder)
             if look.digest(folder) != form.get("base", ""):
                 raise editor.ChangedElsewhere("the site's look changed since this window read it")
             look.read(folder)
@@ -266,7 +267,7 @@ _SCRIPT = r"""
     const doc = frame.contentDocument;
     if (draft === null || !doc || !doc.head) return;
     doc.querySelectorAll("link[rel=stylesheet]").forEach((link) => {
-      if (link.href.endsWith("look/style.css")) link.disabled = true;
+      if (link.href.endsWith(STYLE_CODE)) link.disabled = true;
     });
     let style = doc.getElementById("pressless-look-draft");
     if (!style) {
@@ -313,4 +314,4 @@ _SCRIPT = r"""
   });
   frame.addEventListener("load", apply);
 })();
-"""
+""".replace("STYLE_CODE", json.dumps(builder.STYLE_CODE))
