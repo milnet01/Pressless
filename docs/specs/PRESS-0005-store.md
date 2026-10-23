@@ -244,7 +244,8 @@ case its stated type; the move gives the raced one its guarantee. Neither reads 
 one.
 
 **`move_to_bin` is how anything the Store holds is deleted, and nothing
-is ever unlinked.** `docs/design.md` sends a deleted entry, its comments
+is ever unlinked** — but for `unplace_photograph`, which only a take-in
+reversing its own placement into an empty Store calls (PRESS-0218 § 4.3). `docs/design.md` sends a deleted entry, its comments
 file, and any file but an entry that undo sets aside, to a bin in
 Pressless's own folder. The call moves exactly the one path it is
 handed, so binning an entry's comments file is a second call. It takes

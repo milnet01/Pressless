@@ -460,6 +460,12 @@ path, with `prefix` used to select and never to strip.** So `Fetched.paths`
 and the layout under `into` are the same strings, and the Face's undo step
 reads them without reconstructing anything.
 
+**`fetch_state` fetches a chosen commit, or the default branch's current
+one, keeping paths within any of several prefixes** (PRESS-0218 § 4.1). It
+shares `fetch_previous`'s body, so every rule of this section holds for
+both; `fetch_previous` passes its parent and its one prefix. A repository
+with no commits raises `RemoteStateMissing`.
+
 **`prefix` matches on path-segment boundaries, and a trailing slash is
 optional and ignored.** Matched as a bare string instead, `content` would
 also select `contents.html`, and undo would write into the Store a file the

@@ -2,8 +2,8 @@
 # PRESS-0218 — Setup takes in a Pressless site already in a GitHub repository
 
 **Status:** accepted (2026-10-23). One review round, the user's budget
-for a new spec; its fixes were read by no lane, and one finding (how a
-kept photograph is reversed, § 4.3) awaits the user.
+for a new spec; its fixes were read by no lane. Amended the same day for
+the user's two answers (§ 3 decisions 5 and 6), which re-arm the gate.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0218 (user decision 2026-10-02; scope settled by
 the user 2026-10-23).
@@ -65,7 +65,15 @@ PRESS-0210 can bring it in.
    for every takeover and take-in). The *site* step names what will come
    across and what will not, and nothing is written to the Store until
    Finish. The done page says what came across.
-4. **One review round** for this spec (user, 2026-09-29).
+4. **One review round** for this spec (user, 2026-09-29), and one more
+   for the amendment below (user, 2026-10-23).
+5. **A failed take-in deletes the photographs it placed** (user,
+   2026-10-23). They were never the user's: they are copies into an empty
+   Store, and the repository still holds them. No other caller may delete
+   a photograph (§ 4.3).
+6. **A site published before the identity file existed is still taken in**
+   (user, 2026-10-23). Pressless began writing `content/identity/` with
+   PRESS-0213, so an older site has none (§ 4.2).
 
 Every other choice below follows from § 2 and `docs/design.md` § Setup's
 three starts, which already decides that a fetched `content/` becomes the
@@ -105,7 +113,7 @@ PREFIXES = ("content/", "photographs/", "files/", "site-icon.png")
 @dataclass(frozen=True)
 class Found:
     commit: str                       # the state read; the take-in uses this one
-    made_here: bool                   # content/ holds an identity store.read_identity reads
+    made_here: bool                   # § 4.2's test of a Pressless site
     entries: int                      # published entries
     pages: int                        # fixed pages
     comments: int                     # entries with comments
@@ -125,11 +133,15 @@ def take_in(folder: Path, settings: Settings, key: str, commit: str,
 with `PREFIXES` and `commit`, reads what landed, empties the fetch area
 again and returns `Found`. It writes nothing to the Store.
 
-**`made_here` is the one test of a Pressless site:** `store.read_identity`
-over the fetched `content/` returns an identity. It returns `None` where
-there is no identity file, and raises `StoreError` where the file is not
-one; both mean not made here. A `content/` folder alone is not enough,
-since other site tools use that name.
+**`made_here` is the one test of a Pressless site.** It is true where
+`store.read_identity` over the fetched `content/` returns an identity, or
+where the shared read (below) finds at least one published entry, fixed
+page or furniture piece. The second arm takes in a site published before
+PRESS-0213, which has no identity file (§ 3 decision 6). Both arms read
+only Pressless's own layout, `content/<kind>/<name>` with the Store's
+folder names and suffixes, so another tool's `content/` — Markdown posts
+under `content/posts/`, say — meets neither. A `content/` folder alone is
+not enough. `read_identity` raising `StoreError` counts as no identity.
 
 The read is undo's: `undo._read`'s body becomes a function both modules
 call, so the two cannot disagree about which `content/` paths are Store
@@ -162,6 +174,18 @@ what was shown — and writes it through the Store's own calls:
 
 Each write records its reversal, as undo's do. A failure at any step
 reverses every write before it, so the Store is empty again, and raises.
+A photograph is reversed with a new Store call, the one that deletes a
+photograph (§ 3 decision 5):
+
+```python
+# src/pressless/store.py — added
+def unplace_photograph(folder: Path, name: str) -> None:
+    """Delete the original `name`. Only a take-in reversing its own
+    placement into an empty Store calls this (PRESS-0218)."""
+```
+
+`move_to_bin` still refuses a photograph, and `store.unplace_photograph`
+has one caller, `takein` (INV-12).
 The fetch area is emptied when the sequence ends, whatever happened.
 
 ### 4.4 What does not come across
@@ -244,8 +268,10 @@ takes in the same state it showed.
   whose fetched `content/` gives no identity through `store.read_identity` is a `Hint`
   on the *pages* step, and no write is sent.
   *Test:* `tests/test_takein.py::test_a_site_made_elsewhere_is_refused`,
-  over a fixture with a `content/` folder and no identity.
-  *Breaks when:* `made_here` tests for a `content/` folder alone.
+  over a fixture laid out as another site tool lays out `content/`:
+  Markdown posts under `content/posts/`, and no identity.
+  *Breaks when:* `made_here` tests for a `content/` folder alone, or its
+  second arm counts a file outside the Store's own layout.
 - **INV-3** — `take_in` writes only into a Store that holds no site.
   *Test:* `tests/test_takein.py::test_a_take_in_needs_an_empty_store`.
   *Breaks when:* the check is dropped, or tested after the first write.
@@ -269,10 +295,13 @@ takes in the same state it showed.
   where the double's branch moves between *pages* and Finish.
   *Breaks when:* `take_in` calls `fetch_state` with no commit.
 - **INV-7** — A failure part-way leaves the Store empty and Settings
-  unsaved.
+  unsaved: `store.holds_a_site` is false afterwards, so Finish can be
+  pressed again.
   *Test:* `tests/test_takein.py::test_a_failed_take_in_leaves_nothing`,
-  failing the write of the last photograph.
-  *Breaks when:* a write records no reversal.
+  failing the write of the last photograph, and again failing the
+  Settings save after the take-in.
+  *Breaks when:* a write records no reversal, or a placed photograph is
+  left behind.
 - **INV-8** — A site with an icon comes back with one: the identity's
   `icon` names the kept photograph `site-icon.png`, and the next build
   publishes the icon.
@@ -288,6 +317,16 @@ takes in the same state it showed.
   *Test:* `tests/test_publisher.py::test_fetch_state_lands_nothing_on_failure`
   and the existing `fetch_previous` tests, run over the shared helper.
   *Breaks when:* the two functions stop sharing one body.
+- **INV-11** — A site whose `content/` holds published entries and no
+  identity file is taken in, with no identity written.
+  *Test:* `tests/test_takein.py::test_a_site_from_before_identities_comes_in`.
+  *Breaks when:* `made_here` reads the identity alone.
+- **INV-12** — `store.unplace_photograph` has one caller, `takein`, and
+  `move_to_bin` still refuses a photograph.
+  *Test:* `tests/test_takein.py::test_only_a_take_in_deletes_a_photograph`,
+  which walks `src/` for calls, beside the existing
+  `tests/test_store.py::test_binning_refuses_a_path_outside_the_store`.
+  *Breaks when:* another module deletes a photograph through it.
 
 ## 6. Failure modes
 
@@ -305,7 +344,7 @@ takes in the same state it showed.
 ## 7. Tests
 
 `tests/test_takein.py` is new and holds INV-1, INV-2, INV-3, INV-4, INV-5,
-INV-6, INV-7, INV-8 and INV-9, all through doubles:
+INV-6, INV-7, INV-8, INV-9, INV-11 and INV-12, all through doubles:
 a recording GitHub double answering the tree and blob reads, and an empty
 temporary folder for the Store. INV-4 publishes a Store built from the
 starter, with a photograph, a kept file and an icon, into that double
@@ -352,6 +391,8 @@ INV-2 against today's `check_new_repository` and `check_pages`.
 | INV-8 | `tests/test_takein.py::test_the_icon_comes_back` |
 | INV-9 | `tests/test_takein.py::test_the_screen_says_what_stays_behind` |
 | INV-10 | `tests/test_publisher.py::test_fetch_state_lands_nothing_on_failure` |
+| INV-11 | `tests/test_takein.py::test_a_site_from_before_identities_comes_in` |
+| INV-12 | `tests/test_takein.py::test_only_a_take_in_deletes_a_photograph` |
 | § 4.5's words are plain and say what changes | **nothing** — the words are read by hand before the step ships |
 | A real repository taken in end to end | **nothing** — a by-hand run on a scratch repository before release |
 
@@ -363,6 +404,9 @@ INV-2 against today's `check_new_repository` and `check_pages`.
   *site* step's take-in body (§ 4.5 here).
 - **PRESS-0021 § 4.9**: setup also writes the Store through
   `takein.take_in`, not only through `starter.fill`.
+- **PRESS-0005 § 4.1's deletion rule**: `move_to_bin` is how anything the
+  Store holds is deleted, except `unplace_photograph`, a take-in reversing
+  its own placement (§ 4.3 here).
 - **PRESS-0231 § 4.3 and INV-6**: a 422 over a repository with files goes
   on, marked `existing`; INV-6 becomes "the *repository* step writes
   nothing to an existing repository", and its *Breaks when* names a write.

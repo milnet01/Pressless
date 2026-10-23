@@ -248,8 +248,11 @@ PRESS-0021's.
    `store_name` (`Choice.name`) for the done page.
 
 **pages.** It reads the key back with `credentials.read(store, folder,
-GITHUB_ACCOUNT)`, then `publisher.pages(repository, key)`. Its hints have no
-field (§ 4.1).
+GITHUB_ACCOUNT)`. Where the repository's root already holds a site, it
+first reads that site, and refuses one Pressless did not make before any
+write (PRESS-0218 § 4.5). Then `publisher.pages(repository, key)`. Its
+hints have no field (§ 4.1). Its words say, before Next, that Next
+switches GitHub Pages on where it is off.
 
 - **On, serving the default branch's root by a branch build**: Pages is left
   as GitHub has it. No write is sent.
@@ -268,7 +271,9 @@ Pages on, the answers gain `site_address`, GitHub's `html_url`. It must pass
 `settings.check`'s address rule, or it is a `Stop`: it is GitHub's value, not
 an answer he can correct.
 
-**site.** PRESS-0021 § 4.6 runs from step 2 to step 5, then the
+**site.** Where *pages* found a Pressless site, this step is PRESS-0218
+§ 4.5's take-in screen instead, and what follows here does not apply.
+Otherwise PRESS-0021 § 4.6 runs from step 2 to step 5, then the
 PRESS-0126 fill and the done page, exactly as `_submit` does today, with
 three differences:
 

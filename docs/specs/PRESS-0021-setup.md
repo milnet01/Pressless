@@ -295,7 +295,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 *PRESS-0212 § 3 decision 4: where Pages is off, first-run setup writes an empty `.nojekyll` and switches Pages on.*
 
-*PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`.*
+*PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`. PRESS-0218 § 4.5 adds `takein.take_in`, which fills it from a repository instead.*
 
 - It never writes the key into a page, the log, the console or Settings.
 - It never saves a settings file with a list it did not derive.

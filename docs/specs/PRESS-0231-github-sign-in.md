@@ -243,9 +243,11 @@ repository rule, or the hint asks for the name alone, as PRESS-0212's
 2. `False`: `publisher.public_repository`, then `publisher.root_entries`
    with no key, as `public_repository` reads (its `token` becomes
    `str | None`). A Public repository whose root answers `()` is taken as this person's own
-   new one: a Next after a lost answer finds what the first press made. Any
-   other is a `Hint`: a repository by that name already exists, choose
-   another name. Nothing is written to it.
+   new one: a Next after a lost answer finds what the first press made. A
+   Public repository whose root holds files goes on to step 3 with the
+   answers marked `existing`, for the *pages* step to take in or refuse
+   (PRESS-0218 § 4.5). Any other is a `Hint`: a repository by that name
+   already exists, choose another name. Nothing is written to it.
 3. `reaches`, with `installation` read again. `False` is a `Hint` naming
    GitHub's clicks to add the repository to Pressless App, by name; the next
    press runs steps 1 to 3 again.
@@ -313,12 +315,13 @@ push gate's secret scanner does not mistake them.
   the code's life.
   *Breaks when:* the step polls a dead code and shows GitHub's error.
 
-- **INV-6** — A taken name writes nothing to the repository that holds it.
-  A 422 over a repository whose root holds files is a `Hint`, and no
-  non-GET request names that repository.
+- **INV-6** — The *repository* step writes nothing to an existing
+  repository. After a 422, no non-GET request names it, whether its root
+  holds files or the repository is not Public.
   *Test:* `test_a_taken_name_is_left_alone`.
-  *Breaks when:* the step adopts any existing repository, or *pages* runs
-  over it.
+  *Breaks when:* the step writes to an existing repository, a `.nojekyll`
+  or a first file. Taking its site in is PRESS-0218's, after the user sees
+  what comes across.
 
 - **INV-7** — A lost answer does not make a second repository. A 422 over a
   Public repository whose root answers `()` advances, and `/user/repos` is
