@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pressless import builder, files
+from pressless import builder, editor, face, files
 
 # One file of each § 4.1 kind: its name and bytes that begin as the kind does.
 _KEPT = {
@@ -84,6 +84,18 @@ def test_a_file_over_the_limit_is_refused(tmp_path, monkeypatch):
     assert _kept(tmp_path) == {}
     assert files.add(tmp_path, "big.pdf", body) == "big.pdf"
     assert _kept(tmp_path) == {"big.pdf": body}
+
+
+def test_the_refusal_names_the_limit_in_force(tmp_path, monkeypatch):
+    """Breaks when the refusal states a limit typed into the words table
+    rather than the one builder.FILE_LARGEST holds. The sentence is the
+    editor's, registered when `editor` is imported."""
+    assert files.TooLarge in editor.SENTENCES
+    monkeypatch.setattr(builder, "FILE_LARGEST", 2 * 1024 * 1024)
+    with pytest.raises(files.TooLarge) as raised:
+        files.add(tmp_path, "big.pdf", b"%PDF-" + b"0" * (2 * 1024 * 1024))
+    said = face.sentence_for(raised.value, publishing=False).what
+    assert "larger than 2 MiB (about 2 MB)" in said, said
 
 
 def test_names_follow_the_photograph_rule(tmp_path):

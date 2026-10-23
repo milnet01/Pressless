@@ -26,7 +26,11 @@ class NotAllowed(Exception):
 
 
 class TooLarge(Exception):
-    """The file is larger than builder.FILE_LARGEST."""
+    """The file is larger than builder.FILE_LARGEST, which its slots state."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.slots = builder.largest_slots()
 
 
 def add(folder: Path, filename: str, data: bytes) -> str:

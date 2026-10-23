@@ -254,7 +254,7 @@ _WORDS: dict[str, str] = {
         " the ending its kind has."
     ),
     "failure.files.TooLarge.what": (
-        "That file is larger than 50 MiB (about 52 MB), so it was not added."
+        "That file is larger than {mib} MiB (about {mb} MB), so it was not added."
     ),
     "failure.files.TooLarge.next": (
         "Make the file smaller, or put it somewhere else and type its address instead."
@@ -580,7 +580,7 @@ _WORDS: dict[str, str] = {
     "page_editor.menu.add": "Add a link",
     "page_editor.drag": "Drag",
     "script.visual.file_too_large": (
-        "That file is larger than 50 MiB (about 52 MB), so it was not sent."
+        "That file is larger than {mib} MiB (about {mb} MB), so it was not sent."
     ),
     "script.visual.nothing": "Click a heading, paragraph or any section on the page to change it.",
     "script.visual.picked": "Changing: {kind}",

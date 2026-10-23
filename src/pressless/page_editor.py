@@ -691,7 +691,8 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
                       f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
                       "</button>" for number in range(4))
     data = _script_json({"sections": sections or [], "up": up, "accept": files.ACCEPT,
-                         "largest": builder.FILE_LARGEST})
+                         "largest": builder.FILE_LARGEST,
+                         "largest_slots": builder.largest_slots()})
     return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}"{
         " hidden" if hidden else ""}>
 <script type="application/json" id="sections">{data}</script>
@@ -2512,7 +2513,7 @@ _VISUAL_SCRIPT = r"""
     if (!file || !given.accept[kind]) return;
     const said = document.getElementById("panel-said");
     if (file.size > given.largest) {
-      said.textContent = say("script.visual.file_too_large");
+      said.textContent = say("script.visual.file_too_large", given.largest_slots);
       return;
     }
     const answer = await fetch("/file?name=" + encodeURIComponent(file.name),

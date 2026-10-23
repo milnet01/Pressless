@@ -164,6 +164,11 @@ def web_file(name: str) -> str:
 FILE_LARGEST = 50 * 1024 * 1024
 
 
+def largest_slots() -> dict[str, str]:
+    """FILE_LARGEST for the words that state it: whole MiB, and MB rounded."""
+    return {"mib": str(FILE_LARGEST // (1024 * 1024)), "mb": str(round(FILE_LARGEST / 10**6))}
+
+
 def _utf8_text(data: bytes) -> bool:
     try:
         return "\0" not in data.decode("utf-8")
@@ -941,7 +946,8 @@ class _Build:
         original = store.file_path_for(self.folder, name)
         try:
             if original.stat().st_size > FILE_LARGEST:
-                raise BuildStopped(f"the file {name} is larger than 50 MiB")
+                raise BuildStopped(f"the file {name} is larger than "
+                                  f"{largest_slots()['mib']} MiB")
             data = original.read_bytes()
         except OSError as exc:
             raise BuildStopped(f"the file {name} could not be read: {_why(exc)}") from None
