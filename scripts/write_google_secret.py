@@ -8,8 +8,9 @@ it is never committed. The value comes from the environment variable
 GOOGLE_CLIENT_SECRET, as in a release job; where that is unset and this runs
 in a terminal, it asks for it without showing what is typed.
 
-Refuses, writing nothing, a value that is empty or holds anything but ASCII
-letters, digits, '-' and '_'. Never prints the value.
+Strips surrounding whitespace, then refuses, writing nothing, a value that is
+empty or holds anything but ASCII letters, digits, '-' and '_'. Never prints
+the value.
 """
 from __future__ import annotations
 
@@ -43,11 +44,21 @@ def _asks() -> bool:
     return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
 
 
+def _value(variable: str, prompt: str) -> str:
+    """The environment variable, else what is typed at a terminal, else ''.
+
+    Shared with write_usage_key.py. A value pasted into GitHub's secret box
+    keeps a trailing line break, so surrounding whitespace is stripped.
+    """
+    value = os.environ.get(variable)
+    if value is None:
+        value = getpass.getpass(prompt) if _asks() else ""
+    return value.strip()
+
+
 def main(argv: list[str]) -> int:
     target = Path(argv[0]) if argv else DEFAULT
-    value = os.environ.get("GOOGLE_CLIENT_SECRET")
-    if value is None:
-        value = getpass.getpass("Google client secret: ") if _asks() else ""
+    value = _value("GOOGLE_CLIENT_SECRET", "Google client secret: ")
     if not _SHAPE.fullmatch(value):
         print("No usable client secret: it must be non-empty and hold only letters, "
               "digits, '-' and '_'. Nothing was written.", file=sys.stderr)

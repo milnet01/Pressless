@@ -89,3 +89,15 @@ def test_each_release_job_writes_the_secret_before_building(job: str):
     assert suite < secret < build, (job, suite, secret, build)
     assert re.search(r"GOOGLE_CLIENT_SECRET: \$\{\{ secrets\.GOOGLE_CLIENT_SECRET \}\}",
                      steps[secret]), steps[secret]
+
+
+def test_a_trailing_line_break_is_ignored(tmp_path: Path):
+    """INV-16. Breaks when a secret pasted into GitHub with a trailing line
+    break fails the release, or is written with the break in it."""
+    target = tmp_path / "_google_secret.py"
+    ran = _run(target, f" {SENTINEL}\r\n")
+    assert ran.returncode == 0, ran.stderr
+    spec = importlib.util.spec_from_file_location("_google_secret_spaced", target)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.CLIENT_SECRET == SENTINEL

@@ -325,8 +325,12 @@ CLIENT_SECRET = "…"
 defaulting to `src/pressless/_google_secret.py`. It takes the value from
 the environment variable `GOOGLE_CLIENT_SECRET`, or, where that is unset
 and it runs in a terminal, asks for it without echoing it
-(`getpass`). Unset and no terminal is an empty value. It refuses, exiting non-zero and writing nothing, a value
-that is empty or holds anything but ASCII letters, digits, `-` and `_`.
+(`getpass`). Unset and no terminal is an empty value. It strips
+surrounding whitespace first: a value pasted into GitHub's secret box
+keeps a trailing line break. It then refuses, exiting non-zero and
+writing nothing, a value that is empty or holds anything but ASCII
+letters, digits, `-` and `_`. `scripts/write_usage_key.py` reads its
+values through the same function.
 It writes the value with `repr`, and prints nothing that carries it.
 
 - **`.gitignore` names the file**, so `git add -A` cannot commit it.
@@ -471,7 +475,8 @@ with that double, a `credentials` double, and a real settings file.
   `src/pressless/_google_secret.py`; the script with the variable empty,
   or holding a quote, exits non-zero and writes nothing; with a valid
   value it writes a file whose `CLIENT_SECRET` imports back equal, and
-  its output does not carry the value; and each job in `release.yml`
+  its output does not carry the value; a valid value with a trailing
+  line break imports back without it; and each job in `release.yml`
   runs the script, with `GOOGLE_CLIENT_SECRET` set from the Actions
   secret, after its suite step and before its Build step.
   *Breaks when:* the `.gitignore` line is dropped, the script writes an

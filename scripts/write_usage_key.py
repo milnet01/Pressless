@@ -15,27 +15,17 @@ letters, digits, '-' and '_'. Never prints either value.
 """
 from __future__ import annotations
 
-import getpass
-import os
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from write_google_secret import _asks  # noqa: E402 -- the one test of a real console
+from write_google_secret import _value  # noqa: E402 -- one reader for both scripts
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT = ROOT / "src" / "pressless" / "_usage_key.py"
 _ID = re.compile(r"G-[A-Z0-9]+")
 _SECRET = re.compile(r"[A-Za-z0-9_-]+")
-
-
-def _value(variable: str, prompt: str) -> str:
-    value = os.environ.get(variable)
-    if value is None:
-        value = getpass.getpass(prompt) if _asks() else ""
-    # A value pasted into GitHub's secret box keeps a trailing line break.
-    return value.strip()
 
 
 def main(argv: list[str]) -> int:
