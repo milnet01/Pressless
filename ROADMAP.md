@@ -5325,6 +5325,10 @@ it can then be changed.
   that build, so the switch, and keeping the custom domain, are this
   item's to design. The user asked 2026-10-05 that existing sites be
   onboardable as well as new ones.
+  2026-10-23: spec docs/specs/PRESS-0218-take-in-github-site.md
+  accepted after one review round (the user's budget). Ten findings
+  fixed; one awaits the user: no Store call reverses a kept photograph,
+  so § 4.3's reversal and INV-7 cannot be built as written.
   **Layman:** Someone whose site is already on GitHub, the first writer included, just points Pressless at it and carries on from there.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
