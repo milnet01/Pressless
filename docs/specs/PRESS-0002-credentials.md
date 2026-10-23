@@ -227,6 +227,7 @@ strictness**: the stored version must be the integer this build writes, so
 | The fallback file's folder is missing or cannot be written | `CredentialError`, naming the credentials file by what it is |
 | The existing fallback file cannot be read, or is not valid JSON | `CredentialError` — saving over it would discard what could not be parsed |
 | The existing file parses to a non-empty mapping carrying no `version`, or one that is not the integer this build writes | `CredentialError` — saving over it would relabel a file this build did not write, which is the file the read table refuses to guess at. An absent file and one holding an empty mapping are not this case: neither carries anything to discard |
+| The existing file carries this build's version and its `secrets` is missing or is not an object | `CredentialError`, and the file is left byte-for-byte untouched — the read table refuses this file, and saving over it would discard what that field held (PRESS-0317) |
 | The existing fallback file is a symlink, or is owned by another user, where the platform offers those checks | `CredentialError` — §3 decision 6 covers the read `write()` makes first |
 
 `delete(store, folder, account)` removes the secret filed under `account`
@@ -768,6 +769,7 @@ exit code.
 | `delete()`'s failures naming no path or account | `tests/test_credentials.py::test_no_failure_names_the_secret`, which also forces `delete()` against a store whose delete raises |
 | INV-11 | `tests/test_credentials.py::test_a_folder_that_cannot_keep_a_file_private_is_refused` — INV-5 cannot, since it reads the mode back on a filesystem where the request is honoured |
 | §4.3's refusal to save over a file a later Pressless wrote | `tests/test_credentials.py::test_writing_over_a_newer_credentials_file_is_refused` |
+| §4.3's refusal to save over a file whose `secrets` is missing or is not an object | `tests/test_credentials.py::test_writing_over_secrets_that_are_not_an_object_is_refused`, once for each |
 | INV-5's file mode on Windows | **nothing, and nothing can** — §4.6's measurement is that the mode is unenforceable there. INV-2 removes the case rather than checking it |
 | `choose()`'s two failures naming no path or account | **nothing** — INV-6's walk forces §4.3's rows and does not call `choose()`. The probe-write row names the exception type by inspection alone |
 | No secret reaching the rolling log | **nothing here** — INV-6 covers this module's own messages. The log is the Face's and `docs/design.md` § Logging is the rule; PRESS-0011 owns the surface |

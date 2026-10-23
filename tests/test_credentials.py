@@ -974,17 +974,21 @@ def test_the_first_credentials_write_still_works(tmp_path, monkeypatch):
     )
 
 
+@pytest.mark.parametrize("held", [
+    '{"version": 1, "secrets": ["kept by hand"]}',
+    '{"version": 1, "kept": "by hand"}',
+])
 def test_writing_over_secrets_that_are_not_an_object_is_refused(tmp_path,
-                                                               monkeypatch):
+                                                               monkeypatch, held):
     """PRESS-0317: read() refuses a file whose `secrets` is not an object,
     and write() replaced that field with its own -- discarding whatever the
-    file held there. One on-disk shape, one acceptance set.
+    file held there. One on-disk shape, one acceptance set. Held once with
+    `secrets` not an object and once with it missing.
 
     Breaks when _write_file stops judging a carried file as read() does.
     """
     _require_posix_modes(tmp_path)
     _not_windows(monkeypatch)
-    held = '{"version": 1, "secrets": ["kept by hand"]}'
     (tmp_path / FILE_NAME).write_text(held, encoding="utf-8")
 
     with pytest.raises(CredentialError):
