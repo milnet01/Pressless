@@ -5747,20 +5747,32 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0321] **Import progress counts are written without the lock.**
+- 🚫 [PRESS-0321] **Import progress counts are written without the lock.**
   importing.py:99-100 — progress writes state.done/total off-lock while show_media reads them. Lane thinks it harmless. Lead from lane-08-import.md.
+  Not a bug. show_media reads only state.done; state.total is never
+  read. Each write is one int attribute store, atomic in CPython. The
+  worst case is a count one step behind, and the page reloads every two
+  seconds.
   **Layman:** The import progress count may very rarely show a wrong number.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0322] **Import finds a refused file's reason by coincidence, not by key.**
+- 🚫 [PRESS-0322] **Import finds a refused file's reason by coincidence, not by key.**
   fetch.py:154 and _bring.py:474 — lookup by upload place, but refused attachments are keyed by full address. Lead from lane-08-import.md.
+  Not a coincidence. _unfetched looks a reason up only for MISSING,
+  which _photographs files by upload path, and fetch_all keys every
+  fetched place by upload path. An address-keyed entry carries its own
+  reason and never reaches the lookup. The comments say so since
+  e4cd72a.
   **Layman:** The import report gets one reason right only by luck.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0323] **Import's safe fetch relies on a private Python field.**
+- ✅ [PRESS-0323] **Import's safe fetch relies on a private Python field.**
   fetch.py:48 — _Checked.connect uses HTTPSConnection._context. Unchecked. Lead from lane-08-import.md.
+  Real as a fragility, not a present failure. Fixed in 5e1b433: _Checked
+  keeps the verifying context it made and wraps with it. New test failed
+  red on its assertion first; every guard test stays green.
   **Layman:** A future Python update could break importing files.
   Kind: investigate.
   Source: review-readability-2026-10-23.
