@@ -863,6 +863,53 @@ def message_box(inner_id: str, content: str = "", *, focus: str = "",
             "</dialog>")
 
 
+def file_box(name: str, accept: str, address: str, label: str, *,
+             sending: str = "") -> str:
+    """A button choosing one file, sent as the body to `address`; the answer
+    replaces the page (PRESS-0224 § 4.6). `sending` is a `script.` words key
+    the button reads while the file is sent. Where Pressless cannot be
+    reached, the button comes back and a message says so (PRESS-0319)."""
+    wait = f' data-sending="{html.escape(sending, quote=True)}"' if sending else ""
+    return (f'<p><button type="button" data-file="{name}"{wait}>{html.escape(label)}</button>'
+            f'<input type="file" id="{name}" accept="{accept}" hidden '
+            f'data-to="{html.escape(address, quote=True)}"></p>'
+            + message_box(f"{name}-message") + f"<script>{_FILE_SCRIPT}</script>")
+
+
+# Each file box on the page is wired once, however many copies of this run.
+_FILE_SCRIPT = r"""
+(() => {
+  for (const button of document.querySelectorAll("button[data-file]")) {
+    if (button.dataset.wired) continue;
+    button.dataset.wired = "1";
+    const chooser = document.getElementById(button.dataset.file);
+    const label = button.textContent;
+    button.addEventListener("click", () => { chooser.value = ""; chooser.click(); });
+    chooser.addEventListener("change", async () => {
+      const file = chooser.files[0];
+      if (!file) return;
+      button.disabled = true;
+      if (button.dataset.sending) button.textContent = say(button.dataset.sending);
+      let page;
+      try {
+        const answer = await fetch(chooser.dataset.to, {method: "POST", body: file});
+        page = await answer.text();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = label;
+        document.getElementById(button.dataset.file + "-message").textContent =
+          say("script.file_box.unreachable");
+        return;
+      }
+      document.open();
+      document.write(page);
+      document.close();
+    });
+  }
+})();
+"""
+
+
 def true_colours(on: bool = False) -> str:
     """Sits above each editor's preview; shown only on a dark look (PRESS-0187).
     `on` is his last choice, kept between visits (PRESS-0263)."""

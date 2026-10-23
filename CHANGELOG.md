@@ -23,6 +23,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Opening a site file or importing no longer gets stuck** (PRESS-0319)
+  If the connection to Pressless dropped while a site file or an Import
+  file was being sent, the button stayed greyed out and nothing was said.
+  Now the button comes back and a message says the file was not sent.
+
 - **An unclear publish names the right step in its details** (PRESS-0313)
   When GitHub's answer did not say whether your site was updated, the
   details could name a step Pressless had not taken. They now name the

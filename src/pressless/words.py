@@ -1367,6 +1367,11 @@ _WORDS: dict[str, str] = {
         "open the file again."
     ),
     "script.sites.opening": "Opening…",
+    # A file box on the Sites and Import screens (face.file_box).
+    "script.file_box.unreachable": (
+        "Pressless could not reach itself, so the file was not sent. Nothing has changed. "
+        "Check Pressless is still running, then try again."
+    ),
     "sites_screen.move.button": "Move Pressless to a new computer",
     "sites_screen.move.title": "Move Pressless to a new computer",
     "sites_screen.move.step_save": "1. Save each site to a file",

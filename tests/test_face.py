@@ -12,9 +12,12 @@ from __future__ import annotations
 import http.client
 import importlib
 import inspect
+import json
 import pkgutil
 import re
+import shutil
 import socket
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -1109,3 +1112,44 @@ def test_a_download_is_sent_as_an_attachment_and_removed(tmp_path: Path) -> None
     assert "filename*=UTF-8''M%C3%A9%20Site%202026.zip" in disposition
     assert "frame-ancestors 'self'" in headers["Content-Security-Policy"]
     assert not sent.exists()
+
+
+# ------------------------------------------------------------- PRESS-0319 ---
+
+# The file box's script runs in a browser; Node runs it against a stand-in
+# button, chooser and message, with a fetch that never reaches Pressless.
+_NODE = shutil.which("node")
+_FILE_BOX_HARNESS = """const on = {};
+const button = {dataset: {file: "box"}, textContent: "Send", disabled: false,
+                addEventListener: (kind, run) => { on["button " + kind] = run; }};
+const chooser = {dataset: {to: "/to"}, files: [{}], value: "", click() {},
+                 addEventListener: (kind, run) => { on["chooser " + kind] = run; }};
+const message = {textContent: ""};
+const document = {
+  querySelectorAll: () => [button],
+  getElementById: (id) => ({box: chooser, "box-message": message})[id] || null,
+  open() { throw new Error("the page was replaced"); }, write() {}, close() {},
+};
+const fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+const say = (key) => "<" + key + ">";
+%s
+(async () => {
+  try { await on["chooser change"](); } catch (error) {}
+  process.stdout.write(JSON.stringify(
+    {disabled: button.disabled, label: button.textContent, message: message.textContent}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_file_box_that_cannot_reach_pressless_says_so(tmp_path):
+    """PRESS-0319. Breaks when a dropped connection leaves the button
+    disabled, or shows no message."""
+    box = face.file_box("box", ".zip", "/to", "Send")
+    script = re.search(r"<script>(.*)</script>", box, re.S).group(1)
+    harness = tmp_path / "box.js"
+    harness.write_text(_FILE_BOX_HARNESS % script, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout) == {
+        "disabled": False, "label": "Send", "message": "<script.file_box.unreachable>"}

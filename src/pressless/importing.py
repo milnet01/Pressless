@@ -159,8 +159,8 @@ def register(face: Face, folder: Path) -> None:
                        for place, why in sorted(left.items()))
         return (f"<p>{say('import.gaps.list', count=str(len(left)))}</p><ul>{rows}</ul>"
                 f"<p>{say('import.gaps.how')}</p>"
-                + _file_box("import-media", ".zip", f"{ADDRESS}/media",
-                            say("import.gaps.choose")))
+                + face_module.file_box("import-media", ".zip", f"{ADDRESS}/media",
+                                         say("import.gaps.choose")))
 
     def show_look(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
         return (f"<p>{say('import.look')}</p>"
@@ -260,43 +260,13 @@ def _show_export(held: Path) -> str:
         "import.export.1", "import.export.2", "import.export.3"))
     kept = (f"<p>{say('import.export.held')}</p>" if (held / _EXPORT).is_file() else "")
     return (f"<p>{say('import.export.how')}</p><ol>{steps}</ol>" + kept
-            + _file_box("import-export", ".xml", f"{ADDRESS}/export",
-                        say("import.export.choose")))
-
-
-def _file_box(name: str, accept: str, address: str, label: str) -> str:
-    """A button choosing one file, sent as the body to `address`; the answer
-    replaces the page, as the Sites screen's file box does (PRESS-0224 § 4.6)."""
-    return (f'<p><button type="button" data-file="{name}">{html.escape(label)}</button>'
-            f'<input type="file" id="{name}" accept="{accept}" hidden '
-            f'data-to="{html.escape(address, quote=True)}"></p>'
-            f"<script>{_SEND_SCRIPT}</script>")
+            + face_module.file_box("import-export", ".xml", f"{ADDRESS}/export",
+                                 say("import.export.choose")))
 
 
 # The step is shown again after each check, so it reloads itself until the
 # fetch has ended; a GET, never the POST that showed it.
 _RELOAD = 'setTimeout(() => location.replace("/import"), 2000);'
-
-_SEND_SCRIPT = r"""
-(() => {
-  for (const button of document.querySelectorAll("button[data-file]")) {
-    if (button.dataset.wired) continue;
-    button.dataset.wired = "1";
-    const chooser = document.getElementById(button.dataset.file);
-    button.addEventListener("click", () => { chooser.value = ""; chooser.click(); });
-    chooser.addEventListener("change", async () => {
-      const file = chooser.files[0];
-      if (!file) return;
-      button.disabled = true;
-      const answer = await fetch(chooser.dataset.to, {method: "POST", body: file});
-      const page = await answer.text();
-      document.open();
-      document.write(page);
-      document.close();
-    });
-  }
-})();
-"""
 
 
 def _lines(report: pressless_import.Report) -> list[str]:

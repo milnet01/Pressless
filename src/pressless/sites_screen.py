@@ -17,7 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from pressless import backups, sitefile, sites
-from pressless.face import SENTENCES, Download, Face, Request, Sentence, Site
+from pressless.face import SENTENCES, Download, Face, Request, Sentence, Site, file_box
 from pressless.words import say
 
 ADDRESS = "/sites"
@@ -139,10 +139,9 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
             # PRESS-0224 § 4.6: the open site to one file, and a file to a site.
             f'<h2>{say("sites_screen.file_title")}</h2><p>{say("sites_screen.file_about")}</p>'
             f'<p class="nav"><a href="{ADDRESS}/save">{say("sites_screen.save")}</a></p>'
-            f'<p><button type="button" id="open-site-file">{say("sites_screen.open_file")}'
-            '</button><input type="file" id="site-file" accept=".zip" hidden></p>'
-            f"<script>{_OPEN_SCRIPT}</script>"
-            f'<h2>{say("sites_screen.backups.title")}</h2>'
+            + file_box("site-file", ".zip", f"{ADDRESS}/open-file",
+                       say("sites_screen.open_file"), sending="script.sites.opening")
+            + f'<h2>{say("sites_screen.backups.title")}</h2>'
             f'<p>{say("sites_screen.backups.about")}</p><p>{where}</p>{trouble}'
             f'<form method="post" action="{ADDRESS}/backups"><label>'
             f'{say("sites_screen.backups.folder")} <input name="folder" value="{value}" '
@@ -199,27 +198,5 @@ _MOVE_SCRIPT = r"""
   back.addEventListener("click", () => { at = Math.max(0, at - 1); show(); });
   next.addEventListener("click", () => { at = Math.min(steps.length - 1, at + 1); show(); });
   box.addEventListener("close", () => { at = 0; show(); });
-})();
-"""
-
-
-# PRESS-0224 § 4.6: the chosen file is sent as the body, and the answer, the
-# restarting page or this screen with what went wrong, replaces the page.
-_OPEN_SCRIPT = r"""
-(() => {
-  const button = document.getElementById("open-site-file");
-  const chooser = document.getElementById("site-file");
-  button.addEventListener("click", () => { chooser.value = ""; chooser.click(); });
-  chooser.addEventListener("change", async () => {
-    const file = chooser.files[0];
-    if (!file) return;
-    button.disabled = true;
-    button.textContent = say("script.sites.opening");
-    const answer = await fetch("/sites/open-file", {method: "POST", body: file});
-    const page = await answer.text();
-    document.open();
-    document.write(page);
-    document.close();
-  });
 })();
 """

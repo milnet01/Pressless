@@ -666,7 +666,7 @@ def site_file(page, origin: str, folder: Path) -> None:
           saving.value.suggested_filename.endswith(".zip") and saved.stat().st_size > 0,
           saving.value.suggested_filename)
     with page.expect_file_chooser() as chooser:
-        page.locator("#open-site-file").click()
+        page.locator("button[data-file=site-file]").click()
     chooser.value.set_files(str(saved))
     page.wait_for_function("document.body.innerText.includes('Pressless is restarting.')",
                            timeout=10000)

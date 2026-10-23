@@ -218,3 +218,11 @@ def test_save_takes_any_site_and_refuses_one_that_is_not_there(tmp_path: Path) -
         assert "drafts/on-the-hill.txt" in saved.namelist()
     assert refused[0] == 200 and b"That site is not here any more." in refused[2]
     assert not list(own.glob(".saving-*"))
+
+
+def test_the_file_box_sends_to_open_file_and_reads_opening(tmp_path: Path) -> None:
+    """PRESS-0224 § 4.6. Breaks when the Sites screen's file box sends
+    elsewhere, or no longer reads Opening… while it sends."""
+    page = sites_screen._screen(_own(tmp_path))
+    assert 'data-to="/sites/open-file"' in page
+    assert 'data-sending="script.sites.opening"' in page
