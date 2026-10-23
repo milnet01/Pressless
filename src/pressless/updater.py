@@ -48,10 +48,12 @@ FILE_NAME = "updates.json"
 
 _API_LIMIT = 256 * 1024
 _LIST_LIMIT = 16 * 1024
+# One to four 64-byte signatures (PRESS-0023 § 4.3), one per signing key. A
+# fifth key in update_key.TRUSTED signing at once would make every
+# client refuse the release at step 5, so the cap rises with it.
 _SIG_SIZES = (64, 128, 192, 256)
 _LARGEST = 512 * 1024 * 1024
 _CHUNK = 64 * 1024
-PLATFORMS = ("linux", "windows")
 
 
 class DownloadFailed(UpdateError):
@@ -114,7 +116,8 @@ class Transport(Protocol):
 
 class _HttpsOnly(urllib.request.HTTPRedirectHandler):
     """Refuses a redirect to anything but https (INV-7). The Updater's own,
-    not publisher._NoCrossOriginAuth: the two are not shared (rule 7)."""
+    not publisher._NoCrossOriginAuth: the two are not shared (docs/design.md
+    rule 7)."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if urllib.request.urlparse(newurl).scheme != "https":
@@ -269,10 +272,12 @@ def check(folder: Path, running: str, platform: str,
         wanted, skipped = read_state(folder)
         if not wanted:
             return Miss(1)
+
+        # Building the opener belongs to the request, so a bundle missing its
+        # certificates is a step 2 miss, which is logged, not step 1's.
+        step = 2
         transport = transport or _Urllib()
         repository = os.environ.get(OVERRIDE) or REPOSITORY
-
-        step = 2
         release = json.loads(_read(
             transport, f"https://api.github.com/repos/{repository}/releases/latest",
             _API_LIMIT))
@@ -285,6 +290,8 @@ def check(folder: Path, running: str, platform: str,
         if found is None or current is None or found <= current:
             return Miss(3)
         version = ".".join(str(part) for part in found)
+        # A tag spelled otherwise, v1.02.3 say, parses to the same version but
+        # names assets that version's names would not find.
         if tag.removeprefix("v") != version or version == skipped:
             return Miss(3)
 

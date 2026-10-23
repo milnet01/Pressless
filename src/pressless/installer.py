@@ -1,7 +1,8 @@
 """Put a checked update in place of the running Pressless -- PRESS-0023 § 4.7.
 
-Each function returns once the new version is in place and a helper has been
-started to open it; the caller then exits. Nothing re-executes in place:
+On Linux the new version is put in place, then a helper is started to open
+it. On Windows a helper is started that swaps it in once this process has
+gone. Either way the caller then exits. Nothing re-executes in place:
 finbreak's relaunch did, and the app closed without reopening.
 
 The helpers are handed every path as an argument and never as script text

@@ -121,6 +121,8 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
             found = updater.check(own, running, platform, transport)
             if isinstance(found, updater.Offer):
                 state.offer = found
+            # Step 1 is the switch being off, which is no failure (PRESS-0023
+            # § 4.4); every other step stopped a check that was wanted.
             elif found.step > 1:
                 face.note(miss_line(found))
 

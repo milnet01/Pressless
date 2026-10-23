@@ -17,6 +17,7 @@ import hashlib
 import io
 import json
 import shutil
+import ssl
 import urllib.request
 import zipfile
 from email.message import Message
@@ -291,6 +292,16 @@ def test_a_failed_check_is_silent(tmp_path, signer):
             line = updating.miss_line(found)
             assert "http" not in line and "/" not in line and "\\" not in line, line
             assert str(step) in line, line
+
+
+def test_a_transport_that_cannot_be_built_is_a_logged_step(tmp_path, monkeypatch):
+    """PRESS-0318. Building the https opener is part of step 2's request, so
+    its failure is logged. Breaks when it reads as step 1, the switch being
+    off, which updating never logs."""
+    def broken(*args, **kwargs):
+        raise ssl.SSLError("no certificates")
+    monkeypatch.setattr(updater, "_Urllib", broken)
+    assert updater.check(tmp_path, "0.1.2", "linux") == updater.Miss(2)
 
 
 # ------------------------------------------------------------------ INV-6 ---
