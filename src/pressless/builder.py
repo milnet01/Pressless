@@ -32,6 +32,9 @@ from PIL import Image, ImageOps, ImageSequence
 from pressless import blocks, marks, store
 from pressless.settings import Settings
 
+# Every top-level name a build writes must be here, or the next build refuses
+# the site folder as holding something Pressless does not make (PRESS-0008
+# § 4.1). Written as PRESS-0008 quotes it; "site-icon.png" is SITE_ICON.
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
                "sitemap.xml", "robots.txt", "look", "files", "site-icon.png")
 PER_PAGE = 20
@@ -80,7 +83,7 @@ _ANIMATION = (" reveal-load d1", " reveal-load d2", " reveal-load d3")
 # §4.6: re-encoded in their own format. Anything else Pillow opens is refused.
 _REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF"}
 
-def _entries(count: int) -> str:
+def _entries_text(count: int) -> str:
     """§4.3's count: `1 entry`, `2 entries`."""
     return f"{count} {'entry' if count == 1 else 'entries'}"
 
@@ -209,8 +212,8 @@ def build(folder: Path, settings: Settings, into: Path, *,
     (PRESS-0123 §4.2)."""
     folder = Path(folder)
     today = today or date.today()
-    return _replace(Path(into), photo_src is None,
-                    lambda new: _Build(folder, settings, new, photo_src, change, today).run())
+    return _replace(Path(into), publishing=photo_src is None,
+                    write=lambda new: _Build(folder, settings, new, photo_src, change, today).run())
 
 
 def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
@@ -588,6 +591,12 @@ class _Build:
         self.furniture_pieces = False  # whether the header or footer holds a piece
         self.pieces_linked = False     # whether any page written links pieces.js
 
+    @property
+    def publishing(self) -> bool:
+        """A publishing build rather than a preview: no `photo_src` is given
+        (PRESS-0227 § 4.3)."""
+        return self.photo_src is None
+
     # -- writing --
 
     def write_text(self, relative: str, text: str) -> None:
@@ -620,7 +629,7 @@ class _Build:
             text = furniture[name]
             # PRESS-0216 § 4.2: its held photographs are published as a
             # page's are, {{UP}} being the site's root.
-            if self.photo_src is None:
+            if self.publishing:
                 for photograph in _held_pictures(self.folder, "index.html",
                                                  text.replace("{{UP}}", "")):
                     self.web_copy(photograph)
@@ -678,7 +687,7 @@ class _Build:
         entries = self.read_entries() if journal else {}
         pages = self.read_html()
         identity = self.furniture.identity
-        if self.photo_src is None:      # PRESS-0227 § 4.3
+        if self.publishing:      # PRESS-0227 § 4.3
             if identity.icon:
                 self.icon_copy(identity.icon)
             if identity.picture:
@@ -713,7 +722,7 @@ class _Build:
         editor's preview alone (PRESS-0260 § 4.2)."""
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
-        if self.photo_src is None:
+        if self.publishing:
             for held in _held_pictures(self.folder, relative, text):
                 self.web_copy(held)
             for held in _held_files(self.folder, relative, text):
@@ -742,6 +751,9 @@ class _Build:
 
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str) -> None:
+        # Every generated page marks the menu link with data-nav="Journal"
+        # (PRESS-0008 § 4.4). Only a hand-written or imported menu carries
+        # one: menu.py gives a journal link no data-nav (PRESS-0298).
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
@@ -774,7 +786,7 @@ class _Build:
         where Settings holds an id. Not where the finished text already holds
         one -- its own, or a header or footer filled into it."""
         measurement_id = self.settings.measurement_id
-        if self.photo_src is not None or measurement_id is None or _TAGGED in text:
+        if not self.publishing or measurement_id is None or _TAGGED in text:
             return text
         return _inserted(text, counting_code(measurement_id))
 
@@ -783,7 +795,7 @@ class _Build:
         sharing picture's tags, on a publishing build. Not where the page
         already holds its own of either."""
         identity = self.furniture.identity
-        if self.photo_src is not None:
+        if not self.publishing:
             return text
         lines = ""
         if identity.icon and not _OWN_ICON.search(text):
@@ -802,7 +814,7 @@ class _Build:
     def enhanced(self, text: str, depth: int, piece: bool) -> str:
         """PRESS-0217 § 4.3: `text` linking pieces.js, on a publishing build of
         a page that carries a piece; never a preview's (INV-2)."""
-        if self.photo_src is not None or not piece:
+        if not self.publishing or not piece:
             return text
         self.pieces_linked = True
         return _inserted(text, f'<script src="{"../" * depth}{PIECES_SCRIPT}" defer></script>\n')
@@ -823,7 +835,7 @@ class _Build:
         depth = relative.count("/") + 1
         up = "../" * depth
         doc = marks.parse(entry.body)
-        if self.photo_src is None:
+        if self.publishing:
             for block in doc:
                 if isinstance(block, marks.Photo):
                     self.web_copy(block.name)
@@ -918,7 +930,9 @@ class _Build:
 
     def icon_copy(self, name: str) -> None:
         """PRESS-0227 § 4.3: the photograph `name` as the site's icon, square
-        and centred, refused as web_copy refuses one."""
+        and centred. Missing or unreadable, it stops the build with web_copy's
+        sentences; any picture Pillow reads becomes a PNG. A dot-name never
+        arrives: read_identity refuses it."""
         original = store.photograph_path_for(self.folder, name)
         if not original.is_file():
             raise BuildStopped(f"the photograph {name} is not in the photographs folder")
@@ -961,17 +975,17 @@ class _Build:
     def card(self, entry: store.Entry, depth: int) -> str:
         up = "../" * depth
         if entry.title:
-            label = html.escape(entry.title)
+            heading = html.escape(entry.title)
             excerpt = _excerpt(_entry_text(marks.parse(entry.body), self.today), 180)
             excerpt_row = f'\n        <p class="post-excerpt">{_as_text_html(excerpt)}</p>'
             untitled = ""
         else:
             teaser = _excerpt(_entry_text(marks.parse(entry.body), self.today), 48) \
                 or _long_date(entry.date)
-            label, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
+            heading, excerpt_row, untitled = _as_text_html(teaser), "", " untitled"
         return f"""      <article class="post-card{untitled}">
         <p class="post-meta">{self.meta(entry, up)}</p>
-        <h2><a href="{up}{entry_path(entry)}/index.html">{label}</a></h2>{excerpt_row}
+        <h2><a href="{up}{entry_path(entry)}/index.html">{heading}</a></h2>{excerpt_row}
       </article>"""
 
     def listing(self, relative: str, depth: int, heading: str, intro: str,
@@ -1013,7 +1027,7 @@ class _Build:
     def listings(self, shown: list[store.Entry]) -> None:
         span = (f", from {_month_year(shown[-1].date)} to {_month_year(shown[0].date)}"
                 if shown else "")
-        self.listing("blog", 1, "The journal", f"{_entries(len(shown))}{span}.", shown)
+        self.listing("blog", 1, "The journal", f"{_entries_text(len(shown))}{span}.", shown)
         by_category: dict[str, list[store.Entry]] = {}
         by_tag: dict[str, list[store.Entry]] = {}
         for entry in shown:
@@ -1024,28 +1038,28 @@ class _Build:
         for category, entries in sorted(by_category.items()):
             heading = label(category)
             self.listing(f"blog/category/{category}", 3, heading,
-                         f"{_entries(len(entries))} in {heading.lower()}.", entries)
+                         f"{_entries_text(len(entries))} in {heading.lower()}.", entries)
         for tag, entries in sorted(by_tag.items()):
             self.listing(f"blog/tag/{tag}", 3, f"#{tag}",
-                         f"{_entries(len(entries))} tagged “{tag}”.", entries)
+                         f"{_entries_text(len(entries))} tagged “{tag}”.", entries)
 
     def archive(self, shown: list[store.Entry]) -> None:
         years: dict[int, list[store.Entry]] = {}
         for entry in shown:
             years.setdefault(entry.date.year, []).append(entry)
-        blocks = []
+        sections = []
         for year in sorted(years, reverse=True):
             rows = "\n".join(
                 f"          <li><time>{_short_date(entry.date)}</time> "
                 f'<a href="../../{entry_path(entry)}/index.html">'
                 f"{html.escape(entry.title or _long_date(entry.date))}</a></li>"
                 for entry in years[year])
-            blocks.append(
+            sections.append(
                 f'      <section class="arch-year">\n        <h2>{year} '
                 f'<span class="arch-count">{len(years[year])}</span></h2>\n'
                 f'        <ul class="arch-index">\n{rows}\n        </ul>\n      </section>')
         count = len(shown)
-        joined = "\n".join(blocks)
+        joined = "\n".join(sections)
         self.page("blog/archive", 2, "Archive", f"All {count} entries by year.", f"""
     <div class="page-intro">
       <p class="eyebrow">Journal</p>
