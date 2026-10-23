@@ -27,7 +27,8 @@ import sys
 import tempfile
 import unicodedata
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Container
+from collections.abc import Callable, Container, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -601,6 +602,41 @@ def _old_site(channel, ns) -> str:
     return urlparse(base).netloc
 
 
+@contextmanager
+def _writing(what: str) -> Iterator[None]:
+    """§4.7: a write the Store refuses, or the drive fails, stops the import
+    with a message naming `what` was being written."""
+    try:
+        yield
+    except store.StoreError as exc:
+        raise ImportStopped(f"the Store refused {what}: {exc}") from None
+    except OSError as exc:
+        raise ImportStopped(
+            f"{what} could not be written: {exc.strerror or type(exc).__name__}") from None
+
+
+def _entry(item: _Item, body: str) -> store.Entry:
+    return store.Entry(slug=item.slug, title=item.title, date=item.date,
+                       categories=item.categories, tags=item.tags, body=body, extra=())
+
+
+def _write_entries(work: Path, items: list[_Item], entries: dict[str, store.Entry]) -> None:
+    """Each item's entry, as a draft where it is one, and its comments."""
+    for item in items:
+        with _writing(f"the entry {item.slug}"):
+            store.write(work, entries[item.post_id], draft=item.draft)
+        if item.comments:
+            with _writing(f"the comments on {item.slug}"):
+                store.write_comments(work, item.slug, item.comments)
+
+
+def _counts(items: list[_Item]) -> dict[str, int]:
+    """The Report's published, drafts and comments."""
+    return {"published": sum(1 for item in items if not item.draft),
+            "drafts": sum(1 for item in items if item.draft),
+            "comments": sum(len(item.comments) for item in items)}
+
+
 def run(export: Path, originals: Path, live_site: Path, templates: Path,
         into: Path) -> Report:
     """§4.7, in order: refuse an INTO that exists; read the export and resolve
@@ -634,50 +670,32 @@ def run(export: Path, originals: Path, live_site: Path, templates: Path,
     if not into.parent.is_dir():
         raise ImportStopped(f"the folder {into.name} would sit in does not exist")
     work = Path(tempfile.mkdtemp(dir=into.parent, prefix=f".{into.name}-"))
-    doing = "the folder"
     try:
-        for item in items:
-            doing = f"the entry {item.slug}"
-            store.write(work, store.Entry(
-                slug=item.slug, title=item.title, date=item.date,
-                categories=item.categories, tags=item.tags,
-                body=bodies[item.post_id], extra=(),
-            ), draft=item.draft)
-            if item.comments:
-                doing = f"the comments on {item.slug}"
-                store.write_comments(work, item.slug, item.comments)
+        _write_entries(work, items, {item.post_id: _entry(item, bodies[item.post_id])
+                                     for item in items})
         for upload_path, name in names.items():
-            doing = f"the photograph {upload_path}"
-            target = store.photograph_path_for(work, name)
-            target.parent.mkdir(exist_ok=True)
-            shutil.copyfile(originals / upload_path, target)
+            with _writing(f"the photograph {upload_path}"):
+                target = store.photograph_path_for(work, name)
+                target.parent.mkdir(exist_ok=True)
+                shutil.copyfile(originals / upload_path, target)
         for kind, texts in ((store.PAGES_FOLDER, pages), (store.FURNITURE_FOLDER, furniture)):
             for name, text in texts.items():
-                doing = f"the {kind} file {name}"
-                store.write_html(work, kind, name, text)
+                with _writing(f"the {kind} file {name}"):
+                    store.write_html(work, kind, name, text)
         # Decision 12: the preview copy, byte for byte. The Face serves it and
         # never publishes it.
-        doing = "the preview copy of assets"
-        shutil.copytree(live_site / "assets", work / PREVIEW_ASSETS)
-        doing = f"the folder {into.name}"
-        if into.exists():
-            raise ImportStopped(f"{into.name} appeared while Import was writing")
-        os.rename(work, into)
-    except BaseException as exc:
+        with _writing("the preview copy of assets"):
+            shutil.copytree(live_site / "assets", work / PREVIEW_ASSETS)
+        with _writing(f"the folder {into.name}"):
+            if into.exists():
+                raise ImportStopped(f"{into.name} appeared while Import was writing")
+            os.rename(work, into)
+    except BaseException:
         shutil.rmtree(work, ignore_errors=True)
-        if isinstance(exc, ImportStopped):
-            raise
-        if isinstance(exc, store.StoreError):
-            raise ImportStopped(f"the Store refused {doing}: {exc}") from None
-        if isinstance(exc, OSError):
-            raise ImportStopped(
-                f"{doing} could not be written: {exc.strerror or type(exc).__name__}") from None
         raise
 
     return Report(
-        published=sum(1 for item in items if not item.draft),
-        drafts=sum(1 for item in items if item.draft),
-        comments=sum(len(item.comments) for item in items),
+        **_counts(items),
         photographs=len(names),
         renamed_slugs=tuple(renamed_slugs),
         pages=tuple(sorted(pages)),

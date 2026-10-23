@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -818,6 +819,7 @@ def test_the_site_assets_are_copied_for_previews(tmp_path):
 _ALLOWED_IMPORTS = {
     "__future__",
     "collections", "collections.abc",   # Lookup's Callable
+    "contextlib",                       # _writing, naming what a failed write was
     "dataclasses",                      # Dropped and Report
     "datetime",                         # an entry's and a comment's date
     "difflib",                          # the self-check's line comparison
@@ -1220,8 +1222,9 @@ def test_a_stop_leaves_the_store_empty(tmp_path):
     """PRESS-0125 INV-7: a Store refusal while writing leaves the Store
     holding no site, and the fetched files where they were.
 
-    Breaks when files are written straight into the site's folder."""
-    with pytest.raises(ImportStopped):
+    Breaks when files are written straight into the site's folder, or the
+    stop does not name the entry it was writing."""
+    with pytest.raises(ImportStopped, match="^the Store refused the entry two: "):
         _bring(tmp_path, _export(
             _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
             _item(1, slug="one"), _item(2, slug="two", categories=("a,b",))),
@@ -1231,6 +1234,56 @@ def test_a_stop_leaves_the_store_empty(tmp_path):
     assert not (site / "import" / "work").exists()
     assert (site / "import" / "media" / "2012" / "05" / "a.jpg").is_file(), (
         "a fetched file is never lost to a stop")
+
+
+def test_a_failed_file_move_puts_every_moved_file_back(tmp_path, monkeypatch):
+    """PRESS-0125 INV-7: a drive failure moving the second held file into
+    import/work/ moves the first back to import/media/, and the stop names the
+    file it was moving.
+
+    Breaks when a moved file is left inside the deleted work folder, or the
+    stop loses the name of what failed."""
+    import os
+
+    real = os.rename
+    moved = []
+
+    def flaky(source, target):
+        if "work" in Path(target).parts:
+            moved.append(target)
+            if len(moved) == 2:
+                raise OSError(5, "the drive went away")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "rename", flaky)
+    with pytest.raises(ImportStopped,
+                       match="^the file 2012/05/b.jpg could not be written: the drive went away$"):
+        _bring(tmp_path, _export(
+            _item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+            _item(21, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+            _item(1, slug="one")), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+    held = tmp_path / "site" / "import"
+    assert not (held / "work").exists()
+    for name in ("a.jpg", "b.jpg"):
+        assert (held / "media" / "2012" / "05" / name).is_file(), name
+
+
+def test_run_names_what_it_could_not_write(tmp_path, monkeypatch):
+    """INV-7: a write that fails in the maintainer's run stops it with a
+    message naming what was being written, and INTO is never made.
+
+    Breaks when the OSError escapes raw, or a part-written INTO is left."""
+    export, originals, into = _world(tmp_path, _export(_item(1, slug="one")))
+
+    def full(*args, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(shutil, "copytree", full)
+    with pytest.raises(ImportStopped, match="^the preview copy of assets could not be "
+                                            "written: No space left on device$"):
+        _run(export, originals, into)
+    assert not into.exists()
+    assert not list(into.parent.glob(f".{into.name}-*")), "the work folder is removed"
 
 
 def test_a_stop_during_the_moves_finishes_next_start(tmp_path, monkeypatch):

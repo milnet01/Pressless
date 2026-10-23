@@ -31,6 +31,8 @@ from . import (
     ImportStopped,
     Report,
     _convert,
+    _counts,
+    _entry,
     _field,
     _Item,
     _items,
@@ -39,6 +41,8 @@ from . import (
     _resolve,
     _upload_path,
     _waiting,
+    _write_entries,
+    _writing,
     read,
     resolve_slug,
 )
@@ -384,29 +388,13 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
 
     read_in = read(export)
     channel, ns = read_in.channel, read_in.ns
+    site_title = (channel.findtext("title") or "").strip()
     items = _items(channel, ns, page_statuses=_DRAFT_STATUSES, titled_drafts=True)
     renamed = _resolve(items)
     pages = _pages(channel, ns)
-    renamed += _name_pages(pages, (channel.findtext("title") or "").strip())
+    renamed += _name_pages(pages, site_title)
     old_site = _old_site(channel, ns)
-
-    photo: dict[Path, bool] = {}
-
-    def is_photo(path: Path) -> bool:
-        if path not in photo:
-            photo[path] = builder.photograph_format(path) is not None
-        return photo[path]
-
-    names, by_address, by_id, unheld = _photographs(channel, ns, media, strict=False,
-                                                    shown=is_photo)
-    kept: dict[str, tuple[str, str]] = {}      # place -> (folder, Store name)
-    for place, name in names.items():
-        if is_photo(media / place):
-            kept[place] = (store.PHOTOGRAPHS_FOLDER, name)
-        elif builder.file_allowed(name, (media / place).read_bytes()):
-            kept[place] = (store.FILES_FOLDER, name)
-        else:
-            unheld.append((place, "it is not a kind of file Pressless keeps"))
+    kept, by_address, by_id, unheld = _held(channel, ns, media)
     web = {place: builder.web_photograph(name) if folder == store.PHOTOGRAPHS_FOLDER
            else builder.web_file(name) for place, (folder, name) in kept.items()}
 
@@ -417,17 +405,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
             item.dropped.insert(0, _UNPUBLISHED_PAGE)
         if item.featured:
             bodies[item.post_id] = _featured(item, bodies[item.post_id], by_id)
-    entries = {item.post_id: store.Entry(
-        slug=item.slug, title=item.title, date=item.date, categories=item.categories,
-        tags=item.tags, body=bodies[item.post_id], extra=()) for item in items}
-    targets = {page.post_id: (page.title, "{{UP}}index.html" if page.name == "index"
-                              else f"{{{{UP}}}}pages/{page.name}.html", page.link)
-               for page in pages}
-    for item, link in zip(items, _links(channel, ns, items), strict=True):
-        if not item.draft:
-            targets[item.post_id] = (item.title, "{{UP}}" + builder.entry_path(
-                entries[item.post_id]) + "/index.html", link)
-    links, menus = _menu(channel, ns, targets)
+    entries = {item.post_id: _entry(item, bodies[item.post_id]) for item in items}
+    links, menus = _menu(channel, ns, _targets(channel, ns, pages, items, entries))
     menu_listed: list[str] = []
     navigation = _navigation(links, menu_listed)
 
@@ -435,56 +414,43 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
         shutil.rmtree(work)    # an earlier attempt that stopped before its moves
     work.mkdir(parents=True)
     moved: list[tuple[Path, Path]] = []
-    doing = "the folder"
     try:
-        for item in items:
-            doing = f"the entry {item.slug}"
-            store.write(work, entries[item.post_id], draft=item.draft)
-            if item.comments:
-                doing = f"the comments on {item.slug}"
-                store.write_comments(work, item.slug, item.comments)
-        doing = "the look"
-        look.save(work, look.defaults(layout), "")
-        sheets = builder.stylesheets(work)
+        _write_entries(work, items, entries)
+        with _writing("the look"):
+            look.save(work, look.defaults(layout), "")
+            sheets = builder.stylesheets(work)
         for page in pages:
-            doing = f"the page {page.name}"
-            store.write_html(work, store.PAGES_FOLDER, page.name,
-                             _page_html(page, sheets, web, old_site))
+            with _writing(f"the page {page.name}"):
+                store.write_html(work, store.PAGES_FOLDER, page.name,
+                                 _page_html(page, sheets, web, old_site))
         if not pages:
-            doing = "the page index"
-            identity = store.read_identity(into)
-            store.write_html(work, store.PAGES_FOLDER, "index", starter.home_page(
-                identity.name if identity is not None else
-                (channel.findtext("title") or "").strip()))
+            with _writing("the page index"):
+                identity = store.read_identity(into)
+                store.write_html(work, store.PAGES_FOLDER, "index", starter.home_page(
+                    identity.name if identity is not None else site_title))
         for name, text in (("header", starter.header()), ("footer", starter.footer()),
                            (_NAVIGATION, navigation)):
-            doing = f"the furniture file {name}"
-            store.write_html(work, store.FURNITURE_FOLDER, name, text)
-        doing = "the templates"
-        templates.seed(work)
-        doing = "the journal switch"
-        store.write_journal(work, any(not item.page for item in items))
+            with _writing(f"the furniture file {name}"):
+                store.write_html(work, store.FURNITURE_FOLDER, name, text)
+        with _writing("the templates"):
+            templates.seed(work)
+        with _writing("the journal switch"):
+            store.write_journal(work, any(not item.page for item in items))
         for place, (folder, name) in kept.items():
-            doing = f"the file {place}"
-            target = (store.photograph_path_for(work, name) if folder == store.PHOTOGRAPHS_FOLDER
-                      else store.file_path_for(work, name))
-            target.parent.mkdir(exist_ok=True)
-            os.rename(media / place, target)
-            moved.append((media / place, target))
-    except BaseException as exc:
+            with _writing(f"the file {place}"):
+                target = (store.photograph_path_for(work, name)
+                          if folder == store.PHOTOGRAPHS_FOLDER
+                          else store.file_path_for(work, name))
+                target.parent.mkdir(exist_ok=True)
+                os.rename(media / place, target)
+                moved.append((media / place, target))
+    except BaseException:
         for source, target in reversed(moved):
             try:
                 os.rename(target, source)
             except OSError:
                 pass
         shutil.rmtree(work, ignore_errors=True)
-        if isinstance(exc, ImportStopped):
-            raise
-        if isinstance(exc, store.StoreError):
-            raise ImportStopped(f"the Store refused {doing}: {exc}") from None
-        if isinstance(exc, OSError):
-            raise ImportStopped(
-                f"{doing} could not be written: {exc.strerror or type(exc).__name__}") from None
         raise
 
     (held_folder / _MOVING).write_bytes(b"")
@@ -492,21 +458,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     if stopped is not None:
         raise ImportStopped(stopped)
 
-    dropped = [Dropped(item.slug, what) for item in items for what in dict.fromkeys(item.dropped)]
-    for page in pages:
-        if page.comments:
-            page.dropped.append(f"its comments ({page.comments}), which a page does not have")
-        dropped += [Dropped(f"pages/{page.name}", what) for what in dict.fromkeys(page.dropped)]
-    dropped += [Dropped(_NAVIGATION, what) for what in dict.fromkeys(menu_listed)]
-    other: dict[str, int] = {}
-    for item in channel.findall("item"):
-        kind = _field(item, "post_type", ns)
-        if kind not in _CARRIED_TYPES:
-            other[kind] = other.get(kind, 0) + 1
     return Report(
-        published=sum(1 for item in items if not item.draft),
-        drafts=sum(1 for item in items if item.draft),
-        comments=sum(len(item.comments) for item in items),
+        **_counts(items),
         photographs=sum(1 for folder, _name in kept.values()
                         if folder == store.PHOTOGRAPHS_FOLDER),
         files=sum(1 for folder, _name in kept.values() if folder == store.FILES_FOLDER),
@@ -515,14 +468,76 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
             (place, name) for place, (_folder, name) in kept.items()
             if name != place.rsplit("/", 1)[-1]),
         pages=tuple(sorted(page.name for page in pages)) or ("index",),
-        dropped=tuple(dropped),
+        dropped=_dropped(items, pages, menu_listed),
         waiting=_waiting(items),
         unfetched=tuple(dict(
             (place, unfetched.get(place, "it was not fetched, nor in the media download")
              if why == _MISSING else why) for place, why in unheld).items()),
         menus=menus,
-        other_types=tuple(sorted(other.items())),
+        other_types=_other_types(channel, ns),
     )
+
+
+def _held(channel, ns, media: Path):
+    """Each held file Import keeps, by its upload place, as (folder, Store
+    name): a photograph where the Builder can show it, else a file where the
+    Builder allows it. With the photograph lookups, and every place not
+    kept, with why."""
+    photo: dict[Path, bool] = {}
+
+    def is_photo(path: Path) -> bool:
+        if path not in photo:
+            photo[path] = builder.photograph_format(path) is not None
+        return photo[path]
+
+    names, by_address, by_id, unheld = _photographs(channel, ns, media, strict=False,
+                                                    shown=is_photo)
+    kept: dict[str, tuple[str, str]] = {}
+    for place, name in names.items():
+        if is_photo(media / place):
+            kept[place] = (store.PHOTOGRAPHS_FOLDER, name)
+        elif builder.file_allowed(name, (media / place).read_bytes()):
+            kept[place] = (store.FILES_FOLDER, name)
+        else:
+            unheld.append((place, "it is not a kind of file Pressless keeps"))
+    return kept, by_address, by_id, unheld
+
+
+def _targets(channel, ns, pages: list[_Page], items: list[_Item],
+             entries: Mapping[str, store.Entry]) -> dict[str, tuple[str, str, str]]:
+    """What a menu link may point at, by post id: each page and published
+    entry's (title, new address, old address)."""
+    targets = {page.post_id: (page.title, "{{UP}}index.html" if page.name == "index"
+                              else f"{{{{UP}}}}pages/{page.name}.html", page.link)
+               for page in pages}
+    for item, link in zip(items, _links(channel, ns, items), strict=True):
+        if not item.draft:
+            targets[item.post_id] = (item.title, "{{UP}}" + builder.entry_path(
+                entries[item.post_id]) + "/index.html", link)
+    return targets
+
+
+def _dropped(items: list[_Item], pages: list[_Page], menu_listed: list[str]
+             ) -> tuple[Dropped, ...]:
+    """What did not come across as written: entries first, then pages, then
+    the menu, each line once."""
+    dropped = [Dropped(item.slug, what) for item in items for what in dict.fromkeys(item.dropped)]
+    for page in pages:
+        if page.comments:
+            page.dropped.append(f"its comments ({page.comments}), which a page does not have")
+        dropped += [Dropped(f"pages/{page.name}", what) for what in dict.fromkeys(page.dropped)]
+    dropped += [Dropped(_NAVIGATION, what) for what in dict.fromkeys(menu_listed)]
+    return tuple(dropped)
+
+
+def _other_types(channel, ns) -> tuple[tuple[str, int], ...]:
+    """Each post type Import does not carry, with how many the export holds."""
+    other: dict[str, int] = {}
+    for item in channel.findall("item"):
+        kind = _field(item, "post_type", ns)
+        if kind not in _CARRIED_TYPES:
+            other[kind] = other.get(kind, 0) + 1
+    return tuple(sorted(other.items()))
 
 
 def _featured(item: _Item, body: str, by_id) -> str:

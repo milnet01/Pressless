@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=294 -->
+<!-- ants-roadmap-id-high-water: PRESS=295 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -11861,6 +11861,19 @@ already-built code ships in whichever release comes next.
   **Layman:** After bringing a WordPress site in, the list of what changed should make sense to someone who has never seen web code.
   Kind: ux.
   Source: user-decision-2026-10-22 PRESS-0125 hand run.
+  Lanes: Import.
+
+- ✅ [PRESS-0295] **Import's two runs share their write steps, and bring_in reads as named steps.**
+  The Import anyone runs (bring_in) and the maintainer's run (run)
+  each held their own copy of the code that writes entries and comments,
+  turns a failed write into a message naming what failed, and counts the
+  Report's entries. Each is now one helper both call. bring_in's file
+  sorting, menu targets, dropped list and other-types count are named
+  helpers too. Three tests now pin the stop messages and the rollback of
+  moved files, green on the code before and after.
+  **Layman:** Behind the scenes tidy-up of the WordPress import, so it is easier to change safely; nothing a user sees changes.
+  Kind: refactor.
+  Source: session-2026-10-23 readability pass.
   Lanes: Import.
 
 ## Milestones
