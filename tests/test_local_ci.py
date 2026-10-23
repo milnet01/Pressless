@@ -67,3 +67,23 @@ def test_sweep_with_no_file_fails():
     ran = _sweep()
     assert ran.returncode == 1
     assert "--sweep" in ran.stderr
+
+
+def test_an_unknown_option_is_refused_before_anything_runs(tmp_path):
+    """PRESS-0300. Breaks when the gate takes a mistyped option, `--doc` for
+    `--docs`, as no option, and runs the whole gate instead of refusing.
+
+    A Python that refuses to run is first on PATH, so a regression stops at
+    the gate's interpreter step rather than running the suite from inside it.
+    """
+    stand_ins = tmp_path / "bin"
+    stand_ins.mkdir()
+    for name in ("python3", "python"):
+        (stand_ins / name).write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        (stand_ins / name).chmod(0o755)
+    ran = subprocess.run([_BASH, str(_SCRIPT), "--doc"],  # noqa: S603 -- this repository's own gate
+                         env={"PATH": f"{stand_ins}:/usr/bin:/bin", "HOME": str(tmp_path)},
+                         capture_output=True, text=True, timeout=120, check=False)
+    assert ran.returncode == 1
+    assert "unknown option --doc" in ran.stderr
+    assert "=== " not in ran.stdout

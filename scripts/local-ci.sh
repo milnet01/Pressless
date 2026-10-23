@@ -34,6 +34,8 @@ case ${1-} in
         SWEEP+=("$(realpath "$file")")
     done
     ;;
+"") ;;
+*) fail "unknown option $1; use --docs, --sweep FILE..., or nothing" ;;
 esac
 cd "$(dirname "$0")/.."
 
@@ -151,23 +153,14 @@ if [[ -z ${PRESSLESS_ARCHIVE-} ]]; then
         printf 'note: ants.pressless.archive is set but %s is missing -- S2 not proven\n' "$archive"
     fi
 fi
-# Import's archive tests also read the photograph originals (PRESS-0007 §7),
-# which are the writer's own files and stay out of this repository the same
-# way: git config ants.pressless.originals /path/to/originals
-if [[ -z ${PRESSLESS_ORIGINALS-} ]]; then
-    originals=$(git config --get ants.pressless.originals || true)
-    if [[ -n $originals && -d $originals ]]; then
-        export PRESSLESS_ORIGINALS="$originals"
-    elif [[ -n $originals ]]; then
-        printf 'note: ants.pressless.originals is set but that folder is missing\n'
-    fi
-fi
-# The whole import also reads the live site's folder and today's header and
-# footer templates (PRESS-0007 §7), which identify the writer and stay out of
-# this repository the same way:
+# Import's archive tests also read the photograph originals, the live site's
+# folder and today's header and footer templates (PRESS-0007 §7). All
+# identify the writer and stay out of this repository the same way:
+#   git config ants.pressless.originals /path/to/originals
 #   git config ants.pressless.liveSite /path/to/the/live/site
 #   git config ants.pressless.templates /path/to/the/templates
-for pair in "PRESSLESS_LIVE_SITE liveSite" "PRESSLESS_TEMPLATES templates"; do
+for pair in "PRESSLESS_ORIGINALS originals" "PRESSLESS_LIVE_SITE liveSite" \
+    "PRESSLESS_TEMPLATES templates"; do
     set -- $pair
     if [[ -z ${!1-} ]]; then
         folder=$(git config --get "ants.pressless.$2" || true)
