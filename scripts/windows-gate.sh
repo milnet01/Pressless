@@ -122,7 +122,9 @@ EOF
 cp "$scratch/tree.zip" "$scratch/$run.zip"
 git bundle create -q "$scratch/$run.bundle" HEAD
 # Exit 2 means the box could not be reached, which local-ci.sh reports and
-# passes; any other non-zero is the suite's failure. ssh's own failure is 255.
+# passes; any other non-zero is the suite's failure. ssh's own failure is 255,
+# and the remote's own 2 -- pytest's, for an interrupted run or a collection
+# error -- becomes 1, so only unreachable() ever exits 2.
 unreachable() { printf 'windows gate: %s is not reachable\n' "$host" >&2; exit 2; }
 scp -q -o ConnectTimeout=8 "$scratch/$run.zip" "$scratch/$run.bundle" "$scratch/$run.ps1" "$host:" \
     || unreachable
@@ -130,4 +132,5 @@ status=0
 ssh -o ConnectTimeout=8 "$host" "powershell -NoProfile -ExecutionPolicy Bypass -File $run.ps1" \
     || status=$?
 ((status != 255)) || unreachable
+((status != 2)) || status=1
 exit "$status"
