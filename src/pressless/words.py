@@ -1669,6 +1669,11 @@ _WORDS: dict[str, str] = {
         "Pressless could not start ({kind}). Close this window and start Pressless again. If "
         "it keeps happening, send that name to whoever helps you."
     ),
+    "main.moving_in": (
+        "Pressless could not move your site into the sites folder in its {folder} folder: "
+        "{reason}. Nothing was lost. Close anything using that folder and start Pressless "
+        "again."
+    ),
     "main.open_link": "Open this link in your browser: {link}",
     "main.running": (
         "Pressless is running. Keep this window open while you use it, and close it to stop "

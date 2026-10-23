@@ -35,6 +35,7 @@ from pressless import (
     updater,
     usage,
     wizard,
+    words,
 )
 
 SITES = "sites"
@@ -191,10 +192,12 @@ def test_a_fresh_folder_moves_nothing_in(tmp_path: Path) -> None:
 
 
 def test_a_refused_move_names_no_path_and_deletes_nothing(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """§ 4.3: a rename that fails stops the move with a sentence naming the
-    folder by name only. Breaks when the failure escapes, quotes a path, or
-    something is lost."""
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
+    """§ 4.3: a rename that fails stops the move; __main__ words it from the
+    words table, naming the folder by name only (PRESS-0320). Breaks when the
+    failure escapes, quotes a path, is worded in sites.py, or something is
+    lost."""
     own = tmp_path / "Pressless-data"
     own.mkdir()
     files = _one_site(own)
@@ -206,8 +209,11 @@ def test_a_refused_move_names_no_path_and_deletes_nothing(
         return real(self, target)
 
     monkeypatch.setattr(Path, "rename", refuse)
-    said = sites.move_in(own)
-    assert said is not None and str(tmp_path) not in said and "Pressless-data" in said
+    assert isinstance(sites.move_in(own), OSError)
+    with words.use({"main.moving_in": "[{folder}] [{reason}]"}):
+        assert main_module._serve(own) == 1
+    said = capsys.readouterr().out
+    assert said == "[Pressless-data] [Permission denied]\n"
     assert (own / "photographs" / "sea.jpg").read_bytes() == files["photographs/sea.jpg"]
     assert (own / SITES / ".moving" / "drafts" / "seaside.txt").is_file()
     monkeypatch.setattr(Path, "rename", real)

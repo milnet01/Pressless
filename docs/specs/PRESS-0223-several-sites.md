@@ -82,7 +82,7 @@ def open_site(own: Path) -> Path: ...      # the open site's folder, created
 def all_sites(own: Path) -> list[Path]: ... # site-1, site-2, ... in number order
 def new_site(own: Path) -> Path: ...       # creates site-<highest + 1>
 def choose(own: Path, site: str) -> None:  # writes OPEN_FILE
-def move_in(own: Path) -> str | None: ...  # § 4.3
+def move_in(own: Path) -> OSError | None: ...  # § 4.3
 ```
 
 `open_site` reads `OPEN_FILE`. Where it is missing, unreadable, or names
@@ -118,8 +118,9 @@ a second Pressless cannot move the same files:
 Every step is a rename inside one folder on one drive, so each is whole
 or not done. A start that finds `sites/.moving` begins again at step 2,
 which moves only what is still at the top. Where a rename fails,
-`move_in` returns a sentence naming the folder by name only, `__main__`
-prints it and stops with exit code 1, and nothing is deleted.
+`move_in` returns the `OSError` and nothing is deleted. `__main__` words
+it through `words.py` (`main.moving_in`), naming the folder by name
+only, prints it and stops with exit code 1.
 
 ### 4.4 Handing folders to the parts
 
@@ -258,7 +259,9 @@ INV-1 and INV-8 hold it to `site-N` under `sites/`.
 `tests/test_sites_screen.py` INV-7 and INV-8, and
 `scripts/by-hand-browser-checks.py` INV-9. Existing tests that build a
 Face over one folder keep passing that folder as `own` and `site` both.
-The screen's words go through `words.py` and `tests/test_words.py`. Each
+The screen's words go through `words.py` and `tests/test_words.py`.
+`test_no_screen_writes_english` reads `sites.py` too, though it imports
+no `words`, so a sentence written there fails it. Each
 test is seen failing before the code exists, and mutation-probed once it
 lands.
 
@@ -297,6 +300,7 @@ lands.
 | INV-8 | `tests/test_sites_screen.py::test_a_bad_site_changes_nothing` |
 | INV-9 | `scripts/by-hand-browser-checks.py`, run in Chrome; Firefox and Edge by hand |
 | § 4.2 a new file a part adds | **Partial:** INV-2 catches a renamed name; a new name in neither set is caught by nothing |
+| § 4.3 a refused rename | `tests/test_sites.py::test_a_refused_move_names_no_path_and_deletes_nothing` |
 
 ## 11. Cross-doc impact
 

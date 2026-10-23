@@ -274,7 +274,8 @@ _SELECTOR = re.compile(r"[#.]?[\w-]+(?:\[[^\]]*\])?(?: [#.]?[\w-]+(?:\[[^\]]*\])
 
 
 def _screen_modules() -> list[Path]:
-    """Every module importing face or words, plus starter.py and templates.py."""
+    """Every module importing face or words, plus starter.py, templates.py and
+    sites.py, whose failure __main__ prints (PRESS-0223 § 4.3)."""
     chosen = []
     for path in sorted(SOURCE.glob("*.py")):
         names = set()
@@ -284,7 +285,8 @@ def _screen_modules() -> list[Path]:
             elif isinstance(node, ast.ImportFrom) and node.module in ("pressless.face",
                                                                        "pressless.words"):
                 names.add(node.module.rsplit(".", 1)[1])
-        if names & {"face", "words"} or path.name in ("starter.py", "templates.py"):
+        if names & {"face", "words"} or path.name in ("starter.py", "templates.py",
+                                                         "sites.py"):
             chosen.append(path)
     return chosen
 

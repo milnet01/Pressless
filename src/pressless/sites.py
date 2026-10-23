@@ -99,11 +99,11 @@ def choose(own: Path, name: str) -> None:
     _write_open(own, name)
 
 
-def move_in(own: Path) -> str | None:
+def move_in(own: Path) -> OSError | None:
     """§ 4.3: move the one site an older Pressless kept at the top into
     sites/site-1. Every step is a rename inside one drive, so a stop part way
-    leaves sites/.moving, and the next start finishes. Returns a sentence to
-    print where a rename failed; nothing is ever deleted."""
+    leaves sites/.moving, and the next start finishes. Returns the failure
+    where a rename failed, for __main__ to word; nothing is ever deleted."""
     own = Path(own)
     held = own / SITES_FOLDER
     moving = held / _MOVING
@@ -119,9 +119,7 @@ def move_in(own: Path) -> str | None:
         moving.rename(held / "site-1")
         _write_open(own, "site-1")
     except OSError as exc:
-        return ("Pressless could not move your site into the sites folder in its "
-                f"{own.name} folder: {exc.strerror or type(exc).__name__}. Nothing was "
-                "lost. Close anything using that folder and start Pressless again.")
+        return exc
     return None
 
 

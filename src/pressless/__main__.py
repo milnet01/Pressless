@@ -167,7 +167,10 @@ def _serve(own: Path) -> int:
         return 3
     try:
         # PRESS-0223 § 4.3: behind the lock, so no second Pressless moves it.
-        stopped = sites.move_in(own)
+        failed = sites.move_in(own)
+        stopped = None if failed is None else say(
+            "main.moving_in", folder=own.name,
+            reason=failed.strerror or type(failed).__name__)
         # PRESS-0125 § 4.7: an Import stopped part way through its moves
         # finishes before anything reads that site.
         for site in sites.all_sites(own):
