@@ -236,7 +236,7 @@ def _move(folder: Path, entry: str | None) -> _Moved | None:
     draft = store.read(path)
     stripped = tuple(field for field in draft.extra
                      if field[0] not in (editor.REPLACES, UNDONE))
-    named = next((value for name, value in draft.extra if name == editor.REPLACES), None)
+    named = editor.replaces_field(draft)
 
     if named is not None and named in store.list_slugs(folder, draft=False):
         remembered = store.read(store.path_for(folder, named, draft=False))
@@ -356,7 +356,7 @@ def _left(folder: Path, written: store.Entry) -> tuple[str, bool, str]:
     of the published entry where one is left, else the published entry, else
     the draft."""
     published = store.list_slugs(folder, draft=False)
-    named = next((value for name, value in written.extra if name == editor.REPLACES), None)
+    named = editor.replaces_field(written)
     target = named if named in published else written.slug
     if target in published:
         try:

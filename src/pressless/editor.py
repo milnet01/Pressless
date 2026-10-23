@@ -50,7 +50,7 @@ from pressless.words import say
 
 PREVIEW_FOLDER = "preview"          # inside Pressless's own folder; the Face's alone
 REPLACES = "Replaces"               # the header naming the published entry a copy changes
-UNDONE = "Undone"                   # publishing.UNDONE, the mark undo leaves (PRESS-0015 § 4.5)
+UNDONE = "Undone"                   # undo's mark (PRESS-0015 § 4.5), which publishing imports
 UNTITLED = "untitled"
 COPY_SUFFIX = "-changes"
 LONGEST_ADDRESS = 60
@@ -139,7 +139,7 @@ def working_copy(folder: Path, slug: str) -> str | None:
     if slug not in store.list_slugs(folder, draft=False):
         return None
     found = [draft for draft in store.list_slugs(folder, draft=True)
-             if _named(folder, draft) == slug]
+             if _draft_replaces(folder, draft) == slug]
     if len(found) > 1:
         raise TooManyCopies(f"{len(found)} drafts replace the entry {slug}")
     return found[0] if found else None
@@ -182,24 +182,27 @@ def register(face: Face, folder: Path) -> None:
 # ------------------------------------------------------------- the Store ---
 
 
-def _named(folder: Path, draft: str) -> str | None:
-    """The `Replaces` value of a draft, or None -- an unreadable one included,
-    which the list reports on its own (§ 4.5)."""
+def _draft_replaces(folder: Path, draft: str) -> str | None:
+    """The `Replaces` field of the draft `draft`, read from disk, or None -- an
+    unreadable one included, which the list reports on its own (§ 4.5)."""
     try:
         entry = store.read(store.path_for(folder, draft, draft=True))
     except store.StoreError:
         return None
-    return _replaces(entry)
+    return replaces_field(entry)
 
 
-def _replaces(entry: store.Entry) -> str | None:
+def replaces_field(entry: store.Entry) -> str | None:
+    """The entry's `Replaces` field as written, checked against nothing: an
+    ordinary draft may carry one naming no published entry. `_replaced`
+    gives it only where it names one."""
     return next((value for name, value in entry.extra if name == REPLACES), None)
 
 
 def _replaced(folder: Path, entry: store.Entry) -> str | None:
     """The published entry a draft is a working copy of, or None: a draft whose
     `Replaces` names no published entry is an ordinary draft (§ 4.1)."""
-    named = _replaces(entry)
+    named = replaces_field(entry)
     if named is None or named not in store.list_slugs(folder, draft=False):
         return None
     return named
@@ -354,14 +357,14 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     # list_slugs, so an unreadable published entry still has its working copy
     # (PRESS-0162).
     published = {entry.slug for entry in readable[False]} | set(unreadable[False])
-    changed = {_replaces(entry) for entry in readable[True]} & published
-    drafts = [entry for entry in readable[True] if _replaces(entry) not in published]
+    changed = {replaces_field(entry) for entry in readable[True]} & published
+    drafts = [entry for entry in readable[True] if replaces_field(entry) not in published]
     # PRESS-0015 § 4.6: the draft undo took off the site, and a draft whose
     # `Replaces` names it -- the copy publishing._move publishes over it.
     undone = {entry.slug for entry in drafts if any(name == UNDONE for name, _ in entry.extra)}
     notes = {entry.slug: say("editor.list.undone") for entry in drafts if entry.slug in undone}
     notes.update({entry.slug: say("editor.list.later_changes") for entry in drafts
-                  if _replaces(entry) in undone})
+                  if replaces_field(entry) in undone})
 
     def rows(entries: list[store.Entry], broken: list[str]) -> str:
         ordered = sorted(sorted(entries, key=lambda entry: entry.slug),
@@ -533,15 +536,15 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     named = _replaced(folder, entry) if draft else None
     on_site = not draft or named is not None
     proof = named is not None
-    published, waiting = (" hidden", "") if proof else ("", " hidden")
+    hide_published, hide_waiting = (" hidden", "") if proof else ("", " hidden")
     # Both states on every page, because a save turns a published entry's page
     # into a working copy's editor, and a press turns a draft's or a proof's
     # into a published entry's, without reloading it; the script shows the one
     # that holds and names the copy (PRESS-0162, PRESS-0185).
     standing = (f'<div id="standing"{"" if on_site else " hidden"}>'
-                f'<p data-when="0"{published}>{say("editor.standing.published")}</p>'
-                f'<p data-when="1"{waiting}>{say("editor.standing.waiting")}</p>'
-                f'<form data-when="1"{waiting} method="post" action="/discard">'
+                f'<p data-when="0"{hide_published}>{say("editor.standing.published")}</p>'
+                f'<p data-when="1"{hide_waiting}>{say("editor.standing.waiting")}</p>'
+                f'<form data-when="1"{hide_waiting} method="post" action="/discard">'
                 f'<input type="hidden" name="slug" value="{attr(entry.slug) if proof else ""}">'
                 f'<input type="hidden" name="base" value="{attr(base)}">'
                 f"<button>{say('editor.bin_proof')}</button></form></div>")
@@ -671,52 +674,17 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     form = _form(request)
     slug, base, address = form.get("slug", ""), form.get("base", ""), form.get(
         "address", "").strip()
+    # A request without `draft` has PRESS-0012 § 4.9's shape, from before a
+    # published entry could move, and then only a draft could.
     draft = form.get("draft", "1") == "1"
-    hint = None
     with lock, face.capture() as notices:
         try:
             entry = (store.read(store.path_for(folder, slug, draft=draft))
                      if slug in store.list_slugs(folder, draft=draft) else None)
-            if entry is None:
-                hint = say("editor.hint.gone")
-            elif draft and _replaced(folder, entry) is not None:
-                hint = say("editor.hint.proof")
-            elif not draft and working_copy(folder, slug) is not None:
-                hint = say("editor.hint.proof_waiting")
-            elif address != slug:
-                try:
-                    taken = store.exists(folder, address)
-                except store.StoreError:
-                    hint = say("editor.hint.bad_address")
-                else:
-                    forwards = store.read_forwards(folder)
-                    if taken:
-                        hint = say("editor.hint.taken")
-                    elif forwards.get(address, slug) != slug:
-                        hint = say("editor.hint.forwarded")
-            if hint is None and entry is not None and address != slug:
-                path = store.path_for(folder, slug, draft=draft)
-                if _digest(path) != base:
-                    raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
-                # The order leaves two copies, never none (§ 4.2).
-                store.write(folder, dataclasses.replace(entry, slug=address), draft=draft)
-                # Retarget every pair aimed here. A pair FROM the new address can
-                # only be aimed here (the hint above refuses any other), so it
-                # becomes a loop and the last line drops it: moving back.
-                forwards = {old: (address if new == slug else new)
-                            for old, new in store.read_forwards(folder).items()}
-                if not draft:
-                    forwards[slug] = address
-                forwards = {old: new for old, new in forwards.items() if old != new}
-                if forwards != store.read_forwards(folder):
-                    store.write_forwards(folder, forwards)
-                comments = store.comments_path_for(folder, slug)
-                if comments.is_file():
-                    store.write_comments(folder, address, store.read_comments(comments))
-                    store.move_to_bin(folder, comments)
-                store.move_to_bin(folder, path)
+            hint = _address_refused(folder, entry, slug, address, draft=draft)
+            if hint is None and address != slug:
+                base = _move(folder, entry, slug, address, base, draft=draft)
                 slug = address
-                base = _digest(store.path_for(folder, slug, draft=draft))
         except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
@@ -725,6 +693,57 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         return _failed(face, notices, failure)
     return _json({"slug": slug, "draft": draft, "base": base, "preview": None,
                   "failure": None, "notices": render_notices(notices), "hint": hint})
+
+
+def _address_refused(folder: Path, entry: store.Entry | None, slug: str, address: str,
+                     *, draft: bool) -> str | None:
+    """The hint saying why `entry`, at `slug`, may not move to `address`, or
+    None where it may (PRESS-0182 § 4.2 step 1). Keeping its own address is
+    never refused, though an entry that has gone, or a proof, still is."""
+    if entry is None:
+        return say("editor.hint.gone")
+    if draft and _replaced(folder, entry) is not None:
+        return say("editor.hint.proof")
+    if not draft and working_copy(folder, slug) is not None:
+        return say("editor.hint.proof_waiting")
+    if address == slug:
+        return None
+    try:
+        taken = store.exists(folder, address)
+    except store.StoreError:
+        return say("editor.hint.bad_address")
+    if taken:
+        return say("editor.hint.taken")
+    if store.read_forwards(folder).get(address, slug) != slug:
+        return say("editor.hint.forwarded")
+    return None
+
+
+def _move(folder: Path, entry: store.Entry, slug: str, address: str, base: str, *,
+          draft: bool) -> str:
+    """Move `entry`, at `slug`, to `address`, with its forwards and comments, and return
+    the moved file's digest: the window's new base. `base` must still match."""
+    path = store.path_for(folder, slug, draft=draft)
+    if _digest(path) != base:
+        raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
+    # The order leaves two copies, never none (§ 4.2).
+    store.write(folder, dataclasses.replace(entry, slug=address), draft=draft)
+    # Retarget every pair aimed here. A pair FROM the new address can only be
+    # aimed here (_address_refused refuses any other), so it becomes a loop
+    # and the last line drops it: moving back.
+    forwards = {old: (address if new == slug else new)
+                for old, new in store.read_forwards(folder).items()}
+    if not draft:
+        forwards[slug] = address
+    forwards = {old: new for old, new in forwards.items() if old != new}
+    if forwards != store.read_forwards(folder):
+        store.write_forwards(folder, forwards)
+    comments = store.comments_path_for(folder, slug)
+    if comments.is_file():
+        store.write_comments(folder, address, store.read_comments(comments))
+        store.move_to_bin(folder, comments)
+    store.move_to_bin(folder, path)
+    return _digest(store.path_for(folder, address, draft=draft))
 
 
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
