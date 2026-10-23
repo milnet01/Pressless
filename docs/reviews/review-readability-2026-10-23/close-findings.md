@@ -132,3 +132,30 @@ Sweep: searched docs/, tests/, CLAUDE.md and README.md for
 `updating.register` with `folder`. Nothing was stale outside frozen
 records. `scripts/by-hand-browser-checks.py` clicked `#open-site-file`;
 fixed (9a5c1a9).
+
+## lane-08 import
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| `_bring.py` `_MISSING` matched a literal reason | HIGH | fixed (0b3ea13) — now `pressless_import.MISSING` |
+| `_bring.py` / `_html.py` host rule written four times | MEDIUM | fixed (d4a1137) — `_html.bare_host` and `_host` |
+| `importing.py` `_SEND_SCRIPT` copy of the Sites file box | MEDIUM | fixed (9a5c1a9) — one `face.file_box` |
+| `_bring.py` / `importing.py` two `_MEDIA` | MEDIUM | fixed (b34ee2b) — `pressless_import.MEDIA_FOLDER` |
+| `__init__.py` `_photographs` / `renamed_photographs` cover files | MEDIUM | fixed (e4cd72a) — comments; the specs pin both names |
+| `__init__.py` `Report.unfetched` keys | LOW | fixed (e4cd72a) — comment, and `fetch_all`'s docstring |
+| `_bring.py` four-part `unfetched` expression | LOW | fixed (e4cd72a) — `_unfetched` |
+| `__init__.py` "the run" banner | LOW | fixed (e4cd72a) — now heads `_old_site` |
+| `importing.py` `_RELOAD` repeats the address | LOW | fixed (e4cd72a) — built from `ADDRESS` |
+| `_bring.py` unknown-look fallback | LOW | fixed (e4cd72a) — comment |
+| `_html.py` `_HIDDEN` "neither function" | LOW | fixed (d4a1137) |
+| lead: file box `fetch` has no catch | — | fixed, shipped as PRESS-0319 (9a5c1a9) |
+| lead PRESS-0321 progress counts off-lock | — | dropped — only `done` is read; one atomic store |
+| lead PRESS-0322 refused file's reason by coincidence | — | dropped — the lookup runs only for `MISSING`, filed by upload path |
+| lead PRESS-0323 private `_context` | — | real; fixed, shipped (5e1b433) |
+| found: safe fetch used the host's certificate store | — | fixed, shipped as PRESS-0327 (e38192c) |
+
+Sweep: searched docs/, tests/, CLAUDE.md and README.md for `_MEDIA`,
+`_host`, `_RELOAD`, `_unfetched`, `_context`, "neither function" and
+`removeprefix("www.")`. Nothing was stale outside frozen records. The
+`_context` hit in `tests/test_certificates.py` showed the fetch missing
+from PRESS-0142's certifi rule; fixed as PRESS-0327.
