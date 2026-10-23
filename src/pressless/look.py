@@ -302,6 +302,28 @@ def css(choices: Choices, extra: str) -> str:
 # The layout, journal and effect rules below are part of every saved look:
 # see css() before changing one.
 
+# Rules every layout holds, the same in each (PRESS-0239's underlined links
+# and visible focus ring among them), joined into each layout's rules below.
+_LINK_RULES = """\
+a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+"""
+_HEADER_LINK_RULES = """\
+header.site a { color: var(--on-band); }
+header.site a:focus-visible { outline-color: var(--on-band); }
+"""
+_NAV_LINK_RULES = """\
+nav.primary a { font-weight: 600; }
+nav.primary a[aria-current="page"] { text-decoration: none;
+  border-bottom: 3px solid var(--accent); }
+"""
+_PICTURE_RULE = """\
+img { max-width: 100%; height: auto; border-radius: 0.5rem; }
+"""
+_NO_EMPTY_DESCRIPTION = """\
+.site-description:empty { display: none; }
+"""
+
 # Sunrise: a warm band across the top, one centred column.
 _SUNRISE = """
 html { font-size: var(--text-size); }
@@ -315,16 +337,13 @@ body {
   flex-direction: column;
   min-height: 100vh;
 }
-a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-
+""" + _LINK_RULES + """
 header.site {
   background: var(--band);
   color: var(--on-band);
   padding: 1.5rem max(1.25rem, calc((100% - var(--width) + 2.5rem) / 2));
 }
-header.site a { color: var(--on-band); }
-header.site a:focus-visible { outline-color: var(--on-band); }
+""" + _HEADER_LINK_RULES + """\
 .site-name {
   font-family: var(--heading-font);
   font-size: 1.9rem;
@@ -332,19 +351,15 @@ header.site a:focus-visible { outline-color: var(--on-band); }
   text-decoration: none;
 }
 .site-description { margin: 0.25rem 0 0; font-size: 1.05rem; color: var(--band-soft); }
-.site-description:empty { display: none; }
+""" + _NO_EMPTY_DESCRIPTION + """\
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
-nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none;
-  border-bottom: 3px solid var(--accent); }
-
+""" + _NAV_LINK_RULES + """
 main, .wrap { flex: 1 0 auto; width: 100%; box-sizing: border-box; max-width: var(--width);
   margin: 0 auto; padding: 2rem 1.25rem; }
 h1, h2, h3 { font-family: var(--heading-font); line-height: 1.25;
   color: var(--heading); }
 h1 { font-size: 2.2rem; margin-top: 0.5rem; }
-img { max-width: 100%; height: auto; border-radius: 0.5rem; }
-
+""" + _PICTURE_RULE + """
 footer.site {
   background: var(--foot);
   color: var(--on-foot);
@@ -366,26 +381,19 @@ body {
   font-family: var(--body-font);
   line-height: 1.65;
 }
-a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-
+""" + _LINK_RULES + """
 header.site { background: var(--band); color: var(--on-band); padding: 1.5rem 1.25rem; }
-header.site a { color: var(--on-band); }
-header.site a:focus-visible { outline-color: var(--on-band); }
+""" + _HEADER_LINK_RULES + """\
 .site-name { font-family: var(--heading-font); font-size: 1.7rem; font-weight: bold;
   text-decoration: none; line-height: 1.2; }
 .site-description { margin: 0.5rem 0 0; font-size: 1rem; color: var(--band-soft); }
-.site-description:empty { display: none; }
+""" + _NO_EMPTY_DESCRIPTION + """\
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1rem; }
-nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none;
-  border-bottom: 3px solid var(--accent); }
-
+""" + _NAV_LINK_RULES + """
 main, .wrap { max-width: var(--width); padding: 2rem 1.25rem; }
 h1, h2, h3 { font-family: var(--heading-font); line-height: 1.25; }
 h1 { font-size: 2.1rem; margin-top: 0.5rem; color: var(--heading); }
-img { max-width: 100%; height: auto; border-radius: 0.5rem; }
-
+""" + _PICTURE_RULE + """
 footer.site {
   background: var(--foot);
   color: var(--on-foot);
@@ -428,25 +436,19 @@ body {
   flex-direction: column;
   min-height: 100vh;
 }
-a { color: var(--link); text-decoration: underline; text-underline-offset: 0.15em; }
-a:focus-visible, button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-
+""" + _LINK_RULES + """
 header.site {
   background: var(--band);
   color: var(--on-band);
   padding: 1.25rem max(1.25rem, calc((100% - var(--width) + 2.5rem) / 2));
 }
-header.site a { color: var(--on-band); }
-header.site a:focus-visible { outline-color: var(--on-band); }
+""" + _HEADER_LINK_RULES + """\
 .site-name { font-family: var(--heading-font); font-size: 1.6rem; font-weight: 800;
   text-decoration: none; letter-spacing: 0.01em; }
 .site-description { margin: 0.25rem 0 0; font-size: 1rem; color: var(--band-soft); }
-.site-description:empty { display: none; }
+""" + _NO_EMPTY_DESCRIPTION + """\
 nav.primary { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.75rem; }
-nav.primary a { font-weight: 600; }
-nav.primary a[aria-current="page"] { text-decoration: none;
-  border-bottom: 3px solid var(--accent); }
-
+""" + _NAV_LINK_RULES + """
 /* Wide screens: the name on the left, the menu on the right. */
 @media (min-width: 48rem) {
   header.site {
@@ -474,8 +476,7 @@ h1::after {
   background: var(--accent);
   border-radius: 0.15rem;
 }
-img { max-width: 100%; height: auto; border-radius: 0.5rem; }
-
+""" + _PICTURE_RULE + """
 footer.site {
   background: var(--foot);
   color: var(--on-foot);
