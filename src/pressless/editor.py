@@ -360,61 +360,80 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     # list_slugs, so an unreadable published entry still has its working copy
     # (PRESS-0162).
     published = {entry.slug for entry in readable[False]} | set(unreadable[False])
-    changed = {replaces_field(entry) for entry in readable[True]} & published
-    drafts = [entry for entry in readable[True] if replaces_field(entry) not in published]
+    drafts, notes = _drafts_and_notes(readable[True], published)
+    failure = face.fail(first_failure, publishing=False) if first_failure else ""
+    # PRESS-0235 § 4.5: the list's press row is the undo line.
+    said, running, ended = pressing.shown("")
+    header = (render_notices(notices) + failure +
+              f"<h1>{say('face.your_writing')}</h1>" + site
+              # PRESS-0023 § 4.9: what other parts show here, without this
+              # module importing them.
+              + "".join(face.list_pieces(above=True))
+              # PRESS-0236: a press's failure opens over the list.
+              + message_box("failure", ended or "", forgets=True))
+    controls = (_new_entry_form(folder) + _undo_row(said, running=running)
+                + _journal_switch(journal, bool(published)))
+    # PRESS-0189: each list is a card.
+    cards = (_card("editor.list.drafts", _rows(drafts, unreadable[True], notes))
+             + _card("editor.list.on_site", _rows(readable[False], unreadable[False], notes))
+             + _card("editor.list.pages", pages))
+    return (header + '<div id="undo-result"></div>'
+            + '<div id="listing">' + controls + cards + "</div>"
+            + "".join(face.list_pieces(above=False))
+            + f"<script>{_UNDO_SCRIPT}</script>")
+
+
+def _drafts_and_notes(read_drafts: list[store.Entry], published: set[str],
+                      ) -> tuple[list[store.Entry], dict[str, str]]:
+    """The drafts to list -- every draft but a working copy -- and the note
+    beside an entry, by slug: a published entry's waiting changes, and undo's
+    marks."""
+    changed = {replaces_field(entry) for entry in read_drafts} & published
+    drafts = [entry for entry in read_drafts if replaces_field(entry) not in published]
     # PRESS-0015 § 4.6: the draft undo took off the site, and a draft whose
     # `Replaces` names it -- the copy publishing._move publishes over it.
     undone = {entry.slug for entry in drafts if any(name == UNDONE for name, _ in entry.extra)}
     notes = {entry.slug: say("editor.list.undone") for entry in drafts if entry.slug in undone}
     notes.update({entry.slug: say("editor.list.later_changes") for entry in drafts
                   if replaces_field(entry) in undone})
+    notes.update({slug: say("editor.list.changed") for slug in changed})
+    return drafts, notes
 
-    def rows(entries: list[store.Entry], broken: list[str]) -> str:
-        ordered = sorted(sorted(entries, key=lambda entry: entry.slug),
-                         key=lambda entry: entry.date, reverse=True)
-        items = []
-        for entry in ordered:
-            said = say("editor.list.changed") if entry.slug in changed else notes.get(entry.slug)
-            note = f" <em>{said}</em>" if said else ""
-            items.append(
-                f'<li><a href="{html.escape(_edit_address(entry.slug), quote=True)}">'
-                f"{html.escape(entry.title or say('editor.list.untitled'))}</a> "
-                f"<small>{entry.date:%d %b %Y}</small>{note}</li>")
-        items.extend(f"<li>{html.escape(slug)} <em>{say('editor.list.unreadable')}</em></li>"
-                     for slug in broken)
-        return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"
 
-    failure = face.fail(first_failure, publishing=False) if first_failure else ""
-    # PRESS-0235 § 4.5: the list's press row is the undo line.
-    said, running, ended = pressing.shown("")
-    return (render_notices(notices) + failure +
-            f"<h1>{say('face.your_writing')}</h1>" + site
-            # PRESS-0023 § 4.9: what other parts show here, without this
-            # module importing them.
-            + "".join(face.list_pieces(above=True)) +
-            # PRESS-0236: a press's failure opens over the list.
-            message_box("failure", ended or "", forgets=True) +
-            '<div id="undo-result"></div>'
-            '<div id="listing">'
-            f'<form method="post" action="/new"><label>{say("editor.title")} '
+def _rows(entries: list[store.Entry], broken: list[str], notes: dict[str, str]) -> str:
+    """One list card's entries, newest first, then the slugs that did not read."""
+    ordered = sorted(sorted(entries, key=lambda entry: entry.slug),
+                     key=lambda entry: entry.date, reverse=True)
+    items = []
+    for entry in ordered:
+        said = notes.get(entry.slug)
+        note = f" <em>{said}</em>" if said else ""
+        items.append(
+            f'<li><a href="{html.escape(_edit_address(entry.slug), quote=True)}">'
+            f"{html.escape(entry.title or say('editor.list.untitled'))}</a> "
+            f"<small>{entry.date:%d %b %Y}</small>{note}</li>")
+    items.extend(f"<li>{html.escape(slug)} <em>{say('editor.list.unreadable')}</em></li>"
+                 for slug in broken)
+    return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"
+
+
+def _card(heading: str, inside: str) -> str:
+    return f'<section class="card"><h2>{say(heading)}</h2>{inside}</section>'
+
+
+def _new_entry_form(folder: Path) -> str:
+    return (f'<form method="post" action="/new"><label>{say("editor.title")} '
             '<input name="title" autocomplete="off"></label> '
             f"{_template_choice(folder)}"
-            f"<button>{say('editor.list.new')}</button></form>"
-            # PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
-            # showing it (§ 3 decision 3).
-            f'<p><button type="button" data-undo>{say("editor.undo")}</button></p>'
+            f"<button>{say('editor.list.new')}</button></form>")
+
+
+def _undo_row(said: str, *, running: bool) -> str:
+    """PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
+    showing it (§ 3 decision 3)."""
+    return (f'<p><button type="button" data-undo>{say("editor.undo")}</button></p>'
             f'<p id="undo-status" class="press-status" role="status"'
-            f'{_RUNNING if running else ""}>{html.escape(said)}</p>'
-            f"{_journal_switch(journal, bool(published))}"
-            # PRESS-0189: each list is a card.
-            f'<section class="card"><h2>{say("editor.list.drafts")}</h2>'
-            f"{rows(drafts, unreadable[True])}</section>"
-            f'<section class="card"><h2>{say("editor.list.on_site")}</h2>'
-            f"{rows(readable[False], unreadable[False])}</section>"
-            f'<section class="card"><h2>{say("editor.list.pages")}</h2>{pages}</section>'
-            "</div>"
-            + "".join(face.list_pieces(above=False)) +
-            f"<script>{_UNDO_SCRIPT}</script>")
+            f'{_RUNNING if running else ""}>{html.escape(said)}</p>')
 
 
 def _template_choice(folder: Path) -> str:
