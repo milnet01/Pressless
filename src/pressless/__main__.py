@@ -37,6 +37,7 @@ from pressless import (
     github_setup,
     google_setup,
     importing,
+    installer,
     look_screen,
     page_editor,
     paths,
@@ -115,12 +116,7 @@ def _unbundle_environment() -> None:
     """
     if not getattr(sys, "frozen", False) or sys.platform == "win32":
         return
-    for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
-        before = os.environ.get(f"{name}_ORIG")
-        if before is None:
-            os.environ.pop(name, None)
-        else:
-            os.environ[name] = before
+    installer.restore_loader_paths(os.environ)
 
 
 def _lock_now(handle: BinaryIO) -> None:

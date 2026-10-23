@@ -18,6 +18,7 @@ import secrets
 import shutil
 import subprocess
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 
 
@@ -141,13 +142,23 @@ def _helper_environment() -> dict[str, str]:
     for name in ("APPDIR", "APPIMAGE", "ARGV0"):
         env.pop(name, None)
     env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    restore_loader_paths(env, drop_copies=True)
+    return env
+
+
+def restore_loader_paths(env: MutableMapping[str, str], *, drop_copies: bool = False) -> None:
+    """Give LD_LIBRARY_PATH and LD_PRELOAD the values they had before the
+    bundle (PRESS-0146): PyInstaller keeps each as `<name>_ORIG`, and a name
+    with no copy is dropped. `drop_copies` removes the copies too; the running
+    process keeps them, because the helper's environment is built from its
+    own later and reads them again."""
     for name in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
-        before = env.pop(f"{name}_ORIG", None)
+        copy = f"{name}_ORIG"
+        before = env.pop(copy, None) if drop_copies else env.get(copy)
         if before is None:
             env.pop(name, None)
         else:
             env[name] = before
-    return env
 
 
 def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool:
