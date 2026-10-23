@@ -221,3 +221,24 @@ def test_a_place_a_folder_cannot_hold_is_never_fetched(tmp_path):
                               lambda: 10**12, resolve=network.resolve,
                               connect=network.connect)
     assert len(missing) == 1 and network.connected == [], missing
+
+
+def test_a_checked_connection_wraps_with_its_own_verifying_context(monkeypatch):
+    """PRESS-0323: `_Checked` keeps the context it made, rather than reading
+    `http.client`'s private `_context`, so a Python that keeps it elsewhere
+    still verifies the certificate against the host's own name."""
+    import socket
+    import ssl
+
+    wrapped: list[tuple[ssl.SSLContext, str]] = []
+    monkeypatch.setattr(ssl.SSLContext, "wrap_socket",
+                        lambda context, sock, server_hostname: wrapped.append(
+                            (context, server_hostname)) or sock)
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: object())
+    connection = fetch._Checked(GLOBAL, "old.example.org", 443)
+    connection._context = None    # what a Python keeping it elsewhere leaves
+    connection.connect()
+    assert len(wrapped) == 1, wrapped
+    context, name = wrapped[0]
+    assert name == "old.example.org"
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname

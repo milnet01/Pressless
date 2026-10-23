@@ -40,12 +40,13 @@ class _Checked(http.client.HTTPSConnection):
     the host's own name."""
 
     def __init__(self, address: str, host: str, port: int) -> None:
-        super().__init__(address, port, timeout=SECONDS,
-                         context=ssl.create_default_context())
+        # Kept here, not read back from http.client's private _context.
+        self._verifying = ssl.create_default_context()
+        super().__init__(address, port, timeout=SECONDS, context=self._verifying)
         self._name = host
 
     def connect(self) -> None:
-        self.sock = self._context.wrap_socket(
+        self.sock = self._verifying.wrap_socket(
             socket.create_connection((self.host, self.port), timeout=SECONDS),
             server_hostname=self._name)
 
