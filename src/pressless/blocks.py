@@ -25,7 +25,8 @@ from html.parser import HTMLParser
 from types import MappingProxyType
 
 __all__ = [
-    "BUTTON", "CODE", "COLUMNS", "COUNTDOWN", "DOWNLOAD", "ENLARGE", "HEADING", "KINDS",
+    "BUTTON", "CODE", "COLUMNS", "COUNTDOWN", "DOWNLOAD", "ENLARGE", "HEADING", "HOLDERS",
+    "KINDS",
     "MUSIC", "PICTURE", "PICTURES", "PIECES", "PIECES_SCRIPT", "QUESTIONS", "SCRIPT",
     "SLIDESHOW", "STYLE", "TEXT", "TOP", "VIDEO",
     "Page", "Section", "SectionRefused",
@@ -239,6 +240,8 @@ _FIELDS = {
 
 # The kinds that hold other sections, which no column or answer holds.
 _HOLDERS = frozenset((COLUMNS, PICTURES, SLIDESHOW, QUESTIONS, _COLUMN))
+# Those of them a page can be given, for the visual view's rules.
+HOLDERS = tuple(kind for kind in KINDS if kind in _HOLDERS)
 
 
 def _check(section: Section) -> None:

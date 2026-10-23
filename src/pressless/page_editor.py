@@ -639,9 +639,8 @@ def _drag() -> str:
             f'{say("page_editor.drag")}</button><div id="drop-line" hidden></div>')
 
 
-_KINDS = (blocks.TEXT, blocks.HEADING, blocks.PICTURE, blocks.PICTURES, blocks.BUTTON,
-          blocks.VIDEO, blocks.MUSIC, blocks.DOWNLOAD, blocks.COLUMNS, *blocks.PIECES,
-          blocks.SCRIPT, blocks.STYLE)
+# The panel's Add list, in blocks' order; the script is handed the same list.
+_KINDS = blocks.KINDS
 # Each kind's name on the screen; the script reads the same keys by kind.
 _KIND_WORDS = {
     blocks.TEXT: "script.visual.kind.text", blocks.HEADING: "script.visual.kind.heading",
@@ -691,7 +690,8 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     columns = "".join(f'<button type="button" data-act="add-to" data-column="{number}">'
                       f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
                       "</button>" for number in range(4))
-    data = _script_json({"sections": sections or [], "up": up, "accept": files.ACCEPT,
+    data = _script_json({"sections": sections or [], "kinds": _KINDS,
+                         "holders": blocks.HOLDERS, "up": up, "accept": files.ACCEPT,
                          "largest": builder.FILE_LARGEST,
                          "largest_slots": builder.largest_slots()})
     return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}"{
@@ -1678,12 +1678,10 @@ _VISUAL_SCRIPT = r"""
   const line = document.getElementById("drop-line");
   const given = JSON.parse(document.getElementById("sections").textContent);
   const up = given.up;
-  const KINDS = ["text", "heading", "picture", "pictures", "button", "video", "music",
-                 "download", "columns", "slideshow", "questions", "enlarge", "top",
-                 "countdown", "script", "style"];
-  // The kinds holding other sections, which no column or answer holds; a row
-  // of them holds pictures alone.
-  const HOLDERS = ["columns", "pictures", "slideshow", "questions"];
+  // page_editor._KINDS and blocks.HOLDERS: the kinds holding other sections,
+  // which no column or answer holds; a row of them holds pictures alone.
+  const KINDS = given.kinds;
+  const HOLDERS = given.holders;
   const ROWS = ["pictures", "slideshow"];
   const IN_COLUMN = KINDS.filter((kind) => !HOLDERS.includes(kind));
   const ADDRESSED = ["picture", "pictures", "button", "video", "music", "download",
