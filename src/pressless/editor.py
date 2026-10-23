@@ -116,10 +116,11 @@ def address_for(title: str) -> str:
 
 
 def name_address(name: str) -> str:
-    """`address_for`'s rule for a category or tag; "" where nothing is left."""
+    """`address_for`'s rule for a category or tag; "" where nothing is left.
+    Control and format characters go first, so `a<TAB>b` is `ab`; a kept
+    file's name joins them as `-` instead (photographs.plain_name)."""
     text = "".join(ch for ch in name if unicodedata.category(ch) not in ("Cc", "Cf"))
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9]+", "-", text.lower())[:LONGEST_ADDRESS].strip("-")
+    return store.folded(text)[:LONGEST_ADDRESS].strip("-")
 
 
 def free_address(folder: Path, wanted: str) -> str:

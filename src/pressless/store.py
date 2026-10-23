@@ -20,6 +20,7 @@ import os
 import re
 import stat
 import sys
+import unicodedata
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -138,6 +139,15 @@ def exists(folder: Path, slug: str) -> bool:
     """
     _refuse_illegal_slug(slug, "a slug")
     return any(slug in _slugs_in(folder, draft=draft) for draft in (False, True))
+
+
+def folded(text: str, keep: str = "") -> str:
+    """`text` in the names' own letters: folded to ASCII with NFKD, lower
+    case, and every run of anything but a-z, 0-9 and `keep` joined into one
+    `-`. Callers cut and strip; an entry's address and a kept file's name
+    each say what they do first."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(f"[^a-z0-9{re.escape(keep)}]+", "-", text.lower())
 
 
 def first_free(stem: str, free: Callable[[str], bool], suffix: str = "") -> str:

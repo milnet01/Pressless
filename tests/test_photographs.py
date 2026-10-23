@@ -56,6 +56,12 @@ def test_a_name_is_the_chosen_name_made_plain(chosen, fmt, kept):
     assert photographs.name_for(chosen, fmt) == kept
 
 
+def test_a_kept_name_is_as_long_as_an_entry_address():
+    """The two limits are one rule kept in two modules, since photographs
+    cannot import editor. Breaks when one changes alone."""
+    assert photographs.LONGEST_NAME == editor.LONGEST_ADDRESS
+
+
 @pytest.mark.parametrize("chosen", [
     ".hidden.jpg", "con.jpg", "NUL .jpg", "a|b.jpg", "a b .jpg", "..", "",
     "x}y.jpg", "{photo: z}.jpg", "tab\there.jpg", "trailing.",

@@ -17,14 +17,13 @@ from __future__ import annotations
 import os
 import re
 import tempfile
-import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 
 from pressless import builder, marks, store
 
 FALLBACK = "photograph"   # the name of a file whose own name leaves nothing
-LONGEST_NAME = 60         # before the suffix, as a new entry's address
+LONGEST_NAME = 60         # before the suffix; editor.LONGEST_ADDRESS, which a test holds equal
 
 # The endings each publishable format is served under, the first the one given
 # where the chosen file carries another: a JPEG named .png would be sent to
@@ -55,7 +54,9 @@ def plain_name(filename: str, suffixes: tuple[str, ...], fallback: str) -> str:
     suffix = "." + suffix.lower()
     if suffix not in suffixes:
         suffix = suffixes[0]
-    return (_plain(stem)[:LONGEST_NAME].strip("-") or fallback) + suffix
+    # `_` is kept, and a control character joins as `-` rather than going.
+    plain = store.folded(stem, keep="_").strip("-")
+    return (plain[:LONGEST_NAME].strip("-") or fallback) + suffix
 
 
 def add(folder: Path, filename: str, data: bytes) -> str:
@@ -102,11 +103,6 @@ def missing(folder: Path, body: str) -> list[str]:
     """The photographs `body` names that Pressless does not have, sorted."""
     named = {block.name for block in marks.parse(body) if isinstance(block, marks.Photo)}
     return sorted(named - set(store.list_photographs(folder)))
-
-
-def _plain(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9_]+", "-", text.lower()).strip("-")
 
 
 def _stage(where: Path, data: bytes) -> Path:
