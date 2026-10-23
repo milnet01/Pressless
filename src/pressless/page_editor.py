@@ -1190,20 +1190,20 @@ def _left(folder: Path, kind: str, name: str) -> tuple[bool, str]:
 
 # The page's script (§ 4.5), PRESS-0012 § 4.7's. A change saves about a second
 # after the last one, never two saves at once, and on leaving only where a
-# change is unsaved. Its twin is editor._EDITOR_SCRIPT, and both leave through
-# editor.LEAVING_SCRIPT. They differ in their fields, in what a reply updates,
-# and here a save in flight is a promise to await, not a flag to poll. A switch
-# of view or a picker link waits for a save in flight and saves an unsaved
-# change first. In the visual view, _VISUAL_SCRIPT supplies what is posted and
-# is told what was saved (PRESS-0260 § 4.5).
-_PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
+# change is unsaved. Its twin is editor._EDITOR_SCRIPT; both save through
+# editor.SAVING_SCRIPT and leave through editor.LEAVING_SCRIPT. They differ in
+# their fields and in what a reply updates. A switch of view, a picker link,
+# Remove and Rename save an unsaved change first. In the visual view,
+# _VISUAL_SCRIPT supplies what is posted and is told what was saved
+# (PRESS-0260 § 4.5).
+_PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {kind: form.dataset.kind, name: form.dataset.name, view: form.dataset.view,
                  show: form.dataset.show, waiting: form.dataset.waiting, base: form.dataset.base};
   const status = document.getElementById("save-status");
   const hint = document.getElementById("save-hint");
-  let timer = null, inFlight = null, dirty = false, stopped = false;
+  let dirty = false, stopped = false;
 
   // The visual view's snapshot of the page, or null in the code view.
   const posting = () => state.view !== "code" && window.presslessVisual
@@ -1261,30 +1261,19 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
       stop("");
     }
   }
-  async function save() {
-    if (stopped || inFlight || !dirty) return;
-    inFlight = send();
-    try { await inFlight; } finally {
-      inFlight = null;
-      if (dirty && !stopped) schedule();
-    }
-  }
-  async function settle() {
-    clearTimeout(timer);
-    while (inFlight) await inFlight;
-    if (dirty && !stopped) await save();
-  }
-  function schedule() { clearTimeout(timer); timer = setTimeout(save, 1000); }
+  const {schedule, settle, release, sending} =
+    window.presslessSaving(send, () => dirty && !stopped);
 
   const changed = () => { dirty = true; schedule(); };
   form.addEventListener("input", changed);
   // The visual view's changes happen in the frame and the panel.
   window.presslessPage = {changed};
-  window.presslessLeaving("/page/save", fields, () => !stopped && dirty, () => inFlight);
+  window.presslessLeaving("/page/save", fields, () => !stopped && dirty, sending);
   document.querySelectorAll("a[data-page-link]").forEach((link) => {
     link.addEventListener("click", async (event) => {
       event.preventDefault();
-      await settle();
+      await settle(true);
+      release();
       if (!stopped) window.location.href = link.href;
     });
   });
@@ -1307,11 +1296,9 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
         codeBox.inert = panel.inert = frame.inert = false;
         switching = false;
       };
-      await settle();
-      if (stopped) { free(); return; }
-      let switched;
-      inFlight = new Promise((resolve) => { switched = resolve; });
+      await settle(true);
       try {
+        if (stopped) return;
         const asked = new URLSearchParams({kind: state.kind, name: state.name,
                                            view: link.dataset.switch, show: state.show});
         const answer = await fetch("/page/view?" + asked);
@@ -1341,21 +1328,15 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
         stop("");
       } finally {
         free();
-        inFlight = null;
-        switched();
-        if (dirty && !stopped) schedule();
+        release();
       }
     });
   });
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
-    clearTimeout(timer);
-    while (inFlight) await inFlight;
-    // A save queued while this runs waits for it: it would post the waiting
-    // copy the publish is about to bin (PRESS-0135).
-    let published;
-    inFlight = new Promise((resolve) => { published = resolve; });
+    // A save meanwhile would post the waiting copy the publish bins.
+    await settle(false);
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = say("script.press.publishing");
@@ -1380,53 +1361,66 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + """
       said.textContent = standing(); stop("");
     } finally {
       publish.disabled = window.presslessPress.asking();
-      inFlight = null;
-      published();
-      if (dirty && !stopped) schedule();
+      release();
     }
   });
 
   // PRESS-0195 § 4.4: Remove and Rename ask first, save what is unsaved, then
-  // press at once. Published, the page goes where the reply says, unless a
+  // press at once, holding saves back: one meanwhile would write to the page
+  // being moved (PRESS-0329). Published, what was typed meanwhile is saved
+  // under the new name of a renamed page, and goes with a removed page as the
+  // Remove question says. Then the page goes where the reply says, unless a
   // notice needs reading first.
   document.querySelectorAll("button[data-pages]").forEach((button) => {
     button.addEventListener("click", async () => {
+      const renaming = button.dataset.pages === "rename";
       let to = "";
-      if (button.dataset.pages === "rename") {
+      if (renaming) {
         to = window.prompt(say("script.pages.ask_rename"), "") || "";
         if (!to.trim()) return;
       } else if (!window.confirm(say("script.pages.confirm_remove"))) {
         return;
       }
-      await settle();
-      if (stopped) return;
+      await settle(true);
       const said = document.getElementById("publish-status");
-      said.textContent = say("script.press.publishing");
+      let reply;
       try {
+        if (stopped) return;
+        said.textContent = say("script.press.publishing");
         const body = new URLSearchParams({kind: state.kind, name: state.name, to: to});
         const answer = await fetch("/page/" + button.dataset.pages,
                                    {method: "POST", body: body});
         const text = await answer.text();
         if (answer.status !== 200) { said.textContent = standing(); stop(text); return; }
-        const reply = JSON.parse(text);
-        // Another press runs. The settle above saved everything, so nothing
-        // is left to save.
+        reply = JSON.parse(text);
+        // Another press runs: the page did not move, so what was typed
+        // meanwhile is saved where it is.
         if (window.presslessPress.busy(reply)) return;
         document.getElementById("notices").innerHTML = reply.notices;
         hint.textContent = reply.hint || "";
         document.getElementById("failure").innerHTML = reply.failure || "";
         said.textContent = reply.published ? say("script.press.published")
           : reply.hint ? standing() : say("script.press.not_published");
-        if (reply.published && !reply.notices) window.location.href = reply.address;
-        // Read first, then on: this page's own editor may name a page that
-        // has gone, and a save there would bring it back.
-        else if (reply.published) {
+        if (reply.published && renaming) {
+          state.name = new URLSearchParams(reply.address.split("?")[1]).get("name");
+        } else if (reply.published) {
           stopped = true;
-          document.getElementById("notices").closest("dialog").addEventListener(
-            "close", () => { window.location.href = reply.address; }, {once: true});
         }
       } catch (error) {
         said.textContent = standing(); stop("");
+      } finally {
+        release();
+      }
+      if (!reply || reply.busy || !reply.published) return;
+      await settle(true);
+      release();
+      if (!reply.notices) window.location.href = reply.address;
+      // Read first, then on: this page's own editor may name a page that has
+      // gone, and a save there would bring it back.
+      else {
+        stopped = true;
+        document.getElementById("notices").closest("dialog").addEventListener(
+          "close", () => { window.location.href = reply.address; }, {once: true});
       }
     });
   });

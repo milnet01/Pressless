@@ -1001,3 +1001,93 @@ def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
     browser = dict(zip(_ADDRESSES, json.loads(run.stdout), strict=True))
     server = {address: blocks.address_allowed(address, mailto=True) for address in _ADDRESSES}
     assert browser == server
+
+
+# ------------------------------------------------------------- PRESS-0329 ---
+
+# The page's script under node, on a stand-in page: every element is a plain
+# object, `fetch` is recorded, and Remove or Rename answers only when told to.
+_RESHAPE_HARNESS = """
+const made = {};
+const element = (key) => made[key] || (made[key] = {
+  key, dataset: {}, hidden: false, inert: false, textContent: "", innerHTML: "", value: "",
+  disabled: false, handlers: {}, elements: null,
+  addEventListener(type, handler) { this.handlers[type] = handler; },
+  closest(selector) { return element(selector); },
+});
+const form = element("#editor");
+form.dataset = {kind: "pages", name: "old", view: "code", show: "", waiting: "0",
+                base: "b1", offSite: "0"};
+form.elements = new Proxy({}, {get: (_, name) => element("field " + name)});
+const button = element("rename");
+button.dataset.pages = process.argv[2];
+globalThis.window = globalThis;
+window.addEventListener = () => {};
+window.confirm = () => true;
+window.prompt = () => "new";
+window.location = {href: "/page?kind=pages&name=old"};
+globalThis.history = {replaceState() {}};
+globalThis.document = {
+  getElementById: (id) => element("#" + id),
+  querySelector: (selector) => element(selector),
+  querySelectorAll: (selector) => selector === "button[data-pages]" ? [button] : [],
+};
+globalThis.say = (key) => key;
+const posts = [];
+let answer;
+globalThis.fetch = (address, request) => {
+  const fields = Object.fromEntries(new URLSearchParams(request.body.toString()));
+  posts.push({address, fields, during: answer !== undefined,
+              gone: window.location.href !== "/page?kind=pages&name=old"});
+  const reply = address.startsWith("/page/re")
+    ? new Promise((resolve) => { answer = resolve; })
+    : Promise.resolve({waiting: true, base: "saved", notices: "", preview: null});
+  return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
+};
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+%s
+(async () => {
+  button.handlers.click();
+  while (answer === undefined) await pause(10);
+  form.elements.text.value = "typed while the page moved";
+  form.handlers.input({});
+  await pause(1300);
+  answer(JSON.parse(process.argv[3]));
+  answer = undefined;
+  await pause(1300);
+  process.stdout.write(JSON.stringify(posts));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize(("pages", "reply", "saved_as"), [
+    ("rename", {"published": True, "address": "/page?kind=pages&name=new"}, "new"),
+    ("rename", {"published": False, "hint": "pages.hint", "address": "/page?kind=pages&name=old"},
+     "old"),
+    ("remove", {"published": False, "failure": "x", "address": "/page?kind=pages&name=old"},
+     "old"),
+    ("remove", {"published": True, "address": "/"}, None),
+])
+def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, saved_as,
+                                                                  tmp_path):
+    """PRESS-0329: typing while /page/rename or /page/remove runs posts no
+    save beside it, which would write to the page being moved. Once the reply
+    comes, the edit is saved where the page now is, before the editor leaves:
+    under its new name after a rename, its own where nothing moved. A removed
+    page takes it along, as Remove's question says. Breaks when the button
+    posts without holding saves back."""
+    harness = tmp_path / "reshape.js"
+    harness.write_text(_RESHAPE_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
+    answered = {"notices": "", "failure": None, "hint": None, "busy": False, **reply}
+    run = subprocess.run([_NODE, str(harness), pages, json.dumps(answered)],  # noqa: S603
+                         capture_output=True, check=True, timeout=30)
+    posts = json.loads(run.stdout)
+    assert [post["address"] for post in posts if post["during"]] == []
+    saves = [post for post in posts if post["address"] == "/page/save"]
+    if saved_as is None:
+        assert saves == []
+    else:
+        assert saves and saves[-1]["fields"]["name"] == saved_as
+        assert saves[-1]["fields"]["text"] == "typed while the page moved"
+        assert not saves[-1]["gone"]

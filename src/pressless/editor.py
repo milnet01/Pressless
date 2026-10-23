@@ -908,17 +908,54 @@ window.presslessLeaving = (address, fields, unsaved, sending) => {
 """
 
 
+# § 4.7: both editors' saving, the entry's here and page_editor._PAGE_SCRIPT's.
+# `send` posts a change; `waiting` says one waits and saving has not stopped.
+# A save runs about a second after `schedule`, never two at once. A request
+# that posts what a save would post, or may move it, calls `settle` first: it
+# waits out a save in flight, saves a waiting change first where `first` says
+# so, and holds saves back until the request has answered (PRESS-0135,
+# PRESS-0309, PRESS-0329). `release` lets them go, saving what was typed
+# meanwhile. `sending` says a save or a held request is in flight.
+SAVING_SCRIPT = """
+window.presslessSaving = (send, waiting) => {
+  let timer = null, held = null, done = null;
+  const hold = () => { held = new Promise((resolve) => { done = resolve; }); };
+  const free = () => { held = null; done(); };
+  const schedule = () => { clearTimeout(timer); timer = setTimeout(save, 1000); };
+  async function save() {
+    if (held || !waiting()) return;
+    hold();
+    try { await send(); } finally { release(); }
+  }
+  async function settle(first) {
+    for (;;) {
+      clearTimeout(timer);
+      while (held) await held;
+      if (!first || !waiting()) break;
+      first = false;
+      await save();
+    }
+    hold();
+  }
+  function release() {
+    free();
+    if (waiting()) schedule();
+  }
+  return {schedule, settle, release, sending: () => held !== null};
+};
+"""
+
+
 # The entry's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved. Its
 # twin is page_editor._PAGE_SCRIPT: a fix to how either saves or presses is
-# owed to both. Here a save in flight is a flag, waited on by polling, and
-# `settle` is the one place a request waits for it.
-_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
+# owed to both, and both save through SAVING_SCRIPT.
+_EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
 (() => {
   const form = document.getElementById("editor");
   const state = {slug: form.dataset.slug, draft: form.dataset.draft, base: form.dataset.base};
   const status = document.getElementById("save-status");
-  let timer = null, inFlight = false, dirty = false, stopped = false;
+  let dirty = false, stopped = false;
 
   const fields = () => {
     const data = new URLSearchParams();
@@ -982,9 +1019,8 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
   }
   showMissing(JSON.parse(form.dataset.missing));
 
-  async function save() {
-    if (stopped || inFlight || !dirty) return;
-    inFlight = true; dirty = false; status.textContent = say("script.editor.saving");
+  async function send() {
+    dirty = false; status.textContent = say("script.editor.saving");
     try {
       const answer = await fetch("/save", {method: "POST", body: fields()});
       const text = await answer.text();
@@ -998,34 +1034,18 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + """
       status.textContent = say("script.editor.saved");
     } catch (error) {
       stop("");
-    } finally {
-      inFlight = false;
-      if (dirty && !stopped) schedule();
     }
   }
-  function schedule() { clearTimeout(timer); timer = setTimeout(save, 1000); }
   // Publish, address and throw post the address and base a save would post,
-  // and may move them. So each waits out a save in flight, saves a waiting
-  // change first where `first` says so, and holds saves back until its own
-  // request has answered (PRESS-0135, PRESS-0309). `release` lets them go
-  // again, saving whatever was typed meanwhile.
-  async function settle(first) {
-    clearTimeout(timer);
-    while (inFlight) await new Promise((resolve) => setTimeout(resolve, 100));
-    if (first && dirty && !stopped) await save();
-    clearTimeout(timer);
-    inFlight = true;
-  }
-  function release() {
-    inFlight = false;
-    if (dirty && !stopped) schedule();
-  }
+  // and may move them, so each settles first and releases after.
+  const {schedule, settle, release, sending} =
+    window.presslessSaving(send, () => dirty && !stopped);
 
   form.addEventListener("input", (event) => {
     if (event.target.name === "address") return;
     dirty = true; schedule();
   });
-  window.presslessLeaving("/save", fields, () => !stopped && dirty, () => inFlight);
+  window.presslessLeaving("/save", fields, () => !stopped && dirty, sending);
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
