@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=329 -->
+<!-- ants-roadmap-id-high-water: PRESS=330 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5878,6 +5878,11 @@ it can then be changed.
   schedule what was typed. Test it under node as PRESS-0309's test does.
   **Layman:** If you type on a page while Pressless removes or renames it, that typing could be saved to the old page.
   Kind: fix.
+  Source: review-readability-2026-10-23.
+
+- 🚧 [PRESS-0330] **Setup, sign-in and Insights readability fixes from the 2026-10-23 review.**
+  **Layman:** The code behind setup, signing in and the visitor counts is made easier for the next person to read and change safely.
+  Kind: refactor.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes

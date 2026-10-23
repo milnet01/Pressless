@@ -7,7 +7,9 @@ the key, derives the untouchable list, and saves Settings last (§ 4.6).
 
 It lives in the Face because only the Face knows what order things happen in
 and only the Face reaches Credentials (`docs/design.md` rules 1 and 10). It
-never reads the Store (§ 3 decision 9) and never runs Import.
+never runs Import. § 3 decision 9 once kept it out of the Store; PRESS-0126,
+PRESS-0213 and PRESS-0227 since let it read and write the site's identity,
+offer and fill the starter site, and ask whether the folder holds a site yet.
 """
 
 from __future__ import annotations
@@ -701,6 +703,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                       own: Path | None = None) -> wizard.Wizard:
     own = own if own is not None else folder
 
+    # Two flows share this function; `signing_in` below picks one, and the
+    # Wizard built at the end lists each flow's steps. The helpers here, and
+    # check_pages, check_site and check_reports, serve both.
+
     def repository(answers: wizard.Answers) -> str:
         return f"{answers.get('account', '')}/{answers.get('repository', '')}"
 
@@ -733,6 +739,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return wizard.Stop(_credential_failure(face, exc, noun))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
+
+    # The hand-made key's flow only: check_account, check_repository and
+    # check_key. A signed-in writer never reaches them, so check_key names
+    # the publishing key, the only secret this flow has.
 
     def check_account(answers: wizard.Answers):
         if not _ACCOUNT.fullmatch(answers["account"]):
@@ -797,6 +807,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return wizard.Stop(_credential_failure(face, exc))
         return kept
 
+    # Both flows: check_pages and check_site.
+
     def check_pages(answers: wizard.Answers):
         name = repository(answers)
         key = key_for(answers)
@@ -836,16 +848,16 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             "repository": repository(answers),
             "site_address": answers.get("site_address", ""), "daily_prompt_filter": "",
             "measurement_id": ""})
-        kept = answers.get("store", "")
+        store_kind = answers.get("store", "")  # "keyring" or "file"
         candidate = dataclasses.replace(
-            candidate, credentials=dataclasses.replace(candidate.credentials, store=kept))
+            candidate, credentials=dataclasses.replace(candidate.credentials, store=store_kind))
         problem = refused(candidate)
         if problem is not None:
             return wizard.Stop(face.fail(problem, publishing=False))
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key
-        choice = credentials.Choice(kept, answers.get("store_name", kept))
+        choice = credentials.Choice(store_kind, answers.get("store_name", store_kind))
         narrow = (_narrow(repository(answers))
                   if answers.get("all_repositories") == "yes" else "")
         done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
@@ -859,6 +871,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         if not settings.path_for(folder).exists():
             return wizard.Stop(done)
         return wizard.Done(done)
+
+    # The sign-in flow only: check_signin, check_install and
+    # check_new_repository.
 
     def check_signin(answers: wizard.Answers):
         # § 4.3 signin: each press polls GitHub once; nothing is stored until
@@ -925,6 +940,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         return answers
+
+    # Both flows: check_reports.
 
     def check_reports(answers: wizard.Answers):
         try:
