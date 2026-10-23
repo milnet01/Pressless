@@ -506,13 +506,13 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
             shape = (store.read(store.template_path_for(folder, chosen)) if chosen
                      else store.Entry(slug="", title="", date=datetime.now(),
                                       categories=(), tags=(), body="", extra=()))
+            slug = free_address(folder, address_for(title))
+            store.write(folder, store.Entry(
+                slug=slug, title=title.strip(), date=datetime.now().replace(microsecond=0),
+                categories=shape.categories, tags=shape.tags, body=shape.body, extra=()),
+                draft=True)
         except store.StoreError as exc:
             return failed(face, notices, exc)
-        slug = free_address(folder, address_for(title))
-        store.write(folder, store.Entry(
-            slug=slug, title=title.strip(), date=datetime.now().replace(microsecond=0),
-            categories=shape.categories, tags=shape.tags, body=shape.body, extra=()),
-            draft=True)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(slug))
 
 

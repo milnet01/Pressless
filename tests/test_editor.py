@@ -216,6 +216,20 @@ def test_a_new_entry_gets_a_free_address(tmp_path):
     assert store.read(store.path_for(folder, "con-2", draft=True)).title == "con"
 
 
+def test_a_new_entry_the_store_cannot_make_shows_the_failure(tmp_path):
+    """PRESS-0308: a forwards file that does not read stops New with the
+    failure page, writing nothing, rather than an unanswered error. Breaks
+    when free_address or the write sits outside the route's catch."""
+    folder = _folder(tmp_path)
+    forwards = store.forwards_path_for(folder)
+    forwards.parent.mkdir(parents=True, exist_ok=True)
+    forwards.write_text("not a mapping", encoding="utf-8")
+    with _editor(folder) as browser:
+        status = browser.request("POST", "/new", {"title": "Seaside"})[0]
+    assert status == 409
+    assert store.list_slugs(folder, draft=True) == ()
+
+
 # ----------------------------------------------------------------- INV-11 ---
 
 
