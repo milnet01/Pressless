@@ -39,7 +39,8 @@ SENTENCES[LookRefused] = Sentence(
     "failure.look_screen.LookRefused.next",
 )
 
-# Each choice's words keys, in look.py's order.
+# Each choice's words keys, in look.py's order. Written out because INV-4's
+# test finds keys only as literals; a test checks they match look.py.
 _COLOUR_WORDS = {
     "paper": "look_screen.colour.paper", "ink": "look_screen.colour.ink",
     "soft": "look_screen.colour.soft", "link": "look_screen.colour.link",

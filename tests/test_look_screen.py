@@ -215,3 +215,18 @@ def test_the_bar_links_to_the_look_screen(tmp_path):
         _, _, page = browser.request("GET", "/look")
     bar = page.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
     assert '<a href="/setup">Settings</a><a href="/look">Look</a>' in bar
+
+
+def test_the_screen_offers_every_choice_look_makes():
+    """Breaks when look.py gains a colour, font, size, width or effect and
+    the screen's words lists, kept as literals for INV-4, do not."""
+    lists = {
+        "colour": (look_screen._COLOUR_WORDS, starter_look.COLOURS),
+        "font": (look_screen._FONT_WORDS, starter_look.FONTS),
+        "size": (look_screen._SIZE_WORDS, starter_look.TEXT_SIZES),
+        "width": (look_screen._WIDTH_WORDS, starter_look.WIDTHS),
+        "effect": (look_screen._EFFECT_WORDS, starter_look.EFFECTS),
+    }
+    for kind, (shown, made) in lists.items():
+        assert list(shown) == list(made), kind
+        assert all(key == f"look_screen.{kind}.{name}" for name, key in shown.items()), kind
