@@ -288,7 +288,10 @@ The first HTML comment in `header` and in `footer` is removed, as today;
 navigation, the first link whose `data-nav` equals the marker's `page`, case
 included, gains
 `aria-current="page"`. A generated page is filled as a marker saying
-`page="Journal"` would be. A furniture file the Store does not hold raises
+`page="Journal"` would be. Where no link carries `data-nav="Journal"`,
+the first link with no `data-nav` whose `href` is
+`{{UP}}blog/index.html` gains it instead: a menu saved before Pressless
+wrote that marker still shows the journal as current. A furniture file the Store does not hold raises
 the Store's own `StoreError`.
 
 ### 4.5 S7 — only published writing reaches the folder

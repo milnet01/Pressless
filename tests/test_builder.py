@@ -514,6 +514,26 @@ def test_a_generated_page_carries_the_journal_furniture(tmp_path):
     assert "<title>Deep — A Journal</title>" in page
 
 
+def _filled_menu(navigation: str, page: str) -> str:
+    furniture = builder._Furniture(header="{{NAVIGATION}}", navigation=navigation,
+                                   footer="", year=2026, identity=store.Identity(""))
+    return furniture.fill("HEADER", 0, page=page)
+
+
+def test_a_journal_link_saved_without_its_marker_is_still_current():
+    """PRESS-0298, § 4.4. Breaks when a menu saved before Pressless marked a
+    journal link leaves the journal's pages marking no link current."""
+    old = ('<nav><a href="{{UP}}index.html" data-nav="Home">Home</a> '
+           '<a href="{{UP}}blog/index.html">Journal</a></nav>')
+    assert ('<a href="blog/index.html" aria-current="page">Journal</a>'
+            in _filled_menu(old, "Journal"))
+    assert "aria-current" not in _filled_menu(old, "about")
+    marked = ('<nav><a href="{{UP}}blog/index.html" data-nav="Old">Old</a> '
+              '<a href="{{UP}}pages/j.html" data-nav="Journal">J</a></nav>')
+    assert _filled_menu(marked, "Journal").count("aria-current") == 1
+    assert 'data-nav="Journal" aria-current="page">J</a>' in _filled_menu(marked, "Journal")
+
+
 # ------------------------------------------------------------------ INV-9 ---
 
 

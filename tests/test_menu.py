@@ -177,3 +177,15 @@ def test_a_page_address_reads_back_as_its_page():
     assert menu.address("about") == "{{UP}}pages/about.html"
     assert menu._nav(menu.address("index")) == "Home"
     assert menu._nav(menu.address("about")) == "about"
+
+
+def test_a_journal_link_carries_the_journal_marker():
+    """PRESS-0298, PRESS-0216 § 4.4. Breaks when a journal link added or
+    pointed at the journal in the menu view gets no data-nav, so the
+    journal's pages mark no link current."""
+    posted = [{"at": 0, "words": "Home", "href": "{{UP}}index.html"},
+              {"at": 1, "words": "About", "href": "{{UP}}blog/index.html"},
+              {"at": None, "words": "Journal", "href": "{{UP}}blog/index.html"}]
+    written = menu.arranged(ONE_LINE, posted)
+    assert '<a href="{{UP}}blog/index.html" data-nav="Journal">About</a>' in written
+    assert '<a href="{{UP}}blog/index.html" data-nav="Journal">Journal</a>' in written

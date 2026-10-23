@@ -12,7 +12,7 @@ from __future__ import annotations
 import html
 import re
 
-from pressless import blocks
+from pressless import blocks, builder
 
 _LINK = re.compile(r"<a\b[^>]*>(.*?)</a\s*>", re.IGNORECASE | re.DOTALL)
 _HREF = re.compile(r"""\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
@@ -150,9 +150,11 @@ def links(text: str) -> list[tuple[str, str]]:
 
 def _nav(address: str) -> str | None:
     """The data-nav the Builder marks the current page by, for an address
-    naming a fixed page; None for any other."""
+    naming a fixed page or the journal; None for any other."""
     if address == _HOME:
         return "Home"
+    if address == builder.JOURNAL_ADDRESS:
+        return builder.JOURNAL
     page = _PAGE.fullmatch(address)
     return page.group(1) if page else None
 

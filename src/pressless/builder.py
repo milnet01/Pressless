@@ -45,6 +45,8 @@ BODY_CLASS = "post-body prose"                         # the class an entry's bo
 LONGEST_SIDE = 1600
 SITE_ICON = "site-icon.png"   # PRESS-0227 § 4.3: the chosen icon, at the root
 ICON_SIDE = 180
+JOURNAL = "Journal"   # PRESS-0008 § 4.4: the data-nav every generated page marks
+JOURNAL_ADDRESS = "{{UP}}blog/index.html"   # the menu's link to the journal
 
 
 @dataclass(frozen=True)
@@ -79,6 +81,10 @@ _ANY_END = re.compile(r"<!--\s*(?:HEADER|FOOTER):END\s*-->")
 _PAGE_ATTR = re.compile(r'page="([^"]*)"')
 _LEADING_COMMENT = re.compile(r"^\s*<!--.*?-->[ \t]*\n", re.S)
 _ANIMATION = (" reveal-load d1", " reveal-load d2", " reveal-load d3")
+_START_TAG = re.compile(r"<a\b[^>]*>", re.IGNORECASE)
+_DATA_NAV = re.compile(r"\bdata-nav\s*=", re.IGNORECASE)
+_JOURNAL_HREF = re.compile(rf"""\bhref\s*=\s*["']{re.escape(JOURNAL_ADDRESS)}["']""",
+                           re.IGNORECASE)
 
 # §4.6: re-encoded in their own format. Anything else Pillow opens is refused.
 _REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF"}
@@ -435,9 +441,7 @@ class _Furniture:
             if nav:
                 navigation = self.navigation
                 if page:
-                    navigation = re.sub(
-                        rf'(<a\b[^>]*\bdata-nav="{re.escape(page)}")',
-                        r'\1 aria-current="page"', navigation, count=1)
+                    navigation = _current(navigation, page)
             text = text.replace("{{NAVIGATION}}", navigation)
         else:
             text = _LEADING_COMMENT.sub("", self.footer, count=1).rstrip("\n")
@@ -448,6 +452,21 @@ class _Furniture:
         for number, animation in enumerate(_ANIMATION, start=1):
             text = text.replace(f"{{{{ANIM{number}}}}}", animation if animate else "")
         return text.replace("{{YEAR}}", str(self.year))
+
+
+def _current(navigation: str, page: str) -> str:
+    """§4.4: the navigation with its link for `page` marked current. For the
+    journal, a link saved before Pressless wrote its data-nav is found by
+    its address (PRESS-0298)."""
+    marked, found = re.subn(rf'(<a\b[^>]*\bdata-nav="{re.escape(page)}")',
+                            r'\1 aria-current="page"', navigation, count=1)
+    if found or page != JOURNAL:
+        return marked
+    for tag in _START_TAG.finditer(navigation):
+        if not _DATA_NAV.search(tag.group(0)) and _JOURNAL_HREF.search(tag.group(0)):
+            at = tag.end() - 1
+            return f'{navigation[:at]} aria-current="page"{navigation[at:]}'
+    return navigation
 
 
 def furniture_spans(name: str, html: str) -> tuple[tuple[int, int], ...]:
@@ -751,9 +770,6 @@ class _Build:
 
     def page(self, relative: str, depth: int, title: str, description: str,
              body: str) -> None:
-        # Every generated page marks the menu link with data-nav="Journal"
-        # (PRESS-0008 § 4.4). Only a hand-written or imported menu carries
-        # one: menu.py gives a journal link no data-nav (PRESS-0298).
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
@@ -769,7 +785,7 @@ class _Build:
 </head>
 <body>
 
-{self.furniture.fill("HEADER", depth, page="Journal")}
+{self.furniture.fill("HEADER", depth, page=JOURNAL)}
 
   <main class="wrap">
 {body}

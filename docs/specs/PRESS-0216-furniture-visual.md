@@ -133,13 +133,15 @@ trimmed. An entry posted back as it was given is unchanged.
 - Each kept link keeps its own bytes, and the whitespace before it, in
   its new place. Where its words or address changed, only those bytes
   change, as `menu.rename` changes them; an address changed to a fixed
-  page also sets `data-nav` to that page's, and one changed to any other
-  address removes it.
+  page or the journal also sets `data-nav` to that page's, and one
+  changed to any other address removes it.
 - A new link is written as `menu.add` writes one, with `data-nav` where
-  its address is a fixed page, after the whitespace the first link has
-  before it. The home page is the exception: its address is
-  `{{UP}}index.html` and its `data-nav` is `Home`, as the starter's menu
-  writes it.
+  its address is a fixed page or the journal, after the whitespace the
+  first link has before it. Two addresses are exceptions. The home
+  page's is `{{UP}}index.html` and its `data-nav` is `Home`, as the
+  starter's menu writes it. The journal's is `{{UP}}blog/index.html` and
+  its `data-nav` is `Journal`, the name every generated page marks
+  (PRESS-0008 § 4.4).
 - A link not posted is gone, with the whitespace before it.
 
 A posted entry naming an `at` that is not a link, or naming one twice,
