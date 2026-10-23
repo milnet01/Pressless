@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=331 -->
+<!-- ants-roadmap-id-high-water: PRESS=332 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5915,6 +5915,16 @@ it can then be changed.
   0b3ea13 made each copy name its twin meanwhile.
   **Layman:** The code that talks to GitHub and Google over the internet is written four times; a fix to one copy can miss the others.
   Kind: review-fix.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0332] **PRESS-0002's write table has no row for refusing a damaged secrets file.**
+  PRESS-0317 (e8986eb) made credentials._write_file refuse a carried
+  file whose `secrets` field is not an object, leaving it untouched.
+  The spec's write table has no row for that refusal. Adding one
+  changes what a conformer builds, so it takes rule 14's gate; not
+  done in the review close-out for that reason.
+  **Layman:** The design notes for the secrets file do not yet say it now refuses to overwrite a damaged file.
+  Kind: doc-fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
