@@ -293,13 +293,12 @@ def sentence_for(
     if entry is None:
         site = Site.UNKNOWN if publishing else Site.UNCHANGED
         return Sentence(say("failure.unforeseen.what"), site, say("failure.unforeseen.next"))
-    # Where the Face named no secret, the sentence says "that secret".
-    noun = secret or say("failure.unnamed_secret")
     link = (entry.link[0], say(entry.link[1])) if entry.link else None
-    # A failure may carry the words for its sentence's other gaps.
-    slots = getattr(failure, "slots", {})
-    return Sentence(say(entry.what, secret=noun, **slots), entry.site,
-                    say(entry.next, **slots), link)
+    # A failure may carry the words for its sentence's gaps. The secret is the
+    # one the Face names, else the failure's own, else "that secret".
+    slots = dict(getattr(failure, "slots", {}))
+    slots["secret"] = secret or slots.get("secret") or say("failure.unnamed_secret")
+    return Sentence(say(entry.what, **slots), entry.site, say(entry.next, **slots), link)
 
 
 def details_for(failure: BaseException) -> str:

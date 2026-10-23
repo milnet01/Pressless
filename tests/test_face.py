@@ -104,6 +104,27 @@ def test_every_failure_type_has_a_sentence() -> None:
         assert isinstance(sentence.site, face.Site), kind
 
 
+class _NamesItsSecret(Exception):
+    """A failure carrying its own `secret` slot. Not a PublishError, so the
+    every-type walk above never meets it."""
+
+    def __init__(self) -> None:
+        super().__init__("made up")
+        self.slots = {"secret": "the made-up key"}
+
+
+def test_a_failure_may_carry_a_secret_slot(monkeypatch) -> None:
+    """PRESS-0305. Breaks when a failure's own `secret` slot collides with
+    the one the Face fills, and the sentence raises instead of being said.
+    A secret the Face names wins; the failure's own comes next."""
+    monkeypatch.setitem(face.SENTENCES, _NamesItsSecret, face.SENTENCES[credentials.NotStored])
+    own = face.sentence_for(_NamesItsSecret(), publishing=False)
+    named = face.sentence_for(_NamesItsSecret(), publishing=False,
+                              secret="the named key")  # noqa: S106 -- a label, not a secret
+    assert own.what == "Pressless does not have the made-up key yet."
+    assert named.what == "Pressless does not have the named key yet."
+
+
 def test_a_refused_sign_in_sends_him_to_sign_in_again() -> None:
     """PRESS-0233. Breaks when GitHub refusing a sign-in tells him to enter a
     publishing key again, which a signed-in person never made."""
