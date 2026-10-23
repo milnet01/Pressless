@@ -179,9 +179,12 @@ def _read(target: Path, *, saving: bool) -> dict | None:
     except (ValueError, RecursionError) as exc:
         # RecursionError is not a ValueError, so deeply nested JSON needs its
         # own arm -- §4.3 has this row (PRESS-0066).
-        lost = (", so saving over it would discard what could not be parsed"
-                if saving else "")
-        raise SettingsError(f"the settings file is not valid JSON{lost}: {exc}") from exc
+        if saving:
+            raise SettingsError(
+                "the settings file is not valid JSON, so saving over it would discard "
+                f"what could not be parsed: {exc}"
+            ) from exc
+        raise SettingsError(f"the settings file is not valid JSON: {exc}") from exc
     if not isinstance(raw, dict):
         raise SettingsError(f"the settings file holds {type(raw).__name__}, not an object")
 
