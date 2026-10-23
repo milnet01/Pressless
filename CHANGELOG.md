@@ -23,6 +23,22 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Typing while an entry's address changes is saved** (PRESS-0309)
+  If you kept typing while Pressless moved an entry to a new web address,
+  the save of that typing could clash with the move, and the editor
+  stopped with a failure. Now the save waits for the move, then saves
+  what you typed under the new address.
+
+- **A new entry that cannot be made says why** (PRESS-0308)
+  If Pressless could not read its list of old addresses when you made a
+  new entry, you got a bare error instead of an explanation. Now it shows
+  the usual failure message and makes nothing.
+
+- **A template named "con" or similar is made as "con-2"** (PRESS-0311)
+  Windows keeps a few names, such as "con" and "nul", for itself, so
+  Pressless never uses them. A new template given one of those names
+  failed. Now it gets a number added, as a new entry already does.
+
 - **A link the page editor accepts is never refused when saving** (PRESS-0306)
   When you add a link on the page itself, Pressless checks that its
   address is safe. The page editor could accept a few disguised unsafe

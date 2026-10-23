@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=328 -->
+<!-- ants-roadmap-id-high-water: PRESS=329 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5660,26 +5660,35 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0308] **Making a new entry can fail with no failure page.**
+- ✅ [PRESS-0308] **Making a new entry can fail with no failure page.**
   editor.py:492-496 — free_address and store.write sit outside the try; a StoreError escapes instead of the 409 page. Unchecked. Lead from lane-03-editor.md.
+  Real: free_address and the write sat outside the catch, so a broken
+  forwards file gave 500. Fixed in 083fbf1, with a red-then-green test.
   **Layman:** Creating a new entry may fail without telling the user why.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0309] **Changing an entry's address can race with an autosave.**
+- ✅ [PRESS-0309] **Changing an entry's address can race with an autosave.**
   editor.py:1062 — the address button does not set inFlight before posting /address. Unchecked. Lead from lane-03-editor.md.
+  Real: a save posted during /address and the editor stopped. Fixed in
+  aa81fee: settle() holds saves back, release() saves what was typed.
+  Node test proves the edit is saved at the new address.
   **Layman:** Changing a web address while the entry autosaves might save the old address.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0310] **The address field is used without the null check made just above it.**
+- 🚫 [PRESS-0310] **The address field is used without the null check made just above it.**
   editor.py:902 vs :890 — either the check is dead or this line can throw. Unchecked. Lead from lane-03-editor.md.
+  Not real: _page always draws #address (hidden where it does not
+  apply), so the null check was dead. Dropped it in 271ce5c.
   **Layman:** A small browser-side slip that could stop the editor screen working.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0311] **A new template named like a reserved Windows word fails instead of numbering.**
+- ✅ [PRESS-0311] **A new template named like a reserved Windows word fails instead of numbering.**
   templates.py:169 — template_path_for raising on a refused name fails the request instead of trying con-2. Unchecked. Lead from lane-03-editor.md.
+  Real: New template answered 409 for "con". Fixed in 7a4a90e with
+  store.first_free, shared with free_address and photographs.keep.
   **Layman:** Some template names (like "con") may fail to save instead of getting a number added.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5850,6 +5859,18 @@ it can then be changed.
   writing half of the finding was fixed as one menu._written helper.
   **Layman:** If a menu link's words are wrapped in extra code, renaming the page keeps the old words on the link.
   Kind: review-fix.
+  Source: review-readability-2026-10-23.
+
+- 📋 [PRESS-0329] **Typing while a page is removed or renamed can save it back.**
+  page_editor._PAGE_SCRIPT's Remove/Rename handler awaits settle() but
+  does not hold saves back while its own request runs, as the entry's
+  address button did before PRESS-0309. A save scheduled meanwhile posts
+  to the page being moved. Found while fixing PRESS-0309 (lane-03); not
+  fixed there because it is the page editor's script. The fix is the
+  publish handler's pattern: hold inFlight until the reply, then
+  schedule what was typed. Test it under node as PRESS-0309's test does.
+  **Layman:** If you type on a page while Pressless removes or renames it, that typing could be saved to the old page.
+  Kind: fix.
   Source: review-readability-2026-10-23.
 
 ## 0.12.0 — more figures, and likes
