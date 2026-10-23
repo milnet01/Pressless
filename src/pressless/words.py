@@ -1141,9 +1141,23 @@ _WORDS: dict[str, str] = {
     "import.export.too_large": (
         "That file is larger than any WordPress export Pressless reads, so it was not kept."
     ),
-    "import.media.counts": (
-        "Your export holds {posts} posts, {pages} pages and {files} photographs and files."
-    ),
+    "import.media.counts": "Your export holds {posts}, {pages} and {files}.",
+    "import.count.posts.one": "1 post",
+    "import.count.posts.many": "{count} posts",
+    "import.count.pages.one": "1 page",
+    "import.count.pages.many": "{count} pages",
+    "import.count.held.one": "1 photograph or file",
+    "import.count.held.many": "{count} photographs and files",
+    "import.count.published.one": "1 published entry",
+    "import.count.published.many": "{count} published entries",
+    "import.count.drafts.one": "1 draft",
+    "import.count.drafts.many": "{count} drafts",
+    "import.count.comments.one": "1 comment",
+    "import.count.comments.many": "{count} comments",
+    "import.count.photographs.one": "1 photograph",
+    "import.count.photographs.many": "{count} photographs",
+    "import.count.files.one": "1 file",
+    "import.count.files.many": "{count} files",
     "import.media.fetching": (
         "Pressless is copying them from your old site: {done} of {total} so far. Keep this "
         "page open; if Pressless closes, it carries on from here next time."
@@ -1180,10 +1194,7 @@ _WORDS: dict[str, str] = {
         "This is what came across, and everything that did not come across as written. "
         "It is also kept in the import folder, as report.txt."
     ),
-    "import.report.counts": (
-        "{published} published entries, {drafts} drafts, {comments} comments, "
-        "{photographs} photographs and {files} files."
-    ),
+    "import.report.counts": "{published}, {drafts}, {comments}, {photographs} and {files}.",
     "import.report.pages": "Pages: {pages}.",
     "import.report.menu": "The menu came from {menu}.",
     "import.report.other_menus": "Other menus, not brought in: {menus}.",
@@ -1192,7 +1203,8 @@ _WORDS: dict[str, str] = {
     "import.report.unfetched": "{place} did not come across: {why}.",
     "import.report.renamed": "{wanted} was already taken, so it is now {given}.",
     "import.report.renamed_file": "{place} shared its name, so it is now {name}.",
-    "import.report.other_type": "{count} items of the kind {kind} were not brought in.",
+    "import.report.other_type.one": "1 item of the kind {kind} was not brought in.",
+    "import.report.other_type.many": "{count} items of the kind {kind} were not brought in.",
     "import.report.dropped": "{where}: {what}.",
     "setup.google.on": (
         "Visitor numbers are on: <a href=\"/setup/google\">change the site or turn them "

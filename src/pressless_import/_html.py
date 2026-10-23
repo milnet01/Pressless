@@ -197,6 +197,26 @@ _SPLITS = (frozenset({"br", "img", "div", "p", "blockquote", "figure", "pre"})
 # What a reader never sees, so neither function hands it on.
 _HIDDEN = frozenset({"script", "style"})
 
+# ----------------------------------------------------------- the report ----
+
+# PRESS-0294: the Report names what was lost in words a reader who has never
+# seen web code can act on. A tag missing here is named as layout.
+_TAG_WORDS = {
+    "script": "code the old site ran, left out",
+    "style": "styling code from the old site, left out",
+    **{tag: "a list, kept as plain lines" for tag in ("ul", "ol", "li")},
+    **{tag: "a table, kept as plain lines"
+       for tag in ("table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption")},
+    "hr": "a dividing line, left out",
+    **{tag: "text in a typewriter font, kept as ordinary text" for tag in ("pre", "code")},
+}
+_MEDIA_WORDS = {"video": "a video", "audio": "a sound clip", "iframe": "an embedded item",
+                "embed": "an embedded item"}
+
+
+def _tag_words(tag: str) -> str:
+    return _TAG_WORDS.get(tag, f'some of the old site\'s layout ("{tag}"), its words kept')
+
 
 def visible_lines(markup: str) -> tuple[str, ...]:
     """§4.3's instrument: the lines a reader sees. A new line at each <br>,
@@ -280,6 +300,10 @@ class _Converter:
         self._caption: str | None = None
         self._preformatted = 0
         self.dropped: list[str] = []
+        # An entry's unread attributes and styles, each named once and said
+        # in one line at the end (PRESS-0294).
+        self.settings: dict[str, None] = {}
+        self.formatting: dict[str, None] = {}
 
     # The table, row by row.
 
@@ -292,14 +316,14 @@ class _Converter:
             return
         tag = node.tag
         if tag in _HIDDEN:
-            self.dropped.append(f"a <{tag}> and what it held, dropped")
+            self.dropped.append(_tag_words(tag))
             return
         style = self._attributes(node, style)
         if tag == "br":
             blocks.line_break()
         elif tag in _PARAGRAPHS:
             if tag in _HEADINGS:
-                self.dropped.append(f"a heading <{tag}>, kept as a paragraph since Marks has none")
+                self.dropped.append("a heading, kept as an ordinary paragraph")
             blocks.end_paragraph()
             self._children(node, style, blocks)
             blocks.end_paragraph()
@@ -322,7 +346,7 @@ class _Converter:
             self._media(node, blocks)
         else:
             if tag not in _KNOWN:
-                self.dropped.append(f"a <{tag}>, its words kept")
+                self.dropped.append(_tag_words(tag))
             # PRESS-0161: a line of its own, as a paragraph is.
             breaks = tag in _LINES or tag == "pre"
             if breaks:
@@ -366,12 +390,13 @@ class _Converter:
     def _gallery(self, shortcode: str, blocks: _Blocks):
         ids = _GALLERY_IDS.search(shortcode)
         if ids is None:
-            self.dropped.append("a [gallery] naming no pictures")
+            self.dropped.append("a gallery with no pictures in it, left out")
             return
         for attachment_id in (part.strip() for part in ids.group(1).split(",")):
             name = self._by_id(attachment_id) if attachment_id else None
             if name is None:
-                self.dropped.append(f"a gallery picture with no attachment: id {attachment_id}")
+                self.dropped.append(
+                    f"a gallery picture missing from the export, left out: number {attachment_id}")
             else:
                 blocks.block(("line", f"{{photo: {name}}}"))
 
@@ -382,7 +407,7 @@ class _Converter:
             if name == "style":
                 style = self._style(node.tag, value, style)
             elif name not in used:
-                self.dropped.append(f"the {name} attribute of <{node.tag}>")
+                self.settings[name] = None
         return style
 
     def _style(self, tag: str, declarations: str, style: _Style) -> _Style:
@@ -394,7 +419,7 @@ class _Converter:
             if prop == "color" and tag in _COLOURED and re.fullmatch(_COLOUR, value):
                 style = _replace(style, colour=value)
             else:
-                self.dropped.append(f"the style {prop}:{value} on <{tag}>")
+                self.formatting[f"{prop} {value}"] = None
         return style
 
     def _anchor(self, node: _Element, style: _Style, blocks: _Blocks):
@@ -406,21 +431,22 @@ class _Converter:
             own = self._by_address(href) if href else None
             names = {self._by_address(img.attrs.get("src", "")) for img in pictures}
             if href and (own is None or own not in names):
-                self.dropped.append(f"a link around a picture, to {href}")
+                self.dropped.append(f"a link on a picture, left out, the picture kept: {href}")
             self._children(node, style, blocks)
             return
         if not href:
             self._children(node, style, blocks)
         elif self._by_address(href) is not None:
-            self.dropped.append(f"a link to an attachment that is not a picture: {href}")
+            self.dropped.append(
+                f"a link to a file that is not a picture, kept as plain words: {href}")
             self._children(node, style, blocks)
         elif self._old_site and _host(href) == self._old_site:
-            self.dropped.append(f"a link to the old site: {href}")
+            self.dropped.append(f"a link to the old site, kept as plain words: {href}")
             self._children(node, style, blocks)
         elif re.fullmatch(_LINK, href):
             self._children(node, _replace(style, link=href), blocks)
         else:
-            self.dropped.append(f"a link Marks cannot carry: {href}")
+            self.dropped.append(f"a link Pressless cannot keep, kept as plain words: {href}")
             self._children(node, style, blocks)
 
     def _picture(self, img: _Element, blocks: _Blocks):
@@ -433,16 +459,19 @@ class _Converter:
         alt = " ".join(img.attrs.get("alt", "").split())
         if alt:
             where = name or (f"at {src}" if src else "with no address")
-            self.dropped.append(f"the alt text of the picture {where}: {alt}")
+            self.dropped.append(
+                f"the description of the picture {where}, for readers who cannot see it, "
+                f"not kept: {alt}")
         if name is not None:
             mark = f"{{photo: {name} | {caption}}}" if caption else f"{{photo: {name}}}"
             blocks.block(("line", mark))
             return
         if src:
-            self.dropped.append(f"a picture with no attachment, kept as a link: {src}")
+            self.dropped.append(
+                f"a picture missing from the export, kept as a link to where it was: {src}")
             self._address_line(src, blocks)
         else:
-            self.dropped.append("a picture with no address")
+            self.dropped.append("a picture with no address, left out")
         if caption:
             blocks.block(("paragraph", [[(caption, _PLAIN)]]))
 
@@ -463,7 +492,7 @@ class _Converter:
             # a colour -- is lost here; decision 9 has that said (PRESS-0162).
             if captions and any(isinstance(child, _Element)
                                 for child in _descendants(captions[0])):
-                self.dropped.append("markup inside a picture's caption, its words kept")
+                self.dropped.append("styling inside a picture's caption, its words kept")
             for child in node.children:
                 if not (isinstance(child, _Element) and child.tag == "figcaption"):
                     self.walk(child, style, blocks)
@@ -481,7 +510,7 @@ class _Converter:
             elif isinstance(child, _Element):
                 address = _plain_text(child)
                 if address:
-                    self._address(address, "an embed", blocks)
+                    self._address(address, _MEDIA_WORDS["embed"], blocks)
 
     def _media(self, node: _Element, blocks: _Blocks):
         src = node.attrs.get("src", "").strip()
@@ -489,13 +518,13 @@ class _Converter:
             sources = [child for child in _descendants(node) if child.tag == "source"]
             src = sources[0].attrs.get("src", "").strip() if sources else ""
         if not src:
-            self.dropped.append(f"a <{node.tag}> with no address")
+            self.dropped.append(f"{_MEDIA_WORDS[node.tag]} with no address, left out")
             return
-        self._address(src, f"a <{node.tag}>", blocks)
+        self._address(src, _MEDIA_WORDS[node.tag], blocks)
 
     def _address(self, address: str, what: str, blocks: _Blocks):
         if self._by_address(address) is not None:
-            self.dropped.append(f"{what} of an attachment that is not a picture: {address}")
+            self.dropped.append(f"{what} from a file that is not a picture, left out: {address}")
         else:
             self._address_line(address, blocks)
 
@@ -505,7 +534,8 @@ class _Converter:
         if re.fullmatch(_LINK, address):
             blocks.block(("line", f"{{link: {address}}}{address}{{/}}"))
         else:
-            self.dropped.append(f"an address Marks cannot carry, kept as text: {address}")
+            self.dropped.append(
+                f"an address Pressless cannot make a link of, kept as plain words: {address}")
             blocks.block(("paragraph", [[(address, _PLAIN)]]))
 
 
@@ -539,7 +569,7 @@ def _line(segments: list[tuple[str, _Style]], dropped: list[str]) -> str:
     runs: list[list] = []
     for text, style in segments:
         if style.bold and style.italic:
-            dropped.append("italic inside bold, written as bold")
+            dropped.append("words both bold and italic, now just bold")
             style = _replace(style, italic=False)
         if runs and runs[-1][1] == style:
             runs[-1][0] += text
@@ -612,4 +642,10 @@ def convert(body: str, picture_by_address: Lookup, picture_by_id: Lookup, *,
     converter.walk(_tree(body), _PLAIN, blocks)
     blocks.end_paragraph()
     text = _marks(blocks.out, converter.dropped)
+    if converter.settings:
+        converter.dropped.append("settings from the old site's look, which change nothing you "
+                                 f"see now, left out: {', '.join(converter.settings)}")
+    if converter.formatting:
+        converter.dropped.append("formatting Pressless cannot show, left out, the words kept: "
+                                 f"{', '.join(converter.formatting)}")
     return text, tuple(dict.fromkeys(converter.dropped))

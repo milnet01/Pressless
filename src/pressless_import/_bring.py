@@ -495,7 +495,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     dropped = [Dropped(item.slug, what) for item in items for what in dict.fromkeys(item.dropped)]
     for page in pages:
         if page.comments:
-            page.dropped.append(f"{page.comments} comments, which a page does not carry")
+            page.dropped.append(f"its comments ({page.comments}), which a page does not have")
         dropped += [Dropped(f"pages/{page.name}", what) for what in dict.fromkeys(page.dropped)]
     dropped += [Dropped(_NAVIGATION, what) for what in dict.fromkeys(menu_listed)]
     other: dict[str, int] = {}

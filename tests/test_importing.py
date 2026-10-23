@@ -157,6 +157,28 @@ def test_the_report_escapes_what_it_names(tmp_path):
     assert "\x1b" not in page and "\\x1b" in shown, shown
 
 
+def test_a_count_of_one_takes_the_singular(tmp_path):
+    """PRESS-0294: one post and one page are counted as "1 post" and "1 page",
+    on the media step and in the Report.
+
+    Breaks when a count is written into a plural noun again ("1 pages")."""
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export", _export(
+            _item(1, slug="one"), _item(2, kind="page", slug="about")).encode("utf-8"))
+        media = _next(browser, "export")
+        _through_fetching(browser)
+        _next(browser, "gaps")
+        _next(browser, "look", look="harbour")
+        report = _next(browser, "bring")
+    finally:
+        served.stop()
+    assert "1 post, 1 page and 0 photographs and files." in media, media
+    assert "1 published entry, 0 drafts, 0 comments" in report, report
+
+
 def test_import_is_offered_only_on_a_store_holding_no_site(tmp_path):
     """§ 4.1: the list page links to /import while the Store holds no site."""
     folder = tmp_path / "site"

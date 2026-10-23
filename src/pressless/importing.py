@@ -129,8 +129,13 @@ def register(face: Face, folder: Path) -> None:
         start_fetching()
         state = _fetching(folder)
         total = answers.get("files", "0")
-        counts = say("import.media.counts", posts=answers.get("posts", "0"),
-                     pages=answers.get("pages", "0"), files=total)
+        counts = say(
+            "import.media.counts",
+            posts=_counted(answers.get("posts", "0"),
+                           "import.count.posts.one", "import.count.posts.many"),
+            pages=_counted(answers.get("pages", "0"),
+                           "import.count.pages.one", "import.count.pages.many"),
+            files=_counted(total, "import.count.held.one", "import.count.held.many"))
         counts = f"<p>{counts}</p>"
         if state.failed:
             return counts + state.failed
@@ -296,10 +301,17 @@ _SEND_SCRIPT = r"""
 
 def _lines(report: pressless_import.Report) -> list[str]:
     """§ 4.8: the Report as lines of words, each value as the export gave it."""
-    lines = [say("import.report.counts", published=str(report.published),
-                 drafts=str(report.drafts), comments=str(report.comments),
-                 photographs=str(report.photographs), files=str(report.files)),
-             say("import.report.pages", pages=", ".join(report.pages))]
+    counts = say(
+        "import.report.counts",
+        published=_counted(report.published, "import.count.published.one",
+                           "import.count.published.many"),
+        drafts=_counted(report.drafts, "import.count.drafts.one", "import.count.drafts.many"),
+        comments=_counted(report.comments, "import.count.comments.one",
+                          "import.count.comments.many"),
+        photographs=_counted(report.photographs, "import.count.photographs.one",
+                             "import.count.photographs.many"),
+        files=_counted(report.files, "import.count.files.one", "import.count.files.many"))
+    lines = [counts, say("import.report.pages", pages=", ".join(report.pages))]
     if report.menus:
         lines.append(say("import.report.menu", menu=report.menus[0]))
         if report.menus[1:]:
@@ -312,11 +324,17 @@ def _lines(report: pressless_import.Report) -> list[str]:
               for wanted, given in report.renamed_slugs]
     lines += [say("import.report.renamed_file", place=place, name=name)
               for place, name in report.renamed_photographs]
-    lines += [say("import.report.other_type", kind=kind, count=str(count))
+    lines += [say("import.report.other_type.one", kind=kind) if count == 1
+              else say("import.report.other_type.many", kind=kind, count=str(count))
               for kind, count in report.other_types]
     lines += [say("import.report.dropped", where=dropped.slug, what=dropped.what)
               for dropped in report.dropped]
     return lines
+
+
+def _counted(count: int | str, one: str, many: str) -> str:
+    """A count with its noun, which takes the singular for one (PRESS-0294)."""
+    return say(one) if int(count) == 1 else say(many, count=str(count))
 
 
 def _report_page(lines: list[str]) -> str:

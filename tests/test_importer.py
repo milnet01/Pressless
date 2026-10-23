@@ -323,9 +323,9 @@ _ROWS = [
      "{link: https://video.example.org/v/1}https://video.example.org/v/1{/}", None),
     ('<img src="https://elsewhere.example.org/p.jpg">',
      "{link: https://elsewhere.example.org/p.jpg}https://elsewhere.example.org/p.jpg{/}",
-     "attachment"),
-    (f'<p><a href="{UPLOADS}/2012/05/song.mp3">my song</a></p>', "my song", "attachment"),
-    (f'<video src="{UPLOADS}/2012/05/clip.mp4"></video>', "", "attachment"),
+     "missing from the export"),
+    (f'<p><a href="{UPLOADS}/2012/05/song.mp3">my song</a></p>', "my song", "not a picture"),
+    (f'<video src="{UPLOADS}/2012/05/clip.mp4"></video>', "", "a video from a file"),
     ("<div>a</div><div>b</div>", "a\n\nb", None),
     ("<h2>A heading</h2><p>x</p>", "A heading\n\nx", "heading"),
     ("<figure><p>x</p></figure>", "x", None),
@@ -650,9 +650,26 @@ def test_what_is_dropped_is_reported(tmp_path):
         assert any(alt in what and name in what for what in whats), (
             f"the alt {alt!r} must be listed with {name}: {report.dropped!r}"
         )
-    assert sum("alt" in what for what in whats) == 2, (
-        f"one line per picture, and the attribute not listed a second time: {whats!r}"
-    )
+    settings = [name for what in whats if what.startswith("settings")
+                for name in what.split(": ", 1)[1].split(", ")]
+    assert sum("description of the picture" in what for what in whats) == 2, whats
+    assert "alt" not in settings, f"the attribute is not listed a second time: {whats!r}"
+
+
+def test_settings_and_formatting_are_one_line_each():
+    """PRESS-0294: an entry's unread attributes and styles are each said in
+    one line, naming every one, rather than a line per tag.
+
+    Breaks when each is listed on its own line again, or one is left out of
+    the line (PRESS-0007 §4.3 still has every one listed)."""
+    _text, dropped = convert(
+        '<p class="lead" id="top" style="font-size:2em">a</p>'
+        '<p class="lead" style="text-align:center">b</p>', _by_address, _by_id)
+    settings = [what for what in dropped if what.startswith("settings")]
+    formatting = [what for what in dropped if what.startswith("formatting")]
+    assert len(settings) == 1 and settings[0].endswith(": class, id"), dropped
+    assert len(formatting) == 1 and formatting[0].endswith(
+        ": font-size 2em, text-align center"), dropped
 
 
 # ----------------------------------------------------------- INV-11 -------
@@ -1050,8 +1067,8 @@ def test_script_and_style_are_dropped_and_listed():
     text, dropped = convert("<p>a</p><script>var shown = 1;</script><style>p {}</style>"
                             "<p>b</p>", _by_address, _by_id)
     assert "shown" not in text and "{}" not in text, text
-    assert any("<script>" in what for what in dropped), dropped
-    assert any("<style>" in what for what in dropped), dropped
+    assert any(what.startswith("code the old site ran") for what in dropped), dropped
+    assert any(what.startswith("styling code") for what in dropped), dropped
 
     for markup in ("<ul><li>one</li><li>two</li></ul>",
                    "<table><tr><td>one</td><td>two</td></tr></table>",

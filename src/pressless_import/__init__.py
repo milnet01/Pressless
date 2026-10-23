@@ -228,14 +228,14 @@ def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
         identifier = _field(element, "comment_id", ns)
         when = _wall_clock(_field(element, "comment_date", ns))
         if not identifier:
-            listed.append("a comment with no identifier, not carried")
+            listed.append("a comment with no number, not brought in")
             continue
         if any(comment.identifier == identifier for comment in carried):
-            listed.append(f"comment {identifier}, whose identifier another comment has, "
-                          f"not carried")
+            listed.append(f"comment {identifier}, whose number another comment has, "
+                          f"not brought in")
             continue
         if when is None:
-            listed.append(f"comment {identifier}, whose date cannot be read, not carried")
+            listed.append(f"comment {identifier}, whose date cannot be read, not brought in")
             continue
         parent = _field(element, "comment_parent", ns)
         carried.append(store.Comment(
@@ -250,8 +250,8 @@ def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
     held = {comment.identifier for comment in carried}
     for number, comment in enumerate(carried):
         if comment.parent and comment.parent not in held:
-            listed.append(f"comment {comment.identifier} replied to one not carried, "
-                          f"so it is carried as a comment of its own")
+            listed.append(f"comment {comment.identifier} replied to one not brought in, "
+                          f"so it now stands on its own")
             carried[number] = dataclasses.replace(comment, parent="")
     return tuple(carried), listed
 
@@ -465,20 +465,20 @@ def _differences(body: str, text: str) -> list[str]:
             continue
         removed, added = list(before[i1:i2]), list(after[j1:j2])
         if any(_GALLERY.fullmatch(line) for line in removed):
-            found.append("a gallery shortcode's text became its pictures")
+            found.append("a gallery, now shown as its pictures")
             removed = [line for line in removed if not _GALLERY.fullmatch(line)]
         gained = [line for line in added
                   if line.startswith(("http://", "https://")) and line in addresses]
         if gained:
-            found.append("an address became a link's words")
+            found.append("an address, now a link")
             added = [line for line in added if line not in gained]
         if len(removed) == len(added) and all(
             _made_by_deleting_stars(s, r) for s, r in zip(removed, added, strict=True)
         ):
             if removed:
-                found.append("a pair of his asterisks, styled by Marks")
+                found.append("words between asterisks, now shown in bold or italic")
             continue
-        found.append(f"a line a reader sees changed in conversion, at visible line {i1 + 1}")
+        found.append(f"line {i1 + 1} of it changed on the way in: check it reads as it should")
     return found
 
 
@@ -628,7 +628,7 @@ def run(export: Path, originals: Path, live_site: Path, templates: Path,
             bodies[item.post_id] = _convert(item, is_markup, by_address, by_id, old_site)
         else:
             if _GALLERY.search(item.body):
-                item.dropped.append("a [gallery] shortcode, kept as written")
+                item.dropped.append("a gallery, kept as the words WordPress wrote")
             bodies[item.post_id] = item.body
 
     if not into.parent.is_dir():
