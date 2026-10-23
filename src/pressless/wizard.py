@@ -53,8 +53,13 @@ class Done:
 class Step:
     name: str                                    # stable; the progress file names it
     title: str                                   # a words key, looked up when shown
-    fields: tuple[str, ...]                      # the answers this step's form posts
+    # The answers this step's form posts. A name ending in "key" is a secret
+    # (is_secret): never saved, never filled back in. Name a secret so, and
+    # nothing else.
+    fields: tuple[str, ...]
     show: Callable[[Answers, Hint | None], str]  # the step's body, fields filled from Answers
+    # The last step's check finishes the wizard only by returning Done; any
+    # other answers show that step again, and nothing is saved.
     check: Callable[[Answers], Answers | Hint | Stop | Done] | None = None
 
 
