@@ -65,7 +65,8 @@ class Span:
 
 @dataclass(frozen=True)
 class Photo:
-    """A picture mark. `name` is the file name — Marks never builds a path."""
+    """A picture mark. `name` is the file name — Marks never builds a path.
+    It carries `mark` because to_html finds the renderer by the row's name."""
 
     mark: str
     name: str
@@ -260,10 +261,10 @@ def _years_since(arg: str, today: date) -> str | None:
 class Mark:
     """One mark. MARKS is the only route to any of them (§4.2)."""
 
-    name: str  # Span.mark / Photo.mark / Quote.mark
+    name: str  # Span.mark / Photo.mark / Quote.mark / Value.mark
     kind: str  # "wrap" | "block" | "prefix" | "value"
     opens: str  # literal prefix; longest is tried first
-    closes: str | None  # None for a block or prefix mark
+    closes: str | None  # None for a block, prefix or value mark
     arg: str | None  # regex the argument must match IN FULL
     content: str  # "marks" | "text" -- is the body scanned on?
     render: Renderer  # this mark's HTML, built here and nowhere else
@@ -435,6 +436,9 @@ _WRAP_MARKS: tuple[Mark, ...] = tuple(
     sorted((row for row in MARKS if row.kind == "wrap"),
            key=lambda row: len(row.opens), reverse=True)
 )
+# Every block row needs an `arg` with `name` and `caption` groups: _as_block
+# builds a Photo from them, since photo is the one block mark so far. A second
+# block mark changes _as_block too.
 _BLOCK_MARKS: tuple[Mark, ...] = tuple(
     sorted((row for row in MARKS if row.kind == "block"),
            key=lambda row: len(row.opens), reverse=True)
@@ -531,11 +535,14 @@ def _closes_at(row: Mark, text: str, start: int) -> int | None:
         return None
     if text.find(closes, start) < 0:
         # Nothing further on the line can close this. Checked up front
-        # because _try_wrap asks at every position (PRESS-0054).
+        # because _try_inline asks at every position (PRESS-0054).
         return None
     return _closer_table(row.opens, closes, text)[start]
 
 
+# The cache is what makes the table pay: _closes_at asks for one start at a
+# time, at every position on the line, and each uncached call would build the
+# whole table again -- the slowdown PRESS-0162 removed, back.
 @functools.lru_cache(maxsize=32)
 def _closer_table(opens: str, closes: str, text: str) -> tuple[int | None, ...]:
     """_closes_at's answer for every start on the line, in one right-to-left
@@ -578,7 +585,7 @@ def _closer_table(opens: str, closes: str, text: str) -> tuple[int | None, ...]:
     return tuple(found[: n + 1])
 
 
-def _try_wrap(text: str, i: int, depth: int) -> tuple[Span | Value, int] | None:
+def _try_inline(text: str, i: int, depth: int) -> tuple[Span | Value, int] | None:
     """The first wrap or value row that forms a complete mark at `i`, with
     the index just past it."""
     for row in _INLINE_MARKS:
@@ -614,7 +621,7 @@ def _scan(text: str, depth: int = 0) -> tuple[Node, ...]:
     literal: list[str] = []
     i = 0
     while i < len(text):
-        found = _try_wrap(text, i, depth)
+        found = _try_inline(text, i, depth)
         if found is None:
             literal.append(text[i])
             i += 1
