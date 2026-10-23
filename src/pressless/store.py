@@ -21,13 +21,13 @@ import json
 import os
 import re
 import stat
-import sys
 import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
+import pressless.safe_write as safe_write
 from pressless.safe_write import patiently, write_whole
 from pressless.words import ENGLISH
 
@@ -507,7 +507,11 @@ def _move_without_overwriting(source: Path, target: Path) -> None:
     not, a move raises StoreError carrying the system's reason, which is
     visible rather than quiet.
     """
-    if _is_windows():
+    # safe_write's own check, not this module's _is_windows: `patiently`
+    # retries only where safe_write says Windows, so the route and its retry
+    # must read the one check or a patch of one gives half a Windows move
+    # (PRESS-0302).
+    if safe_write._is_windows():
         patiently(lambda: os.rename(source, target))
         return
     os.link(source, target)
@@ -1558,14 +1562,10 @@ def _entry_text(entry: Entry) -> str:
 
 
 def _is_windows() -> bool:
-    """Read at call time, so the platform is what a test patches (§4.5).
-
-    The same shape `credentials.py` uses, and for the same reason. `os.name`
-    would be the obvious signal and cannot be patched in a test: `pathlib`
-    branches on it to choose a path class, so setting it strands every Path
-    the write is about to make.
-    """
-    return sys.platform.startswith("win")
+    """The wide-grant notice's platform test, read at call time so a test can
+    patch this module's notice alone (§4.5). The platform rule itself, and
+    why it is not `os.name`, is safe_write._is_windows."""
+    return safe_write._is_windows()
 
 
 def _report_a_wide_grant(handle: int, target: Path) -> None:

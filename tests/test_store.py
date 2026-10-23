@@ -868,15 +868,15 @@ def test_a_body_of_its_own_line_endings_does_not_end_the_header(tmp_path):
 def test_a_move_takes_the_windows_route_where_the_platform_is_windows(
     tmp_path, monkeypatch
 ):
-    """PRESS-0129: a move chooses its route through `_is_windows()`, the
-    one platform signal a test can set (§4.5), so the Windows route runs
-    on Linux too.
+    """PRESS-0129: a move chooses its route through `safe_write._is_windows()`,
+    the one platform signal a test can set (§4.5, PRESS-0302), so the Windows
+    route runs on Linux too.
 
     Breaks when: the move branches on `os.name` again, which a test cannot
     patch without stranding every Path, so only Windows CI could reach it.
     """
     write(tmp_path, _entry(slug="moved"), draft=True)
-    monkeypatch.setattr(store_module, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
     renamed = []
     real_rename = os.rename
     monkeypatch.setattr(os, "rename", lambda a, b: (renamed.append(b), real_rename(a, b)))
@@ -889,6 +889,39 @@ def test_a_move_takes_the_windows_route_where_the_platform_is_windows(
     target = publish(tmp_path, "moved")
 
     assert renamed == [target], f"the move made these renames: {renamed!r}"
+
+
+def test_one_windows_check_gives_a_move_its_rename_and_its_retry(
+    tmp_path, monkeypatch
+):
+    """PRESS-0302: the move's Windows rename and the retry around it read the
+    same platform check, safe_write's. Patching that one check alone takes
+    the rename route, and a scanner's brief refusal of the rename is retried.
+
+    Breaks when the move branches on a check of its own again: patching one
+    then gives the rename without its retry, or the retry with no rename.
+    """
+    write(tmp_path, _entry(slug="moved"), draft=True)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write.time, "sleep", lambda seconds: None)
+    renamed = []
+    real_rename = os.rename
+
+    def held_once(source, target):
+        renamed.append(target)
+        if len(renamed) == 1:
+            raise PermissionError(13, "Access is denied")
+        return real_rename(source, target)
+
+    monkeypatch.setattr(os, "rename", held_once)
+
+    target = publish(tmp_path, "moved")
+
+    assert renamed == [target, target], (
+        f"the move made these renames: {renamed!r}; expected one refused "
+        f"rename and its retry"
+    )
+    assert target.is_file()
 
 
 # ------------------------------------------------------------ PRESS-0067 ----

@@ -14,13 +14,13 @@ from __future__ import annotations
 import json
 import os
 import stat
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import keyring
 import keyring.errors
 
+import pressless.safe_write as safe_write
 from pressless.safe_write import write_whole
 
 SERVICE = "Pressless"            # what both secrets are filed under in the store
@@ -196,8 +196,9 @@ def delete(store: str, folder: Path, account: str) -> None:
 
 
 def _is_windows() -> bool:
-    """Read at call time, so the platform is what a test patches (spec §7)."""
-    return sys.platform.startswith("win")
+    """Read at call time, so the platform is what a test patches (spec §7).
+    The platform rule itself is safe_write._is_windows."""
+    return safe_write._is_windows()
 
 
 def _members(store):

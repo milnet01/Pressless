@@ -14,11 +14,11 @@ import json
 import os
 import re
 import stat
-import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
+import pressless.safe_write as safe_write
 from pressless.safe_write import write_whole
 from pressless.words import ENGLISH
 
@@ -398,14 +398,10 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
 
 
 def _is_windows() -> bool:
-    """Read at call time, so the platform is what a test patches (§4.4).
-
-    The same shape `credentials.py` uses, and for the same reason. `os.name`
-    would be the obvious signal and cannot be patched in a test: `pathlib`
-    branches on it to choose a path class, so setting it strands every Path
-    the save is about to make.
-    """
-    return sys.platform.startswith("win")
+    """Read at call time, so a test can patch this module's platform test
+    alone (§4.4). The platform rule itself, and why it is not `os.name`, is
+    safe_write._is_windows."""
+    return safe_write._is_windows()
 
 
 def _report_a_wide_grant(handle: int, target: Path) -> None:
