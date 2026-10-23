@@ -41,6 +41,6 @@ def add(folder: Path, filename: str, data: bytes) -> str:
     if not builder.file_allowed(filename, data):
         raise NotAllowed(f"{filename!r} is not a kind of file Pressless keeps")
     suffix = "." + filename.rpartition(".")[2].lower()
-    name = photographs.plain_name(filename, (suffix,), FALLBACK)
+    plain = photographs.plain_name(filename, (suffix,), FALLBACK)
     return photographs.keep(lambda name: store.file_path_for(folder, name), data,
-                            lambda staged: name)
+                            lambda staged: plain)
