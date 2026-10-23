@@ -26,7 +26,7 @@ WIDTH = 96
 
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
-        print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
+        print("usage: make_flags.py <unpacked flag-icons package folder>", file=sys.stderr)
         return 2
     package = Path(argv[0])
     meta = json.loads((package / "package.json").read_text(encoding="utf-8"))

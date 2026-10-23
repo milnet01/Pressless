@@ -3,6 +3,9 @@
 #
 # Install:  git config core.hooksPath .githooks
 #
+# commits.md, which its messages cite, is on the maintainer's machine only
+# (~/.claude/standards/); a clone does not carry it.
+#
 # It checks SHAPE, never meaning. "One concern per commit" and "explain why,
 # not what" are not in here and cannot be — commits.md's What-checks-this
 # table records them as uncaught on purpose.

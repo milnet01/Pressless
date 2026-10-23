@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # pre-commit — the mechanically decidable half of documentation.md §9.0, run
 # over the staged markdown so "check while writing" stops being a wish.
+# documentation.md, which its message cites, is on the maintainer's machine
+# only (~/.claude/standards/); a clone does not carry it.
 #
 # Two blocking classes, no advisory channel. The missing advisory channel is
 # deliberate and is the more important half of this file: a warning nobody

@@ -44,7 +44,7 @@ def kept_private(path: Path) -> bool:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
-        print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
+        print("usage: make-signing-key.py <path outside this repository>", file=sys.stderr)
         return 2
     target = Path(argv[0]).expanduser().resolve()
     if target.is_relative_to(ROOT):
