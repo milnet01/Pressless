@@ -5573,7 +5573,7 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0298] **The Journal's menu link may never be marked as the current page.**
+- ✅ [PRESS-0298] **The Journal's menu link may never be marked as the current page.**
   builder.py:755 passes page="Journal"; no menu Pressless writes carries data-nav="Journal" (menu._nav). Premise confirmed. Lead from lane-05-build-publish.md.
   Investigated 2026-10-23: real. A journal link added in the menu editor
   (menu.arranged, menu.add) gets no data-nav, because menu._nav names only
@@ -5582,6 +5582,11 @@ it can then be changed.
   now: PRESS-0216 says a new link gets data-nav only for a fixed page,
   so the fix needs that spec amended. A comment at builder._Build.page
   now says where data-nav="Journal" comes from (762fb31).
+  Shipped 2026-10-23 in 4c815f2. PRESS-0216 § 4.4 now gives a journal
+  link data-nav="Journal"; menu._nav maps {{UP}}blog/index.html to it.
+  PRESS-0008 § 4.4: on a journal page the Builder marks the first
+  unmarked link to the journal where no link carries the marker, so a
+  menu saved earlier works without being rewritten.
   **Layman:** On the journal, the menu may not highlight the Journal link.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5719,7 +5724,7 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0314] **Rewording a Look note could make every saved look count as not made here.**
+- ✅ [PRESS-0314] **Rewording a Look note could make every saved look count as not made here.**
   look.py:216 / :284 — css() writes say('look.style_note') and two other notes into saved style code. Unchecked. Lead from lane-05-build-publish.md.
   Investigated 2026-10-23: real but latent. made_here compares saved
   style code with css() byte for byte, and css() writes three
@@ -5729,6 +5734,10 @@ it can then be changed.
   letting made_here accept earlier output (for example, matching the
   note lines loosely) departs from PRESS-0196 § 4.4 state 2, which says
   "not look.css of the choices". That needs a spec decision first.
+  Shipped 2026-10-23 in 83ca9a2. PRESS-0196 § 4.4 state 2: made_here
+  does not compare the words inside css()'s notes. css() output is
+  unchanged (0.10.1 hashes pass); a new test rewords all three notes
+  and finds 0.10.1's saved code still made here.
   **Layman:** Changing one sentence in the app could make it throw away people's saved site looks.
   Kind: investigate.
   Source: review-readability-2026-10-23.
@@ -5858,13 +5867,16 @@ it can then be changed.
   Kind: investigate.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0326] **The usage report decides a press succeeded by comparing its displayed words.**
+- ✅ [PRESS-0326] **The usage report decides a press succeeded by comparing its displayed words.**
   pressing.run counts a press as done when the outcome's words equal
   script.press.published or script.press.undone. A new success wording,
   or a third press kind, would be counted as failed with no error. The
   fix is a success flag on pressing.Outcome that run reads. Not fixed
   now: PRESS-0262 § 4.4 defines `ended` by comparing those words, so the
   spec changes first. Lead from lane-05-build-publish.md.
+  Shipped 2026-10-23 in 38fdce1. PRESS-0262 § 4.4 and PRESS-0235 § 4.1:
+  Outcome.done is the success flag run reports; pressing.ended builds
+  every outcome. The scripts already read the reply's own flags.
   **Layman:** Rewording what a successful publish says could make the app count it as a failure.
   Kind: review-fix.
   Source: review-readability-2026-10-23.
@@ -5880,7 +5892,7 @@ it can then be changed.
   Kind: fix.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0328] **Renaming a page misses a menu link whose words sit inside a tag.**
+- ✅ [PRESS-0328] **Renaming a page misses a menu link whose words sit inside a tag.**
   menu.rename compares a link's raw inside, unescaped and trimmed, with
   old_words. The menu view reads words through menu._words, which also
   strips tags. So a link written <a ...><span>About</span></a> shows as
@@ -5889,6 +5901,9 @@ it can then be changed.
   through _words would also replace the span with plain words. Needs a
   decision and that spec amended. Lead from lane-02-page-editor.md; the
   writing half of the finding was fixed as one menu._written helper.
+  Shipped 2026-10-23 in 95011a7. PRESS-0195 § 4.2 and INV-7: rename
+  compares a link's visible words (menu._words); tags inside go with the
+  old words, as in the menu view. One menu._reworded helper serves both.
   **Layman:** If a menu link's words are wrapped in extra code, renaming the page keeps the old words on the link.
   Kind: review-fix.
   Source: review-readability-2026-10-23.

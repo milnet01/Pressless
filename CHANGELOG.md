@@ -23,6 +23,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **The menu now highlights Journal on the journal's pages** (PRESS-0298)
+  A Journal link you add to the menu, or point at the journal, is now
+  marked so the journal's pages highlight it, as other pages highlight
+  their own link. A menu saved by an earlier version is not changed:
+  its Journal link is highlighted at the next publish anyway.
+
+- **Renaming a page renames its menu link even when its words are styled** (PRESS-0328)
+  If a menu link's words were wrapped in extra web code, for example to
+  style them, renaming the page kept the old words on the link. Now the
+  link gets the new words, as editing it in the menu view does. The
+  styling around the old words goes with them.
+
 - **Two messages now follow the rest of the app's wording** (PRESS-0320)
   The message when a backup fails, on the Sites screen, and the message
   when Pressless cannot move your site into its sites folder at start
