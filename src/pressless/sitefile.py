@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 import shutil
 import stat
 import zipfile
@@ -208,8 +209,7 @@ def open_into(source: Path, own: Path) -> Path:
         if target != current:
             made = target
         _settle(opening, target)
-        shutil.rmtree(target)
-        opening.rename(target)
+        _replace(target, opening)
         made = None
         sites.choose(own, target.name)
     except Refused:
@@ -220,6 +220,21 @@ def open_into(source: Path, own: Path) -> Path:
         _clean(opening, made)
         raise Refused("the file could not be opened as a site") from exc
     return target
+
+
+def _replace(target: Path, opening: Path) -> None:
+    """§ 4.4 step 5, never losing `target` on the way (PRESS-0299): it moves
+    aside, and comes back where the rename fails, so a refusal leaves sites/
+    as it was. The aside name is fresh each time, so one left by a stopped
+    open blocks nothing and is never mistaken for a site."""
+    aside = target.with_name(f".replaced-{secrets.token_hex(8)}")
+    target.rename(aside)
+    try:
+        opening.rename(target)
+    except BaseException:
+        aside.rename(target)
+        raise
+    shutil.rmtree(aside, ignore_errors=True)
 
 
 def _clean(opening: Path, made: Path | None) -> None:

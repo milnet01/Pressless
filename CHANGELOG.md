@@ -23,6 +23,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Opening a site file never loses the site that was open** (PRESS-0299)
+  When a saved site was opened in place of a new, empty site, a failure at
+  the last moment could leave that site missing. Now the old site is kept
+  until the opened one is safely in place, and comes back if anything
+  goes wrong.
+
 - **Opening a site file or importing no longer gets stuck** (PRESS-0319)
   If the connection to Pressless dropped while a site file or an Import
   file was being sent, the button stayed greyed out and nothing was said.

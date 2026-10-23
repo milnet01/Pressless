@@ -243,6 +243,8 @@ def test_opening_never_writes_over_a_site(tmp_path: Path) -> None:
     assert sitefile.open_into(target, fresh) == fresh / "sites" / "site-1"
     assert (fresh / "sites" / "site-1" / "drafts" / "half-a-thought.txt").is_file()
     assert [path.name for path in sites.all_sites(fresh)] == ["site-1"]
+    # PRESS-0299: the unused site, moved aside first, is gone afterwards.
+    assert [path.name for path in (fresh / "sites").iterdir()] == ["site-1"]
 
     busy = _own(tmp_path, "busy")
     first = sites.open_site(busy)
@@ -256,6 +258,31 @@ def test_opening_never_writes_over_a_site(tmp_path: Path) -> None:
     before = _files(set_up / "sites" / "site-1")
     assert sitefile.open_into(target, set_up) == set_up / "sites" / "site-2"
     assert _files(set_up / "sites" / "site-1") == before
+
+
+def test_a_failed_rename_keeps_the_open_site(tmp_path: Path,
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    """PRESS-0299: where the open site is unused it is the target, and the
+    last rename can still fail. Breaks when the open site is removed before
+    the opened one is safely in its place."""
+    _, target = _saved(tmp_path)
+    own = _own(tmp_path)
+    current = sites.open_site(own)
+    (current / "kept.txt").write_text("still here", encoding="utf-8")
+    before = _files(current)
+    real = Path.rename
+
+    def fails_for_opening(self: Path, to: Path) -> Path:
+        if self.name == ".opening":
+            raise OSError("the drive went away")
+        return real(self, to)
+
+    monkeypatch.setattr(Path, "rename", fails_for_opening)
+    with pytest.raises(sitefile.Refused):
+        sitefile.open_into(target, own)
+    assert [path.name for path in sites.all_sites(own)] == ["site-1"]
+    assert _files(current) == before
+    assert sorted(path.name for path in (own / "sites").iterdir()) == ["site-1"]
 
 
 def test_a_refused_open_leaves_no_new_site(tmp_path: Path,
