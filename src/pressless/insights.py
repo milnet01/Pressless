@@ -291,7 +291,6 @@ def read(settings: Settings, token: str, folder: Path, *,
         # http.client refuses a header value with a line break by raising
         # ValueError, which reached him as "no answer" (PRESS-0162).
         raise Refused("the saved Google sign-in cannot be sent as it is")
-    transport = client if client is not None else _own_client()
     target = cache_path(folder)
     cached = _cached(target, days)
 
@@ -300,9 +299,13 @@ def read(settings: Settings, token: str, folder: Path, *,
         # so after an NTP correction, a manual clock change or a restored
         # backup the cache read FRESH forever and showed old numbers labelled
         # current -- worse than showing them stale (PRESS-0056).
-        age = transport.now() - cached.fetched_at
+        # Pressless's own client tells time.time(); building it costs a TLS
+        # context, which a fresh cache never needs.
+        age = (client.now() if client is not None else time.time()) - cached.fetched_at
         if 0.0 <= age < max_age_seconds:
             return cached
+
+    transport = client if client is not None else _own_client()
 
     try:
         report = _fetch(transport, property_id, token, days)
