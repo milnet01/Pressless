@@ -13,6 +13,7 @@ property, so a sign-in left half-way leaves the dashboard as it was.
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import hmac
 import html
@@ -285,6 +286,10 @@ def _choose(state: _State, request: Request) -> str:
     with state.face.capture() as notices:
         settings.check(candidate)
         settings.save(state.folder, candidate)
+    if chosen != saved.analytics_property_id:
+        # The cache holds the last property's numbers, read as this one's.
+        with contextlib.suppress(OSError):
+            insights.forget(state.folder)
     with state.lock:
         state.held = pending.access
         state.pending = None
