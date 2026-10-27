@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import stat
 import sys
@@ -301,3 +302,15 @@ def test_a_refused_open_leaves_no_new_site(tmp_path: Path,
         sitefile.open_into(target, own)
     assert [path.name for path in sites.all_sites(own)] == ["site-1"]
     assert not (own / "sites" / ".opening").exists()
+
+
+def test_a_file_dated_before_1980_is_saved(tmp_path: Path) -> None:
+    """A hand-copied file can carry any date; zip cannot hold one before
+    1980. Breaks when strict timestamps refuse the whole save."""
+    site = tmp_path / "site"
+    _site(site)
+    os.utime(site / "photographs" / "sea.jpg", (0, 0))
+    target = tmp_path / "saved.pressless"
+    sitefile.save(site, target)
+    with zipfile.ZipFile(target) as saved:
+        assert "photographs/sea.jpg" in saved.namelist()
