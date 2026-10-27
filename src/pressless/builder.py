@@ -554,18 +554,22 @@ def _named(relative: str, text: str, subfolder: str, held: set[str],
     return found
 
 
-def _held_pictures(folder: Path, relative: str, text: str) -> list[str]:
+def _held_pictures(folder: Path, relative: str, text: str,
+                   held: frozenset[str] | None = None) -> list[str]:
     """PRESS-0260 § 4.6: the photographs the Store holds that the page's
-    picture sections name, by `src` read from the page's place."""
+    picture sections name, by `src` read from the page's place. `held` is
+    the folder's listing where the caller already has it."""
     return _named(relative, text, store.PHOTOGRAPHS_FOLDER,
-                  set(store.list_photographs(folder)),
+                  held if held is not None else set(store.list_photographs(folder)),
                   (blocks.PICTURE, blocks.ENLARGE), ("src",))
 
 
-def _held_files(folder: Path, relative: str, text: str) -> list[str]:
+def _held_files(folder: Path, relative: str, text: str,
+                held: frozenset[str] | None = None) -> list[str]:
     """PRESS-0197 § 4.6: the kept files any section names, by `src` or `href`."""
     return _named(relative, text, store.FILES_FOLDER,
-                  set(store.list_files(folder)), None, ("src", "href"))
+                  held if held is not None else set(store.list_files(folder)),
+                  None, ("src", "href"))
 
 
 def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
@@ -597,6 +601,8 @@ class _Build:
     def __init__(self, folder: Path, settings: Settings, root: Path,
                  photo_src: marks.PhotoSrc | None, change: store.Entry | Html | None,
                  today: date):
+        self._photographs: frozenset[str] | None = None
+        self._files: frozenset[str] | None = None
         self.folder = folder
         self.settings = settings
         self.root = root
@@ -641,6 +647,19 @@ class _Build:
                      for name in ("header", "navigation", "footer")}
         self.set_furniture(furniture)
 
+    # Listed once a build rather than once a page; a _Build lives for one.
+    @property
+    def held_photographs(self) -> frozenset[str]:
+        if self._photographs is None:
+            self._photographs = frozenset(store.list_photographs(self.folder))
+        return self._photographs
+
+    @property
+    def held_files(self) -> frozenset[str]:
+        if self._files is None:
+            self._files = frozenset(store.list_files(self.folder))
+        return self._files
+
     def set_furniture(self, furniture: dict[str, str]) -> None:
         identity = store.read_identity(self.folder) or store.Identity("")
         held = {}
@@ -650,9 +669,11 @@ class _Build:
             # page's are, {{UP}} being the site's root.
             if self.publishing:
                 for photograph in _held_pictures(self.folder, "index.html",
-                                                 text.replace("{{UP}}", "")):
+                                                 text.replace("{{UP}}", ""),
+                                                 self.held_photographs):
                     self.web_copy(photograph)
-                for kept in _held_files(self.folder, "index.html", text.replace("{{UP}}", "")):
+                for kept in _held_files(self.folder, "index.html", text.replace("{{UP}}", ""),
+                                        self.held_files):
                     self.file_copy(kept)
             held[name] = text if self.marked == name else blocks.unmarked(name, text)
         self.furniture_pieces = any(_has_piece(furniture[name]) for name in ("header", "footer"))
@@ -742,9 +763,9 @@ class _Build:
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
         if self.publishing:
-            for held in _held_pictures(self.folder, relative, text):
+            for held in _held_pictures(self.folder, relative, text, self.held_photographs):
                 self.web_copy(held)
-            for held in _held_files(self.folder, relative, text):
+            for held in _held_files(self.folder, relative, text, self.held_files):
                 self.file_copy(held)
         filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
                                   self.furniture)

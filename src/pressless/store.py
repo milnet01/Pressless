@@ -1507,7 +1507,7 @@ def _only_usable(
     in the suffix's case are one address, and the raw names are what is judged
     rather than what is handed back.
     """
-    usable: list[str] = []
+    usable: dict[str, None] = {}   # ordered, and a set's lookup
     for name, file_name in names:
         try:
             compose(name)
@@ -1516,8 +1516,7 @@ def _only_usable(
                                       file=f"{subfolder.name}/{file_name}", reason=str(exc)),
                           stacklevel=3)
             continue
-        if name not in usable:
-            usable.append(name)
+        usable.setdefault(name)
     return tuple(usable)
 
 
