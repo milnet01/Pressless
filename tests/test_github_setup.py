@@ -176,7 +176,9 @@ def test_the_pass_is_renewed_when_nearly_spent(tmp_path, monkeypatch):
                               ("keyring", "github", "ghr_renewed-2")]
 
     # The new refresh token is stored before the pass is used: a write that
-    # fails returns no token, and holds none for the next call to use.
+    # fails returns no token. GitHub has already retired the stored one, so
+    # the new one is kept and stored once a write works, never refreshed
+    # again from the retired one.
     github = _GitHub()
     _Store(monkeypatch, REFRESH, write_raises=credentials.CredentialError("locked"))
     with _served(tmp_path, github, _Clock()):
@@ -184,7 +186,10 @@ def test_the_pass_is_renewed_when_nearly_spent(tmp_path, monkeypatch):
             _token(tmp_path)
         with pytest.raises(credentials.CredentialError):
             _token(tmp_path)
-    assert github.refreshes() == 2
+        keyring = _Store(monkeypatch, REFRESH)
+        assert _token(tmp_path) == "ghu_renewed-1"
+    assert github.refreshes() == 1
+    assert keyring.writes == [("keyring", "github", "ghr_renewed-1")]
 
 
 def test_a_lapsed_sign_in_says_sign_in_again(tmp_path, monkeypatch):
