@@ -15,7 +15,7 @@ import socket
 import ssl
 from collections.abc import Callable
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 
 import certifi
 
@@ -27,6 +27,7 @@ SECONDS = 30                    # without data, a fetch stops (§ 4.4)
 _REDIRECTS = 5
 _PIECE = 64 * 1024
 _MOVED = frozenset({301, 302, 303, 307, 308})
+_URL_SAFE = "/%:@!$&'()*+,;=~"
 NO_ROOM = "there was no room left on this drive"
 
 Resolve = Callable[[str, int], list[str]]
@@ -85,15 +86,20 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
             return "its address is not a web address"
         try:
             found = resolve(parts.hostname, port)
-        except OSError:
+        except (OSError, UnicodeError):
+            # getaddrinfo raises UnicodeError for an empty or over-long label
             return "the old site's name could not be found"
         if not found or not all(_global(one) for one in found):
             return "its address leads inside this computer or its network"
         connection = connect(found[0], parts.hostname, port, parts.scheme == "https")
         try:
             host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
-            connection.request("GET", (parts.path or "/") + (f"?{parts.query}" if parts.query
-                                                             else ""),
+            # http.client sends the request line as ASCII, and an export's
+            # attachment_url can carry raw Unicode; quoting leaves an
+            # already-escaped address as it was.
+            path = quote(parts.path or "/", safe=_URL_SAFE)
+            query = quote(parts.query, safe=_URL_SAFE + "?")
+            connection.request("GET", path + (f"?{query}" if query else ""),
                                headers={"Host": host if parts.port is None
                                         else f"{host}:{parts.port}",
                                         "User-Agent": f"Pressless/{__version__}"})
@@ -109,7 +115,7 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
             return _keep(answer, target, room)
         except TimeoutError:
             return f"the old site sent nothing for {SECONDS} seconds"
-        except (OSError, http.client.HTTPException) as exc:
+        except (OSError, http.client.HTTPException, UnicodeError) as exc:
             return f"the connection failed ({type(exc).__name__})"
         finally:
             connection.close()
