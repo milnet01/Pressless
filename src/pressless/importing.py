@@ -105,7 +105,9 @@ def register(face: Face, folder: Path) -> None:
                                        room, progress=progress)
                 safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
                                        prefix=".unfetched-")
-            except (pressless_import.ImportStopped, OSError) as exc:
+            except Exception as exc:
+                # Anything at all: a thread that dies unrecorded leaves the
+                # Media step waiting, and reloading, for good.
                 state.failed = face.fail(exc, publishing=False)
             finally:
                 state.running = False
