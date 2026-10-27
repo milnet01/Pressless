@@ -86,6 +86,26 @@ def test_a_fetch_writes_what_the_old_site_answers(tmp_path):
     )
 
 
+
+def test_a_non_ascii_path_is_sent_quoted_and_an_escaped_one_unchanged(tmp_path):
+    # http.client refuses a request line that is not ASCII, and the export's
+    # attachment_url may carry raw Unicode.
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/a/%D1%84.jpg": _Answer(200, b"jpeg"),
+                        "old.example.org/b/%D1%84.jpg?x=%20": _Answer(200, b"jpeg")})
+    assert _fetch(network, "https://old.example.org/a/ф.jpg", tmp_path)[0] is None
+    assert _fetch(network, "https://old.example.org/b/%D1%84.jpg?x=%20", tmp_path)[0] is None
+
+
+def test_a_name_the_resolver_cannot_encode_is_a_failure_not_a_crash(tmp_path):
+    def resolve(host, port):
+        raise UnicodeError("label empty or too long")
+
+    target = tmp_path / "a.jpg"
+    why = fetch.fetch("https://exa..mple.org/a.jpg", target, lambda: 10**12,
+                      resolve=resolve, connect=_Network({}, {}).connect)
+    assert why == "the old site's name could not be found"
+
 @pytest.mark.parametrize("answer", [["127.0.0.1"], ["10.0.0.1"], ["169.254.169.254"],
                                     [GLOBAL, "127.0.0.1"], ["::1"], ["::ffff:127.0.0.1"]])
 def test_a_fetch_to_an_address_that_is_not_global_is_refused(tmp_path, answer):
