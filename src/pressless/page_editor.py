@@ -884,12 +884,17 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             # PRESS-0195 § 4.3: a new page's first press, with no live file.
             first = (kind == store.PAGES_FOLDER
                      and not store.html_path_for(folder, kind, name).is_file())
-            gathered(lambda: changes.write(kind, name, new))
-            if first:
-                words = _title(new) or builder.label(name)
-                if not gathered(lambda: _edit_menu(folder, changes,
-                                                   lambda text: menu.add(text, name, words))):
-                    said.append(say("notice.pages.menu_unusual"))
+            try:
+                gathered(lambda: changes.write(kind, name, new))
+                if first:
+                    words = _title(new) or builder.label(name)
+                    if not gathered(lambda: _edit_menu(folder, changes,
+                                                       lambda text: menu.add(text, name, words))):
+                        said.append(say("notice.pages.menu_unusual"))
+            except BaseException:
+                # As a failed publish is: nothing half-made is left live.
+                gathered(changes.put_back)
+                raise
             def unknown() -> None:
                 if kept_after_binning():
                     notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
@@ -1130,10 +1135,15 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                 key = github_setup.token(folder, saved.credentials.store,
                                          saved.credentials.github_account)
                 changes = _Changes(folder)
-                if renaming:
-                    gathered(lambda: _renamed(folder, name, to, changes))
-                else:
-                    gathered(lambda: _removed(folder, name, changes, said))
+                try:
+                    if renaming:
+                        gathered(lambda: _renamed(folder, name, to, changes))
+                    else:
+                        gathered(lambda: _removed(folder, name, changes, said))
+                except BaseException:
+                    # Nothing is published yet: a half-made change is undone.
+                    gathered(changes.put_back)
+                    raise
                 _publish_or_put_back(face, folder, saved, key, changes, notices, transport,
                                      gathered)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
