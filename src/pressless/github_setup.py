@@ -42,6 +42,7 @@ class _State:
         self.clock = clock
         self.lock = threading.Lock()
         self.held: tuple[str, float] | None = None     # the pass, and when it ends
+        self.unsaved: str | None = None   # a renewed refresh token not yet stored
         self.again = SignIn()                          # /setup/github's own sign-in
 
 
@@ -79,13 +80,22 @@ def token(folder: Path, store: str, account: str) -> str:
             return secret
         if state is None:
             raise RuntimeError("github_setup.register has not run")
+        if state.unsaved is not None:
+            # GitHub has already retired the stored one; this is the only
+            # copy, so it is stored before anything else is tried.
+            credentials.write(store, Path(folder), account, state.unsaved)
+            secret, state.unsaved = state.unsaved, None
         asked = state.clock()
         if state.held is not None and state.held[1] - asked > _REFRESH_MARGIN:
             return state.held[0]
         renewed = github_signin.refresh(secret, state.transport)
-        # Before the pass is used: the old refresh token has stopped working.
-        credentials.write(store, Path(folder), account, renewed.refresh)
+        # Held before the write: the old refresh token has stopped working,
+        # so a failed write must not lose the new one.
         state.held = (renewed.access, asked + renewed.expires_in)
+        state.unsaved = renewed.refresh
+        # Before the pass is used, so a sign-in never outlives its record.
+        credentials.write(store, Path(folder), account, renewed.refresh)
+        state.unsaved = None
         return renewed.access
 
 
