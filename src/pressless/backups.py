@@ -13,6 +13,7 @@ machine's `backups.json`.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 import re
@@ -20,7 +21,7 @@ import secrets
 import threading
 from pathlib import Path
 
-from pressless import sitefile, sites
+from pressless import sitefile, sites, store
 from pressless.safe_write import write_whole
 from pressless.words import say
 
@@ -91,8 +92,10 @@ def make_due(own: Path, today: datetime.date) -> str | None:
     in the record too, or None."""
     with _LOCK:
         folder = folder_of(own)
-        try:
-            for site in sites.all_sites(own):
+        failed = None
+        # One site that cannot be read or saved never stops the others.
+        for site in sites.all_sites(own):
+            try:
                 if sitefile.unused(site):
                     continue
                 folder.mkdir(parents=True, exist_ok=True)
@@ -107,10 +110,13 @@ def make_due(own: Path, today: datetime.date) -> str | None:
                     held = _held(folder, site)
                 for _, old in held[:-KEEP]:
                     old.unlink()
-        except (OSError, ValueError) as exc:
+            except (OSError, ValueError, store.StoreError) as exc:
+                failed = failed or exc
+        if failed is not None:
             said = say("backups.trouble", folder=folder.name,
-                       reason=getattr(exc, "strerror", None) or type(exc).__name__)
-            _write(own, trouble=said)
+                       reason=getattr(failed, "strerror", None) or type(failed).__name__)
+            with contextlib.suppress(OSError):
+                _write(own, trouble=said)
             return said
         if trouble(own) is not None:
             _write(own, trouble="")

@@ -85,7 +85,9 @@ def save(site: Path, target: Path) -> None:
     """§ 4.2: write the site to `target`, a new zip. Holds the editor's lock,
     so no save or publish lands half in the file."""
     site = Path(site)
-    with editor.LOCK, zipfile.ZipFile(target, "w") as made:
+    # A file dated before 1980 is ordinary in a hand-editable folder; zip
+    # cannot record it, and strict timestamps would refuse the whole save.
+    with editor.LOCK, zipfile.ZipFile(target, "w", strict_timestamps=False) as made:
         made.writestr(MANIFEST, json.dumps({"format": FORMAT, "version": VERSION}))
         for name, path in _members(site):
             if name == settings.FILE_NAME:
