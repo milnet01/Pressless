@@ -132,6 +132,38 @@ def test_a_failed_backup_takes_its_words_from_the_table(
     assert said == "[Pressless-backups] [No space left on device]"
 
 
+def test_one_failing_site_never_stops_the_others(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the first failing site, or a StoreError, ends the pass
+    and the sites after it go without a backup."""
+    own = _own(tmp_path)
+    save = backups.sitefile.save
+
+    def fails_first(site: Path, target: Path) -> None:
+        if site.name == "site-1":
+            raise store.StoreError("unreadable")
+        save(site, target)
+
+    monkeypatch.setattr(backups.sitefile, "save", fails_first)
+    said = backups.make_due(own, DAY)
+    assert said is not None and backups.trouble(own) == said
+    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2) 2026-10-16.zip"]
+
+
+def test_an_unreadable_sites_folder_is_said_not_raised(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when listing the sites raises out of make_due, which ends the
+    hourly backup thread for the session."""
+    own = _own(tmp_path)
+
+    def unreadable(own: Path) -> list[Path]:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(backups.sites, "all_sites", unreadable)
+    said = backups.make_due(own, DAY)
+    assert said is not None and "Permission denied" in said
+
+
 def test_the_record_is_the_machines(tmp_path: Path) -> None:
     """PRESS-0223 INV-2's other half: the backups record sits with the
     machine's files, so moving a site in leaves it at the top."""

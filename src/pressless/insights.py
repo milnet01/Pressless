@@ -203,9 +203,8 @@ class _Urllib(https.Client):
 def _own_client() -> Transport:
     """The module's client, or one whose every request is "no answer".
 
-    Built where a fresh cache may answer too, since the transport supplies
-    the clock; a packaged program missing its CA file made that raise
-    untyped, and even a fresh cache failed (PRESS-0162).
+    Built only once the cache cannot answer; a packaged program missing its
+    CA file made that raise untyped (PRESS-0162).
     """
     try:
         return _Urllib()

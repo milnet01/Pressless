@@ -24,7 +24,7 @@ from test_page_editor import (
 )
 from test_publisher import _listing, _reads, _Transport, _writes
 
-from pressless import settings, store
+from pressless import page_editor, settings, store
 from pressless.words import say
 
 MENU = ('<nav><a href="{{UP}}index.html" data-nav="Home">Home</a> '
@@ -306,6 +306,53 @@ def test_a_failed_remove_or_rename_puts_back(tmp_path, monkeypatch, route, outco
         assert reply["address"] == "/page?kind=pages&name=about"
     else:
         assert after != before
+
+
+@pytest.mark.parametrize("route", ["remove", "rename"])
+def test_a_remove_or_rename_failing_before_the_publish_puts_back(
+        tmp_path, monkeypatch, route):
+    """A failure while the change is made, before anything is published,
+    puts every file back byte for byte.
+
+    Breaks when only a failed publish is undone, leaving the page binned or
+    renamed here while the site still has it."""
+    _key(monkeypatch)
+    folder = _folder_with_menu(tmp_path)
+    store.write_page_forwards(folder, {"story": "about"})
+    files = ("pages/about.html", "furniture/navigation.html", "forwards/pages.json")
+    before = {path: (folder / path).read_bytes() for path in files}
+
+    def full(folder, forwards):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(store, "write_page_forwards", full)
+    with _pages(folder, _github()) as browser:
+        reply = _reshape(browser, route, "about", "Our Story")
+    assert reply["published"] is False and reply["failure"], reply
+    assert {path: (folder / path).read_bytes() for path in files} == before
+    assert not _live(folder, "pages", "our-story").exists()
+
+
+def test_a_first_press_failing_before_the_publish_puts_back(tmp_path, monkeypatch):
+    """Breaks when a failure adding the menu link leaves the new page live
+    here while the site has never had it."""
+    _key(monkeypatch)
+    folder = _folder_with_menu(tmp_path)
+
+    def full(text, name, words):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(page_editor.menu, "add", full)
+    with _pages(folder, _github()) as browser:
+        _new(browser, "Gigs")
+        copy = _waiting(folder, "pages", "gigs")
+        status, _, text = _save(browser, "pages", "gigs", "code",
+                                copy.read_text(encoding="utf-8"), waiting=True,
+                                base=_digest(copy), route="/page/publish")
+    assert status == 200 and json.loads(text)["published"] is False, text
+    assert not _live(folder, "pages", "gigs").exists()
+    assert _waiting(folder, "pages", "gigs").is_file()
+    assert _menu(folder) == MENU
 
 
 def test_renaming_a_page_and_back(tmp_path, monkeypatch):

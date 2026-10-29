@@ -104,6 +104,8 @@ def hold(tokens: Tokens) -> None:
     state = _need()
     with state.lock:
         state.held = (tokens.access, state.clock() + tokens.expires_in)
+        # The sign-in just stored replaces any renewed token never saved.
+        state.unsaved = None
 
 
 def _need() -> _State:
