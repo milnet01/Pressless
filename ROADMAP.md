@@ -5316,7 +5316,7 @@ S13. A site that already exists — on WordPress, as a folder of web pages, or
 already in a GitHub repository — comes into Pressless whole, and every part of
 it can then be changed.
 
-- 📋 [PRESS-0218] **Setup takes in a site already in a GitHub repository.**
+- ✅ [PRESS-0218] **Setup takes in a site already in a GitHub repository.**
   S13. Decided by the user 2026-10-02: the first writer's site already
   sits in its own GitHub repository, so for him setup simply takes the
   site in from there. Where the repository carries Pressless's
@@ -5338,6 +5338,10 @@ it can then be changed.
   one dismissed; no lane read the fixes. The finding left for the user
   in round 1 is settled by § 3 decision 5. Spec accepted; rows in
   docs/reviews/PRESS-0218-take-in-github-site-loop-log.md.
+  2026-10-29: built in 9f6458e from the spec; gate green on Linux
+  and the Windows box. Owed by hand before the next release (spec
+  § 10): read the take-in words on the pages and site steps, and take
+  in a real scratch repository end to end.
   **Layman:** Someone whose site is already on GitHub, the first writer included, just points Pressless at it and carries on from there.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
