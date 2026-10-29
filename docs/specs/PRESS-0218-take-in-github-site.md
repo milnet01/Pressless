@@ -154,7 +154,7 @@ under `content/posts/`, say — meets neither. A `content/` folder alone is
 not enough.
 
 The read is undo's: `undo._read`'s body becomes a function both modules
-call, so the two cannot disagree about which `content/` paths are Store
+call, `undo.read_state`, so the two cannot disagree about which `content/` paths are Store
 files. Photographs are `photographs/<name>` and files `files/<name>`, one
 segment each.
 
@@ -167,7 +167,7 @@ what was shown — and writes it through the Store's own calls:
 
 1. Every entry, page, furniture piece, template, comment file, forwards
    file, option, look file and the identity, through undo's reconcile
-   (`undo._reconcile`'s body, shared), which over an empty Store writes each
+   (`undo._reconcile`'s body, shared as `undo.reconcile`), which over an empty Store writes each
    one and demotes nothing.
 2. Each `photographs/<name>` as the original `name`, through
    `photographs.keep` with `store.photograph_path_for`, and each
@@ -181,6 +181,9 @@ what was shown — and writes it through the Store's own calls:
    `site-icon.png`, and the identity's `icon` set to that name. The Builder
    publishes an icon as `site-icon.png` only (`builder._Build.icon_copy`),
    never under its own name, so the original is not in the repository.
+   Where the identity names an icon and the repository holds no
+   `site-icon.png`, the identity's `icon` is cleared, or the next build
+   would stop on a photograph the Store does not hold.
 
 Each write records its reversal, as undo's do. A failure at any step
 reverses every write before it, so the Store is empty again, and raises.
@@ -206,9 +209,9 @@ and the screen groups them:
 - a `photographs/` or `files/` name the Store refuses
   (`store.photograph_path_for`, `store.file_path_for` raise), which
   `take_in` skips;
-- anything under `content/` that `_read` passes over.
+- anything under `content/` that `undo.read_state` passes over.
 
-A `content/` file the Store refuses is not left behind: `_read` raises
+A `content/` file the Store refuses is not left behind: `undo.read_state` raises
 `StoreError`, as it does for undo, and the *pages* step is a `Stop`.
 
 And three things the repository never held, always said: drafts, which are
@@ -230,7 +233,7 @@ holds files is no longer `setup.hint.taken`. The answers gain
 new one. Nothing is written to that repository by this step.
 
 **pages.** Before any write, where the root holds `content` or an entry
-`publishing._A_SITE` names (the test the starter's first publish uses):
+`publishing.A_SITE` names (the test the starter's first publish uses):
 
 - `takein.look`. Not `made_here` → a `Hint` with no field: this repository
   holds a site Pressless did not make, Pressless cannot bring it in yet, and
@@ -300,8 +303,8 @@ takes in the same state it showed.
   are exactly the publish's web copies, plus `site-icon.png` where there is
   an icon, and its kept files exactly the publish's.
   *Test:* `tests/test_takein.py::test_a_published_site_comes_back_whole`.
-  *Breaks when:* a kind `_read` or the reconcile knows is skipped, or the
-  take-in reads a second copy of `_read` that drifts.
+  *Breaks when:* a kind `undo.read_state` or the reconcile knows is
+  skipped, or the take-in reads a second copy of it that drifts.
 - **INV-5** — Nothing is written to the Store before Finish: after the
   *pages* and *site* steps are shown, every folder § 4.3 writes into holds
   the files it held before them.

@@ -603,7 +603,7 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
     def unforeseen(*args, **kwargs):
         raise RuntimeError("nothing Pressless expected")
 
-    monkeypatch.setattr(undo, "_read", unforeseen)
+    monkeypatch.setattr(undo, "read_state", unforeseen)
     served = face.serve(folder)
     try:
         reply = undo._undo(served, folder, face.Request("POST", "/undo", {}, b""),
@@ -620,7 +620,7 @@ def test_an_unforeseen_failure_says_the_site_is_unchanged(tmp_path, monkeypatch)
 def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):
     """§ 4.3 step 7 never raises: step 1 of the next undo empties the area
     again, and a raise here would replace what the sequence did."""
-    real = undo._empty
+    real = undo.empty_fetch
     calls = []
 
     def second_fails(fetch: Path) -> None:
@@ -629,7 +629,7 @@ def test_a_failed_final_empty_keeps_the_outcome(tmp_path, monkeypatch):
             raise OSError("the area could not be recreated")
         real(fetch)
 
-    monkeypatch.setattr(undo, "_empty", second_fails)
+    monkeypatch.setattr(undo, "empty_fetch", second_fails)
     files = {**_furnished(tmp_path),
              **_content(tmp_path, published=(_entry("seaside", body="Older."),))}
 

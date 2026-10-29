@@ -1247,6 +1247,18 @@ def photograph_path_for(folder: Path, name: str) -> Path:
     return Path(folder) / PHOTOGRAPHS_FOLDER / _single_name(name, "a photograph")
 
 
+def unplace_photograph(folder: Path, name: str) -> None:
+    """Delete the original `name`. Only a take-in reversing its own
+    placement into an empty Store calls this (PRESS-0218): a copy of what
+    the repository still holds, never one of his. move_to_bin still refuses
+    a photograph, so nothing else can reach one."""
+    target = photograph_path_for(folder, name)
+    try:
+        target.unlink(missing_ok=True)
+    except OSError as exc:
+        raise StoreError(f"{name} could not be removed: {_why(exc)}") from exc
+
+
 def file_path_for(folder: Path, name: str) -> Path:
     """Where the kept file `name` sits (PRESS-0197 § 4.3): refused by
     photograph_path_for's own check, since the names come the same way."""

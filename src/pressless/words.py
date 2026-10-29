@@ -306,6 +306,12 @@ _WORDS: dict[str, str] = {
     "failure.menu.Refused.next": "Open the menu again to carry on, or use Show me the code.",
     "failure.undo.NothingToUndo.what": "Pressless cannot undo your very first publish.",
     "failure.undo.NothingToUndo.next": "There is no earlier version of your site to go back to.",
+    "failure.takein.TakeInStopped.what": (
+        "Pressless already holds a site on this computer, so it did not copy this one in."
+    ),
+    "failure.takein.TakeInStopped.next": (
+        "Nothing was changed. Open that site from Sites, or set this one up in a new folder."
+    ),
     "failure.installer.UpdateError.what": "Pressless could not update itself.",
     "failure.installer.UpdateError.next": "Keep using this version, and try again later.",
     "failure.updater.DownloadFailed.what": "Pressless could not download the new version.",
@@ -908,7 +914,8 @@ _WORDS: dict[str, str] = {
     "setup.new_key.6": "Click <b>Generate token</b>, then copy it. GitHub shows it only once.",
     "setup.pages": (
         "GitHub Pages is what puts your repository on the web. Press Next and Pressless "
-        "checks it, and switches it on if it is off."
+        "checks it, and switches it on if it is off. Switching it on puts whatever your "
+        "repository holds on the web."
     ),
     "setup.pages.nojekyll": (
         "It also adds an empty file named .nojekyll to your repository, which tells GitHub "
@@ -919,6 +926,34 @@ _WORDS: dict[str, str] = {
         "before it shows."
     ),
     "setup.site.finish": "Press Next to check everything with GitHub one last time and finish.",
+    "setup.takein": "This repository already holds a site Pressless made. Pressless found:",
+    "setup.takein.name": "The site's name: {name}",
+    "setup.takein.entries": "Published entries: {count}",
+    "setup.takein.pages": "Pages: {count}",
+    "setup.takein.comments": "Entries with comments: {count}",
+    "setup.takein.photographs": "Photographs: {count}",
+    "setup.takein.files": "Other files: {count}",
+    "setup.takein.finish": (
+        "Press Next to copy this site into Pressless on this computer and finish. Nothing "
+        "on GitHub changes."
+    ),
+    "setup.takein.left": "These will not come across:",
+    "setup.takein.left.path": "{path}, which Pressless does not use",
+    "setup.takein.never.drafts": (
+        "Your drafts. GitHub never holds them, because they were never published."
+    ),
+    "setup.takein.never.originals": (
+        "The full-size photographs. GitHub holds the smaller copies your site shows, and "
+        "those come across."
+    ),
+    "setup.takein.never.settings": (
+        "Settings kept on your other computer: the Google Analytics measurement id, the "
+        "Analytics property and the Daily Prompt filter. Set them again in Settings."
+    ),
+    "setup.takein.moved": (
+        "Your site on GitHub changed after Pressless showed it. Nothing was copied. Go Back "
+        "to the GitHub Pages step to see it as it is now."
+    ),
     "setup.narrow": (
         "The Pressless app can reach every repository in your account. To let it reach only "
         "your site's: on GitHub, click your picture, then <b>Settings</b>, then "
@@ -970,6 +1005,10 @@ _WORDS: dict[str, str] = {
     ),
     "setup.hint.taken": (
         "A repository by that name already exists in your account. Choose another name."
+    ),
+    "setup.hint.made_elsewhere": (
+        "This repository holds a site Pressless did not make, and Pressless cannot bring "
+        "that in yet. Press Back and choose another repository."
     ),
     "setup.hint.add_to_app": (
         "Pressless made the repository, but the Pressless app cannot reach it yet. On "
@@ -1099,6 +1138,7 @@ _WORDS: dict[str, str] = {
     ),
     "setup.done": "Setup is done.",
     "setup.done.address": "Your site's address is {link}.",
+    "setup.done.taken_in": "Your site came in from GitHub. Pressless now holds:",
     "setup.done.starter": (
         "Your starter site is in place. It is not on the web until you publish it."
     ),

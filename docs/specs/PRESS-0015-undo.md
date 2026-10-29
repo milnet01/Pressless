@@ -122,7 +122,7 @@ class Undone:
     kept: tuple[str, ...]      # addresses his own versions were kept under
 
 def undo(folder: Path, settings: Settings, key: str, *,
-         capture: Callable[[], ContextManager[list[str]]] = _nothing_captured,
+         capture: Callable[[], ContextManager[list[str]]] = nothing_captured,
          notices: list[str] | None = None,
          transport: publisher.Transport | None = None) -> Undone: ...
 

@@ -89,7 +89,7 @@ class Published:
 
 def publish(folder: Path, settings: Settings, key: str, *, entry: str | None,
             emptying: bool = False,
-            capture: Callable[[], ContextManager[list[str]]] = _nothing_captured,
+            capture: Callable[[], ContextManager[list[str]]] = nothing_captured,
             notices: list[str | face.Notice] | None = None,
             transport: publisher.Transport | None = None) -> Published: ...
 def register(face: Face, folder: Path, *,
@@ -111,7 +111,7 @@ the build, the put-back and the finish. The route passes `face.capture`. A
 capture holds a process-wide lock for as long as it runs (PRESS-0011 § 4.4), so
 one around a minutes-long upload would stall setup's page too. **Every list a
 capture yields is added to `notices` when that capture ends**, on success and on
-a raise alike, so the caller shows them. `_nothing_captured` yields an empty
+a raise alike, so the caller shows them. `face.nothing_captured` yields an empty
 list.
 
 ```python

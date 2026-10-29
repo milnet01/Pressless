@@ -259,7 +259,7 @@ Store holds it.
 
 ### 4.6 Undo
 
-`undo._read` recognises `content/forwards/pages.json` and reconciles it
+`undo.read_state` recognises `content/forwards/pages.json` and reconciles it
 as PRESS-0182 §4.4 reconciles `forwards.json`. Pages themselves are
 already restored by `undo._restore_html`: a removed page comes back with
 the menu that linked it. **An undo keeps a page the fetched state does

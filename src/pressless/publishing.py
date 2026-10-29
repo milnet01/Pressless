@@ -8,14 +8,13 @@ and publishing again settles it (docs/specs/PRESS-0013-publish.md § 4.3).
 """
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import hashlib
 import html
 import json
 import urllib.parse
 import warnings
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
@@ -41,6 +40,7 @@ from pressless.face import (
     Site,
     gatherer,
     message_box,
+    nothing_captured,
     render_notices,
 )
 from pressless.words import say
@@ -106,7 +106,7 @@ SENTENCES[KeptFolderBuilt] = Sentence(
 )
 
 # GitHub Pages serves either as a site's front page (PRESS-0126 § 3 decision 5).
-_A_SITE = frozenset({"index.html", "index.md"})
+A_SITE = frozenset({"index.html", "index.md"})
 
 def replace_link(failure: BaseException) -> str:
     """The way to the replace page, beside a WouldReplaceASite failure; a
@@ -131,14 +131,9 @@ def undone_stamp() -> str:
     return _now().replace(microsecond=0).isoformat(sep=" ")
 
 
-@contextlib.contextmanager
-def _nothing_captured() -> Iterator[list[str]]:
-    yield []
-
-
 def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str | None,
             emptying: bool = False,
-            capture: Callable[[], AbstractContextManager[list[str]]] = _nothing_captured,
+            capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str | Notice] | None = None,
             transport: publisher.Transport | None = None) -> Published:
     """§ 4.3: move the entry, guard, build, upload, finish. `capture` wraps every
@@ -158,7 +153,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         # emptying, refuses where the repository holds a site. The fold is
         # PRESS-0009 § 4.4's.
         if starter.unpublished(folder) and any(
-                name.rstrip("/").casefold() in _A_SITE
+                name.rstrip("/").casefold() in A_SITE
                 for name in publisher.root_entries(settings, key, transport)):
             raise WouldReplaceASite("the repository already holds a site")
         if (not emptying and store.journal_on(folder)

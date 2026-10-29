@@ -130,7 +130,7 @@ site, and that turning it on from "Your writing" lets this entry publish
 
 ### 4.4 Undo
 
-`undo._read` reads `content/options/options.json` from the fetched state
+`undo.read_state` reads `content/options/options.json` from the fetched state
 with `store.read_options`. A fetched state without it holds `{}`, every
 option at its default. `_restore_other_kinds` compares that object with
 `store.read_options(folder)`. Where they differ, the Store's file goes to

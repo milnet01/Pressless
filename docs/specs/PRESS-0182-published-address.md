@@ -192,7 +192,7 @@ holds the file, beside the other `content/` files (PRESS-0008 §4.7).
 
 ### 4.4 Undo
 
-`undo._read` also recognises `content/forwards/forwards.json`. It reads
+`undo.read_state` also recognises `content/forwards/forwards.json`. It reads
 it with `store.read_forwards(fetch / "content")`, whose layout matches
 the Store's.
 
@@ -282,7 +282,7 @@ A forward left pointing at an entry the undo demoted is not built
   bin. One whose fetched state has none keeps the Store's.
   *Test:* `tests/test_undo.py::test_undo_restores_the_forwards` and
   `test_undo_keeps_forwards_the_fetched_state_lacks`.
-  *Breaks when:* `_read` skips the `forwards` kind, as it skips every
+  *Breaks when:* `read_state` skips the `forwards` kind, as it skips every
   kind it does not name today.
 
 - **INV-12** — The Address field shows on a published entry with no

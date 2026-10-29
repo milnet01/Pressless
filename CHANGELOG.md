@@ -12,6 +12,17 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Setup takes in a site Pressless already published to GitHub**
+  (PRESS-0218) On another computer, or after a reinstall, point setup at
+  your site's repository. Before anything is saved, it shows what it
+  found and what will not come across, such as drafts and full-size
+  photographs. Finish copies the site into Pressless. Nothing on GitHub
+  changes, except that GitHub Pages is switched on where it was off. A
+  repository holding a site Pressless did not make is refused for now,
+  with a sentence saying so.
+
 ### Changed
 
 - **The list Import shows at the end is in plain words** (PRESS-0294)

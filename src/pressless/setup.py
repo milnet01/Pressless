@@ -32,12 +32,14 @@ from pressless import (
     photographs,
     pressing,
     publisher,
+    publishing,
     restarting,
     settings,
     shortcuts,
     sites,
     starter,
     store,
+    takein,
     usage,
     wizard,
 )
@@ -114,6 +116,9 @@ def _settings_help(name: str) -> str:
 
 SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
 IMPORT = "/import"                    # PRESS-0125: the Import wizard, one of the three starts
+# PRESS-0218 § 4.5: a root entry saying the repository holds a site -- the
+# Store's own folder, or what the starter's first publish refuses to replace.
+_HOLDS_A_SITE = frozenset({"content", *publishing.A_SITE})
 
 
 def untouchable(root: Iterable[str], kept: Iterable[str] = ()) -> tuple[str, ...]:
@@ -262,18 +267,23 @@ def _malformed(key: str) -> bool:
 
 
 def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
-                   identity: store.Identity, key: str,
+                   identity: store.Identity | None, key: str,
                    transport: publisher.Transport | None, *, typed_key: str,
                    starter_ticked: bool, choice: credentials.Choice | None,
                    look: str = "",
                    where: shortcuts.Places | None, signed_in: bool = False,
                    narrow: str = "", kept: tuple[str, ...] = (),
+                   take_in_commit: str = "",
                    ) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
     (PRESS-0213 § 4.6), save, and say it is done. `candidate` already
     carries the store; nothing here chooses one. A repository GitHub cannot
-    find inside comes back for the caller to word."""
+    find inside comes back for the caller to word.
+
+    With `take_in_commit`, the site at that commit is taken in where the
+    starter would be filled, and the identity is the one it wrote
+    (PRESS-0218 § 4.5); `identity` is then None."""
     # Step 2: ask GitHub.
     try:
         entries = publisher.root_entries(candidate, key, transport)
@@ -294,20 +304,35 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
 
     # PRESS-0126 § 4.4: fill, only where the box was ticked and the starter is
     # still offered; then the identity. Both before the save, so a failure
-    # leaves first run where it was.
+    # leaves first run where it was. PRESS-0218 § 4.5: a take-in in the fill's
+    # place, outside its capture, since take_in captures its own Store calls
+    # and never the fetch.
     filled = False
-    with face.capture() as filling:
+    taken: takein.TakenIn | None = None
+    filling: list[str] = []
+    if take_in_commit:
         try:
-            if starter_ticked and starter.offered(folder):
-                starter.fill(folder, identity.name, look)
-                filled = True
-            store.write_identity(folder, identity)
-        except StoreError as exc:
-            fill_failure: str | None = face.fail(exc, publishing=False)
-        else:
-            fill_failure = None
-    if fill_failure is not None:
-        return render_notices(filling) + fill_failure
+            taken = takein.take_in(folder, candidate, key, take_in_commit,
+                                   capture=face.capture, notices=filling,
+                                   transport=transport)
+        except publisher.RemoteStateMissing as exc:
+            face.fail(exc, publishing=False)            # noted in the log
+            return render_notices(filling) + message_box(f"<p>{say('setup.takein.moved')}</p>")
+        except (takein.TakeInStopped, StoreError, publisher.PublishError) as exc:
+            return render_notices(filling) + face.fail(exc, publishing=False)
+    else:
+        with face.capture() as filling:
+            try:
+                if starter_ticked and starter.offered(folder):
+                    starter.fill(folder, identity.name, look)
+                    filled = True
+                store.write_identity(folder, identity)
+            except StoreError as exc:
+                fill_failure: str | None = face.fail(exc, publishing=False)
+            else:
+                fill_failure = None
+        if fill_failure is not None:
+            return render_notices(filling) + fill_failure
 
     # Step 5: save, last.
     final = dataclasses.replace(candidate, untouchable=untouchable(entries, kept))
@@ -320,6 +345,15 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
             failed = None
             pressing.forget()  # PRESS-0235 decision 6
     if failed is not None:
+        if taken is not None:
+            # PRESS-0218 INV-7: the Store empty again, so Finish can be pressed
+            # again; a failure reversing is said in place of the save's.
+            with face.capture() as reversing:
+                try:
+                    taken.reverse()
+                except StoreError as exc:
+                    failed = face.fail(exc, publishing=False)
+            notices += reversing
         return render_notices(filling) + render_notices(notices) + failed
     privacy, privacy_failure = _privacy(face, folder, final)
     try:
@@ -327,7 +361,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     except StoreError:
         empty = False
     return (render_notices(filling) + render_notices(notices) + privacy_failure
-            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty)
+            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
+                    taken=taken.found if taken is not None else None)
             + privacy
             + (_shortcut_form(where, (True, True)) if where else ""))
 
@@ -575,7 +610,7 @@ def _starter_box(start: bool | None, look: str = "") -> str:
 
 def _done(final: settings.Settings, choice: credentials.Choice | None,
           filled: bool = False, *, signed_in: bool = False, narrow: str = "",
-          empty: bool = False) -> str:
+          empty: bool = False, taken: takein.Found | None = None) -> str:
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
@@ -594,6 +629,8 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
     # no site, Import is offered.
     if not filled and empty:
         started = f'<p id="import-offer">{say("import.offer", link=IMPORT)}</p>'
+    if taken is not None:
+        started = f"<p>{say('setup.done.taken_in')}</p>" + _counts(taken)
     return (f"<h1>{say('setup.done')}</h1>"
             + f"<p>{say('setup.done.address', link=_site_link(final.site_address))}</p>"
             + started + left_alone + stored + narrow
@@ -813,36 +850,49 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key
+        kept = {field: value for field, value in answers.items() if field != "take_in_commit"}
         try:
             shown = publisher.pages(name, key, transport)
             if shown.on and not shown.serves_root:
                 # PRESS-0229: never advice to re-point Pages, which would take
                 # that site offline.
                 return wizard.Hint("", say("setup.hint.elsewhere"))
+            # PRESS-0218 § 4.5: a root holding a site is read before any
+            # write, and only one Pressless made goes on.
+            if any(entry.rstrip("/").casefold() in _HOLDS_A_SITE
+                   for entry in publisher.root_entries(probe(name), key, transport)):
+                found = takein.look(folder, probe(name), key, transport=transport)
+                if not found.made_here:
+                    return wizard.Hint("", say("setup.hint.made_elsewhere"))
+                kept["take_in_commit"] = found.commit
             if not shown.on:
                 shown = publisher.switch_pages_on(name, key, transport)
         except publisher.Refused:
             return wizard.Hint("", say("setup.hint.app_cannot_reach" if signing_in
                                        else "setup.hint.no_pages_write"))
-        except publisher.PublishError as exc:
+        except (publisher.PublishError, StoreError) as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
         address = shown.address or ""
         problem = refused(probe(name, address))
         if problem is not None:
             return wizard.Stop(face.fail(problem, publishing=False))
-        return {**answers, "site_address": address}
+        return {**kept, "site_address": address}
 
     def check_site(answers: wizard.Answers):
-        # PRESS-0227 § 4.2: the pictures a carried Store already names are kept.
-        try:
-            held = store.read_identity(folder) or store.Identity("")
-        except StoreError as exc:
-            return wizard.Stop(face.fail(exc, publishing=False))
-        identity = dataclasses.replace(held, name=answers.get("site_name", ""),
-                                       description=answers.get("site_description", ""))
-        refused_identity = _identity_hint(identity)
-        if refused_identity is not None:
-            return wizard.Hint(refused_identity, say(_HINTS[refused_identity]))
+        # PRESS-0218 § 4.5: a take-in brings its own identity, or none.
+        taking_in = answers.get("take_in_commit", "")
+        identity = None
+        if not taking_in:
+            # PRESS-0227 § 4.2: the pictures a carried Store already names are kept.
+            try:
+                held = store.read_identity(folder) or store.Identity("")
+            except StoreError as exc:
+                return wizard.Stop(face.fail(exc, publishing=False))
+            identity = dataclasses.replace(held, name=answers.get("site_name", ""),
+                                           description=answers.get("site_description", ""))
+            refused_identity = _identity_hint(identity)
+            if refused_identity is not None:
+                return wizard.Hint(refused_identity, say(_HINTS[refused_identity]))
         candidate = _candidate(folder, None, {
             "repository": repository(answers),
             "site_address": answers.get("site_address", ""), "daily_prompt_filter": "",
@@ -860,9 +910,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         narrow = (_narrow(repository(answers))
                   if answers.get("all_repositories") == "yes" else "")
         done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
-                              starter_ticked=answers.get("start") == "starter",
+                              starter_ticked=not taking_in and answers.get("start") == "starter",
                               look=answers.get("look", ""), choice=choice, where=shortcut_places(),
-                              signed_in=signing_in, narrow=narrow)
+                              signed_in=signing_in, narrow=narrow, take_in_commit=taking_in)
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
         # The sequence words its own failures and success alike; the settings
@@ -923,14 +973,17 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key
+        kept = {field: value for field, value in answers.items() if field != "existing"}
         try:
             # A 422 over a Public repository with nothing at its root is the
-            # one an earlier press made and lost the answer to (INV-7); any
-            # other is left alone (INV-6).
-            if not (github_signin.create_repository(key, answers["repository"], transport)
-                    or (publisher.public_repository(name, transport)
-                        and publisher.root_entries(probe(name), None, transport) == ())):
-                return wizard.Hint("repository", say("setup.hint.taken"))
+            # one an earlier press made and lost the answer to (INV-7). One
+            # holding files goes on, marked, for the pages step to read
+            # (PRESS-0218 § 4.5); nothing is written to it here (INV-6).
+            if not github_signin.create_repository(key, answers["repository"], transport):
+                if not publisher.public_repository(name, transport):
+                    return wizard.Hint("repository", say("setup.hint.taken"))
+                if publisher.root_entries(probe(name), None, transport) != ():
+                    kept["existing"] = "yes"
             found = github_signin.installation(key, answers.get("account", ""), transport)
             if found is None:
                 return wizard.Hint("", say("setup.hint.not_installed"))
@@ -938,7 +991,7 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                 return wizard.Hint("", _add_to_app(name))
         except publisher.PublishError as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
-        return answers
+        return kept
 
     # Both flows: check_reports.
 
@@ -955,9 +1008,23 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                             check_reports),)
                if usage.can_send() and usage.answer(own) is None else ())
     pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
+    def show_site(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+        commit = answers.get("take_in_commit", "")
+        if not commit:
+            return _show_site(folder, answers, hint)
+        # PRESS-0218 § 4.5: what the state shown at pages holds, read again.
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key.fragment
+        try:
+            found = takein.look(folder, probe(repository(answers)), key, commit, transport)
+        except (publisher.PublishError, StoreError) as exc:
+            return face.fail(exc, publishing=False)
+        return _show_take_in(found)
+
     site = wizard.Step("site", "setup.step.site",
                        ("site_name", "site_description", "start", "look"),
-                       lambda answers, hint: _show_site(folder, answers, hint), check_site)
+                       show_site, check_site)
     if signing_in:
         return wizard.Wizard("setup", (
             wizard.Step("welcome", "setup.step.welcome", (), _show_welcome_signing_in),
@@ -1071,6 +1138,31 @@ def _show_key(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
 
 def _show_pages(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
     return f"<p>{say('setup.pages')}</p><p>{say('setup.pages.nojekyll')}</p>"
+
+
+def _counts(found: takein.Found) -> str:
+    """What a take-in carries, counted (PRESS-0218 § 4.5)."""
+    rows = [say("setup.takein.name", name=html.escape(found.identity.name))
+            ] if found.identity is not None else []
+    rows += [say(key, count=count) for key, count in (
+        ("setup.takein.entries", found.entries), ("setup.takein.pages", found.pages),
+        ("setup.takein.comments", found.comments),
+        ("setup.takein.photographs", found.photographs), ("setup.takein.files", found.files))]
+    return "<ul>" + "".join(f"<li>{row}</li>" for row in rows) + "</ul>"
+
+
+def _show_take_in(found: takein.Found) -> str:
+    """The site step's body for a take-in (PRESS-0218 § 4.5, INV-9): what was
+    found, that Finish changes nothing on GitHub, and what stays behind."""
+    left = [say("setup.takein.left.path", path=f"<code>{html.escape(path)}</code>")
+            for path in found.left]
+    left += [say(key) for key in ("setup.takein.never.drafts",
+                                  "setup.takein.never.originals",
+                                  "setup.takein.never.settings")]
+    return (f"<p>{say('setup.takein')}</p>" + _counts(found)
+            + f"<p>{say('setup.takein.finish')}</p>"
+            + f"<p>{say('setup.takein.left')}</p><ul>"
+            + "".join(f"<li>{row}</li>" for row in left) + "</ul>")
 
 
 def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) -> str:

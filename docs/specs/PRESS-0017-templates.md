@@ -31,7 +31,7 @@ one. A fresh install starts with four.
    `store.write_template`, and names this item as the picker that binds to
    `list_templates`. The Builder copies the folder into `content/`
    unrendered (`builder.py`, the `list_templates` loop in the content
-   copy), and undo restores it (`undo.py`, `_State.templates`).
+   copy), and undo restores it (`undo.py`, `State.templates`).
 3. No templates exist anywhere. Import writes none: its `TEMPLATES`
    argument is the site's header and footer (PRESS-0007 § 4.9), not
    writing shapes. So neither the first writer nor a stranger has a

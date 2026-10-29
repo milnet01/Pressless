@@ -492,15 +492,42 @@ def fetch_previous(settings: Settings, token: str, into: Path,
             "the current commit has no parent, so there is no state before it"
         )
     parent = _required(parents[0], "sha", "the first parent")
+    return _fetch(session, settings.repository, parent, (prefix,), Path(into))
 
-    listing = _tree(session, settings.repository, parent)
+
+def fetch_state(settings: Settings, token: str, into: Path,
+                prefixes: tuple[str, ...], commit: str = "",
+                transport: Transport | None = None) -> Fetched:
+    """Write the state at `commit`, or at the default branch's current commit
+    where `commit` is "", into `into`, keeping only paths within one of
+    `prefixes` (PRESS-0218 § 4.1).
+
+    fetch_previous's body, so it keeps the same guarantees: each path lands
+    at its full repository-relative path, nothing lands until every file has
+    been fetched, and a path outside `into` is refused. A repository with no
+    commits, or a commit it no longer holds, raises RemoteStateMissing.
+    """
+    session = _Session(transport or _Urllib(), token)
+    if not commit:
+        current = session.read(_repo_url(settings.repository, "commits/HEAD"),
+                               empty_ok=True)
+        if current is None:
+            raise RemoteStateMissing("the repository has no commits to read")
+        commit = _required(current, "sha", "the head commit")
+    return _fetch(session, settings.repository, commit, prefixes, Path(into))
+
+
+def _fetch(session: _Session, repository: str, commit: str,
+           prefixes: tuple[str, ...], into: Path) -> Fetched:
+    """The body fetch_previous and fetch_state share: the tree of `commit`,
+    each path within one of `prefixes`, staged and then moved into `into`."""
+    listing = _tree(session, repository, commit)
     if _ON_WINDOWS:
-        _refuse_what_windows_cannot_hold(listing, prefix)
-    into = Path(into)
+        _refuse_what_windows_cannot_hold(listing, prefixes)
 
     def not_written(exc: OSError) -> FetchNotWritten:
         return FetchNotWritten(
-            f"the previous state could not be written to the fetch area: {_why(exc)}")
+            f"the fetched state could not be written to the fetch area: {_why(exc)}")
 
     try:
         # Staged inside `into` rather than beside it, so the move at the end
@@ -519,14 +546,14 @@ def fetch_previous(settings: Settings, token: str, into: Path,
             path = entry.get("path")
             if not path or entry.get("type") != "blob":
                 continue
-            if not _within_prefix(path, prefix):
+            if not any(_within_prefix(path, prefix) for prefix in prefixes):
                 continue
             # _blobs_in reads the same field with .get; this site indexed it
             # and raised a bare KeyError on an entry without one, which is
             # neither of §4.1's types (PRESS-0073).
             sha = _required(entry, "sha", f"a sha for {path!r}")
             blob = session.read(
-                _repo_url(settings.repository, f"git/blobs/{_segment(sha)}")
+                _repo_url(repository, f"git/blobs/{_segment(sha)}")
             )
             target = staging / path
             if not _within_folder(target, staging):
@@ -553,7 +580,7 @@ def fetch_previous(settings: Settings, token: str, into: Path,
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 
-    return Fetched(commit=parent, paths=tuple(sorted(written)))
+    return Fetched(commit=commit, paths=tuple(sorted(written)))
 
 
 class _Session:
@@ -921,7 +948,7 @@ _WINDOWS_DEVICES = frozenset(
 _WINDOWS_FORBIDDEN = set('<>:"|?*\\') | {chr(n) for n in range(32)}
 
 
-def _refuse_what_windows_cannot_hold(listing: dict, prefix: str) -> None:
+def _refuse_what_windows_cannot_hold(listing: dict, prefixes: tuple[str, ...]) -> None:
     """Refuse, before any blob is read, a selected path equal once case is
     ignored to another or to a folder above one, or naming a segment Windows
     cannot hold -- all used to end as FetchNotWritten, whose answer is to
@@ -930,7 +957,8 @@ def _refuse_what_windows_cannot_hold(listing: dict, prefix: str) -> None:
     folders: set[str] = set()
     for entry in listing.get("tree", []):
         path = entry.get("path")
-        if not path or entry.get("type") != "blob" or not _within_prefix(path, prefix):
+        if (not path or entry.get("type") != "blob"
+                or not any(_within_prefix(path, prefix) for prefix in prefixes)):
             continue
         folded = path.casefold().split("/")
         above = {"/".join(folded[:n]) for n in range(1, len(folded))}
@@ -938,7 +966,7 @@ def _refuse_what_windows_cannot_hold(listing: dict, prefix: str) -> None:
         if (whole in files or whole in folders or above & files
                 or not all(map(_windows_can_hold, path.split("/")))):
             raise UnfetchablePath(
-                f"the previous state names {path!r}, which this computer "
+                f"the fetched state names {path!r}, which this computer "
                 f"cannot hold"
             )
         files.add(whole)

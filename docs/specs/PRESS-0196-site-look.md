@@ -279,7 +279,7 @@ look choice is recorded.
 `look/style.css` that exists, as it copies `identity.json`
 (PRESS-0213 § 4.4).
 
-`undo._read` gains a branch for the `look` folder collecting those three
+`undo.read_state` gains a branch for the `look` folder collecting those three
 files. Reconciling treats them as one unit:
 
 - **The fetched state carries any of the three** — each Store file that

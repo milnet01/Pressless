@@ -43,7 +43,10 @@ KEY_NOUN = "your publishing key"
 SENTINEL_KEY = "ghp_SENTINELkey0123456789abcdef"
 LOG_NAME = "pressless.log"
 
-ROOT = ("CNAME", "assets", "content", "index.html")
+# A repository holding files but no site: a root naming `content` or a front
+# page is one setup takes in or refuses (PRESS-0218), which tests/test_takein.py
+# holds. robots.txt is Builder output, so the untouchable list still drops one.
+ROOT = ("CNAME", "assets", "robots.txt")
 DERIVED = ("CNAME", "assets")
 
 ADDRESS = "https://example.org"
@@ -1463,19 +1466,30 @@ def test_an_expired_code_is_replaced(tmp_path, monkeypatch):
 
 
 def test_a_taken_name_is_left_alone(tmp_path, monkeypatch):
-    """INV-6. Breaks when the step adopts any existing repository, or pages
-    runs over it."""
+    """INV-6. Breaks when the step writes to an existing repository, a
+    `.nojekyll` or a first file. One holding files goes on to pages, marked
+    `existing` (PRESS-0218 § 4.5); one that is not Public is refused."""
     _app(monkeypatch)
-    _Store(monkeypatch, saved_key=FIRST_REFRESH)
-    github = _SignInGitHub(taken="full")
-    with _setup_page(tmp_path, github, clock=_Clock()) as browser:
-        _, page = _walk(browser, until="repository")
-        assert _step(page) == "repository" and 'value="owner.github.io"' in page
-        after = _next(browser, page)
-    assert _step(after) == "repository" and _hint_for("repository", after)
-    assert "already exists" in after
-    assert [write for write in github.writes() if write[1].startswith("/")] == [
-        ("POST", "/user/repos")]
+    for public in (True, False):
+        folder = tmp_path / ("public" if public else "private")
+        folder.mkdir()
+        _Store(monkeypatch, saved_key=FIRST_REFRESH)
+        github = _SignInGitHub(taken="full")
+        with monkeypatch.context() as patched, _setup_page(folder, github,
+                                                           clock=_Clock()) as browser:
+            if not public:
+                patched.setattr(publisher, "public_repository", lambda *args: False)
+            _, page = _walk(browser, until="repository")
+            assert _step(page) == "repository" and 'value="owner.github.io"' in page
+            after = _next(browser, page)
+        if public:
+            assert _step(after) == "pages", after
+            assert '"existing": "yes"' in _progress(folder).read_text(encoding="utf-8")
+        else:
+            assert _step(after) == "repository" and _hint_for("repository", after)
+            assert "already exists" in after
+        assert [write for write in github.writes() if write[1].startswith("/")] == [
+            ("POST", "/user/repos")], public
 
 
 def test_a_second_press_finds_the_first_repository(tmp_path, monkeypatch):

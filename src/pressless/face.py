@@ -374,6 +374,12 @@ def render_notices(notices: list[str | Notice]) -> str:
 _T = TypeVar("_T")
 
 
+@contextlib.contextmanager
+def nothing_captured() -> Iterator[list[str]]:
+    """The `capture` a caller with no Face passes: it catches nothing."""
+    yield []
+
+
 def gatherer(capture: Callable[[], AbstractContextManager[list[str]]],
              notices: list) -> Callable[[Callable[[], _T]], _T]:
     """Run a step inside `capture`, adding what it caught to `notices`

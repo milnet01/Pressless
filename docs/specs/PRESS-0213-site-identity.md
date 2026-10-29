@@ -175,7 +175,7 @@ the current name.
 
 ### 4.5 Undo
 
-`undo._read` reads `content/identity/identity.json` from the fetched state
+`undo.read_state` reads `content/identity/identity.json` from the fetched state
 with `store.read_identity`, into the state's own field. Where the fetched
 identity is not None and differs from `store.read_identity(folder)`, the
 Store's file goes to the bin where there is one, and the fetched identity

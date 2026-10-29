@@ -47,6 +47,7 @@ from pressless.publisher import (
     UnfetchablePath,
     Unreachable,
     fetch_previous,
+    fetch_state,
     publish,
 )
 from pressless.settings import Credentials, Settings
@@ -1867,6 +1868,43 @@ def test_a_fetch_that_fails_part_way_leaves_the_folder_as_it_was(tmp_path):
         f"a fetch that failed part-way left {left!r} in the folder; nothing "
         f"may land there until every file has been fetched"
     )
+
+
+def test_fetch_state_lands_nothing_on_failure(tmp_path):
+    """PRESS-0218 INV-10: fetch_state shares fetch_previous's body, so a
+    failure part-way lands nothing and a path outside `into` is refused.
+    Breaks when the two functions stop sharing one body."""
+    into = tmp_path / "into"
+    into.mkdir()
+    (into / "already-here.txt").write_text("untouched", encoding="utf-8")
+    part_way = json.dumps({"tree": [
+        {"path": "content/a.txt", "type": "blob", "sha": "a-blob-sha"},
+        {"path": "content/b.txt", "type": "blob"},
+    ], "truncated": False}).encode("utf-8")
+    outside = _listing([("content/../../escaped.txt", "a-blob-sha")])
+
+    for listing in (part_way, outside):
+        transport = _Transport(reads=_reads(listing, blob=b"words"))
+        with pytest.raises(PublishError):
+            fetch_state(_settings(), "a-token", into, ("content/",), transport=transport)
+        assert sorted(path.name for path in into.iterdir()) == ["already-here.txt"]
+    assert not (tmp_path / "escaped.txt").exists()
+
+
+def test_fetch_state_reads_the_commit_it_is_given(tmp_path):
+    """PRESS-0218 § 4.1: a named commit is read as given, the head where none
+    is, and only paths within one of the prefixes land."""
+    listing = _listing([("content/a.txt", "a-blob-sha"), ("files/b.txt", "a-blob-sha"),
+                        ("index.html", "a-blob-sha")])
+    for commit, read in (("chosen-sha", "chosen-sha"), ("", "base-commit-sha")):
+        into = tmp_path / (commit or "head")
+        transport = _Transport(reads=_reads(listing, blob=b"words"))
+        fetched = fetch_state(_settings(), "a-token", into, ("content/", "files/"),
+                              commit, transport=transport)
+        assert fetched.commit == read
+        assert fetched.paths == ("content/a.txt", "files/b.txt")
+        assert any(f"/git/trees/{read}" in url for _m, url, _b, _h in transport.requests)
+        assert (into / "files" / "b.txt").read_bytes() == b"words"
 
 
 # ------------------------------------------------------------ PRESS-0045 ----

@@ -9,12 +9,11 @@ Store as undo made it, because GitHub may already show the older state
 """
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import json
 import shutil
 import warnings
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -38,6 +37,7 @@ from pressless.face import (
     Sentence,
     Site,
     gatherer,
+    nothing_captured,
     render_notices,
 )
 from pressless.words import say
@@ -76,13 +76,8 @@ class Undone:
     kept: tuple[str, ...]      # addresses his own versions were kept under
 
 
-@contextlib.contextmanager
-def _nothing_captured() -> Iterator[list[str]]:
-    yield []
-
-
 def undo(folder: Path, settings: settings.Settings, key: str, *,
-         capture: Callable[[], AbstractContextManager[list[str]]] = _nothing_captured,
+         capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
          notices: list[str] | None = None,
          transport: publisher.Transport | None = None) -> Undone:
     """§ 4.3: empty, fetch, refuse a first publish, read whole, reconcile, publish.
@@ -97,17 +92,17 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
 
     captured = gatherer(capture, gathered)
 
-    _empty(fetch)                                                        # step 1
+    empty_fetch(fetch)                                                   # step 1
     try:
         fetched = publisher.fetch_previous(settings, key, fetch, CONTENT, transport)  # step 2
         if not fetched.paths:                                            # step 3
             raise NothingToUndo("the state before this commit holds no site")
 
-        state = captured(lambda: _read(fetch, fetched.paths))            # step 4
+        state = captured(lambda: read_state(fetch, fetched.paths))       # step 4
         reversals: list[Callable[[], None]] = []
         uploading = False
         try:
-            changed = captured(lambda: _reconcile(folder, state, reversals))  # step 5
+            changed = captured(lambda: reconcile(folder, state, reversals))   # step 5
             uploading = True
             published = publishing.publish(                              # step 6
                 folder, settings, key, entry=None, emptying=True,
@@ -126,11 +121,11 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
             # A failure while reversing is raised in place of the original, so he
             # is told something is wrong with his files rather than only with
             # GitHub (§ 4.3).
-            captured(lambda: _reverse(reversals))
+            captured(lambda: reverse(reversals))
             raise
     finally:
         try:
-            _empty(fetch)                                                # step 7
+            empty_fetch(fetch)                                           # step 7
         except OSError:
             # Never raised: step 1 of the next undo empties the area again and
             # reads nothing it finds, and a raise here would replace what the
@@ -141,7 +136,7 @@ def undo(folder: Path, settings: settings.Settings, key: str, *,
                   tuple(changed.demoted), tuple(changed.kept))
 
 
-def _empty(fetch: Path) -> None:
+def empty_fetch(fetch: Path) -> None:
     """§ 4.3 steps 1 and 7. Undo never reads a fetch area it did not just create:
     PRESS-0009 § 4.5 leaves a window where a failed fetch leaves the folder part
     old and part new, and says this item must not assume otherwise."""
@@ -170,7 +165,7 @@ _FORWARDS = {
 
 
 @dataclass(frozen=True)
-class _State:
+class State:
     """The fetched state, read through the Store's own reader for each kind
     (§ 4.4). Read whole before anything is written, so a file the Store cannot
     read raises with the Store untouched (INV-11)."""
@@ -191,17 +186,27 @@ class _State:
     # PRESS-0196 § 4.7: the fetched look files by name, as text; empty where
     # the fetched state has none, which keeps the Store's look.
     look: dict[str, str] = field(default_factory=dict)
+    # PRESS-0218 § 4.4: the content/ paths read passed over, which a take-in
+    # names as not coming across. Undo has no use for them.
+    skipped: tuple[str, ...] = ()
 
 
-def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
-    """§ 4.3 step 4. `paths` are repository-relative and the layout under `fetch`
-    is the same strings (PRESS-0009 § 4.5), so each file is `fetch / path`."""
-    state = _State()
+def read_state(fetch: Path, paths: tuple[str, ...]) -> State:
+    """§ 4.3 step 4, and a take-in's read (PRESS-0218 § 4.2), so the two cannot
+    disagree about which `content/` paths are Store files. `paths` are
+    repository-relative and the layout under `fetch` is the same strings
+    (PRESS-0009 § 4.5), so each file is `fetch / path`. A path outside
+    `content/` is not this read's, and is neither read nor skipped."""
+    state = State()
     identity = None
+    skipped = []
     prefix = CONTENT.rstrip("/")
     for relative in paths:
         parts = PurePosixPath(relative).parts
-        if len(parts) != 3 or parts[0] != prefix:
+        if not parts or parts[0] != prefix:
+            continue
+        if len(parts) != 3:
+            skipped.append(relative)
             continue
         kind, name = parts[1], parts[2]
         path = fetch.joinpath(*parts)
@@ -240,7 +245,9 @@ def _read(fetch: Path, paths: tuple[str, ...]) -> _State:
             text = store.read_look_file(fetch / prefix, name)
             if text is not None:
                 state.look[name] = text
-    return dataclasses.replace(state, identity=identity)
+        else:
+            skipped.append(relative)
+    return dataclasses.replace(state, identity=identity, skipped=tuple(skipped))
 
 
 _LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
@@ -260,7 +267,7 @@ class _Changed:
     kept: list[str] = field(default_factory=list)
 
 
-def _reconcile(folder: Path, state: _State, reversals: list[Callable[[], None]]) -> _Changed:
+def reconcile(folder: Path, state: State, reversals: list[Callable[[], None]]) -> _Changed:
     """§ 4.4. Every write goes through the Store's own calls, never by copying
     bytes (§ 3 decision 11), and every removal is `store.move_to_bin` (§ 4.7).
     A reversal is recorded after each step succeeds, so a failure part-way
@@ -364,7 +371,7 @@ def _restore_look(folder: Path, fetched: dict[str, str],
                      reversals)
 
 
-def _restore_other_kinds(folder: Path, state: _State,
+def _restore_other_kinds(folder: Path, state: State,
                          reversals: list[Callable[[], None]]) -> None:
     """Every other kind the fetched state holds is written where it differs or is
     absent, the superseded version going to the bin first. Every file the fetched
@@ -462,7 +469,7 @@ def _bin_later(folder: Path, slug: str, *, draft: bool) -> Callable[[], None]:
     return lambda: store.move_to_bin(folder, store.path_for(folder, slug, draft=draft))
 
 
-def _reverse(reversals: list[Callable[[], None]]) -> None:
+def reverse(reversals: list[Callable[[], None]]) -> None:
     """§ 4.3: the reversals recorded so far, in reverse order."""
     for back in reversed(reversals):
         back()
