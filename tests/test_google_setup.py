@@ -599,6 +599,25 @@ def test_switching_property_replaces_its_counting_code(
         assert kept in page, case
 
 
+@pytest.mark.parametrize("previous, forgotten", [("999", True), ("111", False)])
+def test_switching_property_forgets_the_old_ones_figures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None,
+    previous: str, forgotten: bool,
+) -> None:
+    """Breaks when the dashboard shows the previous property's cached
+    figures as the new one's, or choosing the same property drops them."""
+    _Store(monkeypatch)
+    _saved(tmp_path, credentials=settings.Credentials(
+        store="keyring", github_account="github", google_account="google"),
+        analytics_property_id=previous)
+    (tmp_path / CACHE).write_text("{}", encoding="utf-8")
+    with _served(tmp_path, _Google(streams={"111": []})) as browser:
+        browser.come_back(browser.start())
+        browser.send("POST", "/setup/google/choose", {"property": "111"})
+    assert settings.load(tmp_path).analytics_property_id == "111"
+    assert (tmp_path / CACHE).exists() is not forgotten
+
+
 # PRESS-0200: until Google approves the client, the page says so.
 
 

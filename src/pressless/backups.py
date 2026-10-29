@@ -93,8 +93,12 @@ def make_due(own: Path, today: datetime.date) -> str | None:
     with _LOCK:
         folder = folder_of(own)
         failed = None
+        try:
+            held_sites = sites.all_sites(own)
+        except OSError as exc:
+            held_sites, failed = [], exc
         # One site that cannot be read or saved never stops the others.
-        for site in sites.all_sites(own):
+        for site in held_sites:
             try:
                 if sitefile.unused(site):
                     continue

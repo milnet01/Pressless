@@ -192,6 +192,21 @@ def test_the_pass_is_renewed_when_nearly_spent(tmp_path, monkeypatch):
     assert keyring.writes == [("keyring", "github", "ghr_renewed-1")]
 
 
+def test_a_new_sign_in_is_never_overwritten_by_an_unsaved_one(tmp_path, monkeypatch):
+    """Breaks when a refresh token whose write failed is stored over the
+    sign-in /setup/github made since, signing the writer back into the
+    earlier one."""
+    github = _GitHub()
+    _Store(monkeypatch, REFRESH, write_raises=credentials.CredentialError("locked"))
+    with _served(tmp_path, github, _Clock()):
+        with pytest.raises(credentials.CredentialError):
+            _token(tmp_path)
+        keyring = _Store(monkeypatch, SECOND_REFRESH)
+        github_setup.hold(github_signin.Tokens("ghu_signed-in-again", SECOND_REFRESH, 8 * 3600))
+        assert _token(tmp_path) == "ghu_signed-in-again"
+    assert keyring.writes == []
+
+
 def test_a_lapsed_sign_in_says_sign_in_again(tmp_path, monkeypatch):
     """INV-11. Breaks when the failure reads as a refused key, or the publish
     goes on with no token."""
