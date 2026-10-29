@@ -1380,10 +1380,13 @@ def _wide_grant(monkeypatch, mode=0o644):
     os.fdopen and os.replace reach fstat through C rather than through this
     attribute, so patching it touches the mode read and nothing else.
     """
-    class _Reported:
-        st_mode = 0o100000 | mode
+    real = os.fstat
 
-    monkeypatch.setattr(os, "fstat", lambda fd: _Reported())
+    def reported(fd: int) -> os.stat_result:
+        # Only the mode is changed: pytest's own capture reads st_size.
+        return os.stat_result((0o100000 | mode, *tuple(real(fd))[1:]))
+
+    monkeypatch.setattr(os, "fstat", reported)
     # The report is POSIX-only by design (§4.5), so on Windows the branch
     # returns before the read; the platform is what a test patches.
     monkeypatch.setattr(store_module, "_is_windows", lambda: False)
