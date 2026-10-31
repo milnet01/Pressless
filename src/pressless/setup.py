@@ -21,6 +21,7 @@ import urllib.parse
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+import pressless_import
 from pressless import (
     builder,
     credentials,
@@ -29,6 +30,7 @@ from pressless import (
     github_signin,
     google_setup,
     google_signin,
+    import_report,
     photographs,
     pressing,
     publisher,
@@ -116,9 +118,17 @@ def _settings_help(name: str) -> str:
 
 SHORTCUTS = "/setup/shortcuts"        # PRESS-0183
 IMPORT = "/import"                    # PRESS-0125: the Import wizard, one of the three starts
+IMPORT_A_FOLDER = f"{IMPORT}/folder"  # PRESS-0210: a folder of web pages, beside it
 # PRESS-0218 § 4.5: a root entry saying the repository holds a site -- the
 # Store's own folder, or what the starter's first publish refuses to replace.
 _HOLDS_A_SITE = frozenset({"content", *publishing.A_SITE})
+
+
+def import_offer() -> str:
+    """PRESS-0125 § 4.1's offer, with the folder wizard's beside it (PRESS-0210
+    § 4.2): on the list page, and on setup's done page."""
+    return (f'<p id="import-offer">{say("import.offer", link=IMPORT)} '
+            f'{say("import.offer.folder", link=IMPORT_A_FOLDER)}</p>')
 
 
 def untouchable(root: Iterable[str], kept: Iterable[str] = (),
@@ -277,7 +287,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    look: str = "",
                    where: shortcuts.Places | None, signed_in: bool = False,
                    narrow: str = "", kept: tuple[str, ...] = (),
-                   take_in_commit: str = "",
+                   take_in_commit: str = "", bring_in_commit: str = "",
                    ) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
@@ -287,7 +297,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
 
     With `take_in_commit`, the site at that commit is taken in where the
     starter would be filled, and the identity is the one it wrote
-    (PRESS-0218 § 4.5); `identity` is then None."""
+    (PRESS-0218 § 4.5); `identity` is then None. `bring_in_commit` does the same
+    for a repository of plain pages (PRESS-0210 § 4.11)."""
     # Step 2: ask GitHub.
     try:
         entries = publisher.root_entries(candidate, key, transport)
@@ -313,8 +324,19 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     # and never the fetch.
     filled = False
     taken: takein.TakenIn | None = None
+    brought: pressless_import.Brought | None = None
     filling: list[str] = []
-    if take_in_commit:
+    if bring_in_commit:
+        try:
+            brought = takein.bring_folder(folder, candidate, key, bring_in_commit,
+                                          capture=face.capture, notices=filling,
+                                          transport=transport)
+        except publisher.RemoteStateMissing as exc:
+            face.fail(exc, publishing=False)            # noted in the log
+            return render_notices(filling) + message_box(f"<p>{say('setup.takein.moved')}</p>")
+        except (pressless_import.ImportStopped, StoreError, publisher.PublishError) as exc:
+            return render_notices(filling) + face.fail(exc, publishing=False)
+    elif take_in_commit:
         try:
             taken = takein.take_in(folder, candidate, key, take_in_commit,
                                    capture=face.capture, notices=filling,
@@ -339,7 +361,10 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
             return render_notices(filling) + fill_failure
 
     # Step 5: save, last.
-    final = dataclasses.replace(candidate, untouchable=untouchable(entries, kept, folder))
+    kept_there = untouchable(entries, kept, folder)
+    if brought is not None:
+        kept_there = _without_roots(kept_there, brought.roots)
+    final = dataclasses.replace(candidate, untouchable=kept_there)
     with face.capture() as notices:
         try:
             settings.save(folder, final)
@@ -364,9 +389,10 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         empty = not store.holds_a_site(folder)
     except StoreError:
         empty = False
+    report = _brought_report(face, folder, brought) if brought is not None else ""
     return (render_notices(filling) + render_notices(notices) + privacy_failure
             + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
-                    taken=taken.found if taken is not None else None)
+                    taken=taken.found if taken is not None else None, brought=report)
             + privacy
             + (_shortcut_form(where, (True, True)) if where else ""))
 
@@ -612,9 +638,26 @@ def _starter_box(start: bool | None, look: str = "") -> str:
             + look_choices("look", look) + "</fieldset>")
 
 
+def _without_roots(entries: Iterable[str], roots: Iterable[str]) -> tuple[str, ...]:
+    """PRESS-0210 § 4.11's list: what a site's own files came from is the
+    Builder's to replace, compared with casefold, as `untouchable` compares."""
+    carried = {root.casefold() for root in roots}
+    return tuple(entry for entry in entries if entry.rstrip("/").casefold() not in carried)
+
+
+def _brought_report(face: Face, folder: Path, brought: pressless_import.Brought) -> str:
+    """The Report, for the done page, and kept as an Import's is (§ 4.12)."""
+    said = import_report.lines(brought.report)
+    try:
+        import_report.keep(folder / pressless_import.IMPORT_FOLDER, said)
+    except OSError as exc:
+        face.fail(exc, publishing=False)    # logged; the page still shows it
+    return f"<p>{say('setup.done.brought')}</p>" + import_report.rows(said)
+
+
 def _done(final: settings.Settings, choice: credentials.Choice | None,
           filled: bool = False, *, signed_in: bool = False, narrow: str = "",
-          empty: bool = False, taken: takein.Found | None = None) -> str:
+          empty: bool = False, taken: takein.Found | None = None, brought: str = "") -> str:
     e = html.escape
     kept = "".join(f"<li>{e(name)}</li>" for name in final.untouchable)
     left_alone = (
@@ -632,9 +675,11 @@ def _done(final: settings.Settings, choice: credentials.Choice | None,
     # PRESS-0125 § 4.1: where the starter was not filled and the Store holds
     # no site, Import is offered.
     if not filled and empty:
-        started = f'<p id="import-offer">{say("import.offer", link=IMPORT)}</p>'
+        started = import_offer()
     if taken is not None:
         started = f"<p>{say('setup.done.taken_in')}</p>" + _counts(taken)
+    if brought:
+        started = brought
     return (f"<h1>{say('setup.done')}</h1>"
             + f"<p>{say('setup.done.address', link=_site_link(final.site_address))}</p>"
             + started + left_alone + stored + narrow
@@ -854,7 +899,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         key = key_for(answers)
         if isinstance(key, wizard.Stop):
             return key
-        kept = {field: value for field, value in answers.items() if field != "take_in_commit"}
+        kept = {field: value for field, value in answers.items()
+                if field not in ("take_in_commit", "bring_in_commit")}
         try:
             shown = publisher.pages(name, key, transport)
             if shown.on and not shown.serves_root:
@@ -862,13 +908,20 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                 # that site offline.
                 return wizard.Hint("", say("setup.hint.elsewhere"))
             # PRESS-0218 § 4.5: a root holding a site is read before any
-            # write, and only one Pressless made goes on.
+            # write. One Pressless made is taken in; PRESS-0210 § 4.11: plain
+            # pages are brought in, and what a tool builds from goes no further.
             if any(entry.rstrip("/").casefold() in _HOLDS_A_SITE
                    for entry in publisher.root_entries(probe(name), key, transport)):
                 found = takein.look(folder, probe(name), key, transport=transport)
-                if not found.made_here:
-                    return wizard.Hint("", say("setup.hint.made_elsewhere"))
-                kept["take_in_commit"] = found.commit
+                if found.made_here:
+                    kept["take_in_commit"] = found.commit
+                else:
+                    plain, commit = takein.look_folder(folder, probe(name), key,
+                                                       transport=transport)
+                    if plain.built_by_a_tool or "index.html" not in plain.pages:
+                        takein.forget_folder(folder)
+                        return wizard.Hint("", say("setup.hint.made_elsewhere"))
+                    kept["bring_in_commit"] = commit
             if not shown.on:
                 shown = publisher.switch_pages_on(name, key, transport)
         except publisher.Refused:
@@ -883,8 +936,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return {**kept, "site_address": address}
 
     def check_site(answers: wizard.Answers):
-        # PRESS-0218 § 4.5: a take-in brings its own identity, or none.
-        taking_in = answers.get("take_in_commit", "")
+        # PRESS-0218 § 4.5: a take-in brings its own identity, or none; so does
+        # a bring-in (PRESS-0210 § 4.9).
+        bringing_in = answers.get("bring_in_commit", "")
+        taking_in = answers.get("take_in_commit", "") or bringing_in
         identity = None
         if not taking_in:
             # PRESS-0227 § 4.2: the pictures a carried Store already names are kept.
@@ -916,7 +971,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         done = _save_sequence(face, folder, candidate, identity, key, transport, typed_key="",
                               starter_ticked=not taking_in and answers.get("start") == "starter",
                               look=answers.get("look", ""), choice=choice, where=shortcut_places(),
-                              signed_in=signing_in, narrow=narrow, take_in_commit=taking_in)
+                              signed_in=signing_in, narrow=narrow,
+                              take_in_commit="" if bringing_in else taking_in,
+                              bring_in_commit=bringing_in)
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
         # The sequence words its own failures and success alike; the settings
@@ -1014,6 +1071,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     pages = wizard.Step("pages", "setup.step.pages", (), _show_pages, check_pages)
     def show_site(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
         commit = answers.get("take_in_commit", "")
+        bringing_in = answers.get("bring_in_commit", "")
+        if bringing_in:
+            return show_bring_in(answers, bringing_in)
         if not commit:
             return _show_site(folder, answers, hint)
         # PRESS-0218 § 4.5: what the state shown at pages holds, read again.
@@ -1025,6 +1085,19 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         except (publisher.PublishError, StoreError) as exc:
             return face.fail(exc, publishing=False)
         return _show_take_in(found)
+
+    def show_bring_in(answers: wizard.Answers, commit: str) -> str:
+        # PRESS-0210 § 4.11: what is held, and what a publish will then change.
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return key.fragment
+        reading = probe(repository(answers))
+        try:
+            found = takein.found_held(folder, reading, key, commit, transport)
+            entries = publisher.root_entries(reading, key, transport)
+        except (publisher.PublishError, StoreError) as exc:
+            return face.fail(exc, publishing=False)
+        return _show_bring_in(found, entries)
 
     site = wizard.Step("site", "setup.step.site",
                        ("site_name", "site_description", "start", "look"),
@@ -1167,6 +1240,40 @@ def _show_take_in(found: takein.Found) -> str:
             + f"<p>{say('setup.takein.finish')}</p>"
             + f"<p>{say('setup.takein.left')}</p><ul>"
             + "".join(f"<li>{row}</li>" for row in left) + "</ul>")
+
+
+def _codes(rows: Iterable[str]) -> str:
+    return "<ul>" + "".join(f"<li><code>{html.escape(row)}</code></li>" for row in rows) + "</ul>"
+
+
+def _show_bring_in(found: pressless_import.Found, entries: Iterable[str]) -> str:
+    """The site step's body for a site Pressless did not make (PRESS-0210
+    § 4.11, INV-15): what came, what Finish does, what the next publish changes
+    on GitHub, and what stays there, each path that will not come across named."""
+    stays = _without_roots(untouchable(entries), found.roots)
+    stay_set = {entry.rstrip("/").casefold() for entry in stays}
+    changes = [entry for entry in entries if entry.rstrip("/").casefold() not in stay_set]
+    in_change = {entry.rstrip("/").casefold() for entry in changes}
+    gone = [path for path, _why in found.left if path.split("/")[0].casefold() in in_change]
+    kept = [path for path, _why in found.left if path.split("/")[0].casefold() not in in_change]
+    links = [say("setup.bringin.link", page=html.escape(page), path=html.escape(path))
+             for page, path in found.left_links if path.split("/")[0].casefold() in in_change]
+    counts = [say(key, count=len(paths)) for key, paths in (
+        ("setup.takein.pages", found.pages), ("setup.takein.photographs", found.photographs),
+        ("setup.takein.files", found.files))]
+    body = (f"<p>{say('setup.bringin')}</p><ul>"
+            + "".join(f"<li>{row}</li>" for row in counts) + "</ul>"
+            + f"<p>{say('setup.takein.finish')}</p>"
+            + f"<p>{say('setup.bringin.publish')}</p>" + _codes(changes))
+    if gone:
+        body += f"<p>{say('setup.bringin.gone')}</p>" + _codes(gone)
+    if links:
+        body += "<ul>" + "".join(f"<li>{row}</li>" for row in links) + "</ul>"
+    if stays:
+        body += f"<p>{say('setup.bringin.stays')}</p>" + _codes(stays)
+    if kept:
+        body += f"<p>{say('setup.bringin.kept')}</p>" + _codes(kept)
+    return body
 
 
 def _show_site(folder: Path, answers: wizard.Answers, hint: wizard.Hint | None) -> str:

@@ -52,6 +52,7 @@ from ._html import _host, autop, bare_host, wordpress_markup
 IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
 MEDIA_FOLDER = "media"     # in IMPORT_FOLDER: the fetched files; finish deletes it
+FOLDER = "folder"          # in IMPORT_FOLDER: a folder of pages (PRESS-0210); and this
 _MOVING = "moving"
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
 _CARRIED_TYPES = frozenset({"post", "page", "attachment", "nav_menu_item", "wp_navigation"})
@@ -582,9 +583,9 @@ def _move(source: Path, target: Path) -> None:
 
 def finish(into: Path) -> str | None:
     """§ 4.7: move what is left in import/work/ into the site's folder while
-    import/moving says the moves began, then delete import/work/ and
-    import/media/. Returns a sentence to show where a move failed; nothing is
-    lost, and the next start tries again."""
+    import/moving says the moves began, then delete import/work/, import/media/
+    and import/folder/. Returns a sentence to show where a move failed; nothing
+    is lost, and the next start tries again."""
     held_folder = Path(into) / IMPORT_FOLDER
     moving = held_folder / _MOVING
     if not moving.exists():
@@ -601,4 +602,5 @@ def finish(into: Path) -> str | None:
                 "using that folder and start Pressless again.")
     shutil.rmtree(work, ignore_errors=True)
     shutil.rmtree(held_folder / MEDIA_FOLDER, ignore_errors=True)
+    shutil.rmtree(held_folder / FOLDER, ignore_errors=True)
     return None

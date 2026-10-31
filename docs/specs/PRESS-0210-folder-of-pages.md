@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0210 — Import takes in a site that is a folder of web pages
 
-**Status:** accepted (2026-10-31). Gated for one round, the user's budget for a new spec; every verified finding fixed, and no lane read the fixes.
+**Status:** accepted (2026-10-31); built, with § 14's folds. Gated for one round, the user's budget for a new spec; every verified finding fixed, and no lane read the fixes.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0210 (user decision 2026-10-02; one review round
 chosen by the user 2026-10-29).
@@ -78,8 +78,8 @@ never published and never saved in a site file (PRESS-0125 § 4.2).
 
 ```python
 # src/pressless_import/_folder.py — new; re-exported by the package
+# (FOLDER, in IMPORT_FOLDER, is _bring.py's, as `finish` reads it.)
 
-FOLDER = "folder"                    # in IMPORT_FOLDER
 MEMBERS_MOST = 20_000                # a ZIP holding more is refused
 SVG_LARGEST = 256 * 1024             # § 4.6
 
@@ -100,6 +100,7 @@ class Found:
     left: tuple[tuple[str, str], ...]  # (path, why it will not come across)
     roots: tuple[str, ...]           # root entries holding a path not in left
     built_by_a_tool: bool            # § 4.3
+    left_links: tuple[tuple[str, str], ...]  # (page, a left path it links to) (§ 4.11)
 
 @dataclass(frozen=True)
 class Brought:
@@ -170,8 +171,8 @@ ownership of a site to a search engine (`docs/design.md` § the untouchable rule
 
 ### 4.4 A page's name
 
-`index.html` or `index.htm` at the root is the front page, `index`. With
-neither, the front page is `home` or `default`, else the first page by path;
+`index.html` or `index.htm` at the root, in any capitals, is the front page,
+`index`. With neither, the front page is `home` or `default`, else the first page by path;
 this choice is listed.
 
 Any other page's name is `resolve_slug` of its path, without its suffix and
@@ -217,7 +218,8 @@ A page holding a `<base>` element has its addresses left alone, and is listed.
 `<script src>` naming a `.js` file in the folder has the file's text placed
 inside the element, and `src` removed. An inline script ignores `defer` (run in
 Firefox, 2026-10-31), so an element with `defer` also moves to the end of the
-body, in its order. Where the text holds `</script`, or the element has
+body, in its order. Where the text holds `</script`, a Builder mark, or `<!--` before
+`<script`, which changes where a browser reads the element's end, or the element has
 `type="module"`, the element is left as § 4.5 writes it, and the file is `left`.
 Each script carried is listed, once per file.
 
@@ -227,7 +229,8 @@ an image. An SVG over `SVG_LARGEST`, or named in any other way, is `left`.
 
 ### 4.7 The style code
 
-Every stylesheet the folder's pages link is joined in the order pages first
+Every stylesheet the folder's pages link, by a `<link>` or an `@import` in a
+`style` element, is joined in the order pages first
 link them, pages taken in path order. An `@import` of a stylesheet in the
 folder is replaced by that sheet's text, each sheet once. A `media` attribute
 wraps its sheet's text in `@media`. An `@import` of an address outside the folder
@@ -268,7 +271,8 @@ own depth. A site with no shared block has none parted out,
 and that is listed. Its furniture files are still written, from `starter.header`,
 `starter.footer` and `starter.navigation`, as a build needs them.
 
-**The menu.** A shared menu inside the header goes to the navigation file, with
+**The menu.** A menu inside the footer goes with the footer, and is no menu here.
+A shared menu inside the header goes to the navigation file, with
 `{{NAVIGATION}}` left in its place. A shared menu with only whitespace between
 it and the shared header joins the header's marker pair, the header file
 holding `{{NAVIGATION}}` on the matching side. A shared menu with no shared
@@ -298,7 +302,8 @@ link removed, and one link to `builder.STYLE_CODE` in place of the first.
 The body keeps its bytes but for § 4.5, § 4.6 and § 4.8's marker pairs. Where
 it has no `<main>`, what lies between its header and its footer, shared or its
 own, is wrapped in a plain `<main>`, so `blocks.adopt` can make its area and the visual editor can reach
-it. A page with no `<body>` takes `starter.new_page`'s shape, its text as
+it. Where that `<main>` would cross another element's edges, which would change
+what a browser builds, none is made and the page is listed. A page with no `<body>` takes `starter.new_page`'s shape, its text as
 `main`, and its title from its first `<h1>`, else its name. Whatever no section
 fits is a code section, kept byte for byte (`docs/design.md` § Pages, and how
 they are held).
@@ -404,9 +409,11 @@ without a second bring. Nothing is reversed, which needs no second caller of
 
 ### 4.12 The Report
 
-`Report` gains `moved` (old path, new name), `inside_pages` and `sheets_for_some`.
+`Report` gains `moved` (old path, new name), `inside_pages`, `sheets_for_some`
+and `folder`, which drops the posts from its counts.
 `left` paths go in `unfetched`, whose `(place, why)` shape is theirs. The Face
-shows it as PRESS-0125 § 4.8 does, through `importing._lines` and `_shown`, and
+shows it as PRESS-0125 § 4.8 does, through `import_report`, which holds what
+`importing` held so that setup can show it too, and
 writes `import/report.txt`. Its words are `import.report.*` keys.
 
 ### 4.13 What a build publishes (amends PRESS-0197 § 4.6)
@@ -697,3 +704,11 @@ Rows live in `../reviews/PRESS-0210-folder-of-pages-loop-log.md`.
 - A repository is fetched whole, once. Its blobs are read one request each.
 - A script used by many pages is copied into each, so those pages grow by its size.
 - No new dependency: `zipfile`, `html.parser`, `base64`.
+
+## 14. Folded back from the build
+
+The build found these, and each section above now says them; no reviewer read
+them: `Found.left_links`; `FOLDER`'s home; the front page's capitals; a third and a
+fourth reason a script stays a file; a `style` element's `@import`; a menu inside the
+footer; no `<main>` across another element's edges; `Report.folder`; and
+`import_report`. Tests: `tests/test_importer_folder.py`.

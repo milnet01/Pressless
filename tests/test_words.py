@@ -152,7 +152,8 @@ def _asked() -> dict[str, str]:
     string that is a key, or a quoted key inside a script."""
     prefixes = {key.split(".", 1)[0] for key in words.ENGLISH}
     asked: dict[str, str] = {}
-    for path in sorted(SOURCE.glob("*.py")):
+    # pressless_import words its Report too (PRESS-0210 § 4.12).
+    for path in sorted((*SOURCE.glob("*.py"), *SOURCE.parent.glob("pressless_import/*.py"))):
         if path.name == "words.py":     # the table names every key itself
             continue
         tree = _parsed(path)

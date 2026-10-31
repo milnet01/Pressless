@@ -90,6 +90,8 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 *PRESS-0197 § 4.6 adds `files` to `ROOT_OUTPUT`, and copies each kept file a page names byte for byte.*
 
+*PRESS-0210 § 4.10 adds `roots_produced(folder)`: `ROOT_OUTPUT` and the first segment of each old address a build forwards, which `_refuse_a_folder_it_did_not_make` reads. Its § 4.13 has a build publish each held photograph and file any address names.*
+
 *PRESS-0227 § 4.3 adds `site-icon.png` to `ROOT_OUTPUT`, and the chosen icon's links and sharing picture's tags to each page's head.*
 
 ```python
@@ -189,6 +191,7 @@ blog/tag/<tag>/index.html                plus page/<n>/index.html
 blog/archive/index.html                  one page, a section per year, newest year first
 photographs/<name>                       a web copy (§4.6)
 blog/YYYY/MM/DD/<old>/index.html         a forwarding page (PRESS-0182 § 4.3)
+<a brought-in page's old path>           a forwarding page (PRESS-0210 § 4.10)
 content/...                              §4.7
 sitemap.xml, robots.txt                  §4.9
 ```
@@ -347,6 +350,7 @@ content/furniture/<name>.html
 content/templates/<name>.txt
 content/forwards/forwards.json   where the Store holds one (PRESS-0182 § 4.3)
 content/forwards/pages.json      where the Store holds one (PRESS-0195 § 4.5)
+content/forwards/addresses.json  where the Store holds one (PRESS-0210 § 4.10)
 ```
 
 The bytes are read from the paths the Store's own calls return. Nothing is

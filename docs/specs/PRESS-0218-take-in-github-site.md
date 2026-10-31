@@ -8,7 +8,7 @@ the user's budget; the second round's fixes were read by no lane.
 the user 2026-10-23).
 
 **Blocker for:** PRESS-0210, whose folder-of-pages Import is where a
-repository Pressless did not make will go. **Pairs with:** PRESS-0333, the
+repository Pressless did not make goes. **Pairs with:** PRESS-0333, the
 takeover of a site GitHub Actions builds, split out of this item.
 
 **Amends:** PRESS-0212 (§ 4.4, the *pages* and *site* steps), PRESS-0231
@@ -53,10 +53,9 @@ PRESS-0210 can bring it in.
 
 ## 3. Scope decisions (agreed with the user)
 
-1. **A repository Pressless did not make is refused for now** (user,
-   2026-10-23). Bringing its pages in is PRESS-0210's, built next. Until
-   then the *pages* step says this repository holds a site Pressless did
-   not make and cannot yet bring in.
+1. **A repository Pressless did not make goes to PRESS-0210** (user,
+   2026-10-23), whose § 4.11 brings its pages in. Only one holding what a
+   tool builds from is still refused.
 2. **A site GitHub Actions builds is PRESS-0333's** (user, 2026-10-23),
    split out so this spec settles in one review round. The PRESS-0229
    refusal stays until it ships.
@@ -235,9 +234,7 @@ new one. Nothing is written to that repository by this step.
 **pages.** Before any write, where the root holds `content` or an entry
 `publishing.A_SITE` names (the test the starter's first publish uses):
 
-- `takein.look`. Not `made_here` → a `Hint` with no field: this repository
-  holds a site Pressless did not make, Pressless cannot bring it in yet, and
-  to go Back and choose another (§ 3 decision 1). No write is sent.
+- `takein.look`. Not `made_here` → PRESS-0210 § 4.11 (§ 3 decision 1).
 - `made_here` → the answers gain `take_in_commit`, `Found.commit`.
 
 Any other root goes on as a new repository, and `take_in_commit` is
@@ -292,6 +289,8 @@ takes in the same state it showed.
   Markdown posts under `content/posts/`, and no identity.
   *Breaks when:* `made_here` tests for a `content/` folder alone, or its
   second arm counts a file outside the Store's own layout.
+  *Narrowed by PRESS-0210 INV-14, which replaces this refusal of every site
+  made elsewhere; the test keeps its name.*
 - **INV-3** — `take_in` writes only into a Store that holds no site.
   *Test:* `tests/test_takein.py::test_a_take_in_needs_an_empty_store`.
   *Breaks when:* the check is dropped, or tested after the first write.
@@ -393,7 +392,7 @@ INV-2 against today's `check_new_repository` and `check_pages`.
 
 ## 9. Out of scope
 
-- A repository Pressless did not make — tracked by PRESS-0210.
+- A repository Pressless did not make — PRESS-0210 § 4.11.
 - A site GitHub Actions builds — tracked by PRESS-0333.
 - Taking a site in after setup, from the Sites screen — deferred; not yet
   queued. A new site already runs the first-run wizard (PRESS-0223 § 4.6),
@@ -433,9 +432,8 @@ INV-2 against today's `check_new_repository` and `check_pages`.
 - **PRESS-0231 § 4.3 and INV-6**: a 422 over a repository with files goes
   on, marked `existing`; INV-6 becomes "the *repository* step writes
   nothing to an existing repository", and its *Breaks when* names a write.
-- **`docs/design.md` § Setup's three starts** is unchanged. It describes
-  the finished design; its "otherwise its pages go to Import" arrives with
-  PRESS-0210.
+- **`docs/design.md` § Setup's three starts** is unchanged. Its "otherwise
+  its pages go to Import" is PRESS-0210 § 4.11.
 - **CHANGELOG** gains an Added entry when this ships.
 
 ## 12. Cold-eyes loop log

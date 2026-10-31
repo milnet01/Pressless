@@ -274,7 +274,9 @@ def untouchable(root):
     return tuple(sorted(e for e in root if e.rstrip("/").casefold() not in produced))
 ```
 
-`builder.ROOT_OUTPUT` is read at call time, never copied. The fold is
+`builder.ROOT_OUTPUT` is read at call time, never copied; with the Store's
+folder, `builder.roots_produced`, so a brought-in site's old addresses are off
+the list (PRESS-0210 § 4.10). The fold is
 `str.casefold`, as PRESS-0009 § 4.4 pins. `content` is Builder output and is
 removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
@@ -295,7 +297,7 @@ removed. `assets` is not, and is kept (PRESS-0008 § 3 decision 3).
 
 *PRESS-0212 § 3 decision 4: where Pages is off, first-run setup writes an empty `.nojekyll` and switches Pages on.*
 
-*PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`. PRESS-0218 § 4.5 adds `takein.take_in`, which fills it from a repository instead.*
+*PRESS-0126 § 4.4 changes "never reads the Store": setup reads it to offer the starter site, and writes it only through `starter.fill`. PRESS-0218 § 4.5 adds `takein.take_in`, which fills it from a repository instead, and PRESS-0210 § 4.11 `takein.bring_folder`.*
 
 - It never writes the key into a page, the log, the console or Settings.
 - It never saves a settings file with a list it did not derive.

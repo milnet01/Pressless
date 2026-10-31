@@ -834,6 +834,9 @@ _ALLOWED_IMPORTS = {
     # parts that own each piece, and unpacks a media download.
     "pressless.blocks", "pressless.builder", "pressless.look", "pressless.menu",
     "pressless.sitefile", "pressless.starter", "pressless.templates", "zipfile",
+    # PRESS-0210: a folder of pages: an SVG as a data: address, a page's old
+    # path, a damaged ZIP, the record of what came in, and the Report's words.
+    "base64", "posixpath", "zlib", "pressless.safe_write", "pressless.words",
 }
 
 

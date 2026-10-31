@@ -6,6 +6,9 @@ WordPress's export, Pressless fetches every file it names from the old site,
 takes a media download for any it could not, asks for a look, and brings the
 whole site in at once, then shows what did not come across as written.
 
+The second wizard, at /import/folder, takes a folder of web pages as a ZIP
+instead (PRESS-0210 § 4.2).
+
 The work is pressless_import's; this module is the order of things, which
 only the Face knows (`docs/design.md` rule 1). Everything it keeps is in the
 site's own import/ folder, which is never published and never saved in a
@@ -13,32 +16,29 @@ site file.
 """
 from __future__ import annotations
 
-import html
 import json
 import os
+import shutil
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pressless_import
 from pressless import face as face_module
-from pressless import safe_write, setup, starter, store, wizard
-from pressless.face import SENTENCES, Face, Reply, Request, Sentence, Site, message_box
+from pressless import import_report, safe_write, setup, starter, store, wizard
+from pressless.face import Face, Reply, Request, message_box
+from pressless.import_report import counted as _counted
+from pressless.import_report import shown as _shown
 from pressless.words import say
 from pressless_import import fetch
 
 ADDRESS = setup.IMPORT
+FOLDER_ADDRESS = setup.IMPORT_A_FOLDER
 
-# docs/design.md § Errors: what a stopped Import says.
-SENTENCES[pressless_import.ImportStopped] = Sentence(
-    "failure.pressless_import.ImportStopped.what",
-    Site.UNCHANGED,
-    "failure.pressless_import.ImportStopped.next",
-)
 EXPORT_LARGEST = 256 * 1024 * 1024    # § 4.3: refused at upload
 _EXPORT = "export.xml"
 _UNFETCHED = "unfetched.json"         # what the fetch could not have, once it ended
-_REPORT = "report.txt"
+_FOLDER_LEFT = "folder-left.json"     # PRESS-0210 § 4.2: what unpack_folder left out
 
 
 def finish_moves(folder: Path) -> str | None:
@@ -180,14 +180,7 @@ def register(face: Face, folder: Path) -> None:
                                                answers.get("look", ""), unfetched=missing())
         except pressless_import.ImportStopped as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
-        lines = _lines(report)
-        try:
-            safe_write.write_whole(held / _REPORT, "\n".join(
-                pressless_import.printable(line) for line in lines) + "\n",
-                prefix=".report-")
-        except OSError as exc:
-            face.fail(exc, publishing=False)    # logged; the page still shows it
-        return wizard.Done(_report_page(lines))
+        return wizard.Done(_reported(face, held, report))
 
     steps = (
         wizard.Step("export", "import.step.export", (), lambda answers, hint: _show_export(
@@ -241,20 +234,115 @@ def register(face: Face, folder: Path) -> None:
         return shown_again(f"<p>{say('import.gaps.filled', count=str(len(filled)))}</p>")
 
     def offer() -> str:
-        return (f'<p id="import-offer">{say("import.offer", link=ADDRESS)}</p>'
-                if empty() else "")
+        return setup.import_offer() if empty() else ""
 
     face.add_page("GET", ADDRESS, page)
     face.add_page("POST", ADDRESS, page)
     face.add_upload(f"{ADDRESS}/export", export_file, folder)
     face.add_upload(f"{ADDRESS}/media", media_file, folder)
     face.add_to_list(offer, above=True)
+    _register_folder(face, folder, empty, room, to_the_list)
 
 
-def _shown(text: str) -> str:
-    """A value from the export, as a page shows it: control characters
-    escaped, then HTML-escaped (§ 4.8)."""
-    return html.escape(pressless_import.printable(text))
+def _reported(face: Face, held: Path, report: pressless_import.Report) -> str:
+    """The Report's page, its words kept beside the import's other files."""
+    said = import_report.lines(report)
+    try:
+        import_report.keep(held, said)
+    except OSError as exc:
+        face.fail(exc, publishing=False)    # logged; the page still shows it
+    return import_report.page(said)
+
+
+def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None:
+    """PRESS-0210 § 4.2: /import/folder, and its file box."""
+    held = folder / pressless_import.IMPORT_FOLDER
+    unpacked = held / pressless_import.FOLDER
+
+    def left_out() -> tuple[tuple[str, str], ...]:
+        try:
+            read_in = json.loads((held / _FOLDER_LEFT).read_text(encoding="utf-8"))
+            return tuple((str(path), str(why)) for path, why in read_in)
+        except (OSError, ValueError, TypeError):
+            return ()
+
+    def check_folder(answers: wizard.Answers):
+        found = pressless_import.read_folder(unpacked) if unpacked.is_dir() else None
+        if found is None or not found.pages:
+            return wizard.Hint("", say("import.folder.none"))
+        if found.built_by_a_tool:
+            return wizard.Hint("", say("import.folder.built"))
+        return answers
+
+    def show_found(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+        found = pressless_import.read_folder(unpacked)
+        return _show_found(found, left_out())
+
+    def check_bring(answers: wizard.Answers):
+        try:
+            brought = pressless_import.bring_in_folder(unpacked, folder, left=left_out())
+        except pressless_import.ImportStopped as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
+        return wizard.Done(_reported(face, held, brought.report))
+
+    steps = (
+        wizard.Step("folder", "import.step.folder", (),
+                    lambda answers, hint: _show_folder(unpacked), check_folder),
+        wizard.Step("found", "import.step.found", (), show_found),
+        wizard.Step("bring", "import.step.bring", (),
+                    lambda answers, hint: f"<p>{say('import.bring')}</p>", check_bring),
+    )
+    flow = wizard.Wizard("import-folder", steps, folder, FOLDER_ADDRESS)
+
+    def page(request: Request) -> str | Reply:
+        if not empty():
+            return to_the_list()
+        return flow.page(face, request)
+
+    def shown_again(said: str) -> str:
+        return said + flow.page(face, Request("GET", FOLDER_ADDRESS, {}, b""))
+
+    def zip_file(taken: Path) -> str | Reply:
+        if not empty():
+            return to_the_list()
+        try:
+            left = pressless_import.unpack_folder(taken, unpacked, room)
+        except pressless_import.ImportStopped:
+            return shown_again(message_box("import-hint", say("import.folder.refused")))
+        (held / "folder.json").unlink(missing_ok=True)
+        if not pressless_import.read_folder(unpacked).pages:
+            shutil.rmtree(unpacked, ignore_errors=True)
+            return shown_again(message_box("import-hint", say("import.folder.no_page")))
+        safe_write.write_whole(held / _FOLDER_LEFT, json.dumps(left, indent=1) + "\n",
+                               prefix=".folder-left-")
+        return shown_again(f"<p>{say('import.folder.held')}</p>")
+
+    face.add_page("GET", FOLDER_ADDRESS, page)
+    face.add_page("POST", FOLDER_ADDRESS, page)
+    face.add_upload(f"{FOLDER_ADDRESS}/zip", zip_file, folder)
+
+
+def _show_folder(unpacked: Path) -> str:
+    steps = "".join(f"<li>{say(key)}</li>" for key in (
+        "import.folder.windows", "import.folder.linux"))
+    kept = f"<p>{say('import.folder.held')}</p>" if unpacked.is_dir() else ""
+    return (f"<p>{say('import.folder.how')}</p><ul>{steps}</ul>" + kept
+            + face_module.file_box("import-folder", ".zip", f"{FOLDER_ADDRESS}/zip",
+                                   say("import.folder.choose")))
+
+
+def _show_found(found: pressless_import.Found, left: tuple[tuple[str, str], ...]) -> str:
+    """§ 4.3's counts, every path that will not come across, and the look."""
+    counts = say("import.folder.counts",
+                 pages=_counted(len(found.pages), "import.count.pages.one",
+                                "import.count.pages.many"),
+                 photographs=_counted(len(found.photographs), "import.count.photographs.one",
+                                      "import.count.photographs.many"),
+                 files=_counted(len(found.files), "import.count.files.one",
+                                "import.count.files.many"))
+    rows = "".join(f"<li>{_shown(path)}: {_shown(why)}</li>" for path, why in (*left, *found.left))
+    listed = f"<p>{say('import.folder.left')}</p><ul>{rows}</ul>" if rows else ""
+    return f"<p>{counts}</p>{listed}<p>{say('import.folder.look')}</p>"
 
 
 def _show_export(held: Path) -> str:
@@ -269,48 +357,3 @@ def _show_export(held: Path) -> str:
 # The step is shown again after each check, so it reloads itself until the
 # fetch has ended; a GET, never the POST that showed it.
 _RELOAD = f"setTimeout(() => location.replace({json.dumps(ADDRESS)}), 2000);"
-
-
-def _lines(report: pressless_import.Report) -> list[str]:
-    """§ 4.8: the Report as lines of words, each value as the export gave it."""
-    counts = say(
-        "import.report.counts",
-        published=_counted(report.published, "import.count.published.one",
-                           "import.count.published.many"),
-        drafts=_counted(report.drafts, "import.count.drafts.one", "import.count.drafts.many"),
-        comments=_counted(report.comments, "import.count.comments.one",
-                          "import.count.comments.many"),
-        photographs=_counted(report.photographs, "import.count.photographs.one",
-                             "import.count.photographs.many"),
-        files=_counted(report.files, "import.count.files.one", "import.count.files.many"))
-    lines = [counts, say("import.report.pages", pages=", ".join(report.pages))]
-    if report.menus:
-        lines.append(say("import.report.menu", menu=report.menus[0]))
-        if report.menus[1:]:
-            lines.append(say("import.report.other_menus", menus=", ".join(report.menus[1:])))
-    lines += [say("import.report.scheduled", slug=slug, date=when) if when
-              else say("import.report.review", slug=slug) for slug, when in report.waiting]
-    lines += [say("import.report.unfetched", place=place, why=why)
-              for place, why in report.unfetched]
-    lines += [say("import.report.renamed", wanted=wanted, given=given)
-              for wanted, given in report.renamed_slugs]
-    lines += [say("import.report.renamed_file", place=place, name=name)
-              for place, name in report.renamed_photographs]
-    lines += [say("import.report.other_type.one", kind=kind) if count == 1
-              else say("import.report.other_type.many", kind=kind, count=str(count))
-              for kind, count in report.other_types]
-    lines += [say("import.report.dropped", where=dropped.slug, what=dropped.what)
-              for dropped in report.dropped]
-    return lines
-
-
-def _counted(count: int | str, one: str, many: str) -> str:
-    """A count with its noun, which takes the singular for one (PRESS-0294)."""
-    return say(one) if int(count) == 1 else say(many, count=str(count))
-
-
-def _report_page(lines: list[str]) -> str:
-    rows = "".join(f"<li>{_shown(line)}</li>" for line in lines)
-    return (f"<h1>{say('import.report.title')}</h1><p>{say('import.report.about')}</p>"
-            f'<ul class="import-report">{rows}</ul>'
-            f'<p><a href="/">{say("setup.onward")}</a></p>')

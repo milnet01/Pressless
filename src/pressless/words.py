@@ -262,7 +262,7 @@ _WORDS: dict[str, str] = {
     "failure.sitefile.Refused.what": "Pressless could not open that file as a site.",
     "failure.sitefile.Refused.next": "Choose a file Pressless saved, and open it again.",
     "failure.pressless_import.ImportStopped.what": (
-        "Pressless could not bring your WordPress site in."
+        "Pressless could not bring your site in."
     ),
     "failure.pressless_import.ImportStopped.next": (
         "The details below say why. If it keeps happening, send them to whoever helps you."
@@ -950,6 +950,21 @@ _WORDS: dict[str, str] = {
         "Settings kept on your other computer: the Google Analytics measurement id, the "
         "Analytics property and the Daily Prompt filter. Set them again in Settings."
     ),
+    "setup.bringin": (
+        "This repository holds a site made of web pages, which Pressless did not make. "
+        "Pressless can bring it in, with its look and its addresses. It found:"
+    ),
+    "setup.bringin.publish": (
+        "Your next publish will then change these on GitHub. The old pages become "
+        "forwards to their new addresses, and anything else here is replaced or removed. "
+        "All of it stays in the repository's history:"
+    ),
+    "setup.bringin.gone": (
+        "Among them, these will not come across, so that publish replaces or removes them:"
+    ),
+    "setup.bringin.link": "{page} links to {path}, so that link will then stop working.",
+    "setup.bringin.stays": "These stay on GitHub, and Pressless will not touch them:",
+    "setup.bringin.kept": "Among those, these will not come across into Pressless:",
     "setup.takein.moved": (
         "Your site on GitHub changed after Pressless showed it. Nothing was copied. Go Back "
         "to the GitHub Pages step to see it as it is now."
@@ -1007,8 +1022,8 @@ _WORDS: dict[str, str] = {
         "A repository by that name already exists in your account. Choose another name."
     ),
     "setup.hint.made_elsewhere": (
-        "This repository holds a site Pressless did not make, and Pressless cannot bring "
-        "that in yet. Press Back and choose another repository."
+        "This repository holds what a tool builds a site from, not the site's web pages, "
+        "and Pressless cannot bring that in yet. Press Back and choose another repository."
     ),
     "setup.hint.add_to_app": (
         "Pressless made the repository, but the Pressless app cannot reach it yet. On "
@@ -1138,6 +1153,7 @@ _WORDS: dict[str, str] = {
     ),
     "setup.done": "Setup is done.",
     "setup.done.address": "Your site's address is {link}.",
+    "setup.done.brought": "Your site came in. This is what came across:",
     "setup.done.taken_in": "Your site came in from GitHub. Pressless now holds:",
     "setup.done.starter": (
         "Your starter site is in place. It is not on the web until you publish it."
@@ -1156,6 +1172,41 @@ _WORDS: dict[str, str] = {
     "import.offer": (
         "Have a WordPress site? <a href=\"{link}\">Bring it into Pressless</a>: its "
         "posts, pages, menu, comments, photographs and files."
+    ),
+    "import.offer.folder": (
+        "Is your site a folder of web pages? <a href=\"{link}\">Bring that in instead</a>: "
+        "it keeps its look and its addresses."
+    ),
+    "import.step.folder": "Your folder of web pages",
+    "import.step.found": "What will come across",
+    "import.folder.how": (
+        "Put your site's folder into one ZIP file, then choose it here. To make one:"
+    ),
+    "import.folder.windows": (
+        "On Windows, right-click the folder in File Explorer, choose <b>Send to</b>, then "
+        "<b>Compressed (zipped) folder</b>."
+    ),
+    "import.folder.linux": (
+        "On Linux, right-click the folder in your file manager and choose <b>Compress</b>, "
+        "with <b>.zip</b> as the kind."
+    ),
+    "import.folder.choose": "Choose the ZIP file",
+    "import.folder.held": "Pressless has your folder. Press Next.",
+    "import.folder.none": "Choose a ZIP file holding your web pages first.",
+    "import.folder.built": (
+        "This folder holds what a tool builds a site from, not the site's web pages. Build "
+        "the site with that tool, then choose the folder of pages it makes."
+    ),
+    "import.folder.refused": (
+        "Pressless could not read that ZIP file, or could not fit it on this drive, or it "
+        "names a file outside its folder. Nothing was kept."
+    ),
+    "import.folder.no_page": "That ZIP file holds no web page, so nothing was kept.",
+    "import.folder.counts": "Pressless found {pages}, {photographs} and {files}.",
+    "import.folder.left": "These will not come across:",
+    "import.folder.look": (
+        "Your site keeps its own look. Its stylesheets become the site's style code, which "
+        "you can change later."
     ),
     "import.step.export": "Your WordPress export",
     "import.step.media": "Your photographs and files",
@@ -1246,6 +1297,61 @@ _WORDS: dict[str, str] = {
     "import.report.other_type.one": "1 item of the kind {kind} was not brought in.",
     "import.report.other_type.many": "{count} items of the kind {kind} were not brought in.",
     "import.report.dropped": "{where}: {what}.",
+    "import.report.counts.folder": "{photographs} and {files}.",
+    "import.report.moved": "{path} is now the page {name}. Its old address forwards to it.",
+    "import.report.inside": (
+        "{path} is now part of each page that used it. Check any script still works: one "
+        "that names a file by its old address will not find it."
+    ),
+    "import.report.sheet_for_some": (
+        "{path} was used by only some pages. Its rules now reach every page."
+    ),
+    "import.folder.why.dot": "its name begins with a dot, which marks a file not for the site",
+    "import.folder.why.large": "it is larger than the {mib} MiB Pressless keeps",
+    "import.folder.why.segment": "Windows cannot hold a name in its path",
+    "import.folder.why.twin": "another file has the same name, but for capital letters",
+    "import.folder.why.cname": "it says which web address GitHub serves, and stays on GitHub",
+    "import.folder.why.lost": (
+        "GitHub would serve it at every missing address, where an old address's forward "
+        "would reload for ever"
+    ),
+    "import.folder.why.verification": "it proves to a search engine that the site is yours",
+    "import.folder.why.undecodable": "Pressless could not read its words",
+    "import.folder.why.sheet": "no page links this stylesheet",
+    "import.folder.why.script": (
+        "no page uses this script in a way Pressless can carry inside the page"
+    ),
+    "import.folder.why.svg": (
+        "Pressless keeps an SVG only as a small picture a page shows, and this is not one"
+    ),
+    "import.folder.why.kind": "it is not a kind of file Pressless keeps",
+    "import.folder.front": "with no index page, {path} became the front page",
+    "import.folder.not_carried": "a link to {path}, which did not come across",
+    "import.folder.base": (
+        "it has a base element, which changes what its links mean, so they were left as written"
+    ),
+    "import.folder.older": "it was in an older encoding, and is now UTF-8",
+    "import.folder.marks": "it held marks Pressless itself uses, which were removed",
+    "import.folder.no_main": (
+        "its main content could not be marked out, so the visual editor cannot reach it"
+    ),
+    "import.folder.own_header": "it keeps its own header",
+    "import.folder.own_footer": "it keeps its own footer",
+    "import.folder.own_menu": "it keeps its own menu, which the Menu screen does not change",
+    "import.folder.no_header": "the pages share no header, so none was parted out",
+    "import.folder.no_footer": "the pages share no footer, so none was parted out",
+    "import.folder.no_menu": "the pages share no menu, so the Menu screen changes nothing shown",
+    "import.folder.menu_stays": (
+        "the menu stays in each page, so the Menu screen changes nothing the site shows"
+    ),
+    "import.folder.menu_unusual": (
+        "this menu is kept as written, so a new page will not join it by itself"
+    ),
+    "import.folder.current_marks": (
+        "Pressless now marks the current link with aria-current, so the site's own rule "
+        "for its active, current or selected class no longer applies"
+    ),
+    "import.folder.unnamed": "nothing names this file, so it is kept but not published",
     "setup.google.on": (
         "Visitor numbers are on: <a href=\"/setup/google\">change the site or turn them "
         "off</a>."

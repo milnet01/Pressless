@@ -420,6 +420,7 @@ Every single newline is a line break.
     drafts/<slug>.txt
     forwards/forwards.json        PRESS-0182 § 4.1
     forwards/pages.json           PRESS-0195 § 4.1
+    forwards/addresses.json       PRESS-0210 § 4.10
     bin/<stamp>/<the relative path it was moved from>
 ```
 
@@ -1208,6 +1209,7 @@ imports.
 | 12 | 2026-09-11 | 3, cold — genre pinned `spec`; gating PRESS-0117's no-path messages and PRESS-0099's `move_to_bin`. Windows unrunnable | 1 | 2 | 1 | 4 | **Eight verified, eight fixed, none dismissed. One loop only, by user instruction: not converged, and no cold read has seen the fixes.** All three lanes: `move_to_bin` fails with no hard links while § 6 said only the two moves are lost; the no-path rule had no test; INV-11's naming clause had none either, and its shipped test asserts the path IS there. Also fixed: "The move is `_move`'s" was false, the bin test could not see a stamp-less bin, the accepted sub-folders were unnamed, "raised" did not reach a notice, and who bins the comments file was unsaid. All eight inside the gated span. |
 | 13 | 2026-09-26 | 3, cold, every lane holding every question — genre pinned `spec`; gating PRESS-0159's whole-name fold and byte-order mark. Packet carried `store.py` whole and the Windows measurements; Windows unrunnable. Lanes disclosed a git snapshot naming the amendment's commit | 0 | 3 | 0 | 0 | **Three verified, three fixed, none dismissed.** All three lanes: INV-12 still said `exists` and the listing cannot disagree and share one helper — false of shipped code, and against the new one-direction rule. Two lanes: INV-13's "case-folded" named no fold, so the twin notice could fire on a look-alike `exists` calls unrelated; it now names §4.3's A–Z fold. Two lanes: the new "listing never offers a file `read` cannot open" contradicted §4.3's listed suffix twin; narrowed to names `path_for` refuses. Three open questions resolved clean. |
 | 14 | 2026-09-26 | 3, cold, every lane holding every question — identical brief; packet rebuilt from disk. Windows unrunnable | 0 | 2 | 0 | 0 | **Two verified, two fixed, none dismissed. Cap reached (2 for a spec); the tail is empty and the spec ships.** All three lanes: INV-13 now folds the whole name while §4.3, §6 and INV-10 still said only the suffix's case makes a twin — settled on the whole name, as `exists` does, and INV-13's test gains a `Seaside.txt` case. All three: "a folded twin is listed" predates the stem fold and now covers `Seaside`, which the listing refuses; narrowed to the suffix case. **A calm cap**: one of the two landed on text loop 13 wrote. Over the run, one of five findings fell inside the amendment's own lines; the other four were passages it made false. |
+| impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: the address forwards file and its three calls. |
 
 ## 13. Resource cost
 

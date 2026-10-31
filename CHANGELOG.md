@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A site that is a folder of web pages comes into Pressless** (PRESS-0210)
+  Hand over a ZIP, or choose a GitHub repository holding plain pages. Each page becomes a page you can edit, the header, footer and menu they share become single copies, and the stylesheets become the style code. Old addresses forward to their new pages. You are told what will come across before anything is written, and item by item afterwards.
+
 - **Setup takes in a site Pressless already published to GitHub**
   (PRESS-0218) On another computer, or after a reinstall, point setup at
   your site's repository. Before anything is saved, it shows what it

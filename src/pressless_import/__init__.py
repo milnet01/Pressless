@@ -41,23 +41,30 @@ from pressless.paths import PREVIEW_ASSETS
 from ._html import Lookup, autop, convert, is_markup, visible_lines, wordpress_markup
 
 __all__ = [
+    "FOLDER",
     "IMPORT_FOLDER",
     "MEDIA_FOLDER",
+    "Brought",
     "Dropped",
     "Export",
+    "Found",
     "ImportStopped",
     "Lookup",
     "Report",
     "autop",
     "bring_in",
+    "bring_in_folder",
     "convert",
     "finish",
     "is_markup",
     "main",
     "printable",
     "read",
+    "read_brought",
+    "read_folder",
     "resolve_slug",
     "run",
+    "unpack_folder",
     "unpack_media",
     "visible_lines",
     "wordpress_markup",
@@ -90,6 +97,11 @@ class Report:
     menus: tuple[str, ...] = ()                   # the menu carried first, then any other
     other_types: tuple[tuple[str, int], ...] = ()  # (post type not carried, how many)
     files: int = 0                                # kept in files/, not photographs
+    # PRESS-0210 § 4.12. A folder's `left` paths go in `unfetched`.
+    moved: tuple[tuple[str, str], ...] = ()       # (old path, new name)
+    inside_pages: tuple[str, ...] = ()            # scripts and SVGs a page now carries
+    sheets_for_some: tuple[str, ...] = ()         # now reaching pages that did not link them
+    folder: bool = False                          # from a folder, so no posts to count
 
 
 class ImportStopped(Exception):
@@ -777,4 +789,19 @@ def main(argv: list[str]) -> int:
 
 # The Import anyone runs (PRESS-0125) builds on everything above, so it is
 # imported last.
-from ._bring import IMPORT_FOLDER, MEDIA_FOLDER, bring_in, finish, unpack_media  # noqa: E402
+from ._bring import (  # noqa: E402
+    FOLDER,
+    IMPORT_FOLDER,
+    MEDIA_FOLDER,
+    bring_in,
+    finish,
+    unpack_media,
+)
+from ._folder import (  # noqa: E402
+    Brought,
+    Found,
+    bring_in_folder,
+    read_brought,
+    read_folder,
+    unpack_folder,
+)

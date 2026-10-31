@@ -407,7 +407,8 @@ post's `script` and `style` contents (PRESS-0125).
 - **From a folder of web pages** (PRESS-0210): each page becomes a page,
   the header and footer the pages share are parted out into the single
   copy, the stylesheet becomes the style code, and every other file
-  becomes an added file.
+  becomes an added file. A script and an SVG are carried inside the pages,
+  not as added files, and an old address forwards to its page.
 
 **Where the cheat sheet comes from.** Marks owns one table of every mark
 it understands, and the cheat sheet is generated from that table — the

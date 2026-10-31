@@ -81,7 +81,13 @@ Every "(decided here)" is open to the maintainer to overturn.
 | PDF | `.pdf` | `%PDF-` | `application/pdf` | download |
 | ZIP | `.zip` | `PK\x03\x04` or `PK\x05\x06` | `application/zip` | download |
 | Text | `.txt` | decodes as UTF-8 throughout, holding no NUL | `text/plain; charset=utf-8` | download |
+| WOFF | `.woff` | `wOFF` | `font/woff` | no section |
+| WOFF2 | `.woff2` | `wOF2` | `font/woff2` | no section |
+| TrueType | `.ttf` | `00 01 00 00` or `true` | `font/ttf` | no section |
+| OpenType | `.otf` | `OTTO` | `font/otf` | no section |
+| Icon | `.ico` | `00 00 01 00` | `image/x-icon` | no section |
 
+The last five are PRESS-0210 § 3 decision 10's, for a brought-in site's look.
 The suffix is compared lower-cased. The *Chosen by* column is what each
 section's list offers (§ 4.5); the Builder publishes any kept file a page
 names, whatever section names it (§ 4.6).
@@ -132,7 +138,7 @@ sits outside `content/`.
 
 ### 4.4 The Face
 
-- **`face._FILE_TYPES`** gains § 4.1's nine suffixes and types.
+- **`face._FILE_TYPES`** holds § 4.1's suffixes and types.
   `FILES_POLICY` is unchanged: audio and video fall under its
   `default-src 'self'`.
 - **`files_screen.register`** adds:
@@ -171,9 +177,10 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]: ...  # name -> page
 
 - **What a page names** is every section's `src` or `href` that, read from
   the page's place as `_held_pictures` reads one, is `files/<name>` for a
-  name `store.list_files` holds. Photographs are still collected from
-  `picture` and `enlarge` sections' `src` alone, so a download linking into
-  `photographs/` never reaches `web_copy`. The two share one address reader.
+  name `store.list_files` holds. Photographs are collected from `picture` and
+  `enlarge` sections' `src`. The two share one address reader. **Both also take
+  each held file named by any `href`, `src`, `srcset`, `poster` or CSS `url(...)`
+  in a page, a furniture file or the style code (PRESS-0210 § 4.13).**
 - **Building the site folder**, each named file is copied byte for byte to
   `files/<name>`, once. A name beginning with a dot, a file over
   `FILE_LARGEST`, or one `file_allowed` refuses is `BuildStopped`, naming

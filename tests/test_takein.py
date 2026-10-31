@@ -17,6 +17,8 @@ import dataclasses
 import hashlib
 import io
 import json
+import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -37,6 +39,7 @@ from test_setup import (
     _setup_page as _setup,
 )
 
+import pressless_import
 from pressless import (
     builder,
     files,
@@ -44,6 +47,7 @@ from pressless import (
     publisher,
     publishing,
     settings,
+    setup,
     starter,
     store,
     takein,
@@ -53,7 +57,6 @@ KEY = "a-plain-test-key-for-take-in"
 REPOSITORY = "/repos/owner/owner.github.io/"
 FIRST_REFRESH = "ghr_plain-first"
 SEED = {"CNAME": b"example.org\n"}
-NOT_MADE_HERE = "Pressless did not make"
 ALWAYS_SAID = ("Your drafts", "full-size photographs", "Daily Prompt filter")
 
 
@@ -134,6 +137,10 @@ class _Repository(_SignInGitHub):
                 return 404, {}, b'{"message": "Not Found"}'
             return _json({"content": base64.b64encode(data).decode("ascii"),
                           "encoding": "base64"})
+        if method == "PUT" and rest.startswith("contents/"):
+            self.commit_files({**self.holds(), rest.removeprefix("contents/"):
+                               base64.b64decode(sent.get("content", ""))})
+            return 201, {}, b"{}"
         if method == "POST" and rest == "git/blobs":
             return 201, {}, json.dumps(
                 {"sha": self._blob(base64.b64decode(sent["content"]))}).encode()
@@ -353,22 +360,7 @@ def test_a_site_from_before_identities_comes_in(tmp_path, monkeypatch):
 # ----------------------------------------------------------------- INV-2 ---
 
 
-def test_a_site_made_elsewhere_is_refused(tmp_path, monkeypatch):
-    """INV-2. Breaks when `made_here` tests for a `content/` folder alone, or
-    its second arm counts a file outside the Store's own layout."""
-    github = _Repository({
-        **SEED, "index.html": b"<html>Elsewhere</html>",
-        "content/posts/hello.md": b"---\ntitle: Hello\n---\nWords.\n",
-        "content/published/hello.md": b"Not a Store file.\n",
-    }, pages="off")
-    folder = _empty_store(tmp_path, "setup")
-    _Store(monkeypatch)
-    with _setup(folder, github) as browser:
-        page = _walk_to(browser, "pages")
-        after = _next(browser, page)
-    assert _step(after) == "pages" and NOT_MADE_HERE in after
-    assert github.repository_writes() == []
-    assert github.pages == "off"
+# INV-2 is narrowed by PRESS-0210 INV-14, whose test keeps its name, below.
 
 
 # ----------------------------------------------------------------- INV-5 ---
@@ -523,3 +515,231 @@ def test_found_counts_what_came_across(tmp_path):
         commit="", made_here=True, entries=1,
         pages=len(store.list_html(published, store.PAGES_FOLDER)), comments=1,
         photographs=1, files=1, identity=store.read_identity(published), left=())
+
+
+# --------------------------------------------- a site Pressless did not make ---
+# PRESS-0210 § 4.11, from docs/specs/PRESS-0210-folder-of-pages.md § 5.
+
+
+TOOL_REFUSED = "what a tool builds a site from"
+_INDEX = (b'<html><head><title>Plain Site</title><link rel="stylesheet" href="style.css">'
+          b'</head><body><a href="about.html">About</a><a href="downloads/tool.exe">Tool</a>'
+          b'<a href="sitemap.xml">Map</a><img src="images/pic.png" alt=""></body></html>')
+PLAIN = {
+    "CNAME": b"example.org\n",
+    "README.md": b"# Mine\n",
+    "google123.html": b"google-site-verification: google123.html",
+    "index.html": _INDEX,
+    "about.html": b"<html><head><title>About</title></head><body><p>About</p></body></html>",
+    "team/index.html": b"<html><head><title>T</title></head><body><p>Team</p></body></html>",
+    "sitemap.xml": b"<urlset/>",
+    "downloads/tool.exe": b"MZ",
+    "style.css": b"body { color: red; }",
+}
+
+
+def _plain_repository(**kwargs) -> _Repository:
+    return _Repository({**PLAIN, "images/pic.png": _picture("PNG", "teal"),
+                        "images/old.exe": b"MZ"}, **kwargs)
+
+
+def _finished(tmp_path: Path, monkeypatch, github: _Repository) -> Path:
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        done = _next(browser, _walk_to(browser, "site"))
+    assert _step(done) is None and settings.path_for(folder).exists(), done
+    return folder
+
+
+def _store_held(folder: Path) -> dict[str, bytes]:
+    return {path: data for path, data in _held(folder).items()
+            if not path.startswith("import/")}
+
+
+def test_a_plain_site_goes_on_and_writes_nothing_to_github(tmp_path, monkeypatch):
+    """INV-13. Breaks when a step adopts the repository by writing to it."""
+    from test_setup import _Clock
+    github = _plain_repository(pages="off")
+    github.calls.clear()
+    folder = _empty_store(tmp_path, "setup")
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    with _setup(folder, github, clock=_Clock()) as browser:
+        seen, done = _walk(browser)
+    assert seen[-3:] == ["repository", "pages", "site"], seen
+    assert _step(done) is None and settings.path_for(folder).exists(), done
+    assert github.repository_writes() == [
+        ("PUT", f"{REPOSITORY}contents/.nojekyll"), ("POST", f"{REPOSITORY}pages")]
+    assert set(store.list_html(folder, store.PAGES_FOLDER)) == {"index", "about", "team"}
+    assert "Plain Site" in done or store.read_identity(folder).name == "Plain Site"
+
+
+@pytest.mark.parametrize(("files", "goes_on"), [
+    ({**SEED, "content/posts/hello.md": b"---\ntitle: Hello\n---\nWords.\n",
+      "content/published/hello.md": b"Not a Store file.\n"}, False),
+    ({**SEED, "_config.yml": b"title: Mine\n", "index.md": b"# Home\n"}, False),
+    ({**SEED, "index.html": b"---\nlayout: home\n---\n<p>Home</p>"}, False),
+    ({**SEED, ".nojekyll": b"", "index.html": b"---\nlayout: home\n---\n<p>Home</p>"}, True),
+    ({**SEED, "README.md": b"# A new one\n"}, True),
+])
+def test_a_site_made_elsewhere_is_refused(tmp_path, monkeypatch, files, goes_on):
+    """INV-14, which narrows PRESS-0218 INV-2. Breaks when `built_by_a_tool` reads
+    only `_config.yml`, or ignores `.nojekyll`, or `made_here` tests for a
+    `content/` folder alone."""
+    github = _Repository(files, pages="off")
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "pages")
+        after = _next(browser, page)
+    if goes_on:
+        assert _step(after) == "site", after
+    else:
+        assert _step(after) == "pages" and TOOL_REFUSED in after, after
+        assert github.repository_writes() == []
+        assert github.pages == "off"
+
+
+def test_the_screen_says_what_a_publish_will_change(tmp_path, monkeypatch):
+    """INV-15. Breaks when a `left` path is dropped without being named, or the
+    step's body writes to the Store."""
+    github = _plain_repository()
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        before = _store_held(folder)
+        page = _walk_to(browser, "site")
+        assert _store_held(folder) == before
+        browser.get()
+        assert _store_held(folder) == before
+    for path in ("CNAME", "README.md", "google123.html", "sitemap.xml", "downloads/tool.exe",
+                 "images/old.exe"):
+        assert path in page, path
+    for changed in ("about.html", "team", "index.html", "images", "style.css"):
+        assert changed in page, changed
+    assert "history" in page and "Nothing on GitHub changes" in page
+    assert "index.html links to sitemap.xml" in page, page
+    assert "links to downloads/tool.exe" not in page, "that one stays on GitHub"
+
+
+def test_what_was_not_carried_stays_untouchable(tmp_path, monkeypatch):
+    """INV-16. Breaks when the list is `untouchable(entries)` unchanged, so
+    `about.html` keeps its old page for good."""
+    github = _plain_repository()
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+        assert re.search(r"sitemap\.xml", page)
+        done = _next(browser, page)
+    assert _step(done) is None, done
+    assert "came in" in done and "report.txt" not in done.split("came in")[0]
+    final = settings.load(folder)
+    kept = {entry.rstrip("/") for entry in final.untouchable}
+    assert {"CNAME", "README.md", "google123.html", "downloads"} <= kept, kept
+    assert not kept & {"about.html", "images", "team", "style.css", "sitemap.xml", "index.html"}
+    assert (folder / "import" / "report.txt").is_file()
+
+    publishing.publish(folder, final, KEY, entry=None, transport=github)
+    held = github.holds()
+    assert held["CNAME"] == PLAIN["CNAME"] and held["README.md"] == PLAIN["README.md"]
+    assert held["downloads/tool.exe"] == b"MZ"
+    assert b'url=pages/about.html' in held["about.html"]
+    assert b'url=../pages/team.html' in held["team/index.html"]
+    assert "images/pic.png" not in held and "photographs/pic.png" in held
+    assert "images/old.exe" not in held, "the screen named it as going"
+    assert "style.css" not in held and b"color: red" in held["look/style.css"]
+
+
+def test_a_brought_in_site_comes_back_with_its_forwards(tmp_path, monkeypatch):
+    """INV-12. Breaks when `_Build.content` lacks the file, so a take-in on
+    another computer forgets every old address."""
+    github = _plain_repository()
+    folder = _finished(tmp_path, monkeypatch, github)
+    forwards = store.read_address_forwards(folder)
+    assert forwards["about.html"] == "about"
+    publishing.publish(folder, settings.load(folder), KEY, entry=None, transport=github)
+
+    other = _empty_store(tmp_path, "other")
+    found = takein.look(other, _settings(other), KEY, transport=github)
+    assert found.made_here
+    takein.take_in(other, _settings(other), KEY, found.commit, transport=github)
+    assert store.read_address_forwards(other) == forwards
+    entries = publisher.root_entries(_settings(other), KEY, github)
+    assert "about.html" in entries
+    listed = {entry.rstrip("/") for entry in setup.untouchable(entries, (), other)}
+    assert not listed & {"about.html", "team"}, listed
+    assert "CNAME" in listed
+
+
+def test_finish_again_saves_without_a_second_bring(tmp_path, monkeypatch):
+    """INV-17: failing the save once, and in a second run stopping at the moves
+    and calling pressless_import.finish: the next press sends no fetch, and
+    Settings saves. Breaks when a second press is stopped by store.holds_a_site."""
+    for failing in ("save", "moves"):
+        github = _plain_repository()
+        folder = _empty_store(tmp_path, failing)
+        _Store(monkeypatch)
+        with _setup(folder, github) as browser:
+            page = _walk_to(browser, "site")
+
+            def save_fails(*args, **kwargs):
+                raise settings.SettingsError("the settings file could not be written")
+
+            def moves_stop(_into):
+                return "the moves stopped"
+
+            with monkeypatch.context() as patched:
+                if failing == "save":
+                    patched.setattr(settings, "save", save_fails)
+                else:
+                    patched.setattr("pressless_import._folder.finish", moves_stop)
+                after = _next(browser, page)
+            assert _step(after) == "site", failing
+            assert not settings.path_for(folder).exists(), failing
+            if failing == "moves":
+                assert pressless_import.finish(folder) is None
+            assert store.holds_a_site(folder), failing
+
+            github.calls.clear()
+            done = _next(browser, after)
+        assert _step(done) is None and settings.path_for(folder).exists(), (failing, done)
+        assert not [url for _method, url, _auth in github.calls if "git/blobs/" in url], failing
+        assert set(store.list_html(folder, store.PAGES_FOLDER)) == {"index", "about", "team"}
+
+
+def test_another_repository_after_a_bring_is_a_stop(tmp_path, monkeypatch):
+    """§ 6: back, and another state: the Store holds a site, and nothing is mixed."""
+    github = _plain_repository()
+    folder = _empty_store(tmp_path, "setup")
+    pressless_import.bring_in_folder(_written(tmp_path / "other", {"index.html": b"<p>A</p>"}),
+                                     folder, commit="a-commit-from-elsewhere")
+    found, commit = takein.look_folder(folder, _settings(folder), KEY, transport=github)
+    assert found.pages
+    with pytest.raises(pressless_import.ImportStopped):
+        takein.bring_folder(folder, _settings(folder), KEY, commit, transport=github)
+    assert store.list_html(folder, store.PAGES_FOLDER) == ("index",)
+
+
+def test_the_state_shown_is_the_state_brought_in(tmp_path, monkeypatch):
+    """§ 4.11: what is written is what was shown, though GitHub moved on, and a
+    held folder gone is fetched again at that commit."""
+    github = _plain_repository()
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+        github.commit_files({**github.holds(), "later.html": b"<p>Later</p>"})
+        shutil.rmtree(folder / "import" / "folder")
+        done = _next(browser, page)
+    assert _step(done) is None, done
+    assert "later" not in store.list_html(folder, store.PAGES_FOLDER)
+    assert "about" in store.list_html(folder, store.PAGES_FOLDER)
+
+
+def _written(folder: Path, files: dict[str, bytes]) -> Path:
+    for path, data in files.items():
+        (folder / path).parent.mkdir(parents=True, exist_ok=True)
+        (folder / path).write_bytes(data)
+    return folder
