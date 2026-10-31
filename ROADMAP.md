@@ -3723,6 +3723,8 @@ it decides how pages, the menu and the look are held.
   cleaned; the github@ and google@Pressless vault entries were kept,
   as the next round needs them. Signed and published; hub told
   (message 819).
+  2026-10-31: owed by hand before the next release: PRESS-0210 spec § 7
+  and PRESS-0218 spec § 10.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
