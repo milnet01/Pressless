@@ -5531,7 +5531,7 @@ it can then be changed.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, #35 #36.
   Lanes: import.
 
-- 📋 [PRESS-0210] **Import takes in an existing site that is a folder of web pages.**
+- 🚧 [PRESS-0210] **Import takes in an existing site that is a folder of web pages.**
   User, 2026-10-02: Pressless must fully edit an existing site, and
   that includes a plain folder of HTML pages, not only WordPress
   (docs/discovery.md S13). Design after PRESS-0198 settles how pages
@@ -5539,6 +5539,17 @@ it can then be changed.
   Spec reviewed 2026-10-31: one round, the user's budget. 21 findings
   fixed, none deferred (commit 8ab96ff). No lane read those fixes; the
   build is their reader.
+  2026-10-31: spec docs/specs/PRESS-0210-folder-of-pages.md accepted after
+  one review round (the user's budget): 21 verified and fixed; no lane read
+  the fixes. Built so far: address forwards in the Store and Builder,
+  roots_produced, § 4.13's publishing of what any address names, and the
+  font and .ico kinds. Still to build: §§ 4.1 to 4.9 (pressless_import/_folder.py),
+  § 4.2's wizard, §§ 4.11 and 4.12, then § 11's amendments to other specs and
+  design.md, which owe no review under the 2026-10-31 rule. To check while
+  building: an imported page's ../photographs/ address in the Face's preview,
+  not yet read. Decided in this session: § 4.13 stands (every site), and the ZIP
+  is the one hand-over, with PRESS-0335 for a folder chooser. Owed by hand before
+  the next release: spec § 7.
   **Layman:** Someone whose site is a folder of web pages, not WordPress, can bring it into Pressless and edit every part of it.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
