@@ -105,6 +105,26 @@ fi
 # shellcheck source=scripts/python.sh
 . scripts/python.sh
 
+# ── The same tools GitHub resolves ──────────────────────────────────────────
+# GitHub installs afresh on every run, so it always has today's versions. Here
+# the machine's own copies age, and a gate on older tools passes what GitHub
+# then fails. So a local run keeps its own gitignored .venv, brought up to what
+# a fresh install resolves. It never touches the machine's shared tools, which
+# other projects use. GitHub sets CI and has just installed, so it skips this.
+if [[ -z ${CI-} ]]; then
+    step "gate environment"
+    [[ -d .venv ]] || "$PY" -m venv .venv || fail "could not make .venv"
+    if [[ -x .venv/Scripts/python.exe ]]; then
+        PY=.venv/Scripts/python.exe
+    else
+        PY=.venv/bin/python
+    fi
+    # Offline, the versions already there still run, and the note says so.
+    "$PY" -m pip install --quiet --disable-pip-version-check \
+        --upgrade --upgrade-strategy eager -e '.[dev]' \
+        || printf 'WARNING: .venv could not be updated -- these may not be the versions GitHub runs\n' >&2
+fi
+
 # ── What is about to run ────────────────────────────────────────────────────
 # REPORTED, never enforced. The dev floors in pyproject.toml are open on
 # purpose and that file says why: a release that breaks the project should
@@ -119,7 +139,7 @@ fi
 # puts the same line in a local run and in the CI log, so a mismatch is
 # readable from either (PRESS-0105).
 step "tool versions"
-ruff --version
+"$PY" -m ruff --version
 "$PY" -m pytest --version
 # A plugin has no --version of its own, and an ABSENT one is the case worth
 # reporting: without it the suite runs in file order, which is the PRESS-0027
@@ -133,7 +153,7 @@ except PackageNotFoundError:
 PY
 
 step "ruff"
-ruff check src/ tests/ || fail "lint"
+"$PY" -m ruff check src/ tests/ || fail "lint"
 
 # The archive test proves S2 against the real WordPress export, which is
 # personal data and cannot live here -- so CI is permanently silent about the

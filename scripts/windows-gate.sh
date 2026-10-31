@@ -50,7 +50,8 @@ scratch=$(mktemp -d "$(git rev-parse --path-format=absolute --git-common-dir)/wi
 trap 'rm -rf "$scratch"' EXIT
 run="run-$(date +%s)-$$"
 
-# The same dependency list CI installs: the project's own and the dev extra.
+# The same dependency list CI installs: the project's own and the dev extra,
+# upgraded on each run, because a fresh CI install resolves today's versions.
 deps=$(python3 - <<'PY'
 import tomllib
 project = tomllib.load(open("pyproject.toml", "rb"))["project"]
@@ -60,7 +61,7 @@ PY
 
 if ((${#browsers[@]} == 0)); then
     body=$(cat <<EOF
-    & \$python -m pip install --quiet --disable-pip-version-check $deps
+    & \$python -m pip install --quiet --disable-pip-version-check --upgrade --upgrade-strategy eager $deps
     if (\$LASTEXITCODE -ne 0) { throw "pip could not install the dependencies" }
     & \$python -m pytest --version
     & \$python -m pytest -ra -q -p no:cacheprovider

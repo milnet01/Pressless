@@ -49,9 +49,13 @@ so there is no install step beyond that one.
 ```bash
 ./scripts/local-ci.sh      # the gate: leak sweep, lint, suite
 ./scripts/local-ci.sh --docs   # documentation push: leak sweep alone
-python3 -m pytest          # the suite alone
-ruff check src/ tests/     # lint alone
+.venv/bin/python -m pytest          # the suite alone
+.venv/bin/python -m ruff check src/ tests/   # lint alone
 ```
+
+**A local gate run brings the gitignored `.venv` up to what a fresh install
+resolves, and runs from it**, as GitHub's fresh install does. So use `.venv`
+for a suite or lint run alone. It leaves the machine's shared tools alone.
 
 **`scripts/local-ci.sh` is the gate, and `.github/workflows/ci.yml` calls
 that same file** — it holds no checks of its own, so the two cannot
