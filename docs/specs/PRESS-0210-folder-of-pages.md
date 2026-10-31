@@ -6,8 +6,9 @@
 **Source:** ROADMAP PRESS-0210 (user decision 2026-10-02; one review round
 chosen by the user 2026-10-29).
 
-**Changes:** PRESS-0218 § 3 decision 1, § 4.5 and INV-2; PRESS-0197 § 4.1;
-PRESS-0008 (the forwards a build writes, and `content/`); PRESS-0015
+**Changes:** PRESS-0218 § 3 decision 1, § 4.5 and INV-2; PRESS-0197 §§ 4.1
+and 4.6; PRESS-0008 (the forwards a build writes, what it publishes, and
+`content/`); PRESS-0015
 (`undo._FORWARDS`); PRESS-0005 (one more forwards file); `docs/design.md`
 § What Import brings across. § 11 lists each edit. **Pairs with:** PRESS-0333,
 whose pages come in by this spec's reading.
@@ -86,7 +87,8 @@ def unpack_folder(source: Path, into: Path,
                   room: Callable[[], int]) -> tuple[tuple[str, str], ...]: ...
 def read_folder(folder: Path) -> Found: ...
 def bring_in_folder(folder: Path, into: Path, *,
-                    left: tuple[tuple[str, str], ...] = ()) -> Brought: ...
+                    left: tuple[tuple[str, str], ...] = (),
+                    commit: str = "") -> Brought: ...
 
 @dataclass(frozen=True)
 class Found:
@@ -96,6 +98,7 @@ class Found:
     inside_pages: tuple[str, ...]    # scripts and SVGs a page carries (§ 4.6)
     style: tuple[str, ...]           # stylesheets (§ 4.7)
     left: tuple[tuple[str, str], ...]  # (path, why it will not come across)
+    roots: tuple[str, ...]           # root entries holding a path not in left
     built_by_a_tool: bool            # § 4.3
 
 @dataclass(frozen=True)
@@ -123,12 +126,18 @@ The two offers PRESS-0125 § 4.1 shows gain a second link to it.
 | Step | Shows | Check before Next |
 |------|-------|-------------------|
 | `folder` | How to make a ZIP on Windows and on Linux, and a file box posting to `/import/folder/zip` | a folder is held, and `read_folder` found a page and not `built_by_a_tool` |
-| `found` | § 4.3's counts; every path in `left`; that the site keeps its own look | none |
+| `found` | § 4.3's counts; every path in `left` and in `import/folder-left.json`; that the site keeps its own look | none |
 | `bring` | What Next does, then the Report (§ 4.12) | `bring_in_folder` has written |
 
+The Windows step names Explorer's *Send to*, *Compressed (zipped) folder*.
+`Compress-Archive` on Windows PowerShell 5.1 writes `\` in member names, which
+§ 4.1 refuses; the shell's own ZIP writes `/` (run on the Windows box,
+2026-10-31; refute by listing each ZIP's entries).
+
 The upload goes through `Face.add_upload`, so it is never held in memory. A new
-ZIP replaces `import/folder/`. `unpack_folder`'s answer is kept in
-`import/folder-left.json` and passed to `bring_in_folder` as `left`.
+ZIP replaces `import/folder/` and deletes `import/folder.json`. `unpack_folder`'s
+answer is kept in `import/folder-left.json` and passed to `bring_in_folder` as
+`left`.
 
 ### 4.3 Reading the folder
 
@@ -143,8 +152,13 @@ ZIP replaces `import/folder/`. `unpack_folder`'s answer is kept in
 | `.js` or `.svg`, used as § 4.6 says | inside its page |
 | anything else | `left`, with why |
 
-Names beginning with a dot are `left`, at any depth, and so are `CNAME`,
-a stylesheet nothing links, and a script or SVG § 4.6 cannot carry.
+Names beginning with a dot are `left`, at any depth, and so are `CNAME`, a root
+`404.html`, a stylesheet nothing links, and a script or SVG § 4.6 cannot carry.
+GitHub Pages serves a root `404.html` at every missing address, where a relative
+forward would reload for ever.
+
+A path failing one of § 4.1's tests on size, segment or folded name is `left`
+too, because a repository's paths meet no `unpack_folder`.
 
 **A verification file** is a root `.html` file named `google*`, `yandex_*` or
 `pinterest-*`, or one holding no `<` at all. It is `left`, because it proves
@@ -180,7 +194,10 @@ fragment kept:
 
 1. the file at that path;
 2. that path with `index.html` or `index.htm` joined, where it names a folder;
-3. that path with `.html` or `.htm` added, as GitHub Pages serves it.
+3. that path with `.html` or `.htm` added, as GitHub Pages serves it;
+4. where it began with `/` and its first segment names nothing in the folder,
+   the same three without that segment, as a site served under its repository's
+   name writes it.
 
 What it resolved to decides what is written, from the page's new depth:
 
@@ -190,16 +207,19 @@ What it resolved to decides what is written, from the page's new depth:
 | a photograph or file | `builder.web_photograph` or `builder.web_file` |
 | nothing carried | the same site path from the new depth, and listed |
 
-The last row keeps a link to a file that stays on the repository working.
+The last row keeps a link to a file that stays on the repository working. Where
+the next publish removes that file, § 4.11 names the link.
 
 A page holding a `<base>` element has its addresses left alone, and is listed.
 
 ### 4.6 Scripts and SVG
 
 `<script src>` naming a `.js` file in the folder has the file's text placed
-inside the element, and `src` removed. Where the text holds `</script`, or the
-element has `type="module"`, the element is left as § 4.5 writes it, and the
-file is `left`. Each script carried is listed, once per file.
+inside the element, and `src` removed. An inline script ignores `defer` (run in
+Firefox, 2026-10-31), so an element with `defer` also moves to the end of the
+body, in its order. Where the text holds `</script`, or the element has
+`type="module"`, the element is left as § 4.5 writes it, and the file is `left`.
+Each script carried is listed, once per file.
 
 An address naming an `.svg` file, in an `<img>`'s `src` or a CSS `url(...)`, is
 written as a `data:image/svg+xml;base64,` address. A browser runs no script in
@@ -210,7 +230,10 @@ an image. An SVG over `SVG_LARGEST`, or named in any other way, is `left`.
 Every stylesheet the folder's pages link is joined in the order pages first
 link them, pages taken in path order. An `@import` of a stylesheet in the
 folder is replaced by that sheet's text, each sheet once. A `media` attribute
-wraps its sheet's text in `@media`. Each `url(...)` is read against its own
+wraps its sheet's text in `@media`. An `@import` of an address outside the folder
+moves to the top of the result, that `media` as its own condition, because a
+browser ignores one below another rule (run in Firefox, 2026-10-31). `@charset`
+is dropped. Each `url(...)` is read against its own
 sheet's old path and written from `builder.STYLE_CODE`'s place, by § 4.5's
 rows. A sheet that only some pages link is listed: its rules now reach every
 page.
@@ -239,7 +262,9 @@ those classes no longer applies.
 **A block is shared where it is the most common among pages, and at least half
 hold it.** A page holding the shared block has it replaced by the Builder's
 marker pair, and the text goes to the furniture file. A page holding another
-keeps its own, and is listed. A site with no shared block has none parted out,
+keeps its own, and is listed. Only the furniture files keep `{{UP}}`, because the
+Builder fills it there alone; everywhere else in a page it becomes that page's
+own depth. A site with no shared block has none parted out,
 and that is listed. Its furniture files are still written, from `starter.header`,
 `starter.footer` and `starter.navigation`, as a build needs them.
 
@@ -251,7 +276,9 @@ header makes the header file `{{NAVIGATION}}` alone. Any other shared menu stays
 in each page, and is listed: the Menu screen then edits nothing the site shows.
 
 Each link in the navigation file that resolved to a page gains
-`data-nav="<name>"`. A menu `menu.links` calls `Unusual` is kept as written and
+`data-nav="<name>"`, and each page's header marker has `page="<name>"`, which
+`builder._current` matches. For the front page both hold `Home`, as `menu._nav`
+and `starter.home_page` do. A menu `menu.links` calls `Unusual` is kept as written and
 listed, because new pages will not join it by themselves (`docs/design.md`
 § The menu follows the pages).
 
@@ -265,12 +292,12 @@ none of these decode is `left`.
 Any Builder marker comment or `pressless:page` mark the page holds is removed
 and listed, because the Builder would otherwise fill or read it.
 
-The head keeps its bytes but for § 4.5's addresses, each local stylesheet link
-removed, and one link to `builder.STYLE_CODE` in place of the first.
+The head keeps its bytes but for § 4.5's addresses, § 4.6, each local stylesheet
+link removed, and one link to `builder.STYLE_CODE` in place of the first.
 
 The body keeps its bytes but for § 4.5, § 4.6 and § 4.8's marker pairs. Where
-it has no `<main>`, what lies between the marker pairs is wrapped in a plain
-`<main>`, so `blocks.adopt` can make its area and the visual editor can reach
+it has no `<main>`, what lies between its header and its footer, shared or its
+own, is wrapped in a plain `<main>`, so `blocks.adopt` can make its area and the visual editor can reach
 it. A page with no `<body>` takes `starter.new_page`'s shape, its text as
 `main`, and its title from its first `<h1>`, else its name. Whatever no section
 fits is a code section, kept byte for byte (`docs/design.md` § Pages, and how
@@ -285,9 +312,13 @@ forwards (§ 4.10), photographs, files, templates (`templates.seed`), and
 `store.write_journal(work, False)`.
 
 An identity is written where `into` holds none: its name is the front page's
-`<title>`, its description that page's description `<meta>`. A value
-`store.identity_problem` refuses is left blank. `Brought.roots` names each root
-entry at least one file was carried from.
+`<title>`, its description that page's description `<meta>`, each with its runs
+of whitespace made one space. Where the name is then blank, which
+`store.identity_problem` refuses, no identity is written. `Brought.roots` names
+each root entry at least one file was carried from.
+
+Before `import/moving`, `bring_in_folder` writes `import/brought.json`, holding
+`commit`, `Brought.roots` and the Report (§ 4.11).
 
 ### 4.10 Old addresses (Store and Builder)
 
@@ -314,6 +345,11 @@ the key's path, its link and refresh relative to that path's depth, unless:
 - a file already written folds to the same `casefold()` as the key, because the
   site's own file wins.
 
+`builder.roots_produced(folder)` answers `ROOT_OUTPUT` and the first segment of
+each key. `_refuse_a_folder_it_did_not_make` reads it, or a second build stops
+with `SiteFolderUnusable` at its own `about.html`. `setup.untouchable` reads it,
+so a take-in's list leaves the forwards off.
+
 `sitemap` lists no forward. `_Build.content` carries the file, and
 `undo._FORWARDS` gains it, so a take-in and an undo bring it back.
 
@@ -328,9 +364,9 @@ def bring_folder(folder: Path, settings: Settings, key: str, commit: str, *,
                  capture=..., notices=None, transport=None) -> Brought: ...
 ```
 
-`look_folder` calls `publisher.fetch_state` with prefix `"/"`, which selects the
-whole repository, into `import/folder/`, and answers `read_folder`'s `Found` and
-the commit read. It records that commit in `import/folder.json`.
+`look_folder` empties `import/folder/`, calls `publisher.fetch_state` with prefix
+`"/"`, which selects the whole repository, into it, and answers `read_folder`'s
+`Found` and the commit read. It records that commit in `import/folder.json`.
 
 **pages.** Where `takein.look` says not `made_here`, `look_folder` runs. Where
 `built_by_a_tool`, or where the root holds no `index.html`, the answer is still
@@ -344,25 +380,27 @@ builds a site from, and no write is sent. Otherwise the answers gain
 - the counts;
 - that Finish copies it into Pressless on this computer and changes nothing on
   GitHub;
-- what the next publish will change on GitHub: the old pages become forwards,
-  and each `left` path under a root entry something was carried from is removed,
-  staying in the repository's history;
-- what stays on GitHub untouched: each root entry nothing was carried from,
-  such as `CNAME` or `README.md`.
+- what the next publish will change on GitHub, which is every root entry not on
+  the list Finish will save: the old pages become forwards, and the rest there is
+  replaced or removed, staying in the repository's history. Each `left` path among
+  them is named, and each page link to one;
+- what stays on GitHub untouched: each entry on that list, such as `CNAME` or
+  `README.md`.
+
+**The list** is `untouchable(entries)` without `Found.roots` on this step and
+`Brought.roots` at Finish, compared with `casefold`, so a forward at `about.html`
+is published.
 
 **Finish.** `_save_sequence` takes `bring_in_commit` in the fill's place.
-`bring_folder` lays the folder out again only where `import/folder.json` does
-not name that commit, so what is written is what was shown. The untouchable list
-is `untouchable(entries)` without `Brought.roots`, compared with `casefold`, so
-a forward at `about.html` is published. The done page says the site came in, and
-shows the Report.
+`bring_folder` lays the folder out again only where `import/folder/` is absent or
+`import/folder.json` does not name that commit, so what is written is what was
+shown. The done page says the site came in, and shows the Report.
 
-**A Finish pressed again.** `bring_folder` writes `import/brought.json`, naming
-the commit and holding `Brought.roots` and the Report, once its moves end. Where
-that file names the commit, it writes nothing and answers from the file, so a
-failed Settings save (PRESS-0021 § 4.6) is retried without a second bring. Nothing
-is reversed, which needs no second caller of `store.unplace_photograph`
-(PRESS-0218 INV-12).
+**A Finish pressed again.** Where `store.holds_a_site` and `import/brought.json`
+names the commit, `bring_folder` writes nothing and answers from the file. So a
+failed Settings save (PRESS-0021 § 4.6), or a close during the moves, is retried
+without a second bring. Nothing is reversed, which needs no second caller of
+`store.unplace_photograph` (PRESS-0218 INV-12).
 
 ### 4.12 The Report
 
@@ -370,6 +408,21 @@ is reversed, which needs no second caller of `store.unplace_photograph`
 `left` paths go in `unfetched`, whose `(place, why)` shape is theirs. The Face
 shows it as PRESS-0125 § 4.8 does, through `importing._lines` and `_shown`, and
 writes `import/report.txt`. Its words are `import.report.*` keys.
+
+### 4.13 What a build publishes (amends PRESS-0197 § 4.6)
+
+Today a build publishes a held photograph only where a `picture` or `enlarge`
+section's `src` names it, and a held file only where a section's `src` or `href`
+does. A code section names neither, and most of a brought-in page is code
+sections (§ 4.9). Run on 2026-10-31 over a page adopted by `blocks.adopt`:
+`_held_pictures` and `_held_files` each answered nothing.
+
+So `_Build` also copies each held photograph and file named by any `href`, `src`,
+`srcset`, `poster` or CSS `url(...)`, read from its own place, in a page's text, a
+furniture file's text and the style code. `files_named` reads the same names, so
+PRESS-0197's removal guard sees them. This holds for every site.
+
+A carried file nothing names stays in the Store, is not published, and is listed.
 
 ## 5. Invariants
 
@@ -389,16 +442,19 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
   once built. *Test:*
   `tests/test_importer_folder.py::test_every_address_resolves_once_built` — a
   fixture with pages at the root and in a subfolder, linking each other, a
-  picture and a PDF by relative, root-relative, folder and no-suffix addresses,
-  each with a query or fragment somewhere: after `builder.build`, each such
-  address in each built page resolves to a built file.
-  *Breaks when:* addresses are rewritten without the page's new depth.
+  picture and a PDF by relative, root-relative, repository-name-prefixed, folder
+  and no-suffix addresses, each with a query or fragment somewhere, some inside a
+  `<div>` so in a code section, and by `srcset`, `poster` and a style `url()`: after
+  `builder.build`, each such address in each built page resolves to a built file.
+  *Breaks when:* addresses are rewritten without the page's new depth, or a build
+  publishes only what a section's field names.
 
 - **INV-4** — Each old page address serves something that reaches the page.
   *Test:* `tests/test_builder.py::test_an_old_address_forwards_to_its_page` —
   `about.html` and `team/index.html` each hold a refresh to the page, relative to
-  their own depth.
-  *Breaks when:* the forward's link assumes depth 1, as `page_forwards`' does.
+  their own depth, and a second `builder.build` into the same folder succeeds.
+  *Breaks when:* the forward's link assumes depth 1, as `page_forwards`' does, or
+  the Builder refuses its own forward as a file it did not make.
 
 - **INV-5** — An address forwards file naming a path outside the site is refused,
   and a build follows the page. *Test:*
@@ -424,17 +480,20 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
 - **INV-8** — Every linked stylesheet reaches the style code, and the Look screen
   leaves it alone until a save. *Test:*
   `tests/test_importer_folder.py::test_stylesheets_become_the_style_code` — two
-  sheets, an `@import`, a `media` attribute and a `url()` to a picture: the built
-  stylesheet holds them in order and the picture resolves from `look/style.css`,
-  `look.read` is None, and `/look` shows the state for style code it did not make.
+  sheets, an `@import`, a remote `@import`, a `media` attribute and a `url()` to a
+  picture: the built stylesheet holds them in order with the remote one first, and
+  the picture resolves from `look/style.css`, `look.read` is None, and `/look` shows
+  the state for style code it did not make.
   *Breaks when:* `look.save` is called, which replaces it with a Pressless look.
 
 - **INV-9** — No script or SVG is kept as a file, and neither is lost while it is
   in use as § 4.6 says. *Test:*
   `tests/test_importer_folder.py::test_scripts_and_svgs_are_carried_inside_pages`
-  — a `<script src>`, one holding `</script`, a `type="module"`, an `<img>` SVG, an
-  `<object>` SVG and an unused `.js`: the first runs inline, the fourth is a `data:`
-  address, the rest are `left`, and `store.list_files` holds no `.js` or `.svg`.
+  — a `<script src>` in the head, a `<script defer src>`, one holding `</script`, a
+  `type="module"`, an `<img>` SVG, an `<object>` SVG and an unused `.js`: the first
+  runs inline where it was, the `defer` one inline at the body's end, the `<img>` SVG
+  is a `data:` address, the rest are `left`, and `store.list_files` holds no `.js` or
+  `.svg`.
   *Breaks when:* `builder._FILE_KINDS` gains them, reversing PRESS-0197 § 3
   decision 1.
 
@@ -451,12 +510,13 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
 
 - **INV-12** — A brought-in site published and taken in again keeps its forwards,
   and an undo brings them back. *Test:*
-  `tests/test_takein.py::test_a_brought_in_site_comes_back_with_its_forwards` and
+  `tests/test_takein.py::test_a_brought_in_site_comes_back_with_its_forwards`, with
+  the forwards' paths off the saved untouchable list, and
   `tests/test_undo.py::test_address_forwards_come_back`.
   *Breaks when:* `_Build.content` or `undo._FORWARDS` lacks the file.
 
 - **INV-13** — A repository holding plain pages goes on, and only Pages being
-  switched on is written to GitHub. *Test:*
+  switched on, with its `.nojekyll`, is written to GitHub. *Test:*
   `tests/test_takein.py::test_a_plain_site_goes_on_and_writes_nothing_to_github`.
   *Breaks when:* a step adopts the repository by writing to it.
 
@@ -464,8 +524,10 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
   the *pages* step, and no write is sent. This replaces PRESS-0218 INV-2's
   refusal of every site made elsewhere. *Test:*
   `tests/test_takein.py::test_a_site_made_elsewhere_is_refused`, over one fixture
-  each: Markdown posts under `content/posts/`; `_config.yml`; a page opening
-  `---`; and `.nojekyll` beside a page opening `---`, which goes on.
+  each: Markdown posts under `content/posts/`; `_config.yml` beside `index.md`; an
+  `index.html` opening `---`; and `.nojekyll` beside an `index.html` opening `---`,
+  which goes on. A root holding none of `content`, `index.html` and `index.md` goes
+  on as a new repository (PRESS-0218 § 4.5).
   *Breaks when:* `built_by_a_tool` reads only `_config.yml`, or ignores
   `.nojekyll`.
 
@@ -475,18 +537,21 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
   *Breaks when:* a `left` path is dropped without being named, or the step's body
   writes to the Store.
 
-- **INV-16** — A file nothing was carried from stays on GitHub, and an old page
-  does not. *Test:*
+- **INV-16** — A root entry nothing was carried from stays on GitHub unless the
+  Builder makes that name, and an old page does not. *Test:*
   `tests/test_takein.py::test_what_was_not_carried_stays_untouchable` —
   `CNAME`, `README.md`, a `google123.html` and a `downloads/` of `.exe` files stay on
-  the list; `about.html`, `images/` and `team/` are not on it; and a publish to the
+  the list; `about.html`, `images/`, `team/` and a left `sitemap.xml` are not on it,
+  and the *site* step says the last is replaced; and a publish to the
   recording double updates `about.html` to its forward and leaves `CNAME` alone.
   *Breaks when:* the list is `untouchable(entries)` unchanged, so `about.html` keeps
   its old page for good.
 
-- **INV-17** — Finish pressed again after a failed Settings save brings nothing
-  in twice. *Test:* `tests/test_takein.py::test_finish_again_saves_without_a_second_bring`
-  — failing the save once: the second press sends no fetch, and Settings saves.
+- **INV-17** — Finish pressed again after a failed Settings save, or after a close
+  during the moves, brings nothing in twice. *Test:*
+  `tests/test_takein.py::test_finish_again_saves_without_a_second_bring` — failing the
+  save once, and in a second run stopping at the moves and calling
+  `pressless_import.finish`: the next press sends no fetch, and Settings saves.
   *Breaks when:* a second press is stopped by `store.holds_a_site`.
 
 - **INV-18** — What Pressless shows of a folder is escaped. *Test:*
@@ -519,10 +584,10 @@ writes `import/report.txt`. Its words are `import.report.*` keys.
 | The ZIP is not a ZIP, or holds no page | `folder` step says so; nothing is kept |
 | The ZIP is larger than the drive's room | Refused before anything is unpacked; nothing is kept |
 | A member cannot be held on Windows | Not unpacked on any system, and listed (§ 4.1) |
-| A repository path cannot be held on Windows | `UnfetchablePath` from `fetch_state`; the *pages* step is a `Stop` (PRESS-0009 § 4.5) |
+| A repository path cannot be held on Windows | On Windows, `UnfetchablePath` from `fetch_state`, and the *pages* step is a `Stop` (PRESS-0009 § 4.5); elsewhere `left` (§ 4.3) |
 | The fetch fails part-way | Nothing lands (PRESS-0218 INV-10); the *pages* step or Finish is a `Stop` |
 | The held folder has gone before Finish | `bring_folder` fetches `bring_in_commit` again; `RemoteStateMissing` is a `Stop` saying to go Back |
-| Pressless closes during the moves | The next start finishes them (PRESS-0125 § 4.7) |
+| Pressless closes during the moves | The next start finishes them (PRESS-0125 § 4.7); Finish then answers from `import/brought.json` (INV-17) |
 | A Settings save fails after the bring | Finish can be pressed again (INV-17) |
 | The user presses Back and chooses another repository after the bring | `ImportStopped`, a `Stop`: the Store holds a site |
 | A page's CSS relied on `body > *`, so the added `<main>` changes it | Not detected; the hand check in § 10 looks at this |
@@ -603,12 +668,16 @@ in a browser; and § 4.2's ZIP steps read on Windows and on Linux.
   § 4.5's *pages* refusal becomes § 4.11 here; INV-2 is annotated as narrowed by
   INV-14 here, its test keeping its name.
 - **PRESS-0197 § 4.1** gains `.woff`, `.woff2`, `.ttf`, `.otf` and `.ico`, each checked by
-  its opening bytes. § 3 decision 1 is unchanged.
-- **PRESS-0008**: a build writes address forwards (§ 4.10), and `content/` carries
-  their file.
+  its opening bytes, served as `face._FILE_TYPES` says, which gains `font/ttf` and
+  `font/otf`, and chosen by no section. § 3 decision 1 is unchanged.
+- **PRESS-0197 § 4.6**: what a page names widens as § 4.13 here says.
+- **PRESS-0008**: a build writes address forwards, `roots_produced` joins
+  `ROOT_OUTPUT` (§ 4.10), a build publishes as § 4.13 says, and `content/` carries
+  the forwards' file.
 - **PRESS-0015**: `undo._FORWARDS` gains the file.
 - **PRESS-0005**: the Store gains the file and its three calls.
 - **PRESS-0212 § 4.4**: the *pages* and *site* steps gain § 4.11's words.
+- **PRESS-0021 § 4.7**: the list is derived against `builder.roots_produced`.
 - **PRESS-0021 § 4.9**: setup also writes the Store through `takein.bring_folder`.
 - **`docs/design.md` § What Import brings across**, the folder bullet: a script and
   an SVG are carried inside the pages, not as added files, and an old address
