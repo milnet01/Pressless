@@ -163,7 +163,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
         # PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a
         # build filling one would be dropped in silence.
         kept = {name.rstrip("/").casefold(): name.rstrip("/") for name in settings.untouchable}
-        produced = {name.casefold() for name in builder.ROOT_OUTPUT}
+        produced = {name.casefold() for name in builder.roots_produced(folder)}
         for child in sorted(settings.site_folder.iterdir()):
             if child.name.casefold() in produced and child.name.casefold() in kept:
                 folder_name = kept[child.name.casefold()]

@@ -396,7 +396,8 @@ def test_setup_works_on_an_empty_install(
     it holds a site and the identity it writes, with the starter box
     unticked. PRESS-0126 § 4.4 lets setup read the first, to offer the starter
     site; PRESS-0213 § 4.6 has it check and write the second, and PRESS-0227
-    § 4.2 read it first, to keep the pictures a carried Store names."""
+    § 4.2 read it first, to keep the pictures a carried Store names. PRESS-0210
+    § 4.10 has the untouchable list read the old addresses a build forwards."""
     touched: list[str] = []
 
     def refuse(name: str):
@@ -408,7 +409,8 @@ def test_setup_works_on_an_empty_install(
     for name, function in inspect.getmembers(store, inspect.isfunction):
         if (not name.startswith("_") and function.__module__ == store.__name__
                 and name not in ("holds_a_site", "identity_problem", "write_identity",
-                                 "identity_path_for", "read_identity")):
+                                 "identity_path_for", "read_identity",
+                                 "read_address_forwards", "address_forwards_path_for")):
             monkeypatch.setattr(store, name, refuse(name))
     _Store(monkeypatch)
 

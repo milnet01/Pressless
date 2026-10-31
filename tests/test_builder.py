@@ -1689,7 +1689,9 @@ def test_named_files_are_published_byte_for_byte(tmp_path):
     build(folder, _settings(), into)
     published = [name for name in _files(into)
                  if name.split("/")[0] in ("files", "photographs")]
-    assert published == ["files/a.mp3", "files/b.pdf"], published
+    # PRESS-0210 § 4.13 reversed PRESS-0197 § 4.6's picture-only rule: a download
+    # naming a held photograph publishes it, where its link used to reach nothing.
+    assert published == ["files/a.mp3", "files/b.pdf", "photographs/p.jpg"], published
     assert (into / "files" / "a.mp3").read_bytes() == song
 
     _kept_file(folder, "a.mp3", b"%PDF- no longer music")
@@ -1820,3 +1822,117 @@ def test_a_missing_icon_stops_the_build(tmp_path):
                        match="the photograph gone.png is not in the photographs folder"):
         build(folder, _settings(), tmp_path / "site")
     assert not (tmp_path / "site").exists()
+
+
+# -- PRESS-0210: old addresses, what a build publishes, and more kept kinds --
+
+
+def _plain_pages(*names: str) -> dict[str, str]:
+    return {name: f"<html><body>\n<p>{name}</p>\n</body></html>\n" for name in names}
+
+
+def test_an_old_address_forwards_to_its_page(tmp_path):
+    """PRESS-0210 INV-4: a forward at each old path, its refresh relative to
+    its own depth, and a second build into the same folder succeeds.
+
+    Breaks when the link assumes depth 1, as page_forwards' does, or the
+    Builder refuses its own forward as a file it did not make."""
+    folder = _store(tmp_path, pages=_plain_pages("index", "about", "team"))
+    store.write_address_forwards(folder, {"about.html": "about", "team/index.html": "team",
+                                          "default.htm": "index"})
+    into = tmp_path / "site"
+    built = build(folder, _settings(), into)
+
+    def refresh(path: str) -> str:
+        return re.search(r'content="0; url=([^"]+)"',
+                         (into / path).read_text(encoding="utf-8")).group(1)
+
+    assert refresh("about.html") == "pages/about.html"
+    assert refresh("team/index.html") == "../pages/team.html"
+    assert refresh("default.htm") == "index.html"
+    assert "about.html" in built.files
+    assert "about.html" not in (into / "sitemap.xml").read_text(encoding="utf-8").replace(
+        "pages/about.html", "")
+
+    build(folder, _settings(), into)
+    assert (into / "team/index.html").is_file()
+
+
+def test_an_old_address_follows_the_page(tmp_path):
+    """PRESS-0210 INV-5: a renamed target forwards to its new name, a removed
+    one writes nothing, and a page whose own file is the key keeps it.
+
+    Breaks when a forward links to nothing or overwrites a page."""
+    folder = _store(tmp_path, pages=_plain_pages("index", "about-us"))
+    store.write_page_forwards(folder, {"about": "about-us"})
+    store.write_address_forwards(folder, {"about.html": "about", "gone.html": "gone",
+                                          "pages/about-us.html": "index"})
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+
+    assert "url=pages/about-us.html" in (into / "about.html").read_text(encoding="utf-8")
+    assert not (into / "gone.html").exists()
+    assert "<p>about-us</p>" in (into / "pages/about-us.html").read_text(encoding="utf-8")
+
+
+def test_a_build_still_refuses_a_file_it_did_not_make(tmp_path):
+    """PRESS-0210 § 4.10. Breaks when roots_produced admits anything but the
+    forwards' own first segments."""
+    folder = _store(tmp_path, pages=_plain_pages("index", "about"))
+    store.write_address_forwards(folder, {"about.html": "about"})
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    (into / "mine.txt").write_text("his", encoding="utf-8")
+    with pytest.raises(builder.SiteFolderUnusable):
+        build(folder, _settings(), into)
+    assert builder.roots_produced(folder) == (*ROOT_OUTPUT, "about.html")
+
+
+def _small_png() -> bytes:
+    held = io.BytesIO()
+    Image.new("RGB", (2, 2), "red").save(held, "PNG")
+    return held.getvalue()
+
+
+def test_a_build_publishes_what_any_address_names(tmp_path):
+    """PRESS-0210 § 4.13: a held photograph and file named by href, src, srcset,
+    poster or url(), in a code section, the furniture or the style code, query
+    and all, are published; one nothing names is not.
+
+    Breaks when a build publishes only what a section's field names."""
+    page = ('<html><head><title>t</title></head><body>\n<main>\n<div>'
+            '<img src="photographs/in-src.png?v=2" srcset="photographs/in-srcset.png 2x">'
+            '<video poster="photographs/in-poster.png"></video>'
+            '<a href="files/in-href.pdf#page=2">pdf</a>'
+            '<p style="background:url(\'photographs/in-style.png\')">x</p>'
+            '</div>\n</main>\n</body></html>\n')
+    folder = _store(tmp_path, pages={"index": page})
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation",
+                     '<nav><a href="{{UP}}files/in-nav.pdf">x</a></nav>')
+    store.write_style_code(folder, "body{background:url(../photographs/in-css.png)}")
+    names = ("in-src", "in-srcset", "in-poster", "in-style", "in-css", "unnamed")
+    for name in names:
+        target = store.photograph_path_for(folder, f"{name}.png")
+        target.parent.mkdir(exist_ok=True)
+        target.write_bytes(_small_png())
+    for name in ("in-href", "in-nav", "unused"):
+        target = store.file_path_for(folder, f"{name}.pdf")
+        target.parent.mkdir(exist_ok=True)
+        target.write_bytes(b"%PDF-1.4\n")
+
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+
+    assert {p.name for p in (into / "photographs").iterdir()} == {
+        f"{name}.png" for name in names[:-1]}
+    assert {p.name for p in (into / "files").iterdir()} == {"in-href.pdf", "in-nav.pdf"}
+    assert set(builder.files_named(folder)) == {"in-href.pdf", "in-nav.pdf"}
+
+
+@pytest.mark.parametrize(("suffix", "opening"), [
+    (".woff", b"wOFF"), (".woff2", b"wOF2"), (".ttf", b"\x00\x01\x00\x00"),
+    (".ttf", b"true"), (".otf", b"OTTO"), (".ico", b"\x00\x00\x01\x00")])
+def test_font_and_icon_kinds_are_checked_by_content(suffix, opening):
+    """PRESS-0210 INV-21. Breaks when the suffix alone decides."""
+    assert builder.file_allowed(f"a{suffix}", opening + b"rest")
+    assert not builder.file_allowed(f"a{suffix}", b"plain text, not that kind")

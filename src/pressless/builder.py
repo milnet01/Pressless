@@ -196,6 +196,12 @@ _FILE_KINDS = {
     ".pdf": lambda d: d[:5] == b"%PDF-",
     ".zip": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06"),
     ".txt": _utf8_text,
+    # PRESS-0210 § 3 decision 10: a brought-in site's fonts and icon.
+    ".woff": lambda d: d[:4] == b"wOFF",
+    ".woff2": lambda d: d[:4] == b"wOF2",
+    ".ttf": lambda d: d[:4] in (b"\x00\x01\x00\x00", b"true"),
+    ".otf": lambda d: d[:4] == b"OTTO",
+    ".ico": lambda d: d[:4] == b"\x00\x00\x01\x00",
 }
 
 
@@ -218,7 +224,7 @@ def build(folder: Path, settings: Settings, into: Path, *,
     (PRESS-0123 §4.2)."""
     folder = Path(folder)
     today = today or date.today()
-    return _replace(Path(into), publishing=photo_src is None,
+    return _replace(Path(into), folder, publishing=photo_src is None,
                     write=lambda new: _Build(folder, settings, new, photo_src, change, today).run())
 
 
@@ -236,7 +242,7 @@ def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
         page.entry_page(entry)
         return page.files[0]
 
-    return _replace(Path(into), False, write)
+    return _replace(Path(into), folder, False, write)
 
 
 def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
@@ -269,12 +275,20 @@ def preview_html(folder: Path, settings: Settings, into: Path, change: Html, *,
             raise BuildStopped(f"there is no page {show} to show the change on")
         return page.files[0]
 
-    return _replace(Path(into), False, write)
+    return _replace(Path(into), folder, False, write)
 
 
-def _replace(into: Path, publishing: bool, write):
+def roots_produced(folder: Path) -> tuple[str, ...]:
+    """What a build of the Store at `folder` may put at the site's root:
+    ROOT_OUTPUT, and the first segment of each old address it forwards
+    (PRESS-0210 § 4.10)."""
+    forwarded = {path.split("/")[0] for path in store.read_address_forwards(folder)}
+    return (*ROOT_OUTPUT, *sorted(forwarded - set(ROOT_OUTPUT)))
+
+
+def _replace(into: Path, folder: Path, publishing: bool, write):
     """§4.8's order around `write`, which fills the new folder and returns what
-    the caller hands back."""
+    the caller hands back. `folder` is the Store, which says what a build makes."""
     shown = "the site folder" if publishing else "the preview folder"
     if into.is_symlink():
         # The real folder is what is replaced; renaming the link itself away
@@ -288,7 +302,7 @@ def _replace(into: Path, publishing: bool, write):
     try:
         if not into.exists() and old.is_dir():
             os.rename(old, into)
-        _refuse_a_folder_it_did_not_make(into, shown)
+        _refuse_a_folder_it_did_not_make(into, shown, roots_produced(folder))
         if new.exists() or new.is_symlink():
             _remove(new)
         if into.exists() and (old.exists() or old.is_symlink()):
@@ -331,7 +345,7 @@ def _remove(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def _refuse_a_folder_it_did_not_make(into: Path, shown: str) -> None:
+def _refuse_a_folder_it_did_not_make(into: Path, shown: str, produced: tuple[str, ...]) -> None:
     """§4.8: a folder Settings was pointed at by mistake is not one the Builder
     made, and replacing it would delete what he keeps there."""
     if not into.exists():
@@ -339,7 +353,7 @@ def _refuse_a_folder_it_did_not_make(into: Path, shown: str) -> None:
     if not into.is_dir():
         raise SiteFolderUnusable(f"{shown} is a file, not a folder")
     for child in sorted(into.iterdir()):
-        if child.name not in ROOT_OUTPUT:
+        if child.name not in produced:
             raise SiteFolderUnusable(
                 f"{shown} holds {child.name}, which Pressless does not make, "
                 f"so the folder was left as it is")
@@ -528,15 +542,39 @@ def _site_place(relative: str, address: str) -> str | None:
     return unquote(parts.path)
 
 
+# PRESS-0210 § 4.13: every place HTML or CSS names a file by address.
+_ADDRESS_ATTR = re.compile(r"""\b(?:href|src|poster)\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.I)
+_SRCSET_ATTR = re.compile(r"""\bsrcset\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.I)
+_CSS_URL = re.compile(r"""\burl\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))\s*\)""", re.I)
+
+
+def _named_by_any_address(relative: str, text: str, prefix: str, held: set[str]) -> list[str]:
+    """The names in `held` that any address in `text`, read from `relative`,
+    reaches under `prefix`, a code section's among them. A query or fragment
+    is no part of the file named, and the address is decoded as a browser
+    decodes it."""
+    written = [next(filter(None, found.groups()), "")
+               for pattern in (_ADDRESS_ATTR, _CSS_URL) for found in pattern.finditer(text)]
+    for found in _SRCSET_ATTR.finditer(text):
+        for candidate in (found.group(1) or found.group(2) or "").split(","):
+            written.extend(candidate.split()[:1])
+    names = []
+    for address in written:
+        place = _site_place(relative, html.unescape(address).split("#")[0].split("?")[0])
+        if place and place.startswith(prefix) and place[len(prefix):] in held:
+            names.append(place[len(prefix):])
+    return list(dict.fromkeys(names))
+
+
 def _named(relative: str, text: str, subfolder: str, held: set[str],
            kinds: tuple[str, ...] | None, fields: tuple[str, ...]) -> list[str]:
     """The names in `held` that the page's sections of `kinds` (None: every
     kind) address under `subfolder` by one of `fields`."""
+    prefix = f"/{subfolder}/"
+    found = _named_by_any_address(relative, text, prefix, held)
     page = blocks.read(relative, text)
     if page is None:
-        return []
-    found = []
-    prefix = f"/{subfolder}/"
+        return found
 
     def walk(sections) -> None:
         for section in sections:
@@ -580,7 +618,7 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
     named: dict[str, list[str]] = {}
     texts: list[tuple[str, str, str]] = []
     for waiting in (False, True):
-        for name in ("header", "footer"):
+        for name in store.FURNITURE_NAMES:
             path = store.html_path_for(folder, store.FURNITURE_FOLDER, name, waiting=waiting)
             if path.is_file():
                 texts.append((name, "index.html",
@@ -589,6 +627,9 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
             path = store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=waiting)
             relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
             texts.append((name, relative, store.read_html(path)))
+    style_code = store.read_style_code(folder)
+    if style_code is not None:
+        texts.append((store.LOOK_FOLDER, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
     for page, relative, text in texts:
         for held in _held_files(folder, relative, text):
             pages = named.setdefault(held, [])
@@ -662,20 +703,13 @@ class _Build:
 
     def set_furniture(self, furniture: dict[str, str]) -> None:
         identity = store.read_identity(self.folder) or store.Identity("")
-        held = {}
-        for name in ("header", "footer"):
-            text = furniture[name]
-            # PRESS-0216 § 4.2: its held photographs are published as a
-            # page's are, {{UP}} being the site's root.
-            if self.publishing:
-                for photograph in _held_pictures(self.folder, "index.html",
-                                                 text.replace("{{UP}}", ""),
-                                                 self.held_photographs):
-                    self.web_copy(photograph)
-                for kept in _held_files(self.folder, "index.html", text.replace("{{UP}}", ""),
-                                        self.held_files):
-                    self.file_copy(kept)
-            held[name] = text if self.marked == name else blocks.unmarked(name, text)
+        # PRESS-0216 § 4.2: furniture's held photographs are published as a
+        # page's are, {{UP}} being the site's root; PRESS-0210 § 4.13 adds the menu's.
+        if self.publishing:
+            for text in furniture.values():
+                self.copy_what_is_named("index.html", text.replace("{{UP}}", ""))
+        held = {name: furniture[name] if self.marked == name
+                else blocks.unmarked(name, furniture[name]) for name in ("header", "footer")}
         self.furniture_pieces = any(_has_piece(furniture[name]) for name in ("header", "footer"))
         self.furniture = _Furniture(held["header"], furniture["navigation"],
                                     held["footer"], self.today.year, identity)
@@ -751,10 +785,21 @@ class _Build:
         self.sitemap(sorted(pages), shown, journal)
         style_code = store.read_style_code(self.folder)
         if style_code is not None:
+            if self.publishing:
+                self.copy_what_is_named(STYLE_CODE, style_code)
             self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
         if self.pieces_linked:
             self.write_text(PIECES_SCRIPT, blocks.PIECES_SCRIPT)
+        self.address_forwards(pages)
         return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
+
+    def copy_what_is_named(self, relative: str, text: str) -> None:
+        """Publish each held photograph and file `text`, read from `relative`,
+        names (PRESS-0260 § 4.6, PRESS-0197 § 4.6, PRESS-0210 § 4.13)."""
+        for held in _held_pictures(self.folder, relative, text, self.held_photographs):
+            self.web_copy(held)
+        for held in _held_files(self.folder, relative, text, self.held_files):
+            self.file_copy(held)
 
     def fixed_page(self, name: str, text: str, *, marks: bool = False) -> None:
         """Published without its section marks (PRESS-0215 § 4.7), for the
@@ -763,10 +808,7 @@ class _Build:
         depth = 0 if name == "index" else 1
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
         if self.publishing:
-            for held in _held_pictures(self.folder, relative, text, self.held_photographs):
-                self.web_copy(held)
-            for held in _held_files(self.folder, relative, text, self.held_files):
-                self.file_copy(held)
+            self.copy_what_is_named(relative, text)
         filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
                                   self.furniture)
         self.write_text(relative, self.counted(self.identified(self.enhanced(
@@ -1158,6 +1200,36 @@ class _Build:
 </html>
 """)
 
+    def address_forwards(self, pages: dict[str, str]) -> None:
+        """PRESS-0210 § 4.10: a page at each brought-in page's old path, sending
+        readers on from its own depth. None where the page has gone, or where a
+        file the build wrote holds that path: the site's own file wins. Runs
+        last of the pages, so every file it could meet is written."""
+        address = self.settings.site_address.rstrip("/")
+        renamed = store.read_page_forwards(self.folder)
+        written = {name.casefold() for name in self.files}
+        for old, name in sorted(store.read_address_forwards(self.folder).items()):
+            target = renamed.get(name, name)
+            if target not in pages or old.casefold() in written:
+                continue
+            place = ("index.html" if target == "index"
+                     else f"pages/{target}{store.HTML_SUFFIX}")
+            link = "../" * old.count("/") + place
+            title = html.escape(label(target))
+            self.write_text(old, f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="canonical" href="{html.escape(address)}/{place}">
+<meta http-equiv="refresh" content="0; url={link}">
+</head>
+<body>
+<p>This page has moved to <a href="{link}">{title}</a>.</p>
+</body>
+</html>
+""")
+
     # -- content/ (§4.7) --
 
     def content(self) -> None:
@@ -1177,6 +1249,8 @@ class _Build:
             paths.append(store.forwards_path_for(self.folder))   # PRESS-0182, for undo
         if store.page_forwards_path_for(self.folder).is_file():
             paths.append(store.page_forwards_path_for(self.folder))  # PRESS-0195, for undo
+        if store.address_forwards_path_for(self.folder).is_file():
+            paths.append(store.address_forwards_path_for(self.folder))  # PRESS-0210, for undo
         if store.options_path_for(self.folder).is_file():
             paths.append(store.options_path_for(self.folder))    # PRESS-0214, for undo
         if store.identity_path_for(self.folder).is_file():

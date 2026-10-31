@@ -121,12 +121,16 @@ IMPORT = "/import"                    # PRESS-0125: the Import wizard, one of th
 _HOLDS_A_SITE = frozenset({"content", *publishing.A_SITE})
 
 
-def untouchable(root: Iterable[str], kept: Iterable[str] = ()) -> tuple[str, ...]:
+def untouchable(root: Iterable[str], kept: Iterable[str] = (),
+                folder: Path | None = None) -> tuple[str, ...]:
     """The root entries the Builder does not produce, compared with casefold
     on both sides (§ 4.7, PRESS-0009 § 4.4), and each entry of `kept` the root
     still holds, so a folder kept before the Builder took its name stays kept
-    (PRESS-0197 § 4.7). ROOT_OUTPUT is read at call time, never copied."""
-    produced = {name.casefold() for name in builder.ROOT_OUTPUT}
+    (PRESS-0197 § 4.7). ROOT_OUTPUT is read at call time, never copied. With
+    `folder`, the Store's old-address forwards count as produced (PRESS-0210
+    § 4.10)."""
+    made = builder.ROOT_OUTPUT if folder is None else builder.roots_produced(folder)
+    produced = {name.casefold() for name in made}
     keep = {name.rstrip("/").casefold() for name in kept}
     return tuple(sorted(e for e in root if e.rstrip("/").casefold() not in produced - keep))
 
@@ -335,7 +339,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
             return render_notices(filling) + fill_failure
 
     # Step 5: save, last.
-    final = dataclasses.replace(candidate, untouchable=untouchable(entries, kept))
+    final = dataclasses.replace(candidate, untouchable=untouchable(entries, kept, folder))
     with face.capture() as notices:
         try:
             settings.save(folder, final)

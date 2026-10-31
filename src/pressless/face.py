@@ -460,6 +460,8 @@ _FILE_TYPES = {
     ".ico": "image/x-icon",
     ".woff2": "font/woff2",
     ".woff": "font/woff",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
     # PRESS-0197 § 4.1: the kept files' kinds.
     ".mp3": "audio/mpeg",
     ".ogg": "audio/ogg",

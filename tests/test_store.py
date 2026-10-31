@@ -1990,3 +1990,27 @@ def test_write_identity_refuses_a_bad_name(tmp_path):
     assert store_module.identity_problem(store_module.Identity(" ")) == "name"
     assert store_module.identity_problem(store_module.Identity("A", "x\ny")) == "description"
     assert store_module.identity_problem(store_module.Identity("A", "")) is None
+
+
+@pytest.mark.parametrize("key", ["../x.html", "/x.html", "a/../x.html", "x.png", "a//x.html",
+                                 "a\\x.html", "con/x.html", ""])
+def test_address_forwards_refuse_a_path_outside_the_site(tmp_path, key):
+    """PRESS-0210 INV-5. Breaks when the Builder could join a key to the site
+    folder unchecked."""
+    target = store_module.address_forwards_path_for(tmp_path)
+    target.parent.mkdir(parents=True)
+    target.write_text(json.dumps({key: "about"}), encoding="utf-8")
+    with pytest.raises(store_module.StoreError):
+        store_module.read_address_forwards(tmp_path)
+
+
+def test_address_forwards_read_back(tmp_path):
+    """PRESS-0210 § 4.10: an old path, nested or not, maps to a page, the
+    front page included; a name no page can have is refused."""
+    assert store_module.read_address_forwards(tmp_path) == {}
+    forwards = {"about.html": "about", "team/first post.htm": "index"}
+    store_module.write_address_forwards(tmp_path, forwards)
+    assert store_module.read_address_forwards(tmp_path) == forwards
+    store_module.write_address_forwards(tmp_path, {"about.html": "Not A Name"})
+    with pytest.raises(store_module.StoreError):
+        store_module.read_address_forwards(tmp_path)

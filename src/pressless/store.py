@@ -720,6 +720,7 @@ FILES_FOLDER = "files"               # PRESS-0197: uploads that are not photogra
 FORWARDS_FOLDER = "forwards"         # PRESS-0182: an old address -> the one it forwards to
 FORWARDS_FILE = "forwards.json"
 PAGE_FORWARDS_FILE = "pages.json"    # PRESS-0195: a renamed page's old name -> its new one
+ADDRESS_FORWARDS_FILE = "addresses.json"   # PRESS-0210: a brought-in page's old path -> its name
 OPTIONS_FOLDER = "options"           # PRESS-0214: site-wide switches; absent means every default
 OPTIONS_FILE = "options.json"
 LOOK_FOLDER = "look"                 # PRESS-0126: the site's own style code
@@ -1021,9 +1022,36 @@ def write_page_forwards(folder: Path, forwards: dict[str, str]) -> Path:
     return _write_mapping(folder, page_forwards_path_for(folder), forwards)
 
 
-def _read_mapping(target: Path, check) -> dict[str, str]:
+def address_forwards_path_for(folder: Path) -> Path:
+    """Where a brought-in page's old addresses sit (PRESS-0210 § 4.10)."""
+    return Path(folder) / FORWARDS_FOLDER / ADDRESS_FORWARDS_FILE
+
+
+def _check_old_address(path: str) -> None:
+    """A path a forward may be written at: relative, a page's suffix, and each
+    segment one name the Store would keep, so it cannot leave the site."""
+    if not path.casefold().endswith((".html", ".htm")):
+        raise StoreError(f"{path!r} is not the address of a page")
+    for segment in path.split("/"):
+        _single_name(segment, "a file")
+
+
+def read_address_forwards(folder: Path) -> dict[str, str]:
+    """Each brought-in page's old path, from the site's root, mapped to the
+    page's name; {} where there is no file (PRESS-0210 § 4.10)."""
+    return _read_mapping(address_forwards_path_for(folder), _check_old_address,
+                         lambda name: html_path_for(folder, PAGES_FOLDER, name))
+
+
+def write_address_forwards(folder: Path, forwards: dict[str, str]) -> Path:
+    """Replace the address forwards file whole, keys sorted (PRESS-0210 § 4.10)."""
+    return _write_mapping(folder, address_forwards_path_for(folder), forwards)
+
+
+def _read_mapping(target: Path, check, check_new=None) -> dict[str, str]:
     """A forwards file: a JSON object of names, each put to `check`, none
-    mapped to itself."""
+    mapped to itself. `check_new` checks a value where it differs in kind
+    from its key."""
     carried = _read_json(target)
     if carried is _NO_FILE:
         return {}
@@ -1033,7 +1061,7 @@ def _read_mapping(target: Path, check) -> dict[str, str]:
     for old, new in carried.items():
         try:
             check(old)
-            check(new)
+            (check_new or check)(new)
         except StoreError as exc:
             raise StoreError(f"{target.name}: {exc}") from None
         if old == new:

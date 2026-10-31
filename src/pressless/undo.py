@@ -161,6 +161,9 @@ _FORWARDS = {
     store.PAGE_FORWARDS_FILE: _ForwardsFile(store.page_forwards_path_for,
                                             store.read_page_forwards,
                                             store.write_page_forwards),
+    store.ADDRESS_FORWARDS_FILE: _ForwardsFile(store.address_forwards_path_for,
+                                               store.read_address_forwards,
+                                               store.write_address_forwards),
 }
 
 

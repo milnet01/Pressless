@@ -807,3 +807,25 @@ def test_undo_restores_the_look_as_one_unit(tmp_path):
         kept = [w for w in caught if isinstance(w.message, store.StoreNotice)
                 and w.message.key == "notice.undo.look_kept"]
         assert bool(kept) is (case == "unreadable"), case
+
+
+def test_address_forwards_come_back(tmp_path):
+    """PRESS-0210 INV-12: a fetched state holding addresses.json leaves the
+    Store's address forwards equal to it, and a build carries the file.
+
+    Breaks when _Build.content or undo._FORWARDS lacks the file."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_address_forwards(folder, {"x.html": "index"})
+    scratch = tmp_path / "previous-addresses"
+    scratch.mkdir()
+    fetched = store.write_address_forwards(scratch, {"about.html": "index"}).read_bytes()
+    files = {**_furnished(tmp_path), **_content(tmp_path, published=(_entry("seaside"),)),
+             "content/forwards/addresses.json": fetched}
+
+    _undo(folder, _previous(files))
+
+    assert store.read_address_forwards(folder) == {"about.html": "index"}
+    into = tmp_path / "built"
+    builder.build(folder, _settings(tmp_path), into)
+    assert (into / "content/forwards/addresses.json").is_file()

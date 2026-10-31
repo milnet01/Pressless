@@ -846,6 +846,8 @@ _PRESS_0213_SURFACE = {"IDENTITY_FOLDER", "IDENTITY_FILE", "Identity", "identity
                        "identity_problem", "read_identity", "write_identity"}
 _PRESS_0195_SURFACE = {"PAGE_FORWARDS_FILE", "page_forwards_path_for",
                        "read_page_forwards", "write_page_forwards"}
+_PRESS_0210_SURFACE = {"ADDRESS_FORWARDS_FILE", "address_forwards_path_for",
+                       "read_address_forwards", "write_address_forwards"}
 _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
                        "read_style_code", "write_style_code", "holds_a_site"}
 # copy_to_bin reaches only _BINNABLE's folders, which photographs/ is not.
@@ -956,7 +958,7 @@ def test_photographs_stay_where_they_are(tmp_path):
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
                         | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE
-                        | _PRESS_0197_SURFACE | _PRESS_0218_SURFACE)
+                        | _PRESS_0197_SURFACE | _PRESS_0218_SURFACE | _PRESS_0210_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
