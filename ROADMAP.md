@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=334 -->
+<!-- ants-roadmap-id-high-water: PRESS=335 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -5536,6 +5536,9 @@ it can then be changed.
   that includes a plain folder of HTML pages, not only WordPress
   (docs/discovery.md S13). Design after PRESS-0198 settles how pages
   and the look are held.
+  Spec reviewed 2026-10-31: one round, the user's budget. 21 findings
+  fixed, none deferred (commit 8ab96ff). No lane read those fixes; the
+  build is their reader.
   **Layman:** Someone whose site is a folder of web pages, not WordPress, can bring it into Pressless and edit every part of it.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
@@ -12350,6 +12353,15 @@ already-built code ships in whichever release comes next.
   Kind: review-fix.
   Source: review-contract PRESS-0231 row 2, 2026-10-23.
   Lanes: Setup, Publisher.
+
+- 📋 [PRESS-0335] **Import takes a folder from the browser's folder chooser, not only a ZIP.**
+  PRESS-0210 § 3 decision 6 hands a folder over as a ZIP, because
+  Face.add_upload takes one file per request. A folder chooser needs a
+  new upload shape, and lays the same import/folder/ out.
+  **Layman:** Someone bringing in a folder of web pages picks the folder itself, without first making a ZIP of it.
+  Kind: enhancement.
+  Source: spec-PRESS-0210-2026-10-31.
+  Lanes: Import, Face.
 
 ## Milestones
 

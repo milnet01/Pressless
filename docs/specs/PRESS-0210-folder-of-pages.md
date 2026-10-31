@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0210 — Import takes in a site that is a folder of web pages
 
-**Status:** spec draft (2026-10-31).
+**Status:** accepted (2026-10-31). Gated for one round, the user's budget for a new spec; every verified finding fixed, and no lane read the fixes.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0210 (user decision 2026-10-02; one review round
 chosen by the user 2026-10-29).
