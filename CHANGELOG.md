@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Setup can take over a site GitHub Actions builds, in the same repository** (PRESS-0333)
+  Pressless downloads the live site and brings it in, changing nothing on GitHub. It says what will change first. The first publish has you remove the build file on GitHub's own page, publishes, and switches GitHub Pages. The address and any custom domain stay, and you are told afterwards what changed.
+
 - **A site that is a folder of web pages comes into Pressless** (PRESS-0210)
   Hand over a ZIP, or choose a GitHub repository holding plain pages. Each page becomes a page you can edit, the header, footer and menu they share become single copies, and the stylesheets become the style code. Old addresses forward to their new pages. You are told what will come across before anything is written, and item by item afterwards.
 

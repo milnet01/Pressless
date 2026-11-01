@@ -6007,7 +6007,7 @@ it can then be changed.
   Kind: doc-fix.
   Source: review-readability-2026-10-23.
 
-- 🚧 [PRESS-0333] **Setup takes over a site that GitHub Actions builds, in the same repository.**
+- ✅ [PRESS-0333] **Setup takes over a site that GitHub Actions builds, in the same repository.**
   Split out of PRESS-0218 by the user 2026-10-23, so that spec stays
   small. Such a site's pages are not files in the repository, so taking
   it in means downloading the live site and replacing its build.
@@ -6036,6 +6036,10 @@ it can then be changed.
   Windows box; then flip to shipped and push.
   Kept as the review's fix decided: a CNAME with no domain behind it is
   removed at the first publish, and the person is told before and after.
+  2026-11-01: shipped. § 11's amendments done, screens looked at in
+  Firefox against the test double. Reading the diff found three crawl
+  defects, fixed in 7476090. Not run against real GitHub: PRESS-0333 § 7
+  is on PRESS-0133.
   **Layman:** Someone whose GitHub site is made by its own build script can switch it to Pressless and keep the same web address.
   Kind: feature.
   Source: user-decision-2026-10-23 PRESS-0218.
