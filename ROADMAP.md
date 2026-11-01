@@ -6310,6 +6310,8 @@ dislikes on entries, as decided in docs/discovery.md.
   the box's browser gate. Spec section 7's hand checks on real Firebase are owed under
   PRESS-0133, and App Check support comes out if Firestore's REST interface does not
   honour its header. No independent code review ran on this build.
+  Edge, on the Windows box at 5043c28: scripts/windows-gate.sh wintest --browsers edge
+  passed 145 of 145, these rows included.
   **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
