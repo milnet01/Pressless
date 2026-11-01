@@ -6289,6 +6289,10 @@ dislikes on entries, as decided in docs/discovery.md.
   switched off, a line on the privacy page, optional per site, and
   step-by-step help to set the database up. docs/discovery.md
   "Decided, not yet scheduled" holds the anti-spam design.
+  Spec review 2026-11-01: one round, by the user's budget of 2026-09-29.
+  Eleven findings verified and fixed, one dismissed, nothing deferred. The
+  last seven fixes are read by no lane; the build is their reader. Record:
+  docs/reviews/PRESS-0211-likes-and-dislikes-loop-log.md.
   **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.
