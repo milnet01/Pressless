@@ -35,6 +35,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
     """Add the Sites screen's routes to `face`: `GET /sites`, `POST
     /sites/open`, `POST /sites/new`, `GET /sites/save`, `POST
     /sites/backups` and the upload `POST /sites/open-file`.
+    `POST /sites/remove` too (PRESS-0291).
     `own` is Pressless's own folder; `restart` runs once the answer is sent,
     as restarting.register's does."""
     own = Path(own)
@@ -90,17 +91,65 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
             return _screen(own, face.fail(exc, publishing=False), raw=True)
         return _screen(own, say("sites_screen.backups.chosen"))
 
+    def remove(request: Request) -> str:
+        form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+        held = {path.name: path for path in sites.all_sites(own)}
+        site = held.get(form.get("site", [""])[0])
+        if site is None or site == sites.open_site(own):
+            return _screen(own, say("sites_screen.not_a_site"))
+        if form.get("sure", [""])[0] != "yes":
+            return _asking(own, site)
+        try:
+            kept = _keep_a_copy(own, site)
+            sites.remove(site)
+        except OSError as exc:
+            return _screen(own, face.fail(exc, publishing=False), raw=True)
+        return _screen(own, say("sites_screen.removed", file=str(kept)))
+
     face.add_page("GET", ADDRESS, screen)
     face.add_page("POST", f"{ADDRESS}/open", open_one)
     face.add_page("POST", f"{ADDRESS}/new", start)
     face.add_page("GET", f"{ADDRESS}/save", save)
     face.add_page("POST", f"{ADDRESS}/backups", keep_backups_in)
+    face.add_page("POST", f"{ADDRESS}/remove", remove)
     face.add_upload(f"{ADDRESS}/open-file", open_file, own)
 
 
 def file_name(site: Path) -> str:
     """PRESS-0224 § 4.1: the site's name and the day it was saved."""
     return f"{sitefile.stem(site)} {datetime.date.today().isoformat()}.zip"
+
+
+def _keep_a_copy(own: Path, site: Path) -> Path:
+    """One site file in the backups folder, whole before this returns, which the daily
+    round never rotates as its name is not a backup's. An OSError is the caller's."""
+    folder = backups.folder_of(own)
+    folder.mkdir(parents=True, exist_ok=True)
+    stem = f"{sitefile.stem(site)} removed {datetime.date.today().isoformat()}"
+    target = folder / f"{stem}.zip"
+    number = 1
+    while target.exists():
+        number += 1
+        target = folder / f"{stem} {number}.zip"
+    part = folder / f".saving-{secrets.token_hex(8)}.zip"
+    try:
+        sitefile.save(site, part)
+        part.rename(target)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
+    return target
+
+
+def _asking(own: Path, site: Path) -> str:
+    e = html.escape
+    return (f'<h1>{say("sites_screen.remove.title", site=e(sitefile.name_of(site)))}</h1>'
+            f'<p>{say("sites_screen.remove.what", folder=e(str(backups.folder_of(own))))}</p>'
+            f'<form method="post" action="{ADDRESS}/remove">'
+            f'<input type="hidden" name="site" value="{e(site.name, quote=True)}">'
+            '<input type="hidden" name="sure" value="yes">'
+            f'<p><button>{say("sites_screen.remove")}</button></p></form>'
+            f'<p class="nav"><a href="{ADDRESS}">{say("sites_screen.remove.keep")}</a></p>')
 
 
 def _going(face: Face, restart: Callable[[], None]) -> str:
@@ -122,7 +171,9 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
         else:
             rows.append(f'<li><form method="post" action="{ADDRESS}/open">{named} '
                         f'<input type="hidden" name="site" value="{attr(site.name)}">'
-                        f'<button>{say("sites_screen.open")}</button></form></li>')
+                        f'<button>{say("sites_screen.open")}</button> '
+                        f'<button formaction="{ADDRESS}/remove">{say("sites_screen.remove")}'
+                        '</button></form></li>')
     said = (hint if raw else f'<p class="hint" role="alert">{html.escape(hint)}</p>'
             ) if hint else ""
     # PRESS-0225: where the daily backups go, and what went wrong last.

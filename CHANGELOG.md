@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A site can be removed from the Sites screen** (PRESS-0291)
+  It asks first, saves the site as one file in the backups folder, and never removes the site that is open. Opening that file brings it back. Its site on GitHub is not touched.
+
 - **Insights shows which province or state readers come from** (PRESS-0209)
   A new table beside the countries, as Google names them. Cities are never asked for.
 

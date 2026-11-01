@@ -12360,11 +12360,16 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.
 
-- 📋 [PRESS-0291] **A site can be removed from the Sites screen.**
+- ✅ [PRESS-0291] **A site can be removed from the Sites screen.**
   Left out of PRESS-0223 (docs/specs/PRESS-0223-several-sites.md section
   9). Today a site made by mistake stays in the list. Removing one should
   keep a copy first, as the bin does for an entry, and never remove the
   site that is open.
+  2026-11-01: no spec, one subsystem. The copy is a site file, not a
+  folder in a bin, because the Sites screen can already open one. A
+  keyring entry for the removed site stays, as the file cannot hold it;
+  a later site given the same number writes over it at setup. 5 hand
+  mutations caught.
   **Layman:** A website you no longer want can be taken off the list of sites.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.

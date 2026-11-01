@@ -226,3 +226,74 @@ def test_the_file_box_sends_to_open_file_and_reads_opening(tmp_path: Path) -> No
     page = sites_screen._screen(_own(tmp_path))
     assert 'data-to="/sites/open-file"' in page
     assert 'data-sending="script.sites.opening"' in page
+
+
+def _other_site(own: Path) -> Path:
+    other = sites.new_site(own)
+    store.write_identity(other, store.Identity("The other one"))
+    (other / "kept.txt").write_text("words", encoding="utf-8")
+    return other
+
+
+def test_removing_a_site_asks_then_keeps_a_copy_and_lists_it_no_more(tmp_path: Path) -> None:
+    """PRESS-0291. Breaks when the folder goes before its copy is whole, or with no asking."""
+    own = _own(tmp_path)
+    other = _other_site(own)
+    (tmp_path / "kept-here").mkdir()
+    backups.set_folder(own, str(tmp_path / "kept-here"))
+    served, browser = _serve(own, [])
+    try:
+        asked = browser.request("POST", "/sites/remove", {"site": other.name})[2]
+        assert "The other one" in asked and other.is_dir(), "the first press only asks"
+        assert not list((tmp_path / "kept-here").iterdir())
+        page = browser.request("POST", "/sites/remove", {"site": other.name, "sure": "yes"})[2]
+    finally:
+        served.stop()
+    assert f'value="{other.name}"' not in page
+    assert sorted(path.name for path in other.parent.iterdir()) == ["site-1", "site-2"]
+    held = list((tmp_path / "kept-here").glob("*.zip"))
+    assert len(held) == 1 and held[0].name in page
+    with zipfile.ZipFile(held[0]) as copy:
+        assert any(name.endswith("identity") or "identity" in name for name in copy.namelist())
+
+
+def test_the_open_site_and_a_stranger_cannot_be_removed(tmp_path: Path) -> None:
+    own = _own(tmp_path)
+    open_now = sites.open_site(own)
+    served, browser = _serve(own, [])
+    try:
+        for name in (open_now.name, "site-99", "../site-1", ""):
+            browser.request("POST", "/sites/remove", {"site": name, "sure": "yes"})
+    finally:
+        served.stop()
+    assert open_now.is_dir() and not (own.parent / backups.DEFAULT_FOLDER).exists()
+
+
+def test_a_copy_that_cannot_be_written_removes_nothing(tmp_path: Path, monkeypatch) -> None:
+    own = _own(tmp_path)
+    other = _other_site(own)
+    def refuse(_site, _target):
+        raise OSError("the drive is full")
+    monkeypatch.setattr(sites_screen.sitefile, "save", refuse)
+    served, browser = _serve(own, [])
+    try:
+        browser.request("POST", "/sites/remove", {"site": other.name, "sure": "yes"})
+    finally:
+        served.stop()
+    assert (other / "kept.txt").is_file()
+
+
+def test_a_second_copy_the_same_day_overwrites_nothing(tmp_path: Path) -> None:
+    own = _own(tmp_path)
+    folder = tmp_path / "kept-here"
+    folder.mkdir()
+    backups.set_folder(own, str(folder))
+    first = _other_site(own)
+    served, browser = _serve(own, [])
+    try:
+        browser.request("POST", "/sites/remove", {"site": first.name, "sure": "yes"})
+        again = _other_site(own)
+        browser.request("POST", "/sites/remove", {"site": again.name, "sure": "yes"})
+    finally:
+        served.stop()
+    assert len(list(folder.glob("*.zip"))) == 2

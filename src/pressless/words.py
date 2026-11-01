@@ -1695,6 +1695,16 @@ _WORDS: dict[str, str] = {
     ),
     "sites_screen.open_now": "(open now)",
     "sites_screen.open": "Open",
+    "sites_screen.remove": "Remove",
+    "sites_screen.remove.keep": "Keep it",
+    "sites_screen.remove.title": "Remove {site} from this list?",
+    "sites_screen.remove.what": (
+        "Pressless saves it first as one file in {folder}, and then deletes it from this "
+        "computer. Its site on GitHub stays on the web. To bring it back, open that file here."
+    ),
+    "sites_screen.removed": (
+        "Removed. It is saved as {file}, which you can open here to bring it back."
+    ),
     "sites_screen.new": "Start a new site",
     "sites_screen.unnamed": "New site",
     "sites_screen.not_a_site": "That site is not here any more. Choose one from the list.",

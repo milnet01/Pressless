@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
+import shutil
 from pathlib import Path
 
 from pressless.safe_write import write_whole
@@ -90,6 +92,15 @@ def new_site(own: Path) -> Path:
     site = Path(own) / SITES_FOLDER / f"site-{_number(held[-1]) + 1 if held else 1}"
     site.mkdir(parents=True)
     return site
+
+
+def remove(site: Path) -> None:
+    """Remove a site's folder, its copy already kept. It is renamed first, so a site half
+    deleted is never listed; a rename's OSError leaves it whole, and what a delete leaves
+    behind under the new name is no site."""
+    going = site.with_name(f".removing-{site.name}-{secrets.token_hex(4)}")
+    site.rename(going)
+    shutil.rmtree(going, ignore_errors=True)
 
 
 def choose(own: Path, name: str) -> None:
