@@ -38,7 +38,6 @@ FOLDER_ADDRESS = setup.IMPORT_A_FOLDER
 EXPORT_LARGEST = 256 * 1024 * 1024    # § 4.3: refused at upload
 _EXPORT = "export.xml"
 _UNFETCHED = "unfetched.json"         # what the fetch could not have, once it ended
-_FOLDER_LEFT = "folder-left.json"     # PRESS-0210 § 4.2: what unpack_folder left out
 
 
 def finish_moves(folder: Path) -> str | None:
@@ -260,11 +259,7 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
     unpacked = held / pressless_import.FOLDER
 
     def left_out() -> tuple[tuple[str, str], ...]:
-        try:
-            read_in = json.loads((held / _FOLDER_LEFT).read_text(encoding="utf-8"))
-            return tuple((str(path), str(why)) for path, why in read_in)
-        except (OSError, ValueError, TypeError):
-            return ()
+        return pressless_import.read_folder_left(held)
 
     def check_folder(answers: wizard.Answers):
         found = pressless_import.read_folder(unpacked) if unpacked.is_dir() else None
@@ -313,7 +308,8 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
         if not pressless_import.read_folder(unpacked).pages:
             shutil.rmtree(unpacked, ignore_errors=True)
             return shown_again(message_box("import-hint", say("import.folder.no_page")))
-        safe_write.write_whole(held / _FOLDER_LEFT, json.dumps(left, indent=1) + "\n",
+        safe_write.write_whole(held / pressless_import.FOLDER_LEFT,
+                               json.dumps(left, indent=1) + "\n",
                                prefix=".folder-left-")
         return shown_again(f"<p>{say('import.folder.held')}</p>")
 

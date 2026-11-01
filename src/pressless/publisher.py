@@ -387,6 +387,7 @@ def _root_names(session: _Session, repository: str) -> tuple[str, ...]:
 # PRESS-0212 § 4.5: the setup wizard's reads, and the one switch it makes.
 
 NO_JEKYLL = ".nojekyll"   # Pages serves the files as they are, `_dsc1234.jpg` included
+CNAME = "CNAME"           # where a branch build stores a custom domain (PRESS-0333)
 
 
 @dataclass(frozen=True)
@@ -394,6 +395,8 @@ class Pages:
     on: bool
     address: str | None       # GitHub's html_url while on
     serves_root: bool         # a branch build of the default branch's "/"
+    built_by_actions: bool = False   # PRESS-0333: its build_type is "workflow"
+    domain: str | None = None        # PRESS-0333: its custom domain
 
 
 def account_exists(account: str, transport: Transport | None = None) -> bool:
@@ -427,10 +430,7 @@ def switch_pages_on(repository: str, token: str,
     on for the default branch's root. On an empty repository the file is the
     first commit, which Pages needs."""
     session = _Session(transport or _Urllib(), token)
-    if NO_JEKYLL not in _root_names(session, repository):
-        session.write("PUT", _repo_url(repository, f"contents/{NO_JEKYLL}"),
-                      {"message": "Serve the site as it is", "content": ""},
-                      outcome_unknown=True)
+    _write_no_jekyll(session, repository)
     branch = _default_branch(session, repository)
     try:
         session.write("POST", _repo_url(repository, "pages"),
@@ -445,6 +445,57 @@ def switch_pages_on(repository: str, token: str,
     return _pages(session, repository)
 
 
+def _write_no_jekyll(session: _Session, repository: str) -> None:
+    if NO_JEKYLL not in _root_names(session, repository):
+        session.write("PUT", _repo_url(repository, f"contents/{NO_JEKYLL}"),
+                      {"message": "Serve the site as it is", "content": ""},
+                      outcome_unknown=True)
+
+
+def switch_pages_to_branch(repository: str, token: str, domain: str | None,
+                           transport: Transport | None = None) -> Pages:
+    """PRESS-0333 § 4.5: Pages moves from an Actions build to the default branch's
+    root, keeping `domain`. A branch build stores a custom domain in a `CNAME` file
+    in its root, which an Actions build ignores, so one may be absent or stale.
+    `cname` is sent only with a value: GitHub documents null as removing the domain."""
+    session = _Session(transport or _Urllib(), token)
+    _write_no_jekyll(session, repository)
+    if domain:
+        _write_cname(session, repository, domain)
+    switch: dict = {"build_type": "legacy",
+                    "source": {"branch": _default_branch(session, repository), "path": "/"}}
+    if domain:
+        switch["cname"] = domain
+    session.write("PUT", _repo_url(repository, "pages"), switch, no_content=True)
+    return _pages(session, repository)
+
+
+def _write_cname(session: _Session, repository: str, domain: str) -> None:
+    url = _repo_url(repository, f"contents/{CNAME}")
+    change: dict = {"message": "Keep the site's own domain",
+                    "content": base64.b64encode(f"{domain}\n".encode()).decode("ascii")}
+    try:
+        held = session.read(url)
+    except RemoteStateMissing:
+        held = None
+    if held is not None:
+        if _content_of(held).decode("utf-8", "replace").strip() == domain:
+            return
+        change["sha"] = _required(held, "sha", "the CNAME file")
+    session.write("PUT", url, change, outcome_unknown=True)
+
+
+def head_commit(settings: Settings, token: str, transport: Transport | None = None) -> str:
+    """The commit the default branch stands at."""
+    session = _Session(transport or _Urllib(), token)
+    return _required(session.read(_repo_url(settings.repository, "commits/HEAD")),
+                     "sha", "the head commit")
+
+
+def default_branch(repository: str, token: str, transport: Transport | None = None) -> str:
+    return _default_branch(_Session(transport or _Urllib(), token), repository)
+
+
 def _pages(session: _Session, repository: str) -> Pages:
     try:
         answer = session.read(_repo_url(repository, "pages"))
@@ -455,8 +506,10 @@ def _pages(session: _Session, repository: str) -> Pages:
     serves_root = (answer.get("build_type") in (None, "legacy")
                    and source.get("path") == "/"
                    and source.get("branch") == _default_branch(session, repository))
+    domain = answer.get("cname")
     return Pages(on=True, address=address if isinstance(address, str) else None,
-                 serves_root=serves_root)
+                 serves_root=serves_root, built_by_actions=answer.get("build_type") == "workflow",
+                 domain=domain if isinstance(domain, str) and domain else None)
 
 
 def fetch_previous(settings: Settings, token: str, into: Path,
@@ -600,7 +653,7 @@ class _Session:
         return self._call("GET", url, None, empty_ok=empty_ok)
 
     def write(self, method: str, url: str, payload: dict, *,
-              outcome_unknown: bool = False,
+              outcome_unknown: bool = False, no_content: bool = False,
               pace: float = PACE_SECONDS) -> dict:
         # The pace before a write is the pace THAT write requires, not the one
         # before it -- so a tree write following a blob still waits the full
@@ -610,10 +663,11 @@ class _Session:
             self._client.wait(pace)
         self._written = True
         return self._call(method, url, payload,
-                          outcome_unknown=outcome_unknown)
+                          outcome_unknown=outcome_unknown, no_content=no_content)
 
     def _call(self, method: str, url: str, payload: dict | None, *,
-              outcome_unknown: bool = False, empty_ok: bool = False) -> dict | None:
+              outcome_unknown: bool = False, empty_ok: bool = False,
+              no_content: bool = False) -> dict | None:
         body = None if payload is None else json.dumps(payload).encode("utf-8")
         headers = {
             "Accept": "application/vnd.github+json",
@@ -678,6 +732,8 @@ class _Session:
                     f"GitHub redirected {method} {_without_account(url)}: the "
                     f"repository was renamed or moved"
                 )
+            if no_content and status == 204:
+                return {}
             if status in (200, 201):
                 if not outcome_unknown:
                     return _parse(data)

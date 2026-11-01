@@ -29,6 +29,7 @@ from pressless import (
     settings,
     starter,
     store,
+    takeover,
 )
 from pressless.face import (
     SENTENCES,
@@ -84,6 +85,20 @@ class WouldReplaceASite(Exception):
 
 REPLACE_ADDRESS = "/publish/replace"
 
+
+class TakeoverOwed(Exception):
+    """The site is still built by GitHub Actions, so a publish would never reach
+    the web, and the build would run over it (PRESS-0333 § 4.5)."""
+
+
+TAKEOVER_ADDRESS = "/publish/takeover"
+
+SENTENCES[TakeoverOwed] = Sentence(
+    "failure.publishing.TakeoverOwed.what",
+    Site.UNCHANGED,
+    "failure.publishing.TakeoverOwed.next",
+)
+
 SENTENCES[WouldReplaceASite] = Sentence(
     "failure.publishing.WouldReplaceASite.what",
     Site.UNCHANGED,
@@ -109,8 +124,10 @@ SENTENCES[KeptFolderBuilt] = Sentence(
 A_SITE = frozenset({"index.html", "index.md"})
 
 def replace_link(failure: BaseException) -> str:
-    """The way to the replace page, beside a WouldReplaceASite failure; a
-    Sentence is escaped text and cannot carry it."""
+    """The way to the replace page, beside a WouldReplaceASite failure, or to the
+    takeover, beside a TakeoverOwed; a Sentence is escaped text and cannot carry it."""
+    if isinstance(failure, TakeoverOwed):
+        return f'<p><a href="{TAKEOVER_ADDRESS}">{say("publishing.takeover")}</a></p>'
     if not isinstance(failure, WouldReplaceASite):
         return ""
     return f'<p><a href="{REPLACE_ADDRESS}">{say("publishing.replace")}</a></p>'
@@ -132,7 +149,7 @@ def undone_stamp() -> str:
 
 
 def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str | None,
-            emptying: bool = False,
+            emptying: bool = False, taking_over: bool = False,
             capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
             notices: list[str | Notice] | None = None,
             transport: publisher.Transport | None = None) -> Published:
@@ -149,6 +166,8 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     moved = captured(lambda: _move(folder, entry))
 
     def guard_and_build() -> None:
+        if takeover.owed(folder) and not taking_over:    # PRESS-0333 § 4.5
+            raise TakeoverOwed("the site is still built by GitHub Actions")
         # PRESS-0126 § 4.5: the starter's first publish, whether or not
         # emptying, refuses where the repository holds a site. The fold is
         # PRESS-0009 § 4.4's.
@@ -284,6 +303,10 @@ def register(face: Face, folder: Path, *,
                   lambda request: _publish(face, folder, request, transport))
     face.add_page("GET", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
     face.add_page("POST", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
+    face.add_page("GET", TAKEOVER_ADDRESS,
+                  lambda request: _takeover_page(face, folder, transport))
+    face.add_page("POST", TAKEOVER_ADDRESS,
+                  lambda request: _take_over(face, folder, transport))
 
 
 def _publish(face: Face, folder: Path, request: Request,
@@ -415,3 +438,147 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             f"<p><label>{say('publishing.replace.confirm', repository=e(saved.repository))} "
             '<input type="text" name="repository" autocomplete="off"></label></p>'
             f"{hint}<p><button>{say('publishing.replace.button')}</button></p></form>")
+
+
+# ------------------------------------------------------- PRESS-0333 § 4.5 ----
+
+
+def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | None,
+                   hint: str = "") -> str:
+    """What will change, a link to remove each build file, and the go-ahead."""
+    if not takeover.owed(folder):
+        return (f"<h1>{say('publishing.nothing.heading')}</h1><p>{say('publishing.nothing')} "
+                f'<a href="/">{say("face.your_writing")}</a></p>')
+    e = html.escape
+    try:
+        saved = settings.load(folder)
+        key = github_setup.token(folder, saved.credentials.store,
+                                 saved.credentials.github_account)
+        files = takeover.build_files(folder, saved, key, transport)
+        domain = publisher.pages(saved.repository, key, transport).domain
+        branch = publisher.default_branch(saved.repository, key, transport)
+        entries = publisher.root_entries(saved, key, transport)
+    except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
+        return face.fail(exc, publishing=False, secret=say("failure.secret.publishing_key"))
+    stale = any(entry.casefold() == publisher.CNAME.casefold() for entry in entries)
+    rows = takeover.change_rows(takeover.named(folder) or files, saved.site_address, domain,
+                                stale and not domain)
+    links = "".join(
+        f'<li><a href="{e(_delete_link(saved.repository, branch, name), quote=True)}" '
+        f'target="_blank" rel="noopener">'
+        f"{say('publishing.takeover.delete', file=e(name))}</a></li>" for name in files)
+    removing = (f"<p>{say('publishing.takeover.steps')}</p><ul>{links}</ul>" if files
+                else f"<p>{say('publishing.takeover.removed')}</p>")
+    return (f"<h1>{say('publishing.takeover')}</h1>" + hint
+            + f"<p>{say('publishing.takeover.intro', repository=e(saved.repository))}</p><ul>"
+            + "".join(f"<li>{row}</li>" for row in rows) + "</ul>" + removing
+            + f'<form method="post" action="{TAKEOVER_ADDRESS}">'
+            + f"<p><button>{say('publishing.takeover.button')}</button></p></form>")
+
+
+def _delete_link(repository: str, branch: str, path: str) -> str:
+    """GitHub's own page for removing a file: a workflow file changes only with a
+    permission Pressless does not hold, and the person's own sign-in has it."""
+    quoted = "/".join(urllib.parse.quote(part, safe="") for part in
+                      (*repository.split("/"), "delete", *branch.split("/"), *path.split("/")))
+    return f"https://github.com/{quoted}"
+
+
+def _kept_for_a_branch(untouchable: tuple[str, ...], domain: str | None) -> tuple[str, ...]:
+    """Step 3: what a branch build needs kept. A `CNAME` with no domain behind it comes
+    off the list, so the publish removes it, or the branch build would read it as one."""
+    wanted = {publisher.NO_JEKYLL, *([publisher.CNAME] if domain else [])}
+    held = {name.rstrip("/").casefold() for name in untouchable}
+    kept = [name for name in untouchable if domain
+            or name.rstrip("/").casefold() != publisher.CNAME.casefold()]
+    return (*kept, *sorted(name for name in wanted if name.casefold() not in held))
+
+
+def _take_over(face: Face, folder: Path, transport: publisher.Transport | None) -> str:
+    """§ 4.5's POST, run as a press."""
+    def busy(said: str) -> str:
+        return message_box("takeover-hint", html.escape(said))
+
+    return pressing.run(pressing.PUBLISH, busy,
+                        lambda told: _takeover_pressed(face, folder, transport, told))
+
+
+def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport | None,
+                      told: Callable[[pressing.Outcome], None]) -> str:
+    if not takeover.owed(folder):
+        told(pressing.ended(pressing.PUBLISH, True))
+        return _takeover_page(face, folder, transport)
+    notices: list[str | Notice] = []
+    gathered = gatherer(face.capture, notices)
+    stage = ""
+
+    def stopped(exc: BaseException) -> str:
+        failed = (face.fail(exc, publishing=False, secret=say("failure.secret.publishing_key"))
+                  + stage)
+        told(pressing.ended(pressing.PUBLISH, False, failed))
+        return render_notices(notices) + failed
+
+    with editor.LOCK:
+        try:
+            saved = gathered(lambda: settings.load(folder))
+            key = github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
+            if takeover.build_files(folder, saved, key, transport):                   # step 1
+                told(pressing.ended(pressing.PUBLISH, False))
+                hint = message_box("takeover-hint", say("publishing.takeover.still_there"))
+                return _takeover_page(face, folder, transport, hint)
+            shown = publisher.pages(saved.repository, key, transport)                 # step 2
+            final = dataclasses.replace(                                              # step 3
+                saved, untouchable=_kept_for_a_branch(saved.untouchable, shown.domain))
+            if final != saved:
+                gathered(lambda: settings.save(folder, final))
+            if not shown.built_by_actions:
+                gathered(lambda: takeover.done(folder))
+                told(pressing.ended(pressing.PUBLISH, True))
+                return f"<p>{say(_already_key(shown))}</p>"
+            published = publish(folder, final, key, entry=None, taking_over=True,     # step 4
+                                capture=face.capture, notices=notices, transport=transport)
+            stage = f"<p>{say('publishing.takeover.not_switched')}</p>"
+            publisher.switch_pages_to_branch(final.repository, key, shown.domain,     # step 5
+                                             transport)
+            stage = ""
+            files = takeover.named(folder)
+            stale = publisher.CNAME in published.outcome.removed
+            gathered(lambda: takeover.done(folder))                                   # step 6
+        except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
+            return stopped(exc)
+    told(pressing.ended(pressing.PUBLISH, True))
+    pressing.forget()
+    return render_notices(notices) + _takeover_report(final, shown.domain, files, stale,
+                                                      published.outcome)
+
+
+def _already_key(shown: publisher.Pages) -> str:
+    if not shown.on:
+        return "publishing.takeover.already.off"
+    return ("publishing.takeover.already.root" if shown.serves_root
+            else "publishing.takeover.already.elsewhere")
+
+
+def _takeover_report(final: settings.Settings, domain: str | None, files: tuple[str, ...],
+                     stale: bool, outcome: publisher.Outcome) -> str:
+    """Step 6: what changed, told afterwards (INV-14)."""
+    e = html.escape
+    rows = [say("publishing.takeover.done.pages")]
+    rows += [say("publishing.takeover.done.file", file=f"<code>{e(name)}</code>") for name in files]
+    rows.append(say("publishing.takeover.done.address", address=e(final.site_address)))
+    if domain:
+        rows.append(say("publishing.takeover.done.domain", domain=e(domain)))
+    rows.append(say("publishing.takeover.done.added"))
+    if domain:
+        rows.append(say("publishing.takeover.done.added_domain"))
+    if stale:
+        rows.append(say("publishing.takeover.done.stale"))
+    rows.append(say("publishing.takeover.done.earlier") if not outcome.commit else say(
+        "publishing.takeover.done.counts",
+        uploaded=len(outcome.uploaded), removed=len(outcome.removed)))
+    return (f"<h1>{say('publishing.takeover.done.heading')}</h1><ul>"
+            + "".join(f"<li>{row}</li>" for row in rows) + "</ul>"
+            + f"<p>{say('publishing.takeover.done.wait')}</p>"
+            + f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>')
+

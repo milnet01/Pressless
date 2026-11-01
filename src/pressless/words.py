@@ -216,6 +216,12 @@ _WORDS: dict[str, str] = {
         "Rename or move {folder} in your repository on GitHub, then save the "
         "Settings page again and publish."
     ),
+    "failure.publishing.TakeoverOwed.what": (
+        "Your site is still built by GitHub Actions, so nothing was published."
+    ),
+    "failure.publishing.TakeoverOwed.next": (
+        "Follow the link below to switch it to Pressless. You are told what changes first."
+    ),
     "failure.publishing.WouldReplaceASite.what": (
         "Your GitHub repository already holds a website, and publishing your starter site "
         "would replace it, so Pressless stopped."
@@ -685,6 +691,59 @@ _WORDS: dict[str, str] = {
     "publishing.hint": "Type the repository's name exactly as it is shown above.",
     "publishing.nothing.heading": "Nothing to replace",
     "publishing.nothing": "Your site has been published already.",
+    "publishing.takeover": "Switch your site to Pressless",
+    "publishing.takeover.intro": (
+        "Your site on the web still comes from what GitHub Actions builds in {repository}. "
+        "Switching it to Pressless changes these:"
+    ),
+    "publishing.takeover.steps": (
+        "First, remove the build file yourself, because Pressless is not allowed to change it. "
+        "Press each link below. It opens GitHub in a new tab. Press Commit changes there, then "
+        "come back here."
+    ),
+    "publishing.takeover.delete": "Remove {file} on GitHub",
+    "publishing.takeover.removed": "The build file has gone from the repository, so this is ready.",
+    "publishing.takeover.button": "Publish and switch to Pressless",
+    "publishing.takeover.still_there": (
+        "The build file is still in the repository. Remove it on GitHub first. Nothing was changed."
+    ),
+    "publishing.takeover.not_switched": (
+        "Your new site is on GitHub, but not yet on the web, because GitHub Pages did not "
+        "switch. Your old site is still up. Press the button again."
+    ),
+    "publishing.takeover.already.root": (
+        "GitHub Pages has already been changed, and now serves this repository's main folder. "
+        "Pressless will publish there from now on."
+    ),
+    "publishing.takeover.already.elsewhere": (
+        "GitHub Pages has already been changed, and now serves another folder or branch, so "
+        "what Pressless publishes will not reach the web until you change it back."
+    ),
+    "publishing.takeover.already.off": (
+        "GitHub Pages has already been changed, and is now off, so what Pressless publishes "
+        "will not reach the web until you switch it on."
+    ),
+    "publishing.takeover.done.heading": "Your site now publishes from Pressless",
+    "publishing.takeover.done.pages": "GitHub Pages switched to what Pressless publishes.",
+    "publishing.takeover.done.file": "{file} is gone, and stays in the repository's history.",
+    "publishing.takeover.done.address": "Your site kept its address, {address}.",
+    "publishing.takeover.done.domain": "Your site kept its own domain, {domain}.",
+    "publishing.takeover.done.added": "Pressless added an empty file, .nojekyll.",
+    "publishing.takeover.done.added_domain": (
+        "Pressless made sure a file, CNAME, holds that domain."
+    ),
+    "publishing.takeover.done.stale": (
+        "Pressless removed a file, CNAME, which named a domain this site does not use."
+    ),
+    "publishing.takeover.done.counts": (
+        "{uploaded} files were uploaded or changed, and {removed} were removed. All of it stays "
+        "in the repository's history."
+    ),
+    "publishing.takeover.done.earlier": "An earlier press already published the site.",
+    "publishing.takeover.done.wait": (
+        "GitHub takes a few minutes to build the site the first time, so the old site may show "
+        "until then."
+    ),
     "publishing.ready.heading": "Ready to replace your site",
     "publishing.ready": (
         "Now publish again from where you were. Your starter site will replace the site in "
@@ -965,6 +1024,41 @@ _WORDS: dict[str, str] = {
     "setup.bringin.link": "{page} links to {path}, so that link will then stop working.",
     "setup.bringin.stays": "These stay on GitHub, and Pressless will not touch them:",
     "setup.bringin.kept": "Among those, these will not come across into Pressless:",
+    # Taking over a site GitHub Actions builds (setup.py, takeover.py, PRESS-0333).
+    "setup.takeover": (
+        "GitHub Actions builds this site from what this repository holds. Pressless "
+        "downloaded the site from its address, and can take over from that build, with its "
+        "look and its addresses. It found:"
+    ),
+    "setup.takeover.owed": "Your site on the web still comes from GitHub's build.",
+    "setup.takeover.unread": (
+        "These could not be read from the site, so they will not come across:"
+    ),
+    "setup.takeover.limits": (
+        "Pressless can find only what a link reaches, so a page nothing links to was not "
+        "downloaded. A page a script builds in the browser came across as that script's empty "
+        "shell. Look through your pages before your first publish."
+    ),
+    "takeover.changes": (
+        "Nothing changes on GitHub, and the old site stays up, until your first publish. "
+        "Pressless will ask you again then. That publish will change these:"
+    ),
+    "takeover.pages": "GitHub Pages switches from the build to what Pressless publishes.",
+    "takeover.file": (
+        "You remove the build file {file} on GitHub. It stays in the repository's history."
+    ),
+    "takeover.other_files": "Any other file in .github/workflows stays.",
+    "takeover.address": "Your site keeps its address, {address}.",
+    "takeover.domain": "Your site keeps its own domain, {domain}.",
+    "takeover.added": (
+        "Pressless adds an empty file, .nojekyll, so that GitHub serves your pages as they are."
+    ),
+    "takeover.added_domain": (
+        "Pressless adds a file, CNAME, holding {domain}, which keeps that domain on the site."
+    ),
+    "takeover.stale": (
+        "Pressless removes a file, CNAME, which names a domain this site does not use."
+    ),
     "setup.takein.moved": (
         "Your site on GitHub changed after Pressless showed it. Nothing was copied. Go Back "
         "to the GitHub Pages step to see it as it is now."
@@ -1045,6 +1139,12 @@ _WORDS: dict[str, str] = {
         "publish to it. Press Back and choose a different, new repository. Leave this one's "
         "GitHub Pages settings as they are: changing them would take the site already there "
         "offline."
+    ),
+    "setup.hint.site_unreadable": (
+        "GitHub Actions builds this repository's site, but Pressless could not read its "
+        "front page at its address. Check that the site opens in your browser, then press "
+        "Next again. If it does not open, press Back and choose a different repository. "
+        "Nothing was changed."
     ),
     "setup.field.account": "Your GitHub account name",
     "setup.field.repository_name": "The repository's name",
@@ -1154,6 +1254,11 @@ _WORDS: dict[str, str] = {
     "setup.done": "Setup is done.",
     "setup.done.address": "Your site's address is {link}.",
     "setup.done.brought": "Your site came in. This is what came across:",
+    "setup.done.take_over": (
+        "Your site on the web has not changed. Look through your pages here first. Your "
+        "first publish will ask you to remove the build file, and then switches the site "
+        "to Pressless."
+    ),
     "setup.done.taken_in": "Your site came in from GitHub. Pressless now holds:",
     "setup.done.starter": (
         "Your starter site is in place. It is not on the web until you publish it."

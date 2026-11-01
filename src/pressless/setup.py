@@ -42,6 +42,7 @@ from pressless import (
     starter,
     store,
     takein,
+    takeover,
     usage,
     wizard,
 )
@@ -166,6 +167,7 @@ def register(face: Face, folder: Path, *,
         return _shortcuts(face, shortcut_places(), request)
 
     face.add_to_list(lambda: _unpublished_starter(folder), above=True)
+    face.add_to_list(lambda: _takeover_owed(folder), above=True)
     face.add_unseen(lambda: starter.unpublished(folder))
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
@@ -178,6 +180,14 @@ def _unpublished_starter(folder: Path) -> str:
         return ""
     return (f'<p id="starter-unpublished">{say("setup.starter.unpublished")} '
             f'{say("setup.starter.publish")}</p>')
+
+
+def _takeover_owed(folder: Path) -> str:
+    """Above the list until the first publish has switched the site (PRESS-0333 § 4.3)."""
+    if not takeover.owed(folder):
+        return ""
+    return (f'<p id="takeover-owed">{say("setup.takeover.owed")} '
+            f'<a href="{publishing.TAKEOVER_ADDRESS}">{say("publishing.takeover")}</a></p>')
 
 
 def _setup(face: Face, folder: Path, request: Request,
@@ -288,6 +298,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    where: shortcuts.Places | None, signed_in: bool = False,
                    narrow: str = "", kept: tuple[str, ...] = (),
                    take_in_commit: str = "", bring_in_commit: str = "",
+                   take_over: bool = False,
                    ) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
@@ -298,7 +309,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     With `take_in_commit`, the site at that commit is taken in where the
     starter would be filled, and the identity is the one it wrote
     (PRESS-0218 § 4.5); `identity` is then None. `bring_in_commit` does the same
-    for a repository of plain pages (PRESS-0210 § 4.11)."""
+    for a repository of plain pages (PRESS-0210 § 4.11). With `take_over`, those pages
+    came from the live site, and the takeover is owed before the save (PRESS-0333 § 4.3)."""
     # Step 2: ask GitHub.
     try:
         entries = publisher.root_entries(candidate, key, transport)
@@ -330,11 +342,15 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
         try:
             brought = takein.bring_folder(folder, candidate, key, bring_in_commit,
                                           capture=face.capture, notices=filling,
-                                          transport=transport)
+                                          transport=transport,
+                                          address=candidate.site_address if take_over else "")
+            if take_over:
+                takeover.mark(folder, takeover.build_files(folder, candidate, key, transport))
         except publisher.RemoteStateMissing as exc:
             face.fail(exc, publishing=False)            # noted in the log
             return render_notices(filling) + message_box(f"<p>{say('setup.takein.moved')}</p>")
-        except (pressless_import.ImportStopped, StoreError, publisher.PublishError) as exc:
+        except (pressless_import.ImportStopped, StoreError, publisher.PublishError,
+                OSError) as exc:
             return render_notices(filling) + face.fail(exc, publishing=False)
     elif take_in_commit:
         try:
@@ -390,6 +406,8 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     except StoreError:
         empty = False
     report = _brought_report(face, folder, brought) if brought is not None else ""
+    if take_over:
+        report += f"<p>{say('setup.done.take_over')}</p>"
     return (render_notices(filling) + render_notices(notices) + privacy_failure
             + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
                     taken=taken.found if taken is not None else None, brought=report)
@@ -900,18 +918,27 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         if isinstance(key, wizard.Stop):
             return key
         kept = {field: value for field, value in answers.items()
-                if field not in ("take_in_commit", "bring_in_commit")}
+                if field not in ("take_in_commit", "bring_in_commit", "take_over")}
         try:
             shown = publisher.pages(name, key, transport)
             if shown.on and not shown.serves_root:
                 # PRESS-0229: never advice to re-point Pages, which would take
-                # that site offline.
-                return wizard.Hint("", say("setup.hint.elsewhere"))
+                # that site offline. PRESS-0333: one Actions builds can be taken
+                # over, and nothing changes on GitHub here.
+                if (not shown.built_by_actions or not shown.address
+                        or not takeover.build_files(folder, probe(name), key, transport)):
+                    return wizard.Hint("", say("setup.hint.elsewhere"))
+                plain, commit = takein.look_site(folder, probe(name), key, shown.address,
+                                                 transport=transport)
+                if plain.built_by_a_tool or "index.html" not in plain.pages:
+                    takein.forget_folder(folder)
+                    return wizard.Hint("", say("setup.hint.site_unreadable"))
+                kept.update(bring_in_commit=commit, take_over="yes")
             # PRESS-0218 § 4.5: a root holding a site is read before any
             # write. One Pressless made is taken in; PRESS-0210 § 4.11: plain
             # pages are brought in, and what a tool builds from goes no further.
-            if any(entry.rstrip("/").casefold() in _HOLDS_A_SITE
-                   for entry in publisher.root_entries(probe(name), key, transport)):
+            elif any(entry.rstrip("/").casefold() in _HOLDS_A_SITE
+                     for entry in publisher.root_entries(probe(name), key, transport)):
                 found = takein.look(folder, probe(name), key, transport=transport)
                 if found.made_here:
                     kept["take_in_commit"] = found.commit
@@ -973,7 +1000,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                               look=answers.get("look", ""), choice=choice, where=shortcut_places(),
                               signed_in=signing_in, narrow=narrow,
                               take_in_commit="" if bringing_in else taking_in,
-                              bring_in_commit=bringing_in)
+                              bring_in_commit=bringing_in,
+                              take_over=answers.get("take_over") == "yes")
         if isinstance(done, publisher.RemoteStateMissing):
             return wizard.Stop(face.fail(done, publishing=False))
         # The sequence words its own failures and success alike; the settings
@@ -1092,10 +1120,16 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         if isinstance(key, wizard.Stop):
             return key.fragment
         reading = probe(repository(answers))
+        taking_over = answers.get("take_over") == "yes"
         try:
-            found = takein.found_held(folder, reading, key, commit, transport)
+            address = answers.get("site_address", "") if taking_over else ""
+            found = takein.found_held(folder, reading, key, commit, transport, address=address)
             entries = publisher.root_entries(reading, key, transport)
-        except (publisher.PublishError, StoreError) as exc:
+            if taking_over:
+                return _show_take_over(found, entries, folder, address,
+                                       takeover.build_files(folder, reading, key, transport),
+                                       publisher.pages(reading.repository, key, transport).domain)
+        except (publisher.PublishError, StoreError, OSError) as exc:
             return face.fail(exc, publishing=False)
         return _show_bring_in(found, entries)
 
@@ -1246,7 +1280,24 @@ def _codes(rows: Iterable[str]) -> str:
     return "<ul>" + "".join(f"<li><code>{html.escape(row)}</code></li>" for row in rows) + "</ul>"
 
 
-def _show_bring_in(found: pressless_import.Found, entries: Iterable[str]) -> str:
+def _show_take_over(found: pressless_import.Found, entries: Iterable[str], folder: Path,
+                    address: str, files: tuple[str, ...], domain: str | None) -> str:
+    """The site step's body for a site Actions builds (PRESS-0333 § 4.4, INV-3):
+    what the first publish will change, then what a bring-in shows, and what the
+    download could not read."""
+    stale = any(entry.casefold() == publisher.CNAME.casefold() for entry in entries)
+    rows = takeover.change_rows(files, address, domain, stale and not domain)
+    unread = pressless_import.read_folder_left(folder / pressless_import.IMPORT_FOLDER)
+    body = (_show_bring_in(found, entries, intro="setup.takeover")
+            + f"<p>{say('takeover.changes')}</p><ul>"
+            + "".join(f"<li>{row}</li>" for row in rows) + "</ul>")
+    if unread:
+        body += f"<p>{say('setup.takeover.unread')}</p>" + _codes(path for path, _why in unread)
+    return body + f"<p>{say('setup.takeover.limits')}</p>"
+
+
+def _show_bring_in(found: pressless_import.Found, entries: Iterable[str],
+                   intro: str = "setup.bringin") -> str:
     """The site step's body for a site Pressless did not make (PRESS-0210
     § 4.11, INV-15): what came, what Finish does, what the next publish changes
     on GitHub, and what stays there, each path that will not come across named."""
@@ -1261,7 +1312,7 @@ def _show_bring_in(found: pressless_import.Found, entries: Iterable[str]) -> str
     counts = [say(key, count=len(paths)) for key, paths in (
         ("setup.takein.pages", found.pages), ("setup.takein.photographs", found.photographs),
         ("setup.takein.files", found.files))]
-    body = (f"<p>{say('setup.bringin')}</p><ul>"
+    body = (f"<p>{say(intro)}</p><ul>"
             + "".join(f"<li>{row}</li>" for row in counts) + "</ul>"
             + f"<p>{say('setup.takein.finish')}</p>"
             + f"<p>{say('setup.bringin.publish')}</p>" + _codes(changes))

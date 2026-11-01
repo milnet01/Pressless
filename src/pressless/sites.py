@@ -29,7 +29,8 @@ SITE_NAMES = frozenset({
     "published", "drafts", "bin", "pages", "furniture", "pages-waiting",
     "furniture-waiting", "templates", "comments", "photographs", "files", "forwards",
     "options", "identity", "look", "settings.json", "credentials.json", "site",
-    "preview", "preview-assets", "starter-unpublished", "insights.json", "fetch",
+    "preview", "preview-assets", "starter-unpublished", "takeover-owed", "insights.json",
+    "fetch",
     "wizards", "choices.json", "import",
 })
 # § 4.2: what belongs to the machine, left at the top.

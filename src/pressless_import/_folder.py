@@ -35,6 +35,7 @@ from ._bring import _MOVING, _WORK, IMPORT_FOLDER, finish
 MEMBERS_MOST = 20_000                # a ZIP holding more is refused
 SVG_LARGEST = 256 * 1024             # § 4.6
 BROUGHT = "brought.json"             # in IMPORT_FOLDER: answers a Finish pressed again (§ 4.11)
+FOLDER_LEFT = "folder-left.json"     # in IMPORT_FOLDER: what laying the folder out left out
 
 _UP = "{{UP}}"                       # the Builder fills it in the furniture files alone
 _NAVIGATION = "{{NAVIGATION}}"
@@ -128,6 +129,15 @@ def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
     if not taken.take(path):
         return say("import.folder.why.twin")
     return None
+
+
+def read_folder_left(held: Path) -> tuple[tuple[str, str], ...]:
+    """What laying the folder out left out, from the import folder `held`."""
+    try:
+        read_in = json.loads((held / FOLDER_LEFT).read_text(encoding="utf-8"))
+        return tuple((str(path), str(why)) for path, why in read_in)
+    except (OSError, ValueError, TypeError):
+        return ()
 
 
 def _one_top_folder(names: list[str]) -> str:

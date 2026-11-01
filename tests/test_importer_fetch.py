@@ -262,3 +262,136 @@ def test_a_checked_connection_wraps_with_its_own_verifying_context(monkeypatch):
     context, name = wrapped[0]
     assert name == "old.example.org"
     assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+
+
+# ------------------------------------------------------------- PRESS-0333 ----
+# INV-10 and INV-11 of docs/specs/PRESS-0333-take-over-actions-site.md: the live
+# site is downloaded, staying in the site, and what lands reads as a folder.
+
+
+class _Live(dict):
+    """A served site: a fresh answer per ask, and 404 for what it does not hold."""
+
+    def __missing__(self, key):
+        return _Answer(404)
+
+    def __getitem__(self, key):
+        made = self.made.get(key)
+        return _Answer(404) if made is None else _Answer(*made)
+
+
+def _live(hosts: dict[str, list[str]], served: dict[str, tuple]) -> _Network:
+    answers = _Live()
+    answers.made = served
+    return _Network(hosts, answers)
+
+
+def _html(text: str) -> tuple:
+    return 200, text.encode("utf-8"), {"Content-Type": "text/html"}
+
+
+def _download(network: _Network, address: str, into: Path) -> fetch.Crawled:
+    return fetch.fetch_site(address, into, lambda: 10**12,
+                            resolve=network.resolve, connect=network.connect)
+
+
+def _landed(into: Path) -> set[str]:
+    return {p.relative_to(into).as_posix() for p in into.rglob("*") if p.is_file()}
+
+
+def test_a_site_download_stays_in_the_site(tmp_path):
+    """INV-10. Breaks when `urljoin`'s answer is fetched unchecked. Each address is
+    refused by its own rule: its host, its path, its redirect, its resolver, or
+    its encoded `..`."""
+    home = _html('<html><body><a href="https://other.example.org/away">Away</a>'
+                 '<a href="/elsewhere/page">Beside</a><a href="/site/moved">Moved</a>'
+                 '<a href="https://inside.example.org/site/x">Inside</a>'
+                 '<a href="/site/%2e%2e/x">Up</a><a href="/site/ok.html">Fine</a>'
+                 '</body></html>')
+    network = _live(
+        {"sites.example.org": [GLOBAL], "other.example.org": [GLOBAL],
+         "inside.example.org": ["10.0.0.1"]},
+        {"sites.example.org/site/": home,
+         "sites.example.org/site/ok.html": _html("<html><body><p>Fine</p></body></html>"),
+         "sites.example.org/site/moved": (302, b"", {"Location": "https://other.example.org/x"})})
+    into = tmp_path / "held" / "folder"
+    crawled = _download(network, "https://sites.example.org/site/", into)
+    asked = {path for _method, path, _headers in network.requests}
+    assert asked <= {"/site/", "/site/sitemap.xml", "/site/ok.html", "/site/moved"}, asked
+    assert {host for _address, host, _port, _secure in network.connected} == {"sites.example.org"}
+    assert _landed(into) == {"index.html", "ok.html"}
+    left = dict(crawled.left)
+    assert "moved" in left and "../x" in left
+    assert not (tmp_path / "held" / "x").exists()
+
+
+def test_a_scheme_and_its_default_port_are_one_site(tmp_path):
+    """§ 4.2: `http://host/` and `https://host:443/` are the site, fetched by its scheme."""
+    home = _html('<html><body><a href="http://sites.example.org/a.html">A</a>'
+                 '<a href="https://sites.example.org:443/b.html">B</a></body></html>')
+    page = _html("<html><body><p>Words</p></body></html>")
+    network = _live({"sites.example.org": [GLOBAL]},
+                    {"sites.example.org/": home, "sites.example.org/a.html": page,
+                     "sites.example.org/b.html": page})
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/", into)
+    assert {"a.html", "b.html"} <= _landed(into)
+    assert all(secure for _address, _host, _port, secure in network.connected)
+
+
+def test_a_front_page_it_cannot_read_keeps_nothing(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {})
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert _landed(into) == set() and crawled.left
+
+
+def test_a_downloaded_site_builds_whole(tmp_path):
+    """INV-11. Breaks when a full address stays as written, or a path keeps `/site/`."""
+    from test_importer_folder import _built, _png, _unresolved
+
+    import pressless_import
+
+    base = "https://sites.example.org/site"
+    home = _html(
+        '<html><head><title>Home</title><link rel="stylesheet" href="/site/style.css"></head><body>'
+        f'<a href="/site/about/">About</a> <a href="/site/team">Team</a> <a href="plain">Plain</a> '
+        f'<a href="{base}/about/#top">Full</a> <a href="/other/">Beside</a>'
+        f'<img src="{base}/one.png" srcset="/site/two.png 2x" alt="">'
+        '</body></html>')
+    plain = (200, b"<html><body><p>Plain</p></body></html>", {"Content-Type": "text/html"})
+    page = _html("<html><head><title>Page</title></head><body><p>Words</p></body></html>")
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/site/": home,
+        "sites.example.org/site/about/": page,
+        "sites.example.org/site/team": (301, b"", {"Location": "/site/team/"}),
+        "sites.example.org/site/team/": page,
+        "sites.example.org/site/plain": plain,
+        "sites.example.org/site/hidden/": page,
+        "sites.example.org/site/sitemap.xml": (
+            200, f"<urlset><url><loc>{base}/hidden/</loc></url></urlset>".encode(), {}),
+        "sites.example.org/site/style.css": (
+            200, b'@import url("/site/more.css"); body { background: url(/site/three.png); }',
+            {"Content-Type": "text/css"}),
+        "sites.example.org/site/more.css": (
+            200, b"p { color: red; }", {"Content-Type": "text/css"}),
+        "sites.example.org/site/one.png": (200, _png(), {"Content-Type": "image/png"}),
+        "sites.example.org/site/two.png": (200, _png(), {"Content-Type": "image/png"}),
+        "sites.example.org/site/three.png": (200, _png(), {"Content-Type": "image/png"}),
+    })
+    into = tmp_path / "store"
+    held = into / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER
+    crawled = _download(network, f"{base}/", held)
+    assert crawled.left == ()
+    assert {"index.html", "about/index.html", "team/index.html", "plain.html", "hidden/index.html",
+            "style.css", "more.css", "one.png", "two.png", "three.png"} <= _landed(held)
+    pressless_import.bring_in_folder(held, into)
+    site = _built(tmp_path, into)
+    assert _unresolved(site, "index.html") == []
+    built = (site / "index.html").read_text(encoding="utf-8")
+    assert 'href="pages/about.html#top"' in built
+    assert 'href="https://sites.example.org/other/"' in built
+    assert "/site/" not in built.replace("https://sites.example.org/other/", "")
+    assert (site / "pages/hidden.html").is_file()
+    style = (site / builder.STYLE_CODE).read_text(encoding="utf-8")
+    assert "color: red" in style and "three.png" in style and "/site/" not in style

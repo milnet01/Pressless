@@ -193,9 +193,10 @@ returns and before Settings is saved:
 
 ```python
 # src/pressless/takeover.py
-MARKER = "takeover-owed"             # in the site's folder; empty file
+MARKER = "takeover-owed"             # in the site's folder: the build files' names, a line each
 def owed(folder: Path) -> bool: ...
-def mark(folder: Path) -> None: ...  # OSError is the caller's
+def mark(folder: Path, files: tuple[str, ...]) -> None: ...  # OSError is the caller's
+def named(folder: Path) -> tuple[str, ...]: ...   # for the report, once they have gone
 def done(folder: Path) -> None: ...  # absent is fine
 ```
 

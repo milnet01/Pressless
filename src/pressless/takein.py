@@ -8,7 +8,8 @@ contract is docs/specs/PRESS-0218-take-in-github-site.md.
 
 A repository holding plain pages comes in another way (PRESS-0210 § 4.11):
 `look_folder` lays it out where a ZIP would be, and `bring_folder` brings that
-in. Nothing here writes to GitHub.
+in. A site GitHub Actions builds holds no pages, so `look_site` downloads the live
+site to the same place (PRESS-0333 § 4.2). Nothing here writes to GitHub.
 """
 from __future__ import annotations
 
@@ -22,7 +23,8 @@ from pathlib import Path
 
 import pressless_import
 from pressless import builder, photographs, publisher, safe_write, settings, store, undo
-from pressless.face import SENTENCES, Sentence, Site, gatherer, nothing_captured
+from pressless.face import SENTENCES, Sentence, Site, _room, gatherer, nothing_captured
+from pressless_import import fetch
 
 # What a take-in fetches: the Store's own files, and what the Builder
 # publishes from the photographs, the kept files and the icon (§ 4.2).
@@ -241,29 +243,61 @@ def look_folder(folder: Path, settings: settings.Settings, key: str, commit: str
     return pressless_import.read_folder(held), fetched.commit
 
 
+def look_site(folder: Path, settings: settings.Settings, key: str, address: str, commit: str = "",
+              transport: publisher.Transport | None = None
+              ) -> tuple[pressless_import.Found, str]:
+    """The live site at `address` laid out at import/folder/ (PRESS-0333 § 4.2); what
+    `read_folder` found there, and the commit it stands for, which names the state
+    shown though the pages did not come from it. An address it cannot read leaves the
+    folder empty, so no `index.html` is found."""
+    held = _held_folder(folder)
+    forget_folder(folder)
+    commit = commit or publisher.head_commit(settings, key, transport)
+    crawled = fetch.fetch_site(address, held, lambda: _room(held))
+    imports = held.parent
+    safe_write.write_whole(_record_path(folder), json.dumps({"commit": commit}, indent=1) + "\n",
+                           prefix=".folder-")
+    safe_write.write_whole(imports / pressless_import.FOLDER_LEFT,
+                           json.dumps(crawled.left, indent=1) + "\n", prefix=".folder-left-")
+    return pressless_import.read_folder(held), commit
+
+
 def forget_folder(folder: Path) -> None:
     """A repository read and refused, or one read again, leaves no copy behind."""
     shutil.rmtree(_held_folder(folder), ignore_errors=True)
     _record_path(folder).unlink(missing_ok=True)
+    (Path(folder) / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER_LEFT).unlink(
+        missing_ok=True)
+
+
+def _lay_out(folder: Path, settings: settings.Settings, key: str, commit: str, address: str,
+             transport: publisher.Transport | None) -> pressless_import.Found:
+    if address:
+        return look_site(folder, settings, key, address, commit, transport)[0]
+    return look_folder(folder, settings, key, commit, transport)[0]
 
 
 def found_held(folder: Path, settings: settings.Settings, key: str, commit: str,
-               transport: publisher.Transport | None = None) -> pressless_import.Found:
+               transport: publisher.Transport | None = None,
+               address: str = "") -> pressless_import.Found:
     """What the state at `commit` holds: from import/folder/ where it holds that
-    state, so the screen shows what Finish writes; else laid out again."""
+    state, so the screen shows what Finish writes; else laid out again, from the
+    live site where `address` names one."""
     if _held_commit(folder) == commit:
         return pressless_import.read_folder(_held_folder(folder))
-    return look_folder(folder, settings, key, commit, transport)[0]
+    return _lay_out(folder, settings, key, commit, address, transport)
 
 
 def bring_folder(folder: Path, settings: settings.Settings, key: str, commit: str, *,
                  capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
                  notices: list[str] | None = None,
-                 transport: publisher.Transport | None = None) -> pressless_import.Brought:
+                 transport: publisher.Transport | None = None,
+                 address: str = "") -> pressless_import.Brought:
     """Bring in the repository as it stood at `commit`, where nothing has yet.
     A press after a failed save, or after a close during the moves, answers from
     what was brought in then, reading nothing from GitHub. `capture` wraps the
-    Store's reads and writes and never the fetch, as take_in's does."""
+    Store's reads and writes and never the fetch, as take_in's does. With `address`,
+    the pages came from the live site there (PRESS-0333 § 4.3)."""
     folder = Path(folder)
     gathered = notices if notices is not None else []
     captured = gatherer(capture, gathered)
@@ -276,6 +310,8 @@ def bring_folder(folder: Path, settings: settings.Settings, key: str, commit: st
             forget_folder(folder)
             return brought
     if _held_commit(folder) != commit and not captured(lambda: store.holds_a_site(folder)):
-        look_folder(folder, settings, key, commit, transport)
+        _lay_out(folder, settings, key, commit, address, transport)
+    left = (pressless_import.read_folder_left(folder / pressless_import.IMPORT_FOLDER)
+            if address else ())
     return captured(lambda: pressless_import.bring_in_folder(_held_folder(folder), folder,
-                                                              commit=commit))
+                                                              left=left, commit=commit))
