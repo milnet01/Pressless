@@ -6099,7 +6099,7 @@ dislikes on entries, as decided in docs/discovery.md.
   Source: user-request-2026-09-02.
   Lanes: Insights, design.
 
-- 📋 [PRESS-0080] **Whether the three music services publish listening figures at all, and by what route.**
+- ✅ [PRESS-0080] **Whether the three music services publish listening figures at all, and by what route.**
   The three music items behind this one all assume figures can be
   fetched. That assumption is doubtful and checking it is cheap, so it is
   checked once here rather than discovered three times during
@@ -6128,6 +6128,17 @@ dislikes on entries, as decided in docs/discovery.md.
   item is startable.
 
   Blocked-by: nothing.
+  2026-11-01, read from each service's own pages. None gives an app
+  stream or listener figures; all three let a signed-in artist download
+  a CSV. Spotify: support.spotify.com/us/artists/article/exporting-data
+  ("Song stream counts" as .csv); its Web API has no such endpoint, and
+  the February 2026 migration guide removes followers and popularity
+  from Development Mode apps. Apple:
+  artists.apple.com/support/1105-understand-your-analytics (CSV); no
+  Apple page read says the Music API lacks analytics, so that half is
+  unconfirmed. Amazon: artists.amazonmusic.com/faqs ("export in CSV
+  format"); no API mentioned, so "none" is inferred from silence, and it
+  says the data is not a finalized streaming report.
   **Layman:** Before building anything, find out whether Spotify, Apple and Amazon actually let an app fetch his listening figures -- they may not.
   Kind: investigate.
   Source: user-request-2026-09-02.
@@ -6157,6 +6168,11 @@ dislikes on entries, as decided in docs/discovery.md.
   than assuming.
 
   Blocked-by: PRESS-0079.
+  Waiting-on: user (YouTube's public counts by an API key, or the
+  owner's watch time by a Google sign-in? Recommend public counts first:
+  much cheaper, and no Google review. A new key and channel setting
+  reach Credentials, Settings, Insights and the Face, so this needs a
+  spec. 2026-11-01)
   **Layman:** The dashboard also shows how his YouTube channel is doing, and how each video and music track on it is doing.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -6203,6 +6219,10 @@ dislikes on entries, as decided in docs/discovery.md.
   instead.
   Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
   route exists, it leaves the milestone rather than holding it up.
+  Waiting-on: user (Should Spotify, Apple and Amazon figures come from a
+  CSV the artist downloads, as no API gives them? Recommend yes, one
+  reader built when the writer supplies a real CSV from each, as the
+  columns are not documented. 2026-11-01)
   **Layman:** The dashboard also shows how his music is doing on Spotify.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -6230,6 +6250,8 @@ dislikes on entries, as decided in docs/discovery.md.
   only if a route exists.
   Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
   route exists, it leaves the milestone rather than holding it up.
+  Waiting-on: user (As PRESS-0082's question: a downloaded CSV, one
+  reader, on a real sample. Recommend yes. 2026-11-01)
   **Layman:** The dashboard also shows how his music is doing on Apple Music.
   Kind: feature.
   Source: user-request-2026-09-02.
@@ -6253,6 +6275,8 @@ dislikes on entries, as decided in docs/discovery.md.
   real outcome to report rather than work to schedule.
   Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
   route exists, it leaves the milestone rather than holding it up.
+  Waiting-on: user (As PRESS-0082's question: a downloaded CSV, one
+  reader, on a real sample. Recommend yes. 2026-11-01)
   **Layman:** The dashboard also shows how his music is doing on Amazon Music.
   Kind: feature.
   Source: user-request-2026-09-02.
