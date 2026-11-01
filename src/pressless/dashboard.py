@@ -214,7 +214,7 @@ def _report(report: insights.Report, address: str = "") -> str:
         key = "dashboard.count.one" if report.people == 1 else "dashboard.count.many"
         count = say(key, count=f"{report.people:,}", window=window)
     page = f'<p class="visitors-count">{count}</p>' + _strip(report.daily) + when
-    cards = [_countries(report.countries), _sources(report.sources),
+    cards = [_countries(report.countries), _regions(report.regions), _sources(report.sources),
              _pages(report.pages, address)]
     return page + '<div class="reading">' + "".join(cards) + "</div>"
 
@@ -270,6 +270,19 @@ def _countries(countries: tuple[insights.Country, ...]) -> str:
     return _panel(say("dashboard.where"),
                  f'<th scope="col">{say("dashboard.country")}</th>'
                  f'<th scope="col" class="num">{say("dashboard.people")}</th>', rows)
+
+
+def _regions(regions: tuple[insights.Region, ...]) -> str:
+    if not regions:
+        return ""
+    top = max(region.people for region in regions)
+    rows = "".join(
+        f"<tr><td>{_flag(region.country)}{html.escape(region.name)}"
+        f"{_meter(region.people, top)}</td><td class=\"num\">{region.people:,}</td></tr>"
+        for region in regions)
+    return _panel(say("dashboard.where_within"),
+                  f'<th scope="col">{say("dashboard.region")}</th>'
+                  f'<th scope="col" class="num">{say("dashboard.people")}</th>', rows)
 
 
 # Google's channel groups, and the keys of his words for them. Anything new

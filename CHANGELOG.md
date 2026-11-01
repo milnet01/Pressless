@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Insights shows which province or state readers come from** (PRESS-0209)
+  A new table beside the countries, as Google names them. Cities are never asked for.
+
 - **A wizard puts your site on your own domain name** (PRESS-0222)
   Settings, then Use your own domain name. It says what will change first, shows the exact records to enter at your domain seller, checks where the name leads, and turns the secure address on when GitHub's certificate is ready.
 

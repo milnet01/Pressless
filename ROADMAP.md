@@ -6066,7 +6066,7 @@ No new sign. It widens S11 — provinces or states within each country, and
 sources past Google where they publish figures at all — and adds likes and
 dislikes on entries, as decided in docs/discovery.md.
 
-- 📋 [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
+- ✅ [PRESS-0079] **Design rule 8 lets Insights talk to Google alone, and four more sources are wanted.**
   docs/design.md § What may depend on what, rule 8: "Insights may read
   Settings, may talk to Google, and keeps one cache file in Pressless's
   own folder -- and nothing else." Taken literally that forbids every
@@ -6088,6 +6088,12 @@ dislikes on entries, as decided in docs/discovery.md.
   passing.
 
   Blocked-by: nothing.
+  2026-11-01: docs/design.md rule 8 now states a shape, read-only from a
+  service the user set up, with one cache file per service. One each, so
+  a service's failure or format cannot touch another's. Rule 10 needed
+  no change. The gate this item feared no longer applies (global rule
+  14, 2026-10-31). The parts table's Insights row and Credentials' two
+  secrets change as each source is built.
   **Layman:** The design says the stats part may only talk to Google. Adding YouTube, Spotify, Apple and Amazon means changing that rule first.
   Kind: doc.
   Source: user-request-2026-09-02.
@@ -6156,11 +6162,17 @@ dislikes on entries, as decided in docs/discovery.md.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0209] **Insights shows provinces or states within each country.**
+- ✅ [PRESS-0209] **Insights shows provinces or states within each country.**
   User, 2026-10-02: the more detail the better, but cities are not
   wanted. docs/discovery.md S11 now names provinces or states. Google
   Analytics reports a region dimension; check what it returns for
   South Africa before designing the display.
+  2026-11-01: fifth report, dimensions countryId and region, limit 10;
+  PRESS-0019 amended, no new spec. 7 hand mutations caught. The
+  roadmap's check for South Africa could not be made: the one property
+  the connector can read answers only (not set). So Google's names there
+  are unverified, and Google's limit of five reports in a batch is
+  recalled: both on PRESS-0133's list.
   **Layman:** Visitor numbers show which province or state readers came from, not only the country.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.

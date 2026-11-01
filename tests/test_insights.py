@@ -151,12 +151,13 @@ def _batch(*reports: dict) -> bytes:
 
 
 def _google(rows=ROWS, total: int | None = TOTAL, *, daily=(), pages=(),
-            sources=()) -> bytes:
+            sources=(), regions=()) -> bytes:
     """An answer shaped like Google's batchRunReports reply: the countries
     report, then readers over time, top pages and how visitors arrived, each
     a list of (dimension values, metric values)."""
     return _batch(_countries_report(rows, total), _table(daily), _table(pages),
-                  _table(sources))
+                  _table(sources),
+                  _table(regions))
 
 
 def _ok(body: bytes) -> tuple[int, dict[str, str], bytes]:
@@ -418,7 +419,7 @@ def test_request_body_asks_for_country_codes(tmp_path):
     _, _, body, _ = transport.requests[0]
     assert body, "the request carried no body"
     requests = json.loads(body)["requests"]
-    assert len(requests) == 4, f"expected a batch of four reports; got {requests!r}"
+    assert len(requests) == 5, f"expected a batch of five reports; got {requests!r}"
     for each in requests:
         assert each.get("dateRanges") == [
             {"startDate": "7daysAgo", "endDate": "today"}
@@ -1348,7 +1349,7 @@ def test_a_window_with_no_visitors_reads_as_zero(tmp_path):
     overstated number that refusal exists to keep out -- which is what
     test_answer_without_totals_is_refused holds.
     """
-    transport = _Transport(default=_ok(_batch({"rowCount": 0}, {}, {}, {})))
+    transport = _Transport(default=_ok(_batch({"rowCount": 0}, {}, {}, {}, {})))
 
     report = read(_settings(), "a-token", tmp_path, client=transport)
 
@@ -1368,13 +1369,13 @@ def test_an_empty_total_with_no_rows_reads_as_zero(tmp_path):
     value. The same empty entry beside rows is still refused (INV-5).
     """
     quiet = {"kind": "analyticsData#runReport", "totals": [{}]}
-    transport = _Transport(default=_ok(_batch(quiet, {}, {}, {})))
+    transport = _Transport(default=_ok(_batch(quiet, {}, {}, {}, {})))
     report = read(_settings(), "a-token", tmp_path, client=transport)
     assert (report.people, report.countries) == (0, ())
 
     with_rows = _countries_report(total=None)
     with_rows["totals"] = [{}]
-    transport = _Transport(default=_ok(_batch(with_rows, {}, {}, {})))
+    transport = _Transport(default=_ok(_batch(with_rows, {}, {}, {}, {})))
     with pytest.raises(InsightsError):
         read(_settings(), "a-token", tmp_path / "other", client=transport)
 
@@ -1807,7 +1808,7 @@ def test_the_batch_asks_for_days_pages_and_sources(tmp_path, days, period):
     transport = _Transport()
     read(_settings(), "a-token", tmp_path, days=days, client=transport)
 
-    _, over_time, pages, sources = json.loads(transport.requests[0][2])["requests"]
+    _, over_time, pages, sources, _ = json.loads(transport.requests[0][2])["requests"]
     assert over_time["dimensions"] == [{"name": period}], over_time
     assert over_time["metrics"] == [{"name": "activeUsers"}], over_time
     assert over_time["orderBys"] == [{"dimension": {"dimensionName": period}}]
@@ -1927,10 +1928,10 @@ def test_every_table_survives_the_cache_and_a_stale_answer(tmp_path):
 @pytest.mark.parametrize("body", [
     {},
     {"reports": [_countries_report()]},
-    {"reports": [_countries_report(), {}, {}, {}, {}]},
-    {"reports": [_countries_report(), {}, [], {}]},
+    {"reports": [_countries_report(), {}, {}, {}, {}, {}]},
+    {"reports": [_countries_report(), {}, [], {}, {}]},
 ], ids=["none", "one", "five", "not-an-object"])
-def test_an_answer_without_four_reports_is_refused(tmp_path, body):
+def test_an_answer_without_five_reports_is_refused(tmp_path, body):
     """INV-32: a batch answer that is not four report objects is refused,
     and nothing is cached.
 
@@ -1941,3 +1942,30 @@ def test_an_answer_without_four_reports_is_refused(tmp_path, body):
     with pytest.raises(InsightsError):
         read(_settings(), "a-token", tmp_path, client=transport)
     assert not cache_path(tmp_path).exists()
+
+
+def test_provinces_are_asked_for_and_read_most_read_first(tmp_path):
+    """PRESS-0209. Breaks when a city is asked for, which the user ruled out, or a row
+    naming no province reaches the table, or a country code is lost."""
+    transport = _Transport(default=_ok(_google(regions=[
+        (("ZA", "Gauteng"), (3,)), (("ZA", "Western Cape"), (9,)), (("GB", "(not set)"), (4,)),
+        (("(not set)", "(not set)"), (2,)), (("GB", "England"), (3,))])))
+    report = read(_settings(), "a-token", tmp_path, client=transport)
+    asked = json.loads(transport.requests[0][2])["requests"][4]
+    assert [each["name"] for each in asked["dimensions"]] == ["countryId", "region"]
+    assert [(each.country, each.name, each.people) for each in report.regions] == [
+        ("ZA", "Western Cape", 9), ("GB", "England", 3), ("ZA", "Gauteng", 3)]
+
+
+def test_provinces_survive_the_cache_and_an_older_cache_still_reads(tmp_path):
+    """PRESS-0209. Breaks when a reply kept before provinces were asked for is refused,
+    which loses the last numbers kept, or the cache forgets them."""
+    transport = _Transport(default=_ok(_google(regions=[(("ZA", "Western Cape"), (9,))])))
+    first = read(_settings(), "a-token", tmp_path, client=transport)
+    target = cache_path(tmp_path)
+    assert read(_settings(), "a-token", tmp_path, client=transport).regions == first.regions
+    kept = json.loads(target.read_text(encoding="utf-8"))
+    for entry in kept["windows"].values():
+        del entry["regions"]
+    target.write_text(json.dumps(kept), encoding="utf-8")
+    assert read(_settings(), "a-token", tmp_path, client=transport).regions == ()

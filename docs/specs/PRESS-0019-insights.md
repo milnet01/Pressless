@@ -110,7 +110,8 @@ def forget(folder: Path) -> None
 readership, and an hour between fetches. §4.4 says why the second is the
 figure it is.
 
-`Report` carries `people` and `countries` as before, and three tables:
+`Report` carries `people` and `countries` as before, `regions` (a `Region` of
+`country`, `name` and `people`, most-read first, PRESS-0209), and three tables:
 `daily` (a `Day` of `label` and `people` each, oldest first), `pages` (a
 `Page` of `path`, `views`, `people` and `seconds`, most-viewed first) and
 `sources` (a `Source` of `channel`, `source`, `visits` and `people`, most
@@ -142,7 +143,8 @@ is a leak rather than an untidiness.
             "pages": [ { "path": "/", "views": 0, "people": 0,
                          "seconds": 0.0 } ],
             "sources": [ { "channel": "Direct", "source": "(direct)",
-                           "visits": 0, "people": 0 } ] }
+                           "visits": 0, "people": 0 } ],
+            "regions": [ { "country": "ZA", "name": "Western Cape", "people": 0 } ] }
   }
 }
 ```
@@ -182,9 +184,9 @@ opposite of the design.
 
 A `POST` to `https://analyticsdata.googleapis.com/v1beta/properties/<property
 id>:batchRunReports`, carrying the token as an `Authorization: Bearer` header.
-Its `requests` are four reports, in this order, each over the same last `days`
+Its `requests` are five reports, in this order, each over the same last `days`
 days. Google answers a batch with `reports` in the order asked; an answer that
-does not carry exactly four is refused (INV-32).
+does not carry exactly five is refused (INV-32).
 
 1. **Countries and the total** — dimension `countryId`, metric
    `activeUsers`, and `metricAggregations` of `TOTAL`. The rules below this
@@ -205,6 +207,9 @@ does not carry exactly four is refused (INV-32).
 4. **How visitors arrived** — dimensions `sessionDefaultChannelGroup` and
    `sessionSource`; metrics `sessions` and `activeUsers`; most sessions first;
    `limit` 10.
+5. **Provinces and states** (PRESS-0209) — dimensions `countryId` and `region`;
+   metric `activeUsers`; most people first; `limit` 10. A row with no ISO country
+   or no province is left out, as the countries table counts those readers.
 
 Pages and sources are put in order here as well as asked for in order —
 pages by views, sources by visits, ties by path or by channel then source —
@@ -212,7 +217,7 @@ so a cached reply and a fresh one list the same data the same way. A row in
 any report whose first dimension value is missing or empty is refused, as a
 country row is; `sessionSource`, the second, may be empty.
 
-**One batch, not four requests**, because the request count is what the
+**One batch, not a request per table**, because the request count is what the
 cache and §4.4's hour exist to bound.
 
 - **`countryId`, never `country`** — the first is the ISO alpha-2 code the flag
@@ -271,7 +276,7 @@ cached for this window §4.4's fallback answers instead of raising them.
 | Google answers 401 or 403 | `Refused` |
 | Google answers 429 | `RateLimited` |
 | Google answers anything else that is not 200 | `InsightsError` |
-| Google's answer is not JSON, does not carry four reports, names no total where the countries report carried rows, or has a row whose first dimension value is missing or empty | `InsightsError` |
+| Google's answer is not JSON, does not carry five reports, names no total where the countries report carried rows, or has a row whose first dimension value is missing or empty | `InsightsError` |
 
 **Google's own words ride on the failure and never in its message.** The
 message is the writer-facing sentence `docs/design.md` § Errors requires; the
@@ -528,9 +533,9 @@ PRESS-0020's amendment**, with INV-3 and INV-4 changed to the batch.
   fallback rebuilds the report from them, and the page loses its strip and
   cards whenever it is not fetching.
 
-- **INV-32** — An answer whose `reports` is not a list of exactly four
+- **INV-32** — An answer whose `reports` is not a list of exactly five
   objects raises `InsightsError`.
-  *Test:* `tests/test_insights.py::test_an_answer_without_four_reports_is_refused`.
+  *Test:* `tests/test_insights.py::test_an_answer_without_five_reports_is_refused`.
   *Breaks when:* a short answer is read by position and one table's rows are
   shown under another's heading, or a missing table is cached as empty.
 
@@ -629,7 +634,7 @@ when none is handed in. Proving it would mean letting a test reach Google.
 | INV-29 | `tests/test_insights.py::test_the_daily_strip_has_every_day_of_the_window` + `::test_a_year_is_read_by_month` |
 | INV-30 | `tests/test_insights.py::test_pages_and_sources_are_read_in_order` |
 | INV-31 | `tests/test_insights.py::test_every_table_survives_the_cache_and_a_stale_answer` |
-| INV-32 | `tests/test_insights.py::test_an_answer_without_four_reports_is_refused` |
+| INV-32 | `tests/test_insights.py::test_an_answer_without_five_reports_is_refused` |
 | §4.3's claim that Google answers a batch in the order asked | **nothing that runs** — the live read in PRESS-0020's step 4 checks it once; no test asks Google |
 | §3 decision 2's window ending at today | **nothing** — the same question asked twice in a day gives two numbers by design, so no assertion can tell that from a fault |
 | The zero-visitor reading of GA4 | **nothing that runs** — one live read on 2026-10-01 saw the shape INV-26's second test uses; no test asks Google |

@@ -49,7 +49,7 @@ class _Google:
                     for code, n in self.rows]
             countries = {"rows": rows,
                          "totals": [{"metricValues": [{"value": str(self.total)}]}]}
-            answer = {"reports": [countries, {}, {}, {}]}
+            answer = {"reports": [countries, {}, {}, {}, {}]}
             return 200, {}, json.dumps(answer).encode()
         return 404, {}, b""
 
@@ -226,3 +226,13 @@ def test_a_kept_report_is_marked_stale(tmp_path: Path) -> None:
     assert kept is not None and kept.stale and kept.people == 10
     assert dataclasses.replace(kept, stale=False) == dashboard.insights._cached(
         dashboard.insights.cache_path(tmp_path), 28)
+
+
+def test_provinces_get_their_own_table_and_none_shows_nothing():
+    """PRESS-0209. Breaks when a province's name is written raw, or an empty table shows."""
+    report = dashboard.insights.Report(3, (dashboard.insights.Country("ZA", 3),), 28, 0.0, False,
+                             regions=(dashboard.insights.Region("ZA", "<Western> Cape", 3),))
+    shown = dashboard._report(report)
+    assert "Which province or state" in shown and "&lt;Western&gt; Cape" in shown
+    assert "Which province or state" not in dashboard._report(
+        dataclasses.replace(report, regions=()))

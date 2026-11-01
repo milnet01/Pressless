@@ -1633,6 +1633,8 @@ _WORDS: dict[str, str] = {
     "dashboard.each_month": "People each month",
     "dashboard.where": "Where they are",
     "dashboard.country": "Country",
+    "dashboard.where_within": "Which province or state",
+    "dashboard.region": "Province or state",
     "dashboard.people": "People",
     "dashboard.unknown_country": "Somewhere Google could not tell",
     "dashboard.how": "How they found you",

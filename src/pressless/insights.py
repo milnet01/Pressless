@@ -82,6 +82,7 @@ DEFAULT_MAX_AGE = 3600.0
 # such a row can also appear among the country rows, where it is not a
 # country. Which of the two Google does is not settled here (PRESS-0074).
 AGGREGATE_PREFIX = "RESERVED_"
+_NOT_SET = "(not set)"             # Google's word where it could not tell
 
 # Every other value that is not an ISO 3166-1 alpha-2 code -- GA4's "(not set)"
 # is the documented one -- is folded into one entry under this code. Lower
@@ -100,6 +101,13 @@ TIMEOUT_SECONDS = 30.0
 @dataclass(frozen=True)
 class Country:
     code: str      # ISO 3166-1 alpha-2, which flags are keyed by, or UNKNOWN_COUNTRY
+    people: int
+
+
+@dataclass(frozen=True)
+class Region:
+    country: str   # as Country.code, always ISO: an unknown one has no province to name
+    name: str      # Google's name for the province or state, such as "Western Cape"
     people: int
 
 
@@ -136,6 +144,7 @@ class Report:
     daily: tuple[Day, ...] = ()     # oldest first, one per day or per month
     pages: tuple[Page, ...] = ()    # most-viewed first
     sources: tuple[Source, ...] = ()  # most visits first
+    regions: tuple[Region, ...] = ()  # most-read first; never cities (discovery S11)
 
 
 class InsightsError(Exception):
@@ -371,6 +380,13 @@ def _fetch(transport: Transport, property_id: str, token: str,
             "orderBys": [{"metric": {"metricName": "sessions"}, "desc": True}],
             "limit": TABLE_LIMIT,
         },
+        {
+            "dateRanges": window,
+            "dimensions": [{"name": "countryId"}, {"name": "region"}],
+            "metrics": [{"name": "activeUsers"}],
+            "orderBys": [{"metric": {"metricName": "activeUsers"}, "desc": True}],
+            "limit": TABLE_LIMIT,
+        },
     ]}).encode("utf-8")
     headers = {
         "Authorization": f"Bearer {token}",
@@ -402,16 +418,16 @@ def _fetch(transport: Transport, property_id: str, token: str,
         raise _failure(status, data)
 
     reports = _parse(data).get("reports")
-    if (not isinstance(reports, list) or len(reports) != 4
+    if (not isinstance(reports, list) or len(reports) != 5
             or not all(isinstance(each, dict) for each in reports)):
         # Never read by position from a short answer: a table would show
         # another's rows, or a missing one be cached as empty (INV-32).
-        raise InsightsError("Google's answer does not carry the four reports "
+        raise InsightsError("Google's answer does not carry the five reports "
                             "asked for")
-    countries, over_time, pages, sources = reports
+    countries, over_time, pages, sources, regions = reports
     return Report(_total(countries), _countries(countries), days, when, False,
                   _daily(over_time, days, when), _pages(pages),
-                  _sources(sources))
+                  _sources(sources), _regions(regions))
 
 
 def _failure(status: int, data: bytes = b"") -> InsightsError:
@@ -477,6 +493,18 @@ def _countries(answer: dict) -> tuple[Country, ...]:
             continue
         found.append(Country(code, _number(row, f"the count for {code}")))
     return _ordered(found)
+
+
+def _regions(answer: dict) -> tuple[Region, ...]:
+    """Most-read first, ties by country then name. A row whose country or province
+    Google could not tell names no province, so it is left out: the countries table
+    still counts those readers."""
+    found = []
+    for row in _rows(answer, "provinces"):
+        country, name = _values(row, 2, "province")
+        if _is_iso(country) and name and name != _NOT_SET:
+            found.append(Region(country, name, _number(row, f"the count for {name}")))
+    return tuple(sorted(found, key=lambda each: (-each.people, each.country, each.name)))
 
 
 def _ordered(countries) -> tuple[Country, ...]:
@@ -667,8 +695,12 @@ def _cached(target: Path, days: int) -> Report | None:
         sources = tuple(Source(str(each["channel"]), str(each["source"]),
                                int(each["visits"]), int(each["people"]))
                         for each in entry["sources"])
+        # A reply kept before provinces were asked for has none, and is replaced within
+        # the hour; refusing it would lose the only numbers Google may not give again.
+        regions = tuple(Region(str(each["country"]), str(each["name"]), int(each["people"]))
+                        for each in entry.get("regions", ()))
         return Report(int(entry["people"]), countries, days,
-                      float(entry["fetched_at"]), False, daily, pages, sources)
+                      float(entry["fetched_at"]), False, daily, pages, sources, regions)
     except (KeyError, TypeError, ValueError, OverflowError):
         return None
 
@@ -697,6 +729,7 @@ def _store(target: Path, report: Report) -> None:
         "daily": [dataclasses.asdict(day) for day in report.daily],
         "pages": [dataclasses.asdict(page) for page in report.pages],
         "sources": [dataclasses.asdict(each) for each in report.sources],
+        "regions": [dataclasses.asdict(each) for each in report.regions],
     }
     data = {
         "version": CACHE_VERSION,

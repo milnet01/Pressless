@@ -93,10 +93,11 @@ which marks cannot express without becoming HTML.
    file per entry — and an entry is never HTML.
 7. **No part reaches inside another.** Each has one small documented way
    in; the insides are private.
-8. **Insights may read Settings, may talk to Google, and keeps one
-   cache file in Pressless's own folder — and nothing else.** It never
+8. **Insights may read Settings, may read figures from an outside
+   service the user has set up, and keeps one cache file per service in
+   Pressless's own folder — and nothing else.** It only reads, never
    opens the Store, never calls Marks or Blocks, and nothing about
-   writing or publishing may depend on it. If Google is unreachable, or
+   writing or publishing may depend on it. If a service is unreachable, or
    the user never sets it up at all, every sign but S11 still holds —
    the dashboard is the only thing that says so.
 9. **Import may read what the user points it at, may fetch each file
