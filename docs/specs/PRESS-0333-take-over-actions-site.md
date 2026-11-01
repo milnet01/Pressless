@@ -109,10 +109,9 @@ that folder whose text holds `BUILD_MARK`. The fetch area is emptied as `look`'s
 **pages step**, in `check_pages`, where `shown.on and not shown.serves_root`:
 
 - Not `built_by_actions`, or `build_files` empty: `setup.hint.elsewhere`, as today.
-- Otherwise `takein.look_site` (§ 4.2) lays the live site out. Where its front page
-  cannot be read, or `read_folder` finds no `index.html` or says `built_by_a_tool`,
-  `takein.forget_folder` runs and the answer is a new hint,
-  `setup.hint.site_unreadable`.
+- Otherwise `takein.look_site` (§ 4.2) lays the live site out. Where `read_folder`
+  finds no `index.html` or says `built_by_a_tool`, `takein.forget_folder` runs and
+  the answer is a new hint, `setup.hint.site_unreadable`.
 - Otherwise the answers gain `bring_in_commit`, the branch's head commit, and
   `take_over: "yes"`. `site_address` is `shown.address`. Pages is not switched and
   `.nojekyll` is not written.
@@ -126,25 +125,28 @@ that folder whose text holds `BUILD_MARK`. The fetch area is emptied as `look`'s
 # src/pressless_import/fetch.py — added; still the one module that reaches the network
 @dataclass(frozen=True)
 class Crawled:
-    front_page: bool                 # the first address was read
     left: tuple[tuple[str, str], ...]  # (address's path, why it was not kept)
 
 def fetch_site(address: str, into: Path, room: Callable[[], int], *,
-               resolve: Resolve = _resolve, connect: Connect = _connect) -> Crawled: ...
+               resolve: Resolve | None = None, connect: Connect | None = None) -> Crawled: ...
 
 # src/pressless/takein.py
-def look_site(folder: Path, settings: Settings, key: str, address: str,
+def look_site(folder: Path, settings: Settings, key: str, address: str, commit: str = "",
               transport: publisher.Transport | None = None
               ) -> tuple[pressless_import.Found, str]: ...
 ```
 
-`look_site` reads `head_commit`, empties the held folder as `look_folder` does,
-and calls `fetch_site(address, held, room)`. It writes `import/folder.json` naming
-that commit, and `import/folder-left.json`, whose shape `importing` already reads,
-holding `Crawled.left`. It answers `read_folder`'s `Found` and the commit.
+`look_site` empties the held folder as `look_folder` does, and calls
+`fetch_site(address, held, room)`. It writes `import/folder.json` naming `commit`,
+or `head_commit` where that is empty, and `import/folder-left.json`, whose shape
+`importing` already reads, holding `Crawled.left`. It answers `read_folder`'s `Found`
+and the commit.
 
-**What it follows.** `fetch_site` starts at `address`, then takes addresses first
-found first:
+A `resolve` or `connect` left `None` is read from the module when called, so
+`tests/test_takeover.py` patches `fetch._resolve` and `fetch._connect`.
+
+**What it follows.** `fetch_site` starts at `address`. An `address` it cannot read
+ends the crawl with nothing kept. Otherwise it takes addresses first found first:
 
 - from a page: what `_folder._spots` finds, an `<a href>` included;
 - from a stylesheet, or a `style` element or attribute: each `url(...)` and `@import`;
@@ -152,25 +154,29 @@ found first:
 
 A query and a fragment are dropped from what is fetched.
 
-**What stays in the site.** An address is the site's where its host and port equal
-`address`'s, and its path lies under `address`'s path. Its scheme is ignored, and
-every fetch uses `address`'s. Anything else is not fetched and not listed, so § 4.5
-of PRESS-0210 leaves it as written. A redirect leading out of the site is `left`.
+**What stays in the site.** An address is the site's where its host equals
+`address`'s, its port does too, a scheme's default port counting as none, and its
+path lies under `address`'s path. Its scheme is ignored, and every fetch uses
+`address`'s. Anything else is not fetched and not listed. A redirect leading out of
+the site is `left`.
 `fetch`'s checks apply to each hop: every address a host resolves to is global, and
 no cookie and no key is sent.
 
 **Where it lands.** The path, percent-decoded, without `address`'s path. A path
 ending `/`, or empty, gains `index.html`. An answer of type `text/html` to a path
 with no suffix gains `.html`. A redirect's final address names the file. A path
-holding a `..` segment, or failing `_why_not_kept`, is `left`. So is a path once
+holding a `..` segment once decoded, which `urljoin` leaves only where it was encoded, or
+failing `_why_not_kept`, is `left`. So is a path once
 `MEMBERS_MOST` files are held, with the reason saying the site is too large to
 bring in whole, and each answer over `builder.FILE_LARGEST`, or that fails.
 
 **Absolute addresses.** Static site tools commonly write the site's own address in
 full, and PRESS-0210 § 4.5 leaves an address with a host as written, which would
-leave pictures on the old layout's paths. So before a page or stylesheet is written
-to `into`, each address that is the site's, by the test above, becomes `/` and the
-path it lands at. § 4.5 of PRESS-0210 then reads it as any other.
+leave pictures on the old layout's paths. So when the crawl ends, each address in a
+page or stylesheet that is the site's, by the test above, becomes `/` and the path it
+lands at, its query and fragment kept. § 4.5 of PRESS-0210 then reads it as any other.
+One with no host that is not the site's, such as `/other/` beside a project site,
+becomes a full address, which § 4.5 leaves as written.
 
 **What a crawl cannot see** is said on the screen (§ 4.4): a page no link reaches,
 and a page a script builds in the browser, which arrives as the script's shell.
@@ -178,7 +184,8 @@ and a page a script builds in the browser, which arrives as the script's shell.
 ### 4.3 Finish (Face)
 
 `takein.found_held` and `takein.bring_folder` gain `address: str = ""`. Where it is
-set, laying the folder out again calls `look_site`, not `look_folder`. So what is
+set, laying the folder out again calls `look_site` with that commit, not
+`look_folder`. So what is
 written is what was shown, and a held folder that has gone is downloaded again.
 
 `_save_sequence` gains `take_over: bool = False`. Where set, after `bring_folder`
@@ -198,8 +205,9 @@ The Report and the done page are PRESS-0210's,
 with one more sentence, `setup.done.take_over`, saying the site on the web has not
 changed and what the first publish will ask.
 
-`Found.left` and `import/folder-left.json` go to `bring_in_folder` as `left`, as a
-ZIP's do. The Store's list page shows `setup.takeover.owed` above the list while the
+Where `address` is set, `import/folder-left.json` goes to `bring_in_folder` as `left`,
+as a ZIP's does, and `_work_out` adds `Found.left` itself. `forget_folder` also removes
+that file. The Store's list page shows `setup.takeover.owed` above the list while the
 marker exists, as `_unpublished_starter` does for the starter.
 
 ### 4.4 The warning, before Finish (Face)
@@ -213,7 +221,8 @@ holds `_show_bring_in`'s rows and these, each in its own words:
   `.github/workflows/` stays;
 - the address stays, and the custom domain, by name, where there is one;
 - Finish changes nothing on GitHub, and the old site stays up until then;
-- `.nojekyll`, and `CNAME` where there is a domain, will be added;
+- `.nojekyll`, and `CNAME` where there is a domain, will be added, and a `CNAME` with
+  no domain behind it removed;
 - what could not be read: each `Crawled.left` path, and § 4.2's two limits, always.
 
 ### 4.5 The first publish (Face)
@@ -247,10 +256,12 @@ for this failure.
 
 1. `build_files` again. Any left: the page again with `publishing.takeover.still_there`,
    and no write is sent.
-2. `publisher.pages` for the domain. Pages no longer built by Actions: the marker is
-   removed and the answer says the switch was already made.
+2. `publisher.pages` for the domain.
 3. Settings saved with `.nojekyll`, and `CNAME` where there is a domain, joined to
-   `untouchable`, where absent.
+   `untouchable`, where absent. With no domain, `CNAME` is taken off it, so step 4's
+   publish removes a stale one, which a branch build would read as the domain. Pages
+   no longer built by Actions: the marker is removed, the answer says Pages has
+   already been changed and what it now serves, and the POST ends here.
 4. `publish(..., entry=None, taking_over=True)`. A failure stops here, and is shown
    as a press's is. The old site is still up, and the page can be pressed again.
 5. `publisher.switch_pages_to_branch(repository, key, domain)`. A failure stops here,
@@ -258,8 +269,10 @@ for this failure.
    again. A second press's publish finds nothing differing and writes nothing
    (PRESS-0009 INV-4), then this step runs.
 6. `takeover.done`, then the report page: Pages switched, the workflow files
-   named, the domain kept, the files added, the root entries replaced, with
-   `publisher.Outcome`'s counts, and that a first build takes GitHub a few minutes.
+   named, the domain kept, the files added and removed, the root entries replaced,
+   with `publisher.Outcome`'s counts, and that a first build takes GitHub a few minutes.
+   Where `Outcome.commit` is empty, it says an earlier press published the site, in
+   place of the counts.
 
 `switch_pages_to_branch`:
 
@@ -270,6 +283,8 @@ for this failure.
 - sends `PUT pages` with `build_type: "legacy"`, `source` the default branch and
   `/`, and `cname: domain` where `domain` is set. `cname` is never sent as null,
   which GitHub documents as removing the domain, and omitting it is undocumented;
+- accepts `PUT pages`'s 204, GitHub's documented answer, which `_Session._call` raises
+  on today;
 - answers `_pages`.
 
 No Pressless write names a path under `.github`. It stays on `untouchable` because
@@ -315,7 +330,8 @@ the Builder produces no such root, so `publisher.publish` leaves the rest of it.
 - **INV-7** — A custom domain stays, through this publish and the next. *Test:*
   `tests/test_takeover.py::test_the_domain_stays`: `PUT pages` carries `cname`,
   `CNAME` holds the domain over an absent and a stale file, and a second publish
-  removes neither `CNAME` nor `.nojekyll`.
+  removes neither `CNAME` nor `.nojekyll`, after a takeover and after a re-point by hand.
+  With no domain, a stale `CNAME` is gone before `PUT pages`.
   *Breaks when:* the two files miss `untouchable` (§ 2 item 7), or `cname` goes null.
 - **INV-8** — A failure leaves the takeover able to finish. *Test:*
   `tests/test_takeover.py::test_a_failure_can_be_pressed_again`: a refused publish
@@ -331,19 +347,20 @@ the Builder produces no such root, so `publisher.publish` leaves the rest of it.
 - **INV-10** — A crawl stays in the site. *Test:*
   `tests/test_importer_fetch.py::test_a_site_download_stays_in_the_site`: an address on
   another host, one outside a project site's path, a redirect to another host, a host
-  resolving to a private address, and `/../x`: none is requested beyond the redirect's
+  resolving to a private address, and `%2e%2e/x`: none is requested beyond the redirect's
   own hop, nothing lands outside `into`, and the redirect and the `..` are `left`.
   *Breaks when:* `urljoin`'s answer is fetched unchecked.
 - **INV-11** — What a crawl lays out reads as PRESS-0210's folder. *Test:*
   `tests/test_importer_fetch.py::test_a_downloaded_site_builds_whole`, a double serving
   a project site at `/site/`: `/about/`, `/team` redirecting to `/team/`, an extensionless
   `text/html` answer, a page only `sitemap.xml` names, a stylesheet by `url()` and
-  `@import`, `srcset`, and full addresses to the site's own files. After `bring_in_folder`
-  and `builder.build`, each address in each built page resolves to a built file.
+  `@import`, `srcset`, and full addresses to the site's own files, one with a fragment.
+  After `bring_in_folder` and `builder.build`, each address in each built page resolves to
+  a built file, but a link to `/other/`, which is a full address.
   *Breaks when:* a full address stays as written, or a path keeps `/site/`.
 - **INV-12** — A file that could not be read is named. *Test:*
   `tests/test_takeover.py::test_what_was_not_read_is_named`: a 404 and an over-large
-  answer reach `Found.left`'s screen and the Report.
+  answer reach § 4.4's row and the Report.
   *Breaks when:* `Crawled.left` is not written to `import/folder-left.json`.
 - **INV-13** — What is written is what was shown. *Test:*
   `tests/test_takeover.py::test_finish_writes_what_was_shown`: the double's site changes
@@ -357,8 +374,8 @@ the Builder produces no such root, so `publisher.publish` leaves the rest of it.
   domain and the files added; the marker gone; the list page's line gone.
   *Breaks when:* the POST redirects to the list.
 - **INV-15** — What Pressless shows is escaped, and a link's path quoted. *Test:*
-  `tests/test_takeover.py::test_names_are_escaped`: a workflow named `<b>"x y.yml`, and a
-  domain holding `<`.
+  `tests/test_takeover.py::test_names_are_escaped`: a workflow named `a&'b x.yml`, which
+  Windows can hold, and a domain holding `<`.
   *Breaks when:* a name is written raw into the link or the list.
 
 ## 6. Failure modes
@@ -376,13 +393,14 @@ the Builder produces no such root, so `publisher.publish` leaves the rest of it.
 | A repository rule refuses the publish | A press's failure; the old site is up (INV-8) |
 | Pressless closes between steps 4 and 6 | The marker stays; the next press finishes (INV-8) |
 | The person removes the file and never publishes | The site stays up from its last deployment; not verified how long GitHub keeps it |
-| The site was re-pointed by hand meanwhile | Step 2 removes the marker and says so |
+| The site was re-pointed by hand meanwhile | Step 3 removes the marker and says so |
 | GitHub's `PUT pages` keeps or drops state it does not document | § 7's hand check |
 
 ## 7. Tests
 
 `tests/test_takeover.py` is new, over `tests/test_takein.py`'s `_Repository` double with
-`GET`/`PUT pages`, Contents and a fake site added: INV-1, INV-2, INV-3, INV-4, INV-5,
+`GET`/`PUT pages`, `PUT` answering 204, Contents and a fake site added: INV-1, INV-2,
+INV-3, INV-4, INV-5,
 INV-6, INV-7, INV-8, INV-9, INV-12, INV-13, INV-14 and INV-15.
 `tests/test_importer_fetch.py` holds INV-10 and INV-11, by its `resolve` and `connect`
 doubles. Each named test is seen to fail against today's code before its change.
