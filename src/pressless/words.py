@@ -1024,6 +1024,97 @@ _WORDS: dict[str, str] = {
     "setup.bringin.link": "{page} links to {path}, so that link will then stop working.",
     "setup.bringin.stays": "These stay on GitHub, and Pressless will not touch them:",
     "setup.bringin.kept": "Among those, these will not come across into Pressless:",
+    # A wizard puts the site on its own domain name (domain.py, PRESS-0222).
+    "domain.settings_link": "Use your own domain name",
+    "domain.step.name": "Your own domain name",
+    "domain.step.change": "What will change",
+    "domain.step.records": "Tell your domain seller",
+    "domain.step.secure": "The secure address",
+    "domain.intro": (
+        "If you have bought a web address, such as example.com, your site can appear at it. "
+        "Type it below. Nothing changes yet."
+    ),
+    "domain.field": "Your domain name",
+    "domain.hint.name": "Type the name you bought, such as example.com.",
+    "domain.hint.takeover": (
+        "Your site is still built by GitHub Actions. Switch it to Pressless first, by "
+        "publishing, then come back."
+    ),
+    "domain.hint.not_serving": (
+        "GitHub Pages is not serving this repository's main folder, so a domain name would "
+        "not reach your site. Publish your site first, then come back."
+    ),
+    "domain.change": "Pressing Next changes these on GitHub:",
+    "domain.change.address": "Your site's address becomes {domain}.",
+    "domain.change.file": (
+        "Pressless adds a file, CNAME, holding {domain}. It stays in the repository's history."
+    ),
+    "domain.change.gap": (
+        "Your old address will forward to {domain}. Until your domain seller has the records "
+        "below, your site cannot be reached, so have them ready to enter straight away."
+    ),
+    "domain.change.ready": "These are what you will enter at your domain seller:",
+    "domain.change.verify": (
+        "GitHub advises verifying the name with GitHub first, so no other account can claim "
+        "it. It is optional, and is done in your GitHub account's Pages settings."
+    ),
+    "domain.change.next": "Press Next when you are ready.",
+    "domain.records.type": "Type",
+    "domain.records.name": "Name or host",
+    "domain.records.value": "Value or points to",
+    "domain.records.www": (
+        "You bought {bought}, and want {domain}. Log in where you bought it, open its DNS "
+        "settings, and add each of these. Remove any other record with the same name, "
+        "because it can stop the secure address working:"
+    ),
+    "domain.records.whole": (
+        "If you bought {domain} itself, log in where you bought it, open its DNS settings, "
+        "and add each of these. Remove any other A or AAAA record with the name @, because it "
+        "can stop the secure address working:"
+    ),
+    "domain.records.part": (
+        "If {domain} is instead a part of a name you bought, like blog.example.com, add "
+        "only this one, under the name you bought:"
+    ),
+    "domain.set": (
+        "GitHub now knows your site belongs at {domain}. Enter these at your domain seller now:"
+    ),
+    "domain.state.not_yet": (
+        "This computer cannot find the name yet. After you enter the records, it can take up "
+        "to 24 hours to reach everywhere."
+    ),
+    "domain.state.ready": "The name now leads to GitHub, as far as this computer can see.",
+    "domain.state.elsewhere": (
+        "The name leads somewhere besides GitHub. Check for another record, unless you "
+        "use a service such as Cloudflare in front of your site."
+    ),
+    "domain.leave": (
+        "You can close this and come back. Settings, then Use your own domain name, opens this "
+        "step again. Press Next when the name leads to GitHub."
+    ),
+    "domain.secure": (
+        "GitHub now makes a security certificate for {domain}, which lets it open with "
+        "https. It can take a while after the name leads to GitHub. Press Next to check. "
+        "If it is ready, Pressless switches the secure address on."
+    ),
+    "domain.hint.certificate_wait": (
+        "The certificate is not ready yet. Nothing is wrong, and you can leave and come back. "
+        "GitHub says it can take up to 24 hours."
+    ),
+    "domain.hint.certificate_failed": (
+        "GitHub could not make the certificate. Check that your domain seller has only the "
+        "records shown on the step before, then wait and press Next again."
+    ),
+    "domain.done.heading": "Your site has its own domain name",
+    "domain.done": "Your site's address is now {link}, and it opens securely.",
+    "domain.done.publish": (
+        "Publish once more, so that your site's map for search engines and its forwards "
+        "carry the new address."
+    ),
+    "domain.done.remove": (
+        "To stop using this name, remove it in your repository's Pages settings on GitHub, "
+        "then change your site's address in Settings."
+    ),
     # Taking over a site GitHub Actions builds (setup.py, takeover.py, PRESS-0333).
     "setup.takeover": (
         "GitHub Actions builds this site from what this repository holds. Pressless "

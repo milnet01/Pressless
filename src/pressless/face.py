@@ -749,6 +749,7 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face #photograph-missing[hidden] { display: block; visibility: hidden; }
 .face #address[hidden] { display: inline; visibility: hidden; }
 .face .sign-in-slot { min-height: 6.5em; }
+.face #domain-state { min-height: 3.1em; }
 .face .states, .face #standing { display: grid; }
 .face .states > * { grid-area: 1 / 1; }
 .face #standing > [data-when="1"]:not(form) { grid-area: 1 / 1; }

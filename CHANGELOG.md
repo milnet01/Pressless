@@ -14,6 +14,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **A wizard puts your site on your own domain name** (PRESS-0222)
+  Settings, then Use your own domain name. It says what will change first, shows the exact records to enter at your domain seller, checks where the name leads, and turns the secure address on when GitHub's certificate is ready.
+
 - **Setup can take over a site GitHub Actions builds, in the same repository** (PRESS-0333)
   Pressless downloads the live site and brings it in, changing nothing on GitHub. It says what will change first. The first publish has you remove the build file on GitHub's own page, publishes, and switches GitHub Pages. The address and any custom domain stay, and you are told afterwards what changed.
 

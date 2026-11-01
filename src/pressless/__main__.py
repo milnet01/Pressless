@@ -31,6 +31,7 @@ from pressless import (
     cheatsheet,
     credentials,
     dashboard,
+    domain,
     editor,
     face,
     files_screen,
@@ -204,6 +205,7 @@ def _serve_once(own: Path) -> bool:
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)
         google_setup.register(served, folder)
+        domain.register(served, folder)
         dashboard.register(served, folder)
         editor.register(served, folder)
         cheatsheet.register(served)

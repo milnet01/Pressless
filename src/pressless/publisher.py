@@ -397,6 +397,8 @@ class Pages:
     serves_root: bool         # a branch build of the default branch's "/"
     built_by_actions: bool = False   # PRESS-0333: its build_type is "workflow"
     domain: str | None = None        # PRESS-0333: its custom domain
+    https_enforced: bool = False     # PRESS-0222
+    certificate: str = ""            # PRESS-0222: its HTTPS certificate's state
 
 
 def account_exists(account: str, transport: Transport | None = None) -> bool:
@@ -470,6 +472,33 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
     return _pages(session, repository)
 
 
+def set_domain(repository: str, token: str, domain: str,
+               transport: Transport | None = None) -> Pages:
+    """PRESS-0222: a branch build serves `domain`, by its `CNAME` file and its setting."""
+    session = _Session(transport or _Urllib(), token)
+    _write_cname(session, repository, domain)
+    session.write("PUT", _repo_url(repository, "pages"), {"cname": domain}, no_content=True)
+    return _pages(session, repository)
+
+
+def enforce_https(repository: str, token: str, domain: str,
+                  transport: Transport | None = None) -> None:
+    """PRESS-0222. `cname` is sent too: omitting it is undocumented (`switch_pages_to_branch`)."""
+    session = _Session(transport or _Urllib(), token)
+    session.write("PUT", _repo_url(repository, "pages"),
+                  {"cname": domain, "https_enforced": True}, no_content=True)
+
+
+def kept_on_a_branch(untouchable: tuple[str, ...], domain: str | None) -> tuple[str, ...]:
+    """What a branch build needs a publish to leave alone. A `CNAME` with no domain behind
+    it comes off the list, so a publish removes it, or the build would read it as one."""
+    wanted = {NO_JEKYLL, *([CNAME] if domain else [])}
+    held = {name.rstrip("/").casefold() for name in untouchable}
+    kept = [name for name in untouchable if domain
+            or name.rstrip("/").casefold() != CNAME.casefold()]
+    return (*kept, *sorted(name for name in wanted if name.casefold() not in held))
+
+
 def _write_cname(session: _Session, repository: str, domain: str) -> None:
     url = _repo_url(repository, f"contents/{CNAME}")
     change: dict = {"message": "Keep the site's own domain",
@@ -507,9 +536,13 @@ def _pages(session: _Session, repository: str) -> Pages:
                    and source.get("path") == "/"
                    and source.get("branch") == _default_branch(session, repository))
     domain = answer.get("cname")
+    certificate = answer.get("https_certificate")
+    state = certificate.get("state") if isinstance(certificate, dict) else None
     return Pages(on=True, address=address if isinstance(address, str) else None,
                  serves_root=serves_root, built_by_actions=answer.get("build_type") == "workflow",
-                 domain=domain if isinstance(domain, str) and domain else None)
+                 domain=domain if isinstance(domain, str) and domain else None,
+                 https_enforced=answer.get("https_enforced") is True,
+                 certificate=state if isinstance(state, str) else "")
 
 
 def fetch_previous(settings: Settings, token: str, into: Path,

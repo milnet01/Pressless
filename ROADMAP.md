@@ -3730,6 +3730,14 @@ it decides how pages, the menu and the look are held.
   Nothing here has run against real GitHub, including GitHub's refusal of a
   workflow change, the 204 from PUT pages, the domain surviving the switch,
   and how long the old site stays up.
+  PRESS-0222, owed by hand before the next release, on a scratch
+  repository with a domain: set_domain's PUT pages with only cname on a
+  branch build; whether GitHub also commits a CNAME beside ours; the old
+  address forwarding; certificate state "approved" meaning ready;
+  enforce_https answering 204; the records for a www name. Also
+  2026-11-01: the takeover push's Windows-box run did not happen
+  (wintest: no route to host); GitHub's Windows job passed instead. Run
+  the box gate before the next release.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -5583,7 +5591,7 @@ it can then be changed.
   Source: review-code 2026-09-26 PRESS-0135 lane Import, Low (PRESS-0162 L10.8).
   Lanes: import.
 
-- 📋 [PRESS-0222] **A wizard puts the site on his own domain name.**
+- ✅ [PRESS-0222] **A wizard puts the site on his own domain name.**
   Chosen under PRESS-0220. GitHub Pages serves a site at its own address
   until a domain is set up, which takes a CNAME file in the repository,
   records at the domain seller, and a wait for HTTPS. Pressless can
@@ -5591,6 +5599,13 @@ it can then be changed.
   are shown exactly, to copy.
   No version yet. Recommendation: soon after 0.8.0's setup wizard, since
   a stranger with a domain wants it soon after starting.
+  2026-11-01: shipped with no spec: the Face and the Publisher, its
+  order set by GitHub's docs, cheap to redo, so spec-format.md § 1's
+  skip case. tests/test_domain.py's header is the contract; 12 hand
+  mutations caught. Stopping use of a name is by GitHub's Pages
+  settings, said on the done page; a button for it is not built. Not run
+  against real GitHub, and the certificate state "approved" as ready is
+  not defined by GitHub's docs: both on PRESS-0133's list.
   **Layman:** If you own a web address, a guided step-by-step shows exactly what to type at your domain seller so your site appears at that address.
   Kind: feature.
   Source: user-request-2026-10-03.

@@ -484,16 +484,6 @@ def _delete_link(repository: str, branch: str, path: str) -> str:
     return f"https://github.com/{quoted}"
 
 
-def _kept_for_a_branch(untouchable: tuple[str, ...], domain: str | None) -> tuple[str, ...]:
-    """Step 3: what a branch build needs kept. A `CNAME` with no domain behind it comes
-    off the list, so the publish removes it, or the branch build would read it as one."""
-    wanted = {publisher.NO_JEKYLL, *([publisher.CNAME] if domain else [])}
-    held = {name.rstrip("/").casefold() for name in untouchable}
-    kept = [name for name in untouchable if domain
-            or name.rstrip("/").casefold() != publisher.CNAME.casefold()]
-    return (*kept, *sorted(name for name in wanted if name.casefold() not in held))
-
-
 def _take_over(face: Face, folder: Path, transport: publisher.Transport | None) -> str:
     """§ 4.5's POST, run as a press."""
     def busy(said: str) -> str:
@@ -529,7 +519,7 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
                 return _takeover_page(face, folder, transport, hint)
             shown = publisher.pages(saved.repository, key, transport)                 # step 2
             final = dataclasses.replace(                                              # step 3
-                saved, untouchable=_kept_for_a_branch(saved.untouchable, shown.domain))
+                saved, untouchable=publisher.kept_on_a_branch(saved.untouchable, shown.domain))
             if final != saved:
                 gathered(lambda: settings.save(folder, final))
             if not shown.built_by_actions:

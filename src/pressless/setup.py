@@ -25,6 +25,7 @@ import pressless_import
 from pressless import (
     builder,
     credentials,
+    domain,
     editor,
     github_setup,
     github_signin,
@@ -552,6 +553,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + f"<p>{say('setup.key_kept')}</p>"
         + field("key", say("setup.field.key"), "password")
         + f'<p><button type="submit">{say("setup.save")}</button></p></form>'
+        + f'<p><a href="{domain.ADDRESS}">{say("domain.settings_link")}</a></p>'
         + _google_link(google_on)
         + f"<script>{_PICTURE_SCRIPT}</script>"
     )
