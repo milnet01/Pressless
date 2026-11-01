@@ -6018,6 +6018,12 @@ it can then be changed.
   removed (and that it stays in the repository's history), and the
   custom domain staying. Nothing changes until they confirm, and they
   are told afterwards what was changed.
+  User, 2026-11-01: the build workflow file is removed by one hand step, not by Pressless.
+  GitHub's permission lists (rest/authentication, both tables) name a
+  Workflows permission for changing a workflow file, which neither the
+  app nor the key holds, so "Pressless removes it" and "no extra
+  permission" could not both stand. Pressless links to GitHub's own
+  delete page and checks the file has gone. No new permission.
   **Layman:** Someone whose GitHub site is made by its own build script can switch it to Pressless and keep the same web address.
   Kind: feature.
   Source: user-decision-2026-10-23 PRESS-0218.

@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0333 — Setup takes over a site GitHub Actions builds, in the same repository
 
-**Status:** spec draft (2026-11-01).
+**Status:** accepted (2026-11-01). Gated for one round, the user's budget for a new spec; every verified finding fixed, and no lane read the fixes.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0333 (user decisions 2026-10-23 and 2026-11-01; one
 review round, the user's budget for a new spec, 2026-09-29).
