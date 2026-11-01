@@ -519,6 +519,10 @@ called after an undo has been published reads the parent of the undo
 commit, which is the state the undo replaced. That is the decided
 behaviour.
 
+**PRESS-0333 § 4.1 and § 4.5 add to the setup reads.** `Pages` gains
+`built_by_actions` and `domain`, and `switch_pages_to_branch`, `head_commit`
+and `default_branch` are added.
+
 ### 4.6 What this module never does
 
 - It never reaches Credentials. Rule 10 hands it a key.

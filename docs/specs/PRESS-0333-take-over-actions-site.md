@@ -92,6 +92,8 @@ class Pages:
 
 def head_commit(settings: Settings, token: str,
                 transport: Transport | None = None) -> str: ...
+def default_branch(repository: str, token: str,
+                   transport: Transport | None = None) -> str: ...
 def switch_pages_to_branch(repository: str, token: str, domain: str | None,
                            transport: Transport | None = None) -> Pages: ...
 
@@ -139,7 +141,9 @@ def look_site(folder: Path, settings: Settings, key: str, address: str, commit: 
 `look_site` empties the held folder as `look_folder` does, and calls
 `fetch_site(address, held, room)`. It writes `import/folder.json` naming `commit`,
 or `head_commit` where that is empty, and `import/folder-left.json`, whose shape
-`importing` already reads, holding `Crawled.left`. It answers `read_folder`'s `Found`
+`importing` already reads, holding `Crawled.left`. That file's name and reader move
+to the package, as `pressless_import.FOLDER_LEFT` and `read_folder_left`, so `setup`
+reads it without importing `importing`. It answers `read_folder`'s `Found`
 and the commit.
 
 A `resolve` or `connect` left `None` is read from the module when called, so
@@ -152,7 +156,8 @@ ends the crawl with nothing kept. Otherwise it takes addresses first found first
 - from a stylesheet, or a `style` element or attribute: each `url(...)` and `@import`;
 - from `sitemap.xml` at the site's root, where it answers: each `<loc>`.
 
-A query and a fragment are dropped from what is fetched.
+A query and a fragment are dropped from what is fetched. An address or a redirect
+no parser can read is not followed, and the redirect is `left`.
 
 **What stays in the site.** An address is the site's where its host equals
 `address`'s, its port does too, a scheme's default port counting as none, and its
@@ -168,15 +173,17 @@ with no suffix gains `.html`. A redirect's final address names the file. A path
 holding a `..` segment once decoded, which `urljoin` leaves only where it was encoded, or
 failing `_why_not_kept`, is `left`. So is a path once
 `MEMBERS_MOST` files are held, with the reason saying the site is too large to
-bring in whole, and each answer over `builder.FILE_LARGEST`, or that fails.
+bring in whole, and each answer over `builder.FILE_LARGEST`, or that fails. A second
+address landing at a path already held, as `/index.html` beside `/`, is that file.
 
 **Absolute addresses.** Static site tools commonly write the site's own address in
 full, and PRESS-0210 § 4.5 leaves an address with a host as written, which would
 leave pictures on the old layout's paths. So when the crawl ends, each address in a
 page or stylesheet that is the site's, by the test above, becomes `/` and the path it
 lands at, its query and fragment kept. § 4.5 of PRESS-0210 then reads it as any other.
-One with no host that is not the site's, such as `/other/` beside a project site,
-becomes a full address, which § 4.5 leaves as written.
+So does a relative one landing elsewhere than it says. One with no host that is not
+the site's, such as `/other/` or `../other/` beside a project site, becomes a full
+address, which § 4.5 leaves as written.
 
 **What a crawl cannot see** is said on the screen (§ 4.4): a page no link reaches,
 and a page a script builds in the browser, which arrives as the script's shell.
@@ -214,7 +221,8 @@ marker exists, as `_unpublished_starter` does for the starter.
 ### 4.4 The warning, before Finish (Face)
 
 The *site* step, where the answers carry `take_over`, shows `_show_take_over`, which
-holds `_show_bring_in`'s rows and these, each in its own words:
+holds `_show_bring_in`'s rows, under its own opening sentence through an `intro`
+argument, and these, each in its own words:
 
 - GitHub Pages will switch from the build to what Pressless publishes;
 - the build workflow file, by name, is to be removed by the person at the first
@@ -294,7 +302,8 @@ the Builder produces no such root, so `publisher.publish` leaves the rest of it.
 ### 4.6 Files touched
 
 `publisher.py`, `takein.py`, new `takeover.py`, `pressless_import/fetch.py`,
-`setup.py`, `publishing.py`, `sites.py` and `words.py`.
+`pressless_import/_folder.py`, `importing.py`, `setup.py`, `publishing.py`, `sites.py`
+and `words.py`.
 
 ## 5. Invariants
 
@@ -483,3 +492,12 @@ Rows live in `../reviews/PRESS-0333-take-over-actions-site-loop-log.md`.
 - `build_files` reads only `.github/workflows/`, one blob request a file, twice per
   takeover press at most.
 - No new dependency.
+
+## 14. Folded back from the build
+
+The build found these, and each section above now says them; no reviewer read
+them: `read_folder_left` and `FOLDER_LEFT` moved to the package; `takeover.named`;
+`publisher.default_branch` and `head_commit`; `_show_bring_in`'s `intro` argument; a
+second address for one file; an address or redirect no parser can read; and a relative
+address landing elsewhere or leaving a project site. Tests: `tests/test_takeover.py`,
+`tests/test_importer_fetch.py`.

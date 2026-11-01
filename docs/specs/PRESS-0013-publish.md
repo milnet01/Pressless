@@ -171,7 +171,7 @@ changes was left in place and can be thrown away.
 
 ### 4.3 The sequence
 
-*PRESS-0126 § 4.5 adds a check to the guard step. PRESS-0214 § 4.3 adds `JournalOff` before the move and limits the guard to a site whose journal is on.*
+*PRESS-0126 § 4.5 adds a check to the guard step. PRESS-0214 § 4.3 adds `JournalOff` before the move and limits the guard to a site whose journal is on. PRESS-0333 § 4.5 puts `TakeoverOwed` first in the guard step, while a takeover is owed.*
 
 `publish` runs these in order. Each step runs only if the one before it
 succeeded.

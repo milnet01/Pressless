@@ -100,7 +100,8 @@ which marks cannot express without becoming HTML.
    the user never sets it up at all, every sign but S11 still holds —
    the dashboard is the only thing that says so.
 9. **Import may read what the user points it at, may fetch each file
-   that export names from the address it names (PRESS-0125 § 4.4), and
+   that export names from the address it names (PRESS-0125 § 4.4), may
+   download the pages of a site being taken over (PRESS-0333 § 4.2), and
    writes only into an empty Store
    and its own `import` folder — and nothing else.** The Face starts it,
    as one of setup's three starts (§ Setup's three starts), and nothing
@@ -137,7 +138,9 @@ ways, and only one:
   `content/`**, so the take-in files each published added file as an
   added file, and each published web-sized photograph as its original.
   The Builder's naming rule maps a published name back to the original
-  name the marks use, and the take-in asks it to.
+  name the marks use, and the take-in asks it to. A site GitHub Actions
+  builds holds no pages, so Import downloads the live site as that folder,
+  and the first publish switches its Pages (PRESS-0333).
 - **An Import** (S13): a WordPress export, its files fetched from the old
   site or taken from a media download, or a folder of web pages.
 

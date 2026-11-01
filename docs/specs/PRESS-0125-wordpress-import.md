@@ -150,7 +150,8 @@ identifier is empty or repeated, is listed and skipped.
 
 `pressless_import.fetch` does the fetching, and is the one module of the
 package that reaches the network; the maintainer's `run` never calls it
-(PRESS-0007 INV-10, as amended).
+(PRESS-0007 INV-10, as amended). It also downloads a site's own pages at
+setup (`fetch_site`, PRESS-0333 § 4.2).
 
 For each attachment, the address is its `attachment_url`, and its place is
 `_upload_path` of that address, checked as `_photographs` checks it, each

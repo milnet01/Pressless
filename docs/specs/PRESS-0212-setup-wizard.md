@@ -256,8 +256,11 @@ switches GitHub Pages on where it is off.
 
 - **On, serving the default branch's root by a branch build**: Pages is left
   as GitHub has it. No write is sent.
+- **On, built by a workflow PRESS-0333 can take over**: no write is sent. The
+  live site is downloaded, and the takeover waits for the first publish
+  (PRESS-0333 § 4.1).
 - **On, serving anything else** — another branch, `/docs`, or a workflow
-  build: a `Hint` saying this repository already puts a site on the web
+  build PRESS-0333 § 4.1 refuses: a `Hint` saying this repository already puts a site on the web
   another way, and to go Back and choose another repository (PRESS-0229).
   Pressless publishes to the default branch's root and nowhere else, so it
   cannot publish there. It never changes Pages, and never tells him to:
@@ -407,7 +410,9 @@ in `tests/test_setup.py`; the Publisher ones in `tests/test_publisher.py`.
 
 - **INV-8** — Pages is switched on only when it is off. On and serving the
   default branch's root, no write is sent and the address is GitHub's. On
-  and serving anything else, no write is sent and the step does not advance.
+  and serving anything else, no write is sent and the step does not advance,
+  but for a site PRESS-0333 can take over, which advances with no write
+  (its INV-1 and INV-2).
   *Test:* `test_pages_is_left_as_github_has_it`, with the fake transport
   recording methods: Pages off, on at the root, and on from `/docs`.
   *Breaks when:* the step always POSTs, overwrites an existing Pages source,

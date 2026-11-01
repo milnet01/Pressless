@@ -57,8 +57,8 @@ PRESS-0210 can bring it in.
    2026-10-23), whose § 4.11 brings its pages in. Only one holding what a
    tool builds from is still refused.
 2. **A site GitHub Actions builds is PRESS-0333's** (user, 2026-10-23),
-   split out so this spec settles in one review round. The PRESS-0229
-   refusal stays until it ships.
+   split out so this spec settles in one review round. What PRESS-0333
+   cannot take over keeps the PRESS-0229 refusal.
 3. **The user is told before any change, and after it** (user, 2026-10-23,
    for every takeover and take-in). The *site* step names what will come
    across and what will not, and nothing is written to the Store until

@@ -632,7 +632,8 @@ in a browser; and § 4.2's ZIP steps read on Windows and on Linux.
 
 ## 9. Out of scope
 
-- A site GitHub Actions builds — PRESS-0333, which reuses § 4.3 to § 4.10.
+- A site GitHub Actions builds — PRESS-0333, which lays the live site out as this
+  spec's folder and reuses § 4.3 to § 4.10.
 - Bringing a folder in after setup onto a site that holds one: Import fills only an
   empty Store (`docs/design.md` rule 9).
 - A Pressless look over a brought-in site beyond what the Look screen does today —
