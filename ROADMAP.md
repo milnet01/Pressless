@@ -3738,6 +3738,15 @@ it decides how pages, the menu and the look are held.
   2026-11-01: the takeover push's Windows-box run did not happen
   (wintest: no route to host); GitHub's Windows job passed instead. Run
   the box gate before the next release.
+  2026-11-01: the Windows box answered again, and scripts/windows-gate.sh wintest
+  passed on 60a1ea7: 1534 passed, 113 skipped. That settles the box gate owed by
+  the takeover push. It is the suite only, so the browser rows and the hand
+  checks above are still owed on the release commit.
+  PRESS-0211 spec section 7 is also owed by hand before the release that carries it,
+  once built: a real scratch Firebase project with no billing account, each setup step
+  read against the console, a real publish and vote in three browsers from both
+  systems, what GitHub and Google do about the published key, App Check over plain
+  calls, and the rules on real Firestore.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

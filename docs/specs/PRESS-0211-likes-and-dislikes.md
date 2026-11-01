@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0211 — Visitors can like or dislike an entry, counted in the site's own free database
 
-**Status:** spec draft (2026-11-01).
+**Status:** accepted (2026-11-01).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0211 (user decision 2026-10-02; `docs/discovery.md`
 § Decided, not yet scheduled).
