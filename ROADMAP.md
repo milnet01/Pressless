@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=335 -->
+<!-- ants-roadmap-id-high-water: PRESS=336 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3725,6 +3725,11 @@ it decides how pages, the menu and the look are held.
   (message 819).
   2026-10-31: owed by hand before the next release: PRESS-0210 spec § 7
   and PRESS-0218 spec § 10.
+  2026-11-01: PRESS-0333 spec § 7 also owed by hand before the next release:
+  a scratch repository built by an Actions workflow with a custom domain.
+  Nothing here has run against real GitHub, including GitHub's refusal of a
+  workflow change, the 204 from PUT pages, the domain surviving the switch,
+  and how long the old site stays up.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -6002,7 +6007,7 @@ it can then be changed.
   Kind: doc-fix.
   Source: review-readability-2026-10-23.
 
-- 📋 [PRESS-0333] **Setup takes over a site that GitHub Actions builds, in the same repository.**
+- 🚧 [PRESS-0333] **Setup takes over a site that GitHub Actions builds, in the same repository.**
   Split out of PRESS-0218 by the user 2026-10-23, so that spec stays
   small. Such a site's pages are not files in the repository, so taking
   it in means downloading the live site and replacing its build.
@@ -6024,6 +6029,13 @@ it can then be changed.
   app nor the key holds, so "Pressless removes it" and "no extra
   permission" could not both stand. Pressless links to GitHub's own
   delete page and checks the file has gone. No new permission.
+  2026-11-01: built in 666dd97, local only. Spec: docs/specs/PRESS-0333-take-over-actions-site.md.
+  Suite on Linux 1574 passed, and 18 hand mutations were caught.
+  Left: § 11's amendments to other documents; a CHANGELOG entry; a browser
+  look at the warning and the /publish/takeover page; the full gate on the
+  Windows box; then flip to shipped and push.
+  Kept as the review's fix decided: a CNAME with no domain behind it is
+  removed at the first publish, and the person is told before and after.
   **Layman:** Someone whose GitHub site is made by its own build script can switch it to Pressless and keep the same web address.
   Kind: feature.
   Source: user-decision-2026-10-23 PRESS-0218.
@@ -12387,6 +12399,15 @@ already-built code ships in whichever release comes next.
   Kind: enhancement.
   Source: spec-PRESS-0210-2026-10-31.
   Lanes: Import, Face.
+
+- 📋 [PRESS-0336] **Setup takes over a site a workflow pushes to a branch.**
+  PRESS-0333 § 3 decision 8 leaves it refused: build_type is legacy there,
+  so its test for an Actions build does not match, and setup answers
+  setup.hint.elsewhere.
+  **Layman:** Someone whose build script publishes their site to a separate branch can switch it to Pressless too.
+  Kind: feature.
+  Source: spec-PRESS-0333-2026-11-01.
+  Lanes: setup, Publisher.
 
 ## Milestones
 
