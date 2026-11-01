@@ -153,7 +153,7 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
             return _keep(answer, target, room)
         except TimeoutError:
             return f"the old site sent nothing for {SECONDS} seconds"
-        except (OSError, http.client.HTTPException, UnicodeError) as exc:
+        except (OSError, http.client.HTTPException, ValueError) as exc:
             return f"the connection failed ({type(exc).__name__})"
         finally:
             connection.close()
@@ -244,7 +244,10 @@ class _Site:
             None if port == _DEFAULT_PORTS.get(parts.scheme) else port)
 
     def holds(self, address: str) -> bool:
-        parts = urlsplit(address)
+        try:
+            parts = urlsplit(address)
+        except ValueError:      # an address no parser can read, as `http://[x/`
+            return False
         path = parts.path or "/"
         return (parts.scheme in _DEFAULT_PORTS and self._host(parts) == self.host
                 and (path.startswith(self.base) or f"{path}/" == self.base))
@@ -327,7 +330,10 @@ class _Crawl:
         if not address or address[0] == "#" or (_SCHEME.match(address)
                                                 and not address.lower().startswith("http")):
             return
-        joined = urljoin(base, address)
+        try:
+            joined = urljoin(base, address)
+        except ValueError:
+            return
         if not self.site.holds(joined):
             return
         asked = self.site.asked(joined)
@@ -360,8 +366,9 @@ class _Crawl:
         final = self.site.asked(final)
         self.seen.add(final)
         landing = _landing(self.site.path(final), kind)
-        if final in self.landed:
-            self.landed[asked] = self.landed[final]
+        if final in self.landed or landing in self.urls:
+            # A second address for one file, as `/` and `/index.html`.
+            self.landed[asked] = self.landed.get(final, landing)
             self.part.unlink(missing_ok=True)
             return True
         why = _why_not_kept(landing, self.part.stat().st_size, self.taken)
@@ -389,7 +396,8 @@ class _Crawl:
 
     def sitemap(self) -> None:
         """The pages `sitemap.xml` names, where it answers. It is not kept."""
-        why, _final, _kind = self.get(urljoin(self.site.asked(self.start), _SITEMAP))
+        why, _final, _kind = self.get(
+            f"{self.site.scheme}://{self.site.netloc}{self.site.base}{_SITEMAP}")
         if why is not None:
             return
         text = self.part.read_bytes().decode("utf-8", "replace")
@@ -400,21 +408,25 @@ class _Crawl:
                 self.note(address, self.start)
 
     def written(self, address: str, base: str) -> str | None:
-        """§ 4.2's rewrite: the site's own full or root address names where it landed;
-        a root address that is not the site's becomes full. Others stay."""
+        """§ 4.2's rewrite: the site's own full or root address names where it landed, as
+        does a relative one landing elsewhere than it says; one with no host that is not
+        the site's becomes full. Others stay."""
         stripped = address.strip()
         if not stripped or stripped[0] in "#?" or (
                 _SCHEME.match(stripped) and not stripped.lower().startswith("http")):
             return None
         full = bool(_SCHEME.match(stripped)) or stripped.startswith("//")
-        if not full and not stripped.startswith("/"):
+        try:
+            joined = urljoin(base, stripped)
+        except ValueError:
             return None
-        joined = urljoin(base, stripped)
         if not self.site.holds(joined):
             return None if full else urlunsplit(
                 (self.site.scheme, self.site.netloc, *urlsplit(joined)[2:]))
         split = urlsplit(joined)
         place = self.landed.get(self.site.asked(joined), self.site.path(joined))
+        if not full and not stripped.startswith("/") and place == self.site.path(joined):
+            return None
         tail = (f"?{split.query}" if split.query else "") + (
             f"#{split.fragment}" if split.fragment else "")
         return f"/{quote(place)}{tail}"

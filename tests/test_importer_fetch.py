@@ -395,3 +395,81 @@ def test_a_downloaded_site_builds_whole(tmp_path):
     assert (site / "pages/hidden.html").is_file()
     style = (site / builder.STYLE_CODE).read_text(encoding="utf-8")
     assert "color: red" in style and "three.png" in style and "/site/" not in style
+
+
+def test_a_second_address_for_one_file_is_not_called_unread(tmp_path):
+    """A site linking both `/` and `/index.html` holds one file, read whole."""
+    page = _html("<html><body><p>Words</p></body></html>")
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html(
+            '<a href="/index.html">Home</a> <a href="about/">About</a> '
+            '<a href="about/index.html">Again</a> <a href="team">Team</a> '
+            '<a href="team.html">Again</a>'),
+        "sites.example.org/index.html": page,
+        "sites.example.org/about/": page,
+        "sites.example.org/about/index.html": page,
+        "sites.example.org/team": page,
+        "sites.example.org/team.html": page,
+    })
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert crawled.left == ()
+    assert _landed(into) == {"index.html", "about/index.html", "team.html"}
+
+
+def test_an_address_no_parser_can_read_does_not_stop_the_download(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html(
+            '<a href="http://[broken/">Broken</a> <a href="about/">About</a>'),
+        "sites.example.org/about/": _html("<p>Words</p>"),
+    })
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/", into)
+    assert _landed(into) == {"index.html", "about/index.html"}
+
+
+def test_a_path_decoding_to_an_absolute_one_lands_nowhere_outside(tmp_path):
+    outside = tmp_path / "outside.txt"
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html(f'<a href="/%2F{outside.as_posix().lstrip("/")}">Out</a>'),
+        f"sites.example.org/%2F{outside.as_posix().lstrip('/')}": (200, b"out", {}),
+    })
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert not outside.exists() and _landed(into) == {"index.html"} and crawled.left
+
+
+def test_a_relative_address_that_lands_elsewhere_still_resolves(tmp_path):
+    """`team` lands at team.html, and `../other/` from a project site is not the site's."""
+    from test_importer_folder import _built, _unresolved
+
+    import pressless_import
+
+    page = _html("<html><head><title>Page</title></head><body><p>Words</p></body></html>")
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/site/": _html(
+            '<html><head><title>Home</title></head><body><a href="team">Team</a> '
+            '<a href="moved">Moved</a> <a href="../other/">Beside</a></body></html>'),
+        "sites.example.org/site/team": page,
+        "sites.example.org/site/moved": (301, b"", {"Location": "/site/moved/"}),
+        "sites.example.org/site/moved/": page,
+    })
+    into = tmp_path / "store"
+    held = into / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER
+    assert _download(network, "https://sites.example.org/site/", held).left == ()
+    pressless_import.bring_in_folder(held, into)
+    site = _built(tmp_path, into)
+    built = (site / "index.html").read_text(encoding="utf-8")
+    assert _unresolved(site, "index.html") == []
+    assert 'href="pages/team.html"' in built and 'href="pages/moved.html"' in built
+    assert 'href="https://sites.example.org/other/"' in built
+
+
+def test_a_redirect_no_parser_can_read_is_a_reason_not_a_crash(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html('<a href="gone">Gone</a>'),
+        "sites.example.org/gone": (301, b"", {"Location": "http://[broken/"}),
+    })
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert _landed(into) == {"index.html"} and [path for path, _why in crawled.left] == ["gone"]
