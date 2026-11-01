@@ -785,6 +785,19 @@ _WORDS: dict[str, str] = {
     "failure.secret.publishing_key": "your publishing key",
     "failure.secret.github_sign_in": "your GitHub sign-in",
     "failure.secret.google_sign_in": "your Google sign-in",
+    "failure.secret.youtube_key": "your YouTube key",
+    "failure.youtube.YouTubeError.what": "YouTube answered in a way Pressless did not expect.",
+    "failure.youtube.YouTubeError.next": "Try again later. Show details has YouTube's words.",
+    "failure.youtube.Unreachable.what": "Pressless could not reach YouTube.",
+    "failure.youtube.Unreachable.next": "Check your internet connection and try again.",
+    "failure.youtube.Refused.what": "YouTube would not take your key.",
+    "failure.youtube.Refused.next": (
+        "Check the key in the YouTube setup. Show details has YouTube's words."
+    ),
+    "failure.youtube.RateLimited.what": "Your key has used up its allowance for today.",
+    "failure.youtube.RateLimited.next": "Try again tomorrow.",
+    "failure.youtube.ChannelNotFound.what": "YouTube knows no channel by that name.",
+    "failure.youtube.ChannelNotFound.next": "Check the channel's address in the YouTube setup.",
     # Visitor numbers: signing in to Google (google_setup.py).
     "google_setup.title": "Visitor numbers",
     "google_setup.unavailable": (
@@ -2028,6 +2041,68 @@ _WORDS: dict[str, str] = {
     "votes_setup.check.recaptcha": (
         "With App Check on, this cannot be checked from your computer. Try the buttons on your "
         "published site."
+    ),
+    # The YouTube screen (youtube_screen.py, PRESS-0081).
+    "youtube.settings_link": "Your YouTube channel's public figures, if you want them",
+    "youtube.title": "YouTube",
+    "youtube.off": "No channel is set up. <a href=\"{page}\">Set one up</a> to see its figures.",
+    "youtube.to_setup": "Change the channel or the key",
+    "youtube.card.ask": "<a href=\"{page}\">See your channel's figures</a>.",
+    "youtube.card.read": "{title}: {views} views, as of {when}. <a href=\"{page}\">See more</a>.",
+    "youtube.source": "From YouTube: its public figures, not worked out by Pressless.",
+    "youtube.updated": "Fetched {when}.",
+    "youtube.stale": "YouTube could not be asked, so these figures are from {when}.",
+    "youtube.hidden": "hidden",
+    "youtube.about": "about {count}",
+    "youtube.subscribers": "Subscribers",
+    "youtube.views": "Views",
+    "youtube.videos": "Videos",
+    "youtube.video": "Video",
+    "youtube.published": "Published",
+    "youtube.likes": "Likes",
+    "youtube.comments": "Comments",
+    "youtube.table": "Your most viewed videos",
+    "youtube.some": "Showing {shown} of the {read} read, from {total} on the channel.",
+    "youtube.terms": (
+        "This uses YouTube's own services: see <a href=\"{terms}\">YouTube's Terms of Service</a> "
+        "and <a href=\"{privacy}\">Google's Privacy Policy</a>."
+    ),
+    "youtube.not_on": "No channel is set up.",
+    "youtube.on": "Showing the channel {channel}.",
+    "youtube.turn_off": "Turn this off and remove the key",
+    "youtube.about_key": (
+        "YouTube gives its public figures to anyone with a key. You make your own, from your "
+        "Google account, and it stays on this computer. These steps make one."
+    ),
+    "youtube.step.1": "Open <b>console.cloud.google.com</b> and create a project.",
+    "youtube.step.2": "In its <b>API library</b>, enable <b>YouTube Data API v3</b>.",
+    "youtube.step.3": (
+        "In <b>Credentials</b>, create an <b>API key</b>, and restrict it to that one API."
+    ),
+    "youtube.step.4": "Paste it below, with your channel's address.",
+    "youtube.box.channel": "Your channel's address, such as youtube.com/@yourname",
+    "youtube.box.key": "The API key",
+    "youtube.key_kept": "Leave the key empty to keep the one you have.",
+    "youtube.save": "Save and check",
+    "youtube.saved": (
+        "Saved. YouTube knows the channel {title}. <a href=\"{page}\">See its figures</a>."
+    ),
+    "youtube.hint.channel": (
+        "That is not a channel's address. Use the one with an @ in it, or the one with "
+        "/channel/ in it."
+    ),
+    "youtube.hint.key": "Paste your API key too. Nothing was saved.",
+    "youtube.hint.not_found": "YouTube knows no channel by that name. Nothing was saved.",
+    "youtube.hint.refused": (
+        "YouTube would not take that key. Check steps 2 and 3. Nothing was saved."
+    ),
+    "youtube.hint.unreachable": (
+        "Pressless could not ask YouTube, so nothing was saved. Try again later."
+    ),
+    "youtube.off.done": "This is off. Pressless removed the key and the figures it kept.",
+    "youtube.not_removed": (
+        "Pressless could not remove everything it kept. You can also delete the key in Google's "
+        "console."
     ),
     # The comments in the site's stylesheet (look.py).
     "look.style_note": (

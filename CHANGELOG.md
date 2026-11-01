@@ -14,6 +14,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **See your YouTube channel's public figures** (PRESS-0081)
+  Settings has a new page that takes you through making your own free YouTube key. Once it is
+  set up, a YouTube screen shows your channel's subscribers, views and videos, and each video's
+  views, likes and comments. The key and the figures stay on your computer, and figures older
+  than 30 days are deleted. A site that does not set this up is unchanged.
+
 - **Visitors can like or dislike an entry** (PRESS-0211)
   Settings has a new page that takes you through making your own free Firebase database, with no
   billing account. Once it is set up, each entry publishes with Like and Dislike buttons and their

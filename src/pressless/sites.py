@@ -32,6 +32,7 @@ SITE_NAMES = frozenset({
     "furniture-waiting", "templates", "comments", "photographs", "files", "forwards",
     "options", "identity", "look", "settings.json", "credentials.json", "site",
     "preview", "preview-assets", "starter-unpublished", "takeover-owed", "insights.json",
+    "youtube.json",
     "fetch",
     "wizards", "choices.json", "import",
 })

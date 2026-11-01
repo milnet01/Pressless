@@ -460,6 +460,7 @@ def _candidate(folder: Path, saved: settings.Settings | None,
         analytics_property_id=property_id,
         measurement_id=values["measurement_id"] or None,   # PRESS-0199 § 4.4
         votes=None if saved is None else saved.votes,      # PRESS-0211 § 4.1
+        youtube_channel=None if saved is None else saved.youtube_channel,   # PRESS-0081 § 4.1
     )
 
 
@@ -560,6 +561,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + f'<p><a href="{domain.ADDRESS}">{say("domain.settings_link")}</a></p>'
         + _google_link(google_on)
         + f'<p><a href="{votes.ADDRESS}">{say("votes_setup.settings_link")}</a></p>'
+        + f'<p><a href="{settings.YOUTUBE_ADDRESS}/setup">{say("youtube.settings_link")}</a></p>'
         + f"<script>{_PICTURE_SCRIPT}</script>"
     )
 

@@ -3752,6 +3752,11 @@ it decides how pages, the menu and the look are held.
   removed after. Firebase: the user's Google account lists one Firebase project,
   another app's, and neither the writer's site nor its generator mentions Firebase,
   so no existing project serves PRESS-0211 section 7.
+  PRESS-0081 spec section 7 is also owed by hand before the release that carries it: a
+  real key on a scratch Google project and a real public channel, each setup step read against
+  the console, the screen looked at in a browser, more than 50 videos, hidden counts, a wrong
+  key, and a used-up quota. The user chose on 2026-11-01 to do PRESS-0211's Google screens
+  themselves, on a throwaway project with no billing, not started when this was written.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -6158,7 +6163,7 @@ dislikes on entries, as decided in docs/discovery.md.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0081] **Insights asks YouTube how the channel and its videos are being watched.**
+- ✅ [PRESS-0081] **Insights asks YouTube how the channel and its videos are being watched.**
   Two levels, because the writer asked for both: the channel as a whole,
   and the individual videos and music on it.
 
@@ -6186,6 +6191,13 @@ dislikes on entries, as decided in docs/discovery.md.
   The owner's watch time can follow if it is missed. A new key and channel
   setting reach Credentials, Settings, Insights and the Face, so this
   needs a spec.
+  Built 2026-11-01 from docs/specs/PRESS-0081-youtube-public-counts.md. INV-1 to INV-12:
+  tests/test_youtube.py, with 35 hand mutations all caught. Gate on the working tree: Linux 1803
+  passed, 4 skipped; Windows box 1694 passed, 113 skipped. No independent code review and no
+  contract review ran: the shape follows PRESS-0019 and PRESS-0211 and is cheap to redo. The
+  screen has not been looked at in a browser, and nothing has run against real YouTube beyond
+  a fake key's answer. Spec section 7's hand checks are owed under PRESS-0133. Tell the Hub at
+  the release, since its privacy policy says what Pressless holds.
   **Layman:** The dashboard also shows how his YouTube channel is doing, and how each video and music track on it is doing.
   Kind: feature.
   Source: user-request-2026-09-02.

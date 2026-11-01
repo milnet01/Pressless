@@ -337,8 +337,9 @@ _SETTINGS_FIELDS = {
     "analytics_property_id",
     "measurement_id",   # PRESS-0199 § 4.1
     "votes",            # PRESS-0211 § 4.1
+    "youtube_channel",  # PRESS-0081 § 4.1
 }
-_CREDENTIALS_FIELDS = {"store", "github_account", "google_account"}
+_CREDENTIALS_FIELDS = {"store", "github_account", "google_account", "youtube_account"}
 
 
 def test_field_names_are_the_documented_set():

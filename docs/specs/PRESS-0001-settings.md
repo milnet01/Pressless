@@ -164,6 +164,8 @@ not create it, search for it, or fall back to another one.
 
 *PRESS-0211 § 4.1: Settings gains an optional `votes` object, and `check_votes` holds its shape rules.*
 
+*PRESS-0081 § 4.1: Settings gains an optional `youtube_channel`, and Credentials an optional `youtube_account`.*
+
 ```json
 {
   "version": 1,

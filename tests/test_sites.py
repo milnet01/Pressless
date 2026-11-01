@@ -37,6 +37,7 @@ from pressless import (
     usage,
     wizard,
     words,
+    youtube,
 )
 
 SITES = "sites"
@@ -104,7 +105,7 @@ def test_every_name_is_on_one_side() -> None:
                   store.IDENTITY_FOLDER, store.LOOK_FOLDER, settings.FILE_NAME,
                   credentials.FILE_NAME, setup.SITE_FOLDER, editor.PREVIEW_FOLDER,
                   paths.PREVIEW_ASSETS, starter.MARKER, takeover.MARKER, insights.CACHE_NAME,
-                  undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME,
+                  youtube.CACHE_NAME, undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME,
                   pressless_import.IMPORT_FOLDER}
     machine_names = {log.FILE_NAME, log.OLD_NAME, updater.FILE_NAME, installer.LOG_NAME,
                      main_module._LOCK_NAME, themes.FILE_NAME, usage.FILE_NAME,

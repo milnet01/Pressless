@@ -27,7 +27,7 @@ VERSION = 1
 # and Import's own folder, so a saved site never carries the export
 # (PRESS-0125 § 4.2).
 LEFT_OUT = frozenset({"credentials.json", "site", "preview", "fetch", "insights.json",
-                      "wizards", "choices.json", "import"})
+                      "youtube.json", "wizards", "choices.json", "import"})
 KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})
@@ -180,6 +180,8 @@ def _settle(opened: Path, target: Path) -> None:
         kept["github_account"] = sites.account("github", target)
         if kept.get("google_account") is not None:
             kept["google_account"] = sites.account("google", target)
+        if kept.get("youtube_account") is not None:
+            kept["youtube_account"] = sites.account("youtube", target)
     write_whole(path, json.dumps(held, indent=2) + "\n", prefix=f".{settings.FILE_NAME}.")
     settings.load(opened)
 

@@ -46,6 +46,7 @@ class NoCrossOriginAuth(urllib.request.HTTPRedirectHandler):
             return None
         if origin(newurl) != origin(req.full_url):
             redirected.remove_header("Authorization")
+            redirected.remove_header("X-goog-api-key")   # PRESS-0081 INV-2
         return redirected
 
 

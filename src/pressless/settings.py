@@ -42,6 +42,8 @@ _NAME_CHARS = frozenset(
 _MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
 
 # PRESS-0211 § 4.1: what makes the page's code safe to write without escaping.
+YOUTUBE_ADDRESS = "/youtube"   # the screen, which setup.py links to
+_YOUTUBE_CHANNEL = re.compile(r"\A(?:@[^\s/?#&<>\"']{1,100}|UC[A-Za-z0-9_-]{22})\Z")
 _VOTES_TOKEN = re.compile(r"\A[A-Za-z0-9_-]{20,100}\Z")
 _VOTES_SHAPES = {
     "api_key": _VOTES_TOKEN,
@@ -67,6 +69,7 @@ class Credentials:
     github_account: str           # the keyring account name, or the file's key name
     google_account: str | None    # the keyring account name, or the file's key
                                   # name; None where the dashboard was declined
+    youtube_account: str | None = None   # PRESS-0081 § 4.1; optional on load
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,8 @@ class Settings:
     measurement_id: str | None = None
     # PRESS-0211 § 4.1: the Like and Dislike buttons' database; optional on load.
     votes: Votes | None = None
+    # PRESS-0081 § 4.1: "@handle" or "UC..."; optional on load.
+    youtube_channel: str | None = None
 
 
 class NotSetUp(Exception):
@@ -253,6 +258,8 @@ def load(folder: Path) -> Settings:
     analytics_property_id = _optional(raw, "analytics_property_id", str)
     measurement_id = _optional(raw, "measurement_id", str)
     votes = _optional(raw, "votes", dict)
+    youtube_account = _optional(credentials, "youtube_account", str, "credentials.")
+    youtube_channel = _optional(raw, "youtube_channel", str)
 
     loaded = Settings(
         site_folder=Path(site_folder),
@@ -264,6 +271,7 @@ def load(folder: Path) -> Settings:
             store=store,
             github_account=github_account,
             google_account=google_account,
+            youtube_account=youtube_account,
         ),
         analytics_property_id=analytics_property_id,
         measurement_id=measurement_id,
@@ -273,6 +281,7 @@ def load(folder: Path) -> Settings:
             app_id=_required(votes, "app_id", str, "votes."),
             recaptcha_key=_optional(votes, "recaptcha_key", str, "votes."),
         ),
+        youtube_channel=youtube_channel,
     )
     check(loaded)
     return loaded
@@ -363,6 +372,9 @@ def check(settings: Settings) -> None:
         )
     if settings.votes is not None:
         check_votes(settings.votes)
+    if settings.youtube_channel is not None and not _YOUTUBE_CHANNEL.fullmatch(
+            settings.youtube_channel):
+        raise SettingsError("youtube_channel is not a handle or a channel id", "youtube_channel")
 
 
 def check_votes(votes: Votes) -> None:
@@ -401,10 +413,12 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
             "store": settings.credentials.store,
             "github_account": settings.credentials.github_account,
             "google_account": settings.credentials.google_account,
+            "youtube_account": settings.credentials.youtube_account,
         },
         "analytics_property_id": settings.analytics_property_id,
         "measurement_id": settings.measurement_id,
         "votes": None if settings.votes is None else asdict(settings.votes),
+        "youtube_channel": settings.youtube_channel,
     })
 
     # newline is named rather than left to the platform: §4.2's file is a

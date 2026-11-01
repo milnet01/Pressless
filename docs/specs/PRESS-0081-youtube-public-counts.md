@@ -79,10 +79,17 @@ keeps `votes`.
 ### 4.2 The part: `src/pressless/youtube.py`
 
 The second file of Insights (rule 8). It imports `Transport`, `_own_client`,
-`_within`, `DEFAULT_MAX_AGE` and the failure classes from `insights`, and gains two:
+`_within`, `_detail`, `DEFAULT_MAX_AGE` and `InsightsError` from `insights`. Its failures
+are its own, because `face.sentence_for` finds a sentence by exact type, and Insights'
+sentences say Google and to sign in. `youtube_screen` adds theirs to `face.SENTENCES`, as
+`sites_screen` does for `sitefile`:
 
 ```python
-class ChannelNotFound(InsightsError): ...
+class YouTubeError(InsightsError): ...
+class Unreachable(YouTubeError): ...
+class Refused(YouTubeError): ...
+class RateLimited(YouTubeError): ...
+class ChannelNotFound(YouTubeError): ...
 
 CACHE_NAME = "youtube.json"
 MAX_KEPT = 30 * 24 * 3600.0
@@ -123,7 +130,8 @@ def forget(folder: Path) -> None
 `/c/` or `/user/` address included, since `channels.list` has no parameter for them.
 
 **The calls**, each to `https://www.googleapis.com/youtube/v3/`, each with the key in
-an `X-Goog-Api-Key` header, never in the address. Measured 2026-11-01: a fake key
+an `X-Goog-Api-Key` header, never in the address. `https.NoCrossOriginAuth` drops that
+header on a redirect to another origin, as it drops `Authorization`. Measured 2026-11-01: a fake key
 in that header gets the same 400 `API_KEY_INVALID` as in `key=`, and no key gets a
 403. So error text and logs cannot carry the key.
 
@@ -144,11 +152,11 @@ A full read of `VIDEO_LIMIT` videos costs 21 units of a default 10,000 a day
 `viewCount` reads as `None`: the documents do not settle what a hidden one looks
 like. `hiddenSubscriberCount` true, or a missing `subscriberCount`, gives `None`.
 A channel's missing `viewCount` or `videoCount`, or an answer of the wrong shape,
-raises `InsightsError`.
+raises `YouTubeError`.
 
 **Failures.** No answer raises `Unreachable`. 400, 401 and 403 raise `Refused`, except
-that a body holding `quotaExceeded` raises `RateLimited`. The rest raise
-`InsightsError`. Each carries `insights._detail`. Reading the body breaks that
+that a 429, or a 403 whose body holds `quotaExceeded`, raises `RateLimited`. The rest raise
+`YouTubeError`. Each carries `insights._detail`. Reading the body breaks that
 function's "never parsed for meaning" on purpose: a wrong match still shows YouTube's
 own words, and the writer needs to know whether to fix the key or wait.
 
@@ -212,7 +220,7 @@ clears both settings, each failure stopping nothing, the page saying what may re
 
 New: `src/pressless/youtube.py`, `src/pressless/youtube_screen.py`,
 `tests/test_youtube.py`. Changed: `settings.py`, `setup.py`, `sites.py`, `sitefile.py`,
-`__main__.py` (registers the screen), `words.py`.
+`https.py`, `__main__.py` (registers the screen), `words.py`.
 
 ## 5. Invariants
 
@@ -224,7 +232,7 @@ New: `src/pressless/youtube.py`, `src/pressless/youtube_screen.py`,
 
 - **INV-2** — Trust boundary, the key. It goes out in the header alone, and never reaches
   an address, a failure's words, the cache, a page or `settings.json`.
-  *Test:* `tests/test_youtube.py::test_key_only_in_header`, with a double recording each request, a failure from each status, and a search of every file written and page shown.
+  *Test:* `tests/test_youtube.py::test_key_only_in_header`, with a double recording each request, a failure from each status, and a search of every file written and page shown; `::test_a_redirect_to_another_origin_drops_the_key`.
   *Breaks when:* the key goes in `key=`, or a failure formats the request.
 
 - **INV-3** — Trust boundary, what YouTube sends. A title holding markup shows as text, and
@@ -323,7 +331,7 @@ scratch Google project and a real public channel:
 | Rule | What catches a breach |
 |------|----------------------|
 | INV-1 | `tests/test_youtube.py::test_settings_round_trip`, `::test_settings_page_keeps_them`, `::test_settings_refuses_a_bad_channel` |
-| INV-2 | `tests/test_youtube.py::test_key_only_in_header` |
+| INV-2 | `tests/test_youtube.py::test_key_only_in_header`, `::test_a_redirect_to_another_origin_drops_the_key` |
 | INV-3 | `tests/test_youtube.py::test_hostile_title_and_id` |
 | INV-4 | `tests/test_youtube.py::test_off_asks_nothing` |
 | INV-5 | `tests/test_youtube.py::test_cache_ages` |
