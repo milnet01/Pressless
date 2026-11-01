@@ -521,6 +521,18 @@ def head_commit(settings: Settings, token: str, transport: Transport | None = No
                      "sha", "the head commit")
 
 
+def can_push(repository: str, token: str, transport: Transport | None = None) -> bool:
+    """Whether this key's account may write to `repository`. A public repository can be
+    read by anyone, so a read proves nothing. A repository it cannot see is False. An
+    answer naming no permissions is not a refusal, so it is not treated as one."""
+    try:
+        answer = _Session(transport or _Urllib(), token).read(_repo_url(repository, ""))
+    except (RepositoryMissing, Refused):
+        return False
+    permissions = answer.get("permissions")
+    return not isinstance(permissions, dict) or permissions.get("push") is not False
+
+
 def default_branch(repository: str, token: str, transport: Transport | None = None) -> str:
     return _default_branch(_Session(transport or _Urllib(), token), repository)
 

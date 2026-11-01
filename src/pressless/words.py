@@ -1221,6 +1221,11 @@ _WORDS: dict[str, str] = {
         "Settings, then Applications, and check that Pressless App's installation includes "
         "it. Then press Next again."
     ),
+    "github_setup.cannot_write": (
+        "You signed in to GitHub as {signed_in}, and that account cannot change {repository}. "
+        "Nothing was stored, so your earlier sign-in still works. To use another account, "
+        "switch to it on github.com, then press Next to sign in again."
+    ),
     "setup.hint.other_account": (
         "You signed in to GitHub as {signed_in}, not {typed}. To use {typed}, switch to it "
         "on github.com, or correct the name above. Then press Next to sign in again."

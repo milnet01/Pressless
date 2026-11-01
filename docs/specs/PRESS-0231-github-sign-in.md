@@ -69,7 +69,8 @@ unchanged.
 7. **The person names the account before signing in.** Requested by the
    user 2026-10-05: a browser signed in to another account would otherwise
    be used without a word. A sign-in to any other account is refused and
-   nothing is stored.
+   nothing is stored. Signing in again from Settings names no account, so
+   § 4.4 asks whether the sign-in can write to the repository instead.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -267,7 +268,9 @@ in to GitHub, typing a key replaces the sign-in, and a link to
 `/setup/github`. Its save sequence reads the key with `token`.
 
 `/setup/github`, GET and POST, runs the *signin* step's sequence on its own,
-with the saved store. Success replaces the stored secret and the held token,
+with the saved store and no `account` box. A sign-in whose account cannot
+write to Settings' `repository` is refused, named, and nothing is stored
+(PRESS-0334). Success replaces the stored secret and the held token,
 and shows Settings. It is registered behind the Face's boundary like every
 other page.
 

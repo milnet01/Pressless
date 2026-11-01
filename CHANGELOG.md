@@ -43,6 +43,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Signing in again from Settings to an account that cannot change the site no longer replaces a working sign-in** (PRESS-0334)
+  Pressless now names the account, stores nothing, and the earlier sign-in keeps working.
+
 - **The menu now highlights Journal on the journal's pages** (PRESS-0298)
   A Journal link you add to the menu, or point at the journal, is now
   marked so the journal's pages highlight it, as other pages highlight

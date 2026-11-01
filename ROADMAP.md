@@ -12384,7 +12384,7 @@ already-built code ships in whichever release comes next.
   Source: session-2026-10-23 readability pass.
   Lanes: Import.
 
-- 📋 [PRESS-0334] **Signing in again at /setup/github checks no account name.**
+- ✅ [PRESS-0334] **Signing in again at /setup/github checks no account name.**
   Found by both cold lanes of PRESS-0231's second review round
   (2026-10-23), outside the change that round gated, so filed here
   rather than fixed.
@@ -12405,6 +12405,10 @@ already-built code ships in whichever release comes next.
   nothing; amend § 4.4 and § 3 decision 7 to say so, and add a test.
   The alternative is to scope decision 7 to first run and record the
   code as it is. The direction is the user's.
+  2026-11-01: fixed by asking whether the sign-in can write
+  (`publisher.can_push`), not by the recommended owner comparison, which
+  would refuse an organisation's repository. PRESS-0231 §§ 3 and 4.4
+  amended. The user may overturn it; not run against real GitHub.
   **Layman:** If someone signs in again from Settings while their browser is signed in to a different GitHub account, Pressless keeps that sign-in, and publishing then fails.
   Kind: review-fix.
   Source: review-contract PRESS-0231 row 2, 2026-10-23.

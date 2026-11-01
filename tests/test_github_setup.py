@@ -27,6 +27,7 @@ from pressless import (
     face,
     github_setup,
     github_signin,
+    publisher,
     publishing,
     settings,
     setup,
@@ -50,11 +51,16 @@ class _GitHub:
 
     def __init__(self, *, refuse: bool = False) -> None:
         self.refuse = refuse
+        self.can_push = True
         self.sent: list[tuple[str, str, dict[str, list[str]], dict[str, str]]] = []
 
     def request(self, method, url, body, headers):
         form = urllib.parse.parse_qs((body or b"").decode())
         self.sent.append((method, url, form, headers))
+        if url.endswith("/user"):
+            return 200, {}, json.dumps({"login": "another-account"}).encode()
+        if url.startswith(f"{publisher.API}/repos/"):
+            return 200, {}, json.dumps({"permissions": {"push": self.can_push}}).encode()
         if url == "https://github.com/login/device/code":
             return 200, {}, json.dumps({
                 "device_code": "plain-device-code", "user_code": USER_CODE,
@@ -248,6 +254,37 @@ def test_signing_in_again_replaces_the_pass(tmp_path, monkeypatch):
         assert keyring.saved == SECOND_REFRESH
         assert _token(tmp_path) == SECOND_ACCESS
     assert github.refreshes() == 1
+
+
+def test_signing_in_again_to_an_account_that_cannot_write_keeps_the_old_pass(
+        tmp_path, monkeypatch):
+    """PRESS-0231 § 4.4. Breaks when the page stores the new sign-in before asking whether it
+    reaches the repository: publishing would then fail, and the working sign-in has gone."""
+    _saved(tmp_path)
+    github = _GitHub()
+    github.can_push = False
+    keyring = _Store(monkeypatch, REFRESH)
+    with _served(tmp_path, github, _Clock()) as browser:
+        assert browser.request("POST", PAGE)[0] == 200
+        status, _, page = browser.request("POST", PAGE)
+        assert status == 200 and "another-account" in page and "Nothing was stored" in page
+        assert keyring.saved == REFRESH
+        assert _token(tmp_path) != SECOND_ACCESS
+
+
+@pytest.mark.parametrize(("status", "answer", "can"), [
+    (200, {"permissions": {"push": True}}, True), (200, {"permissions": {"push": False}}, False),
+    (200, {}, True), (404, {"message": "Not Found"}, False),
+])
+def test_can_push_reads_the_repositorys_answer(status, answer, can):
+    class Answers:
+        def request(self, method, url, body, headers):
+            return status, {}, json.dumps(answer).encode()
+
+        def wait(self, seconds: float) -> None:
+            return None
+
+    assert publisher.can_push("owner/site", "a-key", Answers()) is can
 
 
 def test_settings_says_it_is_signed_in(tmp_path, monkeypatch):

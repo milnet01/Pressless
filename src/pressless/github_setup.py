@@ -186,10 +186,17 @@ def _page(state: _State, request: Request) -> str | Reply:
         try:
             pressed = state.again.press()
             if isinstance(pressed, Tokens):
-                credentials.write(saved.credentials.store, state.folder,
-                                  saved.credentials.github_account, pressed.refresh)
-                hold(pressed)
-                return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
+                if not publisher.can_push(saved.repository, pressed.access, state.transport):
+                    # Before the store, or a working sign-in is replaced by one that
+                    # cannot publish (PRESS-0231 § 4.4). Reach, not a name: an
+                    # organisation's repository has no owner who signs in.
+                    pressed = say("github_setup.cannot_write", repository=saved.repository,
+                                  signed_in=github_signin.login(pressed.access, state.transport))
+                else:
+                    credentials.write(saved.credentials.store, state.folder,
+                                      saved.credentials.github_account, pressed.refresh)
+                    hold(pressed)
+                    return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
             above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:
             above = message_box("failure", state.face.fail(exc, publishing=False))
