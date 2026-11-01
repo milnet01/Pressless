@@ -641,7 +641,9 @@ _WORDS: dict[str, str] = {
     "page_hint.not_on_site": (
         "This page is not on your site yet. Throw away its changes to remove it."
     ),
-    "page_hint.privacy_remove": "The Privacy page stays while your site counts visitors.",
+    "page_hint.privacy_remove": (
+        "The Privacy page stays while your site counts visitors or has Like and Dislike buttons."
+    ),
     "page_hint.privacy_rename": (
         "The Privacy page keeps its name: Pressless looks for it by that name."
     ),
@@ -1562,12 +1564,12 @@ _WORDS: dict[str, str] = {
         "Google Analytics."
     ),
     "setup.privacy.failed": (
-        "Visitor counting is on, but the Privacy page or its link could not be added. Saving "
+        "Your settings are saved, but the Privacy page or its link could not be added. Saving "
         "again tries once more."
     ),
     "setup.privacy.page": (
-        "Your site now has a Privacy page saying that it counts visitors. Open it from Your "
-        "pages and add how people can reach you."
+        "Your site now has a Privacy page saying what it records about visitors. Open it from "
+        "Your pages and add how people can reach you."
     ),
     "setup.privacy.link": "Your footer now links to the Privacy page.",
     "setup.cannot_finish": "Setup cannot finish on this computer.",
@@ -1926,6 +1928,106 @@ _WORDS: dict[str, str] = {
     "starter.privacy.questions": (
         "Questions about your information: replace this sentence with how to reach the "
         "person who runs this site."
+    ),
+    "starter.privacy.votes": (
+        "Entries on this site have Like and Dislike buttons. Pressing one keeps a random id in "
+        "your browser and your vote in a Google Firebase database. Your vote and the random id "
+        "can be read by anyone."
+    ),
+    "starter.privacy.votes.who": (
+        "No name, email address or account is involved. Google sees your internet address when "
+        "you press a button or read the counts. Google's own privacy policy says what Google "
+        "does with this information: <a href=\"https://policies.google.com/privacy\">"
+        "policies.google.com/privacy</a>."
+    ),
+    "starter.privacy.recaptcha": (
+        "To keep out automated votes, every entry page loads Google's reCAPTCHA and Firebase's "
+        "App Check on each visit, before any button is pressed."
+    ),
+    # The buttons under an entry (PRESS-0211).
+    "votes.like": "Like",
+    "votes.dislike": "Dislike",
+    # The buttons' setup screen (PRESS-0211 § 4.6).
+    "votes_setup.settings_link": "Like and Dislike buttons under your entries, if you want them",
+    "votes_setup.title": "Like and Dislike buttons",
+    "votes_setup.not_on": (
+        "The buttons are off. Your site publishes no buttons until this is set up."
+    ),
+    "votes_setup.on": "The buttons are on, counting in the Firebase project {project}.",
+    "votes_setup.about": (
+        "The counts live in your own free Firebase database, from Google. These steps make one. "
+        "You do not need a billing account, and without one nothing can cost you money."
+    ),
+    "votes_setup.step.1": (
+        "Open <a href=\"https://console.firebase.google.com\" target=\"_blank\" "
+        "rel=\"noopener\">console.firebase.google.com</a> and add a project. Refuse any offer "
+        "of a paid plan. Google Analytics is not needed."
+    ),
+    "votes_setup.step.2": (
+        "Create a <b>Firestore</b> database in production mode, in the location nearest you."
+    ),
+    "votes_setup.step.3": (
+        "In the database's <b>Rules</b>, replace the text with the text below, and publish."
+    ),
+    "votes_setup.step.4": "In <b>Authentication</b>, turn on the <b>Anonymous</b> sign-in method.",
+    "votes_setup.step.5": (
+        "Add a web app to the project, copy the <code>firebaseConfig</code> text it shows, and "
+        "paste it into the box below."
+    ),
+    "votes_setup.copy": "Copy the rules",
+    "votes_setup.copied": "Copied.",
+    "votes_setup.warning": (
+        "Once your site is published, GitHub may flag the key in that text, and Google may email "
+        "you about it. That is expected: Firebase's web key is public by design."
+    ),
+    "votes_setup.box": "The firebaseConfig text",
+    "votes_setup.app_check.title": "Optional, and best left off: App Check",
+    "votes_setup.app_check": (
+        "App Check makes it harder to script votes, but it puts Google's reCAPTCHA on every entry "
+        "page, and every visit uses up its free allowance of 10,000 checks a month. With no "
+        "billing account, the buttons then stop working until the next month."
+    ),
+    "votes_setup.app_check.steps": (
+        "To use it anyway, register your web app in Firebase's App Check with reCAPTCHA "
+        "Enterprise, and paste the site key below. Pressless cannot check this from your computer."
+    ),
+    "votes_setup.app_check.box": "The reCAPTCHA Enterprise site key",
+    "votes_setup.save": "Save and check",
+    "votes_setup.hint": (
+        "That is not the whole firebaseConfig text. It needs apiKey, projectId and appId, as "
+        "Firebase shows them. Nothing was saved."
+    ),
+    "votes_setup.hint.recaptcha": (
+        "That is not a reCAPTCHA site key. Leave the box empty unless you chose App Check. "
+        "Nothing was saved."
+    ),
+    "votes_setup.saved.title": "Saved.",
+    "votes_setup.saved": (
+        "The buttons appear at your next Press to site, and your Privacy page says what they "
+        "record."
+    ),
+    "votes_setup.back": "Back to the buttons' page",
+    "votes_setup.check": "Check it is ready",
+    "votes_setup.off": "Turn the buttons off",
+    "votes_setup.off.done": (
+        "The buttons go at your next Press to site. The votes stay in your database, and your "
+        "Privacy page keeps its words."
+    ),
+    "votes_setup.check.ready": "Ready: Google answered every check as it should.",
+    "votes_setup.check.anonymous": (
+        "Google refused an anonymous sign-in. Turn on Anonymous sign-in (step 4)."
+    ),
+    "votes_setup.check.rules": "Google refused a vote. Paste the rules and publish them (step 3).",
+    "votes_setup.check.rules_wrong": (
+        "The database's rules are not the ones shown. Replace them and publish (step 3)."
+    ),
+    "votes_setup.check.database": "There is no database yet. Create it (step 2).",
+    "votes_setup.check.unreachable": (
+        "Pressless could not reach Google, so nothing is wrong yet. Try again later."
+    ),
+    "votes_setup.check.recaptcha": (
+        "With App Check on, this cannot be checked from your computer. Try the buttons on your "
+        "published site."
     ),
     # The comments in the site's stylesheet (look.py).
     "look.style_note": (

@@ -29,7 +29,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
 
-from pressless import blocks, marks, store
+from pressless import blocks, marks, store, votes
 from pressless.settings import Settings
 
 # Every top-level name a build writes must be here, or the next build refuses
@@ -117,7 +117,9 @@ def counting_code(measurement_id: str) -> str:
 
 def _inserted(text: str, code: str) -> str:
     """`code` at the end of the page's head, else after its body's start tag,
-    else at its end (PRESS-0199 § 4.2)."""
+    else at its end (PRESS-0199 § 4.2). No code leaves `text` as it is."""
+    if not code:
+        return text
     if found := _HEAD_END.search(text):
         return text[:found.start()] + code + text[found.start():]
     if found := _BODY_START.search(text):
@@ -832,11 +834,12 @@ class _Build:
         return f"{title} — {name}" if name else title
 
     def page(self, relative: str, depth: int, title: str, description: str,
-             body: str) -> None:
+             body: str, *, code: str = "") -> None:
+        """`code` is what only an entry page may carry (PRESS-0211 § 4.3)."""
         up = "../" * depth
         links = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">'
                           for sheet in stylesheets(self.folder))
-        self.write_text(f"{relative}/index.html", self.counted(self.identified(self.enhanced(
+        shell = self.enhanced(
             f"""<!doctype html>
 <html lang="en">
 <head>
@@ -858,7 +861,9 @@ class _Build:
 
 </body>
 </html>
-""", depth, self.furniture_pieces), depth)))
+""", depth, self.furniture_pieces)
+        self.write_text(f"{relative}/index.html",
+                        _inserted(self.counted(self.identified(shell, depth)), code))
 
     def counted(self, text: str) -> str:
         """PRESS-0199 § 4.2: `text` with Google's tag, on a publishing build
@@ -930,6 +935,12 @@ class _Build:
             f"#{html.escape(tag)}</a>"
             for tag in entry.tags)
         comments = self.comments(entry)
+        # PRESS-0211 § 4.3: the buttons on a preview and a publish alike, and
+        # their code on a publish alone, so the frame stays free of script.
+        voting = self.settings.votes
+        key = None if voting is None else store.vote_key(entry)
+        buttons = "" if key is None else "\n" + votes.buttons(key)
+        code = votes.page_code(voting) if key is not None and self.publishing else ""
         body = f"""
     <article class="post">
       <p class="post-meta">{self.meta(entry, up)}</p>
@@ -937,12 +948,12 @@ class _Build:
       <div class="{BODY_CLASS}">
 {marks.render(entry.body, src, self.today)}
       </div>
-      <p class="post-tags">{tags}</p>
+      <p class="post-tags">{tags}</p>{buttons}
     </article>
 {comments}
     <p class="back"><a href="{up}blog/index.html">← All journal entries</a></p>"""
         description = _excerpt(_entry_text(doc, self.today), 150) or heading
-        self.page(relative, depth, heading, description, body)
+        self.page(relative, depth, heading, description, body, code=code)
 
     def comments(self, entry: store.Entry) -> str:
         """§4.3: flat, in file order (decision 6); a body through Marks' own

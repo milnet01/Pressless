@@ -1053,7 +1053,7 @@ def _reshape_hint(folder: Path, form: dict[str, str], renaming: bool,
     if not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
         return "page_hint.not_on_site"
     if not renaming:
-        if name == "privacy" and saved.measurement_id is not None:
+        if name == "privacy" and (saved.measurement_id is not None or saved.votes is not None):
             return "page_hint.privacy_remove"
         return None
     if name == "privacy":

@@ -6291,7 +6291,7 @@ dislikes on entries, as decided in docs/discovery.md.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
+- ✅ [PRESS-0211] **Likes and dislikes on entries, counted in a free database.**
   Decided by the user 2026-10-02, after the whole-site work: both
   buttons, public counts in each site's own free Firebase database,
   anonymous sign-in so one vote per person per entry, billing kept
@@ -6302,6 +6302,14 @@ dislikes on entries, as decided in docs/discovery.md.
   Eleven findings verified and fixed, one dismissed, nothing deferred. The
   last seven fixes are read by no lane; the build is their reader. Record:
   docs/reviews/PRESS-0211-likes-and-dislikes-loop-log.md.
+  Built 2026-11-01 from docs/specs/PRESS-0211-likes-and-dislikes.md. INV-1 to INV-5 and
+  INV-9 to INV-12: tests/test_votes.py, with 35 mutations all caught. INV-6:
+  scripts/by-hand-votes-rules.py passed on the emulators; 7 of 8 clause removals
+  failed it, and the eighth changes no answer. INV-7 and INV-8: browser rows passed
+  on Chrome and Firefox, with 9 mutations of the page script all caught. Edge runs in
+  the box's browser gate. Spec section 7's hand checks on real Firebase are owed under
+  PRESS-0133, and App Check support comes out if Firestore's REST interface does not
+  honour its header. No independent code review ran on this build.
   **Layman:** Visitors can like or dislike an entry, and one person cannot vote many times.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198.

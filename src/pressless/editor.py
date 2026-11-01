@@ -705,7 +705,8 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
                      if slug in store.list_slugs(folder, draft=draft) else None)
             hint = _address_refused(folder, entry, slug, address, draft=draft)
             if hint is None and address != slug:
-                base = _move(folder, entry, slug, address, base, draft=draft)
+                base = _move(folder, _keeping_votes(folder, entry, draft=draft), slug, address,
+                             base, draft=draft)
                 slug = address
         except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
             failure: Exception | None = exc
@@ -715,6 +716,24 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         return failed(face, notices, failure)
     return json_reply({"slug": slug, "draft": draft, "base": base, "preview": None,
                   "failure": None, "notices": render_notices(notices), "hint": hint})
+
+
+def _keeping_votes(folder: Path, entry: store.Entry, *, draft: bool) -> store.Entry:
+    """PRESS-0211 § 4.2: `entry` holding the key from before its move, where it
+    could have votes (it is published, or undo took it off the site), buttons
+    are on, and it holds no key already."""
+    if draft and not any(name == UNDONE for name, _ in entry.extra):
+        return entry
+    if any(name == store.VOTE_KEY for name, _ in entry.extra):
+        return entry
+    try:
+        on = settings.load(folder).votes is not None
+    except (settings.NotSetUp, settings.SettingsError):
+        return entry
+    key = store.vote_key(entry)
+    if not on or key is None:
+        return entry
+    return dataclasses.replace(entry, extra=(*entry.extra, (store.VOTE_KEY, key)))
 
 
 def _address_refused(folder: Path, entry: store.Entry | None, slug: str, address: str,

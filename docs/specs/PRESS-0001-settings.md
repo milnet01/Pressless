@@ -162,6 +162,8 @@ not create it, search for it, or fall back to another one.
 
 *PRESS-0213 § 4.2 changes this section.*
 
+*PRESS-0211 § 4.1: Settings gains an optional `votes` object, and `check_votes` holds its shape rules.*
+
 ```json
 {
   "version": 1,
@@ -734,3 +736,4 @@ loading or saving does anything.
 | 11 | 2026-09-13 | 3, cold — genre pinned `spec`; gating the two new Settings fields for PRESS-0008. Packet carried `settings.py` and `test_settings.py` windows, PRESS-0008 § 3, § 4.9 and § 11, PRESS-0009 § 4.4 and `versioning-overrides.md` § Setup state. Windows, GitHub and Google unrunnable | 0 | 1 | 1 | 0 | **Two verified, two fixed, none dismissed. One loop only, by the amendment budget: not converged.** Three lanes: the address's letters and digits were not said to be ASCII. One lane, raised by all three: the never-the-value rule read wider than the module's shape refusals, so a builder copying their pattern would quote the site's address. Both inside the gated span. |
 | 12 | 2026-09-27 | 2, cold — genre pinned `spec`; armed by PRESS-0171 (dot-only halves). Packet carried `settings.py` shape check and the repository tests, plus the executed fact that `owner/..` loads today | 0 | 0 | 0 | 1 | **One verified, one fixed; two dismissed as changing nothing built** (a stale "three patched rows" count and a stale claim about a shipped test, both pre-existing). The fix: §10's test also loads `.github`-shaped names, so an over-wide refusal fails. One round by the user's amendment budget; not converged. |
 | 13 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the six modules' write code, the import tests, the retry tests and PRESS-0005 §4.5 / §11. Windows unrunnable | 0 | 2 | 1 | 1 | **Four verified, four fixed, none dismissed.** Both lanes: §4.4's "every module" against §11's "no other sibling spec changes"; *depends on nothing* read as barring the import; the Windows retry's test seam unnamed. One lane: "one copy" had no falsifier, so INV-1 now checks `settings.py` calls no `fsync`. One round by the user's budget; the fixes are read by no lane. |
+| amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.1: Settings gains `votes`. |

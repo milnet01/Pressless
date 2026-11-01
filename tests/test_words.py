@@ -252,7 +252,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                                  "the colours are not exactly the look's colour names, in order",
                                  "no text size is called", "no width is called",
                                  "no font is called"), _MESSAGE)},
-    "starter.py": {"Home": "a data-nav name, which the Builder matches on"},
+    "starter.py": {"Home": "a data-nav name, which the Builder matches on",
+                   "google analytics": "looked for in a page, whatever its words"},
     "store.py": {
         "RECOGNISED_FIELDS": _FIELDS, "one_line": _FIELDS,
         **dict.fromkeys(("Title", "Slug", "Date", "Categories", "Tags", "Title:", "Slug:",
@@ -263,6 +264,11 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
                         _MESSAGE),
     },
     "updating.py": {"The update check stopped at step": "a log line"},
+    "votes.py": {
+        "RULES": "Firestore's rules language", "_SCRIPT": "a script reading no words",
+        "_APP_CHECK": "a script reading no words", "const CONFIG =": "a script reading no words",
+    },
+    "votes_setup.py": dict.fromkeys(("Content-Type", "Authorization", "Bearer"), _HTTP_HEADERS),
     "usage.py": {
         **dict.fromkeys(("Windows", "Linux", "Linux (", "an unknown system"),
                         "the system's name, sent in a report and the issue form"),
@@ -495,7 +501,7 @@ def test_pages_take_their_words_from_the_table(tmp_path, monkeypatch) -> None:
             starter_template = store.read(store.template_path_for(site, name))
             shown[f"the starter's template {name}"] = (
                 f"{starter_template.title}\n{starter_template.body}")
-        starter.add_privacy(site, OWN)
+        starter.add_privacy(site, OWN, counting=True, votes=True, recaptcha=True)
         privacy = store.html_path_for(site, store.PAGES_FOLDER, "privacy")
         shown["the Privacy page"] = privacy.read_text(encoding="utf-8")
     left = {name: found for name, page in shown.items()

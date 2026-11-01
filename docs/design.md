@@ -255,13 +255,14 @@ undo brings it back. The site's name moves there from Settings, decided
 with the user 2026-10-02, and an existing install's name is carried
 across when it moves; Settings keeps the address.
 
-**Privacy is the one page Pressless keeps.** While visitor counting is
-on, the site must carry a page that discloses it: leaving it out is a
-legal exposure under POPIA, not a missing page. Switching counting on
+**Privacy is the one page Pressless keeps.** While visitor counting or
+the Like and Dislike buttons are on, the site must carry a page that
+discloses them: leaving it out is a
+legal exposure under POPIA, not a missing page. Switching either on
 adds the starter set's Privacy page where the site has none, published
 rather than as a draft, so it goes out with the first page carrying the
-counting code. The
-Face refuses to remove that page while counting is on. Decided with the
+code. The
+Face refuses to remove that page while either is on. Decided with the
 user 2026-10-02.
 
 **What undo actually does, and why a revert is not enough.** The

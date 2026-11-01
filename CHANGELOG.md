@@ -14,6 +14,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Added
 
+- **Visitors can like or dislike an entry** (PRESS-0211)
+  Settings has a new page that takes you through making your own free Firebase database, with no
+  billing account. Once it is set up, each entry publishes with Like and Dislike buttons and their
+  counts. A visitor can vote, change the vote and take it back, and one browser gets one vote per
+  entry. Your Privacy page gains the words it needs. A site that does not set this up publishes
+  what it published before.
+
 - **A site can be removed from the Sites screen** (PRESS-0291)
   It asks first, saves the site as one file in the backups folder, and never removes the site that is open. Opening that file brings it back. Its site on GitHub is not touched.
 

@@ -55,6 +55,7 @@ from pressless import (
     undo,
     updating,
     usage,
+    votes_setup,
 )
 from pressless.words import say
 
@@ -205,6 +206,7 @@ def _serve_once(own: Path) -> bool:
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)
         google_setup.register(served, folder)
+        votes_setup.register(served, folder)
         domain.register(served, folder)
         dashboard.register(served, folder)
         editor.register(served, folder)

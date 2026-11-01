@@ -797,8 +797,11 @@ def test_switching_counting_on_adds_privacy_once(tmp_path, monkeypatch):
     store.write_html(mine, store.PAGES_FOLDER, "privacy", "<p>my own</p>\n")
     with _setup_page(mine, _GitHub()) as browser:
         browser.post(_answers(measurement_id="G-ABC123", key=""))
-    assert store.read_html(store.html_path_for(mine, store.PAGES_FOLDER, "privacy")) == (
-        "<p>my own</p>\n")
+        first = store.read_html(store.html_path_for(mine, store.PAGES_FOLDER, "privacy"))
+        browser.post(_answers(measurement_id="G-ABC123", key=""))
+    # PRESS-0211 § 4.5: his page is kept, and gains the words it lacks, once.
+    assert first.startswith("<p>my own</p>\n") and "Google Analytics" in first
+    assert store.read_html(store.html_path_for(mine, store.PAGES_FOLDER, "privacy")) == first
 
     empty = tmp_path / "empty"
     empty.mkdir()

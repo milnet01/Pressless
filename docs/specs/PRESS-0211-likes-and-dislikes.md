@@ -250,8 +250,9 @@ reCAPTCHA and Firebase's App Check on each visit, before any press.
 `add_privacy` keeps its footer step. **Where the page exists** and its text lacks
 `Google Analytics` while `counting`, `Firebase` while `votes`, or `reCAPTCHA` while
 `recaptcha` (each ignoring case), it adds those words as sections immediately
-before `<!-- /pressless:page -->`, else before the first `</main>`, else at the
-end. So each is added once, and a writer's own wording of any stands. It treats a
+before `<!-- /pressless:page -->`. A page with no such mark gets them as plain
+paragraphs, since section marks outside an area do not pair: before the first
+`</main>`, else at the end. So each is added once, and a writer's own wording of any stands. It treats a
 waiting copy of the page the same way, since pressing that copy replaces the page.
 
 `setup._privacy` runs where Settings hold either, and the save in § 4.6 calls it
@@ -317,6 +318,8 @@ New: `src/pressless/votes.py`, `src/pressless/votes_setup.py`,
 `page_editor.py`, `undo.py`, `__main__.py` (registers the screen), `words.py`,
 `scripts/by-hand-browser-checks.py`, and `tests/test_blocks.py` and
 `tests/test_words.py`, which call the two changed `starter` functions.
+`tests/test_settings.py`, `tests/test_builder.py`, `tests/test_store_extras.py`
+and `tests/test_setup.py` pin what this item adds or changes.
 
 ## 5. Invariants
 
@@ -357,6 +360,8 @@ New: `src/pressless/votes.py`, `src/pressless/votes_setup.py`,
   *Test:* `scripts/by-hand-votes-rules.py`, which runs `votes.RULES` on the
   emulators and exits non-zero on any wrong answer.
   *Breaks when:* a clause of the rule is removed; the script's probe for it must then fail.
+  The one exception is `request.auth != null` on create and update: `request.auth.uid == voter`
+  already refuses a visitor with no sign-in, so removing it changes no answer (measured 2026-11-01).
 
 - **INV-7** — The page script: a press with no vote stores the vote; a press on
   the other button changes it; a press on the same button removes it; the numbers

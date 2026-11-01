@@ -297,7 +297,8 @@ def _choose(state: _State, request: Request) -> str:
     if candidate.measurement_id is not None:
         with state.face.capture() as privacy_notices:
             try:
-                starter.add_privacy(state.folder, starter.privacy_name(state.folder))
+                starter.add_privacy(state.folder, starter.privacy_name(state.folder),
+                                    **starter.disclosures(candidate))
             except StoreError as exc:
                 privacy = (f"<p>{say('google_setup.privacy_failed')}</p>"
                            + state.face.fail(exc, publishing=False))

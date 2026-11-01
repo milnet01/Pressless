@@ -191,8 +191,8 @@ page. Each posts `kind`, `name` and, for Rename, `to`, to
 **Refused, writing nothing and pressing nothing**, with a hint:
 
 - `name` is `index`, or is not a live page;
-- Remove, where `name` is `privacy` and `settings.measurement_id` is
-  set; Rename, where `name` is `privacy` (§3 decision 4);
+- Remove, where `name` is `privacy` and `settings.measurement_id` or
+  `settings.votes` is set (PRESS-0211 § 4.5); Rename, where `name` is `privacy` (§3 decision 4);
 - Rename, where a waiting copy of `name` exists;
 - Rename, where `editor.name_address(to)` is empty, `index`, equal to
   `name`, a live or waiting page, a page-forwards key whose value is not

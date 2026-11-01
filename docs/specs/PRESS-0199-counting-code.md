@@ -171,6 +171,8 @@ and § 4.5's candidate takes the answer on both paths.
 
 *PRESS-0213 § 4.6 changes this section.*
 
+*PRESS-0211 § 4.5 changes this section: the page's words depend on what is on, and an existing page gains the words it lacks.*
+
 **Every save, from § 4.3 or § 4.4, that leaves Settings holding an id**
 runs these after `settings.save` succeeds, **and only where the Store holds
 a site** (`store.holds_a_site`): an empty copy stays empty for Import

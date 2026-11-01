@@ -274,6 +274,8 @@ publish, a failure reported as leaving the site unchanged.
 
 *PRESS-0196 § 4.7: undo restores the look's files as one unit.*
 
+*PRESS-0211 § 4.2: the draft `_keep` makes drops `vote-key`, since it becomes another entry.*
+
 The fetched state's layout is PRESS-0008 § 4.7's, at the Store's own relative
 paths. Each kind is read and written through the Store's own calls:
 

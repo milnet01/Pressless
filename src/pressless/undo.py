@@ -456,9 +456,11 @@ def _keep(folder: Path, entry: store.Entry, restored: str) -> str:
     fields, so a draft that was a working copy of some OTHER entry stays one —
     but never a `Replaces` naming the entry just put back, which § 3 decision 7
     rules out and `editor.TooManyCopies` would then refuse, and never the
-    `Undone` mark, or the list calls an entry back on the site taken off it."""
+    `Undone` mark, or the list calls an entry back on the site taken off it,
+    and never a vote key, since it becomes another entry (PRESS-0211 § 4.2)."""
     wanted = editor.free_address(folder, restored + KEPT_SUFFIX)
-    extra = tuple(pair for pair in _without(entry.extra, publishing.UNDONE)
+    extra = tuple(pair for pair in _without(_without(entry.extra, publishing.UNDONE),
+                                            store.VOTE_KEY)
                   if not (pair[0] == editor.REPLACES and pair[1] == restored))
     store.write(folder, dataclasses.replace(entry, slug=wanted, extra=extra), draft=True)
     return wanted

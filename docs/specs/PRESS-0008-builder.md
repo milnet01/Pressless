@@ -177,6 +177,8 @@ raises passes through unchanged, so the Face's sentences for them apply.
 
 *PRESS-0199 § 4.2: a published page carries Google's counting code where Settings holds an id.*
 
+*PRESS-0211 § 4.3: where Settings holds `votes`, an entry page carries the buttons, and a published one their code.*
+
 Every page is a folder holding `index.html`, as today, except the fixed
 pages, which keep today's file names. All links are relative.
 
@@ -540,7 +542,7 @@ Sitemap: <the address>/sitemap.xml
   *Test:* `tests/test_builder.py::test_the_builder_imports_only_what_it_may`
   — walks `builder.py`'s imports against an allowlist of full dotted names,
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
-  `pressless.blocks` (PRESS-0215),
+  `pressless.blocks` (PRESS-0215), `pressless.votes` (PRESS-0211),
   `pressless.settings`, `PIL` and named standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.

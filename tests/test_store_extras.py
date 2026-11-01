@@ -857,6 +857,7 @@ _PRESS_0197_SURFACE = {"FILES_FOLDER", "file_path_for", "list_files"}
 # PRESS-0218 § 4.3: a take-in removing the photographs it placed. It deletes;
 # it copies nothing toward the site folder.
 _PRESS_0218_SURFACE = {"unplace_photograph"}
+_PRESS_0211_SURFACE = {"VOTE_KEY", "vote_key"}
 
 # §3 decision 10 leaves a photograph's file name to PRESS-0016 -- the archive's
 # own attachment names carry underscores and would not pass the slug rule -- so
@@ -958,13 +959,14 @@ def test_photographs_stay_where_they_are(tmp_path):
     expected_surface = (_PRESS_0005_SURFACE | _PRESS_0006_SURFACE | _PRESS_0014_SURFACE
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
                         | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE
-                        | _PRESS_0197_SURFACE | _PRESS_0218_SURFACE | _PRESS_0210_SURFACE)
+                        | _PRESS_0197_SURFACE | _PRESS_0218_SURFACE | _PRESS_0210_SURFACE
+                        | _PRESS_0211_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
         f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's, "
         f"PRESS-0195 §4.1's, PRESS-0196 §4.1's, PRESS-0197 §4.3's and "
-        f"PRESS-0218 §4.3's. "
+        f"PRESS-0218 §4.3's and PRESS-0211 §4.2's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"

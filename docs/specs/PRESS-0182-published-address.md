@@ -94,6 +94,8 @@ the editor keeps (§4.2), as Store-wide uniqueness already is.
 
 ### 4.2 The editor
 
+*PRESS-0211 § 4.2: moving an entry may add a `vote-key` field, so its votes stay with it.*
+
 **`free_address`** also skips a candidate that is a key of
 `read_forwards(folder)`, read once before the first candidate, so its
 `StoreError` stops the search rather than being skipped as a refused

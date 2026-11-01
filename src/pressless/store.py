@@ -60,6 +60,23 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # differing only in case, which are one file on Windows and two on Linux.
 _LEGAL_SLUG = re.compile(r"\A[a-z0-9-]+\Z")
 
+# PRESS-0211 § 4.2: an Entry.extra field, so the format does not change. The
+# key reaches a published page and a Firestore address, and a hand-edited field
+# failing this gets no buttons rather than a broken page.
+VOTE_KEY = "vote-key"
+_LEGAL_VOTE_KEY = re.compile(r"""\A[0-9]{4}-[0-9]{2}-[0-9]{2}-[^/\s"'<>&]{1,189}\Z""")
+
+
+def vote_key(entry: Entry) -> str | None:
+    """The key an entry's votes are kept under: its `vote-key` field where it
+    has one, else its date and slug. None where that fails the pattern."""
+    key = next((value for name, value in entry.extra if name == VOTE_KEY), None)
+    if key is None:
+        when = entry.date
+        key = f"{when.year:04d}-{when.month:02d}-{when.day:02d}-{entry.slug}"
+    return key if _LEGAL_VOTE_KEY.fullmatch(key) else None
+
+
 # §4.2: refused on EVERY system, not only Windows. Windows resolves these
 # names whatever the extension, so opening `nul.txt` there reaches the null
 # device rather than failing -- the write appears to succeed and the entry is

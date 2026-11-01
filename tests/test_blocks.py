@@ -75,7 +75,8 @@ def _starter_pages(tmp_path: Path) -> dict[str, str]:
     pages = {name: store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name))
              for name in ("index", "about")}
     pages["added"] = starter.new_page("added", 'It\'s "new"', ("look/style.css",))
-    pages["privacy"] = starter.privacy_page('Ann\'s "Site"', ("look/style.css",))
+    pages["privacy"] = starter.privacy_page('Ann\'s "Site"', ("look/style.css",), counting=True,
+                                            votes=True, recaptcha=True)
     return pages
 
 

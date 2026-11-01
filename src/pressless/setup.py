@@ -45,6 +45,7 @@ from pressless import (
     takein,
     takeover,
     usage,
+    votes,
     wizard,
 )
 from pressless.face import Face, Request, message_box, render_notices
@@ -417,14 +418,16 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
 
 
 def _privacy(face: Face, folder: Path, final: settings.Settings) -> tuple[str, str]:
-    """PRESS-0199 § 4.5: after a save holding a measurement id, the Privacy
-    page and its footer link where absent. Returns what to say, and a failure
-    fragment; the id is saved either way, and the next save retries."""
-    if final.measurement_id is None:
+    """PRESS-0199 § 4.5 and PRESS-0211 § 4.5: after a save holding a measurement
+    id or a votes project, the Privacy page and its footer link where absent,
+    and any words the page lacks. Returns what to say, and a failure fragment;
+    the settings are saved either way, and the next save retries."""
+    if final.measurement_id is None and final.votes is None:
         return "", ""
     with face.capture() as notices:
         try:
-            page, link = starter.add_privacy(folder, starter.privacy_name(folder))
+            page, link = starter.add_privacy(folder, starter.privacy_name(folder),
+                                             **starter.disclosures(final))
         except StoreError as exc:
             return "", render_notices(notices) + (
                 f"<p>{say('setup.privacy.failed')}</p>" + face.fail(exc, publishing=False))
@@ -456,6 +459,7 @@ def _candidate(folder: Path, saved: settings.Settings | None,
         credentials=kept,
         analytics_property_id=property_id,
         measurement_id=values["measurement_id"] or None,   # PRESS-0199 § 4.4
+        votes=None if saved is None else saved.votes,      # PRESS-0211 § 4.1
     )
 
 
@@ -555,6 +559,7 @@ def _form(values: dict[str, str], hints: dict[str, str], *,
         + f'<p><button type="submit">{say("setup.save")}</button></p></form>'
         + f'<p><a href="{domain.ADDRESS}">{say("domain.settings_link")}</a></p>'
         + _google_link(google_on)
+        + f'<p><a href="{votes.ADDRESS}">{say("votes_setup.settings_link")}</a></p>'
         + f"<script>{_PICTURE_SCRIPT}</script>"
     )
 

@@ -15,7 +15,7 @@ import os
 import re
 import stat
 import warnings
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pressless.safe_write as safe_write
@@ -41,6 +41,14 @@ _NAME_CHARS = frozenset(
 
 _MEASUREMENT_ID = re.compile(r"\AG-[A-Z0-9]+\Z")   # PRESS-0199 § 4.1
 
+# PRESS-0211 § 4.1: what makes the page's code safe to write without escaping.
+_VOTES_TOKEN = re.compile(r"\A[A-Za-z0-9_-]{20,100}\Z")
+_VOTES_SHAPES = {
+    "api_key": _VOTES_TOKEN,
+    "project_id": re.compile(r"\A[a-z][a-z0-9-]{4,39}\Z"),
+    "app_id": re.compile(r"\A[0-9]+:[0-9]+:web:[0-9a-f]+\Z"),
+}
+
 # §4.3: http or https, a host of ASCII letters, digits, "." and "-", an optional
 # port, and "/"-separated path segments, with an optional trailing "/". The
 # address is joined into sitemap.xml and robots.txt (PRESS-0008 §4.9), where a
@@ -62,6 +70,17 @@ class Credentials:
 
 
 @dataclass(frozen=True)
+class Votes:
+    """PRESS-0211 § 4.1: a site's own Firebase project. Firebase says these are
+    public by design, so they live here and never in Credentials."""
+
+    api_key: str                  # Firebase's public web key; not a secret
+    project_id: str
+    app_id: str
+    recaptcha_key: str | None     # App Check, where the site's owner chose it
+
+
+@dataclass(frozen=True)
 class Settings:
     site_folder: Path             # where the Builder writes the finished site
     repository: str               # "owner/name" on GitHub
@@ -73,6 +92,8 @@ class Settings:
     # PRESS-0199 § 4.1: the G-... id the counting code carries; optional on
     # load, so a file written before it loads as None.
     measurement_id: str | None = None
+    # PRESS-0211 § 4.1: the Like and Dislike buttons' database; optional on load.
+    votes: Votes | None = None
 
 
 class NotSetUp(Exception):
@@ -231,6 +252,7 @@ def load(folder: Path) -> Settings:
     google_account = _optional(credentials, "google_account", str, "credentials.")
     analytics_property_id = _optional(raw, "analytics_property_id", str)
     measurement_id = _optional(raw, "measurement_id", str)
+    votes = _optional(raw, "votes", dict)
 
     loaded = Settings(
         site_folder=Path(site_folder),
@@ -245,6 +267,12 @@ def load(folder: Path) -> Settings:
         ),
         analytics_property_id=analytics_property_id,
         measurement_id=measurement_id,
+        votes=None if votes is None else Votes(
+            api_key=_required(votes, "api_key", str, "votes."),
+            project_id=_required(votes, "project_id", str, "votes."),
+            app_id=_required(votes, "app_id", str, "votes."),
+            recaptcha_key=_optional(votes, "recaptcha_key", str, "votes."),
+        ),
     )
     check(loaded)
     return loaded
@@ -333,6 +361,18 @@ def check(settings: Settings) -> None:
             "measurement_id is not Google's G- id for the counting code",
             "measurement_id",
         )
+    if settings.votes is not None:
+        check_votes(settings.votes)
+
+
+def check_votes(votes: Votes) -> None:
+    """PRESS-0211 § 4.1: refuse a value the page's code could not carry safely.
+    The refusal names the field and never quotes the value."""
+    for name, shape in _VOTES_SHAPES.items():
+        if not shape.fullmatch(getattr(votes, name)):
+            raise SettingsError(f"votes.{name} is not the shape Firebase gives it", "votes")
+    if votes.recaptcha_key is not None and not _VOTES_TOKEN.fullmatch(votes.recaptcha_key):
+        raise SettingsError("votes.recaptcha_key is not the shape Google gives it", "votes")
 
 
 def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> None:
@@ -364,6 +404,7 @@ def save(folder: Path, settings: Settings, *, retire: tuple[str, ...] = ()) -> N
         },
         "analytics_property_id": settings.analytics_property_id,
         "measurement_id": settings.measurement_id,
+        "votes": None if settings.votes is None else asdict(settings.votes),
     })
 
     # newline is named rather than left to the platform: §4.2's file is a

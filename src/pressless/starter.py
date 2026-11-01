@@ -14,7 +14,7 @@ import html
 import re
 from pathlib import Path
 
-from pressless import blocks, builder, look, store, templates
+from pressless import blocks, builder, look, settings, store, templates
 from pressless.words import say
 
 MARKER = "starter-unpublished"   # in the site's folder; empty file
@@ -105,6 +105,8 @@ LOOKS = look.LAYOUTS
 
 
 _FOOTER_END = re.compile(r"</footer\s*>", re.IGNORECASE)
+_MAIN_END = re.compile(r"</main\s*>", re.IGNORECASE)
+_AREA_END = "<!-- /pressless:page -->"
 
 
 def new_page(name: str, title: str, sheets: tuple[str, ...], *,
@@ -128,17 +130,38 @@ def home_page(site_name: str) -> str:
                                    _words("starter.home.words")))
 
 
-def privacy_page(site_name: str, sheets: tuple[str, ...]) -> str:
-    """The Privacy page, linking each stylesheet from depth 1: the disclosure
-    counting needs (PRESS-0199 § 4.5). `fill` does not write it;
-    `add_privacy` does, while counting is on."""
+def _counting_words() -> tuple[str, ...]:
+    """PRESS-0199 § 4.5. The policy's words hold links, so they go in as HTML."""
+    return (_words("starter.privacy.counting"), _words("starter.privacy.counted"),
+            say("starter.privacy.policy"))
+
+
+def _votes_words() -> tuple[str, ...]:
+    """PRESS-0211 § 4.5. The second holds a link, so it goes in as HTML."""
+    return _words("starter.privacy.votes"), say("starter.privacy.votes.who")
+
+
+def _recaptcha_words() -> tuple[str, ...]:
+    return (_words("starter.privacy.recaptcha"),)
+
+
+def disclosures(saved: settings.Settings) -> dict[str, bool]:
+    """What `saved` has on, as `privacy_page` and `add_privacy` take it."""
+    return {"counting": saved.measurement_id is not None, "votes": saved.votes is not None,
+            "recaptcha": saved.votes is not None and saved.votes.recaptcha_key is not None}
+
+
+def privacy_page(site_name: str, sheets: tuple[str, ...], *, counting: bool, votes: bool,
+                 recaptcha: bool) -> str:
+    """The Privacy page, linking each stylesheet from depth 1, saying only what
+    is on (PRESS-0199 § 4.5, PRESS-0211 § 4.5). `fill` does not write it;
+    `add_privacy` does, while something it discloses is on."""
+    words = ((_counting_words() if counting else ()) + (_votes_words() if votes else ())
+             + (_recaptcha_words() if recaptcha else ()))
     return _PAGE.format(
         title=say("starter.privacy.title", name=html.escape(site_name, quote=True)),
         links=_links(sheets, "../"), page="privacy",
-        # The policy's words hold links, so they go in as HTML; the rest are text.
-        area=_area(say("starter.privacy"), _words("starter.privacy.counting"),
-                   _words("starter.privacy.counted"), say("starter.privacy.policy"),
-                   _words("starter.privacy.questions")))
+        area=_area(say("starter.privacy"), *words, _words("starter.privacy.questions")))
 
 
 def privacy_link() -> str:
@@ -153,10 +176,35 @@ def privacy_name(folder: Path) -> str:
     return identity.name if identity is not None else say("starter.this_site")
 
 
-def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
-    """PRESS-0199 § 4.5: while counting is on, the Privacy page and a footer
-    link to it, each where absent, and only on a Store holding a site. Returns
-    whether each was added. Never creates a footer file."""
+def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bool) -> str:
+    """PRESS-0211 § 4.5: `text` with each disclosure that is on and that it does
+    not mention, so each is added once and a writer's own wording stands. A page
+    with no sections area gets plain paragraphs: section marks outside one are
+    marks that do not pair."""
+    lower = text.lower()
+    words = ((_counting_words() if counting and "google analytics" not in lower else ())
+             + (_votes_words() if votes and "firebase" not in lower else ())
+             + (_recaptcha_words() if recaptcha and "recaptcha" not in lower else ()))
+    if not words:
+        return text
+    if _AREA_END in text:
+        at = text.index(_AREA_END)
+        added = "".join(f"{blocks.section_html(blocks.Section(blocks.TEXT, {'html': said}))}\n"
+                        for said in words)
+        return text[:at] + added + text[at:]
+    added = "".join(f"<p>{said}</p>\n" for said in words)
+    end = _MAIN_END.search(text)
+    at = end.start() if end else len(text)
+    return text[:at] + added + text[at:]
+
+
+def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
+                recaptcha: bool) -> tuple[bool, bool]:
+    """PRESS-0199 § 4.5 and PRESS-0211 § 4.5: the Privacy page and a footer link
+    to it, each where absent, and only on a Store holding a site. A page already
+    there, and a waiting copy that pressing would put in its place, gain any
+    words they lack. Returns whether the page and the link were added. Never
+    creates a footer file."""
     folder = Path(folder)
     if not store.holds_a_site(folder):
         return False, False
@@ -164,8 +212,17 @@ def add_privacy(folder: Path, site_name: str) -> tuple[bool, bool]:
     added_page = not page.exists()
     if added_page:
         store.write_html(folder, store.PAGES_FOLDER, "privacy",
-                         privacy_page(site_name, builder.stylesheets(folder)))
-    footer = store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
+                         privacy_page(site_name, builder.stylesheets(folder), counting=counting,
+                                      votes=votes, recaptcha=recaptcha))
+    for waiting in (False, True):
+        held = store.html_path_for(folder, store.PAGES_FOLDER, "privacy", waiting=waiting)
+        if not held.exists():
+            continue
+        text = store.read_html(held)
+        changed = _with_missing_words(text, counting=counting, votes=votes, recaptcha=recaptcha)
+        if changed != text:
+            store.write_html(folder, store.PAGES_FOLDER, "privacy", changed, waiting=waiting)
+    footer =store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
     added_link = False
     if footer.exists():
         text = store.read_html(footer)

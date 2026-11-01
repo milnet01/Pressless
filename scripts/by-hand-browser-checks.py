@@ -35,6 +35,7 @@ publish to GitHub.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import functools
 import io
 import json
@@ -53,6 +54,8 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 import test_publishing as tp  # noqa: E402
 from PIL import Image  # noqa: E402
+from test_votes import PASTED, VOTES  # noqa: E402
+from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
 from pressless import (  # noqa: E402
     blocks,
@@ -72,6 +75,7 @@ from pressless import (  # noqa: E402
     store,
     templates,
     undo,
+    votes_setup,
     words,
 )
 
@@ -128,6 +132,7 @@ def main() -> int:
             files_screen.register(served, folder)
             setup.register(served, folder, transport=tp._github(),
                            shortcut_places=lambda: None)
+            votes_setup.register(served, folder, client=_CheckedGoogle())
             # PRESS-0223: the Sites screen over a Pressless-data of its own,
             # holding two sites; a restart is only recorded.
             sites_own = Path(tmp) / "sites-own"
@@ -540,6 +545,8 @@ def run(origin: str, secret: str, folder: Path) -> None:
         move_wizard(page, origin)
         enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
+        votes_screen(page, origin, folder)
+        votes_buttons(page, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -642,7 +649,9 @@ def sites_listed(page, origin: str, folder: Path) -> None:
     listed = page.locator("ul.sites").inner_text()
     check("PRESS-0223: the Sites screen names each site, the open one marked",
           "The First Site (open now)" in listed and "The Second Site" in listed, listed)
-    page.locator("ul.sites button").click()
+    # PRESS-0291 put Remove beside Open, so the button is found by its words.
+    page.locator("ul.sites").get_by_role(
+        "button", name=words.say("sites_screen.open"), exact=True).click()
     page.wait_for_load_state("networkidle")
     opened = json.loads((sites_own / "sites.json").read_text(encoding="utf-8"))["open"]
     check("PRESS-0223: Open chooses the other site and restarts",
@@ -1284,6 +1293,280 @@ def _published_pieces(page, errors: list[str]) -> None:
     check("PRESS-0217 s4.4: back to top returns to the top; the writer's script runs",
           ran == "RAN", f"title={ran!r}")
     check("PRESS-0217: no script error in the editor or on the site", not errors, str(errors))
+
+
+class _FakeGoogle:
+    """PRESS-0211 INV-7 and INV-8: answers the three Google hosts as Firestore
+    and Auth do, holding the votes, so the page's script runs for real and
+    nothing leaves the machine. `fail` names a step to answer with a status, or
+    with no answer where it is None."""
+
+    def __init__(self, page) -> None:
+        self.votes = {"seed-1": 1, "seed-2": 1, "seed-3": -1}
+        self.made = 0
+        self.fail: dict[str, int | None] = {}
+        self.steps: list[str] = []
+        for host in ("firestore", "securetoken", "identitytoolkit"):
+            page.route(f"https://{host}.googleapis.com/**", self.answer)
+
+    def _reply(self, route, status: int, body: object = None) -> None:
+        route.fulfill(status=status, headers={
+            "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+            "Content-Type": "application/json"}, body=json.dumps(body))
+
+    def _step(self, method: str, url: str) -> str:
+        if "accounts:signUp" in url:
+            return "signup"
+        if "securetoken" in url:
+            return "exchange"
+        if ":runAggregationQuery" in url:
+            return "count"
+        return {"PATCH": "patch", "DELETE": "delete"}[method]
+
+    def answer(self, route) -> None:
+        request = route.request
+        if request.method == "OPTIONS":
+            self._reply(route, 204)
+            return
+        url = request.url.split("?")[0]
+        step = self._step(request.method, url)
+        self.steps.append(step)
+        if step in self.fail:
+            status = self.fail[step]
+            route.abort() if status is None else self._reply(route, status, {"error": {}})
+            return
+        sent = request.post_data or ""
+        if step == "signup":
+            self.made += 1
+            self._reply(route, 200, {"idToken": f"t{self.made}", "localId": f"v{self.made}",
+                                     "refreshToken": f"r{self.made}"})
+        elif step == "exchange":
+            refresh = urllib.parse.parse_qs(sent)["refresh_token"][0]
+            self._reply(route, 200, {"id_token": "t" + refresh[1:], "user_id": "v" + refresh[1:],
+                                     "refresh_token": refresh})
+        elif step == "count":
+            wanted = int(json.loads(sent)["structuredAggregationQuery"]["structuredQuery"]
+                         ["where"]["fieldFilter"]["value"]["integerValue"])
+            total = sum(1 for held in self.votes.values() if held == wanted)
+            self._reply(route, 200, [{"result": {"aggregateFields": {
+                "n": {"integerValue": str(total)}}}}])
+        elif step == "patch":
+            self.votes[url.rsplit("/", 1)[1]] = int(
+                json.loads(sent)["fields"]["value"]["integerValue"])
+            self._reply(route, 200, {})
+        else:
+            self.votes.pop(url.rsplit("/", 1)[1], None)
+            self._reply(route, 200, {})
+
+
+def _vote_state(page) -> dict:
+    """The buttons as a visitor finds them, and the note in the browser."""
+    return page.evaluate("""() => ({
+      numbers: [...document.querySelectorAll('.vote-count')].map(c => c.textContent),
+      pressed: [...document.querySelectorAll('button.vote')]
+        .map(b => b.getAttribute('aria-pressed')),
+      enabled: [...document.querySelectorAll('button.vote')].map(b => !b.disabled),
+      boxes: [...document.querySelectorAll('button.vote')].map(b => {
+        const r = b.getBoundingClientRect();
+        return [r.x, r.y, r.width, r.height];
+      }),
+      note: JSON.parse(localStorage.getItem('pressless-votes')),
+    })""")
+
+
+def _vote_press(page, google: _FakeGoogle, value: str) -> list[str]:
+    """Press a button, wait for it to finish, and return the steps it took."""
+    before = len(google.steps)
+    page.locator(f'button.vote[data-value="{value}"]').click()
+    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    return google.steps[before:]
+
+
+def votes_buttons(page, folder: Path) -> None:
+    """PRESS-0211 INV-7 and INV-8: the page's script, against a double."""
+    entry = tp._entry("voting", body="Words to read.")
+    store.write(folder, entry, draft=False)
+    site = folder.parent / "votes-site"
+    builder.build(folder, dataclasses.replace(settings.load(folder), votes=VOTES), site)
+    handler = functools.partial(SimpleHTTPRequestHandler, directory=str(site))
+    handler.log_message = lambda *args: None
+    hosted = ThreadingHTTPServer(("127.0.0.1", OPTIONS.site_port), handler)
+    threading.Thread(target=hosted.serve_forever, daemon=True).start()
+    address = f"http://127.0.0.1:{hosted.server_port}/{builder.entry_path(entry)}/index.html"
+    # A context of its own: a visitor holds no cookie of the Face's, and no note.
+    context = page.context.browser.new_context()
+    visitor = context.new_page()
+    errors: list[str] = []
+    visitor.on("pageerror", lambda error: errors.append(str(error)))
+    try:
+        _votes_rows(visitor, address, errors)
+    finally:
+        context.close()
+        hosted.shutdown()
+        hosted.server_close()
+
+
+def _votes_rows(page, address: str, errors: list[str]) -> None:
+    google = _FakeGoogle(page)
+    page.goto(address, wait_until="load")
+    page.evaluate("localStorage.clear()")
+
+    # ---- a failed load, first: the numbers' space is held empty -----------
+    google.fail = {"count": 503}
+    page.reload(wait_until="networkidle")
+    empty = _vote_state(page)
+    check("PRESS-0211 INV-8: a failed load leaves both disabled with no numbers",
+          empty["numbers"] == ["", ""] and empty["enabled"] == [False, False],
+          str(empty["numbers"]))
+    check("PRESS-0211 INV-8: the entry reads as normal when Google fails",
+          page.locator(".post-body").inner_text().strip() == "Words to read.")
+    google.fail = {"count": None}
+    page.reload(wait_until="networkidle")
+    check("PRESS-0211 INV-8: a load with no answer does the same, and no script error",
+          _vote_state(page)["enabled"] == [False, False] and not errors, str(errors))
+
+    # ---- the first load ----------------------------------------------------
+    google.fail = {}
+    google.steps.clear()
+    page.reload(wait_until="networkidle")
+    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    state = _vote_state(page)
+    check("PRESS-0211 INV-7: the load fills the numbers and enables both",
+          state["numbers"] == ["2", "1"] and state["pressed"] == ["false", "false"],
+          str(state["numbers"]))
+    check("PRESS-0211 INV-7: before the first press nothing is stored and no sign-up is sent",
+          state["note"] is None and page.evaluate("localStorage.length") == 0
+          and "signup" not in google.steps, str(google.steps))
+    check("PRESS-0211 INV-8: the numbers' arrival shifts nothing",
+          state["boxes"] == empty["boxes"], f"{empty['boxes']} {state['boxes']}")
+
+    # ---- a vote, a change, and taking it back --------------------------------
+    steps = _vote_press(page, google, "1")
+    state = _vote_state(page)
+    key = next(iter(state["note"]["votes"]), "") if state["note"] else ""
+    check("PRESS-0211 INV-7: a press with no vote signs up once and stores the vote",
+          steps == ["signup", "patch"] and state["numbers"] == ["3", "1"]
+          and state["pressed"] == ["true", "false"] and google.votes.get("v1") == 1
+          and state["note"]["refresh"] == "r1" and state["note"]["votes"] == {key: 1},
+          f"{steps} {state['numbers']} {state['note']}")
+    steps = _vote_press(page, google, "-1")
+    state = _vote_state(page)
+    check("PRESS-0211 INV-7: a press on the other button changes it",
+          steps == ["exchange", "patch"] and state["numbers"] == ["2", "2"]
+          and state["pressed"] == ["false", "true"] and google.votes.get("v1") == -1,
+          f"{steps} {state['numbers']}")
+    steps = _vote_press(page, google, "-1")
+    state = _vote_state(page)
+    check("PRESS-0211 INV-7: a press on the same button removes it, sending no PATCH",
+          steps == ["exchange", "delete"] and state["numbers"] == ["2", "1"]
+          and state["pressed"] == ["false", "false"] and "v1" not in google.votes
+          and state["note"]["votes"] == {}, f"{steps} {state['numbers']}")
+    _vote_press(page, google, "1")
+    page.reload(wait_until="networkidle")
+    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    state = _vote_state(page)
+    check("PRESS-0211 INV-7: a reload shows the visitor's own vote from the note",
+          state["numbers"] == ["3", "1"] and state["pressed"] == ["true", "false"],
+          f"{state['numbers']} {state['pressed']}")
+
+    # ---- each call failing leaves the state from before the press ------------
+    before = _vote_state(page)
+    for step, status, value, label in (
+            ("exchange", None, "-1", "an exchange with no answer signs up nothing"),
+            ("exchange", 503, "-1", "an exchange answering 503 signs up nothing"),
+            ("patch", 403, "-1", "a refused PATCH changes nothing"),
+            ("patch", None, "-1", "a PATCH with no answer changes nothing"),
+            ("delete", 403, "1", "a refused DELETE changes nothing"),
+            ("delete", None, "1", "a DELETE with no answer changes nothing")):
+        google.fail = {step: status}
+        steps = _vote_press(page, google, value)
+        state = _vote_state(page)
+        check(f"PRESS-0211 INV-8: {label}",
+              "signup" not in steps and all(state[name] == before[name] for name in
+                                            ("numbers", "pressed", "boxes", "note")),
+              f"{steps} {state['numbers']}")
+    google.fail = {}
+
+    # ---- a refused refresh token: a new visitor, as § 6 accepts --------------
+    google.fail = {"exchange": 400}
+    steps = _vote_press(page, google, "1")
+    state = _vote_state(page)
+    check("PRESS-0211 INV-7: a refused refresh token signs up anew and clears the note's votes",
+          steps == ["exchange", "signup", "patch"] and state["numbers"] == ["4", "1"]
+          and state["note"]["refresh"] == "r2" and list(state["note"]["votes"].values()) == [1],
+          f"{steps} {state['numbers']} {state['note']}")
+    google.fail = {}
+
+    # ---- a first press whose sign-up fails ------------------------------------
+    page.evaluate("localStorage.clear()")
+    page.reload(wait_until="networkidle")
+    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    before = _vote_state(page)
+    for status, label in ((400, "refused"), (None, "with no answer")):
+        google.fail = {"signup": status}
+        steps = _vote_press(page, google, "1")
+        state = _vote_state(page)
+        check(f"PRESS-0211 INV-8: a sign-up {label} changes nothing and stores nothing",
+              steps == ["signup"] and state["note"] is None
+              and all(state[name] == before[name] for name in ("numbers", "pressed", "boxes")),
+              f"{steps} {state['note']}")
+    google.fail = {}
+    check("PRESS-0211 INV-8: no script error through all of it", not errors, str(errors))
+
+    # ---- a browser that refuses localStorage (§ 6) -----------------------------
+    refusing = page.context.new_page()
+    try:
+        _FakeGoogle(refusing)
+        refusing.add_init_script(
+            "Storage.prototype.setItem = () => { throw new DOMException('refused'); };")
+        refusing.goto(address, wait_until="networkidle")
+        refusing.wait_for_function(
+            "document.querySelector('.vote-count').textContent !== ''")
+        state = _vote_state(refusing)
+        check("PRESS-0211 s6: with localStorage refused, counts show and both stay disabled",
+              state["numbers"] == ["2", "1"] and state["enabled"] == [False, False],
+              f"{state['numbers']} {state['enabled']}")
+    finally:
+        refusing.close()
+
+
+def votes_screen(page, origin: str, folder: Path) -> None:
+    """PRESS-0211 s4.6: what a screen's script does, and how a refusal shows."""
+    page.goto(f"{origin}/votes", wait_until="networkidle")
+    copied = "not pressed"
+    try:
+        page.locator("button[data-copy-rules]").click()
+        page.wait_for_function(
+            "document.getElementById('rules-copied').textContent !== ''", timeout=3000)
+        copied = page.locator("#rules-copied").text_content()
+    except Exception as exc:  # noqa: BLE001 -- a browser refusing the clipboard is the row's answer
+        copied = type(exc).__name__
+    check("PRESS-0211 s4.6: Copy says so, in a place that moves nothing",
+          copied == words.say("votes_setup.copied"), str(copied))
+
+    page.fill("textarea[name=config]", "not a config")
+    page.get_by_role("button", name=words.say("votes_setup.save"), exact=True).click()
+    page.wait_for_load_state("networkidle")
+    box = page.locator("dialog.message[open]")
+    check("PRESS-0211 s4.6: a refused paste opens a box over the page, keeping what was typed",
+          box.count() == 1 and words.say("votes_setup.hint") in box.inner_text()
+          and page.locator("textarea[name=config]").input_value() == "not a config"
+          and settings.load(folder).votes is None)
+    box.get_by_role("button").click()
+
+    page.fill("textarea[name=config]", PASTED)
+    page.get_by_role("button", name=words.say("votes_setup.save"), exact=True).click()
+    page.wait_for_load_state("networkidle")
+    shown = page.locator("main").inner_text()
+    check("PRESS-0211 s4.6: a good paste saves, checks, and says when the buttons appear",
+          settings.load(folder).votes == VOTES and words.say("votes_setup.saved") in shown
+          and words.say("votes_setup.check.ready") in shown, shown[:200])
+    page.goto(f"{origin}/votes", wait_until="networkidle")
+    page.get_by_role("button", name=words.say("votes_setup.off"), exact=True).click()
+    page.wait_for_load_state("networkidle")
+    check("PRESS-0211 s4.6: turning the buttons off clears the project",
+          settings.load(folder).votes is None)
 
 
 def furniture_views(page, origin: str, folder: Path) -> None:

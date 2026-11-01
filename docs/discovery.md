@@ -214,3 +214,7 @@ Design works within these and must not silently choose otherwise. The
   un-voting. **Counting with the database's own `count()` avoids Cloud
   Functions**, which keeps billing switchable-off — verify against
   current Firebase terms on the day.
+
+  **Built as PRESS-0211** (`docs/specs/PRESS-0211-likes-and-dislikes.md`).
+  Its § 3 decision 7 leaves App Check to the site's owner, with off as the
+  advice, because it would put reCAPTCHA on every entry page.

@@ -701,6 +701,7 @@ _ALLOWED_IMPORTS = {
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
+    "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
 }
 
 
