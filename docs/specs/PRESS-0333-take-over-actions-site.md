@@ -294,6 +294,9 @@ for this failure.
   which GitHub documents as removing the domain, and omitting it is undocumented;
 - accepts `PUT pages`'s 204, GitHub's documented answer, which `_Session._call` raises
   on today;
+- then sends `POST pages/builds`. GitHub builds a branch site only when a commit
+  lands, and every commit here precedes the switch: the 2026-11-03 hand check saw
+  the old site stay up with no build until one was asked for;
 - answers `_pages`.
 
 No Pressless write names a path under `.github`. It stays on `untouchable` because
@@ -335,8 +338,10 @@ and `words.py`.
   *Breaks when:* the list is read once, from setup's answers.
 - **INV-6** — The switch comes after the publish lands. *Test:*
   `tests/test_takeover.py::test_the_switch_follows_the_publish`, whose double records
-  the order: `PATCH git/refs` before `PUT contents/.nojekyll` before `PUT pages`.
-  *Breaks when:* Pages is switched first, which serves the tool's source (§ 2 item 5).
+  the order: `PATCH git/refs` before `PUT contents/.nojekyll` before `PUT pages`,
+  and `POST pages/builds` last.
+  *Breaks when:* Pages is switched first, which serves the tool's source (§ 2 item 5),
+  or no build is asked for after it.
 - **INV-7** — A custom domain stays, through this publish and the next. *Test:*
   `tests/test_takeover.py::test_the_domain_stays`: `PUT pages` carries `cname`,
   `CNAME` holds the domain over an absent and a stale file, and a second publish

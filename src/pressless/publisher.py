@@ -459,7 +459,10 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
     """PRESS-0333 § 4.5: Pages moves from an Actions build to the default branch's
     root, keeping `domain`. A branch build stores a custom domain in a `CNAME` file
     in its root, which an Actions build ignores, so one may be absent or stale.
-    `cname` is sent only with a value: GitHub documents null as removing the domain."""
+    `cname` is sent only with a value: GitHub documents null as removing the domain.
+    A branch site is built only when a commit lands, and every commit here came
+    before the switch, so a build is asked for last; without it the old site stayed
+    up until the next publish (hand check, 2026-11-03)."""
     session = _Session(transport or _Urllib(), token)
     _write_no_jekyll(session, repository)
     if domain:
@@ -469,6 +472,7 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
     if domain:
         switch["cname"] = domain
     session.write("PUT", _repo_url(repository, "pages"), switch, no_content=True)
+    session.write("POST", _repo_url(repository, "pages/builds"), {})
     return _pages(session, repository)
 
 

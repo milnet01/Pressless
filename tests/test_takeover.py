@@ -79,6 +79,10 @@ class _Built(_Repository):
         if self.refuse_publish and method == "PATCH" and path.endswith("git/refs/heads/main"):
             self.calls.append((method, url, headers.get("Authorization", "")))
             return 403, {}, b'{"message": "refused"}'
+        if method == "POST" and path == f"{REPOSITORY}pages/builds":
+            # GitHub's "request a GitHub Pages build": 201, the build queued.
+            self.calls.append((method, url, headers.get("Authorization", "")))
+            return 201, {}, b'{"status": "queued"}'
         if path == f"{REPOSITORY}pages":
             self.calls.append((method, url, headers.get("Authorization", "")))
             if method == "PUT":
@@ -305,7 +309,10 @@ def test_a_file_still_there_stops_it(tmp_path, monkeypatch):
 
 
 def test_the_switch_follows_the_publish(tmp_path, monkeypatch):
-    """INV-6. Breaks when Pages is switched first, which serves the tool's source."""
+    """INV-6. Breaks when Pages is switched first, which serves the tool's source, or
+    when no build is asked for after the switch: GitHub builds a branch site only on
+    a commit, so the old site stayed up until the next publish (hand check,
+    2026-11-03)."""
     _site(monkeypatch)
     github = _Built()
     folder = _finished(tmp_path, monkeypatch, github)
@@ -316,6 +323,7 @@ def test_the_switch_follows_the_publish(tmp_path, monkeypatch):
               for method, path in github.repository_writes()]
     assert writes.index(("PATCH", "git/refs/heads/main")) < writes.index(
         ("PUT", "contents/.nojekyll")) < writes.index(("PUT", "pages"))
+    assert writes[-1] == ("POST", "pages/builds"), writes
     assert github.sent_pages["build_type"] == "legacy"
     assert github.sent_pages["source"] == {"branch": "main", "path": "/"}
     assert "index.html" in github.holds()
