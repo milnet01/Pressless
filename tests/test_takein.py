@@ -51,6 +51,7 @@ from pressless import (
     starter,
     store,
     takein,
+    words,
 )
 
 KEY = "a-plain-test-key-for-take-in"
@@ -461,6 +462,31 @@ def test_the_screen_says_what_stays_behind(tmp_path, monkeypatch):
         assert path in page, path
     for said in ALWAYS_SAID:
         assert said in page, said
+
+
+# Every Settings field, by who fills it after a take-in: setup itself, or the
+# person, in Settings. The second kind the site step must name, and where the
+# Builder reads one, say that the next publish leaves it off the site.
+MADE_BY_SETUP = {"site_folder", "repository", "site_address", "untouchable", "credentials"}
+SET_AGAIN = {"daily_prompt_filter": "Daily Prompt filter",
+             "analytics_property_id": "Analytics property",
+             "measurement_id": "measurement id",
+             "votes": "Like and Dislike buttons",
+             "youtube_channel": "YouTube channel"}
+
+
+def test_every_setting_left_behind_is_named():
+    """INV-9's settings half. Breaks when a Settings field is added and the
+    take-in screen does not say it must be set again -- found by hand on
+    2026-11-03, when a publish after a take-in dropped the Like and Dislike
+    buttons with no word of warning."""
+    fields = {field.name for field in dataclasses.fields(settings.Settings)}
+    assert fields == MADE_BY_SETUP | set(SET_AGAIN), (
+        "a new Settings field: add it to MADE_BY_SETUP or SET_AGAIN")
+    said = words.say("setup.takein.never.settings")
+    for name in SET_AGAIN.values():
+        assert name in said, name
+    assert "next publish" in said
 
 
 # ----------------------------------------------------------------- INV-1 ---

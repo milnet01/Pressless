@@ -1022,7 +1022,10 @@ _WORDS: dict[str, str] = {
     ),
     "setup.takein.never.settings": (
         "Settings kept on your other computer: the Google Analytics measurement id, the "
-        "Analytics property and the Daily Prompt filter. Set them again in Settings."
+        "Analytics property, the Like and Dislike buttons, the YouTube channel and the "
+        "Daily Prompt filter. Set them again in Settings before you press anything to "
+        "your site: until then, your next publish leaves Google Analytics and the Like "
+        "and Dislike buttons off every page."
     ),
     "setup.bringin": (
         "This repository holds a site made of web pages, which Pressless did not make. "

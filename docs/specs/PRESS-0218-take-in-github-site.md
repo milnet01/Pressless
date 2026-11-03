@@ -215,8 +215,11 @@ A `content/` file the Store refuses is not left behind: `undo.read_state` raises
 
 And three things the repository never held, always said: drafts, which are
 never published; the full-size photograph originals; and Settings kept on
-another computer (the measurement id, the property id, the Daily Prompt
-filter), which are set again in Settings.
+another computer (the measurement id, the property id, the Like and Dislike
+buttons, the YouTube channel, the Daily Prompt filter), which are set again in
+Settings. The screen says that until then the next publish leaves the counting
+code and the vote buttons off the site, since the Builder reads both.
+`test_every_setting_left_behind_is_named` holds this list to `Settings`' fields.
 
 Root entries Pressless does not make — a `CNAME`, a `README.md`, a
 `.github` folder — are not fetched. They stay in the repository, and setup
