@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=337 -->
+<!-- ants-roadmap-id-high-water: PRESS=346 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -12548,6 +12548,97 @@ already-built code ships in whichever release comes next.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
+
+- 📋 [PRESS-0338] **A text-size setting for Pressless's own screens.**
+  User asked 2026-11-03 how usable Pressless is for a general user; a
+  study of six leading site editors followed. The Face already has
+  high-contrast themes and focus outlines (themes.py, face.py); no
+  setting sizes its own text. Check every screen at 200% zoom too.
+  After 0.11.0, by the user's choice.
+  **Layman:** People who see poorly can make Pressless's own words and buttons bigger, without zooming the browser.
+  Kind: accessibility.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0339] **Press to site says Publishing the instant it is clicked.**
+  Seen 2026-11-03 on a real repository: the status line stayed on
+  "Not on your site yet" for several seconds. The click awaits
+  settle() for a save in flight before it writes "Publishing"
+  (editor.py's press handler; page_editor.py has its twin).
+  After 0.11.0, by the user's choice.
+  **Layman:** Pressing a page to the site shows at once that it is working, instead of sitting silent for a few seconds.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: editor, page editor.
+
+- 📋 [PRESS-0340] **Setup's GitHub words go behind a What's happening link.**
+  From the 2026-11-03 usability study: setup's steps 4 to 6 lead with
+  repository, GitHub Pages and .nojekyll. Leading editors hide hosting.
+  Pressless cannot, so the main text says what happens and the GitHub
+  terms sit under an optional link. After 0.11.0, by the user's choice.
+  **Layman:** Setup speaks plainly about making a home for the site, and keeps the GitHub terms for anyone who wants them.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: setup.
+
+- 📋 [PRESS-0341] **Header, Footer and Navigation are shown as parts of every page.**
+  From the 2026-11-03 usability study: Your pages lists them beside
+  About and Home, as if they were pages to visit. Leading editors
+  group them as shared parts and say a change reaches every page.
+  After 0.11.0, by the user's choice.
+  **Layman:** The header, footer and menu are shown apart from the pages, as things that change every page at once.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face, page editor.
+
+- 📋 [PRESS-0342] **The domain wizard shows only the records that fit the name typed.**
+  Seen 2026-11-03 in the PRESS-0222 hand check: steps 2 and 3 show
+  both the A records for a whole domain and the CNAME for a part of
+  one, and leave the choice to the person. A name with more labels
+  than its registrable domain is the CNAME case; the public suffix
+  list decides that, so a design question first.
+  After 0.11.0, by the user's choice.
+  **Layman:** The own-domain wizard shows only the records that match the address typed, so nobody has to work out which set applies.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face, publisher.
+
+- 📋 [PRESS-0343] **The top bar shrinks to about five items, with the rest under More.**
+  From the 2026-11-03 usability study: the bar holds nine links and a
+  theme menu, and wraps onto two lines. Leading editors keep a short
+  main menu. After 0.11.0, by the user's choice.
+  **Layman:** The bar along the top of every screen fits on one line, with the less-used screens tucked under one menu.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0344] **The home screen becomes a short dashboard with a finish-setting-up list.**
+  From the 2026-11-03 usability study: Your writing is one long list
+  of forms, switches and sections. Leading editors open on a short
+  dashboard with a setup checklist, so the wizard itself stays short.
+  After 0.11.0, by the user's choice.
+  **Layman:** The first screen shows what to do next, with a checklist that ticks off as the site gets its logo, first page and menu.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0345] **Publish lists what will change before it goes live.**
+  From the 2026-11-03 usability study: leading editors list the
+  changes before publishing. After 0.11.0, by the user's choice.
+  **Layman:** Before a press goes live, Pressless says which pages and parts will change.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: publisher, face.
+
+- 📋 [PRESS-0346] **Entries are edited as they look, like pages.**
+  From the 2026-11-03 usability study: entries are typed with marks
+  and a cheat sheet beside a preview, while pages already have a
+  visual editor (PRESS-0260). Large. After 0.11.0, by the user's
+  choice.
+  **Layman:** Journal entries are written in an editor that shows them as they will look, with no markup to learn.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: editor.
 
 ## Milestones
 
