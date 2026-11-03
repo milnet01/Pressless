@@ -6273,6 +6273,206 @@ dislikes on entries, as decided in docs/discovery.md.
   Source: user-decision-2026-10-02 PRESS-0198.
   Lanes: Builder, Face.
 
+## 0.13.0 — anyone finds their way around
+
+No new sign. It makes S8 and S12 hold for someone who is not technical,
+
+or who sees poorly: plain words in setup, a short top bar and home screen,
+
+bigger text on request, and a press that shows it is working. From the
+
+user's question of 2026-11-03 and a study of leading site editors.
+
+- 📋 [PRESS-0338] **A text-size setting for Pressless's own screens.**
+  User asked 2026-11-03 how usable Pressless is for a general user; a
+  study of six leading site editors followed. The Face already has
+  high-contrast themes and focus outlines (themes.py, face.py); no
+  setting sizes its own text. Check every screen at 200% zoom too.
+  After 0.11.0, by the user's choice.
+  **Layman:** People who see poorly can make Pressless's own words and buttons bigger, without zooming the browser.
+  Kind: accessibility.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0339] **Press to site says Publishing the instant it is clicked.**
+  Seen 2026-11-03 on a real repository: the status line stayed on
+  "Not on your site yet" for several seconds. The click awaits
+  settle() for a save in flight before it writes "Publishing"
+  (editor.py's press handler; page_editor.py has its twin).
+  After 0.11.0, by the user's choice.
+  **Layman:** Pressing a page to the site shows at once that it is working, instead of sitting silent for a few seconds.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: editor, page editor.
+
+- 📋 [PRESS-0340] **Setup's GitHub words go behind a What's happening link.**
+  From the 2026-11-03 usability study: setup's steps 4 to 6 lead with
+  repository, GitHub Pages and .nojekyll. Leading editors hide hosting.
+  Pressless cannot, so the main text says what happens and the GitHub
+  terms sit under an optional link. After 0.11.0, by the user's choice.
+  **Layman:** Setup speaks plainly about making a home for the site, and keeps the GitHub terms for anyone who wants them.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: setup.
+
+- 📋 [PRESS-0341] **Header, Footer and Navigation are shown as parts of every page.**
+  From the 2026-11-03 usability study: Your pages lists them beside
+  About and Home, as if they were pages to visit. Leading editors
+  group them as shared parts and say a change reaches every page.
+  After 0.11.0, by the user's choice.
+  **Layman:** The header, footer and menu are shown apart from the pages, as things that change every page at once.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face, page editor.
+
+- 📋 [PRESS-0342] **The domain wizard shows only the records that fit the name typed.**
+  Seen 2026-11-03 in the PRESS-0222 hand check: steps 2 and 3 show
+  both the A records for a whole domain and the CNAME for a part of
+  one, and leave the choice to the person. A name with more labels
+  than its registrable domain is the CNAME case; the public suffix
+  list decides that, so a design question first.
+  After 0.11.0, by the user's choice.
+  **Layman:** The own-domain wizard shows only the records that match the address typed, so nobody has to work out which set applies.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face, publisher.
+
+- 📋 [PRESS-0343] **The top bar shrinks to about five items, with the rest under More.**
+  From the 2026-11-03 usability study: the bar holds nine links and a
+  theme menu, and wraps onto two lines. Leading editors keep a short
+  main menu. After 0.11.0, by the user's choice.
+  **Layman:** The bar along the top of every screen fits on one line, with the less-used screens tucked under one menu.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0344] **The home screen becomes a short dashboard with a finish-setting-up list.**
+  From the 2026-11-03 usability study: Your writing is one long list
+  of forms, switches and sections. Leading editors open on a short
+  dashboard with a setup checklist, so the wizard itself stays short.
+  After 0.11.0, by the user's choice.
+  **Layman:** The first screen shows what to do next, with a checklist that ticks off as the site gets its logo, first page and menu.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: face.
+
+- 📋 [PRESS-0345] **Publish lists what will change before it goes live.**
+  From the 2026-11-03 usability study: leading editors list the
+  changes before publishing. After 0.11.0, by the user's choice.
+  **Layman:** Before a press goes live, Pressless says which pages and parts will change.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: publisher, face.
+
+- 📋 [PRESS-0346] **Entries are edited as they look, like pages.**
+  From the 2026-11-03 usability study: entries are typed with marks
+  and a cheat sheet beside a preview, while pages already have a
+  visual editor (PRESS-0260). Large. After 0.11.0, by the user's
+  choice.
+  **Layman:** Journal entries are written in an editor that shows them as they will look, with no markup to learn.
+  Kind: ux.
+  Source: user-request-2026-11-03.
+  Lanes: editor.
+
+- 💭 [PRESS-0247] **A changed look can show the old one for ten minutes.**
+  The stylesheet is always published as look/style.css, and GitHub
+  Pages serves it with max-age=600, as it does the pages. Seen on the
+  0.8.0 run: after replacing a Harbour site with Sunrise, a browser
+  that had visited showed the new pages with the old colours. A name
+  or query that changes with the stylesheet's content would end it for
+  the stylesheet; the pages themselves keep GitHub's ten minutes.
+  Decided (user, 2026-10-12): left for now. It clears itself in ten
+  minutes, and a whole fix must rewrite the stylesheet link inside his
+  fixed pages on the way out, which PRESS-0126 section 4.6 rules out
+  ("A fixed page is unchanged ... byte for byte"), so it costs that
+  spec an amendment and a gate. A link tag on built pages alone would
+  leave the homepage stale, where it was seen.
+  **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
+  Kind: ux.
+  Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
+
+## 0.14.0 — more ways to bring a site in
+
+No new sign. It widens S13: more kinds of existing site come in, from
+
+more places, and an imported site can take a Pressless look.
+
+- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
+  Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
+  Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
+  and the BSD readers need numpy. Most browsers do not show JPEG XL,
+  so the original is kept and the web copy is published as WebP or
+  AVIF. Re-check Pillow's release notes at each dependency sweep.
+  Decided by the user 2026-10-22: JPEG XL support is a plugin the user
+  downloads separately from Pressless, so it no longer waits on Pillow.
+  Kept apart, the GPL-3.0 reader or a numpy-backed BSD one never ships
+  inside Pressless or grows its download. The design has no plugin
+  mechanism yet, so this item designs the first one: how the packaged
+  app finds and loads it, matching the bundled Python on each system,
+  and checking that the download is the genuine one before it runs.
+  Needs a spec before building.
+  **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
+  Kind: feature.
+  Source: user-decision-2026-10-15 PRESS-0274.
+  Lanes: Builder, Face.
+
+- 📋 [PRESS-0276] **An imported site can take a Pressless look, or extra CSS on top of its own stylesheets.**
+  Split from PRESS-0196 by the user's 2026-10-15 choice. An imported site
+  has no style code: its pages link assets/site.css and assets/blog.css,
+  which live only in the published repository, and each imported fixed
+  page carries those links in its own HTML. Either route rewrites every
+  imported page's links, so it is its own item.
+  **Layman:** A site brought in from WordPress can use the Look panel too, either by switching to a Pressless design or by adding its own styling on top.
+  Kind: feature.
+  Source: user-decision-2026-10-15 PRESS-0196.
+  Lanes: Builder, Face, Store.
+
+- 📋 [PRESS-0290] **The Sites screen lists the sites in a GitHub account, and adds one from there.**
+  The user's idea of 2026-10-05, recorded on PRESS-0223 and left out of it
+  (docs/specs/PRESS-0223-several-sites.md section 9): list the account's
+  public repositories with Pages switched on, and start a site from one
+  rather than typing its repository in setup.
+  **Layman:** Instead of typing in each website, Pressless can show the websites already in your GitHub account and let you add one.
+  Kind: feature.
+  Source: PRESS-0223-spec-section-9-2026-10-16.
+
+- 📋 [PRESS-0335] **Import takes a folder from the browser's folder chooser, not only a ZIP.**
+  PRESS-0210 § 3 decision 6 hands a folder over as a ZIP, because
+  Face.add_upload takes one file per request. A folder chooser needs a
+  new upload shape, and lays the same import/folder/ out.
+  **Layman:** Someone bringing in a folder of web pages picks the folder itself, without first making a ZIP of it.
+  Kind: enhancement.
+  Source: spec-PRESS-0210-2026-10-31.
+  Lanes: Import, Face.
+
+- 📋 [PRESS-0336] **Setup takes over a site a workflow pushes to a branch.**
+  PRESS-0333 § 3 decision 8 leaves it refused: build_type is legacy there,
+  so its test for an Actions build does not match, and setup answers
+  setup.hint.elsewhere.
+  **Layman:** Someone whose build script publishes their site to a separate branch can switch it to Pressless too.
+  Kind: feature.
+  Source: spec-PRESS-0333-2026-11-01.
+  Lanes: setup, Publisher.
+
+## 0.15.0 — an AI helper can drive Pressless
+
+No new sign. It opens a second way to reach every sign: an AI assistant
+
+works Pressless on the writer's behalf, and the writer approves each
+
+publish and anything that deletes.
+
+- 📋 [PRESS-0337] **An AI assistant can drive Pressless on the writer's behalf.**
+  Open, for the design step: the shape. A command line, an MCP server
+  (the protocol AI assistants use to call tools), or both over one
+  set of actions. The user was unsure which on 2026-11-03.
+  Constraints any shape keeps: no key reachable by the assistant
+  (PRESS-0266, PRESS-0217's invariant), and the writer approves a
+  publish or anything that deletes.
+  **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
+  Kind: feature.
+  Source: user-request-2026-11-03.
+
 ## 1.0.0 — every sign holds, and the format is frozen
 
 No new sign. What makes this 1.0 is the promise attached to it: every file
@@ -6631,14 +6831,108 @@ owned by docs/standards/versioning-overrides.md.
   Source: PRESS-0200 resolution 2026-10-10.
   Lanes: Insights.
 
-## Backlog — no version yet
+## 1.1.0 — music figures
 
-Work that blocks no sign of success: review and audit fixes, test work,
-documentation, and research not yet attached to a release. An item earns a
-version only when a sign of success fails while it is open — decided with the
-user, on the grounds that forcing every review fix into a bucket would be
-inventing structure. Unmapped here is an answer rather than a gap. A defect in
-already-built code ships in whichever release comes next.
+No new sign. It widens S11 to the music services, where they publish
+
+figures at all (PRESS-0080). Its items are parked by the user and are
+
+not built until the user says so; they sit after 1.0.0 so that 1.0.0
+
+does not wait on them.
+
+- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
+  What this fetches, and whether it can fetch anything, is PRESS-0080's
+  to answer first. The doubt is specific: Spotify's public API is a
+  catalogue API, and the stream and listener figures an artist actually
+  wants live in Spotify for Artists behind a sign-in.
+
+  So there are two shapes this could take and PRESS-0080 picks one. If
+  an API reaches the figures, this is PRESS-0019's shape again. If it
+  does not, the honest version reads an export he downloads himself,
+  shows the figures dated, and says on the dashboard when they were last
+  refreshed -- which is worth building and is not what was asked for, so
+  it goes back to him before it is built.
+
+  What is reachable without a sign-in either way, and may be enough:
+  follower count and Spotify's own popularity score for each release.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): whether this is buildable as asked is
+  PRESS-0080's to answer, and this item's own doubt is that the figures
+  live behind a sign-in with no public API. Placing it under a version
+  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
+  and goes back to the user if the honest version reads an export
+  instead.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked by the user 2026-11-01: the writer is focusing on YouTube for
+  now. It waits on nobody; look again when the user raises it. The route
+  to offer then is a CSV the artist downloads, one reader, built on a
+  real sample, as the columns are not documented.
+  **Layman:** The dashboard also shows how his music is doing on Spotify.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
+  Same shape as the Spotify item and the same doubt, one step worse:
+  Apple's Music API is a catalogue API, and Apple Music for Artists --
+  where the play figures are -- is believed to publish no API at all.
+  PRESS-0080 confirms or refutes that.
+
+  If it publishes none, the export route is the only one, and this item
+  becomes reading a file he downloads rather than talking to Apple.
+  That is a different feature from the one asked for, so it goes back to
+  him rather than being substituted quietly.
+
+  Apple's catalogue API also needs a developer token signed with a
+  private key from a paid developer account, which is a cost the other
+  three do not carry. Price that before committing to it.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
+  for Artists publishes anything is PRESS-0080's to answer, and the paid
+  developer account is a cost to price before committing. It joins 0.9.0
+  only if a route exists.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked with PRESS-0082 by the user 2026-11-01.
+  **Layman:** The dashboard also shows how his music is doing on Apple Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
+  The least likely of the four to be buildable as asked. Amazon Music
+  for Artists is believed to publish no public API whatever, so unlike
+  Spotify and Apple there may be no catalogue surface to fall back on
+  either. PRESS-0080 settles it.
+
+  If that holds, the only routes are an export he downloads, or nothing
+  -- and "nothing" is a real outcome to report rather than a failure to
+  work around. Do not reach for scraping the artist dashboard: it needs
+  his sign-in, it breaks whenever the page changes, and it is the kind
+  of thing that gets an account suspended.
+
+  Blocked-by: PRESS-0079, PRESS-0080.
+  No version (2026-09-21): same reason as PRESS-0082, and this is the
+  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
+  real outcome to report rather than work to schedule.
+  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
+  route exists, it leaves the milestone rather than holding it up.
+  Parked with PRESS-0082 by the user 2026-11-01.
+  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
+  Kind: feature.
+  Source: user-request-2026-09-02.
+  Lanes: Insights.
+
+## Done outside a version
+
+Finished and dropped work filed before 2026-11-03, when this was the
+backlog. Nothing new is filed here. The user ruled that day that every
+open item sits in a version, so each version says what it brings; a
+review fix or a defect goes into the lowest version still open.
 
 - ✅ [PRESS-0024] **The pre-push hook reads as a safety net and gates nothing.**
   Measured 2026-08-25 while checking this project is still a correct
@@ -12195,23 +12489,6 @@ already-built code ships in whichever release comes next.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
-- 💭 [PRESS-0247] **A changed look can show the old one for ten minutes.**
-  The stylesheet is always published as look/style.css, and GitHub
-  Pages serves it with max-age=600, as it does the pages. Seen on the
-  0.8.0 run: after replacing a Harbour site with Sunrise, a browser
-  that had visited showed the new pages with the old colours. A name
-  or query that changes with the stylesheet's content would end it for
-  the stylesheet; the pages themselves keep GitHub's ten minutes.
-  Decided (user, 2026-10-12): left for now. It clears itself in ten
-  minutes, and a whole fix must rewrite the stylesheet link inside his
-  fixed pages on the way out, which PRESS-0126 section 4.6 rules out
-  ("A fixed page is unchanged ... byte for byte"), so it costs that
-  spec an amendment and a gate. A link tag on built pages alone would
-  leave the homepage stale, where it was seen.
-  **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
-  Kind: ux.
-  Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
-
 - ✅ [PRESS-0249] **Drafts can list two entries with the same title and no hint which is which.**
   Seen 2026-10-10 on the 0.8.1 Windows build: publish an entry, edit
   it (a -changes draft that Replaces it), then Undo the press. Drafts
@@ -12287,36 +12564,6 @@ already-built code ships in whichever release comes next.
   Source: hand-check-2026-10-15 0.9.0 draft, Windows box.
   Lanes: Face, Publishing.
 
-- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
-  Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
-  Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
-  and the BSD readers need numpy. Most browsers do not show JPEG XL,
-  so the original is kept and the web copy is published as WebP or
-  AVIF. Re-check Pillow's release notes at each dependency sweep.
-  Decided by the user 2026-10-22: JPEG XL support is a plugin the user
-  downloads separately from Pressless, so it no longer waits on Pillow.
-  Kept apart, the GPL-3.0 reader or a numpy-backed BSD one never ships
-  inside Pressless or grows its download. The design has no plugin
-  mechanism yet, so this item designs the first one: how the packaged
-  app finds and loads it, matching the bundled Python on each system,
-  and checking that the download is the genuine one before it runs.
-  Needs a spec before building.
-  **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
-  Kind: feature.
-  Source: user-decision-2026-10-15 PRESS-0274.
-  Lanes: Builder, Face.
-
-- 📋 [PRESS-0276] **An imported site can take a Pressless look, or extra CSS on top of its own stylesheets.**
-  Split from PRESS-0196 by the user's 2026-10-15 choice. An imported site
-  has no style code: its pages link assets/site.css and assets/blog.css,
-  which live only in the published repository, and each imported fixed
-  page carries those links in its own HTML. Either route rewrites every
-  imported page's links, so it is its own item.
-  **Layman:** A site brought in from WordPress can use the Look panel too, either by switching to a Pressless design or by adding its own styling on top.
-  Kind: feature.
-  Source: user-decision-2026-10-15 PRESS-0196.
-  Lanes: Builder, Face, Store.
-
 - ✅ [PRESS-0277] **The leak sweep can check a named file outside the tree, such as a review packet.**
   scripts/local-ci.sh --docs sweeps the tree, commits and refs. A
   review packet sits outside the tree, so on 2026-10-16 it was swept by
@@ -12329,15 +12576,6 @@ already-built code ships in whichever release comes next.
   **Layman:** Before a review, Claude can check that nothing in the reviewers' notes names the writer, in one step.
   Kind: chore.
   Source: in-session-2026-10-16 PRESS-0197 review.
-
-- 📋 [PRESS-0290] **The Sites screen lists the sites in a GitHub account, and adds one from there.**
-  The user's idea of 2026-10-05, recorded on PRESS-0223 and left out of it
-  (docs/specs/PRESS-0223-several-sites.md section 9): list the account's
-  public repositories with Pages switched on, and start a site from one
-  rather than typing its repository in setup.
-  **Layman:** Instead of typing in each website, Pressless can show the websites already in your GitHub account and let you add one.
-  Kind: feature.
-  Source: PRESS-0223-spec-section-9-2026-10-16.
 
 - ✅ [PRESS-0291] **A site can be removed from the Sites screen.**
   Left out of PRESS-0223 (docs/specs/PRESS-0223-several-sites.md section
@@ -12434,212 +12672,6 @@ already-built code ships in whichever release comes next.
   Source: review-contract PRESS-0231 row 2, 2026-10-23.
   Lanes: Setup, Publisher.
 
-- 📋 [PRESS-0335] **Import takes a folder from the browser's folder chooser, not only a ZIP.**
-  PRESS-0210 § 3 decision 6 hands a folder over as a ZIP, because
-  Face.add_upload takes one file per request. A folder chooser needs a
-  new upload shape, and lays the same import/folder/ out.
-  **Layman:** Someone bringing in a folder of web pages picks the folder itself, without first making a ZIP of it.
-  Kind: enhancement.
-  Source: spec-PRESS-0210-2026-10-31.
-  Lanes: Import, Face.
-
-- 📋 [PRESS-0336] **Setup takes over a site a workflow pushes to a branch.**
-  PRESS-0333 § 3 decision 8 leaves it refused: build_type is legacy there,
-  so its test for an Actions build does not match, and setup answers
-  setup.hint.elsewhere.
-  **Layman:** Someone whose build script publishes their site to a separate branch can switch it to Pressless too.
-  Kind: feature.
-  Source: spec-PRESS-0333-2026-11-01.
-  Lanes: setup, Publisher.
-
-- 📋 [PRESS-0082] **Insights shows how the music is doing on Spotify.**
-  What this fetches, and whether it can fetch anything, is PRESS-0080's
-  to answer first. The doubt is specific: Spotify's public API is a
-  catalogue API, and the stream and listener figures an artist actually
-  wants live in Spotify for Artists behind a sign-in.
-
-  So there are two shapes this could take and PRESS-0080 picks one. If
-  an API reaches the figures, this is PRESS-0019's shape again. If it
-  does not, the honest version reads an export he downloads himself,
-  shows the figures dated, and says on the dashboard when they were last
-  refreshed -- which is worth building and is not what was asked for, so
-  it goes back to him before it is built.
-
-  What is reachable without a sign-in either way, and may be enough:
-  follower count and Spotify's own popularity score for each release.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): whether this is buildable as asked is
-  PRESS-0080's to answer, and this item's own doubt is that the figures
-  live behind a sign-in with no public API. Placing it under a version
-  would assert it gets built. It joins 0.9.0 if PRESS-0080 finds a route,
-  and goes back to the user if the honest version reads an export
-  instead.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked by the user 2026-11-01: the writer is focusing on YouTube for
-  now. It waits on nobody; look again when the user raises it. The route
-  to offer then is a CSV the artist downloads, one reader, built on a
-  real sample, as the columns are not documented.
-  **Layman:** The dashboard also shows how his music is doing on Spotify.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0083] **Insights shows how the music is doing on Apple Music.**
-  Same shape as the Spotify item and the same doubt, one step worse:
-  Apple's Music API is a catalogue API, and Apple Music for Artists --
-  where the play figures are -- is believed to publish no API at all.
-  PRESS-0080 confirms or refutes that.
-
-  If it publishes none, the export route is the only one, and this item
-  becomes reading a file he downloads rather than talking to Apple.
-  That is a different feature from the one asked for, so it goes back to
-  him rather than being substituted quietly.
-
-  Apple's catalogue API also needs a developer token signed with a
-  private key from a paid developer account, which is a cost the other
-  three do not carry. Price that before committing to it.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082. Whether Apple Music
-  for Artists publishes anything is PRESS-0080's to answer, and the paid
-  developer account is a cost to price before committing. It joins 0.9.0
-  only if a route exists.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked with PRESS-0082 by the user 2026-11-01.
-  **Layman:** The dashboard also shows how his music is doing on Apple Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0084] **Insights shows how the music is doing on Amazon Music.**
-  The least likely of the four to be buildable as asked. Amazon Music
-  for Artists is believed to publish no public API whatever, so unlike
-  Spotify and Apple there may be no catalogue surface to fall back on
-  either. PRESS-0080 settles it.
-
-  If that holds, the only routes are an export he downloads, or nothing
-  -- and "nothing" is a real outcome to report rather than a failure to
-  work around. Do not reach for scraping the artist dashboard: it needs
-  his sign-in, it breaks whenever the page changes, and it is the kind
-  of thing that gets an account suspended.
-
-  Blocked-by: PRESS-0079, PRESS-0080.
-  No version (2026-09-21): same reason as PRESS-0082, and this is the
-  least likely of the four. If PRESS-0080 finds no route, "nothing" is a
-  real outcome to report rather than work to schedule.
-  Placed in 0.12.0 on 2026-10-02. Still waits on PRESS-0080: where no
-  route exists, it leaves the milestone rather than holding it up.
-  Parked with PRESS-0082 by the user 2026-11-01.
-  **Layman:** The dashboard also shows how his music is doing on Amazon Music.
-  Kind: feature.
-  Source: user-request-2026-09-02.
-  Lanes: Insights.
-
-- 📋 [PRESS-0337] **An AI assistant can drive Pressless on the writer's behalf.**
-  Open, for the design step: the shape. A command line, an MCP server
-  (the protocol AI assistants use to call tools), or both over one
-  set of actions. The user was unsure which on 2026-11-03.
-  Constraints any shape keeps: no key reachable by the assistant
-  (PRESS-0266, PRESS-0217's invariant), and the writer approves a
-  publish or anything that deletes.
-  **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
-  Kind: feature.
-  Source: user-request-2026-11-03.
-
-- 📋 [PRESS-0338] **A text-size setting for Pressless's own screens.**
-  User asked 2026-11-03 how usable Pressless is for a general user; a
-  study of six leading site editors followed. The Face already has
-  high-contrast themes and focus outlines (themes.py, face.py); no
-  setting sizes its own text. Check every screen at 200% zoom too.
-  After 0.11.0, by the user's choice.
-  **Layman:** People who see poorly can make Pressless's own words and buttons bigger, without zooming the browser.
-  Kind: accessibility.
-  Source: user-request-2026-11-03.
-  Lanes: face.
-
-- 📋 [PRESS-0339] **Press to site says Publishing the instant it is clicked.**
-  Seen 2026-11-03 on a real repository: the status line stayed on
-  "Not on your site yet" for several seconds. The click awaits
-  settle() for a save in flight before it writes "Publishing"
-  (editor.py's press handler; page_editor.py has its twin).
-  After 0.11.0, by the user's choice.
-  **Layman:** Pressing a page to the site shows at once that it is working, instead of sitting silent for a few seconds.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: editor, page editor.
-
-- 📋 [PRESS-0340] **Setup's GitHub words go behind a What's happening link.**
-  From the 2026-11-03 usability study: setup's steps 4 to 6 lead with
-  repository, GitHub Pages and .nojekyll. Leading editors hide hosting.
-  Pressless cannot, so the main text says what happens and the GitHub
-  terms sit under an optional link. After 0.11.0, by the user's choice.
-  **Layman:** Setup speaks plainly about making a home for the site, and keeps the GitHub terms for anyone who wants them.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: setup.
-
-- 📋 [PRESS-0341] **Header, Footer and Navigation are shown as parts of every page.**
-  From the 2026-11-03 usability study: Your pages lists them beside
-  About and Home, as if they were pages to visit. Leading editors
-  group them as shared parts and say a change reaches every page.
-  After 0.11.0, by the user's choice.
-  **Layman:** The header, footer and menu are shown apart from the pages, as things that change every page at once.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: face, page editor.
-
-- 📋 [PRESS-0342] **The domain wizard shows only the records that fit the name typed.**
-  Seen 2026-11-03 in the PRESS-0222 hand check: steps 2 and 3 show
-  both the A records for a whole domain and the CNAME for a part of
-  one, and leave the choice to the person. A name with more labels
-  than its registrable domain is the CNAME case; the public suffix
-  list decides that, so a design question first.
-  After 0.11.0, by the user's choice.
-  **Layman:** The own-domain wizard shows only the records that match the address typed, so nobody has to work out which set applies.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: face, publisher.
-
-- 📋 [PRESS-0343] **The top bar shrinks to about five items, with the rest under More.**
-  From the 2026-11-03 usability study: the bar holds nine links and a
-  theme menu, and wraps onto two lines. Leading editors keep a short
-  main menu. After 0.11.0, by the user's choice.
-  **Layman:** The bar along the top of every screen fits on one line, with the less-used screens tucked under one menu.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: face.
-
-- 📋 [PRESS-0344] **The home screen becomes a short dashboard with a finish-setting-up list.**
-  From the 2026-11-03 usability study: Your writing is one long list
-  of forms, switches and sections. Leading editors open on a short
-  dashboard with a setup checklist, so the wizard itself stays short.
-  After 0.11.0, by the user's choice.
-  **Layman:** The first screen shows what to do next, with a checklist that ticks off as the site gets its logo, first page and menu.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: face.
-
-- 📋 [PRESS-0345] **Publish lists what will change before it goes live.**
-  From the 2026-11-03 usability study: leading editors list the
-  changes before publishing. After 0.11.0, by the user's choice.
-  **Layman:** Before a press goes live, Pressless says which pages and parts will change.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: publisher, face.
-
-- 📋 [PRESS-0346] **Entries are edited as they look, like pages.**
-  From the 2026-11-03 usability study: entries are typed with marks
-  and a cheat sheet beside a preview, while pages already have a
-  visual editor (PRESS-0260). Large. After 0.11.0, by the user's
-  choice.
-  **Layman:** Journal entries are written in an editor that shows them as they will look, with no markup to learn.
-  Kind: ux.
-  Source: user-request-2026-11-03.
-  Lanes: editor.
-
 ## Milestones
 
 A version number here says WHICH SIGNS OF SUCCESS HOLD, not how many items
@@ -12651,6 +12683,8 @@ Up to 0.7.0, Pressless did what the first writer needed: write, publish,
 undo, edit the existing pages, photographs and visitor numbers. From 0.8.0
 it becomes a full website creator and editor for anyone: start from
 nothing (0.8.0), build every page and the menu (0.9.0), change the look and
-add any file (0.10.0), bring an existing site in (0.11.0), and widen the
-visitor figures and add likes (0.12.0). The backlog holds only what
-no version needs yet. 1.0.0 freezes the format.
+add any file (0.10.0), bring an existing site in (0.11.0), widen the
+visitor figures and add likes (0.12.0), find their way around without
+being technical (0.13.0), bring in more kinds of site (0.14.0), and let
+an AI helper drive it (0.15.0). 1.0.0 freezes the format; music figures
+follow in 1.1.0. Every open item sits in a version (user, 2026-11-03).

@@ -5,8 +5,9 @@
 Nothing here records it, deliberately. Read it:
 
 - **The version being worked towards** is the lowest version heading in
-  `ROADMAP.md` still carrying open items. `Backlog — no version yet` and
-  `Milestones` are not versions, wherever they sit in the file.
+  `ROADMAP.md` still carrying open items. `Done outside a version` and
+  `Milestones` are not versions, wherever they sit in the file. Every
+  open item goes into a version, never a backlog (user, 2026-11-03).
 - **What is in flight** is the un-parked 🚧 bullet — `workflow.md` § 1
   owns what parked means, and what it means when every bullet is.
 - **Where an item has got to** is whether a spec exists, whether tests
