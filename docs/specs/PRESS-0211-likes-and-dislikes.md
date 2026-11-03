@@ -274,7 +274,8 @@ part of the Face, as `google_setup` is.
 2. Create a Firestore database in production mode, in the nearest location.
 3. In its Rules, replace the text with `votes.RULES`, shown with a Copy button,
    and publish.
-4. In Authentication, turn on the Anonymous sign-in method.
+4. In Authentication, press Get started, then turn on the Anonymous sign-in
+   method.
 5. Add a web app to the project, copy the `firebaseConfig` text, and paste it
    into the box below.
 

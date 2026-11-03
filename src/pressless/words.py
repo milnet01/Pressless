@@ -1982,7 +1982,10 @@ _WORDS: dict[str, str] = {
     "votes_setup.step.3": (
         "In the database's <b>Rules</b>, replace the text with the text below, and publish."
     ),
-    "votes_setup.step.4": "In <b>Authentication</b>, turn on the <b>Anonymous</b> sign-in method.",
+    "votes_setup.step.4": (
+        "In <b>Authentication</b>, press <b>Get started</b>, then turn on the"
+        " <b>Anonymous</b> sign-in method."
+    ),
     "votes_setup.step.5": (
         "Add a web app to the project, copy the <code>firebaseConfig</code> text it shows, and "
         "paste it into the box below."

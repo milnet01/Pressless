@@ -3757,6 +3757,21 @@ it decides how pages, the menu and the look are held.
   the console, the screen looked at in a browser, more than 50 videos, hidden counts, a wrong
   key, and a used-up quota. The user chose on 2026-11-01 to do PRESS-0211's Google screens
   themselves, on a throwaway project with no billing, not started when this was written.
+  2026-11-03: PRESS-0211 spec section 7 PASSED on a throwaway Firebase project
+  with no billing account, publishing to milnet02/pressless-test-3. Setup ran
+  through firebase-tools and Google's APIs, because Google refuses sign-in in an
+  automated browser; the user pressed Authentication's Get started, which step 4
+  now names. Pressless's Check answered "ready". Vote, change, reload, take back,
+  and a second browser's count all held in Firefox and Chrome on Linux and in
+  Edge and Playwright Firefox on the Windows box. A signed-out write was refused.
+  App Check: with enforcement on, Firestore's REST interface refused a vote
+  without X-Firebase-AppCheck and accepted it with one, so App Check stays. A
+  reCAPTCHA Enterprise key was made without billing, and the published page voted
+  with it in all four browsers. GitHub raised a google_api_key alert within
+  minutes and did not block the push; Google sent no exposed-key email during the
+  test, only reCAPTCHA's welcome email. Not read against the console: steps 1, 2,
+  3 and 5, set up by command line instead. Google refuses "ssl" in a project id,
+  so an id containing "pressless" fails.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
