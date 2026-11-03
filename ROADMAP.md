@@ -3785,6 +3785,19 @@ it decides how pages, the menu and the look are held.
   - Hidden subscribers: NOT RUN. No such channel among about 550
     searched, and YouTube Studio's Advanced settings offer no switch.
     Locked by test_hidden_is_not_zero only.
+  2026-11-03, real GitHub, from source on Linux (key in memory only):
+  PRESS-0218 § 10 PASSED. A fresh install signed in, took in the
+  test account's Pressless-made repository (1 entry, 3 pages, counts as
+  found), and wrote nothing to GitHub; a publish after it landed one
+  commit. Its words are plain and say what stays behind. The run FOUND
+  that the list omitted the Like and Dislike buttons and the YouTube
+  channel, so the publish dropped the buttons unwarned: fixed in 5b97e77.
+  PRESS-0222 PASSED on a test sub-address: the records shown matched;
+  GitHub took the name and a CNAME file; the certificate read "approved"
+  while some GitHub servers still served the old one, and https opened;
+  http redirected about twenty minutes later. A publish after kept the
+  CNAME and wrote the new address into the sitemap. Still owed:
+  PRESS-0210 § 7 and PRESS-0333 § 7.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
