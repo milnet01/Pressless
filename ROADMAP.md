@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=336 -->
+<!-- ants-roadmap-id-high-water: PRESS=337 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -12509,6 +12509,17 @@ already-built code ships in whichever release comes next.
   Kind: feature.
   Source: user-request-2026-09-02.
   Lanes: Insights.
+
+- 📋 [PRESS-0337] **An AI assistant can drive Pressless on the writer's behalf.**
+  Open, for the design step: the shape. A command line, an MCP server
+  (the protocol AI assistants use to call tools), or both over one
+  set of actions. The user was unsure which on 2026-11-03.
+  Constraints any shape keeps: no key reachable by the assistant
+  (PRESS-0266, PRESS-0217's invariant), and the writer approves a
+  publish or anything that deletes.
+  **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
+  Kind: feature.
+  Source: user-request-2026-11-03.
 
 ## Milestones
 
