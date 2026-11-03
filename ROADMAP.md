@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=346 -->
+<!-- ants-roadmap-id-high-water: PRESS=347 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -3798,6 +3798,18 @@ it decides how pages, the menu and the look are held.
   http redirected about twenty minutes later. A publish after kept the
   CNAME and wrote the new address into the sitemap. Still owed:
   PRESS-0210 § 7 and PRESS-0333 § 7.
+  2026-11-03, later: PRESS-0333 § 7 PASSED on a scratch repository built by
+  Jekyll through GitHub's Pages workflow, with a domain and https. Setup
+  through Finish wrote nothing; the delete link worked signed in; the
+  takeover kept the domain and https; old addresses forward; the About
+  page is pixel-identical before and after; a publish after kept CNAME.
+  It FOUND that GitHub never built the switched site, so the old one
+  stayed up (fixed in c7e82d6, POST pages/builds), and three wording
+  faults on the site step (fixed in 54edb55). PRESS-0210 § 7's repository
+  route PASSED: a hand-made plain site (4 pages, a picture, a PDF) came
+  in whole, one publish, every old address answers, the garden page
+  matches by pixel. Still owed: PRESS-0210's ZIP route published and
+  compared, and § 4.2's ZIP steps read on Windows and Linux.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
@@ -6313,6 +6325,9 @@ user's question of 2026-11-03 and a study of leading site editors.
   settle() for a save in flight before it writes "Publishing"
   (editor.py's press handler; page_editor.py has its twin).
   After 0.11.0, by the user's choice.
+  2026-11-03: the takeover's "Publish and switch to Pressless" button
+  (/publish/takeover) is a plain form post with the same silence: the
+  page sat unchanged for about a minute while it published. Cover it too.
   **Layman:** Pressing a page to the site shows at once that it is working, instead of sitting silent for a few seconds.
   Kind: ux.
   Source: user-request-2026-11-03.
@@ -6403,6 +6418,16 @@ user's question of 2026-11-03 and a study of leading site editors.
   **Layman:** After you change your site's look, you and recent visitors may see the old look for up to ten minutes.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
+
+- 📋 [PRESS-0347] **A second site uses the GitHub sign-in the first one has.**
+  Seen 2026-11-03: each site started from the Sites screen ran the whole
+  device-code sign-in again, for the same GitHub account. One code
+  expired while the person switched to the browser. A sign-in is held
+  per site today (Settings.credentials), so this is a design question.
+  **Layman:** Adding another site doesn't make you sign in to GitHub all over again.
+  Kind: ux.
+  Source: in-session-2026-11-03 PRESS-0133 hand check.
+  Lanes: setup, sites.
 
 ## 0.14.0 — more ways to bring a site in
 
