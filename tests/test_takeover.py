@@ -431,6 +431,25 @@ def test_nothing_writes_a_workflow_file(tmp_path, monkeypatch):
 # ---------------------------------------------------------------- INV-12 ---
 
 
+def test_the_screen_lists_only_what_is_there(tmp_path, monkeypatch):
+    """Breaks when the screen leads into a list it does not show, ties a downloaded
+    file to the repository's list, or says Pressless adds a CNAME already there --
+    each seen on 2026-11-03 over a real Jekyll site, whose root Pressless leaves alone."""
+    front = FRONT + b'<a href="/feed.xml">Feed</a>'
+    _site(monkeypatch, {**PAGES_ANSWERS, "/": front, "/feed.xml": b"<feed></feed>"})
+    github = _Built({BUILD: BUILD_TEXT, "_config.yml": b"theme: minima\n",
+                     "index.md": b"# Home\n", "CNAME": b"www.example.org\n"},
+                    cname="www.example.org")
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+    assert "feed.xml" in page
+    assert "will then change these on GitHub" not in page    # an empty list followed
+    assert "Among those" not in page                         # feed.xml is not among them
+    assert "adds a file, CNAME" not in page
+
+
 def test_what_was_not_read_is_named(tmp_path, monkeypatch):
     """INV-12. Breaks when `Crawled.left` is not written to import/folder-left.json."""
     front = FRONT + b'<a href="/gone/">Gone</a><a href="/big.pdf">Big</a>'

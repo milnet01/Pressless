@@ -1323,16 +1323,23 @@ def _show_bring_in(found: pressless_import.Found, entries: Iterable[str],
         ("setup.takein.files", found.files))]
     body = (f"<p>{say(intro)}</p><ul>"
             + "".join(f"<li>{row}</li>" for row in counts) + "</ul>"
-            + f"<p>{say('setup.takein.finish')}</p>"
-            + f"<p>{say('setup.bringin.publish')}</p>" + _codes(changes))
+            + f"<p>{say('setup.takein.finish')}</p>")
+    if changes:
+        body += f"<p>{say('setup.bringin.publish')}</p>" + _codes(changes)
     if gone:
         body += f"<p>{say('setup.bringin.gone')}</p>" + _codes(gone)
     if links:
         body += "<ul>" + "".join(f"<li>{row}</li>" for row in links) + "</ul>"
     if stays:
         body += f"<p>{say('setup.bringin.stays')}</p>" + _codes(stays)
-    if kept:
-        body += f"<p>{say('setup.bringin.kept')}</p>" + _codes(kept)
+    # A crawled site's leftovers are addresses on the web, not repository entries,
+    # so only those under a listed entry are "among" the list above (PRESS-0333).
+    among = [path for path in kept if path.split("/")[0].casefold() in stay_set]
+    apart = [path for path in kept if path not in among]
+    if among:
+        body += f"<p>{say('setup.bringin.kept')}</p>" + _codes(among)
+    if apart:
+        body += f"<p>{say('setup.bringin.not_kept')}</p>" + _codes(apart)
     return body
 
 

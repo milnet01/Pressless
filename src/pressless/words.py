@@ -1042,6 +1042,7 @@ _WORDS: dict[str, str] = {
     "setup.bringin.link": "{page} links to {path}, so that link will then stop working.",
     "setup.bringin.stays": "These stay on GitHub, and Pressless will not touch them:",
     "setup.bringin.kept": "Among those, these will not come across into Pressless:",
+    "setup.bringin.not_kept": "These will not come across into Pressless:",
     # A wizard puts the site on its own domain name (domain.py, PRESS-0222).
     "domain.settings_link": "Use your own domain name",
     "domain.step.name": "Your own domain name",
@@ -1163,7 +1164,8 @@ _WORDS: dict[str, str] = {
         "Pressless adds an empty file, .nojekyll, so that GitHub serves your pages as they are."
     ),
     "takeover.added_domain": (
-        "Pressless adds a file, CNAME, holding {domain}, which keeps that domain on the site."
+        "Pressless makes sure a file, CNAME, holds {domain}, which keeps that domain on the "
+        "site."
     ),
     "takeover.stale": (
         "Pressless removes a file, CNAME, which names a domain this site does not use."
