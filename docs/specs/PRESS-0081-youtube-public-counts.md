@@ -200,12 +200,9 @@ setup. A `credentials.FAILURES` failure is told as one, naming the YouTube key.
 calls `kept` and never YouTube, as `dashboard._card` does.
 
 **`GET /youtube/setup`** shows the state, numbered steps from Words, a channel box and
-a password box:
-
-1. Open `console.cloud.google.com` and create a project.
-2. In its API library, enable YouTube Data API v3.
-3. In Credentials, create an API key, and restrict it to that one API.
-4. Paste it below, with your channel's address.
+a password box. The steps are Words' `youtube.step.*`. They name each console button a
+newcomer presses: create or choose a project, enable YouTube Data API v3, create an API
+key restricted to that API with no application restriction, and paste it.
 
 **`POST /youtube/setup`**: `parse_channel`, then `check`, then `credentials.write` and
 `settings.save`. An empty key box with a key held keeps it. Any failure is a hint beside

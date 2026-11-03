@@ -3772,6 +3772,19 @@ it decides how pages, the menu and the look are held.
   test, only reCAPTCHA's welcome email. Not read against the console: steps 1, 2,
   3 and 5, set up by command line instead. Google refuses "ssl" in a project id,
   so an id containing "pressless" fails.
+  2026-11-03, PRESS-0081 spec § 7, real key on a scratch Google project:
+  - Setup steps against the console: FAILED as written. They assumed
+    the console was familiar (no project picker, "restrict" unclear).
+    Rewritten in Words to name each button; the user confirmed them.
+  - Save on a real key and channel: PASSED (YouTube knew the channel).
+  - 50 ids a call: PASSED; @NASA read 500 of 6,195 videos in batches.
+  - Figures against YouTube's page: PASSED; a video's views identical,
+    likes 468,980 against the page's 468K.
+  - Comments off: YouTube omits commentCount, which shows "hidden";
+    the page says comments are turned off. PASSED.
+  - Hidden subscribers: NOT RUN. No such channel among about 550
+    searched, and YouTube Studio's Advanced settings offer no switch.
+    Locked by test_hidden_is_not_zero only.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.

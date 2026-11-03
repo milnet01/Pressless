@@ -2077,12 +2077,26 @@ _WORDS: dict[str, str] = {
         "YouTube gives its public figures to anyone with a key. You make your own, from your "
         "Google account, and it stays on this computer. These steps make one."
     ),
-    "youtube.step.1": "Open <b>console.cloud.google.com</b> and create a project.",
-    "youtube.step.2": "In its <b>API library</b>, enable <b>YouTube Data API v3</b>.",
-    "youtube.step.3": (
-        "In <b>Credentials</b>, create an <b>API key</b>, and restrict it to that one API."
+    "youtube.step.1": (
+        "Go to <b>console.cloud.google.com</b> and sign in with your Google account. Click the "
+        "project button at the top left, beside \"Google Cloud\", then <b>New project</b>. Give "
+        "it any name and press <b>Create</b>. When it is ready, choose it with the same button. "
+        "A project you already have works too: choose it instead."
     ),
-    "youtube.step.4": "Paste it below, with your channel's address.",
+    "youtube.step.2": (
+        "In the search box at the top, type <b>YouTube Data API v3</b>, open it, and press "
+        "<b>Enable</b>."
+    ),
+    "youtube.step.3": (
+        "On that page, open the <b>Credentials</b> tab and press <b>Create credentials</b>, then "
+        "<b>API key</b>, a new one even if you have others. Under \"Select API restrictions\", "
+        "tick <b>YouTube Data API v3</b> only. "
+        "Leave \"Application restrictions\" on <b>None</b>: Pressless runs on your computer, not "
+        "on a website. Press <b>Create</b>, then copy the key."
+    ),
+    "youtube.step.4": (
+        "Paste the key below, with your channel's address, and press <b>Save and check</b>."
+    ),
     "youtube.box.channel": "Your channel's address, such as youtube.com/@yourname",
     "youtube.box.key": "The API key",
     "youtube.key_kept": "Leave the key empty to keep the one you have.",
