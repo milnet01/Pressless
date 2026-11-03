@@ -91,11 +91,11 @@ errors at *collection*, so no assertion runs at all: a run that says
 nothing failed may have run nothing. Read the collected count, not the
 exit code.
 
-**`spec_lint` does not check a spec's test surfaces here, and says so
-only in one field.** It resolves a surface only in a
-`tests/features/<name>/` shape, which this project does not use, so on a
-spec here it reports `surfaces_resolved: 0` beside `surfaces_checked:
-true` and `ok`. `doc_citations` counts a citation `ok` when the cited
+**`spec_lint` does not check a spec's test surfaces here.** It resolves a
+surface only in a `tests/features/<name>/` shape, which this project does
+not use, so on a spec here it reports `surfaces_resolved: 0` with a
+`surfaces_unresolved_hint` saying empty findings are not a pass.
+`doc_citations` counts a citation `ok` when the cited
 line exists, and `unchecked` when nothing on that line was compared. So
 each `*Test:*` clause is resolved by hand before its item ships: the
 named test must exist and must assert what the clause says.
