@@ -130,10 +130,11 @@ The two offers PRESS-0125 § 4.1 shows gain a second link to it.
 | `found` | § 4.3's counts; every path in `left` and in `import/folder-left.json`; that the site keeps its own look | none |
 | `bring` | What Next does, then the Report (§ 4.12) | `bring_in_folder` has written |
 
-The Windows step names Explorer's *Send to*, *Compressed (zipped) folder*.
-`Compress-Archive` on Windows PowerShell 5.1 writes `\` in member names, which
-§ 4.1 refuses; the shell's own ZIP writes `/` (run on the Windows box,
-2026-10-31; refute by listing each ZIP's entries).
+The Windows step names Explorer's *Send to*, *Compressed (zipped) folder*, and
+Windows 11's *Show more options* before them (Microsoft's own steps, read
+2026-11-04). `Compress-Archive` on Windows PowerShell 5.1 writes `\` in member
+names, which § 4.1 refuses; the shell's own ZIP writes `/` (run on the Windows
+box, 2026-10-31; refute by listing each ZIP's entries).
 
 The upload goes through `Face.add_upload`, so it is never held in memory. A new
 ZIP replaces `import/folder/` and deletes `import/folder.json`. `unpack_folder`'s

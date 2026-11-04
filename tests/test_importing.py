@@ -332,6 +332,8 @@ def test_the_folder_wizard_brings_a_site_in(tmp_path):
     try:
         held = _handed_over(browser, SMALL_SITE)
         assert b"Compressed (zipped) folder" in held
+        # Windows 11 hides Send to behind Show more options (Microsoft's own steps).
+        assert b"Show more options" in held
         found = _folder_step(browser, "folder")
         assert 'value="found"' in found and "tool.exe" in found and "own look" in found
         assert (folder / "wizards" / "import-folder.json").is_file()

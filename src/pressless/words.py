@@ -1405,7 +1405,8 @@ _WORDS: dict[str, str] = {
     ),
     "import.folder.windows": (
         "On Windows, right-click the folder in File Explorer, choose <b>Send to</b>, then "
-        "<b>Compressed (zipped) folder</b>."
+        "<b>Compressed (zipped) folder</b>. On Windows 11, choose <b>Show more options</b> "
+        "first."
     ),
     "import.folder.linux": (
         "On Linux, right-click the folder in your file manager and choose <b>Compress</b>, "
