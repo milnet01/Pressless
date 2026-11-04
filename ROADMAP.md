@@ -3810,6 +3810,22 @@ it decides how pages, the menu and the look are held.
   in whole, one publish, every old address answers, the garden page
   matches by pixel. Still owed: PRESS-0210's ZIP route published and
   compared, and § 4.2's ZIP steps read on Windows and Linux.
+  2026-11-04: PRESS-0210 § 7's ZIP route PASSED from source on Linux,
+  real GitHub (key in memory only). A fresh setup made pl-zip-scratch,
+  starter unticked; the ZIP came in through /import/folder (4 pages, a
+  picture, a PDF), one publish, every old page address forwards. Pixel
+  compare with the original folder: About and Contact identical; Home
+  and Garden differ only inside the picture, by at most 1 of 255, from
+  the builder's re-save of photographs. Old picture and stylesheet
+  addresses 404: the spec forwards pages only.
+  § 4.2's ZIP steps: Linux fits Dolphin's Compress submenu and GNOME's
+  Compress…, and an Ark-made ZIP (top folder, .git inside) read whole.
+  Windows: the box is Windows 10, whose Send to holds the entry. FOUND
+  that Windows 11 hides Send to behind Show more options (Microsoft's
+  own steps): fixed in 305efd3. Also fixed a flaky gate test in ce609cd.
+  Cleanup done: the domain off pressless-test-3 (Pages and its CNAME
+  file), the three scratch repositories deleted, local scratch removed.
+  The DNS rows scratch-a and scratch-b are the user's to delete.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
