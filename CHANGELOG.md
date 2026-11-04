@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-04
+
+**Theme:** more figures, and likes
+
 ### Added
 
 - **See your YouTube channel's public figures** (PRESS-0081)
