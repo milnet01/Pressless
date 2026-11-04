@@ -452,6 +452,8 @@ def test_the_screen_lists_only_what_is_there(tmp_path, monkeypatch):
 
 def test_what_was_not_read_is_named(tmp_path, monkeypatch):
     """INV-12. Breaks when `Crawled.left` is not written to import/folder-left.json."""
+    # A small cap: 50 MB through the fake network ran near the client's timeout.
+    monkeypatch.setattr(builder, "FILE_LARGEST", 64 * 1024)
     front = FRONT + b'<a href="/gone/">Gone</a><a href="/big.pdf">Big</a>'
     _site(monkeypatch, {**PAGES_ANSWERS, "/": front,
                         "/big.pdf": b"x" * (builder.FILE_LARGEST + 1)})
