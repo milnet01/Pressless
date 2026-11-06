@@ -345,11 +345,12 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                 except store.StoreError as exc:
                     first_failure = first_failure or exc
                     unreadable[draft].append(slug)
+        hint = request.query.get("page_hint", "")
         try:
-            pages, parts = _pages(folder, request.query.get("page_hint", ""))
+            listed = _pages(folder, hint)
         except store.StoreError as exc:
             first_failure = first_failure or exc
-            pages, parts = f"<p>{say('editor.list.pages_unreadable')}</p>", ""
+            listed = _Listed(f"<p>{say('editor.list.pages_unreadable')}</p>", 0, "", 0, "")
         site = _site_line(folder)
         try:
             journal: bool | None = store.journal_on(folder)
@@ -365,7 +366,7 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     # PRESS-0235 § 4.5: the list's press row is the undo line.
     said, running, ended = pressing.shown("")
     header = (render_notices(notices) + failure +
-              f"<h1>{say('face.your_writing')}</h1>" + site
+              f"<h1>{say('face.your_writing')}</h1>" + site + listed.carry_on
               # PRESS-0023 § 4.9: what other parts show here, without this
               # module importing them.
               + "".join(face.list_pieces(above=True))
@@ -373,11 +374,16 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
               + message_box("failure", ended or "", forgets=True))
     controls = (_new_entry_form(folder) + _undo_row(said, running=running)
                 + _journal_switch(journal, bool(published)))
-    # PRESS-0189: each list is a card.
-    cards = (_card("editor.list.drafts", _rows(drafts, unreadable[True], notes))
-             + _card("editor.list.on_site", _rows(readable[False], unreadable[False], notes))
-             + _card("editor.list.pages", pages)
-             + (_card("editor.list.parts", parts) if parts else ""))
+    # PRESS-0189: each list is a card. PRESS-0344: folded shut under its count,
+    # so the screen opens short; Your pages opens to show a refused name's hint.
+    cards = (_fold("editor.list.drafts", len(drafts) + len(unreadable[True]),
+                   _rows(drafts, unreadable[True], notes))
+             + _fold("editor.list.on_site", len(readable[False]) + len(unreadable[False]),
+                     _rows(readable[False], unreadable[False], notes))
+             + _fold("editor.list.pages", listed.page_count, listed.pages,
+                     shown=hint in PAGE_HINTS)
+             + (_fold("editor.list.parts", listed.part_count, listed.parts)
+                if listed.parts else ""))
     return (header + '<div id="undo-result"></div>'
             + '<div id="listing">' + controls + cards + "</div>"
             + "".join(face.list_pieces(above=False))
@@ -418,8 +424,20 @@ def _rows(entries: list[store.Entry], broken: list[str], notes: dict[str, str]) 
     return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"
 
 
-def _card(heading: str, inside: str) -> str:
-    return f'<section class="card"><h2>{say(heading)}</h2>{inside}</section>'
+def _fold(heading: str, count: int, inside: str, *, shown: bool = False) -> str:
+    return (f'<details class="card fold"{" open" if shown else ""}><summary>'
+            f"<h2>{say(heading)} ({count})</h2></summary>{inside}</details>")
+
+
+@dataclasses.dataclass(frozen=True)
+class _Listed:
+    """Your pages and the parts of every page, each with its count, and the
+    Carry on with line, which leads the screen rather than a folded list."""
+    pages: str
+    page_count: int
+    parts: str
+    part_count: int
+    carry_on: str
 
 
 def _new_entry_form(folder: Path) -> str:
@@ -462,7 +480,7 @@ PAGE_HINTS = {"empty": "page_hint.empty", "taken": "page_hint.taken",
               "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable"}
 
 
-def _pages(folder: Path, hint: str = "") -> tuple[str, str]:
+def _pages(folder: Path, hint: str = "") -> _Listed:
     """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
     saying where its changes are not on the site yet; a page only waiting to
     be pressed is listed too, and the New page box follows (PRESS-0195 § 4.3).
@@ -491,14 +509,15 @@ def _pages(folder: Path, hint: str = "") -> tuple[str, str]:
         items[kind].append(f'<li><a href="{html.escape(address, quote=True)}">'
                            f"{html.escape(label)}</a>{note}</li>")
     said = say(PAGE_HINTS[hint]) if hint in PAGE_HINTS else ""
-    pages = (carry_on + "<ul>" + "".join(items[store.PAGES_FOLDER]) + "</ul>"
+    pages = ("<ul>" + "".join(items[store.PAGES_FOLDER]) + "</ul>"
              f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
              '<input name="name" autocomplete="off"></label> '
              f"<button>{say('editor.list.new_page')}</button></form>"
              f'<p id="page-hint" role="status">{html.escape(said)}</p>')
     parts = (f"<p>{say('editor.list.parts_note')}</p>"
              "<ul>" + "".join(items[store.FURNITURE_FOLDER]) + "</ul>")
-    return pages, parts
+    return _Listed(pages, len(items[store.PAGES_FOLDER]), parts,
+                   len(items[store.FURNITURE_FOLDER]), carry_on)
 
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:

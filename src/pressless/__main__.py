@@ -29,6 +29,7 @@ from pressless import (
     about,
     backups,
     cheatsheet,
+    checklist,
     credentials,
     dashboard,
     domain,
@@ -204,6 +205,8 @@ def _serve_once(own: Path) -> bool:
     folder = sites.open_site(own)
     served = face.serve(own, site=folder)
     try:
+        # PRESS-0344: first above the list, so it leads the screen.
+        checklist.register(served, folder)
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)
         google_setup.register(served, folder)

@@ -19,6 +19,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   up to twice the normal size. Pressless remembers it for next time. Your published site is
   unchanged.
 
+- **Your writing opens with a finish-setting-up list** (PRESS-0344)
+  A new site shows five things to do, such as making the Home page your own and setting up the
+  menu. Each ticks itself once done, and the list goes when all five are. The lists below it,
+  Drafts, On your site, Your pages and Parts of every page, now fold shut under their counts,
+  so the screen opens short. Click one to open it.
+
 ### Changed
 
 - **Publishing a large site uses far less memory** (PRESS-0088)

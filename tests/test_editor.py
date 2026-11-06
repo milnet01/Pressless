@@ -26,6 +26,7 @@ from _face_session import Browser
 from test_setup import _saved
 
 from pressless import (
+    checklist,
     editor,
     face,
     marks,
@@ -859,7 +860,8 @@ def test_your_pages_labels_each_page_like_the_fixed_ones(tmp_path):
     Footer are, never as its file name."""
     for name in ("index", "about", "my-shows"):
         store.write_html(tmp_path, store.PAGES_FOLDER, name, "<p>Words.</p>")
-    listed = "".join(editor._pages(tmp_path))
+    found = editor._pages(tmp_path)
+    listed = found.pages + found.parts
     for label in ("Home", "About", "My shows", "Header", "Footer"):
         assert f">{label}</a>" in listed, label
     assert ">about</a>" not in listed and ">my-shows</a>" not in listed
@@ -872,8 +874,9 @@ def test_the_parts_of_every_page_are_listed_apart(tmp_path):
     store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>Words.</p>")
     with _editor(tmp_path) as browser:
         listing = browser.request("GET", "/")[2]
-    cards = dict(re.findall(r'<section class="card"><h2>(.*?)</h2>(.*?)</section>',
-                            listing, re.S))
+    cards = {heading: inside for heading, inside in re.findall(
+        r'<details class="card fold"[^>]*><summary><h2>(.*?) \(\d+\)</h2></summary>'
+        r"(.*?)</details>", listing, re.S)}
     assert ">Home</a>" in cards["Your pages"]
     parts = cards["Parts of every page"]
     assert "shows on every page" in parts
@@ -1020,3 +1023,54 @@ def test_an_edit_during_an_address_change_is_saved_at_the_new_address(tmp_path):
     saves = [post["fields"] for post in posts if post["address"] == "/save"]
     assert saves and saves[-1]["slug"] == "new" and saves[-1]["base"] == "b2"
     assert saves[-1]["body"] == "typed while the address changed"
+
+
+# ------------------------------------------------------------- PRESS-0344 ---
+
+
+def _checklist(folder: Path) -> list[tuple[bool, str]]:
+    served = face.serve(folder)
+    try:
+        checklist.register(served, folder)
+        editor.register(served, folder)
+        listing = _Browser(served).request("GET", "/")[2]
+    finally:
+        served.stop()
+    shown = re.search(r'<section class="card" id="checklist">(.*?)</section>', listing, re.S)
+    return [] if shown is None else [
+        (done == "done", words) for done, words in
+        re.findall(r'<li class="(done|to-do)">.*?<a [^>]*>(.*?)</a>', shown.group(1), re.S)]
+
+
+def test_the_list_opens_on_a_checklist_that_ticks_as_the_site_is_set_up(tmp_path):
+    """PRESS-0344: a starter site shows five things to finish, each ticked
+    once the Store shows it done, and the list goes when all are. Breaks
+    when an item is read from the wrong place, or the list outstays its use."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    starter.fill(folder, "Field Notes")
+    store.write_identity(folder, store.Identity("Field Notes"))
+    assert [done for done, _ in _checklist(folder)] == [False] * 5
+    store.write_identity(folder, store.Identity("Field Notes", "Notes from the field",
+                                                icon="shore.jpg"))
+    store.write_html(folder, store.PAGES_FOLDER, "index", "<p>My own words.</p>",
+                     waiting=True)
+    assert [done for done, _ in _checklist(folder)] == [True, True, True, False, False]
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation", "<nav>Mine</nav>")
+    starter.published(folder)
+    assert _checklist(folder) == []
+
+
+def test_the_lists_fold_shut_with_their_counts(tmp_path):
+    """PRESS-0344: each list folds shut under its heading and count, so the
+    screen opens short. Your pages opens where it carries a hint. Breaks when
+    a list stands open, or a refused page name's hint is folded away."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    with _editor(folder) as browser:
+        listing = browser.request("GET", "/")[2]
+        hinted = browser.request("GET", "/?page_hint=taken")[2]
+    assert '<details class="card fold"><summary><h2>Drafts (1)</h2></summary>' in listing
+    assert "<details class=\"card fold\" open>" not in listing
+    assert '<details class="card fold" open><summary><h2>Your pages' in hinted
+

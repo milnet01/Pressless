@@ -6427,11 +6427,22 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: face.
 
-- 📋 [PRESS-0344] **The home screen becomes a short dashboard with a finish-setting-up list.**
+- ✅ [PRESS-0344] **The home screen becomes a short dashboard with a finish-setting-up list.**
   From the 2026-11-03 usability study: Your writing is one long list
   of forms, switches and sections. Leading editors open on a short
   dashboard with a setup checklist, so the wizard itself stays short.
   After 0.11.0, by the user's choice.
+  User decision 2026-11-06 (my recommendation): the dashboard sits on
+  top of Your writing: a finish-setting-up checklist and a few big
+  buttons. The lists stay on the same screen below, folded shut until
+  opened.
+  Done 2026-11-06. checklist.py adds Finish setting up above the list
+  through face.add_to_list: describe the site, choose its icon, make
+  Home your own, set up the menu, put the site on the web, each read
+  from the Store (Home and menu compared with the starter's), gone once
+  all are done. The four lists fold shut under their counts; Your pages
+  opens when a refused name's hint is shown; Carry on with leads the
+  screen.
   **Layman:** The first screen shows what to do next, with a checklist that ticks off as the site gets its logo, first page and menu.
   Kind: ux.
   Source: user-request-2026-11-03.
@@ -6440,6 +6451,9 @@ user's question of 2026-11-03 and a study of leading site editors.
 - 📋 [PRESS-0345] **Publish lists what will change before it goes live.**
   From the 2026-11-03 usability study: leading editors list the
   changes before publishing. After 0.11.0, by the user's choice.
+  User decision 2026-11-06 (my recommendation): Press to site opens a
+  box over the page listing what will change, with Publish now and Not
+  yet.
   **Layman:** Before a press goes live, Pressless says which pages and parts will change.
   Kind: ux.
   Source: user-request-2026-11-03.
@@ -6450,6 +6464,8 @@ user's question of 2026-11-03 and a study of leading site editors.
   and a cheat sheet beside a preview, while pages already have a
   visual editor (PRESS-0260). Large. After 0.11.0, by the user's
   choice.
+  User decision 2026-11-06 (my recommendation): spec first, then build,
+  after PRESS-0344, 0345 and 0347. Entries keep their file format.
   **Layman:** Journal entries are written in an editor that shows them as they will look, with no markup to learn.
   Kind: ux.
   Source: user-request-2026-11-03.
@@ -6477,6 +6493,9 @@ user's question of 2026-11-03 and a study of leading site editors.
   device-code sign-in again, for the same GitHub account. One code
   expired while the person switched to the browser. A sign-in is held
   per site today (Settings.credentials), so this is a design question.
+  User decision 2026-11-06 (my recommendation): the sign-in step offers
+  Continue as <GitHub name>, one click, beside a way to sign in as
+  someone else.
   **Layman:** Adding another site doesn't make you sign in to GitHub all over again.
   Kind: ux.
   Source: in-session-2026-11-03 PRESS-0133 hand check.

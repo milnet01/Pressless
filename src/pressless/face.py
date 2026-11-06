@@ -743,6 +743,12 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   padding: 1.1rem 1.4rem; margin: 1.25rem 0; box-shadow: 0 4px 18px var(--shadow); }
 .face .card > h2:first-child { margin-top: 0; }
 .face .card > :last-child { margin-bottom: 0; }
+.face .fold > summary { cursor: pointer; }
+.face .fold > summary h2 { display: inline; margin: 0; }
+.face .fold[open] > summary { margin-bottom: .75rem; }
+.face #checklist ul { list-style: none; padding: 0; }
+.face #checklist li { margin: .35rem 0; }
+.face #checklist li.done a { color: var(--soft); }
 .face a { color: var(--amber-ink); text-underline-offset: .15em; }
 .face ul { padding-left: 1.2rem; }
 .face li { margin: .3rem 0; }
