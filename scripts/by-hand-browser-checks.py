@@ -57,6 +57,7 @@ from PIL import Image  # noqa: E402
 from test_votes import PASTED, VOTES  # noqa: E402
 from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
+import pressless_import  # noqa: E402
 from pressless import (  # noqa: E402
     blocks,
     builder,
@@ -65,6 +66,7 @@ from pressless import (  # noqa: E402
     editor,
     face,
     files_screen,
+    importing,
     marks,
     page_editor,
     publishing,
@@ -565,6 +567,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         added_by_upload(page, origin, folder)
         sites_listed(page, origin, folder)
         site_file(page, origin, folder)
+        folder_chosen(browser, folder)
         move_wizard(page, origin)
         enlarge_photograph(page, origin, folder)
         settings_pictures(page, origin, folder)
@@ -706,6 +709,45 @@ def site_file(page, origin: str, folder: Path) -> None:
     check("PRESS-0224: Open makes the file a new site and restarts",
           opened != shown and (opened / "drafts" / "saved-and-opened.txt").is_file()
           and _restarted(before + 1) == before + 1, f"opened={opened.name}")
+
+
+def folder_chosen(browser, folder: Path) -> None:
+    """PRESS-0335: a folder picked in the browser arrives as the folder the
+    import holds, every file byte for byte. Import wants an empty store, so it
+    runs on a Face of its own, in a context of its own for that Face's cookie."""
+    if OPTIONS.cdp:
+        print("  PRESS-0335: not run over --cdp; the tunnel forwards one Face's port")
+        return
+    empty = folder.parent / "import-site"
+    empty.mkdir()
+    chosen = folder.parent / "chosen" / "my-site"
+    files = {"index.html": b"<h1>Home</h1>", "café/menu.html": b"<p>Menu</p>",
+             "photo.jpg": bytes(range(256)) * 400}
+    for name, data in files.items():
+        (chosen / name).parent.mkdir(parents=True, exist_ok=True)
+        (chosen / name).write_bytes(data)
+    served = face.serve(empty, 0)
+    importing.register(served, empty)
+    context = browser.new_context()
+    try:
+        page = context.new_page()
+        page.goto(served.url, wait_until="networkidle")
+        page.goto(served.url.split("?")[0].rstrip("/") + importing.FOLDER_ADDRESS,
+                  wait_until="networkidle")
+        with page.expect_file_chooser() as chooser:
+            page.locator("button[data-file=import-folder-pick]").click()
+        chooser.value.set_files(str(chosen))
+        page.wait_for_function(
+            f"document.body.innerText.includes({json.dumps(words.say('import.folder.held'))})",
+            timeout=10000)
+        unpacked = empty / pressless_import.IMPORT_FOLDER / pressless_import.FOLDER
+        got = {path.relative_to(unpacked).as_posix(): path.read_bytes()
+               for path in unpacked.rglob("*") if path.is_file()}
+        check("PRESS-0335: a chosen folder arrives whole, names and bytes alike",
+              got == files, str(sorted(got)))
+    finally:
+        context.close()
+        served.stop()
 
 
 def move_wizard(page, origin: str) -> None:

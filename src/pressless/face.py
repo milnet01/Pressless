@@ -934,42 +934,115 @@ def message_box(inner_id: str, content: str = "", *, focus: str = "",
 
 
 def file_box(name: str, accept: str, address: str, label: str, *,
-             sending: str = "") -> str:
+             sending: str = "", folder: bool = False) -> str:
     """A button choosing one file, sent as the body to `address`; the answer
     replaces the page (PRESS-0224 § 4.6). `sending` is a `script.` words key
     the button reads while the file is sent. Where Pressless cannot be
-    reached, the button comes back and a message says so (PRESS-0319)."""
+    reached, the button comes back and a message says so (PRESS-0319).
+
+    With `folder`, the button chooses a folder instead, and the browser sends
+    it as one ZIP, so the address takes what a ZIP file box sends (PRESS-0335)."""
     wait = f' data-sending="{html.escape(sending, quote=True)}"' if sending else ""
+    kind = 'webkitdirectory data-folder=""' if folder else f'accept="{accept}"'
     return (f'<p><button type="button" data-file="{name}"{wait}>{html.escape(label)}</button>'
-            f'<input type="file" id="{name}" accept="{accept}" hidden '
+            f'<input type="file" id="{name}" {kind} hidden '
             f'data-to="{html.escape(address, quote=True)}"></p>'
             + message_box(f"{name}-message") + f"<script>{_FILE_SCRIPT}</script>")
 
 
 # Each file box on the page is wired once, however many copies of this run.
+# A folder is packed as a ZIP with its files stored, not compressed: each file
+# is read once for its checksum, and the ZIP refers to the files rather than
+# holding a copy. A plain ZIP cannot reach past 4 GiB or hold more than
+# 65,535 files; a folder past either is not sent.
 _FILE_SCRIPT = r"""
 (() => {
+  const table = new Uint32Array(256).map((_, n) => {
+    for (let k = 0; k < 8; k++) n = n & 1 ? 0xEDB88320 ^ (n >>> 1) : n >>> 1;
+    return n >>> 0;
+  });
+  const checksum = async (file) => {
+    let crc = 0xFFFFFFFF;
+    const reader = file.stream().getReader();
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) return (crc ^ 0xFFFFFFFF) >>> 0;
+      for (const byte of value) crc = table[(crc ^ byte) & 0xFF] ^ (crc >>> 8);
+    }
+  };
+  // One ZIP header: a file's local one, or, given where that sits, its entry
+  // in the central directory. Names are UTF-8 (flag 0x0800); dates 1980-01-01.
+  const header = (name, crc, size, at = null) => {
+    const central = at !== null;
+    const fixed = central ? 46 : 30;
+    const out = new Uint8Array(fixed + name.length);
+    const view = new DataView(out.buffer);
+    let i = 0;
+    const u16 = (value) => { view.setUint16(i, value, true); i += 2; };
+    const u32 = (value) => { view.setUint32(i, value, true); i += 4; };
+    u32(central ? 0x02014B50 : 0x04034B50);
+    if (central) u16(20);
+    u16(20); u16(0x0800); u16(0); u16(0); u16(0x21);
+    u32(crc); u32(size); u32(size); u16(name.length); u16(0);
+    if (central) { u16(0); u16(0); u16(0); u32(0); u32(at); }
+    out.set(name, fixed);
+    return out;
+  };
+  // The folder as one ZIP, or null where a plain ZIP cannot hold it.
+  const zipped = async (files) => {
+    const encoder = new TextEncoder();
+    const names = Array.from(files, (file) =>
+      encoder.encode(file.webkitRelativePath || file.name));
+    let total = 22;
+    names.forEach((name, n) => { total += 76 + 2 * name.length + files[n].size; });
+    if (files.length > 0xFFFF || total > 0xFFFFFFFF) return null;
+    const parts = [], directory = [];
+    let offset = 0;
+    for (let n = 0; n < files.length; n++) {
+      const crc = await checksum(files[n]);
+      const local = header(names[n], crc, files[n].size);
+      parts.push(local, files[n]);
+      directory.push(header(names[n], crc, files[n].size, offset));
+      offset += local.length + files[n].size;
+    }
+    const end = new DataView(new ArrayBuffer(22));
+    const size = directory.reduce((sum, entry) => sum + entry.length, 0);
+    end.setUint32(0, 0x06054B50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, size, true);
+    end.setUint32(16, offset, true);
+    return new Blob([...parts, ...directory, end.buffer]);
+  };
   for (const button of document.querySelectorAll("button[data-file]")) {
     if (button.dataset.wired) continue;
     button.dataset.wired = "1";
     const chooser = document.getElementById(button.dataset.file);
     const label = button.textContent;
+    const giveBack = (key) => {
+      button.disabled = false;
+      button.textContent = label;
+      document.getElementById(button.dataset.file + "-message").textContent = say(key);
+    };
     button.addEventListener("click", () => { chooser.value = ""; chooser.click(); });
     chooser.addEventListener("change", async () => {
-      const file = chooser.files[0];
-      if (!file) return;
+      if (!chooser.files.length) return;
       button.disabled = true;
       if (button.dataset.sending) button.textContent = say(button.dataset.sending);
-      let page;
+      let body = chooser.files[0], page;
+      if ("folder" in chooser.dataset) {
+        try {
+          body = await zipped(chooser.files);
+        } catch (error) {
+          return giveBack("script.file_box.unreadable");
+        }
+        if (!body) return giveBack("script.file_box.too_large");
+      }
       try {
-        const answer = await fetch(chooser.dataset.to, {method: "POST", body: file});
+        const answer = await fetch(chooser.dataset.to, {method: "POST", body});
         page = await answer.text();
       } catch (error) {
-        button.disabled = false;
-        button.textContent = label;
-        document.getElementById(button.dataset.file + "-message").textContent =
-          say("script.file_box.unreachable");
-        return;
+        return giveBack("script.file_box.unreachable");
       }
       document.open();
       document.write(page);

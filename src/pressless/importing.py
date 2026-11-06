@@ -322,9 +322,15 @@ def _show_folder(unpacked: Path) -> str:
     steps = "".join(f"<li>{say(key)}</li>" for key in (
         "import.folder.windows", "import.folder.linux"))
     kept = f"<p>{say('import.folder.held')}</p>" if unpacked.is_dir() else ""
-    return (f"<p>{say('import.folder.how')}</p><ul>{steps}</ul>" + kept
+    # PRESS-0335: the browser sends a chosen folder as a ZIP, to the same address.
+    return (f"<p>{say('import.folder.how')}</p>" + kept
+            + face_module.file_box("import-folder-pick", "", f"{FOLDER_ADDRESS}/zip",
+                                   say("import.folder.choose_folder"),
+                                   sending="script.file_box.sending_folder", folder=True)
             + face_module.file_box("import-folder", ".zip", f"{FOLDER_ADDRESS}/zip",
-                                   say("import.folder.choose")))
+                                   say("import.folder.choose"))
+            + f"<details><summary>{say('import.folder.make_zip')}</summary>"
+              f"<ul>{steps}</ul></details>")
 
 
 def _show_found(found: pressless_import.Found, left: tuple[tuple[str, str], ...]) -> str:

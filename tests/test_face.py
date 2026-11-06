@@ -1178,3 +1178,90 @@ def test_a_file_box_that_cannot_reach_pressless_says_so(tmp_path):
                          check=True, timeout=30)
     assert json.loads(run.stdout) == {
         "disabled": False, "label": "Send", "message": "<script.file_box.unreachable>"}
+
+
+# ------------------------------------------------------------- PRESS-0335 ---
+
+# A folder box packs the chosen folder into a ZIP in the browser. Node runs the
+# script with real File objects, each carrying the path a folder chooser gives.
+_FOLDER_BOX_HARNESS = """const on = {};
+const button = {dataset: {file: "box"}, textContent: "Send", disabled: false,
+                addEventListener: (kind, run) => { on["button " + kind] = run; }};
+const chooser = {dataset: {to: "/to", folder: "1"}, files: FILES, value: "", click() {},
+                 addEventListener: (kind, run) => { on["chooser " + kind] = run; }};
+const message = {textContent: ""};
+let sent = null;
+const document = {
+  querySelectorAll: () => [button],
+  getElementById: (id) => ({box: chooser, "box-message": message})[id] || null,
+  open() {}, write() {}, close() {},
+};
+const fetch = async (to, how) => {
+  sent = Buffer.from(await how.body.arrayBuffer()).toString("base64");
+  return {text: async () => "<p>taken</p>"};
+};
+const say = (key) => "<" + key + ">";
+SCRIPT
+(async () => {
+  await on["chooser change"]();
+  process.stdout.write(JSON.stringify(
+    {sent, disabled: button.disabled, label: button.textContent, message: message.textContent}));
+})();
+"""
+
+# Each file as the browser hands it over: a File, plus the path inside the
+# chosen folder, which the File constructor cannot set.
+_FOLDER_FILE = ("Object.defineProperty(new File([Buffer.from({data!r}, 'base64')], {name!r}),"
+                " 'webkitRelativePath', {{value: {path!r}}})")
+
+
+def _run_folder_box(tmp_path, files: str) -> dict:
+    box = face.file_box("box", "", "/to", "Send", folder=True)
+    script = re.search(r"<script>(.*)</script>", box, re.S).group(1)
+    harness = tmp_path / "folder.js"
+    harness.write_text(_FOLDER_BOX_HARNESS.replace("FILES", files).replace("SCRIPT", script),
+                       encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    return json.loads(run.stdout)
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_folder_box_sends_a_zip_the_importer_unpacks(tmp_path):
+    """PRESS-0335. Breaks when the browser's ZIP is malformed, carries a wrong
+    checksum, loses a file's bytes, or mangles a name outside plain ASCII."""
+    import base64
+    import zipfile
+
+    import pressless_import
+    chosen = {"site/index.html": b"<h1>Home</h1>",
+              "site/café/menu.html": "<p>Café</p>".encode(),
+              "site/photo.jpg": bytes(range(256)) * 40}
+    files = "[" + ",".join(
+        _FOLDER_FILE.format(data=base64.b64encode(data).decode(),
+                            name=path.rsplit("/", 1)[1], path=path)
+        for path, data in chosen.items()) + "]"
+    said = _run_folder_box(tmp_path, files)
+    assert (said["disabled"], said["message"]) == (True, "")
+    held = tmp_path / "sent.zip"
+    held.write_bytes(base64.b64decode(said["sent"]))
+    assert zipfile.is_zipfile(held)
+    with zipfile.ZipFile(held) as sent:
+        assert sent.testzip() is None
+    into = tmp_path / "folder"
+    assert pressless_import.unpack_folder(held, into, lambda: 10**9) == ()
+    assert {path.relative_to(into).as_posix(): path.read_bytes()
+            for path in into.rglob("*") if path.is_file()} == {
+        path.removeprefix("site/"): data for path, data in chosen.items()}
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_a_folder_too_large_for_a_plain_zip_is_not_sent(tmp_path):
+    """PRESS-0335. A plain ZIP cannot hold past 4 GiB. Breaks when such a
+    folder is sent anyway, or the button stays disabled with no message."""
+    files = ('[{name: "film.mp4", webkitRelativePath: "site/film.mp4", size: 5e9,'
+             ' stream() { throw new Error("read"); },'
+             ' arrayBuffer: async () => new ArrayBuffer(0)}]')
+    assert _run_folder_box(tmp_path, files) == {
+        "sent": None, "disabled": False, "label": "Send",
+        "message": "<script.file_box.too_large>"}

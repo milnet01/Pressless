@@ -55,7 +55,9 @@ item by item afterwards. Sign of success: S13.
    2026-10-16. So they are carried inside pages (§ 4.6), never as files.
 5. **One review round.** The user, 2026-10-29.
 6. **(decided here) A ZIP is how a folder is handed over.** The steps say how
-   to make one on each system. A browser's folder chooser is PRESS-0335.
+   to make one on each system. PRESS-0335 adds the browser's folder chooser:
+   the browser packs the chosen folder as a ZIP and sends it to the same
+   address, so § 4.1's checks are unchanged.
 7. **(decided here) Every page is a page, none an entry.** Nothing in a plain
    page says reliably that it is a dated post. The journal is off.
 8. **(decided here) The site keeps its own look.** Its stylesheets become
@@ -126,7 +128,7 @@ The two offers PRESS-0125 § 4.1 shows gain a second link to it.
 
 | Step | Shows | Check before Next |
 |------|-------|-------------------|
-| `folder` | How to make a ZIP on Windows and on Linux, and a file box posting to `/import/folder/zip` | a folder is held, and `read_folder` found a page and not `built_by_a_tool` |
+| `folder` | A folder chooser and a ZIP file box, both posting a ZIP to `/import/folder/zip`; how to make a ZIP on Windows and on Linux, folded | a folder is held, and `read_folder` found a page and not `built_by_a_tool` |
 | `found` | § 4.3's counts; every path in `left` and in `import/folder-left.json`; that the site keeps its own look | none |
 | `bring` | What Next does, then the Report (§ 4.12) | `bring_in_folder` has written |
 
@@ -621,7 +623,8 @@ in a browser; and § 4.2's ZIP steps read on Windows and on Linux.
 - **Keep each page at its old address.** Rejected: the Store's page names, the
   Builder's layout, the menu and the page editor all rest on `pages/<name>.html`.
 - **A browser's folder chooser now.** Rejected for this spec: `Face.add_upload`
-  takes one file per request, so it needs a new upload shape. PRESS-0335 has it.
+  takes one file per request. PRESS-0335 added it later with no new upload shape,
+  by sending the folder as a ZIP (§ 3 decision 6).
 - **Keep scripts and SVGs as added files.** Rejected: the user refused both kinds
   (§ 3 decision 4).
 - **Inline an SVG as an `<svg>` element.** Rejected: there it can run a script, and

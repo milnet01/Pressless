@@ -1484,8 +1484,10 @@ _WORDS: dict[str, str] = {
     "import.step.folder": "Your folder of web pages",
     "import.step.found": "What will come across",
     "import.folder.how": (
-        "Put your site's folder into one ZIP file, then choose it here. To make one:"
+        "Choose your site's folder. If it is already in a ZIP file, choose that instead."
     ),
+    "import.folder.choose_folder": "Choose the folder",
+    "import.folder.make_zip": "How to make a ZIP file",
     "import.folder.windows": (
         "On Windows, right-click the folder in File Explorer, choose <b>Send to</b>, then "
         "<b>Compressed (zipped) folder</b>. On Windows 11, choose <b>Show more options</b> "
@@ -1495,18 +1497,18 @@ _WORDS: dict[str, str] = {
         "On Linux, right-click the folder in your file manager and choose <b>Compress</b>, "
         "with <b>.zip</b> as the kind."
     ),
-    "import.folder.choose": "Choose the ZIP file",
+    "import.folder.choose": "Choose a ZIP file",
     "import.folder.held": "Pressless has your folder. Press Next.",
-    "import.folder.none": "Choose a ZIP file holding your web pages first.",
+    "import.folder.none": "Choose your site's folder first.",
     "import.folder.built": (
         "This folder holds what a tool builds a site from, not the site's web pages. Build "
         "the site with that tool, then choose the folder of pages it makes."
     ),
     "import.folder.refused": (
-        "Pressless could not read that ZIP file, or could not fit it on this drive, or it "
-        "names a file outside its folder. Nothing was kept."
+        "Pressless could not read that ZIP file or folder, or could not fit it on this "
+        "drive, or it names a file outside its folder. Nothing was kept."
     ),
-    "import.folder.no_page": "That ZIP file holds no web page, so nothing was kept.",
+    "import.folder.no_page": "That ZIP file or folder holds no web page, so nothing was kept.",
     "import.folder.counts": "Pressless found {pages}, {photographs} and {files}.",
     "import.folder.left": "These will not come across:",
     "import.folder.look": (
@@ -1834,6 +1836,15 @@ _WORDS: dict[str, str] = {
     "script.file_box.unreachable": (
         "Pressless could not reach itself, so the file was not sent. Nothing has changed. "
         "Check Pressless is still running, then try again."
+    ),
+    "script.file_box.sending_folder": "Sending the folder…",
+    "script.file_box.too_large": (
+        "That folder is too large to send in one go, so nothing was sent. Put it into a ZIP "
+        "file, then choose that."
+    ),
+    "script.file_box.unreadable": (
+        "Pressless could not read a file in that folder, so nothing was sent. Check the "
+        "folder is still there, then try again."
     ),
     "sites_screen.move.button": "Move Pressless to a new computer",
     "sites_screen.move.title": "Move Pressless to a new computer",
