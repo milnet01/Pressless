@@ -6466,13 +6466,20 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: publisher, face.
 
-- 📋 [PRESS-0346] **Entries are edited as they look, like pages.**
+- ✅ [PRESS-0346] **Entries are edited as they look, like pages.**
   From the 2026-11-03 usability study: entries are typed with marks
   and a cheat sheet beside a preview, while pages already have a
   visual editor (PRESS-0260). Large. After 0.11.0, by the user's
   choice.
   User decision 2026-11-06 (my recommendation): spec first, then build,
   after PRESS-0344, 0345 and 0347. Entries keep their file format.
+  Shipped 2026-11-06 to docs/specs/PRESS-0346-entries-visual-editor.md
+  (not gated: no contract or hard-to-reverse trigger, rule 14). Gate
+  green: 1865 passed on Linux, 1754 on the Windows box;
+  scripts/by-hand-browser-checks.py 163 passed in Chrome and in
+  Playwright's Firefox, PRESS-0346 rows included. Still owed by hand
+  before the release: Edge on the Windows box
+  (scripts/windows-gate.sh wintest --browsers edge firefox).
   **Layman:** Journal entries are written in an editor that shows them as they will look, with no markup to learn.
   Kind: ux.
   Source: user-request-2026-11-03.
