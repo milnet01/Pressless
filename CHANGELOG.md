@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-06
+
+**Theme:** anyone finds their way around
+
 ### Added
 
 - **A text size for Pressless's own screens** (PRESS-0338)
