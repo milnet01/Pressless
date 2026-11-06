@@ -99,6 +99,11 @@ functions, the node types `parse` returns (§4.3), and the two callable
 aliases `PhotoSrc` and `Renderer`, and `value_text` (PRESS-0123 §4.1).
 Nothing else.
 
+*Amended by PRESS-0346 § 4.5:* `sources`, `from_inline`, `write`,
+`normal` and `Unwritable` join the surface, for the entry editor's
+visual view. INV-6 reaches `from_inline` and `write`: each takes its
+delimiters and tags from `MARKS`.
+
 ```python
 def parse(body: str) -> Document              # text in, structure out
 def to_html(doc: Document, photo_src: PhotoSrc, today: date | None = None) -> str

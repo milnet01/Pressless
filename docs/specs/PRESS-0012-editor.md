@@ -326,6 +326,11 @@ A template picked in the same form fills the body, categories and tags
 
 *PRESS-0126 § 4.6 changes the stylesheet links to `builder.stylesheets(folder)`, and serves `/preview/look/` from the Store.*
 
+*Amended by PRESS-0346 § 4.1 and § 4.5:* the page opens in a visual
+view, and the box below is its marks view. A save from the visual view
+posts `blocks` and `removed` in place of `body`, and every reply also
+carries `body` and `outline`.
+
 `GET /edit?slug=<slug>` finds the file:
 
 | What holds `slug` | What opens |

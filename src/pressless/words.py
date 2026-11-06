@@ -581,6 +581,32 @@ _WORDS: dict[str, str] = {
         "Header or Footer when your site is built. Edit the Header or Footer instead."
     ),
     "page_editor.show_code": "Show me the code",
+    # The entry's visual view (PRESS-0346).
+    "editor.show_marks": "Show me the marks",
+    "editor.panel.colour.accent": "Your site's highlight",
+    "editor.panel.colour.muted": "Your site's quieter ink",
+    "editor.panel.colour.picked": "Any colour:",
+    "editor.panel.colour.use": "Use this colour",
+    "editor.panel.photograph": "Photograph",
+    "editor.panel.choose": "Choose a photograph",
+    "editor.panel.marks": "Its marks",
+    "editor.panel.marks_note": (
+        "This part uses marks the page cannot show as you type, such as rainbow letters "
+        "or a number of years worked out for you. Change its marks here."
+    ),
+    "script.entry.kind.paragraph": "Paragraph",
+    "script.entry.kind.photo": "Photograph",
+    "script.entry.kind.quote": "Quotation",
+    "script.entry.nothing": "Click a paragraph, photograph or quotation to change it.",
+    "script.entry.below": "It goes below the part you picked.",
+    "script.entry.end": "It goes at the end of your entry.",
+    "script.entry.unpaired": (
+        "Pressless could not find your entry's paragraphs on the page, so it shows the "
+        "marks instead."
+    ),
+    "script.entry.link_refused": (
+        "A link in an entry needs an address that starts with https:// or http://."
+    ),
     "page_editor.show_visual": "View editor",
     "notice.page_editor.furniture_code_only": (
         "Pressless cannot find where this part of your site starts and ends, so it opens "

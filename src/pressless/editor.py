@@ -59,6 +59,9 @@ PREVIEW_ADDRESS = "/preview/"
 ASSETS_ADDRESS = "/preview/assets/"
 LOOK_ADDRESS = "/preview/look/"     # PRESS-0126: the Store's style code
 ORIGINALS_ADDRESS = "/originals/"
+# PRESS-0346 § 4.1: an entry's two views.
+VISUAL = "visual"
+MARKS = "marks"
 
 
 class ChangedElsewhere(Exception):
@@ -184,6 +187,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/new", route(_new))
     face.add_page("GET", "/edit", route(_edit))
     face.add_page("POST", "/save", route(_save))
+    face.add_page("POST", "/edit/view", route(_view_chosen))
     face.add_page("POST", "/address", route(_address))
     face.add_page("POST", "/discard", route(_discard))
     face.add_page("POST", "/throw", route(_throw))
@@ -591,12 +595,28 @@ def _edit(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
             missing = photographs.missing(folder, entry.body)
     if failure is not None:
         return render_notices(notices) + face.fail(failure, publishing=False)
+    # PRESS-0346 § 4.1: the view asked for, which is remembered, else the one
+    # remembered, else the visual view.
+    asked = request.query.get("view", "")
+    if asked in (VISUAL, MARKS):
+        choices.remember(folder, entry_view=asked)
+    view = asked if asked in (VISUAL, MARKS) else choices.read(folder).entry_view
     return render_notices(notices) + _page(folder, entry, draft, base, preview, preview_failure,
-                                           missing, face.view_site())
+                                           missing, face.view_site(),
+                                           view=MARKS if view == MARKS else VISUAL)
+
+
+def _view_chosen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """PRESS-0346 § 4.1: an in-place switch remembers the view it went to."""
+    view = form_fields(request).get("view", "")
+    if view in (VISUAL, MARKS):
+        choices.remember(folder, entry_view=view)
+    return json_reply({"view": view})
 
 
 def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
-          preview: str | None, failure: str | None, missing: list[str], visit: str) -> str:
+          preview: str | None, failure: str | None, missing: list[str], visit: str,
+          *, view: str = VISUAL) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
 
@@ -629,13 +649,21 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
     pressed = _RUNNING if running else ""
     stylesheets = "".join(f'<link rel="stylesheet" href="{attr(PREVIEW_ADDRESS + sheet)}">'
                           for sheet in builder.stylesheets(folder))
+    # PRESS-0346 § 4.1: one link to each view, the one to the view shown
+    # hidden; the script swaps them.
+    switch = '<p class="nav">' + "".join(
+        f'<a data-switch="{to}" href="{attr(_edit_address(entry.slug) + "&view=" + to)}"'
+        f'{" hidden" if to == view else ""}>{say(key)}</a>'
+        for to, key in ((MARKS, "editor.show_marks"), (VISUAL, "page_editor.show_visual"))
+    ) + "</p>"
     return f"""{stylesheets}
 <p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
 <div class="states">{standing}</div>
+{switch}
 {message_box("notices")}
 <form id="editor" data-slug="{attr(entry.slug)}" data-draft="{'1' if draft else '0'}"
  data-base="{attr(base)}" data-missing="{attr(json.dumps(missing))}"
- data-on-site="{'1' if on_site else '0'}" onsubmit="return false">
+ data-on-site="{'1' if on_site else '0'}" data-view="{attr(view)}" onsubmit="return false">
 <label>{say("editor.title")} <input name="title" value="{attr(entry.title)}"></label>
 <label>{say("editor.categories")} <input name="categories"
  value="{attr(store.LIST_SEPARATOR.join(entry.categories))}"></label>
@@ -646,17 +674,20 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
  {visit}
  <button type="button" data-undo>{say("editor.undo")}</button></p>
 <p id="publish-status" class="press-status" role="status"{pressed}>{attr(said)}</p>
+<p id="photograph-missing" hidden></p>
+{_entry_panel(folder, entry.body, hidden=view == MARKS)}
+<div id="marks-view"{" hidden" if view == VISUAL else ""}>
 <p><button type="button" data-editor="photograph">{say("editor.add_photograph")}</button>
  <input type="file" id="photograph-file" hidden
  accept="{photographs.ACCEPT}">
  <span id="photograph-status"></span></p>
-<p id="photograph-missing" hidden></p>
 <textarea name="body" class="{attr(builder.BODY_CLASS)}" rows="24">
 {html.escape(entry.body)}</textarea>
+{cheatsheet.panel()}
+</div>
 <p><button type="button" data-editor="throw">{
  say("script.editor.throw_entry" if on_site else "editor.throw_draft")}</button></p>
 </form>
-{cheatsheet.panel()}
 {message_box("failure", (failure or "") + (ended or ""), forgets=True)}
 {message_box("address-hint", focus="address")}
 <div id="undo-result"></div>
@@ -664,7 +695,90 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(preview or 'about:blank')}"></iframe></div>
 <script>{_EDITOR_SCRIPT}</script>
+<script>{TYPING_SCRIPT}</script>
+<script>{_VISUAL_SCRIPT}</script>
 <script>{_UNDO_SCRIPT}</script>"""
+
+
+def script_json(payload: object) -> str:
+    """JSON for an inline `<script type="application/json">` block, with every
+    character that could open an HTML tag or comment escaped, so user content
+    carried in it cannot break out of the element (OWASP A03 / CWE-116). A
+    `</script>`, a `<!--` and a `<script` all begin with `<`, so escaping `<`
+    (and `>`/`&` with it) closes the hole the bare `</` replacement left open."""
+    return (json.dumps(payload)
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+
+
+def _colours() -> dict:
+    """§ 4.4: the colour marks as the page writes them, from their own rows,
+    so the script keeps a colour span exactly as `to_html` wrote it."""
+    named, held = {}, "\x00"
+    picked = None
+    for row in marks.MARKS:
+        if row.kind != "wrap" or row.content != "marks":
+            continue
+        opening = row.render(marks.Span(row.name, held if row.arg else None, ()), "", str)
+        found = re.fullmatch(r'<span style="([^"]*)">', opening.partition("</")[0])
+        if found is None:
+            continue
+        if row.arg is None:
+            named[row.name] = html.unescape(found.group(1))
+        else:
+            picked = {"prefix": found.group(1).partition(held)[0], "pattern": row.arg}
+    return {"named": named, "picked": picked}
+
+
+def _entry_panel(folder: Path, body: str, *, hidden: bool) -> str:
+    """PRESS-0346 § 4.3: the side panel, every control in place from the
+    start; the script shows the ones the picked block uses, inside a panel of
+    fixed size, so nothing beside it moves."""
+    def attr(value: str) -> str:
+        return html.escape(value, quote=True)
+
+    link_row = next(row for row in marks.MARKS if row.name == "link")
+    data = script_json({
+        "blocks": outline(body), "body_class": builder.BODY_CLASS,
+        "originals": ORIGINALS_ADDRESS, "link": link_row.arg, "colours": _colours(),
+    })
+    kinds = "".join(f'<option value="{kind}">{say(words)}</option>'
+                    for kind, words in _KIND_WORDS.items())
+    names = "".join(f'<option value="{attr(name)}">{html.escape(name)}</option>'
+                    for name in store.list_photographs(folder))
+    named = "".join(f'<button type="button" data-colour="{attr(name)}">'
+                    f'{say(_COLOUR_WORDS[name])}</button>'
+                    for name in _colours()["named"])
+    return f"""<aside id="panel" aria-label="{attr(say("page_editor.panel.title"))}"{
+        " hidden" if hidden else ""}>
+<script type="application/json" id="blocks">{data}</script>
+<p id="picked" role="status">{say("script.entry.nothing")}</p>
+<div class="panel-add"><label>{say("page_editor.panel.add")}
+ <select id="add-kind">{kinds}</select></label>
+<button type="button" data-act="add">{say("page_editor.panel.add_button")}</button>
+<p id="add-where">{say("script.entry.end")}</p></div>
+<div class="panel-row" data-for="typed">
+<button type="button" data-act="bold"><b>{say("page_editor.panel.bold")}</b></button>
+<button type="button" data-act="italic"><i>{say("page_editor.panel.italic")}</i></button>
+<button type="button" data-act="link">{say("page_editor.panel.link")}</button></div>
+<div class="panel-row" data-for="typed">{named}
+<label>{say("editor.panel.colour.picked")} <input type="color" id="picked-colour"
+ value="#c0453a"></label>
+<button type="button" data-act="colour">{say("editor.panel.colour.use")}</button></div>
+<label data-for="photo">{say("editor.panel.photograph")} <select data-field="name">
+<option value="">{say("editor.panel.choose")}</option>{names}</select></label>
+<p data-for="photo"><button type="button" data-act="photograph">{
+    say("editor.add_photograph")}</button>
+<input type="file" id="panel-photograph-file" hidden accept="{photographs.ACCEPT}"></p>
+<label data-for="photo">{say("page_editor.panel.caption")}
+ <input data-field="caption" autocomplete="off"></label>
+<p data-for="marks">{say("editor.panel.marks_note")}</p>
+<label data-for="marks">{say("editor.panel.marks")}
+<textarea data-field="marks" rows="8" spellcheck="false"></textarea></label>
+<p class="panel-row"><button type="button" data-act="up">{say("page_editor.panel.move_up")}</button>
+<button type="button" data-act="down">{say("page_editor.panel.move_down")}</button>
+<button type="button" data-act="remove">{say("page_editor.panel.remove")}</button></p>
+<p id="panel-said" role="status"></p>
+</aside>"""
 
 
 def _address_field(slug: str, *, hidden: bool) -> str:
@@ -711,8 +825,11 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
 
 # ------------------------------------------- the visual view (PRESS-0346) ---
 
-VISUAL = "visual"
-MARKS = "marks"
+# Each block's name on the screen; the script reads the same keys by kind.
+_KIND_WORDS = {"paragraph": "script.entry.kind.paragraph", "photo": "script.entry.kind.photo",
+               "quote": "script.entry.kind.quote"}
+# The named colour marks' buttons (§ 4.3), by the mark each writes.
+_COLOUR_WORDS = {"accent": "editor.panel.colour.accent", "muted": "editor.panel.colour.muted"}
 _KIND_OF = {row.kind: row.name for row in marks.MARKS if row.kind in ("block", "prefix")}
 _TYPED = {row.name for row in marks.MARKS if row.kind == "wrap" and row.content == "marks"}
 
@@ -1132,6 +1249,519 @@ window.presslessSaving = (send, waiting) => {
 """
 
 
+# PRESS-0260 § 4.4's reading of typed words, shared by both visual views: the
+# page editor's and the entry's (PRESS-0346 § 4.4). The words are read from
+# the element's nodes, never from innerHTML, and a paste is its plain text.
+TYPING_SCRIPT = r"""
+window.presslessTyping = (() => {
+  const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/ /g, " ");
+  // blocks.address_allowed's rule, which the save holds to: the scheme read as
+  // a browser reads it, outer spaces and controls stripped, tabs and line
+  // breaks removed (PRESS-0306).
+  const allowed = (href) => {
+    const folded = href.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, "").replace(/[\t\n\r]/g, "");
+    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(folded);
+    return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase());
+  };
+  // `linkable` says which addresses a link may keep; `keep`, where given,
+  // returns the tags to write for an element other words keep, such as the
+  // entry editor's colour spans, or null.
+  function inline(element, {linkable = allowed, keep = () => null} = {}) {
+    let out = "";
+    const walk = (parent, linked) => {
+      for (const child of parent.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) { out += text(child.data); continue; }
+        if (child.nodeType !== Node.ELEMENT_NODE) continue;
+        const tag = child.localName;
+        const href = child.getAttribute("href");
+        if (tag === "br") {
+          out += "<br>";
+        } else if (tag === "b" || tag === "strong" || tag === "i" || tag === "em") {
+          const written = tag === "b" || tag === "strong" ? "strong" : "em";
+          wrap("<" + written + ">", "</" + written + ">", child, linked);
+        } else if (tag === "a" && !linked && href && linkable(href)) {
+          wrap('<a href="' + text(href).replace(/"/g, "&quot;") + '">', "</a>", child, true);
+        } else if (keep(child)) {
+          wrap(...keep(child), child, linked);
+        } else {
+          walk(child, linked);
+        }
+      }
+    };
+    // An emptied Bold or Italic, as a split at its edge leaves, is dropped.
+    const wrap = (opening, closing, child, linked) => {
+      const at = out.length;
+      walk(child, linked);
+      out = out.length === at ? out : out.slice(0, at) + opening + out.slice(at) + closing;
+    };
+    walk(element, false);
+    return out.replace(/<br>$/, "");
+  }
+
+  function paste(doc, event) {
+    event.preventDefault();
+    const words = (event.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " ");
+    doc.execCommand("insertText", false, words);
+  }
+  return {text, allowed, inline, paste};
+})();
+"""
+
+
+# PRESS-0346: the entry's visual view. The frame is the Builder's preview and
+# runs no script; this one reaches into it, finds the body's blocks by
+# position (§ 4.2), and makes the picked one typeable. What it posts is the
+# blocks, kept by index or built anew (§ 4.5); _EDITOR_SCRIPT saves it.
+_VISUAL_SCRIPT = r"""
+(() => {
+  const form = document.getElementById("editor");
+  const frame = document.getElementById("preview");
+  const panel = document.getElementById("panel");
+  const given = JSON.parse(document.getElementById("blocks").textContent);
+  const {text, inline, paste} = window.presslessTyping;
+  // § 4.3: a link takes only an address the link mark takes.
+  const LINK = new RegExp(given.link);
+  const linkable = (href) => LINK.test(href);
+  // § 4.4: a colour span is kept exactly as to_html wrote it.
+  const NAMED = Object.values(given.colours.named);
+  const PICKED = given.colours.picked;
+  const colour = (style) => style !== null && (NAMED.includes(style) || (PICKED !== null
+    && style.startsWith(PICKED.prefix)
+    && new RegExp(PICKED.pattern).test(style.slice(PICKED.prefix.length))));
+  const keep = (element) => {
+    const style = element.localName === "span" ? element.getAttribute("style") : null;
+    return colour(style)
+      ? ['<span style="' + text(style).replace(/"/g, "&quot;") + '">', "</span>"] : null;
+  };
+  const words = (element) => inline(element, {linkable, keep});
+
+  // ---- the model -------------------------------------------------------
+  // One item per block, in order. `index` is its place in the file as last
+  // written, or null for one not written yet; `edited` says its marks were
+  // changed in the panel's box.
+  let rev = 0;
+  const model = [];
+  let removed = [];
+  let picked = null, editing = null, waitingPreview = null, selected = null;
+  const node = (block, index) => ({kind: block.kind, typed: block.typed, marks: block.marks,
+    name: block.name || "", caption: block.caption || "", index, changed: index === null,
+    edited: false, rev: 0, el: null, held: null});
+  function open(blocks) {
+    if (picked) show(null, false);
+    model.length = 0;
+    removed = [];
+    editing = waitingPreview = null;
+    (blocks || given.blocks).forEach((block, at) => model.push(node(block, at)));
+  }
+  open(given.blocks);
+  const changed = () => window.presslessEntryPage.changed();
+  const touch = (item) => { item.changed = true; item.rev = ++rev; changed(); };
+  const typeable = (item) => item && item.kind !== "photo" && item.typed && !item.edited;
+
+  // ---- what is posted (§ 4.5) ------------------------------------------
+  const empty = (item) => item.kind === "photo" ? !item.name
+    : typeable(item) && item.el !== null && !item.el.textContent.trim();
+  // A quotation's paragraphs; words typed loose in it, as a browser may
+  // leave them, are a paragraph of their own.
+  const quoted = (element) => {
+    const parts = [];
+    let loose = null;
+    for (const child of element.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE && ["p", "div"].includes(child.localName)) {
+        parts.push(child);
+        loose = null;
+      } else {
+        if (!loose) parts.push(loose = element.ownerDocument.createElement("p"));
+        loose.append(child.cloneNode(true));
+      }
+    }
+    return parts.map(words);
+  };
+  function itemOf(item) {
+    if (!item.changed && item.index !== null) return {keep: item.index};
+    if (item.edited) return {marks: item.marks};
+    if (item.kind === "photo") return {photo: item.name, caption: item.caption};
+    if (item.kind === "quote") return {quote: quoted(item.el)};
+    return {paragraph: words(item.el)};
+  }
+  function post() {
+    // An emptied block is posted as removed, and waits on the page to be typed in.
+    const sent = model.filter((item) => !(item.changed && empty(item)));
+    const revs = new Map(model.map((item) => [item, item.rev]));
+    const gone = removed.filter((item) => item.index !== null);
+    const named = [...gone.map((item) => item.index), ...model
+      .filter((item) => item.changed && item.index !== null).map((item) => item.index)];
+    return {
+      blocks: JSON.stringify(sent.map(itemOf)),
+      removed: JSON.stringify(named),
+      saved(reply) {
+        removed = removed.filter((item) => !gone.includes(item));
+        if (reply.outline.length !== sent.length) {
+          // A marks box written as more or fewer blocks: open the body afresh.
+          open(reply.outline);
+          rebuild(reply.preview);
+          return;
+        }
+        model.forEach((item) => { if (!sent.includes(item)) item.index = null; });
+        sent.forEach((item, at) => {
+          item.index = at;
+          if (revs.get(item) !== item.rev) return;
+          const block = reply.outline[at];
+          Object.assign(item, {changed: false, edited: false, kind: block.kind,
+                               typed: block.typed, marks: block.marks});
+        });
+        if (picked) fill();
+        if (reply.preview) rebuild(reply.preview);
+      },
+    };
+  }
+
+  // ---- the frame (§ 4.2) -----------------------------------------------
+  const STYLE = "[data-pressless-picked]{box-shadow:0 0 0 3px #e9a23b}"
+    + "[data-pressless-empty]:empty::before{content:attr(data-pressless-empty);opacity:.5}";
+  const bodyOf = (doc) => [...doc.querySelectorAll("[class]")]
+    .find((element) => element.getAttribute("class") === given.body_class) || null;
+  function made(doc, item) {
+    if (item.kind === "photo") {
+      const figure = doc.createElement("figure");
+      figure.append(doc.createElement("img"));
+      return figure;
+    }
+    const element = doc.createElement(item.kind === "quote" ? "blockquote" : "p");
+    if (item.kind === "quote") element.append(doc.createElement("p"));
+    return element;
+  }
+  function photo(item) {
+    const image = item.el && item.el.querySelector("img");
+    if (!image) return;
+    if (item.name) image.src = given.originals + encodeURIComponent(item.name);
+    image.alt = item.caption;
+  }
+  function pair() {
+    const doc = frame.contentDocument;
+    // The frame's first, empty document is not the preview yet.
+    if (!doc || !doc.body || doc.URL === "about:blank" || form.dataset.view !== "visual") return;
+    // A preview that failed shows its failure, not an entry; a save rebuilds it.
+    const holder = bodyOf(doc);
+    if (!holder) return;
+    const shown = [...holder.children];
+    const held = model.filter((item) => item.index !== null);
+    if (shown.length !== held.length || held.some((item) => item.index >= shown.length)) {
+      window.presslessEntryPage.switchTo("marks", say("script.entry.unpaired"));
+      return;
+    }
+    const style = doc.createElement("style");
+    style.textContent = STYLE;
+    doc.head.appendChild(style);
+    for (const item of model) {
+      item.el = item.index !== null ? shown[item.index] : made(doc, item);
+      // What was typed since the save outlives the frame it was typed in.
+      if (item.changed && item.held !== null) item.el.innerHTML = item.held;
+      if (item.changed && item.kind === "photo") photo(item);
+      holder.append(item.el);
+    }
+    // A body with nothing in it offers one empty paragraph to type into.
+    if (!model.length) addAfter(null, "paragraph", false);
+    doc.addEventListener("click", clicked, true);
+    doc.addEventListener("keydown", keyed);
+    doc.addEventListener("input", typed);
+    doc.addEventListener("paste", pasted);
+    doc.addEventListener("selectionchange", () => {
+      const chosen = doc.getSelection();
+      if (picked && picked.el && chosen.rangeCount && !chosen.isCollapsed
+          && picked.el.contains(chosen.anchorNode)) selected = chosen.getRangeAt(0).cloneRange();
+    });
+    doc.addEventListener("focusout", () => { editing = null; setTimeout(settled, 0); });
+    doc.addEventListener("focusin", (event) => {
+      editing = picked && picked.el && picked.el.contains(event.target) ? picked : null;
+    });
+    if (picked) show(picked, false);
+  }
+  // § 4.5: never rebuilt while the caret is in a block.
+  function rebuild(address) {
+    waitingPreview = address ? address + "?n=" + Date.now() : frame.src;
+    settled();
+  }
+  function settled() {
+    if (editing || !waitingPreview) return;
+    for (const item of model) item.held = item.changed && item.el ? item.el.innerHTML : null;
+    const scrolled = frame.contentWindow ? frame.contentWindow.scrollY : 0;
+    frame.addEventListener("load", () => frame.contentWindow.scrollTo(0, scrolled),
+                           {once: true});
+    frame.src = waitingPreview;
+    waitingPreview = null;
+  }
+  frame.addEventListener("load", pair);
+  if (frame.contentDocument && frame.contentDocument.readyState === "complete"
+      && frame.contentDocument.body) pair();
+
+  // ---- picking, and the side panel (§ 4.3) -----------------------------
+  function clicked(event) {
+    event.preventDefault();
+    const found = model.find((item) => item.el && item.el.contains(event.target)) || null;
+    if (found !== picked) show(found, Boolean(found));
+  }
+  function letGo(event) {
+    if (event.key !== "Escape" || !picked) return false;
+    event.preventDefault();
+    show(null, false);
+    return true;
+  }
+  panel.addEventListener("keydown", letGo);
+  function show(item, focus) {
+    if (picked && picked.el) {
+      picked.el.removeAttribute("contenteditable");
+      picked.el.removeAttribute("data-pressless-picked");
+    }
+    picked = item;
+    selected = null;
+    if (picked && picked.el) {
+      picked.el.setAttribute("data-pressless-picked", "");
+      if (typeable(picked)) {
+        picked.el.setAttribute("contenteditable", "true");
+        const empty = picked.kind === "quote" ? picked.el.querySelector("p") : picked.el;
+        if (empty) empty.setAttribute("data-pressless-empty",
+                                      say("script.entry.kind." + picked.kind));
+        if (focus) {
+          picked.el.focus();
+          // The caret goes in a quotation's paragraph, never beside it.
+          if (empty && empty !== picked.el && !picked.el.textContent) {
+            picked.el.ownerDocument.getSelection().collapse(empty, 0);
+          }
+        }
+      }
+    }
+    fill();
+  }
+  const field = (name) => panel.querySelector("[data-field=" + name + "]");
+  const act = (name) => panel.querySelector("[data-act=" + name + "]");
+  function fill() {
+    const part = !picked ? "" : picked.kind === "photo" ? "photo"
+      : typeable(picked) ? "typed" : "marks";
+    panel.querySelectorAll("[data-for]").forEach((shown) => {
+      shown.hidden = shown.dataset.for !== part;
+    });
+    document.getElementById("picked").textContent = picked
+      ? say("script.visual.picked", {kind: say("script.entry.kind." + picked.kind)})
+      : say("script.entry.nothing");
+    document.getElementById("panel-said").textContent = "";
+    if (picked) {
+      field("name").value = picked.name;
+      field("caption").value = picked.caption;
+      field("marks").value = picked.marks;
+    }
+    const at = model.indexOf(picked);
+    act("up").disabled = !picked || at <= 0;
+    act("down").disabled = !picked || at >= model.length - 1;
+    act("remove").disabled = !picked;
+    document.getElementById("add-where").textContent =
+      say(picked ? "script.entry.below" : "script.entry.end");
+  }
+  panel.addEventListener("input", (event) => {
+    // The panel says what changed itself, so choosing a colour to use, or a
+    // kind to add, saves nothing.
+    event.stopPropagation();
+    const name = event.target.dataset.field;
+    if (!picked || !name) return;
+    if (name === "marks") {
+      picked.marks = event.target.value;
+      picked.edited = true;
+    } else {
+      picked[name] = event.target.value;
+      photo(picked);
+    }
+    touch(picked);
+  });
+
+  // Bold, Italic, Link and the colours keep the caret in the frame.
+  panel.querySelectorAll("[data-act=bold], [data-act=italic], [data-act=link], "
+                         + "[data-colour], [data-act=colour]").forEach((button) => {
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+  });
+  ["bold", "italic", "link"].forEach((name) => {
+    act(name).addEventListener("click", () => format(name));
+  });
+  function format(name) {
+    if (!typeable(picked) || !picked.el) return;
+    const doc = frame.contentDocument;
+    if (name === "link") {
+      const address = window.prompt(say("script.visual.ask_link"), "https://");
+      if (!address) return;
+      if (!linkable(address)) {
+        document.getElementById("panel-said").textContent = say("script.entry.link_refused");
+        return;
+      }
+      if (doc.getSelection().isCollapsed) {
+        doc.execCommand("insertHTML", false, '<a href="' + text(address).replace(/"/g, "&quot;")
+          + '">' + text(address) + "</a>");
+      } else {
+        doc.execCommand("createLink", false, address);
+      }
+    } else {
+      doc.execCommand(name);
+    }
+    touch(picked);
+  }
+  // § 4.4: a colour wraps the words picked in the span its mark writes.
+  function paint(style) {
+    if (!typeable(picked) || !selected || selected.collapsed) return;
+    const doc = frame.contentDocument;
+    const span = doc.createElement("span");
+    span.setAttribute("style", style);
+    span.append(selected.extractContents());
+    selected.insertNode(span);
+    selected = null;
+    touch(picked);
+  }
+  panel.querySelectorAll("[data-colour]").forEach((button) => {
+    button.addEventListener("click", () => paint(given.colours.named[button.dataset.colour]));
+  });
+  act("colour").addEventListener("click", () => {
+    if (PICKED) paint(PICKED.prefix + document.getElementById("picked-colour").value);
+  });
+
+  // ---- adding, moving, removing ----------------------------------------
+  function addAfter(at, kind, focus) {
+    const item = node({kind, typed: true, marks: ""}, null);
+    model.splice(at ? model.indexOf(at) + 1 : model.length, 0, item);
+    const doc = frame.contentDocument;
+    const holder = doc && bodyOf(doc);
+    if (holder) {
+      item.el = made(doc, item);
+      if (at && at.el) at.el.after(item.el); else holder.append(item.el);
+    }
+    show(item, focus);
+    return item;
+  }
+  act("add").addEventListener("click", () => {
+    addAfter(picked, document.getElementById("add-kind").value, true);
+  });
+  function move(by) {
+    if (!picked) return;
+    const at = model.indexOf(picked), to = at + by;
+    if (to < 0 || to >= model.length) return;
+    const other = model[to];
+    model.splice(at, 1);
+    model.splice(to, 0, picked);
+    if (picked.el && other.el) {
+      if (by < 0) other.el.before(picked.el); else other.el.after(picked.el);
+    }
+    changed();
+    fill();
+  }
+  act("up").addEventListener("click", () => move(-1));
+  act("down").addEventListener("click", () => move(1));
+  function drop(item) {
+    model.splice(model.indexOf(item), 1);
+    if (item.index !== null) removed.push(item);
+    if (item.el) item.el.remove();
+    changed();
+  }
+  act("remove").addEventListener("click", () => {
+    if (!picked) return;
+    const gone = picked;
+    show(null, false);
+    drop(gone);
+    fill();
+  });
+
+  // ---- typing (§ 4.4) --------------------------------------------------
+  function typed(event) {
+    if (picked && picked.el && picked.el.contains(event.target)) touch(picked);
+  }
+  function pasted(event) {
+    if (typeable(picked) && picked.el) paste(frame.contentDocument, event);
+  }
+  function keyed(event) {
+    if (letGo(event)) return;
+    if (!typeable(picked) || !picked.el || !picked.el.contains(event.target)) return;
+    const doc = frame.contentDocument;
+    const selection = doc.getSelection();
+    if ((event.ctrlKey || event.metaKey) && ["b", "i", "k"].includes(event.key.toLowerCase())) {
+      event.preventDefault();
+      format({b: "bold", i: "italic", k: "link"}[event.key.toLowerCase()]);
+      return;
+    }
+    if (event.key === "Enter" && event.shiftKey) {
+      event.preventDefault();
+      doc.execCommand("insertLineBreak");
+      return;
+    }
+    if (event.key === "Enter" && picked.kind === "quote") {
+      // In a quotation, a new paragraph of the same quotation.
+      event.preventDefault();
+      doc.execCommand("insertParagraph");
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const rest = doc.createRange();
+      rest.setStart(range.startContainer, range.startOffset);
+      rest.setEnd(picked.el, picked.el.childNodes.length);
+      const after = rest.extractContents();
+      touch(picked);
+      const item = addAfter(picked, "paragraph", true);
+      if (item.el) {
+        item.el.append(...[...after.childNodes].filter((part) => part.textContent !== ""
+                                                        || part.nodeName === "BR"));
+        selection.collapse(item.el, 0);
+      }
+      touch(item);
+      return;
+    }
+    if (event.key === "Backspace" && picked.kind === "paragraph" && selection.isCollapsed
+        && selection.rangeCount) {
+      const head = doc.createRange();
+      head.setStart(picked.el, 0);
+      head.setEnd(selection.anchorNode, selection.anchorOffset);
+      if (head.toString() !== "" || head.cloneContents().querySelector("br, img")) return;
+      const above = model[model.indexOf(picked) - 1];
+      if (!above || above.kind !== "paragraph" || !typeable(above) || !above.el) return;
+      event.preventDefault();
+      const joined = above.el.childNodes.length;
+      above.el.append(...picked.el.childNodes);
+      const gone = picked;
+      touch(above);
+      show(above, true);
+      drop(gone);
+      selection.collapse(above.el, joined);
+    }
+  }
+
+  // ---- a photograph Pressless holds (§ 4.3) ------------------------------
+  const chooser = document.getElementById("panel-photograph-file");
+  act("photograph").addEventListener("click", () => { chooser.value = ""; chooser.click(); });
+  chooser.addEventListener("change", async () => {
+    const file = chooser.files[0];
+    if (!file || !picked || picked.kind !== "photo") return;
+    const answer = await fetch("/photograph?name=" + encodeURIComponent(file.name),
+                               {method: "POST", body: file});
+    const reply = await answer.text();
+    if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
+    const name = JSON.parse(reply).name;
+    if (![...field("name").options].some((option) => option.value === name)) {
+      field("name").append(new Option(name, name));
+    }
+    field("name").value = name;
+    picked.name = name;
+    photo(picked);
+    touch(picked);
+  });
+
+  window.presslessEntry = {
+    post, open,
+    letGo: () => show(null, false),
+    reload: () => rebuild(null),
+  };
+  fill();
+})();
+"""
+
+
 # The entry's script (§ 4.7). A change saves about a second after the last one,
 # never two saves at once, and on leaving only where a change is unsaved. Its
 # twin is page_editor._PAGE_SCRIPT: a fix to how either saves or presses is
@@ -1143,13 +1773,35 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
   const status = document.getElementById("save-status");
   let dirty = false, stopped = false;
 
-  const fields = () => {
+  // PRESS-0346 § 4.5: the visual view's snapshot of the body, or null in
+  // the marks view, where the box is posted.
+  const posting = () => form.dataset.view === "visual" && window.presslessEntry
+    ? window.presslessEntry.post() : null;
+  const fields = (posted = posting()) => {
     const data = new URLSearchParams();
     data.set("slug", state.slug); data.set("draft", state.draft); data.set("base", state.base);
-    for (const name of ["title", "categories", "tags", "body"]) {
+    for (const name of ["title", "categories", "tags"]) {
       data.set(name, form.elements[name].value);
     }
+    if (posted) {
+      data.set("view", "visual");
+      data.set("blocks", posted.blocks);
+      data.set("removed", posted.removed);
+    } else {
+      data.set("body", form.elements.body.value);
+    }
     return data;
+  };
+  // The body as last written and its outline, which a switch opens from.
+  const box = form.elements.body;
+  let latest = {body: box.value, outline: null};
+  const written = (reply, posted) => {
+    if (!("body" in reply)) return;
+    latest = {body: reply.body, outline: reply.outline};
+    if (posted) {
+      box.value = reply.body;
+      posted.saved(reply);
+    }
   };
   // PRESS-0339: while a press runs, its words stay on the status line.
   let pressing = false;
@@ -1210,13 +1862,15 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
   async function send() {
     dirty = false; status.textContent = say("script.editor.saving");
     try {
-      const answer = await fetch("/save", {method: "POST", body: fields()});
+      const posted = posting();
+      const answer = await fetch("/save", {method: "POST", body: fields(posted)});
       const text = await answer.text();
       if (answer.status !== 200) { stop(text); return; }
       const reply = JSON.parse(text);
       adopt(reply);
       document.getElementById("failure").innerHTML = reply.failure || "";
-      if (reply.preview) {
+      written(reply, posted);
+      if (reply.preview && !posted) {
         document.getElementById("preview").src = reply.preview + "?n=" + Date.now();
       }
       status.textContent = say("script.editor.saved");
@@ -1229,9 +1883,10 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
   const {schedule, settle, release, sending} =
     window.presslessSaving(send, () => dirty && !stopped);
 
+  const changed = () => { dirty = true; schedule(); };
   form.addEventListener("input", (event) => {
     if (event.target.name === "address") return;
-    dirty = true; schedule();
+    changed();
   });
   window.presslessLeaving("/save", fields, () => !stopped && dirty, sending);
 
@@ -1256,7 +1911,8 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
     }
     said.textContent = say("script.press.publishing");
     try {
-      const body = fields();
+      const posted = posting();
+      const body = fields(posted);
       dirty = false;
       const answer = await fetch("/publish", {method: "POST", body: body});
       const text = await answer.text();
@@ -1265,6 +1921,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
       // Another press runs: nothing was saved, so the change is still to save.
       if (window.presslessPress.busy(reply)) { dirty = true; return; }
       adopt(reply);
+      written(reply, posted);
       document.getElementById("failure").innerHTML = reply.failure || "";
       said.textContent = reply.published
         ? say("script.press.published") : say("script.press.not_published");
@@ -1278,9 +1935,45 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
     }
   });
 
+  // PRESS-0346 § 4.1: the switch changes view in place. What was typed is
+  // saved first, and the other view opens from the body as written.
+  const views = {marks: document.getElementById("marks-view"),
+                 visual: document.getElementById("panel")};
+  async function switchTo(to, notice) {
+    if (to === form.dataset.view) return;
+    await settle(true);
+    release();
+    if (stopped) return;
+    if (to === "marks") window.presslessEntry.letGo();
+    form.dataset.view = to;
+    document.querySelectorAll("a[data-switch]").forEach((link) => {
+      link.hidden = link.dataset.switch === to;
+    });
+    for (const [view, part] of Object.entries(views)) part.hidden = view !== to;
+    if (to === "marks") {
+      box.value = latest.body;
+    } else {
+      window.presslessEntry.open(latest.outline);
+      window.presslessEntry.reload();
+    }
+    if (notice) {
+      document.getElementById("notices").replaceChildren(
+        Object.assign(document.createElement("p"), {textContent: notice}));
+    } else {
+      fetch("/edit/view", {method: "POST", body: new URLSearchParams({view: to})})
+        .catch(() => {});
+    }
+  }
+  document.querySelectorAll("a[data-switch]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      switchTo(link.dataset.switch);
+    });
+  });
+  window.presslessEntryPage = {changed, switchTo};
+
   // PRESS-0016: the chosen file is kept as an original, and its picture mark
   // goes on a line of its own where he was typing.
-  const box = form.elements["body"];
   const picker = document.getElementById("photograph-file");
   const photoSaid = document.getElementById("photograph-status");
   let caret = null;

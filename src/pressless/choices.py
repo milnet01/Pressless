@@ -25,6 +25,7 @@ class Choices:
     page: tuple[str, str] | None = None  # (kind, name) last opened in the page editor
     shown_on: str = ""                   # the page the furniture was last shown on
     view: str = ""                       # the view a page was last switched to
+    entry_view: str = ""                 # the view an entry was last switched to (PRESS-0346)
     true_colours: bool = False           # the preview's true-colours switch
 
 
@@ -40,10 +41,11 @@ def read(folder: Path) -> Choices:
     if not (isinstance(page, list) and len(page) == 2
             and all(isinstance(part, str) and part for part in page)):
         page = None
-    shown_on, view = data.get("shown_on"), data.get("view")
+    shown_on, view, entry_view = data.get("shown_on"), data.get("view"), data.get("entry_view")
     return Choices(page=tuple(page) if page else None,
                    shown_on=shown_on if isinstance(shown_on, str) else "",
                    view=view if isinstance(view, str) else "",
+                   entry_view=entry_view if isinstance(entry_view, str) else "",
                    true_colours=data.get("true_colours") is True)
 
 

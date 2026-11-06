@@ -198,7 +198,9 @@ def run(origin: str, secret: str, folder: Path) -> None:
         # The token link authenticates at the root and redirects WITHOUT the
         # query, so visit it first for the cookie, then the editor page.
         page.goto(f"{origin}/?t={secret}", wait_until="networkidle")
-        page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+        # PRESS-0346: these rows type into the marks view's box, which is
+        # remembered from here on; the entry's visual view has rows of its own.
+        page.goto(f"{origin}/edit?slug=seaside&view=marks", wait_until="networkidle")
 
         # The inline rows down to PRESS-0182's keep coming back to one
         # entry, seaside, and change it in order: a draft, then pressed
@@ -207,7 +209,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         # left, so a new row goes where that state is the one it needs.
 
         # ---- PRESS-0012 s4.7: the page's shape -------------------------------
-        box = page.locator("textarea")
+        box = page.locator("textarea[name=body]")
         check("PRESS-0012 s4.7: the box is a textarea", box.count() == 1,
               f"count={box.count()}")
         check("PRESS-0012 s4.7: the preview is a sandboxed iframe",
@@ -275,7 +277,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         page.click("text=New entry")
         page.wait_for_load_state("networkidle")
         poem = next(s for s in templates.starters() if s.slug == "poem").body
-        typed = page.locator("textarea").input_value()
+        typed = page.locator("textarea[name=body]").input_value()
         check("PRESS-0017 s7: picking the poem opens a draft holding it",
               typed == poem and "/edit?slug=rain" in page.url, page.url)
         page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
@@ -392,7 +394,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
               and "This entry is on your site." in pressed,
               repr(_snip(pressed, "on your site")))
         # The page is a published entry's from here: its next save makes a proof.
-        page.locator("textarea").type(" More.", delay=10)
+        page.locator("textarea[name=body]").type(" More.", delay=10)
         page.wait_for_timeout(2500)
         proofed = page.inner_text("body")
         check("PRESS-0185: the next save on that page shows a proof's line and no address",
@@ -466,7 +468,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
                   page.locator("dialog.message[open]").count() == 1)
             page.locator("dialog.message[open]").get_by_role(
                 "button", name="OK", exact=True).click()
-            page.locator("textarea").type(" Again.", delay=10)
+            page.locator("textarea[name=body]").type(" Again.", delay=10)
             page.wait_for_timeout(2500)
 
         # ---- PRESS-0182: a published entry changes address, asked first ------
@@ -499,7 +501,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
               and store.read_forwards(folder) == {"harbour": "harbour-moved"}
               and "slug=harbour-moved" in page.url,
               f"{store.read_forwards(folder)!r} {page.url.split('?')[-1]}")
-        page.locator("textarea").type(" More.", delay=10)
+        page.locator("textarea[name=body]").type(" More.", delay=10)
         page.wait_for_timeout(2500)
         check("PRESS-0182: once a save makes a proof, the address is hidden",
               editor.working_copy(folder, "harbour-moved") is not None
@@ -522,7 +524,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
               page.locator("#address").is_visible()
               and address.input_value() == "harbour-moved",
               address.input_value() if address.count() else "no field")
-        page.locator("textarea").type(" Again.", delay=10)
+        page.locator("textarea[name=body]").type(" Again.", delay=10)
         page.wait_for_timeout(2500)
         hidden = page.locator("#address").is_hidden()
         press(page, page.get_by_role("button", name="Press to site", exact=True))
@@ -536,7 +538,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         page.fill("input[name=title]", "Gull")
         page.click("text=New entry")
         page.wait_for_load_state("networkidle")
-        page.locator("textarea").type("Unsaved", delay=10)
+        page.locator("textarea[name=body]").type("Unsaved", delay=10)
         page.once("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Throw this draft away", exact=True).click()
         page.wait_for_url(f"{origin}/", timeout=5000)
@@ -548,6 +550,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         # Order matters here: code_colours and true_colours_kept open the
         # page "visual", which only visual_editor writes.
         visual_editor(page, origin, folder)
+        entry_visual_editor(page, origin, folder)
         code_colours(page, origin)
         true_colours_kept(page, origin)
         text_sizes(page, origin)
@@ -1022,6 +1025,105 @@ def visual_editor(page, origin: str, folder: Path) -> None:
           "unpicks it", escaped == outside == in_panel == nothing,
           f"{escaped!r} {outside!r} {in_panel!r}")
     check("PRESS-0260: the visual view raised no script error", not errors, str(errors))
+
+
+def entry_visual_editor(page, origin: str, folder: Path) -> None:
+    """PRESS-0346 s10: typing an entry on the page saves marks."""
+    store.write(folder, tp._entry("typed", body="First words.\n\n"
+                                  "Since {years_since: 2010-01-01} years."), draft=True)
+    path = store.path_for(folder, "typed", draft=True)
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+
+    def body() -> str:
+        return store.read(path).body
+
+    # The page left last saves on leaving, and rebuilds the one preview folder.
+    page.goto("about:blank")
+    page.wait_for_timeout(1500)
+    page.goto(f"{origin}/edit?slug=typed&view=visual", wait_until="networkidle")
+    frame = page.frame_locator("#preview")
+    frame.locator("p", has_text="First words.").click()
+    picked = page.locator("#picked").text_content()
+    check("PRESS-0346 s4.3: a click picks the paragraph and the panel names it",
+          picked == "Changing: Paragraph", picked)
+    page.keyboard.press("End")
+    page.keyboard.type(" More ")
+    page.keyboard.press("Control+b")
+    page.keyboard.type("bold")
+    page.keyboard.press("Control+b")
+    page.keyboard.type(" and ")
+    page.keyboard.press("Control+i")
+    page.keyboard.type("soft")
+    page.keyboard.press("Control+i")
+    wait_for_save(page)
+    check("PRESS-0346 INV-7: Bold and Italic save as their marks",
+          body().startswith("First words. More **bold** and *soft*"), repr(body()))
+
+    page.keyboard.press("Enter")
+    page.keyboard.type("A *literal* star")
+    page.keyboard.press("Shift+Enter")
+    page.keyboard.type("next line")
+    wait_for_save(page)
+    check("PRESS-0346 INV-7: Enter starts a paragraph, Shift+Enter a line, typed stars stay",
+          "\n\nA &#42;literal&#42; star\nnext line\n\n" in body(), repr(body()))
+
+    page.once("dialog", lambda dialog: dialog.accept("https://example.org/"))
+    page.keyboard.press("Control+k")
+    page.evaluate("""() => {
+      const doc = document.getElementById('preview').contentDocument;
+      const words = [...doc.querySelectorAll('p')].find((p) => p.textContent.includes('next'));
+      const line = [...words.childNodes].find((n) => n.nodeType === 3 && n.data === 'next line');
+      const range = doc.createRange();
+      range.selectNodeContents(line);
+      doc.getSelection().removeAllRanges();
+      doc.getSelection().addRange(range);
+    }""")
+    page.locator("[data-colour=accent]").click()
+    wait_for_save(page)
+    check("PRESS-0346 INV-7: Ctrl+K links and a colour button colours the words",
+          "{accent}next line{/}{link: https://example.org/}https://example.org/{/}" in body(),
+          repr(body()))
+
+    frame.locator("p", has_text="years").click()
+    marks_box = page.locator("[data-field=marks]")
+    check("PRESS-0346 INV-6: a worked-out value is changed in the panel's marks box",
+          marks_box.is_visible() and "{years_since: 2010-01-01}" in marks_box.input_value()
+          and frame.locator("p", has_text="years").get_attribute("contenteditable") is None,
+          marks_box.input_value())
+    marks_box.fill("Since {years_since: 2011-01-01} years.")
+    wait_for_save(page)
+    check("PRESS-0346 s4.3: the marks box saves its marks as typed",
+          body().endswith("Since {years_since: 2011-01-01} years."), repr(body()))
+
+    page.select_option("#add-kind", "quote")
+    page.locator("[data-act=add]").click()
+    page.keyboard.type("Quoted")
+    wait_for_save(page)
+    page.locator("[data-act=up]").click()
+    wait_for_save(page)
+    tail = body().split("\n\n")[-2:]
+    check("PRESS-0346 s4.3: Add puts a quotation below, and Move up moves it",
+          tail == ["> Quoted", "Since {years_since: 2011-01-01} years."], repr(body()))
+
+    page.locator("[data-act=remove]").click()
+    wait_for_save(page)
+    up = page.locator("[data-act=up]")
+    check("PRESS-0346 s4.3: Remove takes it away, and the panel lets go",
+          "> Quoted" not in body() and up.is_disabled() and up.is_visible(), repr(body()))
+
+    page.locator("a[data-switch=marks]").click()
+    page.wait_for_timeout(500)
+    check("PRESS-0346 s4.1: Show me the marks shows the body as saved",
+          page.locator("textarea[name=body]").input_value() == body()
+          and page.locator("#panel").is_hidden(), "")
+    page.locator("textarea[name=body]").fill(body() + "\n\nTyped as marks.")
+    page.locator("a[data-switch=visual]").click()
+    page.wait_for_timeout(1500)
+    check("PRESS-0346 s4.1: View editor shows what was typed as marks",
+          frame.locator("p", has_text="Typed as marks.").count() == 1
+          and body().endswith("Typed as marks."), repr(body()))
+    check("PRESS-0346: the entry's visual view raised no script error", not errors, str(errors))
 
 
 def code_colours(page, origin: str) -> None:

@@ -113,16 +113,6 @@ def _marked(section: blocks.Section) -> bool:
     return bool(opening) and section.source.endswith(f"<!-- /pressless:{opening.group(1)} -->")
 
 
-def _script_json(payload: object) -> str:
-    """JSON for an inline `<script type="application/json">` block, with every
-    character that could open an HTML tag or comment escaped, so user content
-    carried in it cannot break out of the element (OWASP A03 / CWE-116). A
-    `</script>`, a `<!--` and a `<script` all begin with `<`, so escaping `<`
-    (and `>`/`&` with it) closes the hole the bare `</` replacement left open."""
-    return (json.dumps(payload)
-            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
-
-
 def outline(page: blocks.Page) -> list[dict]:
     """§ 4.2: every section's path, kind and fields, in order, marked or not. A
     marked code section carries its HTML without its two marks."""
@@ -627,6 +617,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
 <iframe id="preview" title="{attr(say("editor.proof_title"))}" sandbox="allow-same-origin"
  src="{attr(opened.preview or 'about:blank')}"></iframe>{"" if menu_file else _drag()}</div>
 <script>{_PAGE_SCRIPT}</script>
+<script>{editor.TYPING_SCRIPT}</script>
 <script>{_CODE_SCRIPT}</script>
 <script>{_MENU_SCRIPT if menu_file else _VISUAL_SCRIPT}</script>
 <script>{editor._UNDO_SCRIPT}</script>"""
@@ -691,7 +682,7 @@ def _panel(kind: str, name: str, sections: list[dict] | None,
     columns = "".join(f'<button type="button" data-act="add-to" data-column="{number}">'
                       f'{say("page_editor.panel.add_to_column", number=str(number + 1))}'
                       "</button>" for number in range(4))
-    data = _script_json({"sections": sections or [], "kinds": _KINDS,
+    data = editor.script_json({"sections": sections or [], "kinds": _KINDS,
                          "holders": blocks.HOLDERS, "up": up, "accept": files.ACCEPT,
                          "largest": builder.FILE_LARGEST,
                          "largest_slots": builder.largest_slots()})
@@ -768,7 +759,7 @@ def _menu_panel(links: list[tuple[str, str]], pages: tuple[str, ...], *,
         return f'<option value="{attr(menu.address(page))}">{html.escape(label)}</option>'
 
     places = "".join(place(page) for page in pages)
-    data = _script_json({"links": links})
+    data = editor.script_json({"links": links})
     row = (f'<li class="panel-row"><label>{say("page_editor.menu.words")} '
            '<input data-link="words" autocomplete="off"></label>'
            f'<label>{say("page_editor.menu.address")} '
@@ -1763,45 +1754,8 @@ _VISUAL_SCRIPT = r"""
   };
 
   // ---- § 4.4: the words, read from the element's nodes ----------------
-  const text = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/ /g, " ");
-  // blocks.address_allowed's rule, which the save holds to: the scheme read as
-  // a browser reads it, outer spaces and controls stripped, tabs and line
-  // breaks removed (PRESS-0306).
-  const allowed = (href) => {
-    const folded = href.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, "").replace(/[\t\n\r]/g, "");
-    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(folded);
-    return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase());
-  };
-  function inline(element) {
-    let out = "";
-    const walk = (parent, linked) => {
-      for (const child of parent.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) { out += text(child.data); continue; }
-        if (child.nodeType !== Node.ELEMENT_NODE) continue;
-        const tag = child.localName;
-        const href = child.getAttribute("href");
-        if (tag === "br") {
-          out += "<br>";
-        } else if (tag === "b" || tag === "strong" || tag === "i" || tag === "em") {
-          const written = tag === "b" || tag === "strong" ? "strong" : "em";
-          wrap("<" + written + ">", "</" + written + ">", child, linked);
-        } else if (tag === "a" && !linked && href && allowed(href)) {
-          wrap('<a href="' + text(href).replace(/"/g, "&quot;") + '">', "</a>", child, true);
-        } else {
-          walk(child, linked);
-        }
-      }
-    };
-    // An emptied Bold or Italic, as a split at its edge leaves, is dropped.
-    const wrap = (opening, closing, child, linked) => {
-      const at = out.length;
-      walk(child, linked);
-      out = out.length === at ? out : out.slice(0, at) + opening + out.slice(at) + closing;
-    };
-    walk(element, false);
-    return out.replace(/<br>$/, "");
-  }
+  // editor.TYPING_SCRIPT's, shared with the entry editor (PRESS-0346 § 4.4).
+  const {text, allowed, inline, paste} = window.presslessTyping;
 
   // ---- what is posted (§ 4.5) ------------------------------------------
   const synced = () => each(model, (item) => {
@@ -2417,10 +2371,7 @@ _VISUAL_SCRIPT = r"""
     placeHandle();
   }
   function pasted(event) {
-    if (!picked || !picked.el) return;
-    event.preventDefault();
-    const words = (event.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " ");
-    frame.contentDocument.execCommand("insertText", false, words);
+    if (picked && picked.el) paste(frame.contentDocument, event);
   }
   function keyed(event) {
     if (letGo(event)) return;

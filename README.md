@@ -26,7 +26,8 @@ Two things it is deliberately **not**:
 **An early version you can use day to day, on Linux and Windows.** It
 does:
 
-- write with a few simple marks, with a cheat sheet below the box;
+- write an entry on the page as it will look, or in a few simple marks
+  with a cheat sheet below the box;
 - show the real finished page beside the words as you type;
 - save as you go, keeping changes to a live entry apart until you
   publish them;

@@ -35,10 +35,11 @@ def test_a_choice_is_kept_beside_the_others(tmp_path) -> None:
     assert choices.read(tmp_path) == choices.Choices()
     assert choices.remember(tmp_path, view="code", page=("pages", "about"))
     assert choices.remember(tmp_path, true_colours=True)
+    assert choices.remember(tmp_path, entry_view="marks")
     assert _held(tmp_path) == {"version": 1, "page": ["pages", "about"], "shown_on": "",
-                               "view": "code", "true_colours": True}
+                               "view": "code", "entry_view": "marks", "true_colours": True}
     assert choices.read(tmp_path) == choices.Choices(
-        page=("pages", "about"), view="code", true_colours=True)
+        page=("pages", "about"), view="code", entry_view="marks", true_colours=True)
 
 
 def test_a_choice_that_cannot_be_written_is_only_forgotten(tmp_path) -> None:

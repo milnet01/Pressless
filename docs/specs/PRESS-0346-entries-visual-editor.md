@@ -71,7 +71,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 The marks view is today's page: the box and `cheatsheet.panel()`. The
 switch link (*Show me the marks*, *View editor*) changes view in place
 as PRESS-0285 § 4.4 does for pages, saving first, and remembers the
-view.
+view through `POST /edit/view`.
 
 ### 4.2 Finding the blocks
 
@@ -84,9 +84,10 @@ The editor page carries the outline of the body as read: per block its
 kind, whether it may be typed on (decision 7), its marks as written
 (for the panel's marks box), and for a photograph its name and caption.
 The script, `editor._VISUAL_SCRIPT` (new), pairs the frame's body
-children with the outline by position. **Where there is no such
-element, or the counts differ, the entry opens in the marks view** with
-a notice saying why.
+children with the outline by position. **Where the frame shows the
+entry and its blocks do not pair, the entry opens in the marks view**
+with a notice saying why. A preview that failed shows its failure, and
+the next save rebuilds it.
 
 An empty body shows one empty paragraph with the caret in it. It is not
 a change until something is typed.
@@ -104,7 +105,8 @@ Beside the frame, at a fixed place and size (PRESS-0260 § 4.3):
 
 - **Add below**: paragraph, photograph, quotation. With nothing picked,
   **Add at the end**. A paragraph or quotation is added empty with the
-  caret in it; a photograph once one is chosen.
+  caret in it. A photograph is placed at once and saved once one is
+  chosen.
 - **Move up, Move down, Remove**, shown disabled, never hidden, where
   they cannot act.
 
@@ -117,9 +119,10 @@ posts to `/photograph` as today.
 
 PRESS-0260 § 4.4's keys, paste and reading of the words are shared,
 not copied: they move out of `page_editor._VISUAL_SCRIPT` into one
-script both editors load. For entries the words read also keep a
-colour mark's `span`, as `to_html` wrote it. In a quotation, Enter
-starts a new paragraph of the same quotation.
+script both editors load, `editor.TYPING_SCRIPT`. For entries the
+words read also keep a colour mark's `span`, as `to_html` wrote it. In
+a quotation, Enter starts a new paragraph of the same quotation, and
+words a browser leaves loose in it are a paragraph of their own.
 
 ### 4.5 Saving
 
@@ -176,13 +179,17 @@ around it.
    `BlocksUnreadable` and write nothing.
 
 Then today's steps 3 to 5 with that body. `from_inline` returning
-`None`, `Unwritable` and `BlocksUnreadable` answer 409 and write
-nothing, each with its `face.SENTENCES` entry and `words.py` keys. The
-user's words stay in the frame.
+`None` raises `Unwritable`. `Unwritable` and `BlocksUnreadable` answer
+409 and write nothing, each with its `face.SENTENCES` entry and
+`words.py` keys; `editor.SAVE_FAILURES` names them for the save route
+and the press route alike. The user's words stay in the frame.
 
-**Every save reply gains `body` and `outline`**, the body as written
-and its outline, so either view can open from the reply after a
-switch. After a visual save, block indices are the new outline's, and
+A block emptied on the page is posted as removed, and stays on the
+page to be typed into.
+
+**Every save reply, and the press's, gains `body` and `outline`**, the
+body as written and its outline, so either view can open from the
+reply after a switch. After a visual save, block indices are the new outline's, and
 the frame is rebuilt from the reply's preview except while the caret is
 in a block (PRESS-0260 § 4.5).
 
@@ -259,7 +266,7 @@ in a block (PRESS-0260 § 4.5).
 
 | What happens | What the user sees |
 |---|---|
-| The frame's body is not found, or does not pair with the outline | The marks view, with a notice saying so (§ 4.2) |
+| The frame's entry does not pair with the outline | The marks view, with a notice saying so (§ 4.2) |
 | Words a mark cannot hold, such as a `mailto:` link | Not saved; the reason in the failure box; the words stay in the frame |
 | A save would not read back (INV-4) | Not saved; the reason in the failure box; the file as it was |
 | The file changed elsewhere | Not saved, as today (`editor.ChangedElsewhere`) |
@@ -269,7 +276,7 @@ in a block (PRESS-0260 § 4.5).
 
 | Test | Locks |
 |---|---|
-| `tests/test_editor.py` | INV-1, INV-2, INV-4, INV-5, INV-6 |
+| `tests/test_editor.py` | INV-1, INV-2, INV-4, INV-5, INV-6, § 4.1's remembered view, § 4.2's escaped outline |
 | `tests/test_marks.py` | INV-3's typed words |
 | `tests/test_marks_archive.py` | INV-1's and INV-3's archive halves |
 | `tests/test_page_editor.py` | PRESS-0260's typing, unchanged by the shared script |
@@ -320,7 +327,7 @@ Each test is seen failing before the code it locks exists.
 Landed with the code, as PRESS-0260 § 3 decision 8 did.
 
 - `docs/specs/PRESS-0004-marks.md` § 4.1: annotated *amended by
-  PRESS-0346*: `sources`, `from_inline`, `write` and `Unwritable` join
+  PRESS-0346*: `sources`, `from_inline`, `write`, `normal` and `Unwritable` join
   the public surface; INV-6 reaches `from_inline` and `write`.
 - `docs/specs/PRESS-0012-editor.md` § 4.7 and § 4.8: annotated: the
   page opens in the visual view, the box is the marks view, and a save

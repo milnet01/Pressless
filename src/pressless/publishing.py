@@ -476,6 +476,8 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     return Reply(json.dumps({
         "published": published, "slug": slug, "draft": draft, "base": base,
         "failure": failure, "notices": render_notices(notices), "busy": False,
+        # PRESS-0346 § 4.5: what was pressed, so the entry's views stay in step.
+        "body": written.body, "outline": editor.outline(written.body),
     }).encode("utf-8"), "application/json")
 
 

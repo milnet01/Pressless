@@ -209,7 +209,12 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "Search": "the end of Google's channel names, matched against its answer",
         "card wide": "CSS class names", "ranked pages": "CSS class names",
     },
-    "editor.py": {"REPLACES": _FIELDS, "UNDONE": _FIELDS},
+    "editor.py": {
+        "REPLACES": _FIELDS, "UNDONE": _FIELDS,
+        "Enter": "a key's name, as the browser reports it",
+        "Backspace": "a key's name, as the browser reports it",
+        "Escape": "a key's name, as the browser reports it",
+    },
     "face.py": {
         "_STYLE": _CSS, "_SHAPES": _CSS,
         "FILES_POLICY": "a Content-Security-Policy value",

@@ -240,7 +240,7 @@ def test_a_save_keeps_his_lines(tmp_path):
     store.write(folder, _entry("poem", body=kept), draft=True)
     with _editor(folder) as browser:
         page = browser.request("GET", "/edit?slug=poem")[2]
-        found = re.search(r"<textarea[^>]*>(.*?)</textarea>", page, re.S)
+        found = re.search(r'<textarea name="body"[^>]*>(.*?)</textarea>', page, re.S)
         assert found is not None
         content = found.group(1)
         # An HTML parser drops one line break straight after <textarea>.
@@ -1220,3 +1220,30 @@ def test_a_visual_save_writes_marks_and_answers_the_outline(tmp_path):
     assert status == 200, text
     assert _body(folder, "draft") == "> one\n> two\n>\n> three\n\n{rainbow}hi{/}"
     assert [item["kind"] for item in json.loads(text)["outline"]] == ["quote", "paragraph"]
+
+
+def test_the_entry_panels_data_cannot_close_its_script(tmp_path):
+    """PRESS-0346 § 4.2: the outline carries the writer's marks into an inline
+    script block, escaped as page_editor's panel data is, so no body can
+    close the element. Breaks when the panel uses json.dumps alone."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft", body="</script><!--<script>pwn()</script>"), draft=True)
+    with _editor(folder) as browser:
+        page = browser.request("GET", "/edit?slug=draft&view=visual")[2]
+    block = page.split('id="blocks">', 1)[1].split("</script>", 1)[0]
+    assert "<" not in block and ">" not in block
+    assert json.loads(block)["blocks"][0]["marks"] == "</script><!--<script>pwn()</script>"
+
+
+def test_an_entry_opens_in_the_view_last_chosen(tmp_path):
+    """PRESS-0346 § 4.1: the visual view by default; a view asked for is
+    remembered, and so is one switched to in place."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft"), draft=True)
+    view = re.compile(r'<form id="editor"[^>]* data-view="(\w+)"')
+    with _editor(folder) as browser:
+        assert view.search(browser.request("GET", "/edit?slug=draft")[2])[1] == "visual"
+        assert view.search(browser.request("GET", "/edit?slug=draft&view=marks")[2])[1] == "marks"
+        assert view.search(browser.request("GET", "/edit?slug=draft")[2])[1] == "marks"
+        assert browser.request("POST", "/edit/view", {"view": "visual"})[0] == 200
+        assert view.search(browser.request("GET", "/edit?slug=draft")[2])[1] == "visual"

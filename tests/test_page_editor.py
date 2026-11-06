@@ -1001,7 +1001,7 @@ def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
     blocks.address_allowed, so a link it accepts is never refused at the save.
     Breaks when the browser reads the scheme without removing a tab, a line
     break or a leading control first."""
-    script = page_editor._VISUAL_SCRIPT
+    script = editor.TYPING_SCRIPT  # PRESS-0346: shared by both visual views
     start = script.index("const allowed = ")
     end = script.index("\n  function inline(", start)
     harness = tmp_path / "allowed.js"

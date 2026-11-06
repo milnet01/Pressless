@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   Drafts, On your site, Your pages and Parts of every page, now fold shut under their counts,
   so the screen opens short. Click one to open it.
 
+- **Journal entries are edited as they look** (PRESS-0346)
+  An entry opens as it will appear on your site. Click a paragraph and type there; Bold,
+  Italic, Link and Colour sit in a panel beside it, which also adds, moves and removes
+  paragraphs, photographs and quotations. Entries keep their marks, and Show me the marks
+  still opens them for anyone who prefers typing those.
+
 - **Press to site shows what will change before it goes live** (PRESS-0345)
   Pressing an entry or page first opens a box listing the pages that will change and how many
   other files will be added or removed. Publish now goes ahead; Not yet leaves your site as it
