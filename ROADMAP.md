@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=348 -->
+<!-- ants-roadmap-id-high-water: PRESS=349 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6566,10 +6566,16 @@ more places, and an imported site can take a Pressless look.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.
 
-- 📋 [PRESS-0335] **Import takes a folder from the browser's folder chooser, not only a ZIP.**
+- ✅ [PRESS-0335] **Import takes a folder from the browser's folder chooser, not only a ZIP.**
   PRESS-0210 § 3 decision 6 hands a folder over as a ZIP, because
   Face.add_upload takes one file per request. A folder chooser needs a
   new upload shape, and lays the same import/folder/ out.
+  Shipped in 924f551 without a new upload shape: the browser packs the
+  chosen folder as a stored ZIP and posts it to /import/folder/zip, so
+  PRESS-0210 section 4.1's checks are unchanged. Tests:
+  tests/test_face.py::test_a_folder_box_sends_a_zip_the_importer_unpacks,
+  ::test_a_folder_too_large_for_a_plain_zip_is_not_sent, and the
+  PRESS-0335 row in scripts/by-hand-browser-checks.py.
   **Layman:** Someone bringing in a folder of web pages picks the folder itself, without first making a ZIP of it.
   Kind: enhancement.
   Source: spec-PRESS-0210-2026-10-31.
@@ -6583,6 +6589,16 @@ more places, and an imported site can take a Pressless look.
   Kind: feature.
   Source: spec-PRESS-0333-2026-11-01.
   Lanes: setup, Publisher.
+
+- 📋 [PRESS-0349] **Send the website session fresh screenshots of the 0.13.0 screens.**
+  Promised in reply 1597 to the ants-projects-hub-website session: its
+  gallery still shows the editor before 0.13.0. Shots wanted: the entry
+  editor as it looks (PRESS-0346), the publish preview (PRESS-0345) and
+  the finish-setting-up list (PRESS-0344). Method: the memory note on hub
+  screenshots. Send with session_message to ants-projects-hub-website.
+  **Layman:** The Pressless page on the projects website gets pictures of the new editor.
+  Kind: marketing.
+  Source: hub-message-1596-2026-11-06.
 
 ## 0.15.0 — an AI helper can drive Pressless
 
