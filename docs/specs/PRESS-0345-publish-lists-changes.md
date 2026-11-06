@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0345 — Publish lists what will change before it goes live
 
-**Status:** accepted (2026-11-06), unbuilt. No review: owed on the three-subsystems trigger alone (`CLAUDE.md` rule 14).
+**Status:** accepted (2026-11-06), implemented. No review: owed on the three-subsystems trigger alone (`CLAUDE.md` rule 14).
 **Kind:** ux.
 **Source:** ROADMAP PRESS-0345 (the 2026-11-03 usability study).
 
@@ -79,25 +79,29 @@ would.
 
 ### 4.3 The routes
 
-`POST /publish/plan` takes the entry editor's save fields and `POST
-/page/publish/plan` the page editor's. Each saves as a save does, then
-answers JSON:
+`POST /publish/plan` takes an entry's `slug`, or a page's or part's `kind`
+and `name`, whose waiting copy is the change. It saves nothing: the editor
+saves what waits first (§ 4.4). It answers JSON:
 
 ```json
-{"pages": ["Home", "Seaside walk"], "added": 3, "removed": 1,
- "failure": null, "notices": ""}
+{"pages": ["Home", "Seaside walk"], "added": 3, "removed": 1, "failure": null}
 ```
 
-`pages` holds the titles of changed HTML pages, a page with no title by its
-path. `added` and `removed` count the other files. A failure answers
-`failure` as a press's failure does, and nothing else.
+`pages` holds the sorted titles of the HTML pages a publish would write, a
+page with no title by its path. `added` counts the other files it would
+write, and `removed` every file it would delete. A failure answers only
+`failure`, as a press's failure reads.
 
-Neither route is a press: neither takes `pressing`'s slot nor publishes.
+It is not a press: it takes no `pressing` slot and publishes nothing.
+
+*Folded back 2026-11-06: the route saved the fields itself in the draft, which
+would have changed the file version the press posts next.*
 
 ### 4.4 The box
 
-Press to site posts the plan route and shows *Checking what will change…*
-on the status line. The answer opens a dialog over the page listing the
+Press to site shows *Checking what will change…* on the status line, saves
+what waits and holds further saves, then posts the plan route.
+`pressing.SCRIPT` carries the request and the box, so both editors share them. The answer opens a dialog over the page listing the
 pages, then the counts, or saying nothing on the site would change. Publish
 now closes it and runs the press as PRESS-0013 § 4.4 and PRESS-0339 say. Not
 yet closes it and puts the standing words back. A failure opens the failure
@@ -148,7 +152,8 @@ box, as a press's does.
 | What happens | What the writer sees | The site |
 |---|---|---|
 | GitHub cannot be reached, or refuses the key, during the plan | the failure box, as a press shows it | unchanged |
-| The build stops (a photograph unreadable, a page that cannot be built) | the failure box | unchanged |
+| The build stops (a missing photograph, a page that cannot be built) | the failure box | unchanged |
+| A photograph cannot be read as a picture | the list does not notice, since it is named and not opened; the press stops as it does today | unchanged |
 | The journal is off, or a takeover is owed | the failure box with the press's own words | unchanged |
 | The Store changes between the plan and Publish now | the press publishes what the Store then holds | as the press leaves it |
 | A photograph's original is replaced under the same name | the list does not count it; the press still sends it | as the press leaves it |

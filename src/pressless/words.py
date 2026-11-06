@@ -420,6 +420,17 @@ _WORDS: dict[str, str] = {
     # The press row's lines (PRESS-0235 § 4.3): Python and the scripts read
     # these same keys.
     "script.press.publishing": "Publishing… this can take a few minutes the first time.",
+    # The box before a press (pressing.py, PRESS-0345).
+    "script.press.checking": "Checking what will change on your site…",
+    "script.plan.title": "Before your site changes",
+    "script.plan.pages": "These pages will change:",
+    "script.plan.added_one": "1 other file will be added or changed.",
+    "script.plan.added": "{count} other files will be added or changed.",
+    "script.plan.removed_one": "1 file will be removed.",
+    "script.plan.removed": "{count} files will be removed.",
+    "script.plan.nothing": "Nothing on your site would change.",
+    "script.plan.go": "Publish now",
+    "script.plan.wait": "Not yet",
     "script.press.undoing": "Putting your site back… this can take a few minutes.",
     "script.press.published": "Published. Your site shows it within a few minutes.",
     "script.press.not_published": "Not published. The reason is below.",

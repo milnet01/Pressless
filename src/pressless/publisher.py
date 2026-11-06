@@ -287,18 +287,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     if local is None:
         local = _local_files(folder, untouchable)
 
-    uploaded: dict[str, _Local] = {}
-    for path, file in sorted(local.items()):
-        if _is_protected(path, untouchable):
-            continue
-        if remote.get(path) == file.sha:
-            continue
-        uploaded[path] = file
-
-    unprotected = [
-        path for path in remote if not _is_protected(path, untouchable)
-    ]
-    removed = sorted(path for path in unprotected if path not in local)
+    uploaded, removed, unprotected = _compare(local, remote, untouchable)
 
     if not uploaded and not removed:
         # Nothing differed, so nothing is written at all (§5 INV-4) -- unless
@@ -358,6 +347,55 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     return Outcome(commit=commit,
                    uploaded=tuple(sorted({*uploaded, started} - {""})),
                    removed=tuple(removed))
+
+
+@dataclass(frozen=True)
+class Plan:
+    """What a publish of the folder would do (PRESS-0345 § 4.1)."""
+    uploaded: tuple[str, ...]   # paths it would write, sorted
+    removed: tuple[str, ...]    # paths it would delete, sorted
+
+
+def plan(settings: Settings, folder: Path, token: str,
+         transport: Transport | None = None, *,
+         named: frozenset[str] = frozenset()) -> Plan:
+    """PRESS-0345 § 4.1: the reads `publish` makes before its first write, and
+    no write. `named` paths are files the folder does not carry, compared by
+    presence alone: uploaded where the listing lacks one, never removed."""
+    folder = Path(folder)
+    if not folder.is_dir():
+        raise SiteFolderMissing(
+            "the site folder is not a directory, so there is nothing to publish"
+        )
+    session = _Session(transport or _Urllib(), token)
+    branch = _default_branch(session, settings.repository)
+    head = session.read(_repo_url(settings.repository, f"commits/{_segment(branch)}"),
+                        empty_ok=True)
+    remote = ({} if head is None else _blobs_in(
+        _tree(session, settings.repository, _required(head, "sha", "the head commit"))))
+    local: dict[str, _Local | None] = {
+        **_local_files(folder, settings.untouchable), **dict.fromkeys(named)}
+    uploaded, removed, _ = _compare(local, remote, settings.untouchable)
+    return Plan(tuple(uploaded), tuple(removed))
+
+
+def _compare(local: dict[str, _Local | None], remote: dict[str, str],
+             untouchable: tuple[str, ...]
+             ) -> tuple[dict[str, _Local | None], list[str], list[str]]:
+    """What differs (§4.2, INV-4): the unprotected files whose hash the listing
+    does not hold, the unprotected remote paths the folder lacks, and every
+    unprotected remote path. A file with no `_Local` is compared by presence
+    (PRESS-0345 § 4.1)."""
+    uploaded: dict[str, _Local | None] = {}
+    for path, file in sorted(local.items()):
+        if _is_protected(path, untouchable):
+            continue
+        if path in remote if file is None else remote.get(path) == file.sha:
+            continue
+        uploaded[path] = file
+    unprotected = [path for path in remote if not _is_protected(path, untouchable)]
+    removed = sorted(path for path in unprotected if path not in local)
+    return uploaded, removed, unprotected
 
 
 def root_entries(settings: Settings, token: str | None,

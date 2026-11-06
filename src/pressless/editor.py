@@ -1098,9 +1098,21 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
     // PRESS-0339: said at once, though a save in flight is waited out first.
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = say("script.press.publishing");
+    said.textContent = say("script.press.checking");
     pressing = true;
-    await settle(false);
+    // PRESS-0345: what waits is saved first, so the plan reads it; saves stay
+    // held while the box is open.
+    await settle(true);
+    const unpressed = () => {
+      said.textContent = standing(); pressing = false; publish.disabled = false; release();
+    };
+    try {
+      const asked = new URLSearchParams({slug: state.slug});
+      if (!(await window.presslessCheck(asked))) { unpressed(); return; }
+    } catch (error) {
+      unpressed(); stop(""); return;
+    }
+    said.textContent = say("script.press.publishing");
     try {
       const body = fields();
       dirty = false;

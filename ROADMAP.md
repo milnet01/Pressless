@@ -6448,12 +6448,19 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: face.
 
-- 📋 [PRESS-0345] **Publish lists what will change before it goes live.**
+- ✅ [PRESS-0345] **Publish lists what will change before it goes live.**
   From the 2026-11-03 usability study: leading editors list the
   changes before publishing. After 0.11.0, by the user's choice.
   User decision 2026-11-06 (my recommendation): Press to site opens a
   box over the page listing what will change, with Publish now and Not
   yet.
+  Done 2026-11-06. Spec: docs/specs/PRESS-0345-publish-lists-changes.md
+  (owed on the three-subsystems trigger only, so no review).
+  publisher.plan, builder.build(photographs=False), publishing.preview
+  and POST /publish/plan; the box lives in pressing.SCRIPT and both
+  editors ask before pressing. By-hand browser checks 152/152 in Chrome
+  and Firefox. Deferred, not queued: the box for Rename, Remove, Undo
+  and the takeover; naming each photograph and file.
   **Layman:** Before a press goes live, Pressless says which pages and parts will change.
   Kind: ux.
   Source: user-request-2026-11-03.

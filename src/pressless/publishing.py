@@ -12,6 +12,9 @@ import dataclasses
 import hashlib
 import html
 import json
+import re
+import shutil
+import tempfile
 import urllib.parse
 import warnings
 from collections.abc import Callable
@@ -92,6 +95,7 @@ class TakeoverOwed(Exception):
 
 
 TAKEOVER_ADDRESS = "/publish/takeover"
+PLAN_ADDRESS = "/publish/plan"
 
 SENTENCES[TakeoverOwed] = Sentence(
     "failure.publishing.TakeoverOwed.what",
@@ -166,15 +170,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     moved = captured(lambda: _move(folder, entry))
 
     def guard_and_build() -> None:
-        if takeover.owed(folder) and not taking_over:    # PRESS-0333 § 4.5
-            raise TakeoverOwed("the site is still built by GitHub Actions")
-        # PRESS-0126 § 4.5: the starter's first publish, whether or not
-        # emptying, refuses where the repository holds a site. The fold is
-        # PRESS-0009 § 4.4's.
-        if starter.unpublished(folder) and any(
-                name.rstrip("/").casefold() in A_SITE
-                for name in publisher.root_entries(settings, key, transport)):
-            raise WouldReplaceASite("the repository already holds a site")
+        _refuse(folder, settings, key, transport, taking_over=taking_over)
         if (not emptying and store.journal_on(folder)
                 and not store.list_slugs(folder, draft=False)):
             raise NothingToPublish("no published entry would remain")
@@ -242,10 +238,74 @@ class _Moved:
     put_back: Callable[[], None]
 
 
-def _move(folder: Path, entry: str | None) -> _Moved | None:
-    """§ 4.3 step 1."""
-    if entry is None:
-        return None
+def _refuse(folder: Path, settings: settings.Settings, key: str,
+            transport: publisher.Transport | None, *, taking_over: bool = False) -> None:
+    """The refusals a press makes before it builds, which write nothing."""
+    if takeover.owed(folder) and not taking_over:    # PRESS-0333 § 4.5
+        raise TakeoverOwed("the site is still built by GitHub Actions")
+    # PRESS-0126 § 4.5: the starter's first publish, whether or not
+    # emptying, refuses where the repository holds a site. The fold is
+    # PRESS-0009 § 4.4's.
+    if starter.unpublished(folder) and any(
+            name.rstrip("/").casefold() in A_SITE
+            for name in publisher.root_entries(settings, key, transport)):
+        raise WouldReplaceASite("the repository already holds a site")
+
+
+@dataclass(frozen=True)
+class Preview:
+    """What a press would change on the site (PRESS-0345 § 4.2)."""
+    pages: dict[str, str]   # each HTML page it would write: its path, and its title
+    added: int              # the other files it would write
+    removed: int            # every file it would delete
+
+
+def preview(folder: Path, settings: settings.Settings, key: str, *,
+            entry: str | None = None, page: builder.Html | None = None,
+            transport: publisher.Transport | None = None) -> Preview:
+    """PRESS-0345 § 4.2: build as if `entry` or `page` were pressed, into a
+    scratch folder with photographs named rather than resized, and plan the
+    publish of that. Nothing in the Store or the site folder changes, and the
+    scratch folder goes whatever happens. Raises as the press would."""
+    folder = Path(folder)
+    if entry is not None and not store.journal_on(folder):   # PRESS-0214 § 4.3
+        raise JournalOff("the journal is off")
+    _refuse(folder, settings, key, transport)
+    change = _going(folder, entry).published if entry is not None else page
+    scratch = Path(tempfile.mkdtemp(prefix="press-plan-", dir=folder))
+    try:
+        into = scratch / "site"
+        built = builder.build(folder, settings, into, change=change, photographs=False)
+        planned = publisher.plan(settings, into, key, transport,
+                                 named=frozenset(built.named))
+        pages = {path: _title(into / path, path) for path in planned.uploaded
+                 if path.endswith(".html")}
+        return Preview(pages, len(planned.uploaded) - len(pages), len(planned.removed))
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def _title(page: Path, path: str) -> str:
+    """The page's <title>, or its path where it has none."""
+    found = re.search(r"<title>(.*?)</title>", page.read_text(encoding="utf-8"), re.S | re.I)
+    title = html.unescape(found.group(1)).strip() if found else ""
+    return title or path
+
+
+@dataclasses.dataclass(frozen=True)
+class _Going:
+    """What § 4.3 step 1 would publish for a draft, read and not written: the
+    entry as it goes on the site, and what it replaces there (PRESS-0345 § 4.2
+    reads it too, so a preview builds the entry a press publishes)."""
+    path: Path                         # the draft's file
+    draft: store.Entry
+    published: store.Entry             # as it goes on the site
+    over: str                          # "published", "demoted" or "" (a new entry)
+    demoted_path: Path | None = None   # for "demoted"
+    remembered: store.Entry | None = None  # for "published": what it replaces
+
+
+def _going(folder: Path, entry: str) -> _Going:
     path = store.path_for(folder, entry, draft=True)
     draft = store.read(path)
     stripped = tuple(field for field in draft.extra
@@ -254,9 +314,9 @@ def _move(folder: Path, entry: str | None) -> _Moved | None:
 
     if named is not None and named in store.list_slugs(folder, draft=False):
         remembered = store.read(store.path_for(folder, named, draft=False))
-        store.write(folder, dataclasses.replace(draft, slug=named, date=remembered.date,
-                                                extra=stripped), draft=False)
-        return _Moved(named, [path], lambda: store.write(folder, remembered, draft=False))
+        return _Going(path, draft, dataclasses.replace(
+            draft, slug=named, date=remembered.date, extra=stripped), "published",
+            remembered=remembered)
 
     # PRESS-0015 § 4.5: a draft whose `Replaces` names a draft carrying the mark
     # is a working copy of the entry undo demoted. The mark is what makes this
@@ -265,32 +325,51 @@ def _move(folder: Path, entry: str | None) -> _Moved | None:
         demoted_path = store.path_for(folder, named, draft=True)
         demoted = store.read(demoted_path)
         if any(name == UNDONE for name, _ in demoted.extra):
-            store.write(folder, dataclasses.replace(draft, slug=named, date=demoted.date,
-                                                    extra=stripped), draft=False)
-            # Nothing else removes a file the Store did not hold before, so the
-            # put-back bins what was just written and leaves his two drafts as
-            # they were (§ 4.5).
-            return _Moved(named, [path, demoted_path],
-                          lambda: store.move_to_bin(
-                              folder, store.path_for(folder, named, draft=False)))
+            return _Going(path, draft, dataclasses.replace(
+                draft, slug=named, date=demoted.date, extra=stripped), "demoted",
+                demoted_path=demoted_path)
 
     # A draft carrying the mark keeps its date: § 2 item 3's branch would
     # otherwise date an entry from years ago to today and put it at the top of
     # his site (PRESS-0015 § 4.5).
     marked = any(name == UNDONE for name, _ in draft.extra)
     dated = draft.date if marked else _now().replace(microsecond=0)
-    store.write(folder, dataclasses.replace(draft, date=dated, extra=stripped), draft=True)
+    return _Going(path, draft, dataclasses.replace(draft, date=dated, extra=stripped), "")
+
+
+def _move(folder: Path, entry: str | None) -> _Moved | None:
+    """§ 4.3 step 1, as _going decides it."""
+    if entry is None:
+        return None
+    going = _going(folder, entry)
+    slug = going.published.slug
+
+    if going.over == "published":
+        remembered = going.remembered
+        store.write(folder, going.published, draft=False)
+        return _Moved(slug, [going.path], lambda: store.write(folder, remembered, draft=False))
+
+    if going.over == "demoted":
+        store.write(folder, going.published, draft=False)
+        # Nothing else removes a file the Store did not hold before, so the
+        # put-back bins what was just written and leaves his two drafts as
+        # they were (§ 4.5).
+        return _Moved(slug, [going.path, going.demoted_path],
+                      lambda: store.move_to_bin(
+                          folder, store.path_for(folder, slug, draft=False)))
+
+    store.write(folder, going.published, draft=True)
     try:
         store.publish(folder, entry)
     except BaseException:
         # Nothing is recorded to put back yet, so the rewrite is undone here; a
         # failure writing it back is raised in its place (PRESS-0135).
-        store.write(folder, draft, draft=True)
+        store.write(folder, going.draft, draft=True)
         raise
 
     def put_back() -> None:
         store.unpublish(folder, entry)
-        store.write(folder, draft, draft=True)
+        store.write(folder, going.draft, draft=True)
 
     return _Moved(entry, [], put_back)
 
@@ -301,12 +380,44 @@ def register(face: Face, folder: Path, *,
     folder = Path(folder)
     face.add_page("POST", "/publish",
                   lambda request: _publish(face, folder, request, transport))
+    # PRESS-0345 § 4.3: what a press would change, asked before it runs.
+    face.add_page("POST", PLAN_ADDRESS,
+                  lambda request: _plan(face, folder, request, transport))
     face.add_page("GET", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
     face.add_page("POST", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
     face.add_page("GET", TAKEOVER_ADDRESS,
                   lambda request: _takeover_page(face, folder, transport))
     face.add_page("POST", TAKEOVER_ADDRESS,
                   lambda request: _take_over(face, folder, transport))
+
+
+def _plan(face: Face, folder: Path, request: Request,
+          transport: publisher.Transport | None) -> Reply:
+    """PRESS-0345 § 4.3: the preview of pressing the entry `slug`, or the page
+    or part `kind` and `name` as its waiting copy holds it. The editor saves
+    first, so the Store holds what would be pressed. Writes nothing."""
+    form = {name: values[0] for name, values in urllib.parse.parse_qs(
+        request.body.decode("utf-8"), keep_blank_values=True).items()}
+    try:
+        saved = settings.load(folder)
+        key = github_setup.token(folder, saved.credentials.store,
+                                 saved.credentials.github_account)
+        if "slug" in form:
+            shown = preview(folder, saved, key, entry=form["slug"], transport=transport)
+        else:
+            kind, name = form.get("kind", ""), form.get("name", "")
+            waiting = store.html_path_for(folder, kind, name, waiting=True)
+            page = (builder.Html(kind, name, store.read_html(waiting))
+                    if waiting.is_file() else None)
+            shown = preview(folder, saved, key, page=page, transport=transport)
+    except Exception as exc:  # noqa: BLE001 -- every failure is shown as a press's is
+        failure = (face.fail(exc, publishing=False,
+                             secret=say("failure.secret.publishing_key")) + replace_link(exc))
+        return Reply(json.dumps({"failure": failure}).encode("utf-8"), "application/json")
+    return Reply(json.dumps({
+        "failure": None, "pages": sorted(shown.pages.values()),
+        "added": shown.added, "removed": shown.removed,
+    }).encode("utf-8"), "application/json")
 
 
 def _publish(face: Face, folder: Path, request: Request,

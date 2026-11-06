@@ -188,4 +188,51 @@ window.presslessPress = window.presslessPress || (() => {
   return {ask, busy, viewable, asking: () => asking,
           standing: (given) => { standing = given; }};
 })();
+// PRESS-0345 § 4.3: ask what a press of `body` would change, and show it. True
+// to go on; false where the box was turned down or the plan failed, whose words
+// go in the failure box. A dropped connection throws, as a fetch does.
+window.presslessCheck = window.presslessCheck || (async (body) => {
+  const plan = await (await fetch("/publish/plan", {method: "POST", body: body})).json();
+  if (plan.failure) {
+    document.getElementById("failure").innerHTML = plan.failure;
+    return false;
+  }
+  return window.presslessPlan(plan);
+});
+// PRESS-0345 § 4.4: what a press would change, in a box over the page. True
+// for Publish now; false for Not yet, Escape or a box that cannot open.
+window.presslessPlan = window.presslessPlan || ((plan) => new Promise((resolve) => {
+  const make = (tag, text) => {
+    const made = document.createElement(tag);
+    if (text !== undefined) made.textContent = text;
+    return made;
+  };
+  const box = make("dialog");
+  box.classList.add("message", "plan");
+  box.append(make("h2", say("script.plan.title")));
+  const pages = plan.pages || [], added = plan.added || 0, removed = plan.removed || 0;
+  if (pages.length) {
+    box.append(make("p", say("script.plan.pages")));
+    const list = make("ul");
+    pages.forEach((title) => list.append(make("li", title)));
+    box.append(list);
+  }
+  if (added) box.append(make("p", say(added === 1 ? "script.plan.added_one"
+    : "script.plan.added", {count: added})));
+  if (removed) box.append(make("p", say(removed === 1 ? "script.plan.removed_one"
+    : "script.plan.removed", {count: removed})));
+  if (!pages.length && !added && !removed) box.append(make("p", say("script.plan.nothing")));
+  const go = make("button", say("script.plan.go")), wait = make("button", say("script.plan.wait"));
+  go.type = wait.type = "button";
+  const row = make("p");
+  row.append(go, " ", wait);
+  box.append(row);
+  const done = (answer) => { box.close(); box.remove(); resolve(answer); };
+  go.addEventListener("click", () => done(true));
+  wait.addEventListener("click", () => done(false));
+  box.addEventListener("cancel", (event) => { event.preventDefault(); done(false); });
+  document.body.append(box);
+  box.showModal();
+  go.focus();
+}));
 """

@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   Drafts, On your site, Your pages and Parts of every page, now fold shut under their counts,
   so the screen opens short. Click one to open it.
 
+- **Press to site shows what will change before it goes live** (PRESS-0345)
+  Pressing an entry or page first opens a box listing the pages that will change and how many
+  other files will be added or removed. Publish now goes ahead; Not yet leaves your site as it
+  is. Pictures are counted by name, so a picture replaced under the same name is not listed,
+  though publishing still sends it.
+
 ### Changed
 
 - **Publishing a large site uses far less memory** (PRESS-0088)

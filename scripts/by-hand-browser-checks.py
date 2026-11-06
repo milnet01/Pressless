@@ -90,6 +90,14 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f" -- {detail}" if detail else ""))
 
 
+def press(page, button) -> None:
+    """PRESS-0345: Press to site, then Publish now in the box it opens."""
+    button.click()
+    page.locator("dialog.plan").wait_for(state="visible", timeout=15000)
+    page.get_by_role("button", name="Publish now", exact=True).click()
+    page.wait_for_timeout(3000)
+
+
 def wait_for_save(page, *, settle: bool = False) -> None:
     """Wait for the editor to save what was just changed.
 
@@ -322,6 +330,18 @@ def run(origin: str, secret: str, folder: Path) -> None:
 
         if publish.count() >= 1:
             btn = publish.first
+            # ---- PRESS-0345: the box before a press, and Not yet --------------
+            btn.click()
+            box = page.locator("dialog.plan")
+            box.wait_for(state="visible", timeout=15000)
+            said = box.inner_text()
+            page.get_by_role("button", name="Not yet", exact=True).click()
+            page.wait_for_timeout(300)
+            check("PRESS-0345: Press to site first lists what will change, and Not yet "
+                  "publishes nothing",
+                  "Before your site changes" in said and "Seaside" in said
+                  and box.count() == 0 and not btn.is_disabled()
+                  and "seaside" in store.list_slugs(folder, draft=True), said[:160])
             # Sample from the click until the reply lands. The transport is a
             # double, so the in-flight window is short; a single poll can miss
             # it entirely and that is a fact about the probe, not the page.
@@ -342,8 +362,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
                        said, {childList: true, characterData: true, subtree: true});
                      window.__grab = grab;
                    }""")
-            btn.click()
-            page.wait_for_timeout(3000)
+            press(page, btn)
             samples = page.evaluate("() => window.__seen")
             waiting = [x for x in samples
                        if "this can take a few minutes the first time" in x]
@@ -489,8 +508,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         check("PRESS-0182: a proof's own page offers no address",
               not page.locator("#address").is_visible(), page.url.split("?")[-1])
         # ---- PRESS-0185: pressing a proof from its own page ------------------
-        page.get_by_role("button", name="Press to site", exact=True).click()
-        page.wait_for_timeout(3000)
+        press(page, page.get_by_role("button", name="Press to site", exact=True))
         pressed = page.inner_text("body")
         check("PRESS-0185: a pressed proof's page stops saying it is not on the site",
               "Published." in pressed
@@ -507,8 +525,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         page.locator("textarea").type(" Again.", delay=10)
         page.wait_for_timeout(2500)
         hidden = page.locator("#address").is_hidden()
-        page.get_by_role("button", name="Press to site", exact=True).click()
-        page.wait_for_timeout(3000)
+        press(page, page.get_by_role("button", name="Press to site", exact=True))
         check("PRESS-0186: hidden for the next proof, and back when that is pressed",
               hidden and page.locator("#address").is_visible()
               and editor.working_copy(folder, "harbour-moved") is None,

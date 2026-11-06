@@ -49,6 +49,7 @@ from pressless.publisher import (
     Unreachable,
     fetch_previous,
     fetch_state,
+    plan,
     publish,
 )
 from pressless.settings import Credentials, Settings
@@ -2663,3 +2664,51 @@ def test_pages_github_switched_on_itself_is_on():
 
     with pytest.raises(PublishError):
         publisher_module.switch_pages_on("someone/someone.github.io", SENTINEL, _ByUrl(repo))
+
+
+# ------------------------------------------------------------- PRESS-0345 ---
+
+
+def _planned_folder(tmp_path: Path) -> tuple[Path, bytes]:
+    """A folder against a listing: index.html changed, new.html new, gone.html
+    on GitHub only, kept.html the same, CNAME protected and only remote."""
+    (tmp_path / "index.html").write_bytes(b"<p>new</p>")
+    (tmp_path / "new.html").write_bytes(b"<p>added</p>")
+    (tmp_path / "kept.html").write_bytes(b"<p>kept</p>")
+    listing = _listing([("index.html", _blob_hash(b"<p>old</p>")),
+                        ("gone.html", _blob_hash(b"<p>gone</p>")),
+                        ("kept.html", _blob_hash(b"<p>kept</p>")),
+                        ("CNAME", _blob_hash(b"example.org\n"))])
+    return tmp_path, listing
+
+
+def test_a_plan_writes_nothing(tmp_path):
+    """PRESS-0345 INV-1. Breaks when plan reaches a write, or calls publish."""
+    folder, listing = _planned_folder(tmp_path)
+    transport = _Transport(reads=_reads(listing), writes=_writes())
+    plan(_settings(), folder, "a-token", transport=transport)
+    assert _no_writes(transport)
+
+
+def test_a_plan_names_what_a_publish_sends(tmp_path):
+    """PRESS-0345 INV-2. Breaks when the two compare differently, or a
+    protected path is planned."""
+    folder, listing = _planned_folder(tmp_path)
+    planned = plan(_settings(), folder, "a-token",
+                   transport=_Transport(reads=_reads(listing), writes=_writes()))
+    sent = publish(_settings(), folder, "a-token", "message",
+                   transport=_Transport(reads=_reads(listing), writes=_writes()))
+    assert (planned.uploaded, planned.removed) == (sent.uploaded, sent.removed)
+    assert planned.uploaded == ("index.html", "new.html") and planned.removed == ("gone.html",)
+
+
+def test_a_named_path_is_compared_by_presence(tmp_path):
+    """PRESS-0345 INV-3. Breaks when a named path is read from the folder, or
+    planned as removed."""
+    folder, listing = _planned_folder(tmp_path)
+    planned = plan(_settings(), folder, "a-token",
+                   transport=_Transport(reads=_reads(listing), writes=_writes()),
+                   named=frozenset({"kept.html", "photographs/shore.jpg", "gone.html"}))
+    assert "photographs/shore.jpg" in planned.uploaded
+    assert "gone.html" not in planned.removed and "gone.html" not in planned.uploaded
+

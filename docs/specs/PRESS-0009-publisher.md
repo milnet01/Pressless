@@ -96,6 +96,9 @@ Four things make this a contract rather than a helper.
 
 ### 4.1 The public surface
 
+*PRESS-0345 § 4.1 adds `plan`, the reads `publish` makes before its first
+write, sharing its comparison.*
+
 ```python
 # src/pressless/publisher.py
 
@@ -996,3 +999,4 @@ its own type; the rows above credit them on that condition.
 | 14-fix | 2026-09-27 | none — author correction after the loop; no reviewer dispatched | 1 | 0 | 0 | 0 | **One fixed, found by the author.** Loop 14's packet said `con` is a legal slug from `_LEGAL_SLUG` alone; the Store also refuses device names (PRESS-0067). § 4.5 and INV-11 claimed the check is reachable from the Store; they now say it fires on a repository something else wrote. |
 | 15 | 2026-09-27 | 2, cold — genre pinned `spec`; armed by PRESS-0166 and PRESS-0167 (`953b386`): the odd-success and `RepositoryMoved` rows, INV-12. Packet carried the executed `urllib` redirect fact; GitHub declared unrunnable. Each lane held all four questions | 0 | 3 | 1 | 2 | **Six verified, six fixed; one dismissed, one filed.** Both lanes: § 6's no-answer and server-error rows, INV-3 and the `OutcomeUnknown` comment named only the reference update, while the start write is `OutcomeUnknown` too; a start-write answer naming no commit fell to the base type. One lane: "§4.3's start file" is PRESS-0127's; INV-12 stated what GitHub did rather than what the module raises (both lanes); the redirect test used the double, which cannot see a client that follows; "every row but two" became three. Dismissed: later rows after a start write are PRESS-0127 § 6's. Filed PRESS-0176 (design.md § Errors). One round by the amendment budget; not converged. |
 | impl | 2026-11-06 | none — amendment for PRESS-0088; no reviewer dispatched | 0 | 0 | 0 | 0 | **INV-13 added.** Files are hashed when read and read again to be sent; a changed file refuses the publish. A 500 MiB site's measured peak fell from 717 to 267 MiB. |
+| impl | 2026-11-06 | none — pointer for PRESS-0345; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1 notes `plan`, added by PRESS-0345. |

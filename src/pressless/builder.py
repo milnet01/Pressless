@@ -53,6 +53,7 @@ JOURNAL_ADDRESS = "{{UP}}blog/index.html"   # the menu's link to the journal
 class Built:
     files: tuple[str, ...]      # every file written, relative to `into`, "/"-separated, sorted
     filtered: tuple[str, ...]   # published slugs the Daily Prompt filter kept off every page
+    named: tuple[str, ...] = ()  # of `files`, those recorded and not written (PRESS-0345)
 
 
 @dataclass(frozen=True)
@@ -218,16 +219,23 @@ def file_allowed(name: str, data: bytes) -> bool:
 def build(folder: Path, settings: Settings, into: Path, *,
           photo_src: marks.PhotoSrc | None = None,
           change: store.Entry | Html | None = None,
-          today: date | None = None) -> Built:
+          today: date | None = None, photographs: bool = True) -> Built:
     """§4.8, in order: settle what an interrupted build left, refuse a folder
     the Builder did not make, build everything into `<into>.pressless-new`, and
     swap it in only once it is whole. `today` is what value marks and the
     footer's year are worked out against; None is the local date, read once
-    (PRESS-0123 §4.2)."""
+    (PRESS-0123 §4.2). `photographs` False records each photograph and the
+    icon in `files` and `named` without writing it, for a list of what a
+    publish would change (PRESS-0345 § 4.2)."""
     folder = Path(folder)
     today = today or date.today()
-    return _replace(Path(into), folder, publishing=photo_src is None,
-                    write=lambda new: _Build(folder, settings, new, photo_src, change, today).run())
+
+    def write(new: Path) -> Built:
+        built = _Build(folder, settings, new, photo_src, change, today)
+        built.photographs = photographs
+        return built.run()
+
+    return _replace(Path(into), folder, publishing=photo_src is None, write=write)
 
 
 def preview(folder: Path, settings: Settings, into: Path, entry: store.Entry, *,
@@ -652,6 +660,8 @@ class _Build:
         self.photo_src = photo_src
         self.change = change
         self.today = today
+        self.photographs = True   # False: named, not written (PRESS-0345)
+        self.named: list[str] = []
         self.files: list[str] = []
         self.copied: set[str] = set()
         self.copied_files: set[str] = set()
@@ -793,7 +803,8 @@ class _Build:
         if self.pieces_linked:
             self.write_text(PIECES_SCRIPT, blocks.PIECES_SCRIPT)
         self.address_forwards(pages)
-        return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered))
+        return Built(files=tuple(sorted(self.files)), filtered=tuple(filtered),
+                     named=tuple(sorted(self.named)))
 
     def copy_what_is_named(self, relative: str, text: str) -> None:
         """Publish each held photograph and file `text`, read from `relative`,
@@ -984,6 +995,10 @@ class _Build:
         original = store.photograph_path_for(self.folder, name)
         if not original.is_file():
             raise BuildStopped(f"the photograph {name} is not in the photographs folder")
+        if not self.photographs:
+            self._name(f"{store.PHOTOGRAPHS_FOLDER}/{name}")
+            self.copied.add(name)
+            return
         # Decoded and transformed first, so a picture Pillow cannot read is
         # told apart from a site folder that cannot be written.
         try:
@@ -1018,6 +1033,11 @@ class _Build:
         self.files.append(relative)
         self.copied.add(name)
 
+    def _name(self, relative: str) -> None:
+        """Record `relative` as built without writing it (PRESS-0345 § 4.2)."""
+        self.files.append(relative)
+        self.named.append(relative)
+
     def icon_copy(self, name: str) -> None:
         """PRESS-0227 § 4.3: the photograph `name` as the site's icon, square
         and centred. Missing or unreadable, it stops the build with web_copy's
@@ -1026,6 +1046,9 @@ class _Build:
         original = store.photograph_path_for(self.folder, name)
         if not original.is_file():
             raise BuildStopped(f"the photograph {name} is not in the photographs folder")
+        if not self.photographs:
+            self._name(SITE_ICON)
+            return
         try:
             with Image.open(original) as picture:
                 # The first frame. RGBA before the fit: PNG cannot hold a

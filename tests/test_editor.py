@@ -966,7 +966,11 @@ globalThis.fetch = (address, request) => {
 # answers only when told to.
 _PRESS_HARNESS = _STAND_IN + """
 let answerSave;
+const posted = [];
+// PRESS-0345: the box's answer, Publish now or Not yet, from the command line.
+window.presslessCheck = async () => { posted.push("check"); return process.argv[2] === "go"; };
 globalThis.fetch = (address, request) => {
+  posted.push(address);
   const reply = address === "/save"
     ? new Promise((resolve) => { answerSave = resolve; })
     : Promise.resolve({slug: "old", draft: false, base: "b3", notices: "", published: true,
@@ -988,24 +992,32 @@ Object.defineProperty(line, "textContent", {
   const clicked = [line.textContent, press.disabled];
   answerSave({slug: "old", draft: true, base: "b2", notices: ""});
   await pressed;
-  process.stdout.write(JSON.stringify({clicked, shown}));
+  process.stdout.write(JSON.stringify({clicked, shown, posted, off: press.disabled}));
 })();
 """
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
-def test_press_says_publishing_the_instant_it_is_clicked(tmp_path):
+@pytest.mark.parametrize("answer", ["go", "wait"])
+def test_press_says_publishing_the_instant_it_is_clicked(answer, tmp_path):
     """PRESS-0339: the line says Publishing, and the button is off, as soon
     as Press to site is clicked, though a save in flight is waited out
     first; that save's answer does not put the standing words back. Breaks
     when the words wait for the save, or the save's answer overwrites them."""
     harness = tmp_path / "press.js"
     harness.write_text(_PRESS_HARNESS % editor._EDITOR_SCRIPT, encoding="utf-8")
-    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+    run = subprocess.run([_NODE, str(harness), answer], capture_output=True,  # noqa: S603
                          check=True, timeout=30)
     seen = json.loads(run.stdout)
-    assert seen == {"clicked": ["script.press.publishing", True],
-                    "shown": ["script.press.publishing", "script.press.published"]}
+    assert seen["clicked"] == ["script.press.checking", True]
+    # PRESS-0345 INV-6: the press is posted only after Publish now.
+    assert seen["posted"][-1] == "check" if answer == "wait" else "/publish"
+    if answer == "go":
+        assert seen["shown"] == ["script.press.checking", "script.press.publishing",
+                                 "script.press.published"]
+    else:
+        assert seen["shown"] == ["script.press.checking", "script.standing.off_site"]
+        assert seen["off"] is False
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")

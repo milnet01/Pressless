@@ -230,6 +230,9 @@ told something is wrong with his files rather than only with GitHub.
 
 The press row's words come from [PRESS-0235](PRESS-0235-press-status.md) § 4.3.
 
+A click first lists what the press would change and asks before it runs:
+[PRESS-0345](PRESS-0345-publish-lists-changes.md) § 4.4.
+
 PRESS-0012 § 4.7's page gains a **Press to site** button beside the box. Its script,
 on a click:
 

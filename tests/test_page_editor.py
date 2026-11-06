@@ -1117,7 +1117,11 @@ def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, 
 # clicked; /page/save answers only when told to.
 _PRESS_HARNESS = _STAND_IN + """
 let answerSave;
+const posted = [];
+// PRESS-0345: Press to site's box answers Publish now.
+window.presslessCheck = async () => { posted.push("check"); return true; };
 globalThis.fetch = (address) => {
+  posted.push(address);
   const reply = address === "/page/save"
     ? new Promise((resolve) => { answerSave = resolve; })
     : Promise.resolve({waiting: false, base: "b3", notices: "", published: true,
@@ -1139,7 +1143,7 @@ Object.defineProperty(line, "textContent", {
   const said = line.textContent;
   answerSave({waiting: false, base: "b2", notices: "", preview: null});
   await pressed;
-  process.stdout.write(JSON.stringify({said, shown}));
+  process.stdout.write(JSON.stringify({said, shown, posted}));
 })();
 """
 
@@ -1155,6 +1159,10 @@ def test_a_press_says_publishing_the_instant_it_is_clicked(pages, tmp_path):
     harness.write_text(_PRESS_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
     run = subprocess.run([_NODE, str(harness), pages], capture_output=True,  # noqa: S603
                          check=True, timeout=30)
-    assert json.loads(run.stdout) == {
-        "said": "script.press.publishing",
-        "shown": ["script.press.publishing", "script.press.published"]}
+    seen = json.loads(run.stdout)
+    first = "script.press.checking" if pages == "publish" else "script.press.publishing"
+    assert seen["said"] == first
+    assert seen["shown"] == list(dict.fromkeys([first, "script.press.publishing",
+                                                "script.press.published"]))
+    # PRESS-0345 INV-6: Press to site asks first; Rename and Remove do not.
+    assert ("check" in seen["posted"]) == (pages == "publish")

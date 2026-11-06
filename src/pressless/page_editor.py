@@ -1350,10 +1350,22 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
     // PRESS-0339: said at once, though a save in flight is waited out first.
     const said = document.getElementById("publish-status");
     publish.disabled = true;
-    said.textContent = say("script.press.publishing");
+    said.textContent = say("script.press.checking");
     pressing = true;
     // A save meanwhile would post the waiting copy the publish bins.
-    await settle(false);
+    // PRESS-0345: what waits is saved first, so the plan reads it; saves stay
+    // held while the box is open.
+    await settle(true);
+    const unpressed = () => {
+      said.textContent = standing(); pressing = false; publish.disabled = false; release();
+    };
+    try {
+      const asked = new URLSearchParams({kind: state.kind, name: state.name});
+      if (!(await window.presslessCheck(asked))) { unpressed(); return; }
+    } catch (error) {
+      unpressed(); stop(""); return;
+    }
+    said.textContent = say("script.press.publishing");
     try {
       const posted = posting();
       const body = fields(posted);

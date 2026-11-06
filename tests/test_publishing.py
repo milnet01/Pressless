@@ -634,3 +634,77 @@ def test_a_kept_folder_the_build_fills_stops_the_publish(tmp_path):
             publishing.publish(folder, saved, KEY, entry=None, transport=github)
             assert github.requests
             assert (saved.site_folder / "files" / "a.pdf").is_file()
+
+
+# ------------------------------------------------------------- PRESS-0345 ---
+
+
+def _hashes(folder: Path) -> dict[str, str]:
+    return {path.relative_to(folder).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(folder.rglob("*")) if path.is_file()}
+
+
+def test_a_preview_changes_nothing(tmp_path, monkeypatch):
+    """PRESS-0345 INV-4. Breaks when the preview moves the draft, builds into
+    the site folder, or keeps its scratch folder, even after a build stops."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    before = _hashes(folder)
+    publishing.preview(folder, _settings(folder), KEY, entry="seaside", transport=_github())
+    assert _hashes(folder) == before
+
+    def stopped(*args, **kwargs):
+        raise builder.BuildStopped("a photograph could not be read")
+    monkeypatch.setattr(builder, "build", stopped)
+    with pytest.raises(builder.BuildStopped):
+        publishing.preview(folder, _settings(folder), KEY, entry="seaside",
+                           transport=_github())
+    assert _hashes(folder) == before
+
+
+def test_a_preview_lists_what_is_pressed(tmp_path, monkeypatch):
+    """PRESS-0345 INV-5. Breaks when the preview builds without the pressed
+    change, or with a change other than the one the move publishes."""
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    new = publishing.preview(folder, _settings(folder), KEY, entry="seaside",
+                             transport=_github())
+    assert "blog/2026/09/17/seaside/index.html" in new.pages
+    assert "Seaside" in new.pages["blog/2026/09/17/seaside/index.html"]
+
+    store.publish(folder, "seaside")
+    store.write(folder, _entry("seaside-changes", body="After.", date="2020-01-01 00:00:00",
+                               extra=((REPLACES, "seaside"),)), draft=True)
+    copy = publishing.preview(folder, _settings(folder), KEY, entry="seaside-changes",
+                              transport=_github())
+    assert "blog/2014/11/09/seaside/index.html" in copy.pages
+    assert not any("seaside-changes" in path for path in copy.pages)
+
+    page = builder.Html(store.PAGES_FOLDER, "about", "<title>About us</title><p>Hi</p>")
+    shown = publishing.preview(folder, _settings(folder), KEY, page=page, transport=_github())
+    assert any(path.endswith("about.html") and title == "About us"
+               for path, title in shown.pages.items())
+
+
+def test_the_plan_route_answers_titles_and_counts(tmp_path, monkeypatch):
+    """PRESS-0345 § 4.3. Breaks when the route publishes, answers no titles,
+    or reads a forged page name."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<title>About us</title>",
+                     waiting=True)
+    _key(monkeypatch)
+    github = _github()
+    with _pressless(folder, github) as browser:
+        entry = json.loads(browser.request("POST", publishing.PLAN_ADDRESS,
+                                           {"slug": "seaside"})[2])
+        page = json.loads(browser.request("POST", publishing.PLAN_ADDRESS,
+                                          {"kind": "pages", "name": "about"})[2])
+        forged = json.loads(browser.request("POST", publishing.PLAN_ADDRESS,
+                                            {"kind": "pages", "name": "../settings"})[2])
+    assert entry["failure"] is None and "Seaside" in " ".join(entry["pages"])
+    assert "About us" in page["pages"]
+    assert forged["failure"] and "pages" not in forged
+    assert not any(method != "GET" for method, _u, _b, _h in github.requests)
+    assert store.list_slugs(folder, draft=True) == ("seaside",)
