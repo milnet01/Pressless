@@ -117,16 +117,20 @@ def test_an_unknown_key_is_never_written(tmp_path: Path) -> None:
     assert not (tmp_path / FILE_NAME).exists()
 
 
-def _post_theme(served: face.Face, cookie: str, body: str) -> int:
+def _post(served: face.Face, cookie: str, path: str, body: str) -> int:
     port = urllib.parse.urlsplit(served.url).port
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
     try:
-        conn.request("POST", "/theme", body=body.encode("utf-8"), headers={
+        conn.request("POST", path, body=body.encode("utf-8"), headers={
             "Host": f"127.0.0.1:{port}", "Cookie": cookie,
             "Origin": f"http://127.0.0.1:{port}"})
         return conn.getresponse().status
     finally:
         conn.close()
+
+
+def _post_theme(served: face.Face, cookie: str, body: str) -> int:
+    return _post(served, cookie, "/theme", body)
 
 
 def _get(served: face.Face, cookie: str, path: str) -> str:
@@ -208,3 +212,67 @@ def test_the_picker_applies_a_theme_without_a_reload(tmp_path: Path) -> None:
     assert "document.documentElement.dataset.theme = picker.value" in script
     for theme in themes.THEMES:
         assert f':root[data-theme="{theme.key}"]' in page, theme.key
+
+
+# PRESS-0338: the text size, kept beside the theme in the same file.
+
+def test_a_picked_text_size_is_kept_and_every_page_wears_it(tmp_path: Path) -> None:
+    """Breaks when the size is not sent with every page, or not kept for
+    the next run."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        cookie = session_cookie(served.url)
+        first = _get(served, cookie, "/words")
+        assert '<option value="100" selected>' in first
+        assert "data-size=" not in first.split("<head>")[0]
+        assert _post(served, cookie, "/text-size", "150") == 204
+        page = _get(served, cookie, "/words")
+    finally:
+        served.stop()
+    assert '<html lang="en" data-size="150">' in page
+    assert '<option value="150" selected>' in page
+    again = face.serve(tmp_path)
+    try:
+        again.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        assert 'data-size="150"' in _get(again, session_cookie(again.url), "/words")
+    finally:
+        again.stop()
+
+
+def test_the_theme_and_the_text_size_keep_each_other(tmp_path: Path) -> None:
+    """One file holds both. Breaks when writing either drops the other."""
+    themes.write_choice(tmp_path, "dark")
+    themes.write_size(tmp_path, 200)
+    themes.write_choice(tmp_path, "bonfire")
+    assert (themes.read_choice(tmp_path), themes.read_size(tmp_path)) == ("bonfire", 200)
+
+
+@pytest.mark.parametrize("text", ["", "not json", '{"version": 1, "size": 90}',
+                                  '{"version": 1, "size": "150"}', '{"version": 2, "size": 150}'])
+def test_an_unusable_size_reads_as_normal(tmp_path: Path, text: str) -> None:
+    (tmp_path / FILE_NAME).write_text(text, encoding="utf-8")
+    assert themes.read_size(tmp_path) == 100
+
+
+@pytest.mark.parametrize(("body", "status"), [("90", 400), ("big", 400), ("1" * 200, 413)])
+def test_a_size_not_offered_is_refused(tmp_path: Path, body: str, status: int) -> None:
+    served = face.serve(tmp_path)
+    try:
+        assert _post(served, session_cookie(served.url), "/text-size", body) == status
+    finally:
+        served.stop()
+    assert not (tmp_path / FILE_NAME).exists()
+
+
+def test_every_size_has_its_zoom_and_is_applied_without_a_reload(tmp_path: Path) -> None:
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        page = _get(served, session_cookie(served.url), "/words")
+    finally:
+        served.stop()
+    script = "".join(re.findall(r"<script>(.*?)</script>", page, re.S))
+    assert "select[data-size-picker]" in script
+    for size in themes.SIZES[1:]:
+        assert f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}' in page, size

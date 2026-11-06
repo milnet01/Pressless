@@ -151,25 +151,54 @@ def known(key: str) -> bool:
     return key == FOLLOW or key in _BY_KEY
 
 
-def read_choice(folder: Path) -> str:
-    """The chosen key. Missing, unparseable or unknown reads as FOLLOW, so the
-    Face always has a look."""
+def _read(folder: Path) -> dict:
+    """The file's choices; missing, unparseable or another version is none."""
     try:
         data = json.loads((Path(folder) / FILE_NAME).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return FOLLOW
-    if not isinstance(data, dict) or data.get("version") != 1:
-        return FOLLOW
-    key = data.get("theme")
+        return {}
+    return data if isinstance(data, dict) and data.get("version") == 1 else {}
+
+
+def _write(folder: Path, **choice: str | int) -> None:
+    """Replace the file whole, keeping the choices `choice` does not name."""
+    data = {**_read(folder), "version": 1, **choice}
+    write_whole(Path(folder) / FILE_NAME, json.dumps(data), prefix=f".{FILE_NAME}.")
+
+
+def read_choice(folder: Path) -> str:
+    """The chosen key. Missing, unparseable or unknown reads as FOLLOW, so the
+    Face always has a look."""
+    key = _read(folder).get("theme")
     return key if isinstance(key, str) and known(key) else FOLLOW
 
 
 def write_choice(folder: Path, key: str) -> None:
-    """Write the choice, replacing the file whole. `key` must be known."""
+    """Write the choice. `key` must be known."""
     if not known(key):
         raise ValueError(f"no theme is called {key!r}")
-    target = Path(folder) / FILE_NAME
-    write_whole(target, json.dumps({"version": 1, "theme": key}), prefix=f".{FILE_NAME}.")
+    _write(folder, theme=key)
+
+
+# PRESS-0338: the Face's own size, as a percentage. It zooms the whole Face,
+# not only its text: an editor page loads the site's stylesheet, which sets the
+# page's root text size, so the Face's rem sizes cannot carry it.
+SIZES = (100, 125, 150, 200)
+_SIZE_NAMES = ("themes.size.normal", "themes.size.large", "themes.size.larger",
+               "themes.size.largest")
+
+
+def read_size(folder: Path) -> int:
+    """The chosen size; anything not offered reads as 100."""
+    size = _read(folder).get("size")
+    return size if isinstance(size, int) and size in SIZES else 100
+
+
+def write_size(folder: Path, size: int) -> None:
+    """Write the size. `size` must be one of SIZES."""
+    if size not in SIZES:
+        raise ValueError(f"{size!r} is not an offered size")
+    _write(folder, size=size)
 
 
 def declarations(theme: Theme) -> str:
@@ -198,7 +227,18 @@ def css() -> str:
         scheme = "dark" if theme.dark else "light"
         rules.append(f':root[data-theme="{theme.key}"] {{ color-scheme: {scheme}; '
                      f"{values} --shadow: {shadow}; {preview(theme.dark)} }}")
+    rules.extend(f':root[data-size="{size}"] {{ --face-zoom: {size / 100}; }}'
+                 for size in SIZES[1:])
     return "\n".join(rules)
+
+
+def size_picker(chosen: int) -> str:
+    """The top bar's text-size select, applied at once like the theme's."""
+    options = "".join(
+        f'<option value="{size}"{" selected" if size == chosen else ""}>{say(name)}</option>'
+        for size, name in zip(SIZES, _SIZE_NAMES, strict=True))
+    return (f'<label class="size">{say("themes.size.label")} <select data-size-picker>'
+            f"{options}</select></label>")
 
 
 def picker(chosen: str) -> str:

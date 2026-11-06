@@ -593,6 +593,14 @@ document.addEventListener("change", (event) => {
   else document.documentElement.dataset.theme = picker.value;
   fetch("/theme", {method: "POST", body: picker.value});
 });
+// PRESS-0338: so is a text size.
+document.addEventListener("change", (event) => {
+  const picker = event.target.closest("select[data-size-picker]");
+  if (!picker) return;
+  if (picker.value === "100") delete document.documentElement.dataset.size;
+  else document.documentElement.dataset.size = picker.value;
+  fetch("/text-size", {method: "POST", body: picker.value});
+});
 // PRESS-0228: a "?" beside a box opens its help; Close or Escape shuts it.
 document.addEventListener("click", (event) => {
   const opener = event.target.closest("button[data-help]");
@@ -666,9 +674,17 @@ function say(key, slots = {}) {
 # two-column `body { display: grid }` would (PRESS-0133).
 # PRESS-0261: a code box's textarea is reached as `.code-box > :last-child`, so
 # a site's own textarea rule cannot cover the coloured copy behind it.
+# PRESS-0338: the text size zooms the body. A width rule is therefore a
+# container query, which measures the zoomed width where a media query would
+# measure the window's; and the window's height or width, which zoom
+# multiplies, is divided by --face-zoom first. A container body no longer
+# hands its background to the window in Chrome, so the root takes it.
+# Measured 2026-11-06 in Chrome and Firefox.
 _SHAPES = """
 body.face { all: unset; display: block; margin: 0; background: var(--paper); color: var(--ink);
-  font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+  font: 16px/1.55 system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  zoom: var(--face-zoom, 1); container-type: inline-size; }
+:root:has(> body.face) { background: var(--paper); }
 .face .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center;
   flex-wrap: wrap;
   gap: .6rem; padding: .6rem 1.5rem; background: var(--sheet);
@@ -678,7 +694,8 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar b { font: 700 1.2rem/1 Arial, Calibri, "Liberation Sans", Helvetica, sans-serif; }
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
 .face .bar .theme { margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: .5rem; }
-.face .bar .theme select { padding: .3rem .5rem; }
+.face .bar .theme select, .face .bar .size select { padding: .3rem .5rem; }
+.face .bar .size { margin: 0; flex-direction: row; align-items: center; gap: .5rem; }
 .face .bar > a, .face .nav > a { display: inline-block; margin: 0; padding: .35rem .9rem;
   font: inherit; font-weight: 600; line-height: 1.4; color: var(--ink);
   background: var(--sheet); border: 1px solid var(--line); border-radius: 999px;
@@ -730,7 +747,7 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .picture-shown { display: inline-block; width: 4rem; height: 4rem; margin-right: .75rem;
   vertical-align: middle; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .face .picture-shown img { width: 100%; height: 100%; object-fit: cover; }
-.face dialog { max-width: min(42rem, calc(100vw - 2rem)); color: var(--ink);
+.face dialog { max-width: min(42rem, calc(100vw / var(--face-zoom, 1) - 2rem)); color: var(--ink);
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
   padding: 1.1rem 1.4rem; box-shadow: 0 8px 30px var(--shadow); }
 .face dialog::backdrop { background: rgba(0, 0, 0, .5); }
@@ -846,12 +863,12 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   font-size: .85em; }
 .face .look-effects { border: 0; margin: 1rem 0; padding: 0; }
 .face .look-effects label { display: block; margin: .25rem 0; }
-@media (min-width: 70rem) {
+@container (min-width: 1120px) {
   .face main:has(> #editor), .face main:has(> #look) { max-width: none; display: grid;
     column-gap: 2rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .face main:has(> #editor) > *, .face main:has(> #look) > * { grid-column: 1; }
   .face main > #proof { grid-column: 2; grid-row: 1 / span 12; align-self: start;
-    position: sticky; top: 4.5rem; height: calc(100vh - 6rem);
+    position: sticky; top: 4.5rem; height: calc(100vh / var(--face-zoom, 1) - 6rem);
     display: flex; flex-direction: column; }
   .face #proof > #preview { flex: 1; min-height: 0; }
 }
@@ -966,8 +983,10 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
     '</svg>', safe="")
 
 
-def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
+def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100) -> str:
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
+    if size != 100:
+        chosen += f' data-size="{size}"'
     # PRESS-0232: the editors' publish notes copy this link, so it is the one
     # place a page reads the site's address from.
     visit = (f'<a href="{html.escape(site, quote=True)}" target="_blank" rel="noopener" '
@@ -982,7 +1001,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "") -> str:
         f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         # PRESS-0281: first, so every screen leads back to the list.
-        f'{themes.picker(theme)}<a href="/">{say("face.your_writing")}</a>'
+        f'{themes.picker(theme)}{themes.size_picker(size)}'
+        f'<a href="/">{say("face.your_writing")}</a>'
         # PRESS-0223 § 4.6: beside it, the sites he can open.
         f'<a href="/sites">{say("face.sites")}</a>'
         f'{visit}<a href="/setup">{say("face.settings")}</a>'
@@ -1055,7 +1075,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _send_page(self, face: Face, status: int, body: str) -> None:
         """`body` wrapped in the Face's frame, carrying the frames policy."""
-        self._send(status, _page(body, face._theme, face.live_address()), "text/html",
+        self._send(status, _page(body, face._theme, face.live_address(), face._size), "text/html",
                    (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int) -> int | None:
@@ -1160,6 +1180,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if method == "POST" and parts.path == "/theme":
             self._choose_theme(face)
             return
+        if method == "POST" and parts.path == "/text-size":
+            self._choose_size(face)
+            return
         if method == "POST" and parts.path == "/true-colours":
             self._choose_true_colours(face)
             return
@@ -1195,21 +1218,38 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _choose_theme(self, face: Face) -> None:
         """PRESS-0190: remember the theme the picker has already applied."""
+        def keep(key: str) -> None:
+            themes.write_choice(face._folder, key)
+            face._theme = key
+
+        self._choose(face, themes.known, keep, "theme")
+
+    def _choose_size(self, face: Face) -> None:
+        """PRESS-0338: remember the text size the picker has already applied."""
+        def keep(text: str) -> None:
+            themes.write_size(face._folder, int(text))
+            face._size = int(text)
+
+        self._choose(face, lambda text: text in {str(size) for size in themes.SIZES}, keep,
+                     "size")
+
+    def _choose(self, face: Face, offered: Callable[[str], bool],
+                keep: Callable[[str], None], what: str) -> None:
+        """A choice the page has already applied, kept for the next start."""
         length = self._body_length(_CHOICE_LIMIT)
         if length is None:
             return
-        key = self.rfile.read(length).decode("utf-8", "replace")
-        if not themes.known(key):
+        value = self.rfile.read(length).decode("utf-8", "replace")
+        if not offered(value):
             self._send(400, "", "text/plain")
             return
         try:
-            themes.write_choice(face._folder, key)
+            keep(value)
         except OSError:
-            # The page has the theme already; only the next start forgets it.
-            face._log.note("the theme could not be saved")
+            # The page has it already; only the next start forgets it.
+            face._log.note(f"the {what} could not be saved")
             self._send(500, "", "text/plain")
             return
-        face._theme = key
         self._send(204, "", "text/plain")
 
     def _choose_true_colours(self, face: Face) -> None:
@@ -1378,6 +1418,7 @@ class Face:
         self._uploads: dict[str, tuple[Callable[[Path], str], Path]] = {}
         self._log = log.open_log(self._folder)
         self._theme = themes.read_choice(self._folder)
+        self._size = themes.read_size(self._folder)
         self._secret = secrets.token_urlsafe(32)
         self._session = secrets.token_urlsafe(32)
         while self._session == self._secret:

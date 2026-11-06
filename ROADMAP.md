@@ -6324,12 +6324,19 @@ bigger text on request, and a press that shows it is working. From the
 
 user's question of 2026-11-03 and a study of leading site editors.
 
-- 📋 [PRESS-0338] **A text-size setting for Pressless's own screens.**
+- ✅ [PRESS-0338] **A text-size setting for Pressless's own screens.**
   User asked 2026-11-03 how usable Pressless is for a general user; a
   study of six leading site editors followed. The Face already has
   high-contrast themes and focus outlines (themes.py, face.py); no
   setting sizes its own text. Check every screen at 200% zoom too.
   After 0.11.0, by the user's choice.
+  Done 2026-11-06. A Text size select beside Theme: Normal, Large,
+  Larger, Largest (100 to 200%), kept in theme.json beside the theme. It
+  zooms the Face's body, since an editor page loads the site's
+  stylesheet, which owns the root text size. Width rules became
+  container queries, and window units are divided by the zoom.
+  scripts/by-hand-browser-checks.py checks every top-bar screen and both
+  editors at each size, passing in Chrome and Firefox.
   **Layman:** People who see poorly can make Pressless's own words and buttons bigger, without zooming the browser.
   Kind: accessibility.
   Source: user-request-2026-11-03.
@@ -12743,6 +12750,12 @@ review fix or a defect goes into the lowest version still open.
   runs timers fifty times faster. Next: pip's download cache on GitHub.
   The *-latest advice binds only a warm-container parity leg (§ 9,
   condition 1), and this project has none.
+  2026-11-06: the race tests' first speed-up flaked on GitHub's Windows
+  runner (run 42177006063); a703604 keeps the harness's pauses on real
+  time, and CI is green. pip cache, Install step: before, Linux 6-12 s
+  and Windows 19-41 s over eight runs. With a cache hit, Linux 5 s and 7
+  s; Windows one hit, 48 s. Left open: judge Windows after a few more
+  hits, and drop the cache there if it stays slower.
   **Layman:** The automatic checks before each push take less time.
   Kind: perf.
   Source: claude-config-request-2026-11-05.

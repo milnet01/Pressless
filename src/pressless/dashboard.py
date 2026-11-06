@@ -81,7 +81,8 @@ _STYLE = """<style>
   background: var(--line); overflow: hidden; }
 .face .meter i { display: block; height: 100%; width: var(--w); background: var(--amber);
   border-radius: inherit; transform-origin: left; animation: pl-fill .7s ease-out both; }
-@media (max-width: 40rem) {
+/* A container query, so the text size counts (face.py, PRESS-0338). */
+@container (max-width: 640px) {
   .face .pages thead { display: none; }
   .face .pages tr { display: flex; flex-wrap: wrap; gap: 0 1rem;
     border-bottom: 1px solid var(--line); padding: .4rem 0; }

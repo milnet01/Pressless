@@ -12,6 +12,20 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **A text size for Pressless's own screens** (PRESS-0338)
+  Beside Theme in the top bar, Text size makes every Pressless screen Large, Larger or Largest,
+  up to twice the normal size. Pressless remembers it for next time. Your published site is
+  unchanged.
+
+### Changed
+
+- **Publishing a large site uses far less memory** (PRESS-0088)
+  Pressless used to hold the whole site in memory while publishing. Now it holds about one
+  file at a time. If a file changes while it is being published, the publish stops and the
+  site is left as it was, so you can simply publish again.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

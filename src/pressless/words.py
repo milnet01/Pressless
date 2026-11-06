@@ -1853,6 +1853,12 @@ _WORDS: dict[str, str] = {
     # The theme picker in the top bar (themes.py).
     "themes.label": "Theme",
     "themes.follow": "Follow my computer",
+    # Its text-size picker beside it (PRESS-0338).
+    "themes.size.label": "Text size",
+    "themes.size.normal": "Normal",
+    "themes.size.large": "Large",
+    "themes.size.larger": "Larger",
+    "themes.size.largest": "Largest",
     "themes.group.basic": "Basic",
     "themes.group.games": "Inspired by games",
     "themes.group.films": "Inspired by films",

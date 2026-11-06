@@ -74,6 +74,7 @@ from pressless import (  # noqa: E402
     sites_screen,
     store,
     templates,
+    themes,
     undo,
     votes_setup,
     words,
@@ -532,6 +533,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         visual_editor(page, origin, folder)
         code_colours(page, origin)
         true_colours_kept(page, origin)
+        text_sizes(page, origin)
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
@@ -1064,6 +1066,51 @@ def true_colours_kept(page, origin: str) -> None:
         page.evaluate(flip, False)
     check("PRESS-0263: the true-colours switch is kept, and the preview starts undimmed",
           sent.value.status == 204 and seen == [True, True], f"{sent.value.status} {seen}")
+
+
+def text_sizes(page, origin: str) -> None:
+    """PRESS-0338: at every text size, no screen runs off the right edge; on
+    the editor the preview is no taller than the window, and the two columns give way to
+    one once the zoomed width is too narrow for them."""
+    pick = """size => {
+      const box = document.querySelector('select[data-size-picker]');
+      box.value = size;
+      box.dispatchEvent(new Event('change', {bubbles: true}));
+    }"""
+    page.goto(f"{origin}/", wait_until="networkidle")
+    screens = page.evaluate("""() => [...document.querySelectorAll('.bar > a')]
+      .map(a => a.getAttribute('href')).filter(h => h.startsWith('/'))""")
+    screens += ["/edit?slug=seaside", "/page?kind=pages&name=visual"]
+    # A container body hands Chrome's window no background, so the root has one.
+    filled = page.evaluate("""() => getComputedStyle(document.documentElement).backgroundColor
+      === getComputedStyle(document.body).backgroundColor""")
+    check("PRESS-0338: the window behind a short screen is the Face's own colour", filled)
+    first = page.viewport_size
+    for size in themes.SIZES[::-1]:
+        with page.expect_response(lambda r: r.url.endswith("/text-size")) as sent:
+            page.evaluate(pick, str(size))
+        wide = [s for s in screens if _overflows(page, f"{origin}{s}")]
+        shapes = []
+        for viewport in (first, {"width": 1920, "height": 1080}):
+            page.set_viewport_size(viewport)
+            page.goto(f"{origin}/edit?slug=seaside", wait_until="networkidle")
+            shape = page.evaluate("""() => ({
+              grid: getComputedStyle(document.querySelector('main')).display === 'grid',
+              proof: document.getElementById('proof').getBoundingClientRect().height,
+              window: innerHeight})""")
+            shape["columns"] = viewport["width"] * 100 / size >= 1120
+            shapes.append(shape)
+        page.set_viewport_size(first)
+        right = all(s["grid"] == s["columns"] and (not s["columns"] or s["proof"] <= s["window"])
+                    for s in shapes)
+        check(f"PRESS-0338: at text size {size}%, every screen fits its width, and the "
+              f"editor's columns and preview fit two window sizes",
+              sent.value.status == 204 and not wide and right, f"{wide} {shapes}")
+
+
+def _overflows(page, address: str) -> bool:
+    page.goto(address, wait_until="networkidle")
+    return page.evaluate("document.documentElement.scrollWidth > innerWidth")
 
 
 def _column_page(*columns: str, after: str) -> str:
