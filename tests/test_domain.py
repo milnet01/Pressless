@@ -134,12 +134,36 @@ def test_a_two_part_name_shows_only_the_address_records():
     assert all(address in shown for address in GITHUB_A) and "CNAME" not in shown
 
 
-def test_a_name_that_could_be_either_shows_both_each_saying_when():
-    """`example.co.za` is a whole bought name, and `blog.example.com` is not, and nothing
-    in the standard library tells them apart."""
+def test_a_whole_name_under_a_two_part_ending_shows_only_the_address_records():
+    """PRESS-0342: `co.za` is an ending sold names sit under, so `example.co.za` is a
+    whole name. Breaks when both sets are shown, or the name is read as a part."""
     shown = domain.records("example.co.za", "owner/site")
-    assert all(address in shown for address in GITHUB_A)
-    assert "<code>example</code>" in shown and "If example.co.za is instead a part" in shown
+    assert all(address in shown for address in GITHUB_A) and "CNAME" not in shown
+
+
+@pytest.mark.parametrize(("name", "part"), [("blog.example.com", "blog"),
+                                            ("blog.team.example.co.za", "blog.team")])
+def test_a_part_of_a_bought_name_shows_only_its_cname(name, part):
+    """PRESS-0342. Breaks when the address records are shown too, or the record
+    is named after the first label alone."""
+    shown = domain.records(name, "owner/site")
+    assert f"<code>{part}</code>" in shown and "owner.github.io" in shown
+    assert not any(address in shown for address in GITHUB_A)
+
+
+@pytest.mark.parametrize(("name", "bought"), [
+    ("example.co.za", "example.co.za"), ("blog.example.co.za", "example.co.za"),
+    ("example.com", "example.com"), ("example.za", "example.za"),
+    ("a.b.c.ck", "b.c.ck"), ("www.ck", "www.ck"), ("co.za", None), ("com", None)])
+def test_the_bought_name_follows_the_public_suffix_list(name, bought):
+    """PRESS-0342: the list's rules, its wildcards and exceptions included, and
+    its default that a last label alone is an ending. Breaks when a rule kind
+    is read wrongly."""
+    assert domain.bought(name) == bought
+
+
+def test_an_ending_alone_is_not_a_domain():
+    assert domain.clean("co.za") is None
 
 
 # ----------------------------------------------------------------- the wizard ---

@@ -39,6 +39,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   They used to sit among your pages. Now Your writing lists them under Parts of every page, and
   their editor says that a change there shows on every page of your site.
 
+- **The domain wizard shows only the records your name needs** (PRESS-0342)
+  It used to show two sets for a name like example.co.za and leave you to choose. Pressless now
+  knows which part of a name was bought, using the public suffix list that browsers use, so it
+  shows just the records that fit.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

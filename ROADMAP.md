@@ -6393,13 +6393,21 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: face, page editor.
 
-- 📋 [PRESS-0342] **The domain wizard shows only the records that fit the name typed.**
+- ✅ [PRESS-0342] **The domain wizard shows only the records that fit the name typed.**
   Seen 2026-11-03 in the PRESS-0222 hand check: steps 2 and 3 show
   both the A records for a whole domain and the CNAME for a part of
   one, and leave the choice to the person. A name with more labels
   than its registrable domain is the CNAME case; the public suffix
   list decides that, so a design question first.
   After 0.11.0, by the user's choice.
+  Done 2026-11-06. Design question settled: the public suffix list's
+  ICANN section ships as a generated module,
+  src/pressless/_public_suffixes.py (version 2026-11-04, MPL-2.0, made
+  by scripts/public-suffixes.py), so packaging carries no data file.
+  domain.bought follows the list's rules, wildcards, exceptions and
+  default. A whole name shows the address records, a part one CNAME
+  under its full part, and www both. A bare ending such as co.za is
+  refused. Refresh the list as a dependency.
   **Layman:** The own-domain wizard shows only the records that match the address typed, so nobody has to work out which set applies.
   Kind: ux.
   Source: user-request-2026-11-03.

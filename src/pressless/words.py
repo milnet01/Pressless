@@ -1102,13 +1102,14 @@ _WORDS: dict[str, str] = {
         "because it can stop the secure address working:"
     ),
     "domain.records.whole": (
-        "If you bought {domain} itself, log in where you bought it, open its DNS settings, "
-        "and add each of these. Remove any other A or AAAA record with the name @, because it "
-        "can stop the secure address working:"
+        "Log in where you bought {domain}, open its DNS settings, and add each of these. "
+        "Remove any other A or AAAA record with the name @, because it can stop the secure "
+        "address working:"
     ),
     "domain.records.part": (
-        "If {domain} is instead a part of a name you bought, like blog.example.com, add "
-        "only this one, under the name you bought:"
+        "{domain} is a part of {bought}. Log in where you bought {bought}, open its DNS "
+        "settings, and add this one. Remove any other record with the name {part}, because "
+        "it can stop the secure address working:"
     ),
     "domain.set": (
         "GitHub now knows your site belongs at {domain}. Enter these at your domain seller now:"

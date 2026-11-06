@@ -12,7 +12,7 @@ import html
 from collections.abc import Callable
 from pathlib import Path
 
-from pressless import github_setup, publisher, settings, takeover, wizard
+from pressless import _public_suffixes, github_setup, publisher, settings, takeover, wizard
 from pressless.face import Face, Request, render_notices
 from pressless.words import say
 from pressless_import import fetch
@@ -42,9 +42,29 @@ def clean(typed: str) -> str | None:
     if (len(labels) < 2 or len(name) > _NAME_LONGEST
             or not all(_good_label(label) for label in labels)
             or labels[-1].isdigit()
-            or any(name == own or name.endswith(f".{own}") for own in _OWN_NAMES)):
+            or any(name == own or name.endswith(f".{own}") for own in _OWN_NAMES)
+            or bought(name) is None):
         return None
     return name
+
+
+def bought(name: str) -> str | None:
+    """PRESS-0342: the name someone bought that `name` is, or is a part of, by the
+    public suffix list: its ending plus one label. None where `name` is an ending
+    itself, such as co.za. The longest rule matching wins, and where none does, the
+    last label alone is the ending, as the list's own algorithm says."""
+    labels = name.split(".")
+    ending = 1
+    for start in range(len(labels)):
+        tail = labels[start:]
+        if "!" + ".".join(tail) in _public_suffixes.RULES:
+            ending = len(tail) - 1
+            break
+        if (".".join(tail) in _public_suffixes.RULES
+                or (len(tail) > 1 and ".".join(["*", *tail[1:]]) in _public_suffixes.RULES)):
+            ending = len(tail)
+            break
+    return ".".join(labels[-ending - 1:]) if ending < len(labels) else None
 
 
 def _good_label(label: str) -> bool:
@@ -70,20 +90,20 @@ def _apex_rows() -> list[str]:
 
 
 def records(domain: str, repository: str) -> str:
-    """The records to copy to the seller, GitHub's own values. Nothing in the standard
-    library knows whether `example.co.za` is a whole bought name or a part of one, so
-    where a name could be either, both are shown, each saying when it applies."""
+    """The records to copy to the seller, GitHub's own values: the address records
+    for a whole bought name, one CNAME for a part of one, and both for www, so the
+    bought name leads to the site too (PRESS-0342)."""
     e = html.escape
     host = f"{repository.split('/', 1)[0].lower()}.github.io"
-    first, _, rest = domain.partition(".")
-    subdomain = _table([_record_row("CNAME", first, host)])
-    if first == "www":
-        return (f"<p>{say('domain.records.www', domain=e(domain), bought=e(rest))}</p>"
+    whole = bought(domain) or domain
+    part = domain.removesuffix(whole).removesuffix(".")
+    if part == "www":
+        return (f"<p>{say('domain.records.www', domain=e(domain), bought=e(whole))}</p>"
                 + _table([_record_row("CNAME", "www", host), *_apex_rows()]))
-    if "." not in rest:
+    if not part:
         return (f"<p>{say('domain.records.whole', domain=e(domain))}</p>" + _table(_apex_rows()))
-    return (f"<p>{say('domain.records.whole', domain=e(domain))}</p>" + _table(_apex_rows())
-            + f"<p>{say('domain.records.part', domain=e(domain))}</p>" + subdomain)
+    return (f"<p>{say('domain.records.part', domain=e(domain), bought=e(whole), part=e(part))}"
+            "</p>" + _table([_record_row("CNAME", part, host)]))
 
 
 def _state(domain: str, resolve: fetch.Resolve) -> str:
