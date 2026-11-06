@@ -1,6 +1,6 @@
 # PRESS-0009 — Publisher: making GitHub match the folder it was handed
 
-**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Gated for one loop: five verified, five fixed, not converged. **Amended 2026-09-27, before implementation**: an unexpected success or an unreadable answer to a write that can change the site is `OutcomeUnknown` (PRESS-0166), and a write answered with a redirect is `RepositoryMoved` (PRESS-0167). That changes direction, so the gate re-armed. Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
+**Status:** accepted (2026-08-26). Implemented, §4.1's five own-type failures included and each asserted by name (PRESS-0116, 2026-09-08). Amended 2026-09-27: on Windows a fetch refuses a path the disk cannot hold, as `UnfetchablePath` (§4.5, INV-11; PRESS-0160). Gated for one loop: five verified, five fixed, not converged. **Amended 2026-09-27, before implementation**: an unexpected success or an unreadable answer to a write that can change the site is `OutcomeUnknown` (PRESS-0166), and a write answered with a redirect is `RepositoryMoved` (PRESS-0167). That changes direction, so the gate re-armed. Amended 2026-11-06: files are hashed, then read again to be sent (§4.2, INV-13; PRESS-0088). Every gate this document has taken, and how each ended, is §12 — kept there so this line does not carry a count that goes stale on the next loop.
 **Kind:** implement.
 **Source:** ROADMAP PRESS-0009 and PRESS-0010 (`docs/design.md` § The
 parts, § What may depend on what rules 5, 7 and 10; ADR-0002).
@@ -209,6 +209,13 @@ for n in sys.argv[1:]:
 
 Both commands agreed on all three, the empty file included. The
 computation is `sha1(b"blob " + str(len(data)).encode() + b"\0" + data)`.
+
+**A file is hashed when the folder is read, and read again to be sent**
+(PRESS-0088). Only its hash is kept between the two, so a publish holds
+about one file's bytes at a time, however large the site. The second
+read must give the hash the first one did. Otherwise the publish raises
+`PublishError` before the tree is written, and the site is unchanged.
+Sending the second read unchecked would publish bytes nothing compared.
 
 **Which branch, and it is not configurable.** All three functions act on
 the repository's **default branch**, never on a stored name, and they
@@ -734,6 +741,17 @@ and `default_branch` are added.
   unchanged; or a redirected write is followed, publishing to a
   repository the settings do not name.
 
+- **INV-13** — A publish holds no file's bytes from the comparison to the
+  commit, and a file whose second read differs from its first refuses the
+  publish before the tree is written (§4.2).
+  *Test:* `tests/test_publisher.py::test_a_publish_holds_one_file_at_a_time`:
+  twenty 1 MiB files publish with peak traced memory under eight of them.
+  `::test_a_file_changed_during_the_publish_is_refused`: a file rewritten
+  as the first blob is sent raises `PublishError` naming it, and no tree
+  is written.
+  *Breaks when:* every file's bytes are kept from the comparison on; or
+  the second read is sent without its hash being checked.
+
 ## 6. Failure modes
 
 | What happens | What is raised | What the writer's site is |
@@ -757,7 +775,7 @@ and `default_branch` are added.
 | Retry hints exhausted | `RateLimited` | unchanged |
 | Pressless stops before the reference update (crash, power loss) | nothing — the process is gone | unchanged |
 | `fetch_previous` on a first commit | `NoPreviousState` | unchanged |
-| GitHub answers a status no row above names — a server error before the reference update, the start write aside, among them — or a file in the handed folder cannot be read | `PublishError` itself | unchanged |
+| GitHub answers a status no row above names — a server error before the reference update, the start write aside, among them — or a file in the handed folder cannot be read, or changes between its hashing and its sending | `PublishError` itself | unchanged |
 
 **These five rows each carry their own type**, added 2026-09-08 by
 PRESS-0116. Four refuse before anything reaches GitHub;
@@ -895,6 +913,7 @@ code, so a green INV-1 says nothing about the rest.
 | INV-10 | `tests/test_publisher.py::test_a_stray_file_refuses_the_publish`, `::test_a_plain_subdirectory_does_not_refuse`, `::test_an_untouchable_dot_name_does_not_refuse` and `::test_an_untouchable_symlink_does_not_refuse` |
 | INV-11 | `tests/test_publisher.py::test_a_path_windows_cannot_hold_is_named` and `::test_a_path_windows_cannot_hold_fetches_elsewhere` |
 | INV-12 | `tests/test_publisher.py::test_an_odd_success_is_unknown`, `::test_a_redirected_write_names_the_move` and `::test_the_client_follows_no_redirected_write` |
+| INV-13 | `tests/test_publisher.py::test_a_publish_holds_one_file_at_a_time` and `::test_a_file_changed_during_the_publish_is_refused` |
 | That `fetch_previous`'s move phase is all-or-nothing | **nothing, and §4.5 says why** — it is one rename per file, so a failure part-way leaves the files already moved at their final paths. Closing it is a design change this document does not take; PRESS-0015 must not be built assuming otherwise |
 | That the Builder emits no dot-name segment outside an untouchable first segment | **nothing here** — setup removes Builder output from the untouchable list, so a dot-name the Builder starts emitting would refuse every publish permanently. PRESS-0008 owns not emitting one, and nothing in this module can see it |
 | Whether everything surviving §4.4's two stray tests IS Builder output | **nothing, and nothing here can** — an ordinary non-dot file the writer drops in the folder still publishes. Closing that needs the Builder to declare what it wrote, which is PRESS-0008's |
@@ -976,3 +995,4 @@ its own type; the rows above credit them on that condition.
 | 14 | 2026-09-27 | 2, cold — amendment gate for PRESS-0160, one loop by the budget; packet windowed `fetch_previous` and carried the Windows device measurement. GitHub and Windows unrunnable | 1 | 3 | 0 | 1 | **Five verified, five fixed; not converged, one loop is the budget.** Both lanes: INV-11 forced the platform through a seam § 4.1 did not name. One: the not-Windows half could not pass on a Windows host. One: `\` was missing from the forbidden set. One: "Windows only" read against § 4.4's macOS remark; macOS is not a target, now said. From both lanes' open questions: a file clashing by case with a folder above another path. Inside the gated span: 5 of 5. Casefold against NTFS folding left as stated: slugs are `[a-z0-9-]`. |
 | 14-fix | 2026-09-27 | none — author correction after the loop; no reviewer dispatched | 1 | 0 | 0 | 0 | **One fixed, found by the author.** Loop 14's packet said `con` is a legal slug from `_LEGAL_SLUG` alone; the Store also refuses device names (PRESS-0067). § 4.5 and INV-11 claimed the check is reachable from the Store; they now say it fires on a repository something else wrote. |
 | 15 | 2026-09-27 | 2, cold — genre pinned `spec`; armed by PRESS-0166 and PRESS-0167 (`953b386`): the odd-success and `RepositoryMoved` rows, INV-12. Packet carried the executed `urllib` redirect fact; GitHub declared unrunnable. Each lane held all four questions | 0 | 3 | 1 | 2 | **Six verified, six fixed; one dismissed, one filed.** Both lanes: § 6's no-answer and server-error rows, INV-3 and the `OutcomeUnknown` comment named only the reference update, while the start write is `OutcomeUnknown` too; a start-write answer naming no commit fell to the base type. One lane: "§4.3's start file" is PRESS-0127's; INV-12 stated what GitHub did rather than what the module raises (both lanes); the redirect test used the double, which cannot see a client that follows; "every row but two" became three. Dismissed: later rows after a start write are PRESS-0127 § 6's. Filed PRESS-0176 (design.md § Errors). One round by the amendment budget; not converged. |
+| impl | 2026-11-06 | none — amendment for PRESS-0088; no reviewer dispatched | 0 | 0 | 0 | 0 | **INV-13 added.** Files are hashed when read and read again to be sent; a changed file refuses the publish. A 500 MiB site's measured peak fell from 717 to 267 MiB. |

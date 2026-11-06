@@ -6595,7 +6595,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
   Lanes: docs, face, packaging.
 
-- 📋 [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
+- ✅ [PRESS-0088] **A publish reads the whole site into memory and then copies each uploaded file about three more times.**
   _local_files reads EVERY file of the site into one dict before
   anything is compared, and the upload path adds roughly three further
   copies of each file: b64encode, json.dumps, then .encode.
@@ -6627,6 +6627,14 @@ owned by docs/standards/versioning-overrides.md.
   to the site's size, not several copies. Re-measure once 0.10.0's
   music and downloads make sites larger, and decide from that number
   before the format freezes.
+  Done 2026-11-06. Measured first, on a 500 MiB synthetic site whose
+  largest file is 50 MiB: peak 717 MiB, so near Pages' 1 GB cap a
+  publish would hold well over a gigabyte. Now each file is hashed when
+  the folder is read and read again only to be sent, and a file whose
+  second read differs refuses the publish (PRESS-0009 §4.2, INV-13).
+  Peak on the same site: 267 MiB, set by the largest file rather than
+  the site. The per-file encoding copies remain; they are bounded by the
+  50 MiB file cap.
   **Layman:** Publishing a site with many photographs could use a lot of memory on a modest computer.
   Kind: perf.
   Source: review-code 2026-08-31 lane publisher, split from PRESS-0069 item 3 on 2026-09-02.
@@ -6669,7 +6677,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: review residue 2026-09-25, from PRESS-0039's own note.
   Lanes: Settings, Credentials, Insights, Store.
 
-- 💭 [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
+- ✅ [PRESS-0168] **A publish holds every site file's bytes in memory at once.**
   publisher._local_files keeps path -> bytes for the whole folder, and
   base64 plus json.dumps add copies of each blob as it is sent, so peak
   memory scales with the site (Pages allows up to 1 GB). Keeping only
@@ -6687,6 +6695,8 @@ owned by docs/standards/versioning-overrides.md.
   Placed in 1.0.0 on 2026-10-02 beside PRESS-0088. Files other than
   photographs (0.10.0) make sites larger, so the measurement is taken
   again then.
+  Done 2026-11-06 by PRESS-0088: a publish keeps a hash per file, not
+  its bytes.
   **Layman:** Publishing a very large site could use a lot of the computer's memory.
   Kind: perf.
   Source: review-code 2026-09-26 PRESS-0135 lane Publisher, Low (PRESS-0162 L2.5).

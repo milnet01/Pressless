@@ -19,6 +19,7 @@ import json
 import os
 import time
 import traceback
+import tracemalloc
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -491,6 +492,66 @@ def test_unchanged_files_are_not_uploaded(tmp_path):
         f"a publish where nothing differs returned commit "
         f"{getattr(outcome, 'commit', outcome)!r}, not an empty sha"
     )
+
+
+class _ForgetsBlobs(_Transport):
+    """Records a blob's request without its body, so the double holds no
+    copy of what was sent and memory measures the Publisher alone."""
+
+    def request(self, method, url, body, headers):
+        return super().request(method, url, None if "/git/blobs" in url else body,
+                               headers)
+
+
+def test_a_publish_holds_one_file_at_a_time(tmp_path):
+    """PRESS-0088: the folder is compared by hash and each file is read
+    again only to be sent, so peak memory is about one file's worth
+    however large the site. Breaks when every file's bytes are held from
+    the comparison to the commit: twenty files then peak above twenty of
+    them."""
+    size = 1024 * 1024
+    for n in range(20):
+        (tmp_path / f"track{n:02}.mp3").write_bytes(os.urandom(size))
+    transport = _ForgetsBlobs(reads=_reads(_listing([])), writes=_writes())
+
+    tracemalloc.start()
+    try:
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+
+    assert peak < 8 * size, f"peak {peak / size:.1f} MiB for twenty 1 MiB files"
+
+
+class _ChangesAFile(_Transport):
+    """Rewrites `target` as the first blob is sent: the writer, or another
+    program, changing the folder while a publish runs."""
+
+    def __init__(self, target: Path, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._target = target
+
+    def request(self, method, url, body, headers):
+        if "/git/blobs" in url and self._target.read_bytes() == b"<html>b</html>":
+            self._target.write_bytes(b"<html>b, changed</html>")
+        return super().request(method, url, body, headers)
+
+
+def test_a_file_changed_during_the_publish_is_refused(tmp_path):
+    """PRESS-0088: a file read again to be sent must still be what was
+    compared, or the publish stops before the tree is written, leaving the
+    site as it was. Breaks when the second read is sent unchecked, or the
+    first read's bytes are sent instead."""
+    (tmp_path / "a.html").write_bytes(b"<html>a</html>")
+    (tmp_path / "b.html").write_bytes(b"<html>b</html>")
+    transport = _ChangesAFile(tmp_path / "b.html", reads=_reads(_listing([])),
+                              writes=_writes())
+
+    with pytest.raises(PublishError, match="b.html changed"):
+        publish(_settings(), tmp_path, "a-token", "message", transport=transport)
+
+    assert not [u for m, u, _, _ in transport.requests if "/git/trees" in u and m != "GET"]
 
 
 # --------------------------------------------------------------- INV-5 ----
@@ -2386,8 +2447,9 @@ def test_a_windows_junction_is_refused_and_not_walked(tmp_path, monkeypatch):
                         lambda self: False if self == junction else real_is_symlink(self))
     monkeypatch.setattr(Path, "is_junction", lambda self: self == junction, raising=False)
     read = []
-    real_read = Path.read_bytes
-    monkeypatch.setattr(Path, "read_bytes", lambda self: (read.append(self), real_read(self))[1])
+    real_open = Path.open   # hashing and read_bytes both open through it
+    monkeypatch.setattr(Path, "open",
+                        lambda self, *a, **k: (read.append(self), real_open(self, *a, **k))[1])
 
     listing = _listing([("index.html", _blob_hash(b"<html>old</html>"))])
     transport = _Transport(reads=_reads(listing), writes=_writes())

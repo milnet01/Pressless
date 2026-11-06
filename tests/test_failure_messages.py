@@ -196,14 +196,14 @@ def test_an_unreadable_site_file_names_no_path(tmp_path, monkeypatch):
     # The read itself is refused, rather than chmod 000: Windows ignores that
     # mode, so the file stayed readable there and nothing was raised
     # (PRESS-0120). The refusal carries the path, as the system's would.
-    real_read_bytes = Path.read_bytes
+    real_open = Path.open   # hashing and read_bytes both open through it
 
-    def refused(self):
+    def refused(self, *args, **kwargs):
         if self == secret:
             raise PermissionError(13, "Permission denied", str(self))
-        return real_read_bytes(self)
+        return real_open(self, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "read_bytes", refused)
+    monkeypatch.setattr(Path, "open", refused)
 
     try:
         with pytest.raises(PublishError) as caught:

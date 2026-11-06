@@ -243,7 +243,7 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     branch = _default_branch(session, settings.repository)
     head_url = _repo_url(settings.repository, f"commits/{_segment(branch)}")
     untouchable = settings.untouchable
-    local: dict[str, bytes] | None = None
+    local: dict[str, _Local] | None = None
     started = start_commit = ""
     head = session.read(head_url, empty_ok=True)
     if head is None:
@@ -261,7 +261,8 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
             "PUT",
             _repo_url(settings.repository, f"contents/{_segment(started)}"),
             {"message": message,
-             "content": base64.b64encode(local[started]).decode("ascii")},
+             "content": base64.b64encode(
+                 _read_again(started, local[started])).decode("ascii")},
             outcome_unknown=True,
         )
         written = answer.get("commit")
@@ -286,13 +287,13 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
     if local is None:
         local = _local_files(folder, untouchable)
 
-    uploaded: dict[str, bytes] = {}
-    for path, data in sorted(local.items()):
+    uploaded: dict[str, _Local] = {}
+    for path, file in sorted(local.items()):
         if _is_protected(path, untouchable):
             continue
-        if remote.get(path) == blob_hash(data):
+        if remote.get(path) == file.sha:
             continue
-        uploaded[path] = data
+        uploaded[path] = file
 
     unprotected = [
         path for path in remote if not _is_protected(path, untouchable)
@@ -316,10 +317,11 @@ def publish(settings: Settings, folder: Path, token: str, message: str,
         )
 
     entries = []
-    for path, data in uploaded.items():
+    for path, file in uploaded.items():
         sha = _required(
             session.write("POST", _repo_url(settings.repository, "git/blobs"),
-                          {"content": base64.b64encode(data).decode("ascii"),
+                          {"content": base64.b64encode(
+                              _read_again(path, file)).decode("ascii"),
                            "encoding": "base64"},
                           pace=BLOB_PACE_SECONDS),
             "sha", "a blob",
@@ -977,7 +979,62 @@ def _refuse_if_stray(relative: str, path: Path) -> None:
         )
 
 
-def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, bytes]:
+@dataclass(frozen=True)
+class _Local:
+    """A file in the site folder: where it is, and its git blob hash when
+    the folder was read. Only the hash is kept, so a publish holds one
+    file's bytes at a time however large the site (PRESS-0088)."""
+
+    path: Path
+    sha: str
+
+
+def _unreadable(relative: str, exc: OSError) -> PublishError:
+    """A file the writer cannot read is still a file in the site folder;
+    the bare OSError was neither of §4.1's types (PRESS-0073)."""
+    return PublishError(
+        f"{relative} is in the site folder but could not be read: {_why(exc)}")
+
+
+def _hash_file(relative: str, path: Path) -> str:
+    """`path`'s git blob hash, as blob_hash gives it, read a mebibyte at a
+    time. A file whose length moved during the read has changed."""
+    try:
+        with path.open("rb") as handle:
+            size = os.fstat(handle.fileno()).st_size
+            digest = hashlib.sha1(b"blob %d\0" % size, usedforsecurity=False)
+            read = 0
+            while chunk := handle.read(1024 * 1024):
+                digest.update(chunk)
+                read += len(chunk)
+    except OSError as exc:
+        raise _unreadable(relative, exc) from exc
+    if read != size:
+        raise _changed(relative)
+    return digest.hexdigest()
+
+
+def _changed(relative: str) -> PublishError:
+    return PublishError(
+        f"{relative} changed while it was being published, so the site was "
+        f"left as it was"
+    )
+
+
+def _read_again(relative: str, local: _Local) -> bytes:
+    """`local`'s bytes, refused unless they are still what was compared:
+    sent unchecked, a file changed meanwhile would go up under a
+    comparison made of other bytes (PRESS-0088)."""
+    try:
+        data = local.path.read_bytes()
+    except OSError as exc:
+        raise _unreadable(relative, exc) from exc
+    if blob_hash(data) != local.sha:
+        raise _changed(relative)
+    return data
+
+
+def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, _Local]:
     """Every file under `folder`, keyed by repository-relative path.
 
     A stray refuses the publish rather than being skipped or sent (§4.4,
@@ -995,17 +1052,7 @@ def _local_files(folder: Path, untouchable: tuple[str, ...]) -> dict[str, bytes]
             # reading follows the link (PRESS-0069). A directory carries no
             # bytes of its own.
             continue
-        try:
-            content = path.read_bytes()
-        except OSError as exc:
-            # A file the writer cannot read is still a file in the site
-            # folder; the bare OSError was neither of §4.1's types
-            # (PRESS-0073).
-            raise PublishError(
-                f"{relative} is in the site folder but could not be read: "
-                f"{_why(exc)}"
-            ) from exc
-        files[relative] = content
+        files[relative] = _Local(path, _hash_file(relative, path))
     return files
 
 
