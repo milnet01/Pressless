@@ -208,8 +208,9 @@ decision 5; *amended by PRESS-0216*, which opens it in the visual view). `show` 
 first fixed page `list_html` gives, else the newest entry.
 
 **The list at `/`** (PRESS-0012 § 4.5) gains a section after the entries: each
-fixed page by name, `index` shown as *Home*, then *Header*, *Footer* and
-*Navigation*. Each row opens `/page?kind=&name=` and says where its changes
+fixed page by name, `index` shown as *Home*. *Header*, *Footer* and
+*Navigation* follow in a card of their own, *Parts of every page*, which says a
+change to one shows on every page (PRESS-0341). Each row opens `/page?kind=&name=` and says where its changes
 are not on the site yet. `editor._list` draws it from `store.list_html` and
 `store.html_path_for(..., waiting=True)`, so `editor.py` imports nothing of
 `page_editor.py`, which imports it.

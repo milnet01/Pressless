@@ -859,10 +859,26 @@ def test_your_pages_labels_each_page_like_the_fixed_ones(tmp_path):
     Footer are, never as its file name."""
     for name in ("index", "about", "my-shows"):
         store.write_html(tmp_path, store.PAGES_FOLDER, name, "<p>Words.</p>")
-    listed = editor._pages(tmp_path)
+    listed = "".join(editor._pages(tmp_path))
     for label in ("Home", "About", "My shows", "Header", "Footer"):
         assert f">{label}</a>" in listed, label
     assert ">about</a>" not in listed and ">my-shows</a>" not in listed
+
+
+def test_the_parts_of_every_page_are_listed_apart(tmp_path):
+    """PRESS-0341: Header, Footer and Navigation sit in a card of their own
+    that says a change to one shows on every page, not among the pages.
+    Breaks when they are listed with the pages again."""
+    store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>Words.</p>")
+    with _editor(tmp_path) as browser:
+        listing = browser.request("GET", "/")[2]
+    cards = dict(re.findall(r'<section class="card"><h2>(.*?)</h2>(.*?)</section>',
+                            listing, re.S))
+    assert ">Home</a>" in cards["Your pages"]
+    parts = cards["Parts of every page"]
+    assert "shows on every page" in parts
+    for label in ("Header", "Footer", "Navigation"):
+        assert f">{label}</a>" in parts and f">{label}</a>" not in cards["Your pages"], label
 
 
 def test_messages_open_over_the_page_and_status_lines_keep_room(tmp_path):

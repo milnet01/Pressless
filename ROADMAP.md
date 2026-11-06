@@ -6378,11 +6378,16 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: setup.
 
-- 📋 [PRESS-0341] **Header, Footer and Navigation are shown as parts of every page.**
+- ✅ [PRESS-0341] **Header, Footer and Navigation are shown as parts of every page.**
   From the 2026-11-03 usability study: Your pages lists them beside
   About and Home, as if they were pages to visit. Leading editors
   group them as shared parts and say a change reaches every page.
   After 0.11.0, by the user's choice.
+  Done 2026-11-06. The list at / shows Header, Footer and Navigation in
+  their own card, Parts of every page, saying a change to one shows on
+  every page; Your pages keeps the pages and the New page box. Each
+  part's editor shows the same line under its name. PRESS-0014 § 4.4
+  amended.
   **Layman:** The header, footer and menu are shown apart from the pages, as things that change every page at once.
   Kind: ux.
   Source: user-request-2026-11-03.

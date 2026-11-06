@@ -557,6 +557,9 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
         title = say("editor.pages.home") if name == HOME else name
     else:
         title = say(_LABELS[name]) if name in _LABELS else name
+    # PRESS-0341: a part of every page says so under its name.
+    every_page = (f"<p>{say('editor.list.parts_note')}</p>"
+                  if kind == store.FURNITURE_FOLDER else "")
     # PRESS-0285 § 4.3: one link to each view, in one place, the one to the
     # view shown hidden; the script swaps them.
     switch = '<p class="nav">' + "".join(
@@ -591,7 +594,7 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
         for sheet in sheets)
     return f"""{stylesheets}
 <p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
-<h1>{html.escape(title)}</h1>
+<h1>{html.escape(title)}</h1>{every_page}
 <div id="standing" data-waiting="{'1' if waiting else '0'}">
 <p data-when="1"{'' if waiting else ' hidden'}>{say("editor.standing.waiting")}</p>
 <form data-when="1" method="post" action="/page/discard"{'' if waiting else ' hidden'}>

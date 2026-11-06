@@ -466,6 +466,8 @@ _WORDS: dict[str, str] = {
     "editor.list.drafts": "Drafts",
     "editor.list.on_site": "On your site",
     "editor.list.pages": "Your pages",
+    "editor.list.parts": "Parts of every page",
+    "editor.list.parts_note": "A change to one of these shows on every page of your site.",
     "editor.list.carry_on": "Carry on with:",
     "editor.list.blank": "A blank entry",
     "editor.list.start_from": "Start from",

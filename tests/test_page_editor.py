@@ -357,6 +357,17 @@ def test_stray_furniture_is_warned_about(tmp_path):
 # ----------------------------------------------------------------- INV-13 ---
 
 
+def test_a_part_of_every_page_says_so(tmp_path):
+    """PRESS-0341: the header's editor says a change there shows on every
+    page, and a page's editor does not. Breaks when the line goes."""
+    folder = _folder(tmp_path)
+    with _pages(folder) as browser:
+        header = browser.request("GET", "/page?kind=furniture&name=header")[2]
+        home = browser.request("GET", "/page?kind=pages&name=index")[2]
+    note = "shows on every page of your site"
+    assert re.search(rf"</h1>\s*<p>[^<]*{note}", header)
+    assert note not in home
+
 def test_furniture_opens_in_the_visual_view(tmp_path):
     """PRESS-0216 § 3 decision 5, amending § 3 decision 5 here. Breaks when the
     header, footer or menu is held to the code view."""

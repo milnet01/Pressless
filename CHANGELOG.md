@@ -35,6 +35,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   happens in everyday words. GitHub's own terms, such as repository and GitHub Pages, are under
   a What's happening button on each step.
 
+- **Header, Footer and Navigation have a card of their own** (PRESS-0341)
+  They used to sit among your pages. Now Your writing lists them under Parts of every page, and
+  their editor says that a change there shows on every page of your site.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

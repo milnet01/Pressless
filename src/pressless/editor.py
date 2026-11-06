@@ -346,10 +346,10 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
                     first_failure = first_failure or exc
                     unreadable[draft].append(slug)
         try:
-            pages = _pages(folder, request.query.get("page_hint", ""))
+            pages, parts = _pages(folder, request.query.get("page_hint", ""))
         except store.StoreError as exc:
             first_failure = first_failure or exc
-            pages = f"<p>{say('editor.list.pages_unreadable')}</p>"
+            pages, parts = f"<p>{say('editor.list.pages_unreadable')}</p>", ""
         site = _site_line(folder)
         try:
             journal: bool | None = store.journal_on(folder)
@@ -376,7 +376,8 @@ def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> s
     # PRESS-0189: each list is a card.
     cards = (_card("editor.list.drafts", _rows(drafts, unreadable[True], notes))
              + _card("editor.list.on_site", _rows(readable[False], unreadable[False], notes))
-             + _card("editor.list.pages", pages))
+             + _card("editor.list.pages", pages)
+             + (_card("editor.list.parts", parts) if parts else ""))
     return (header + '<div id="undo-result"></div>'
             + '<div id="listing">' + controls + cards + "</div>"
             + "".join(face.list_pieces(above=False))
@@ -461,12 +462,13 @@ PAGE_HINTS = {"empty": "page_hint.empty", "taken": "page_hint.taken",
               "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable"}
 
 
-def _pages(folder: Path, hint: str = "") -> str:
+def _pages(folder: Path, hint: str = "") -> tuple[str, str]:
     """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
     saying where its changes are not on the site yet; a page only waiting to
     be pressed is listed too, and the New page box follows (PRESS-0195 § 4.3).
-    Drawn from the Store alone, so this module imports nothing of
-    page_editor.py."""
+    The pages and the furniture come back apart, the furniture as the parts
+    of every page (PRESS-0341). Drawn from the Store alone, so this module
+    imports nothing of page_editor.py."""
     names = sorted(set(store.list_html(folder, store.PAGES_FOLDER))
                    | set(store.list_html(folder, store.PAGES_FOLDER, waiting=True)))
     rows = [(store.PAGES_FOLDER, name,
@@ -476,7 +478,8 @@ def _pages(folder: Path, hint: str = "") -> str:
              for name, key in (("header", "editor.pages.header"),
                                ("footer", "editor.pages.footer"),
                                ("navigation", "editor.pages.navigation"))]
-    items, carry_on = [], ""
+    items: dict[str, list[str]] = {store.PAGES_FOLDER: [], store.FURNITURE_FOLDER: []}
+    carry_on = ""
     last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
     for kind, name, label in rows:
         address = "/page?" + urllib.parse.urlencode({"kind": kind, "name": name})
@@ -485,14 +488,17 @@ def _pages(folder: Path, hint: str = "") -> str:
                         f'{html.escape(address, quote=True)}">{html.escape(label)}</a></p>')
         note = (f" <em>{say('editor.list.changed')}</em>"
                 if store.html_path_for(folder, kind, name, waiting=True).is_file() else "")
-        items.append(f'<li><a href="{html.escape(address, quote=True)}">'
-                     f"{html.escape(label)}</a>{note}</li>")
+        items[kind].append(f'<li><a href="{html.escape(address, quote=True)}">'
+                           f"{html.escape(label)}</a>{note}</li>")
     said = say(PAGE_HINTS[hint]) if hint in PAGE_HINTS else ""
-    return (carry_on + "<ul>" + "".join(items) + "</ul>"
-            f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
-            '<input name="name" autocomplete="off"></label> '
-            f"<button>{say('editor.list.new_page')}</button></form>"
-            f'<p id="page-hint" role="status">{html.escape(said)}</p>')
+    pages = (carry_on + "<ul>" + "".join(items[store.PAGES_FOLDER]) + "</ul>"
+             f'<form method="post" action="/page/new"><label>{say("editor.list.page_name")} '
+             '<input name="name" autocomplete="off"></label> '
+             f"<button>{say('editor.list.new_page')}</button></form>"
+             f'<p id="page-hint" role="status">{html.escape(said)}</p>')
+    parts = (f"<p>{say('editor.list.parts_note')}</p>"
+             "<ul>" + "".join(items[store.FURNITURE_FOLDER]) + "</ul>")
+    return pages, parts
 
 
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
