@@ -30,6 +30,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   It used to stay silent for a few seconds while a save finished. The same goes for Rename and
   Remove on a page, and for Publish and switch to Pressless when taking over a site.
 
+- **Setup speaks plainly about your site's home** (PRESS-0340)
+  The steps that give Pressless permission, make your site's home and switch it on now say what
+  happens in everyday words. GitHub's own terms, such as repository and GitHub Pages, are under
+  a What's happening button on each step.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

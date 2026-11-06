@@ -1656,3 +1656,22 @@ def test_a_new_computer_is_pointed_at_its_site_file(tmp_path):
         page = browser.get()[1]
     assert _step(page) == "welcome"
     assert 'href="/sites"' in page and "Open a site file" in page
+
+
+# ------------------------------------------------------------- PRESS-0340 ---
+
+
+@pytest.mark.parametrize("show", [setup._show_install, setup._show_new_repository,
+                                  setup._show_pages], ids=("install", "repository", "pages"))
+def test_github_words_sit_behind_whats_happening(show):
+    """PRESS-0340: a step says in plain words what happens, and GitHub's own
+    terms wait behind a What's happening box. Words in bold are GitHub's
+    buttons and labels, which the steps must name. Breaks when a step leads
+    with repository, GitHub Pages or .nojekyll again, or drops the box."""
+    page = show({"account": "owner"}, None)
+    box = re.search(r'<dialog id="[a-z-]+-happening".*?</dialog>', page, re.S)
+    assert box, "no What's happening box"
+    said = re.sub(r"<b>.*?</b>|<[^>]+>", " ", page.replace(box.group(0), ""))
+    for term in ("repositor", "GitHub Pages", ".nojekyll", "Pressless App"):
+        assert term.casefold() not in said.casefold(), term
+    assert re.search("repositor|GitHub Pages|Pressless App", box.group(0))

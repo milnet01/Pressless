@@ -6362,11 +6362,17 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: editor, page editor.
 
-- 📋 [PRESS-0340] **Setup's GitHub words go behind a What's happening link.**
+- ✅ [PRESS-0340] **Setup's GitHub words go behind a What's happening link.**
   From the 2026-11-03 usability study: setup's steps 4 to 6 lead with
   repository, GitHub Pages and .nojekyll. Leading editors hide hosting.
   Pressless cannot, so the main text says what happens and the GitHub
   terms sit under an optional link. After 0.11.0, by the user's choice.
+  Done 2026-11-06. The sign-in route's install, repository and pages
+  steps lead with plain words; repository, Pressless App, GitHub Pages
+  and .nojekyll sit in a What's happening box over the page
+  (wizard.happening, sharing the help box's markup). GitHub's own button
+  labels stay on the page, in bold. The older key route's steps, used
+  only where no sign-in is set up, are unchanged.
   **Layman:** Setup speaks plainly about making a home for the site, and keeps the GitHub terms for anyone who wants them.
   Kind: ux.
   Source: user-request-2026-11-03.

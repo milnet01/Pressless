@@ -96,11 +96,23 @@ def help_parts(name: str, label: str, help_html: str) -> tuple[str, str]:
               f'aria-haspopup="dialog" '
               f'aria-label="{e(say("wizard.help", label=label), quote=True)}">'
               "?</button>")
-    dialog = (f'<dialog id="{name}-help" aria-labelledby="{name}-help-title">'
-              f'<h2 id="{name}-help-title">{e(label)}</h2>{help_html}'
-              f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
-              "</dialog>")
-    return button, dialog
+    return button, _dialog(f"{name}-help", e(label), help_html)
+
+
+def happening(name: str, explained_html: str) -> str:
+    """PRESS-0340: a What's happening button, and the box it opens over the
+    page, for the GitHub terms a step's own words leave out."""
+    title = say("wizard.happening")
+    return (f'<p><button type="button" data-help="{name}-happening" aria-haspopup="dialog">'
+            f"{title}</button></p>" + _dialog(f"{name}-happening", title, explained_html))
+
+
+def _dialog(ident: str, title_html: str, body_html: str) -> str:
+    """A box the Face's script opens by its id and shuts with Close."""
+    return (f'<dialog id="{ident}" aria-labelledby="{ident}-title">'
+            f'<h2 id="{ident}-title">{title_html}</h2>{body_html}'
+            f'<p><button type="button" data-close>{say("wizard.close")}</button></p>'
+            "</dialog>")
 
 
 class Wizard:

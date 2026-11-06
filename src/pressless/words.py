@@ -757,6 +757,7 @@ _WORDS: dict[str, str] = {
     "wizard.back": "Back",
     "wizard.help": "Help: {label}",
     "wizard.close": "Close",
+    "wizard.happening": "What's happening",
     "face.message.ok": "OK",
     # Signing in to GitHub (github_setup.py), and the links its page shares with Google's.
     "setup.back": "Back to Settings",
@@ -915,8 +916,14 @@ _WORDS: dict[str, str] = {
         "one, Pressless checks you sign in to this one."
     ),
     "setup.install": (
+        "Your site will live on GitHub, which hosts it for free. Give Pressless permission "
+        "to put it there:"
+    ),
+    "setup.install.happening": (
         "Pressless works through its own app on GitHub, Pressless App, which reaches only "
-        "the repositories you let it. Install it on your account:"
+        "the repositories you let it. A repository is the folder on GitHub a site lives in. "
+        "Pressless makes your site's repository next, and at the end tells you how to let "
+        "the app reach only that one."
     ),
     "setup.install.1": "Open {link}.",
     "setup.install.2": (
@@ -924,22 +931,25 @@ _WORDS: dict[str, str] = {
     ),
     "setup.install.3": (
         "Under <b>for these repositories</b>, leave <b>All repositories</b> chosen. "
-        "Pressless makes your site's repository next, and at the end tells you how to let "
-        "the app reach only that one."
+        "Pressless narrows it at the end."
     ),
     "setup.install.4": "Click <b>Install</b>, then come back here and press <b>Next</b>.",
     "setup.install.already": (
-        "If GitHub shows Pressless App's settings instead, with no <b>Install</b> button, "
-        "the app is already installed. Come back here and press <b>Next</b>."
+        "If GitHub shows settings instead, with no <b>Install</b> button, Pressless already "
+        "has permission. Come back here and press <b>Next</b>."
     ),
     "setup.new_repository": (
-        "A repository is the folder on GitHub your site lives in. Pressless makes it for "
-        "you, as Public: GitHub hosts sites for free only from public repositories."
+        "Pressless now makes a home for your site on GitHub. Its name sets your site's "
+        "address."
     ),
     "setup.new_repository.named": (
         "Named <b>{account}.github.io</b>, your site's address is "
         "https://{account}.github.io. Any other name works too, and gives "
         "https://{account}.github.io/<i>the-name</i>/."
+    ),
+    "setup.new_repository.happening": (
+        "The home is a repository: the folder on GitHub your site lives in. Pressless makes "
+        "it Public, because GitHub hosts sites for free only from public repositories."
     ),
     "setup.repository": "A repository is the folder on GitHub your site lives in. Make one:",
     "setup.new_repository.1": (
@@ -987,9 +997,12 @@ _WORDS: dict[str, str] = {
     ),
     "setup.new_key.6": "Click <b>Generate token</b>, then copy it. GitHub shows it only once.",
     "setup.pages": (
-        "GitHub Pages is what puts your repository on the web. Press Next and Pressless "
-        "checks it, and switches it on if it is off. Switching it on puts whatever your "
-        "repository holds on the web."
+        "Press Next and Pressless puts your site on the web. Anything already in your "
+        "site's home goes on the web too."
+    ),
+    "setup.pages.happening": (
+        "GitHub Pages is what puts your repository on the web. Pressless checks it, and "
+        "switches it on if it is off."
     ),
     "setup.pages.nojekyll": (
         "It also adds an empty file named .nojekyll to your repository, which tells GitHub "
@@ -1264,6 +1277,7 @@ _WORDS: dict[str, str] = {
     ),
     "setup.field.account": "Your GitHub account name",
     "setup.field.repository_name": "The repository's name",
+    "setup.field.home_name": "Its name",
     "setup.field.paste_key": "Paste the key here",
     "setup.field.repository": "Your site's repository on GitHub (owner/name)",
     "setup.field.site_name": "Your site's name",

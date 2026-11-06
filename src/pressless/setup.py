@@ -1226,7 +1226,9 @@ def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
             f"<li>{say('setup.install.2', account=account)}</li>"
             f"<li>{say('setup.install.3')}</li>"
             f"<li>{say('setup.install.4')}</li>"
-            f"</ol><p>{say('setup.install.already')}</p>")
+            f"</ol><p>{say('setup.install.already')}</p>"
+            # PRESS-0340: GitHub's terms, for whoever wants them.
+            + wizard.happening("install", f"<p>{say('setup.install.happening')}</p>"))
 
 
 def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
@@ -1235,7 +1237,10 @@ def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> s
     e = html.escape(account)
     return (f"<p>{say('setup.new_repository')}</p>"
             f"<p>{say('setup.new_repository.named', account=e)}</p>"
-            + wizard.field("repository", say("setup.field.repository_name"), filled, hint))
+            + wizard.field("repository", say("setup.field.home_name"), filled, hint)
+            # PRESS-0340: GitHub's terms, for whoever wants them.
+            + wizard.happening("repository",
+                               f"<p>{say('setup.new_repository.happening')}</p>"))
 
 
 def _narrow(repository: str) -> str:
@@ -1257,7 +1262,10 @@ def _show_key(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
 
 
 def _show_pages(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
-    return f"<p>{say('setup.pages')}</p><p>{say('setup.pages.nojekyll')}</p>"
+    # PRESS-0340: GitHub's terms, for whoever wants them.
+    return (f"<p>{say('setup.pages')}</p>"
+            + wizard.happening("pages", f"<p>{say('setup.pages.happening')}</p>"
+                               f"<p>{say('setup.pages.nojekyll')}</p>"))
 
 
 def _counts(found: takein.Found) -> str:
