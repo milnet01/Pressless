@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=347 -->
+<!-- ants-roadmap-id-high-water: PRESS=348 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -12725,6 +12725,17 @@ review fix or a defect goes into the lowest version still open.
   Kind: review-fix.
   Source: review-contract PRESS-0231 row 2, 2026-10-23.
   Lanes: Setup, Publisher.
+
+- 🚧 [PRESS-0348] **Tune the gate's speed, here and on GitHub, by local-gate.md § 9.**
+  ci_report (2026-11-06) found no problems. It found a slowing gate, still
+  far inside its 20-minute limit, and *-latest runners. Fixed: two
+  editor race tests waited on real one-second timers; their harness now
+  runs timers fifty times faster. Next: pip's download cache on GitHub.
+  The *-latest advice binds only a warm-container parity leg (§ 9,
+  condition 1), and this project has none.
+  **Layman:** The automatic checks before each push take less time.
+  Kind: perf.
+  Source: claude-config-request-2026-11-05.
 
 ## Milestones
 

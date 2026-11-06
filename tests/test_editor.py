@@ -917,6 +917,10 @@ globalThis.fetch = (address, request) => {
     : Promise.resolve({slug: fields.slug, draft: true, base: "saved", notices: ""});
   return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
 };
+// Every timer, the page's own save delay included, runs fifty times faster;
+// their order is unchanged, so the race is the same and the wait is shorter.
+const realTimeout = setTimeout;
+globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 %s
 (async () => {
