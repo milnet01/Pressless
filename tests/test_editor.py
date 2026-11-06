@@ -1086,3 +1086,137 @@ def test_the_lists_fold_shut_with_their_counts(tmp_path):
     assert "<details class=\"card fold\" open>" not in listing
     assert '<details class="card fold" open><summary><h2>Your pages' in hinted
 
+
+
+# ------------------------------------------- PRESS-0346: the visual view ---
+
+
+def _visual(browser: _Browser, folder: Path, slug: str, blocks: list, removed: list,
+            *, draft: bool = True) -> tuple[int, dict[str, str], str]:
+    return browser.request("POST", "/save", {
+        "slug": slug, "draft": "1" if draft else "0", "base": _base(folder, slug, draft=draft),
+        "title": "A title", "categories": "", "tags": "", "view": "visual",
+        "blocks": json.dumps(blocks), "removed": json.dumps(removed)})
+
+
+def _body(folder: Path, slug: str) -> str:
+    return store.read(store.path_for(folder, slug, draft=True)).body
+
+
+ODD_BODIES = (
+    "\n\n  First, with  spaces.  \nIts second line.\n\n\n\n{photo: a.jpg | Late light}\n"
+    "> a quotation\n>\n>   its second paragraph\n>\n\n***x*** and *y*\n\n",
+    ">\n\nAfter a lone mark.\n \t\nThe end   ",
+    "",
+)
+
+
+def test_a_visual_save_of_nothing_changed_keeps_every_byte(tmp_path):
+    """PRESS-0346 INV-1: a visual save keeping every block in its place
+    writes the body it read, byte for byte."""
+    folder = _folder(tmp_path)
+    with _editor(folder) as browser:
+        for number, body in enumerate(ODD_BODIES):
+            slug = f"odd-{number}"
+            store.write(folder, _entry(slug, body=body), draft=True)
+            read = _body(folder, slug)
+            kept = [{"keep": at} for at in range(len(marks.parse(read)))]
+            status, _, text = _visual(browser, folder, slug, kept, [])
+            assert status == 200, text
+            assert _body(folder, slug) == read
+            assert json.loads(text)["body"] == read
+
+
+def test_unchanged_blocks_keep_their_bytes(tmp_path):
+    """PRESS-0346 INV-2: blocks the save does not change keep their bytes
+    while another is changed, one is added and one is moved."""
+    folder = _folder(tmp_path)
+    body = ("A paragraph to change.\n\n>   hand spaced\n>quotation\n\n"
+            "{photo:   a.jpg  }\n***x***  stays odd\n")
+    store.write(folder, _entry("draft", body=body), draft=True)
+    gaps, texts = marks.sources(_body(folder, "draft"))
+    with _editor(folder) as browser:
+        status, _, text = _visual(browser, folder, "draft", [
+            {"keep": 1}, {"paragraph": "Changed <strong>now</strong>."},
+            {"photo": "b.jpg", "caption": "Added"}, {"keep": 2}, {"keep": 3}], [0])
+    assert status == 200, text
+    written = _body(folder, "draft")
+    for kept in texts[1:]:
+        assert kept in written
+    assert written == (gaps[0] + texts[1] + "\n\nChanged **now**.\n\n{photo: b.jpg | Added}"
+                       + "\n\n" + texts[2] + gaps[3] + texts[3] + gaps[-1])
+
+
+def test_a_visual_save_that_would_not_read_back_writes_nothing(tmp_path, monkeypatch):
+    """PRESS-0346 INV-4: a body that would not read back as the posted
+    blocks, and a list leaving a block unnamed, write nothing and answer 409."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft", body="One.\n\nTwo."), draft=True)
+    before = store.path_for(folder, "draft", draft=True).read_bytes()
+    with _editor(folder) as browser:
+        # Step 1: block 1 is neither kept nor removed.
+        status, _, text = _visual(browser, folder, "draft", [{"keep": 0}], [])
+        assert status == 409
+        assert _said(editor.BlocksUnreadable) in text
+        # Step 3: a write that drops the bold, and makes no check of its own.
+        monkeypatch.setattr(marks, "write", lambda block: "plain words")
+        status, _, text = _visual(browser, folder, "draft", [
+            {"keep": 0}, {"paragraph": "<strong>bold</strong> words"}], [1])
+        assert status == 409
+        assert _said(editor.BlocksUnreadable) in text
+    assert store.path_for(folder, "draft", draft=True).read_bytes() == before
+
+
+def test_words_no_mark_can_keep_are_not_saved(tmp_path):
+    """PRESS-0346 § 6: a link marks cannot hold is refused, and nothing is
+    written."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft", body="One."), draft=True)
+    before = store.path_for(folder, "draft", draft=True).read_bytes()
+    with _editor(folder) as browser:
+        status, _, text = _visual(browser, folder, "draft", [
+            {"paragraph": '<a href="mailto:x@example.org">mail</a>'}], [0])
+    assert status == 409
+    assert _said(marks.Unwritable) in text
+    assert store.path_for(folder, "draft", draft=True).read_bytes() == before
+
+
+def test_a_visual_save_over_a_changed_file_writes_nothing(tmp_path):
+    """PRESS-0346 INV-5."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft", body="One."), draft=True)
+    base = _base(folder, "draft", draft=True)
+    store.write(folder, _entry("draft", body="Changed elsewhere."), draft=True)
+    with _editor(folder) as browser:
+        status, _, text = browser.request("POST", "/save", {
+            "slug": "draft", "draft": "1", "base": base, "title": "", "categories": "",
+            "tags": "", "view": "visual", "blocks": json.dumps([{"paragraph": "Mine."}]),
+            "removed": json.dumps([0])})
+    assert status == 409
+    assert _said(editor.ChangedElsewhere) in text
+    assert _body(folder, "draft") == "Changed elsewhere."
+
+
+def test_a_value_mark_is_not_typed_on(tmp_path):
+    """PRESS-0346 INV-6: a block holding a mark the page cannot show as
+    typed is marked not typed on, so its marks are changed in the panel."""
+    shown = editor.outline("Since {years_since: 2010-01-01} years.\n\n"
+                           "{rainbow}x{/}\n\n> *quoted* {accent}x{/}\n\n{photo: a.jpg | A &amp; B}")
+    assert [(item["kind"], item["typed"]) for item in shown] == [
+        ("paragraph", False), ("paragraph", False), ("quote", True), ("photo", False)]
+    assert shown[3]["caption"] == "A & B"
+    assert shown[0]["marks"] == "Since {years_since: 2010-01-01} years."
+
+
+def test_a_visual_save_writes_marks_and_answers_the_outline(tmp_path):
+    """PRESS-0346 § 4.5: built blocks are written as marks, a marks item as
+    typed, and the reply carries the new body's outline."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("draft", body="Old."), draft=True)
+    with _editor(folder) as browser:
+        status, _, text = _visual(browser, folder, "draft", [
+            {"quote": ["one<br>two", "", "three"]}, {"marks": "{rainbow}hi{/}\r\n"},
+            {"paragraph": "  "}], [0])
+    assert status == 200, text
+    assert _body(folder, "draft") == "> one\n> two\n>\n> three\n\n{rainbow}hi{/}"
+    assert [item["kind"] for item in json.loads(text)["outline"]] == ["quote", "paragraph"]

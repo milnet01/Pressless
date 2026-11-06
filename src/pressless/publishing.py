@@ -448,7 +448,7 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
     with editor.LOCK:
         try:
             written, _ = gathered(lambda: editor.save(folder, form))
-        except (store.StoreError, editor.ChangedElsewhere, editor.TooManyCopies) as exc:
+        except editor.SAVE_FAILURES as exc:
             failed = face.fail(exc, publishing=False)
             told(pressing.ended(pressing.PUBLISH, False, failed))
             body = render_notices(notices) + failed

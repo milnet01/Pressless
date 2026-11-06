@@ -152,12 +152,15 @@ inline  := the words as PRESS-0260 § 4.4 reads them, plus § 4.4's colour spans
 - `write(block) -> str`: the block as marks, escaping with a character
   reference (`&#42;` for `*`, and so on) only where the words would
   otherwise form a mark, begin a quotation, or be read as a character
-  reference. It raises `marks.Unwritable` unless `parse` of what it
-  wrote reads as `block` in normal form.
+  reference. Where two marks' asterisks would touch, as in Bold
+  around Italic, it puts a word joiner (`&#8288;`) between them, which
+  shows as nothing. It raises `marks.Unwritable` unless `parse` of
+  what it wrote reads as `block` in normal form.
 
 **Normal form**: in every `Text`, character references read as the
-characters they stand for, neighbouring `Text`s joined, and empty ones
-dropped.
+characters they stand for, word joiners removed, neighbouring `Text`s
+joined, and empty ones dropped; a mark's argument without the spaces
+around it.
 
 `editor.save`, for the visual view, between today's steps 2 and 3:
 

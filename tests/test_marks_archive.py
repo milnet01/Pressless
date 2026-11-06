@@ -214,3 +214,51 @@ def test_matches_wpautop():
             f"  expected: {expected!r}\n"
             f"  actual:   {actual!r}"
         )
+
+
+# --- PRESS-0346: the visual editor's way back to marks ---------------------
+#
+# These need the export alone, never the generator, so they run wherever
+# PRESSLESS_ARCHIVE is set. Every entry body Import carries is read, in any
+# of the three source shapes: whatever Import keeps is what the editor opens.
+
+
+def _every_body() -> list[str]:
+    channel = ET.parse(Path(PRESSLESS_ARCHIVE)).getroot().find("channel")
+    assert channel is not None, f"{PRESSLESS_ARCHIVE} has no <channel> — not a WXR export?"
+    bodies = []
+    for item in channel.findall("item"):
+        if item.findtext("{*}post_type", "") != "post":
+            continue
+        if item.findtext("{*}status", "") not in {"publish", "draft", "private"}:
+            continue
+        bodies.append(item.findtext("{*}encoded", "") or "")
+    assert bodies, f"found no entries in {PRESSLESS_ARCHIVE}"
+    return bodies
+
+
+@pytest.mark.skipif(not PRESSLESS_ARCHIVE, reason="PRESS-0346: set PRESSLESS_ARCHIVE to run this")
+def test_every_body_joins_back_from_its_sources():
+    """PRESS-0346 INV-1's archive half: every body is its blocks' texts and
+    the gaps between them, byte for byte, and each text reads as its block."""
+    from pressless.marks import parse, sources
+
+    bodies = _every_body()
+    print(f"bodies split: {len(bodies)}")
+    for body in bodies:
+        gaps, texts = sources(body)
+        assert "".join(g + t for g, t in zip(gaps, texts, strict=False)) + gaps[-1] == body
+        assert tuple(parse(text)[0] for text in texts) == parse(body), body[:60]
+        assert all(len(parse(text)) == 1 for text in texts), body[:60]
+
+
+@pytest.mark.skipif(not PRESSLESS_ARCHIVE, reason="PRESS-0346: set PRESSLESS_ARCHIVE to run this")
+def test_every_block_is_written_back_as_it_reads():
+    """PRESS-0346 INV-3's archive half: write takes every block of every
+    body, and each reads back as itself in normal form."""
+    from pressless.marks import normal, parse, write
+
+    blocks = [block for body in _every_body() for block in parse(body)]
+    print(f"blocks written: {len(blocks)}")
+    for block in blocks:
+        assert tuple(normal(read) for read in parse(write(block))) == (normal(block),)

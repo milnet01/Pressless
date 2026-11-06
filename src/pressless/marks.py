@@ -14,6 +14,8 @@ references below are to it.
 from __future__ import annotations
 
 import functools
+import html
+import html.parser
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -34,11 +36,15 @@ __all__ = [
     "Renderer",
     "Span",
     "Text",
+    "Unwritable",
     "Value",
+    "from_inline",
     "parse",
     "render",
+    "sources",
     "to_html",
     "value_text",
+    "write",
 ]
 
 
@@ -790,3 +796,371 @@ def to_html(doc: Document, photo_src: PhotoSrc, today: date | None = None) -> st
 def render(body: str, photo_src: PhotoSrc, today: date | None = None) -> str:
     """parse + to_html."""
     return to_html(parse(body), photo_src, today)
+
+
+# ------------------------------------------------------------ writing back --
+# PRESS-0346 § 4.5: the way back from the entry editor's visual view to
+# marks. `sources` keeps what the writer did not touch byte for byte;
+# `from_inline` reads the words typed on the page; `write` spells a block
+# so that it reads back as itself.
+
+
+class Unwritable(ValueError):
+    """A block marks cannot spell so that `parse` reads it back as itself."""
+
+
+# A word joiner shows as nothing. Between two marks' asterisks it stops them
+# reading as one run, which is how Bold around Italic is spelled (§ 4.5).
+_JOINER = "&#8288;"
+_JOINER_CHARACTER = "⁠"
+# What `write` puts in place of a character that would otherwise begin a
+# mark, where the words are to stay words.
+_ESCAPES = {_RUN_DELIMITER: "&#42;", "{": "&#123;"}
+_PREFIX_ESCAPES = {">": "&gt;"}
+_LINE_END = re.compile(r"\r\n|\r|\n")
+
+
+def sources(body: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Each block's text as written, and the text around them (§ 4.5).
+
+    Returns `(gaps, texts)`, one more gap than texts, where
+    `gaps[0] + texts[0] + gaps[1] + ... + texts[-1] + gaps[-1] == body` and
+    `parse(texts[i])` is `(parse(body)[i],)`. A gap holds the blank lines
+    between blocks, and anything `parse` drops, such as a lone `>`.
+
+    It walks the body as §4.4 does, a line at a time: a blank line, empty
+    or whitespace-only, ends a chunk, as a run of blank lines does there.
+    """
+    lines = []  # (start, end) of each line, its line ending excluded
+    start = 0
+    for found in _LINE_END.finditer(body):
+        lines.append((start, found.start()))
+        start = found.end()
+    lines.append((start, len(body)))
+
+    spans: list[tuple[int, int]] = []
+
+    def take(group: list[tuple[int, int]]) -> None:
+        first, last = body[slice(*group[0])], body[slice(*group[-1])]
+        spans.append((group[0][0] + len(first) - len(first.lstrip()),
+                      group[-1][1] - (len(last) - len(last.rstrip()))))
+
+    chunks: list[list[tuple[int, int]]] = [[]]
+    for line in lines:
+        if body[slice(*line)].strip():
+            chunks[-1].append(line)
+        elif chunks[-1]:
+            chunks.append([])
+    for chunk in chunks:
+        pending: list[tuple[int, int]] = []
+        for row, run in groupby(chunk, key=lambda line: _prefix_row(body[slice(*line)])):
+            run = list(run)
+            if row is not None:
+                if pending:
+                    take(pending)
+                    pending = []
+                if _quote(row, [_unprefixed(row, body[slice(*line)]) for line in run]):
+                    take(run)
+                continue
+            for line in run:
+                if _as_block(body[slice(*line)]) is None:
+                    pending.append(line)
+                    continue
+                if pending:
+                    take(pending)
+                    pending = []
+                take([line])
+        if pending:
+            take(pending)
+
+    gaps, texts, at = [], [], 0
+    for begin, end in spans:
+        gaps.append(body[at:begin])
+        texts.append(body[begin:end])
+        at = end
+    gaps.append(body[at:])
+    return tuple(gaps), tuple(texts)
+
+
+def _read_references(value: str) -> str:
+    """A Text's words as a reader sees them: each character reference read
+    as its character, and word joiners gone."""
+    return _CHAR_REF_OR_AMP.sub(
+        lambda found: html.unescape(found.group(0)) if len(found.group(0)) > 1 else "&",
+        value).replace(_JOINER_CHARACTER, "")
+
+
+def _normal_nodes(nodes: tuple[Node, ...]) -> tuple[Node, ...]:
+    out: list[Node] = []
+    for node in nodes:
+        if isinstance(node, Text):
+            words = _read_references(node.value)
+            if out and isinstance(out[-1], Text):
+                out[-1] = Text(out[-1].value + words)
+            elif words:
+                out.append(Text(words))
+        elif isinstance(node, Span):
+            out.append(Span(node.mark, None if node.arg is None else node.arg.strip(),
+                            _normal_nodes(node.children)))
+        else:
+            out.append(node)
+    return tuple(node for node in out if not (isinstance(node, Text) and not node.value))
+
+
+def _normal_paragraph(paragraph: Paragraph) -> Paragraph:
+    return Paragraph(tuple(Line(_normal_nodes(line.children)) for line in paragraph.lines))
+
+
+def normal(block: Block) -> Block:
+    """§ 4.5's normal form: two blocks a reader cannot tell apart are equal
+    in it. Character references are read, word joiners removed, neighbouring
+    Texts joined and empty ones dropped, and a mark's argument stripped."""
+    if isinstance(block, Paragraph):
+        return _normal_paragraph(block)
+    if isinstance(block, Quote):
+        return Quote(block.mark, tuple(_normal_paragraph(p) for p in block.paragraphs))
+    caption = None if block.caption is None else _read_references(block.caption)
+    return Photo(block.mark, block.name, caption)
+
+
+def _write_text(value: str, escape: bool) -> str:
+    if not escape:
+        return value
+    return "".join(_ESCAPES.get(character, character) for character in value)
+
+
+def _write_arg(row: Mark, arg: str | None) -> str:
+    # An argument after a colon takes one space, as the cheat sheet writes it.
+    arg = (arg or "").strip()
+    return (" " + arg if row.opens.endswith(":") else arg) + _ARG_END
+
+
+def _joined(pieces: list[str]) -> str:
+    out = ""
+    for piece in pieces:
+        if out.endswith(_RUN_DELIMITER) and piece.startswith(_RUN_DELIMITER):
+            out += _JOINER
+        out += piece
+    return out
+
+
+def _write_node(node: Node, escape: bool) -> str:
+    if isinstance(node, Text):
+        return _write_text(node.value, escape)
+    if isinstance(node, Value):
+        return node.written
+    if isinstance(node, Photo):
+        raise Unwritable("a photograph is a block of its own")
+    row = _ROW_BY_NAME[node.mark]
+    opening = row.opens + (_write_arg(row, node.arg) if row.arg is not None else "")
+    if row.content == "marks":
+        inner = _write_nodes(node.children, escape)
+    else:
+        inner = "".join(child.value for child in node.children if isinstance(child, Text))
+    closes = row.closes or ""
+    return _joined([opening, inner, closes]) if inner else ""
+
+
+def _write_nodes(nodes: tuple[Node, ...], escape: bool) -> str:
+    return _joined([_write_node(node, escape) for node in nodes])
+
+
+def _write_line(line: Line, *, in_quote: bool) -> str:
+    """A line as marks: as it stands where it reads back so, else with the
+    characters that would begin a mark written as references."""
+    wanted = _normal_nodes(line.children)
+    for escape in (False, True):
+        written = _write_nodes(line.children, escape)
+        if escape and not in_quote:
+            stripped = written.lstrip()
+            lead = written[: len(written) - len(stripped)]
+            if stripped[:1] in _PREFIX_ESCAPES:
+                written = lead + _PREFIX_ESCAPES[stripped[0]] + stripped[1:]
+        if not in_quote and (_prefix_row(written) is not None
+                             or _as_block(written) is not None):
+            continue
+        if _normal_nodes(_scan(written)) == wanted:
+            return written
+    raise Unwritable(f"marks cannot spell the line {written!r} so it reads back")
+
+
+def _write_paragraph(paragraph: Paragraph, *, in_quote: bool) -> str:
+    return "\n".join(_write_line(line, in_quote=in_quote) for line in paragraph.lines)
+
+
+def write(block: Block) -> str:
+    """The block as marks, reading back as itself in normal form (§ 4.5).
+    Raises Unwritable where no spelling does."""
+    if isinstance(block, Paragraph):
+        text = _write_paragraph(block, in_quote=False)
+    elif isinstance(block, Quote):
+        row = _ROW_BY_NAME[block.mark]
+        paragraphs = ["\n".join(f"{row.opens} {line}" for line in
+                                _write_paragraph(p, in_quote=True).split("\n"))
+                      for p in block.paragraphs]
+        text = f"\n{row.opens}\n".join(paragraphs)
+    else:
+        row = _ROW_BY_NAME[block.mark]
+        caption = "" if block.caption is None else " | " + block.caption
+        text = row.opens + _write_arg(row, block.name + caption)
+    if tuple(normal(read) for read in parse(text)) != (normal(block),):
+        raise Unwritable(f"marks cannot spell {text[:60]!r} so it reads back")
+    return text
+
+
+# ---------------------------------------------------------- reading the page --
+
+
+def _opening(row: Mark) -> re.Pattern[str]:
+    """The start tag a wrap row's renderer writes, as a pattern capturing its
+    argument. Taken from the renderer itself, so MARKS stays the only route
+    to a mark (INV-6)."""
+    held, inside = "\x00", "\x01"
+    probe = row.render(Span(row.name, held if row.arg is not None else None, ()),
+                       inside, lambda name: name)
+    return re.compile(re.escape(probe.split(inside)[0]).replace(held, "(.*?)"))
+
+
+# No-argument rows first, so the site's accent is never taken for a picked
+# colour; a row whose content is text alone (rainbow) is never typed.
+_TYPED_MARKS: tuple[tuple[Mark, re.Pattern[str]], ...] = tuple(
+    (row, _opening(row)) for row in sorted(
+        (row for row in MARKS if row.kind == "wrap" and row.content == "marks"),
+        key=lambda row: row.arg is not None))
+_BREAK = object()
+
+
+class _Inline(html.parser.HTMLParser):
+    """PRESS-0260 § 4.4's `<inline>`, plus the colour spans, as a tree."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.root: list = []
+        self.stack: list[tuple[Mark | None, str | None, list]] = [(None, None, self.root)]
+        self.refused = False
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag == "br":
+            self.stack[-1][2].append(_BREAK)
+            return
+        written = self.get_starttag_text() or ""
+        for row, pattern in _TYPED_MARKS:
+            found = pattern.fullmatch(written)
+            if found is None:
+                continue
+            arg = html.unescape(found.group(1)) if row.arg is not None else None
+            if arg is not None and not re.fullmatch(row.arg, arg):
+                continue
+            children: list = []
+            self.stack[-1][2].append((row, arg, children))
+            self.stack.append((row, arg, children))
+            return
+        self.refused = True
+        self.stack.append((None, None, []))
+
+    def handle_startendtag(self, tag: str, attrs: list) -> None:
+        if tag == "br":
+            self.stack[-1][2].append(_BREAK)
+        else:
+            self.refused = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if len(self.stack) > 1:
+            self.stack.pop()
+
+    def handle_data(self, data: str) -> None:
+        self.stack[-1][2].append(data)
+
+
+def _as_source(words: str) -> str:
+    """Words as a Text holds them: an '&' that would begin a character
+    reference is written as one, so it stays an '&'."""
+    return _CHAR_REF_OR_AMP.sub(
+        lambda found: "&amp;" + found.group(0)[1:] if len(found.group(0)) > 1 else "&", words)
+
+
+def _lines_of(items: list, inside: frozenset[str]) -> list[list[Node]]:
+    """The tree split into lines at each break. A mark crossing a break is
+    closed before it and opened again after, since no mark spans a line
+    (PRESS-0004 INV-3); a mark inside the same mark is dropped."""
+    lines: list[list[Node]] = [[]]
+    for item in items:
+        if item is _BREAK:
+            lines.append([])
+        elif isinstance(item, str):
+            lines[-1].append(Text(re.sub(r"\s+", " ", item.replace("\xa0", " "))))
+        else:
+            row, arg, children = item
+            parts = _lines_of(children, inside | {row.name})
+            for at, part in enumerate(parts):
+                if at:
+                    lines.append([])
+                if row.name in inside:
+                    lines[-1].extend(part)
+                else:
+                    lines[-1].append(Span(row.name, arg, tuple(part)))
+    return lines
+
+
+def _tidy(nodes: list[Node] | tuple[Node, ...]) -> list[Node]:
+    """Whitespace at a mark's edges moved outside it, empty marks dropped,
+    neighbouring Texts joined and their space runs made one."""
+    out: list[Node] = []
+
+    def text(words: str) -> None:
+        if out and isinstance(out[-1], Text):
+            out[-1] = Text(re.sub(" +", " ", out[-1].value + words))
+        elif words:
+            out.append(Text(words))
+
+    for node in nodes:
+        if isinstance(node, Text):
+            text(node.value)
+            continue
+        children = _tidy(node.children)
+        lead = trail = ""
+        if children and isinstance(children[0], Text):
+            stripped = children[0].value.lstrip()
+            lead = children[0].value[: len(children[0].value) - len(stripped)]
+            children[0] = Text(stripped)
+        if children and isinstance(children[-1], Text):
+            stripped = children[-1].value.rstrip()
+            trail = children[-1].value[len(stripped):]
+            children[-1] = Text(stripped)
+        children = [child for child in children
+                    if not (isinstance(child, Text) and not child.value)]
+        text(lead)
+        if children:
+            out.append(Span(node.mark, node.arg, tuple(children)))
+        text(trail)
+    return out
+
+
+def from_inline(inline: str) -> Paragraph | None:
+    """The words typed on the page as a paragraph of marks nodes, or None
+    where they hold an element, link or colour no mark can hold (§ 4.5).
+    Empty lines are dropped, so an empty paragraph has no lines."""
+    reader = _Inline()
+    reader.feed(inline)
+    reader.close()
+    if reader.refused:
+        return None
+    lines = []
+    for nodes in _lines_of(reader.root, frozenset()):
+        tidy = _tidy(nodes)
+        if tidy and isinstance(tidy[0], Text):
+            tidy[0] = Text(tidy[0].value.lstrip())
+        if tidy and isinstance(tidy[-1], Text):
+            tidy[-1] = Text(tidy[-1].value.rstrip())
+        tidy = [node for node in tidy if not (isinstance(node, Text) and not node.value)]
+        if tidy:
+            lines.append(Line(tuple(_source(node) for node in tidy)))
+    return Paragraph(tuple(lines))
+
+
+def _source(node: Node) -> Node:
+    if isinstance(node, Text):
+        return Text(_as_source(node.value))
+    if isinstance(node, Span):
+        return Span(node.mark, node.arg, tuple(_source(child) for child in node.children))
+    return node

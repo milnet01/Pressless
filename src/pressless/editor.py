@@ -28,6 +28,7 @@ from pressless import (
     cheatsheet,
     choices,
     files,
+    marks,
     paths,
     photographs,
     pressing,
@@ -68,6 +69,11 @@ class TooManyCopies(Exception):
     """Two drafts replace one published entry (§ 4.1)."""
 
 
+class BlocksUnreadable(Exception):
+    """A visual save does not name the entry's blocks, or would not read back
+    as them (PRESS-0346 § 4.5)."""
+
+
 class LeftOut(store.StoreNotice):
     """A typed category or tag with nothing an address can keep (§ 4.8)."""
 
@@ -84,6 +90,16 @@ SENTENCES[TooManyCopies] = Sentence(
     Site.UNCHANGED,
     "failure.editor.TooManyCopies.next",
 )
+SENTENCES[BlocksUnreadable] = Sentence(
+    "failure.editor.BlocksUnreadable.what",
+    Site.UNCHANGED,
+    "failure.editor.BlocksUnreadable.next",
+)
+SENTENCES[marks.Unwritable] = Sentence(
+    "failure.marks.Unwritable.what",
+    Site.UNCHANGED,
+    "failure.marks.Unwritable.next",
+)
 SENTENCES[photographs.NotAPhotograph] = Sentence(
     "failure.photographs.NotAPhotograph.what",
     Site.UNCHANGED,
@@ -99,6 +115,10 @@ SENTENCES[files.TooLarge] = Sentence(
     Site.UNCHANGED,
     "failure.files.TooLarge.next",
 )
+
+# What `save` raises, which the save route and the press route both answer.
+SAVE_FAILURES = (store.StoreError, ChangedElsewhere, TooManyCopies, BlocksUnreadable,
+                 marks.Unwritable)
 
 # Every write, preview and publish runs under it; a threading.Lock cannot be
 # taken twice, so `save` leaves it to its caller (PRESS-0013 § 4.1).
@@ -671,7 +691,15 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
         written_slug = free_address(folder, slug + COPY_SUFFIX)
         extra = tuple(field for field in entry.extra
                       if field[0] != REPLACES) + ((REPLACES, slug),)
-    body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
+    if form.get("view") == VISUAL:
+        try:
+            posted = json.loads(form.get("blocks", ""))
+            removed = json.loads(form.get("removed", ""))
+        except ValueError as exc:
+            raise BlocksUnreadable(f"the save of {slug} does not name its blocks") from exc
+        body = put_blocks(entry.body, posted, removed)
+    else:
+        body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
     written = store.Entry(
         slug=written_slug, title=form.get("title", "").strip(), date=entry.date,
         categories=_names_of(folder, form.get("categories", ""), "categories"),
@@ -681,13 +709,125 @@ def save(folder: Path, form: dict[str, str]) -> tuple[store.Entry, str]:
     return written, new_base
 
 
+# ------------------------------------------- the visual view (PRESS-0346) ---
+
+VISUAL = "visual"
+MARKS = "marks"
+_KIND_OF = {row.kind: row.name for row in marks.MARKS if row.kind in ("block", "prefix")}
+_TYPED = {row.name for row in marks.MARKS if row.kind == "wrap" and row.content == "marks"}
+
+
+def _typed(nodes: tuple) -> bool:
+    """Whether the page can show these nodes as typed (§ 3 decision 7): text
+    and the marks the panel offers, and nothing worked out or per letter."""
+    return all(isinstance(node, marks.Text)
+               or (isinstance(node, marks.Span) and node.mark in _TYPED and _typed(node.children))
+               for node in nodes)
+
+
+def outline(body: str) -> list[dict]:
+    """§ 4.2: each block of the body, in order, as the script pairs it with
+    the frame: its kind, whether it is typed on, and its marks as written."""
+    shown = []
+    for block, text in zip(marks.parse(body), marks.sources(body)[1], strict=True):
+        item: dict = {"marks": text}
+        if isinstance(block, marks.Photo):
+            caption = marks.normal(block).caption
+            item.update(kind="photo", typed=False, name=block.name, caption=caption or "")
+        else:
+            paragraphs = block.paragraphs if isinstance(block, marks.Quote) else (block,)
+            item.update(kind="quote" if isinstance(block, marks.Quote) else "paragraph",
+                        typed=all(_typed(line.children)
+                                  for paragraph in paragraphs for line in paragraph.lines))
+        shown.append(item)
+    return shown
+
+
+def _words(value: object) -> marks.Paragraph:
+    if not isinstance(value, str):
+        raise BlocksUnreadable(f"{value!r} is not words")
+    paragraph = marks.from_inline(value)
+    if paragraph is None:
+        raise marks.Unwritable("the words hold styling no mark can keep")
+    return paragraph
+
+
+def _built(item: object) -> tuple[marks.Block, ...]:
+    """A block built anew, or none where it holds nothing (§ 4.5)."""
+    if not isinstance(item, dict) or len(item) not in (1, 2):
+        raise BlocksUnreadable(f"{item!r} is not a block")
+    if "paragraph" in item:
+        paragraph = _words(item["paragraph"])
+        return (paragraph,) if paragraph.lines else ()
+    if "quote" in item:
+        if not isinstance(item["quote"], list):
+            raise BlocksUnreadable(f"{item!r} is not a block")
+        paragraphs = tuple(p for p in map(_words, item["quote"]) if p.lines)
+        return (marks.Quote(_KIND_OF["prefix"], paragraphs),) if paragraphs else ()
+    if "photo" in item:
+        name, caption = item["photo"], item.get("caption", "")
+        if not isinstance(name, str) or not isinstance(caption, str):
+            raise BlocksUnreadable(f"{item!r} is not a block")
+        # The caption as a Text holds it, so an '&' typed stays an '&'.
+        lines = _words(html.escape(caption, quote=False)).lines
+        held = "".join(node.value for node in lines[0].children) if lines else ""
+        return (marks.Photo(_KIND_OF["block"], name.strip(), held or None),)
+    raise BlocksUnreadable(f"{item!r} is not a block")
+
+
+def put_blocks(body: str, posted: object, removed: object) -> str:
+    """§ 4.5 steps 1 to 3: the body written from the posted blocks. Raises
+    BlocksUnreadable, or marks.Unwritable from a block built anew."""
+    if not isinstance(posted, list) or not isinstance(removed, list):
+        raise BlocksUnreadable("the save does not name the entry's blocks")
+    gaps, texts = marks.sources(body)
+    held = marks.parse(body)
+
+    def index(value: object) -> int:
+        if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < len(held):
+            raise BlocksUnreadable(f"{value!r} names no block of the entry")
+        return value
+
+    # Each piece is the block index it keeps, or None, its text and its blocks.
+    pieces: list[tuple[int | None, str, tuple[marks.Block, ...]]] = []
+    for item in posted:
+        if isinstance(item, dict) and set(item) == {"keep"}:
+            at = index(item["keep"])
+            pieces.append((at, texts[at], (held[at],)))
+        elif isinstance(item, dict) and set(item) == {"marks"}:
+            if not isinstance(item["marks"], str):
+                raise BlocksUnreadable(f"{item!r} is not a block")
+            text = item["marks"].replace("\r\n", "\n").replace("\r", "\n").strip()
+            if text:
+                pieces.append((None, text, marks.parse(text)))
+        else:
+            pieces.extend((None, marks.write(block), (block,)) for block in _built(item))
+    named = [at for at, _, _ in pieces if at is not None] + [index(at) for at in removed]
+    if sorted(named) != list(range(len(held))):
+        raise BlocksUnreadable("the save does not name each of the entry's blocks once")
+
+    # Kept neighbours keep what lay between them; anything else gets a blank line.
+    out = [gaps[0]]
+    for number, (at, text, _) in enumerate(pieces):
+        if number:
+            before = pieces[number - 1][0]
+            out.append(gaps[at] if at is not None and before == (at - 1) else "\n\n")
+        out.append(text)
+    out.append(gaps[-1])
+    new = "".join(out)
+    wanted = tuple(marks.normal(block) for _, _, blocks in pieces for block in blocks)
+    if tuple(marks.normal(block) for block in marks.parse(new)) != wanted:
+        raise BlocksUnreadable("the save would not read back as the entry's blocks")
+    return new
+
+
 def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.8."""
     form = form_fields(request)
     with lock, face.capture() as notices:
         try:
             written, new_base = save(folder, form)
-        except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
+        except SAVE_FAILURES as exc:
             failure: Exception | None = exc
         else:
             failure = None
@@ -695,9 +835,11 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
             missing = photographs.missing(folder, written.body)
     if failure is not None:
         return failed(face, notices, failure)
+    # PRESS-0346 § 4.5: the body and its outline, so either view opens from
+    # the reply after a switch.
     return json_reply({"slug": written.slug, "draft": True, "base": new_base, "preview": preview,
                   "failure": preview_failure, "notices": render_notices(notices),
-                  "missing": missing})
+                  "missing": missing, "body": written.body, "outline": outline(written.body)})
 
 
 def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:

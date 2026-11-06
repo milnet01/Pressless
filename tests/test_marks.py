@@ -1057,3 +1057,100 @@ def test_a_value_that_cannot_be_worked_out_stays_as_written():
     coloured = to_html(parse("{accent}since {years_since: 2010-01-01}{/}"), _no_photos,
                        date(2026, 1, 1))
     assert coloured == '<p><span style="color:var(--accent)">since 16</span></p>', coloured
+
+
+# ---- PRESS-0346 § 4.5: writing a block back as marks ----------------------
+
+from pressless.marks import Unwritable, from_inline, normal, sources, write  # noqa: E402
+
+
+def _reads_back(block) -> bool:
+    return tuple(normal(read) for read in parse(write(block))) == (normal(block),)
+
+
+def test_typed_words_are_not_read_as_marks():
+    """PRESS-0346 INV-3, typed half: words that look like marks are written
+    so that they read back as those words, not as marks."""
+    for typed, shown in [
+        ("*really*", "*really*"),
+        ("{photo: a.jpg}", "{photo: a.jpg}"),
+        ("&gt; not a quotation", "> not a quotation"),
+        ("&amp;amp;", "&amp;"),
+        ("AT&amp;T", "AT&T"),
+        ("{accent}x{/}", "{accent}x{/}"),
+    ]:
+        paragraph = from_inline(typed)
+        written = write(paragraph)
+        assert parse(written) and isinstance(parse(written)[0], Paragraph), (typed, written)
+        assert len(parse(written)) == 1, (typed, written)
+        rendered = render(written, _no_photos)
+        assert html.unescape(rendered) == f"<p>{shown}</p>", (typed, written, rendered)
+        assert _reads_back(paragraph), (typed, written)
+
+
+def test_words_typed_with_marks_are_written_as_marks():
+    """PRESS-0346 § 4.5: Bold, Italic, Link and the colours are written as
+    their marks, a line break as a line, and Bold around Italic with a word
+    joiner between the asterisks."""
+    cases = {
+        "<strong>loud</strong> and <em>soft</em>": "**loud** and *soft*",
+        '<a href="https://example.org/?a=1&amp;b=2">here</a>':
+            "{link: https://example.org/?a=1&b=2}here{/}",
+        '<span style="color:var(--accent)">hi</span>': "{accent}hi{/}",
+        '<span style="color:var(--muted)">aside</span>': "{muted}aside{/}",
+        '<span style="color:#c0453a">red</span>': "{#c0453a}red{/}",
+        "one<br>two": "one\ntwo",
+        "<strong><em>both</em></strong>": "**&#8288;*both*&#8288;**",
+        "<strong> spaced </strong>word": "**spaced** word",
+    }
+    for typed, wanted in cases.items():
+        paragraph = from_inline(typed)
+        assert write(paragraph) == wanted, typed
+        assert _reads_back(paragraph), typed
+    assert render(write(from_inline("<strong><em>both</em></strong>")), _no_photos) == (
+        "<p><strong>&#8288;<em>both</em>&#8288;</strong></p>")
+
+
+def test_words_no_mark_can_hold_are_refused():
+    """PRESS-0346 § 4.5: an element, link or colour no mark can hold."""
+    for typed in ['<a href="mailto:x@example.org">x</a>', "<b>x</b>", "<u>x</u>",
+                  '<span style="color:red">x</span>']:
+        assert from_inline(typed) is None, typed
+
+
+def test_a_mark_crossing_a_line_break_is_closed_and_opened_again():
+    """No mark spans a line (PRESS-0004 INV-3), so bold across a break is
+    bold on each line."""
+    assert write(from_inline("<strong>one<br>two</strong>")) == "**one**\n**two**"
+
+
+def test_empty_lines_and_paragraphs_are_dropped():
+    assert from_inline("one<br><br>two").lines == from_inline("one<br>two").lines
+    assert from_inline("  <br> ").lines == ()
+
+
+def test_a_written_block_that_would_not_read_back_is_refused():
+    """write raises rather than return a spelling that reads as something
+    else: a caption holding the brace that ends the photograph's mark."""
+    try:
+        write(Photo("photo", "a.jpg", "a } brace"))
+    except Unwritable:
+        pass
+    else:
+        raise AssertionError("a caption holding '}' was written")
+    assert write(Photo("photo", "a.jpg", "Late light")) == "{photo: a.jpg | Late light}"
+    quote = parse("> one\n> two\n>\n> three")[0]
+    assert write(quote) == "> one\n> two\n>\n> three"
+
+
+def test_a_body_joins_back_from_its_sources():
+    """PRESS-0346 INV-1's marks half: the gaps and the blocks' texts join to
+    the body, and each text reads as its block."""
+    body = ("\r\n\r\n  a paragraph  \r\n second line\n{photo: x.jpg}\n> q1\n>\n> q2\n"
+            ">\n\n\n>\n\nlast  \n\n")
+    gaps, texts = sources(body)
+    assert len(gaps) == len(texts) + 1
+    assert "".join(g + t for g, t in zip(gaps, texts, strict=False)) + gaps[-1] == body
+    assert tuple(parse(text)[0] for text in texts) == parse(body)
+    assert all(len(parse(text)) == 1 for text in texts)
+    assert sources("") == (("",), ())

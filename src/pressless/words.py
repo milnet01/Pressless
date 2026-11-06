@@ -298,6 +298,18 @@ _WORDS: dict[str, str] = {
         "One of the look's choices is not one Pressless offers, so nothing was saved."
     ),
     "failure.look_screen.LookRefused.next": "Open the Look screen again and choose once more.",
+    "failure.editor.BlocksUnreadable.what": (
+        "Not saved: Pressless could not keep your entry's paragraphs as you left them."
+    ),
+    "failure.editor.BlocksUnreadable.next": (
+        "Open this entry again to carry on, or use Show me the marks."
+    ),
+    "failure.marks.Unwritable.what": (
+        "Not saved: Pressless cannot keep that styling in your entry's marks."
+    ),
+    "failure.marks.Unwritable.next": (
+        "Take the styling off those words, or use Show me the marks to see them."
+    ),
     "failure.page_editor.SectionsUnreadable.what": (
         "Not saved: Pressless could not keep your page's sections as you left them."
     ),
