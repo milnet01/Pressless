@@ -1044,21 +1044,22 @@ globalThis.fetch = (address, request) => {
     : Promise.resolve({waiting: true, base: "saved", notices: "", preview: null});
   return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
 };
-// Every timer, the page's own save delay included, runs fifty times faster;
-// their order is unchanged, so the race is the same and the wait is shorter.
+// The page's timers, its one-second save delay among them, run fifty times
+// faster. The harness's own pauses keep real time and ten times the save
+// delay, wider than Windows' 15.6 ms timer tick.
 const realTimeout = setTimeout;
 globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
-const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
 %s
 (async () => {
   button.handlers.click();
   while (answer === undefined) await pause(10);
   form.elements.text.value = "typed while the page moved";
   form.handlers.input({});
-  await pause(1300);
+  await pause(200);
   answer(JSON.parse(process.argv[3]));
   answer = undefined;
-  await pause(1300);
+  await pause(200);
   process.stdout.write(JSON.stringify(posts));
 })();
 """

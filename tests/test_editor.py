@@ -917,11 +917,12 @@ globalThis.fetch = (address, request) => {
     : Promise.resolve({slug: fields.slug, draft: true, base: "saved", notices: ""});
   return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
 };
-// Every timer, the page's own save delay included, runs fifty times faster;
-// their order is unchanged, so the race is the same and the wait is shorter.
+// The page's timers, its one-second save delay among them, run fifty times
+// faster. The harness's own pauses keep real time and ten times the save
+// delay, wider than Windows' 15.6 ms timer tick.
 const realTimeout = setTimeout;
 globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
-const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
 %s
 (async () => {
   element('input[name=address]').value = "new";
@@ -929,10 +930,10 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   while (answerAddress === undefined) await pause(10);
   form.elements.body.value = "typed while the address changed";
   form.handlers.input({target: {name: "body"}});
-  await pause(1300);
+  await pause(200);
   answerAddress({slug: "new", draft: true, base: "b2", notices: "", hint: null});
   answerAddress = undefined;
-  await pause(1300);
+  await pause(200);
   process.stdout.write(JSON.stringify(posts));
 })();
 """
