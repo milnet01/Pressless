@@ -12805,7 +12805,7 @@ review fix or a defect goes into the lowest version still open.
   Source: review-contract PRESS-0231 row 2, 2026-10-23.
   Lanes: Setup, Publisher.
 
-- 🚧 [PRESS-0348] **Tune the gate's speed, here and on GitHub, by local-gate.md § 9.**
+- ✅ [PRESS-0348] **Tune the gate's speed, here and on GitHub, by local-gate.md § 9.**
   ci_report (2026-11-06) found no problems. It found a slowing gate, still
   far inside its 20-minute limit, and *-latest runners. Fixed: two
   editor race tests waited on real one-second timers; their harness now
@@ -12818,6 +12818,10 @@ review fix or a defect goes into the lowest version still open.
   and Windows 19-41 s over eight runs. With a cache hit, Linux 5 s and 7
   s; Windows one hit, 48 s. Left open: judge Windows after a few more
   hits, and drop the cache there if it stays slower.
+  2026-11-06: seven more Windows runs (42182354478 to 42193560037),
+  each a pip cache hit by its log: Install 13-22 s, against 19-41 s
+  before the cache. The 48 s run was an outlier. The cache stays on
+  both runners.
   **Layman:** The automatic checks before each push take less time.
   Kind: perf.
   Source: claude-config-request-2026-11-05.
