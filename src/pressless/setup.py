@@ -810,6 +810,33 @@ def _other_account(signed_in: str, typed: str) -> str:
     return say("setup.hint.other_account", signed_in=signed_in, typed=typed)
 
 
+def _sign_ins(own: Path, folder: Path) -> dict[str, str]:
+    """PRESS-0347: the GitHub sign-ins Pressless's other sites keep in the
+    keyring, by the name each is filed under, with the account it is for:
+    the owner of a site a sign-in made. A copy would not do, because GitHub
+    retires a sign-in's secret each time it is renewed, so the new site
+    names the same entry. A sign-in kept in a site's own file stays its
+    own."""
+    found: dict[str, str] = {}
+    for site in sites.all_sites(own):
+        if site == folder:
+            continue
+        try:
+            saved = settings.load(site)
+        except (settings.NotSetUp, settings.SettingsError):
+            continue
+        held = saved.credentials
+        if held.store != "keyring" or held.github_account in found:
+            continue
+        try:
+            secret = credentials.read(held.store, site, held.github_account)
+        except credentials.FAILURES:
+            continue
+        if github_setup.signed_in(secret):
+            found[held.github_account] = saved.repository.partition("/")[0]
+    return found
+
+
 def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport | None,
                       shortcut_places: Callable[[], shortcuts.Places | None],
                       own: Path | None = None) -> wizard.Wizard:
@@ -842,11 +869,15 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     noun = "failure.secret.github_sign_in" if signing_in else "failure.secret.publishing_key"
     sign_in = github_setup.SignIn()     # its device code, in memory only
 
+    def filed_under(answers: wizard.Answers) -> str:
+        """The name the key is filed under: another site's, where he
+        continues with its sign-in (PRESS-0347), and this site's own."""
+        return answers.get("reuse") or sites.account("github", folder)
+
     def key_for(answers: wizard.Answers) -> str | wizard.Stop:
         """The key in hand: a hand-made key, or the pass a sign-in buys."""
         try:
-            return github_setup.token(folder, answers.get("store", ""),
-                                      sites.account("github", folder))
+            return github_setup.token(folder, answers.get("store", ""), filed_under(answers))
         except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
         except publisher.PublishError as exc:
@@ -994,7 +1025,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             "measurement_id": ""})
         store_kind = answers.get("store", "")  # "keyring" or "file"
         candidate = dataclasses.replace(
-            candidate, credentials=dataclasses.replace(candidate.credentials, store=store_kind))
+            candidate, credentials=dataclasses.replace(
+                candidate.credentials, store=store_kind, github_account=filed_under(answers)))
         problem = refused(candidate)
         if problem is not None:
             return wizard.Stop(face.fail(problem, publishing=False))
@@ -1025,7 +1057,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
     def check_signin(answers: wizard.Answers):
         # § 4.3 signin: each press polls GitHub once; nothing is stored until
         # GitHub has issued the tokens (INV-4), and then only for the account
-        # he named (INV-14).
+        # he named (INV-14). PRESS-0347: or he continues with another site's.
+        if answers.get("reuse"):
+            return continue_as(answers)
         typed = answers.get("account", "")
         if not _ACCOUNT.fullmatch(typed):
             return wizard.Hint("account", say("setup.hint.type_account"))
@@ -1048,8 +1082,23 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                               pressed.refresh)
         except credentials.FAILURES as exc:
             return wizard.Stop(_credential_failure(face, exc, noun))
-        github_setup.hold(pressed)
+        github_setup.hold(pressed, sites.account("github", folder))
         kept["account"] = account
+        return kept
+
+    def continue_as(answers: wizard.Answers):
+        if answers["reuse"] not in _sign_ins(own, folder):    # a stale tab
+            return wizard.Hint("", say("setup.hint.sign_in_gone"))
+        kept = {**answers, "store": "keyring"}
+        try:
+            key = github_setup.token(folder, "keyring", answers["reuse"])
+            kept["account"] = github_signin.login(key, transport)
+            if not answers.get("store_name"):
+                kept["store_name"] = credentials.choose().name
+        except credentials.FAILURES as exc:
+            return wizard.Stop(_credential_failure(face, exc, noun))
+        except publisher.PublishError as exc:
+            return wizard.Stop(face.fail(exc, publishing=False))
         return kept
 
     def check_install(answers: wizard.Answers):
@@ -1149,8 +1198,9 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
         return wizard.Wizard("setup", (
             wizard.Step("welcome", "setup.step.welcome", (), _show_welcome_signing_in),
             *reports,
-            wizard.Step("signin", "github_setup.title", ("account",),
-                        lambda answers, hint: _show_signin(answers, hint, sign_in),
+            wizard.Step("signin", "github_setup.title", ("account", "reuse"),
+                        lambda answers, hint: _show_signin(
+                            answers, hint, sign_in, _sign_ins(own, folder)),
                         check_signin),
             wizard.Step("install", "setup.step.install", (), _show_install,
                         check_install),
@@ -1206,11 +1256,29 @@ def _show_welcome_signing_in(answers: wizard.Answers, hint: wizard.Hint | None) 
 
 
 def _show_signin(answers: wizard.Answers, hint: wizard.Hint | None,
-                 sign_in: github_setup.SignIn) -> str:
-    return (github_setup.how()
-            + f"<p>{say('setup.signin.account')}</p>"
-            + wizard.field("account", say("setup.field.account"), answers, hint)
-            + sign_in.shown())
+                 sign_in: github_setup.SignIn, offers: dict[str, str]) -> str:
+    own = (github_setup.how()
+           + f"<p>{say('setup.signin.account')}</p>"
+           + wizard.field("account", say("setup.field.account"), answers, hint)
+           + sign_in.shown())
+    if not offers:
+        return own
+    # PRESS-0347: another site's sign-in is ticked, so Next is the one click.
+    # Signing in as someone else opens the usual sign-in beneath the choice.
+    e = html.escape
+    chosen = answers.get("reuse", next(iter(offers)))
+    chosen = chosen if chosen in offers else ""     # one gone since: sign in afresh
+
+    def choice(value: str, text: str) -> str:
+        ticked = " checked" if value == chosen else ""
+        return (f'<label><input type="radio" name="reuse" value="{e(value, quote=True)}"'
+                f"{ticked}> {text}</label>")
+
+    rows = "".join(choice(name, say("setup.signin.continue_as", account=e(account)))
+                   for name, account in offers.items())
+    return (f'<fieldset class="sign-ins"><legend>{say("setup.signin.which")}</legend>'
+            + rows + choice("", say("setup.signin.someone_else"))
+            + f'</fieldset><div class="someone-else">{own}</div>')
 
 
 def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:

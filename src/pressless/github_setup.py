@@ -41,8 +41,10 @@ class _State:
         self.transport = transport
         self.clock = clock
         self.lock = threading.Lock()
-        self.held: tuple[str, float] | None = None     # the pass, and when it ends
-        self.unsaved: str | None = None   # a renewed refresh token not yet stored
+        # PRESS-0347: sites may share one sign-in, so a launch can reach two;
+        # both are kept by the name the secret is filed under.
+        self.held: dict[str, tuple[str, float]] = {}   # the pass, and when it ends
+        self.unsaved: dict[str, str] = {}   # a renewed refresh token not yet stored
         self.again = SignIn()                          # /setup/github's own sign-in
 
 
@@ -80,32 +82,34 @@ def token(folder: Path, store: str, account: str) -> str:
             return secret
         if state is None:
             raise RuntimeError("github_setup.register has not run")
-        if state.unsaved is not None:
+        if account in state.unsaved:
             # GitHub has already retired the stored one; this is the only
             # copy, so it is stored before anything else is tried.
-            credentials.write(store, Path(folder), account, state.unsaved)
-            secret, state.unsaved = state.unsaved, None
+            credentials.write(store, Path(folder), account, state.unsaved[account])
+            secret = state.unsaved.pop(account)
         asked = state.clock()
-        if state.held is not None and state.held[1] - asked > _REFRESH_MARGIN:
-            return state.held[0]
+        held = state.held.get(account)
+        if held is not None and held[1] - asked > _REFRESH_MARGIN:
+            return held[0]
         renewed = github_signin.refresh(secret, state.transport)
         # Held before the write: the old refresh token has stopped working,
         # so a failed write must not lose the new one.
-        state.held = (renewed.access, asked + renewed.expires_in)
-        state.unsaved = renewed.refresh
+        state.held[account] = (renewed.access, asked + renewed.expires_in)
+        state.unsaved[account] = renewed.refresh
         # Before the pass is used, so a sign-in never outlives its record.
         credentials.write(store, Path(folder), account, renewed.refresh)
-        state.unsaved = None
+        del state.unsaved[account]
         return renewed.access
 
 
-def hold(tokens: Tokens) -> None:
-    """A sign-in's first pass, so the next `token` needs no renewal."""
+def hold(tokens: Tokens, account: str) -> None:
+    """A sign-in's first pass, just stored under `account`, so the next
+    `token` for that name needs no renewal."""
     state = _need()
     with state.lock:
-        state.held = (tokens.access, state.clock() + tokens.expires_in)
+        state.held[account] = (tokens.access, state.clock() + tokens.expires_in)
         # The sign-in just stored replaces any renewed token never saved.
-        state.unsaved = None
+        state.unsaved.pop(account, None)
 
 
 def _need() -> _State:
@@ -195,7 +199,7 @@ def _page(state: _State, request: Request) -> str | Reply:
                 else:
                     credentials.write(saved.credentials.store, state.folder,
                                       saved.credentials.github_account, pressed.refresh)
-                    hold(pressed)
+                    hold(pressed, saved.credentials.github_account)
                     return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
             above = message_box("step-hint", html.escape(pressed))
         except publisher.PublishError as exc:

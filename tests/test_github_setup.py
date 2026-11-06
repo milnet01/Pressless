@@ -208,9 +208,29 @@ def test_a_new_sign_in_is_never_overwritten_by_an_unsaved_one(tmp_path, monkeypa
         with pytest.raises(credentials.CredentialError):
             _token(tmp_path)
         keyring = _Store(monkeypatch, SECOND_REFRESH)
-        github_setup.hold(github_signin.Tokens("ghu_signed-in-again", SECOND_REFRESH, 8 * 3600))
+        github_setup.hold(github_signin.Tokens("ghu_signed-in-again", SECOND_REFRESH, 8 * 3600),
+                          "github")
         assert _token(tmp_path) == "ghu_signed-in-again"
     assert keyring.writes == []
+
+
+def test_a_pass_is_handed_out_only_for_the_name_it_was_bought_for(tmp_path, monkeypatch):
+    """PRESS-0347: sites may share a sign-in, so one launch can reach two.
+    Breaks when the pass held for one name is sent for another, or a renewed
+    token whose write failed is stored under another name."""
+    github = _GitHub()
+    _Store(monkeypatch, REFRESH, write_raises=credentials.CredentialError("locked"))
+    with _served(tmp_path, github, _Clock()):
+        with pytest.raises(credentials.CredentialError):
+            _token(tmp_path)                                   # "github": renewed-1 unsaved
+        keyring = _Store(monkeypatch, REFRESH)
+        other = github_setup.token(tmp_path, "keyring", "github-site-2")
+        assert other == "ghu_renewed-2"
+        assert keyring.writes == [("keyring", "github-site-2", "ghr_renewed-2")]
+        # The first name's unsaved token is stored for it, and its pass used.
+        assert _token(tmp_path) == "ghu_renewed-1"
+    assert keyring.writes[-1] == ("keyring", "github", "ghr_renewed-1")
+    assert github.refreshes() == 2
 
 
 def test_a_lapsed_sign_in_says_sign_in_again(tmp_path, monkeypatch):

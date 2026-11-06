@@ -939,6 +939,9 @@ _WORDS: dict[str, str] = {
         "Type the name of the GitHub account your site will live in. If you have more than "
         "one, Pressless checks you sign in to this one."
     ),
+    "setup.signin.which": "Another of your sites is signed in to GitHub already.",
+    "setup.signin.continue_as": "Continue as {account}",
+    "setup.signin.someone_else": "Sign in as someone else",
     "setup.install": (
         "Your site will live on GitHub, which hosts it for free. Give Pressless permission "
         "to put it there:"
@@ -1283,6 +1286,9 @@ _WORDS: dict[str, str] = {
         "You signed in to GitHub as {signed_in}, and that account cannot change {repository}. "
         "Nothing was stored, so your earlier sign-in still works. To use another account, "
         "switch to it on github.com, then press Next to sign in again."
+    ),
+    "setup.hint.sign_in_gone": (
+        "That sign-in is no longer on this computer. Sign in as someone else, below."
     ),
     "setup.hint.other_account": (
         "You signed in to GitHub as {signed_in}, not {typed}. To use {typed}, switch to it "

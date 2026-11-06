@@ -165,6 +165,8 @@ and `GOOGLE_ACCOUNT` today — filing, reading and deleting — and record
 that name in `settings.Credentials` as today. `site-1` keeps the names
 an existing install's key is already filed under, so the move in § 4.3
 touches no keyring.
+A site that continues with another site's GitHub sign-in names that
+site's entry instead (PRESS-0231 § 4.3, *Continue as*).
 
 ### 4.6 The Sites screen
 

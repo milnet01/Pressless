@@ -61,6 +61,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   problem, Usage reports, About, Theme and Text size are now under More, which opens over the
   page.
 
+- **A second site keeps your GitHub sign-in** (PRESS-0347)
+  Setting up another site offers Continue as your GitHub name, so Next is all it takes. Sign in
+  as someone else is still there for a different account.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

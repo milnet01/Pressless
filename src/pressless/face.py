@@ -843,8 +843,9 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   cursor: pointer; }
 .face input[type="radio"], .face input[type="checkbox"] { width: 1.25rem; height: 1.25rem;
   margin: 0; padding: 0; accent-color: var(--amber); flex: none; }
-.face fieldset.looks { border: 0; margin: 0 0 1rem; padding: 0; }
-.face fieldset.looks legend { padding: 0; margin-bottom: .5rem; }
+.face fieldset.looks, .face fieldset.sign-ins { border: 0; margin: 0 0 1rem; padding: 0; }
+.face fieldset.looks legend, .face fieldset.sign-ins legend { padding: 0; margin-bottom: .5rem; }
+.face form:has(input[name="reuse"]:not([value=""]):checked) .someone-else { display: none; }
 .face label.look { display: flex; margin: 0 0 .75rem; }
 .face .mini { flex: none; display: grid; width: 6rem; height: 4rem; overflow: hidden;
   border: 1px solid var(--soft); border-radius: 6px; }

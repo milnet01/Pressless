@@ -6495,7 +6495,7 @@ user's question of 2026-11-03 and a study of leading site editors.
   Kind: ux.
   Source: in-session-2026-10-10 PRESS-0133 0.8.0 hand check.
 
-- 📋 [PRESS-0347] **A second site uses the GitHub sign-in the first one has.**
+- ✅ [PRESS-0347] **A second site uses the GitHub sign-in the first one has.**
   Seen 2026-11-03: each site started from the Sites screen ran the whole
   device-code sign-in again, for the same GitHub account. One code
   expired while the person switched to the browser. A sign-in is held
@@ -6503,6 +6503,12 @@ user's question of 2026-11-03 and a study of leading site editors.
   User decision 2026-11-06 (my recommendation): the sign-in step offers
   Continue as <GitHub name>, one click, beside a way to sign in as
   someone else.
+  2026-11-06: the sign-in step offers Continue as <owner>, ticked, for
+  each sign-in another site keeps in the keyring; the new site's
+  settings name that entry, since GitHub retires a copied refresh
+  token at its next renewal. Sign in as someone else shows the usual
+  code. A sign-in kept in a site's own file is not offered.
+  PRESS-0231 § 4.3, INV-15 and INV-16.
   **Layman:** Adding another site doesn't make you sign in to GitHub all over again.
   Kind: ux.
   Source: in-session-2026-11-03 PRESS-0133 hand check.

@@ -201,7 +201,7 @@ and nothing is logged. No request is made, except for § 4.6 step 2's refusal.
 | `daily_prompt_filter` | the answer, `""` when the box is empty | the answer, `""` when the box is empty |
 | `untouchable` | `()` until § 4.6 step 2 | `()` until § 4.6 step 2 |
 | `credentials.store` | `"keyring"` until § 4.6 step 3 replaces it | the saved value |
-| `credentials.github_account` | `sites.account("github", folder)` (PRESS-0223 § 4.5) | the saved value |
+| `credentials.github_account` | `sites.account("github", folder)` (PRESS-0223 § 4.5), or another site's under PRESS-0231 § 4.3 *Continue as* | the saved value |
 | `credentials.google_account` | `None` | the saved value |
 | `analytics_property_id` | `None` | the saved value |
 

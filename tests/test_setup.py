@@ -34,6 +34,7 @@ from pressless import (
     settings,
     setup,
     shortcuts,
+    sites,
     starter,
     store,
     words,
@@ -162,12 +163,14 @@ class _Browser(Browser):
 @contextlib.contextmanager
 def _setup_page(folder: Path, github: _GitHub,
                 places: shortcuts.Places | None = None,
-                clock: _Clock | None = None) -> Iterator[_Browser]:
+                clock: _Clock | None = None, own: Path | None = None) -> Iterator[_Browser]:
     """With `clock`, the GitHub pass is registered too (PRESS-0231), over the
-    same double."""
+    same double. `own` is Pressless's own folder, where `folder` is one of
+    its sites."""
     served = face.serve(folder)
     try:
-        setup.register(served, folder, transport=github, shortcut_places=lambda: places)
+        setup.register(served, folder, own=own, transport=github,
+                       shortcut_places=lambda: places)
         if clock is not None:
             github_setup.register(served, folder, transport=github, clock=clock)
         yield _Browser(served)
@@ -1581,6 +1584,75 @@ def test_the_steps_follow_the_registration(tmp_path, monkeypatch):
         seen, done = _walk(browser)
     assert seen == ["welcome", "signin", "install", "repository", "pages", "site"]
     assert "Setup is done." in done
+
+
+# PRESS-0347: a second site continues with the first one's sign-in.
+
+def _second_site(own: Path, **first) -> Path:
+    """Pressless's own folder with site-1 set up, and site-2 empty: the
+    folder its wizard runs in."""
+    first_site = own / sites.SITES_FOLDER / "site-1"
+    first_site.mkdir(parents=True)
+    _saved(first_site, **first)
+    second = own / sites.SITES_FOLDER / "site-2"
+    second.mkdir(parents=True)
+    return second
+
+
+def test_a_second_site_continues_with_the_first_sites_sign_in(tmp_path, monkeypatch):
+    """Breaks when the second site signs in to GitHub all over again, keeps
+    a copy of the sign-in GitHub retires at its next renewal, or is offered
+    a hand-made key."""
+    _app(monkeypatch)
+    keyring = _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    second = _second_site(tmp_path)
+    github = _SignInGitHub(pages="off")
+    with _setup_page(second, github, clock=_Clock(), own=tmp_path) as browser:
+        page = _walk_to(browser, "signin")
+        assert re.search(r'name="reuse" value="github" checked>', page)
+        assert "Continue as owner" in page and 'name="reuse" value=""' in page
+        install = browser.post({"step": "signin", "go": "next", "account": "",
+                                "reuse": "github"})[1]
+        assert _step(install) == "install"
+        seen, done = _walk(browser)
+    assert "Setup is done." in done
+    assert github.sent_to("/login/device/code") == 0
+    # The renewal is stored under the first site's name, and nothing under
+    # the second's.
+    assert {account for _kind, account, _secret in keyring.writes} == {"github"}
+    assert settings.load(second).credentials.github_account == "github"
+
+
+def test_only_a_sign_in_in_the_keyring_is_offered(tmp_path, monkeypatch):
+    """Breaks when a hand-made key, or a sign-in kept in another site's own
+    file, is offered: the new site could not reach the file."""
+    _app(monkeypatch)
+    for kept, saved_key in (("keyring", SENTINEL_KEY), ("file", FIRST_REFRESH)):
+        _Store(monkeypatch, saved_key=saved_key)
+        own = tmp_path / kept
+        second = _second_site(own, credentials=settings.Credentials(
+            store=kept, github_account="github", google_account=None))
+        with _setup_page(second, _SignInGitHub(), clock=_Clock(), own=own) as browser:
+            page = _walk_to(browser, "signin")
+        assert 'type="radio" name="reuse"' not in page, kept
+
+
+def test_signing_in_as_someone_else_files_the_sign_in_as_this_sites(tmp_path, monkeypatch):
+    """Breaks when the choice to sign in afresh is overridden by the offer,
+    or the new sign-in replaces the first site's."""
+    _app(monkeypatch)
+    keyring = _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    second = _second_site(tmp_path)
+    github = _SignInGitHub()
+    with _setup_page(second, github, clock=_Clock(), own=tmp_path) as browser:
+        _walk_to(browser, "signin")
+        afresh = {"step": "signin", "go": "next", "account": "owner", "reuse": ""}
+        coded = browser.post(afresh)[1]
+        assert _step(coded) == "signin" and USER_CODE in coded
+        assert re.search(r'name="reuse" value="" checked>', coded)
+        install = browser.post(afresh)[1]
+    assert _step(install) == "install"
+    assert keyring.writes == [("keyring", "github-site-2", FIRST_REFRESH)]
 
 
 def test_signing_in_again_sits_behind_the_faces_boundary(tmp_path, monkeypatch):

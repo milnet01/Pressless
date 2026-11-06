@@ -174,7 +174,7 @@ def register(face: Face, folder: Path, *,
              transport: publisher.Transport | None = None,
              clock: Callable[[], float] = time.time) -> None: ...
 def token(folder: Path, store: str, account: str) -> str: ...
-def hold(tokens: github_signin.Tokens) -> None: ...   # a sign-in's first pass
+def hold(tokens: github_signin.Tokens, account: str) -> None: ...   # a sign-in's first pass
 ```
 
 `token` takes the arguments `credentials.read` takes and replaces that call
@@ -183,7 +183,8 @@ wherever a GitHub secret is read: in `publishing`, `undo`, `page_editor` and
 
 1. `secret = credentials.read(store, folder, account)`.
 2. A `secret` not starting `ghr_` is a key: return it.
-3. A held access token more than 60 seconds from its expiry is returned.
+3. An access token held for `account` more than 60 seconds from its expiry
+   is returned.
 4. Otherwise `github_signin.refresh(secret)`; then `credentials.write` of the
    new refresh token; then the new access token is held and returned. The
    write comes before the return, because the old refresh token has stopped
@@ -191,6 +192,8 @@ wherever a GitHub secret is read: in `publishing`, `undo`, `page_editor` and
 
 Steps 1 to 4 run under one lock held by the module: GitHub's refresh token
 works once, so two renewals at once would leave one of them signed out.
+The held token and a renewed refresh token not yet written are kept per
+`account`: one launch can reach two sign-ins (§ 4.3, *Continue as*).
 
 `register` runs at launch, as `google_setup.register` does. `token`, `hold`,
 the *signin* step and `/setup/github` use its transport and its clock, and
@@ -208,13 +211,27 @@ Where `github_signin.available()`, PRESS-0212 § 4.4's steps become:
 | Step | Fields | What it shows | Its check |
 |---|---|---|---|
 | *welcome* | none | what the wizard does; that a GitHub account is needed, with the sign-up link | none |
-| *signin* | `account` | how to sign in with a code, and a box for the account's name | the sign-in sequence below |
+| *signin* | `account`, `reuse` | how to sign in with a code, and a box for the account's name; above them, the *Continue as* choice where it is offered | *Continue as*, or the sign-in sequence below |
 | *install* | none | how to install the Pressless app, with `https://github.com/apps/<APP_SLUG>/installations/new` | `installation` is not `None`, else a `Hint`; the answers gain `all_repositories` |
 | *repository* | `repository` | the naming advice of PRESS-0212 § 3 decision 7, the box filled with `<login>.github.io` | the repository sequence below |
 | *pages* | none | as PRESS-0212 | as PRESS-0212, the key in hand from `token`, except that a `Refused` hint says the Pressless app cannot reach this repository and to check its installation on GitHub |
 | *site* | as PRESS-0212 | as PRESS-0212 | as PRESS-0212, the key in hand from `token` |
 
 Where it is false, the steps are PRESS-0212's, unchanged.
+
+**Continue as** (PRESS-0347). Where another site keeps a GitHub sign-in in
+the keyring, *signin* offers one radio per name it is filed under, labelled
+with that site's repository owner and ticked, beside *Sign in as someone
+else*. Only that last choice shows the box and the code, so Next is the one
+click. A sign-in kept in a site's own file is not offered, and neither is a
+hand-made key. Next with `reuse` naming one:
+
+1. A `reuse` no other site keeps is a `Hint`, and GitHub is not asked.
+2. `token` for that name, then `login`. Nothing is written.
+3. The answers gain `store`, `"keyring"`; `store_name`; and `account`,
+   `login`'s answer. The new site's `credentials.github_account` is that
+   name, not its own: GitHub retires a refresh token at each renewal, so a
+   copy would stop working.
 
 **signin.** The device code is held by the wizard's owner in memory, never in
 the progress file (PRESS-0212 § 4.2).
@@ -235,7 +252,7 @@ the progress file (PRESS-0212 § 4.2).
    no `store`, then
    `credentials.write(store, folder, GITHUB_ACCOUNT, tokens.refresh)`. A
    credential failure is a `Stop`, as on PRESS-0212's *key* step. Then
-   `github_setup.hold(tokens)`.
+   `github_setup.hold(tokens, <the name written>)`.
 4. The answers gain `store`, `store_name` and `account`, `login`'s answer.
 
 **repository.** The joined `account/repository` must pass `settings.check`'s
@@ -387,6 +404,21 @@ push gate's secret scanner does not mistake them.
   *Test:* `test_the_account_signed_in_is_the_one_named`.
   *Breaks when:* a sign-in to another account is kept, the name is not
   checked before GitHub is asked, or its case is held against the person.
+- **INV-15** — A second site continues with the first one's keyring
+  sign-in: no device code is fetched, nothing is written under its own
+  name, and its settings name the first site's entry. Signing in as
+  someone else instead files the new sign-in under the site's own name.
+  Only a keyring sign-in is offered.
+  *Test:* `test_a_second_site_continues_with_the_first_sites_sign_in`,
+  `test_signing_in_as_someone_else_files_the_sign_in_as_this_sites`,
+  `test_only_a_sign_in_in_the_keyring_is_offered`.
+  *Breaks when:* the second site signs in again, keeps a copy GitHub
+  retires, or is offered a key or a file it cannot reach.
+- **INV-16** — A held pass, or a renewed refresh token not yet written, is
+  used only for the name it was bought for.
+  *Test:* `test_a_pass_is_handed_out_only_for_the_name_it_was_bought_for`.
+  *Breaks when:* one name's pass is sent for another, or one name's renewal
+  is lost or written under another.
 
 ## 6. Failure modes
 
@@ -407,9 +439,9 @@ push gate's secret scanner does not mistake them.
 ## 7. Tests
 
 The tests of § 5, each written first and seen to fail against today's code:
-INV-1, INV-2, INV-11 and INV-12 in `tests/test_github_setup.py`; INV-3,
-INV-4, INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-13 and INV-14 in
-`tests/test_setup.py`. `tests/test_github_signin.py`
+INV-1, INV-2, INV-11, INV-12 and INV-16 in `tests/test_github_setup.py`;
+INV-3, INV-4, INV-5, INV-6, INV-7, INV-8, INV-9, INV-10, INV-13, INV-14 and
+INV-15 in `tests/test_setup.py`. `tests/test_github_signin.py`
 holds the protocol's own tests: each request's address and fields, and each
 `error` answer's type.
 
@@ -467,6 +499,9 @@ publish again, and record what is shown. CI cannot reach GitHub.
 | INV-12 | `tests/test_github_setup.py::test_signing_in_again_replaces_the_pass` |
 | INV-13 | `tests/test_setup.py::test_signing_in_again_sits_behind_the_faces_boundary` |
 | INV-14 | `tests/test_setup.py::test_the_account_signed_in_is_the_one_named` |
+| INV-15 | `tests/test_setup.py::test_a_second_site_continues_with_the_first_sites_sign_in`, `::test_signing_in_as_someone_else_files_the_sign_in_as_this_sites`, `::test_only_a_sign_in_in_the_keyring_is_offered` |
+| INV-16 | `tests/test_github_setup.py::test_a_pass_is_handed_out_only_for_the_name_it_was_bought_for` |
+| § 4.3 *Continue as* hides the box and the code until *Sign in as someone else* is chosen | **nothing** in CI — checked 2026-11-06 in Chrome and Firefox |
 | § 4.1 GitHub's real answers to the device flow, refresh and installation requests | **nothing** in CI — the by-hand run of § 7 |
 | § 4.3 the instructions match GitHub's pages | **nothing** — read by hand in § 7's run; GitHub changes its pages without notice |
 
