@@ -593,6 +593,19 @@ document.addEventListener("change", (event) => {
   else document.documentElement.dataset.theme = picker.value;
   fetch("/theme", {method: "POST", body: picker.value});
 });
+// PRESS-0343: More shuts on a click outside it, or on Escape.
+document.addEventListener("click", (event) => {
+  document.querySelectorAll("details.more[open]").forEach((more) => {
+    if (!more.contains(event.target)) more.open = false;
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  document.querySelectorAll("details.more[open]").forEach((more) => {
+    more.open = false;
+    more.querySelector("summary").focus();
+  });
+});
 // PRESS-0338: so is a text size.
 document.addEventListener("change", (event) => {
   const picker = event.target.closest("select[data-size-picker]");
@@ -693,9 +706,21 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .bar svg [fill]:not([fill="none"]), .face .bar svg g { fill: var(--amber); }
 .face .bar b { font: 700 1.2rem/1 Arial, Calibri, "Liberation Sans", Helvetica, sans-serif; }
 .face .bar b span { font-family: system-ui, "Segoe UI", sans-serif; font-weight: 400; }
-.face .bar .theme { margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: .5rem; }
+.face .bar .theme, .face .bar .size { margin: 0; flex-direction: column; align-items: stretch;
+  gap: .3rem; }
 .face .bar .theme select, .face .bar .size select { padding: .3rem .5rem; }
-.face .bar .size { margin: 0; flex-direction: row; align-items: center; gap: .5rem; }
+.face .bar .more { margin-left: auto; position: relative; }
+.face .bar .more > summary { list-style: none; cursor: pointer; padding: .35rem .9rem;
+  font-weight: 600; line-height: 1.4; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 3px var(--shadow); }
+.face .bar .more > summary::-webkit-details-marker { display: none; }
+.face .bar .more > summary::after { content: " ▾"; }
+.face .bar .more > summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.face .bar .more > div { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 20;
+  display: flex; flex-direction: column; gap: .6rem; min-width: 16rem; padding: .9rem;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 8px 30px var(--shadow); }
+.face .bar .more a { color: var(--ink); font-weight: 600; }
 .face .bar > a, .face .nav > a { display: inline-block; margin: 0; padding: .35rem .9rem;
   font: inherit; font-weight: 600; line-height: 1.4; color: var(--ink);
   background: var(--sheet); border: 1px solid var(--line); border-radius: 999px;
@@ -1001,7 +1026,6 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100
         f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
         f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
         # PRESS-0281: first, so every screen leads back to the list.
-        f'{themes.picker(theme)}{themes.size_picker(size)}'
         f'<a href="/">{say("face.your_writing")}</a>'
         # PRESS-0223 § 4.6: beside it, the sites he can open.
         f'<a href="/sites">{say("face.sites")}</a>'
@@ -1010,12 +1034,16 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100
         f'<a href="/look">{say("face.look")}</a>'
         # PRESS-0197 § 4.4: beside Look.
         f'<a href="/files">{say("face.files")}</a>'
+        # PRESS-0343: the rest under More, which opens over the page, so the
+        # bar keeps to one line.
+        f'<details class="more"><summary>{say("face.more")}</summary><div>'
         # PRESS-0179: on every screen, failure pages included.
         f'<a href="/report">{say("face.report")}</a>'
         # PRESS-0262 § 4.3: beside Report a problem.
         f'<a href="{usage.ADDRESS}">{say("face.usage")}</a>'
-        # PRESS-0278: last, beside Usage reports.
-        f'<a href="/about">{say("face.about")}</a></header>'
+        # PRESS-0278: beside Usage reports.
+        f'<a href="/about">{say("face.about")}</a>'
+        f'{themes.picker(theme)}{themes.size_picker(size)}</div></details></header>'
         f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
     )
 

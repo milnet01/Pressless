@@ -436,6 +436,7 @@ _WORDS: dict[str, str] = {
     "face.report": "Suggest or report a problem",
     "face.usage": "Usage reports",
     "face.about": "About",
+    "face.more": "More",
     # The editor and the list (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "

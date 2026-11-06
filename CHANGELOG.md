@@ -15,7 +15,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 ### Added
 
 - **A text size for Pressless's own screens** (PRESS-0338)
-  Beside Theme in the top bar, Text size makes every Pressless screen Large, Larger or Largest,
+  Under More in the top bar, Text size makes every Pressless screen Large, Larger or Largest,
   up to twice the normal size. Pressless remembers it for next time. Your published site is
   unchanged.
 
@@ -43,6 +43,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   It used to show two sets for a name like example.co.za and leave you to choose. Pressless now
   knows which part of a name was bought, using the public suffix list that browsers use, so it
   shows just the records that fit.
+
+- **The top bar fits on one line** (PRESS-0343)
+  It keeps Your writing, Sites, View your site, Settings, Look and Files. Suggest or report a
+  problem, Usage reports, About, Theme and Text size are now under More, which opens over the
+  page.
 
 ## [0.12.0] - 2026-11-04
 

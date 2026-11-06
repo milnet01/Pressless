@@ -38,6 +38,7 @@ from pressless import (
     publisher,
     store,
     themes,
+    usage,
 )
 
 LABEL_WORDS = "the Pressless-data folder, beside the program"
@@ -524,6 +525,30 @@ def test_every_page_links_back_to_your_writing(tmp_path: Path) -> None:
     finally:
         served.stop()
 
+
+def test_the_bar_keeps_a_short_main_menu_and_the_rest_under_more(tmp_path: Path) -> None:
+    """PRESS-0343: the bar wrapped onto two lines with nine links and two
+    choices. Breaks when more than six links stand on the bar itself, or a
+    screen or choice moved under More goes missing."""
+    _saved(tmp_path)
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/words", lambda request: "<p>Words</p>")
+        body = _Client(served).request("GET", "/words")[2]
+    finally:
+        served.stop()
+    bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
+    more = re.search(r'<details class="more">(.*?)</details>', bar, re.S)
+    assert more, "no More menu"
+    standing = bar.replace(more.group(0), "")
+    assert len(re.findall(r"<a ", standing)) <= 6
+    assert "<select" not in standing
+    for inside in ('href="/report"', 'href="/about"', usage.ADDRESS,
+                   "data-theme-picker", "data-size-picker"):
+        assert inside in more.group(1), inside
+    for kept in ('href="/"', 'href="/sites"', 'href="/setup"', 'href="/look"',
+                 'href="/files"', "data-site"):
+        assert kept in standing, kept
 
 def test_the_bar_links_to_the_live_site_once_set_up(tmp_path: Path) -> None:
     """PRESS-0232. Breaks when the top bar has no link to the site's address

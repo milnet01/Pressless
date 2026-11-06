@@ -6413,10 +6413,15 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: face, publisher.
 
-- 📋 [PRESS-0343] **The top bar shrinks to about five items, with the rest under More.**
+- ✅ [PRESS-0343] **The top bar shrinks to about five items, with the rest under More.**
   From the 2026-11-03 usability study: the bar holds nine links and a
   theme menu, and wraps onto two lines. Leading editors keep a short
   main menu. After 0.11.0, by the user's choice.
+  Done 2026-11-06. The bar keeps Your writing, Sites, View your site
+  (once set up), Settings, Look and Files; Report a problem, Usage
+  reports, About, Theme and Text size sit under More, a details menu
+  opening over the page and shutting on a click elsewhere or Escape. One
+  line at 1280 px wide in Chrome and Firefox (by-hand browser row).
   **Layman:** The bar along the top of every screen fits on one line, with the less-used screens tucked under one menu.
   Kind: ux.
   Source: user-request-2026-11-03.

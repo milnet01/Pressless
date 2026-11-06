@@ -220,6 +220,7 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         "_SAY": "the script's own error for a missing key, read by whoever helps",
         "_ICON": "the app's name, in its icon",
         "Pressless": "the app's name", "Press less": "the app's name, in the bar",
+        "Escape": "a key's name, as the browser reports it",
         **dict.fromkeys(("Content-Type", "Content-Length", "Cache-Control",
                          "Content-Security-Policy", "X-Content-Type-Options", "Set-Cookie",
                          "Content-Disposition",

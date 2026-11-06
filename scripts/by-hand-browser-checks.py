@@ -534,6 +534,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         code_colours(page, origin)
         true_colours_kept(page, origin)
         text_sizes(page, origin)
+        more_menu(page, origin)
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
@@ -1078,7 +1079,7 @@ def text_sizes(page, origin: str) -> None:
       box.dispatchEvent(new Event('change', {bubbles: true}));
     }"""
     page.goto(f"{origin}/", wait_until="networkidle")
-    screens = page.evaluate("""() => [...document.querySelectorAll('.bar > a')]
+    screens = page.evaluate("""() => [...document.querySelectorAll('.bar a')]
       .map(a => a.getAttribute('href')).filter(h => h.startsWith('/'))""")
     screens += ["/edit?slug=seaside", "/page?kind=pages&name=visual"]
     # A container body hands Chrome's window no background, so the root has one.
@@ -1106,6 +1107,32 @@ def text_sizes(page, origin: str) -> None:
         check(f"PRESS-0338: at text size {size}%, every screen fits its width, and the "
               f"editor's columns and preview fit two window sizes",
               sent.value.status == 204 and not wide and right, f"{wide} {shapes}")
+
+
+def more_menu(page, origin: str) -> None:
+    """PRESS-0343: at the Normal size the bar is one line; More opens over the
+    page, moving nothing, and a click elsewhere or Escape shuts it."""
+    page.goto(f"{origin}/", wait_until="networkidle")
+    measure = """() => {
+      const tops = [...document.querySelectorAll('.bar > a, .bar summary')]
+        .map(item => item.getBoundingClientRect().top);
+      return {rows: Math.max(...tops) - Math.min(...tops),
+              line: document.querySelector('.bar summary').getBoundingClientRect().height,
+              main: document.querySelector('main').getBoundingClientRect().top,
+              open: document.querySelector('details.more').open};
+    }"""
+    before = page.evaluate(measure)
+    page.click(".bar summary")
+    opened = page.evaluate(measure)
+    page.mouse.click(5, page.viewport_size["height"] - 5)
+    clicked_away = page.evaluate(measure)["open"]
+    page.click(".bar summary")
+    page.keyboard.press("Escape")
+    escaped = page.evaluate(measure)["open"]
+    check("PRESS-0343: the bar is one line, More opens over the page, and shuts again",
+          before["rows"] < before["line"] / 2 and opened["open"]
+          and opened["main"] == before["main"] and not clicked_away and not escaped,
+          f"{before} {opened} {clicked_away} {escaped}")
 
 
 def _overflows(page, address: str) -> bool:
