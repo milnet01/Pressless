@@ -885,8 +885,8 @@ def test_messages_open_over_the_page_and_status_lines_keep_room(tmp_path):
 # ------------------------------------------------------------- PRESS-0309 ---
 
 # The entry's script under node, on a stand-in page: every element is a plain
-# object, `fetch` is recorded, and /address answers only when told to.
-_RACE_HARNESS = """
+# object. Each harness adds its own `fetch` and steps.
+_STAND_IN = """
 const made = {};
 const element = (key) => made[key] || (made[key] = {
   key, dataset: {}, hidden: false, textContent: "", innerHTML: "", value: "",
@@ -907,6 +907,16 @@ globalThis.document = {
   querySelectorAll: () => [],
 };
 globalThis.say = (key) => key;
+// The page's timers, its one-second save delay among them, run fifty times
+// faster. The harness's own pauses keep real time and ten times the save
+// delay, wider than Windows' 15.6 ms timer tick.
+const realTimeout = setTimeout;
+globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
+const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
+"""
+
+# The race: `fetch` is recorded, and /address answers only when told to.
+_RACE_HARNESS = _STAND_IN + """
 const posts = [];
 let answerAddress;
 globalThis.fetch = (address, request) => {
@@ -917,12 +927,6 @@ globalThis.fetch = (address, request) => {
     : Promise.resolve({slug: fields.slug, draft: true, base: "saved", notices: ""});
   return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
 };
-// The page's timers, its one-second save delay among them, run fifty times
-// faster. The harness's own pauses keep real time and ten times the save
-// delay, wider than Windows' 15.6 ms timer tick.
-const realTimeout = setTimeout;
-globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
-const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
 %s
 (async () => {
   element('input[name=address]').value = "new";
@@ -937,6 +941,52 @@ const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
   process.stdout.write(JSON.stringify(posts));
 })();
 """
+
+
+# PRESS-0339: a save is in flight when Press to site is clicked; /save
+# answers only when told to.
+_PRESS_HARNESS = _STAND_IN + """
+let answerSave;
+globalThis.fetch = (address, request) => {
+  const reply = address === "/save"
+    ? new Promise((resolve) => { answerSave = resolve; })
+    : Promise.resolve({slug: "old", draft: false, base: "b3", notices: "", published: true,
+                       failure: ""});
+  return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
+};
+// Every line the status shows, in order.
+const line = element("#publish-status"), shown = [];
+let current = "";
+Object.defineProperty(line, "textContent", {
+  get: () => current, set: (text) => { current = text; shown.push(text); }});
+%s
+(async () => {
+  const press = element("button[data-editor=publish]");
+  form.elements.body.value = "typed";
+  form.handlers.input({target: {name: "body"}});
+  while (answerSave === undefined) await pause(10);
+  const pressed = press.handlers.click();
+  const clicked = [line.textContent, press.disabled];
+  answerSave({slug: "old", draft: true, base: "b2", notices: ""});
+  await pressed;
+  process.stdout.write(JSON.stringify({clicked, shown}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_press_says_publishing_the_instant_it_is_clicked(tmp_path):
+    """PRESS-0339: the line says Publishing, and the button is off, as soon
+    as Press to site is clicked, though a save in flight is waited out
+    first; that save's answer does not put the standing words back. Breaks
+    when the words wait for the save, or the save's answer overwrites them."""
+    harness = tmp_path / "press.js"
+    harness.write_text(_PRESS_HARNESS % editor._EDITOR_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    seen = json.loads(run.stdout)
+    assert seen == {"clicked": ["script.press.publishing", True],
+                    "shown": ["script.press.publishing", "script.press.published"]}
 
 
 @pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")

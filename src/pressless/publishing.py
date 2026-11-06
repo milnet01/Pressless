@@ -473,7 +473,21 @@ def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | No
             + f"<p>{say('publishing.takeover.intro', repository=e(saved.repository))}</p><ul>"
             + "".join(f"<li>{row}</li>" for row in rows) + "</ul>" + removing
             + f'<form method="post" action="{TAKEOVER_ADDRESS}">'
-            + f"<p><button>{say('publishing.takeover.button')}</button></p></form>")
+            + f"<p><button>{say('publishing.takeover.button')}</button></p>"
+            + '<p class="press-status" role="status"></p></form>'
+            + f"<script>{_WORKING_SCRIPT}</script>")
+
+
+# PRESS-0339: the takeover publishes before its page answers, which can take a
+# minute, so the press says so at once. The button goes off after the submit
+# event, once the form's data is taken.
+_WORKING_SCRIPT = """(() => {
+  const form = document.currentScript.previousElementSibling;
+  form.addEventListener("submit", () => {
+    form.querySelector("[role=status]").textContent = say("script.press.publishing");
+    setTimeout(() => { form.querySelector("button").disabled = true; });
+  });
+})();"""
 
 
 def _delete_link(repository: str, branch: str, path: str) -> str:

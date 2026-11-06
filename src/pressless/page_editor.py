@@ -1229,6 +1229,8 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
     }
     return data;
   };
+  // PRESS-0339: while a press runs, its words stay on the status line.
+  let pressing = false;
   const adopt = (reply) => {
     state.waiting = reply.waiting ? "1" : "0"; state.base = reply.base;
     document.querySelectorAll("input[name=base]").forEach((input) => { input.value = reply.base; });
@@ -1236,7 +1238,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
       part.hidden = part.dataset.when !== state.waiting;
     });
     document.getElementById("notices").innerHTML = reply.notices;
-    document.getElementById("publish-status").textContent = standing();
+    if (!pressing) document.getElementById("publish-status").textContent = standing();
   };
   // PRESS-0234: what the press row's status line says between presses.
   const standing = () => say(form.dataset.offSite === "1" ? "script.standing.off_site"
@@ -1342,11 +1344,13 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
-    // A save meanwhile would post the waiting copy the publish bins.
-    await settle(false);
+    // PRESS-0339: said at once, though a save in flight is waited out first.
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = say("script.press.publishing");
+    pressing = true;
+    // A save meanwhile would post the waiting copy the publish bins.
+    await settle(false);
     try {
       const posted = posting();
       const body = fields(posted);
@@ -1367,6 +1371,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
+      pressing = false;
       publish.disabled = window.presslessPress.asking();
       release();
     }
@@ -1388,12 +1393,14 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
       } else if (!window.confirm(say("script.pages.confirm_remove"))) {
         return;
       }
-      await settle(true);
+      // PRESS-0339: said at once, though what waits is saved first.
       const said = document.getElementById("publish-status");
+      said.textContent = say("script.press.publishing");
+      pressing = true;
+      await settle(true);
       let reply;
       try {
-        if (stopped) return;
-        said.textContent = say("script.press.publishing");
+        if (stopped) { said.textContent = standing(); return; }
         const body = new URLSearchParams({kind: state.kind, name: state.name, to: to});
         const answer = await fetch("/page/" + button.dataset.pages,
                                    {method: "POST", body: body});
@@ -1416,6 +1423,7 @@ _PAGE_SCRIPT = pressing.SCRIPT + editor.LEAVING_SCRIPT + editor.SAVING_SCRIPT + 
       } catch (error) {
         said.textContent = standing(); stop("");
       } finally {
+        pressing = false;
         release();
       }
       if (!reply || reply.busy || !reply.published) return;

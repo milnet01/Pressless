@@ -1006,8 +1006,8 @@ def test_the_visual_view_refuses_every_link_the_save_refuses(tmp_path):
 # ------------------------------------------------------------- PRESS-0329 ---
 
 # The page's script under node, on a stand-in page: every element is a plain
-# object, `fetch` is recorded, and Remove or Rename answers only when told to.
-_RESHAPE_HARNESS = """
+# object. Each harness adds its own `fetch` and steps.
+_STAND_IN = """
 const made = {};
 const element = (key) => made[key] || (made[key] = {
   key, dataset: {}, hidden: false, inert: false, textContent: "", innerHTML: "", value: "",
@@ -1033,6 +1033,16 @@ globalThis.document = {
   querySelectorAll: (selector) => selector === "button[data-pages]" ? [button] : [],
 };
 globalThis.say = (key) => key;
+// The page's timers, its one-second save delay among them, run fifty times
+// faster. The harness's own pauses keep real time and ten times the save
+// delay, wider than Windows' 15.6 ms timer tick.
+const realTimeout = setTimeout;
+globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
+const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
+"""
+
+# The race: `fetch` is recorded, and Remove or Rename answers only when told to.
+_RESHAPE_HARNESS = _STAND_IN + """
 const posts = [];
 let answer;
 globalThis.fetch = (address, request) => {
@@ -1044,12 +1054,6 @@ globalThis.fetch = (address, request) => {
     : Promise.resolve({waiting: true, base: "saved", notices: "", preview: null});
   return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
 };
-// The page's timers, its one-second save delay among them, run fifty times
-// faster. The harness's own pauses keep real time and ten times the save
-// delay, wider than Windows' 15.6 ms timer tick.
-const realTimeout = setTimeout;
-globalThis.setTimeout = (callback, ms = 0, ...rest) => realTimeout(callback, ms / 50, ...rest);
-const pause = (ms) => new Promise((resolve) => realTimeout(resolve, ms));
 %s
 (async () => {
   button.handlers.click();
@@ -1096,3 +1100,50 @@ def test_an_edit_during_a_remove_or_rename_is_not_saved_beside_it(pages, reply, 
         assert saves and saves[-1]["fields"]["name"] == saved_as
         assert saves[-1]["fields"]["text"] == "typed while the page moved"
         assert not saves[-1]["gone"]
+
+
+# PRESS-0339: a save is in flight when Press to site, Rename or Remove is
+# clicked; /page/save answers only when told to.
+_PRESS_HARNESS = _STAND_IN + """
+let answerSave;
+globalThis.fetch = (address) => {
+  const reply = address === "/page/save"
+    ? new Promise((resolve) => { answerSave = resolve; })
+    : Promise.resolve({waiting: false, base: "b3", notices: "", published: true,
+                       failure: "", hint: null, address: "/page?kind=pages&name=new"});
+  return reply.then((body) => ({status: 200, text: async () => JSON.stringify(body)}));
+};
+// Every line the status shows, in order.
+const line = element("#publish-status"), shown = [];
+let current = "";
+Object.defineProperty(line, "textContent", {
+  get: () => current, set: (text) => { current = text; shown.push(text); }});
+%s
+(async () => {
+  const clicked = process.argv[2] === "publish" ? element("button[data-editor=publish]") : button;
+  form.elements.text.value = "typed";
+  form.handlers.input({});
+  while (answerSave === undefined) await pause(10);
+  const pressed = clicked.handlers.click();
+  const said = line.textContent;
+  answerSave({waiting: false, base: "b2", notices: "", preview: null});
+  await pressed;
+  process.stdout.write(JSON.stringify({said, shown}));
+})();
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+@pytest.mark.parametrize("pages", ["publish", "rename", "remove"])
+def test_a_press_says_publishing_the_instant_it_is_clicked(pages, tmp_path):
+    """PRESS-0339: the line says Publishing as soon as the button is clicked,
+    though a save in flight is waited out first, and that save's answer does
+    not put the standing words back. Breaks when the words wait for the
+    save, or the save's answer overwrites them."""
+    harness = tmp_path / "press.js"
+    harness.write_text(_PRESS_HARNESS % page_editor._PAGE_SCRIPT, encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness), pages], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout) == {
+        "said": "script.press.publishing",
+        "shown": ["script.press.publishing", "script.press.published"]}

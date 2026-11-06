@@ -26,6 +26,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   file at a time. If a file changes while it is being published, the publish stops and the
   site is left as it was, so you can simply publish again.
 
+- **Press to site says Publishing the moment you click it** (PRESS-0339)
+  It used to stay silent for a few seconds while a save finished. The same goes for Rename and
+  Remove on a page, and for Publish and switch to Pressless when taking over a site.
+
 ## [0.12.0] - 2026-11-04
 
 **Theme:** more figures, and likes

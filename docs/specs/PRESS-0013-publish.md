@@ -233,9 +233,10 @@ The press row's words come from [PRESS-0235](PRESS-0235-press-status.md) § 4.3.
 PRESS-0012 § 4.7's page gains a **Press to site** button beside the box. Its script,
 on a click:
 
-- stops the save timer and waits for a save in flight;
 - shows *"Publishing… this can take a few minutes the first time. Keep this
-  page open."*, and disables the button;
+  page open."*, and disables the button, at once (PRESS-0339);
+- stops the save timer and waits for a save in flight, whose answer leaves
+  those words in place;
 - posts `/publish` with the save fields;
 - on a 409 reply, stops saving and shows the body, as a failed save does;
 - on a JSON reply, takes `slug`, `draft` and `base` as a save reply does, then

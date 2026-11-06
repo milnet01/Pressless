@@ -12,6 +12,9 @@ from __future__ import annotations
 import base64
 import contextlib
 import json
+import re
+import shutil
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -597,3 +600,42 @@ def test_build_files_are_those_naming_the_deploy_action(tmp_path):
     assert takeover.build_files(folder, _settings(folder), KEY, github) == (BUILD,)
     area = folder / undo.FETCH_FOLDER
     assert not area.exists() or not any(area.iterdir())
+
+
+# ------------------------------------------------------------- PRESS-0339 ---
+
+# The takeover form's script under node: a stand-in form, button and line.
+_NODE = shutil.which("node")
+_WORKING_HARNESS = """const on = {};
+const button = {disabled: false};
+const line = {textContent: ""};
+const form = {addEventListener: (kind, run) => { on[kind] = run; },
+              querySelector: (selector) => selector === "button" ? button : line};
+const document = {currentScript: {previousElementSibling: form}};
+const say = (key) => "<" + key + ">";
+%s
+on.submit();
+const said = line.textContent;
+setTimeout(() => process.stdout.write(JSON.stringify({said, disabled: button.disabled})), 10);
+"""
+
+
+@pytest.mark.skipif(_NODE is None, reason="needs node to run the page's script")
+def test_the_takeover_says_publishing_the_instant_it_is_pressed(tmp_path, monkeypatch):
+    """PRESS-0339: the page sat unchanged for about a minute while it
+    published. Breaks when the form posts without saying so, or its button
+    stays live for a second press."""
+    _site(monkeypatch)
+    github = _Built()
+    folder = _finished(tmp_path, monkeypatch, github)
+    shown = _shown(folder, github)
+    form = re.search(rf'<form method="post" action="{publishing.TAKEOVER_ADDRESS}".*?</form>'
+                     r"<script>(.*?)</script>", shown, re.S)
+    assert form, "the takeover form carries no script"
+    assert 'role="status"' in form.group(0)
+    harness = tmp_path / "working.js"
+    harness.write_text(_WORKING_HARNESS % form.group(1), encoding="utf-8")
+    run = subprocess.run([_NODE, str(harness)], capture_output=True,  # noqa: S603
+                         check=True, timeout=30)
+    assert json.loads(run.stdout) == {"said": "<script.press.publishing>", "disabled": True}
+

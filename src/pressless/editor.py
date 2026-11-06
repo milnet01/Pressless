@@ -984,6 +984,8 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
     }
     return data;
   };
+  // PRESS-0339: while a press runs, its words stay on the status line.
+  let pressing = false;
   const adopt = (reply) => {
     state.slug = reply.slug; state.draft = reply.draft ? "1" : "0"; state.base = reply.base;
     document.querySelectorAll("input[name=base]").forEach((input) => { input.value = reply.base; });
@@ -1015,7 +1017,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
       document.querySelector("button[data-editor=throw]").textContent =
         say("script.editor.throw_entry");
     }
-    document.getElementById("publish-status").textContent = standing();
+    if (!pressing) document.getElementById("publish-status").textContent = standing();
   };
   // PRESS-0234: what the press row's status line says between presses.
   const standing = () => say(state.draft === "0" ? "script.standing.on_site"
@@ -1068,10 +1070,12 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
 
   const publish = document.querySelector("button[data-editor=publish]");
   publish.addEventListener("click", async () => {
-    await settle(false);
+    // PRESS-0339: said at once, though a save in flight is waited out first.
     const said = document.getElementById("publish-status");
     publish.disabled = true;
     said.textContent = say("script.press.publishing");
+    pressing = true;
+    await settle(false);
     try {
       const body = fields();
       dirty = false;
@@ -1089,6 +1093,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
     } catch (error) {
       said.textContent = standing(); stop("");
     } finally {
+      pressing = false;
       publish.disabled = window.presslessPress.asking();
       release();
     }

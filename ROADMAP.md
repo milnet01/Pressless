@@ -6342,7 +6342,7 @@ user's question of 2026-11-03 and a study of leading site editors.
   Source: user-request-2026-11-03.
   Lanes: face.
 
-- 📋 [PRESS-0339] **Press to site says Publishing the instant it is clicked.**
+- ✅ [PRESS-0339] **Press to site says Publishing the instant it is clicked.**
   Seen 2026-11-03 on a real repository: the status line stayed on
   "Not on your site yet" for several seconds. The click awaits
   settle() for a save in flight before it writes "Publishing"
@@ -6351,6 +6351,12 @@ user's question of 2026-11-03 and a study of leading site editors.
   2026-11-03: the takeover's "Publish and switch to Pressless" button
   (/publish/takeover) is a plain form post with the same silence: the
   page sat unchanged for about a minute while it published. Cover it too.
+  Done 2026-11-06. Both editors show Publishing and disable Press to
+  site before waiting out a save in flight, and a save's answer no
+  longer puts the standing words back while a press runs. Rename and
+  Remove on a page had the same silence and show it at once too. The
+  takeover form shows it on submit and turns its button off. PRESS-0013
+  § 4.4 amended.
   **Layman:** Pressing a page to the site shows at once that it is working, instead of sitting silent for a few seconds.
   Kind: ux.
   Source: user-request-2026-11-03.
