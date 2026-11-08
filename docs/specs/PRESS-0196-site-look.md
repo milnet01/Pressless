@@ -261,6 +261,8 @@ screen deliberately does not.
 
 ### 4.5 A site with no style code
 
+*Withdrawn by PRESS-0276 § 4.3, which gives such a site a route choice.*
+
 `GET /look` says the site's look comes from its own stylesheets, which
 Pressless does not change, and shows no panel. `/look/preview` and
 `/look/save` answer 409 and write nothing. PRESS-0276 is where this changes.
@@ -359,7 +361,8 @@ files. Reconciling treats them as one unit:
   unchanged.
   *Breaks when:* the save skips the digest check.
 
-- **INV-9** — On a site with no style code, `/look` shows no panel and both
+- **INV-9** — *Withdrawn by PRESS-0276 (2026-11-08); its INV-5 replaces it.*
+  On a site with no style code, `/look` shows no panel and both
   POST routes answer 409, writing nothing.
   *Test:* `tests/test_look_screen.py` against a Store with no `look/` folder.
   *Breaks when:* a save creates style code on an imported site.

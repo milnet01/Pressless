@@ -497,7 +497,8 @@ Sitemap: <the address>/sitemap.xml
   *Breaks when:* an entry is re-emitted through the Store's writer, which
   normalises its header, or a line ending is translated.
 
-- **INV-8** — A fixed page's bytes outside its marker pairs are unchanged,
+- **INV-8** — *PRESS-0276 § 4.2: a fixed page's links to the site's
+  stylesheets may also change.* A fixed page's bytes outside its marker pairs are unchanged,
   and between them sits the filled furniture of §4.4.
   *Test:* `tests/test_builder.py::test_a_fixed_page_keeps_its_own_bytes` — a
   page with irregular markup around a HEADER pair saying `page="about"

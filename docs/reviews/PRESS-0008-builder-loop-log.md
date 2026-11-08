@@ -12,3 +12,4 @@
 | 4 | 2026-09-27 | 2, cold — amendment gate for PRESS-0152, one loop by the budget; packet windowed `listings` and the comment count | 0 | 0 | 0 | 0 | **Converged: no findings.** Four open questions, none a finding: a zero-entry journal lead, "nothing else" beside the span, the two-entry fixture, the page description. |
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: forwards at old addresses, `roots_produced`, what a build publishes, and the forwards file in `content/`. |
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.3 and INV-11's allowlist. |
+| amend | 2026-11-08 | none: no reviewer was dispatched | 0 | 0 | 0 | 0 | **Amended by PRESS-0276** before it was built: a pointer to its spec, no clause rewritten. |

@@ -227,6 +227,8 @@ publish again after it.
 
 ### 4.6 The Builder
 
+*PRESS-0276 § 4.1 adds the extra-CSS case to `stylesheets`, and § 4.2 rewrites a fixed page's links to the site's stylesheets.*
+
 `stylesheets(folder)` is `(STYLE_CODE,)` where
 `store.style_code_path(folder).is_file()`, otherwise `STYLESHEETS`.
 
