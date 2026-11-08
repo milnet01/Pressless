@@ -6557,11 +6557,16 @@ more places, and an imported site can take a Pressless look.
   Source: user-decision-2026-10-15 PRESS-0196.
   Lanes: Builder, Face, Store.
 
-- 📋 [PRESS-0290] **The Sites screen lists the sites in a GitHub account, and adds one from there.**
+- ✅ [PRESS-0290] **Setup lists the sites in a GitHub account, and adds one from there.**
   The user's idea of 2026-10-05, recorded on PRESS-0223 and left out of it
   (docs/specs/PRESS-0223-several-sites.md section 9): list the account's
   public repositories with Pages switched on, and start a site from one
   rather than typing its repository in setup.
+  Shipped in eb37169. The list sits on setup's repository step, not on the
+  Sites screen: setup is where the name was typed, it serves a first
+  install too, and the Sites screen's new-site button opens it. The
+  hand-key flow (a copy with no registered app) still types the name.
+  Its browser and real-GitHub checks ride on PRESS-0350.
   **Layman:** Instead of typing in each website, Pressless can show the websites already in your GitHub account and let you add one.
   Kind: feature.
   Source: PRESS-0223-spec-section-9-2026-10-16.
@@ -6618,7 +6623,10 @@ more places, and an imported site can take a Pressless look.
   and pushes it to gh-pages, with a custom domain. Check: setup through
   Finish leaves the site unchanged; the delete link works signed in; the
   takeover keeps the domain and HTTPS; Pages moves to the default branch's
-  root and builds; a publish after it keeps the domain. Owed before 0.14.0
+  root and builds; a publish after it keeps the domain. PRESS-0290 too: the repository
+  step lists the scratch site (GitHub's real answer carries has_pages),
+  and in Chrome and Firefox the name box hides while a listed site is
+  ticked. Owed before 0.14.0
   ships. Method: the memory note on hand checks.
   **Layman:** Before the next release, a person tries switching a real branch-published site to Pressless, to see it keep working.
   Kind: test.
