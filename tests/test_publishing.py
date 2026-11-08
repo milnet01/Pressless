@@ -687,6 +687,19 @@ def test_a_preview_lists_what_is_pressed(tmp_path, monkeypatch):
                for path, title in shown.pages.items())
 
 
+def test_a_preview_lists_no_source_copy(tmp_path, monkeypatch):
+    """PRESS-0345 § 4.3. Breaks when the source copy under content/ is listed
+    as pages, which names a page twice and a part by its path."""
+    monkeypatch.setattr(publishing, "_now", lambda: NOW)
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=True)
+    shown = publishing.preview(folder, _settings(folder), KEY, entry="seaside",
+                               transport=_github())
+    assert "blog/index.html" in shown.pages
+    assert not [path for path in shown.pages if path.startswith("content/")]
+    assert shown.added >= 3   # the header, navigation and footer copies among them
+
+
 def test_the_plan_route_answers_titles_and_counts(tmp_path, monkeypatch):
     """PRESS-0345 § 4.3. Breaks when the route publishes, answers no titles,
     or reads a forged page name."""

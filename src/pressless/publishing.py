@@ -278,8 +278,9 @@ def preview(folder: Path, settings: settings.Settings, key: str, *,
         built = builder.build(folder, settings, into, change=change, photographs=False)
         planned = publisher.plan(settings, into, key, transport,
                                  named=frozenset(built.named))
+        # The source copy holds HTML too, but no page a reader opens.
         pages = {path: _title(into / path, path) for path in planned.uploaded
-                 if path.endswith(".html")}
+                 if path.endswith(".html") and not path.startswith(builder.SOURCE_COPY)}
         return Preview(pages, len(planned.uploaded) - len(pages), len(planned.removed))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)

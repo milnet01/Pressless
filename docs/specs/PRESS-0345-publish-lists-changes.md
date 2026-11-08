@@ -88,8 +88,9 @@ saves what waits first (§ 4.4). It answers JSON:
 ```
 
 `pages` holds the sorted titles of the HTML pages a publish would write, a
-page with no title by its path. `added` counts the other files it would
-write, and `removed` every file it would delete. A failure answers only
+page with no title by its path. The source copy under `content/` is not
+pages: its HTML would name each page twice and each part by its path.
+`added` counts the other files it would write, and `removed` every file it would delete. A failure answers only
 `failure`, as a press's failure reads.
 
 It is not a press: it takes no `pressing` slot and publishes nothing.

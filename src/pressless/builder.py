@@ -37,6 +37,7 @@ from pressless.settings import Settings
 # § 4.1). Written as PRESS-0008 quotes it; "site-icon.png" is SITE_ICON.
 ROOT_OUTPUT = ("index.html", "pages", "blog", "photographs", "content",
                "sitemap.xml", "robots.txt", "look", "files", "site-icon.png")
+SOURCE_COPY = "content/"   # §4.7: the Store's own bytes, published beside the pages
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
 STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
@@ -1301,7 +1302,7 @@ class _Build:
                 data = path.read_bytes()
             except OSError as exc:
                 raise store.StoreError(f"{relative} could not be read: {_why(exc)}") from None
-            self.write_bytes(f"content/{relative}", data)
+            self.write_bytes(SOURCE_COPY + relative, data)
 
     # -- sitemap.xml and robots.txt (§4.9) --
 

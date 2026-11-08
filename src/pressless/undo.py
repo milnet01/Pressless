@@ -20,6 +20,7 @@ from pathlib import Path, PurePosixPath
 from typing import NamedTuple, TypeVar
 
 from pressless import (
+    builder,
     editor,
     github_setup,
     look,
@@ -43,7 +44,7 @@ from pressless.face import (
 from pressless.words import say
 
 FETCH_FOLDER = "fetch"      # inside Pressless's own folder; emptied when the sequence ends
-CONTENT = "content/"        # the prefix fetched (PRESS-0008 § 4.7)
+CONTENT = builder.SOURCE_COPY   # the prefix fetched (PRESS-0008 § 4.7)
 KEPT_SUFFIX = "-before-undo"
 
 _T = TypeVar("_T")
