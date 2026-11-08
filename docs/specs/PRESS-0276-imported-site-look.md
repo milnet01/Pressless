@@ -82,10 +82,14 @@ def own_stylesheets(folder: Path) -> bool
 
 `_Build.fixed_page` passes the page's text through one new step before
 filling its furniture. That step is the same for a preview and a publish.
-**A page whose site-sheet links, in order, are `stylesheets(folder)` is left
+What a page should link is `STYLE_CODE` where the Store has style code.
+Otherwise it is the entries of `STYLESHEETS` the page links, or both where
+it links neither, then `EXTRA_CSS` where `stylesheets` includes it. So a
+page linking only `assets/site.css` is not given `assets/blog.css`.
+**A page whose site-sheet links, in order, are what it should link is left
 as it is, byte for byte.** Any other page with site-sheet links has its first
-one replaced by one `<link rel="stylesheet" href="…">` per entry of
-`stylesheets(folder)`, prefixed `../` once per depth, joined by a newline.
+one replaced by one `<link rel="stylesheet" href="…">` per entry of what it
+should link, prefixed `../` once per depth, joined by a newline.
 Every later site-sheet link is removed, with the line it stood alone on. A
 page with no site-sheet links is left alone, and so is every other byte.
 
@@ -132,8 +136,9 @@ routes.
   nothing to bin, and the next build links `look/style.css` on every page
   (§ 4.2).
 
-A post naming neither route, or `own` where neither condition holds, is
-refused (`LookRefused`) and writes nothing.
+Where the screen offers the choice, a post naming neither route is refused
+(`LookRefused`) and writes nothing. Where it does not, a post naming `own`
+is refused the same way, and one naming no route is PRESS-0196's.
 
 ### 4.4 Undo
 

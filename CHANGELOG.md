@@ -21,6 +21,9 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   A site whose build script publishes it to a branch such as `gh-pages` can switch to
   Pressless too, as one GitHub Actions builds already could. Its address stays, and the
   branch stays in the repository, no longer served.
+- **A site with its own stylesheets can use the Look screen** (PRESS-0276)
+  Keep those stylesheets and add your own CSS on top, or switch to a Pressless design. The
+  preview shows either before you save, and the same choice switches back.
 
 ### Fixed
 

@@ -896,8 +896,8 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
 .face .look-colours input[type=color] { width: 4rem; height: 2.25rem; padding: 2px; }
 .face .look-warn { display: block; width: 13rem; height: 4.5em; overflow-y: auto;
   font-size: .85em; }
-.face .look-effects { border: 0; margin: 1rem 0; padding: 0; }
-.face .look-effects label { display: block; margin: .25rem 0; }
+.face .look-effects, .face .look-route { border: 0; margin: 1rem 0; padding: 0; }
+.face .look-effects label, .face .look-route label { display: block; margin: .25rem 0; }
 @container (min-width: 1120px) {
   .face main:has(> #editor), .face main:has(> #look) { max-width: none; display: grid;
     column-gap: 2rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

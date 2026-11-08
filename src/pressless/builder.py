@@ -41,6 +41,8 @@ SOURCE_COPY = "content/"   # §4.7: the Store's own bytes, published beside the 
 PER_PAGE = 20
 STYLESHEETS = ("assets/site.css", "assets/blog.css")   # every page links these, from the root
 STYLE_CODE = "look/style.css"   # PRESS-0126: where the Store's style code is published
+EXTRA_CSS = "look/extra.css"    # PRESS-0276 § 4.1: CSS on top of a site's own stylesheets
+SITE_SHEETS = (*STYLESHEETS, STYLE_CODE, EXTRA_CSS)   # the links a build may rewrite
 PIECES_SCRIPT = "look/pieces.js"   # PRESS-0217 § 4.3; never under assets/ (decision 3)
 BODY_CLASS = "post-body prose"                         # the class an entry's body is written in
 LONGEST_SIDE = 1600
@@ -143,8 +145,89 @@ def _has_piece(text: str) -> bool:
 
 def stylesheets(folder: Path) -> tuple[str, ...]:
     """The stylesheets a page links, from the root (PRESS-0126 § 4.6): the
-    Store's style code where it holds one, else the live site's assets/ pair."""
-    return (STYLE_CODE,) if store.style_code_path(folder).is_file() else STYLESHEETS
+    Store's style code where it holds one, else the live site's assets/ pair,
+    and after it the CSS on top where there is any (PRESS-0276 § 4.1)."""
+    if store.style_code_path(folder).is_file():
+        return (STYLE_CODE,)
+    return STYLESHEETS + ((EXTRA_CSS,) if _extra_css(folder) else ())
+
+
+def _extra_css(folder: Path) -> str | None:
+    """The CSS on top of a site's own stylesheets: look/extra.css where the
+    Store holds no style code and it holds more than white space."""
+    if store.style_code_path(folder).is_file():
+        return None
+    text = store.read_look_file(folder, store.EXTRA_CSS_NAME)
+    return text if text and text.strip() else None
+
+
+def own_stylesheets(folder: Path) -> bool:
+    """Whether any page, published or waiting, links the live site's assets/
+    pair (PRESS-0276 § 4.1)."""
+    for waiting in (False, True):
+        for name in store.list_html(folder, store.PAGES_FOLDER, waiting=waiting):
+            text = store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name,
+                                                       waiting=waiting))
+            if any(sheet in STYLESHEETS for _, sheet in _site_sheet_links(text)):
+                return True
+    return False
+
+
+_LINK = re.compile(r"<link\b[^>]*>", re.IGNORECASE)
+_LINK_ATTRIBUTE = re.compile(r"""(?<![\w-])(rel|href)\s*=\s*("[^"]*"|'[^']*'|[^\s>"']+)""",
+                             re.IGNORECASE)
+_UP_PREFIX = re.compile(r"^(?:\{\{UP\}\}|\.\./)*")
+
+
+def _site_sheet_links(text: str) -> list[tuple[re.Match, str]]:
+    """Each <link rel="stylesheet"> whose address, less any leading ../ and
+    {{UP}}, is one of SITE_SHEETS, with that address (PRESS-0276 § 4.1). An
+    address with a query or a fragment is not one."""
+    found = []
+    for link in _LINK.finditer(text):
+        attributes = {name.lower(): value.strip("\"'")
+                      for name, value in _LINK_ATTRIBUTE.findall(link.group())}
+        if "stylesheet" not in attributes.get("rel", "").lower().split():
+            continue
+        sheet = _UP_PREFIX.sub("", attributes.get("href", ""))
+        if sheet in SITE_SHEETS:
+            found.append((link, sheet))
+    return found
+
+
+def _relinked(text: str, depth: int, style_code: bool, extra: bool) -> str:
+    """PRESS-0276 § 4.2: `text` linking the site's current stylesheets in place
+    of its site-sheet links. A page keeps those of the assets/ pair it links,
+    or gains the pair where it links neither, unless the site has style code.
+    A page already linking what it should, or no site sheet at all, is
+    returned as it is."""
+    links = _site_sheet_links(text)
+    if not links:
+        return text
+    linked = [sheet for _, sheet in links]
+    if style_code:
+        wanted: tuple[str, ...] = (STYLE_CODE,)
+    else:
+        wanted = (tuple(dict.fromkeys(s for s in linked if s in STYLESHEETS)) or STYLESHEETS)
+        wanted += (EXTRA_CSS,) if extra else ()
+    if tuple(linked) == wanted:
+        return text
+    up = "../" * depth
+    first = "\n".join(f'<link rel="stylesheet" href="{up}{sheet}">' for sheet in wanted)
+    out, at = [], 0
+    for index, (link, _) in enumerate(links):
+        start, end = link.start(), link.end()
+        if index:
+            # A later link goes with the line it stood alone on.
+            line_start = text.rfind("\n", 0, start) + 1
+            if not text[line_start:start].strip() and text[end:end + 1] == "\n":
+                start, end = line_start, end + 1
+        out.append(text[at:start])
+        if not index:
+            out.append(first)
+        at = end
+    out.append(text[at:])
+    return "".join(out)
 
 
 def web_photograph(name: str) -> str:
@@ -641,6 +724,9 @@ def files_named(folder: Path) -> dict[str, tuple[str, ...]]:
     style_code = store.read_style_code(folder)
     if style_code is not None:
         texts.append((store.LOOK_FOLDER, STYLE_CODE, style_code))    # PRESS-0210 § 4.13
+    extra = _extra_css(folder)
+    if extra is not None:
+        texts.append((store.LOOK_FOLDER, EXTRA_CSS, extra))          # PRESS-0276 § 4.2
     for page, relative, text in texts:
         for held in _held_files(folder, relative, text):
             pages = named.setdefault(held, [])
@@ -801,6 +887,11 @@ class _Build:
             if self.publishing:
                 self.copy_what_is_named(STYLE_CODE, style_code)
             self.write_bytes(STYLE_CODE, style_code.encode("utf-8"))
+        extra = _extra_css(self.folder)
+        if extra is not None:     # PRESS-0276 § 4.2
+            if self.publishing:
+                self.copy_what_is_named(EXTRA_CSS, extra)
+            self.write_bytes(EXTRA_CSS, extra.encode("utf-8"))
         if self.pieces_linked:
             self.write_text(PIECES_SCRIPT, blocks.PIECES_SCRIPT)
         self.address_forwards(pages)
@@ -823,8 +914,10 @@ class _Build:
         relative = "index.html" if name == "index" else f"pages/{name}{store.HTML_SUFFIX}"
         if self.publishing:
             self.copy_what_is_named(relative, text)
-        filled = _fill_fixed_page(name, text if marks else blocks.unmarked(name, text), depth,
-                                  self.furniture)
+        shown = _relinked(text if marks else blocks.unmarked(name, text), depth,
+                          store.style_code_path(self.folder).is_file(),
+                          _extra_css(self.folder) is not None)
+        filled = _fill_fixed_page(name, shown, depth, self.furniture)
         self.write_text(relative, self.counted(self.identified(self.enhanced(
             filled, depth, self.furniture_pieces or _has_piece(text)), depth)))
 

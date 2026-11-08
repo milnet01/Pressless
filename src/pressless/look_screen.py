@@ -3,9 +3,11 @@ live preview (PRESS-0196 § 4.4, docs/specs/PRESS-0196-site-look.md).
 
 `GET /look` shows one of three states: choices that made the style code
 beside them; style code they did not make, which a save first copies into
-the bin; and no style code at all, an imported site, which this screen leaves
-alone (§ 4.5). The screen links none of the site's stylesheets into its own
-document, so the site's CSS reaches only the frame (INV-10).
+the bin; and no style code at all. A site with no style code, or whose pages
+link their own stylesheets, also gets a route choice: those stylesheets with
+CSS on top, or a Pressless look (PRESS-0276 § 4.3). The screen links none of
+the site's stylesheets into its own document, so the site's CSS reaches only
+the frame (INV-10).
 """
 from __future__ import annotations
 
@@ -19,21 +21,13 @@ from pressless.words import say
 
 ADDRESS = "/look"
 SAVED = "saved"      # the query a save sends the screen back with
-
-
-class NoStyleCode(Exception):
-    """The site has no style code for the Look screen to change (§ 4.5)."""
+OWN, PRESSLESS = "own", "pressless"   # PRESS-0276 § 4.3's two routes
 
 
 class LookRefused(Exception):
     """A posted choice is not one § 4.1's table allows."""
 
 
-SENTENCES[NoStyleCode] = Sentence(
-    "failure.look_screen.NoStyleCode.what",
-    Site.UNCHANGED,
-    "failure.look_screen.NoStyleCode.next",
-)
 SENTENCES[LookRefused] = Sentence(
     "failure.look_screen.LookRefused.what",
     Site.UNCHANGED,
@@ -75,10 +69,32 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", ADDRESS + "/save", route(_save))
 
 
-def _refuse_without_style_code(folder: Path) -> None:
-    """§ 4.5: NoStyleCode where the site has none."""
-    if not store.style_code_path(folder).is_file():
-        raise NoStyleCode("the site has no style code; its look is its own stylesheets")
+def _has_style_code(folder: Path) -> bool:
+    return store.style_code_path(folder).is_file()
+
+
+def _offers_routes(folder: Path) -> bool:
+    """PRESS-0276 § 4.3: a site with no style code, or whose pages link
+    their own stylesheets, chooses between them and a Pressless look."""
+    return not _has_style_code(folder) or builder.own_stylesheets(folder)
+
+
+def _route(folder: Path, form: dict[str, str]) -> str:
+    """The route a post takes, or LookRefused: one of the two where the site
+    offers them, else the Pressless look alone."""
+    route = form.get("route", "")
+    if _offers_routes(folder):
+        if route not in (OWN, PRESSLESS):
+            raise LookRefused("the post names neither of the site's two routes")
+        return route
+    if route not in ("", PRESSLESS):
+        raise LookRefused("this site has no stylesheets of its own to keep")
+    return PRESSLESS
+
+
+def _extra(form: dict[str, str]) -> str:
+    # A browser posts a textarea's line ends as CR LF.
+    return form.get("extra", "").replace("\r\n", "\n").replace("\r", "\n")
 
 
 def _posted(form: dict[str, str]) -> tuple[look.Choices, str]:
@@ -94,9 +110,7 @@ def _posted(form: dict[str, str]) -> tuple[look.Choices, str]:
     why = look.problem(choices)
     if why:
         raise LookRefused(why)
-    # A browser posts a textarea's line ends as CR LF.
-    extra = form.get("extra", "").replace("\r\n", "\n").replace("\r", "\n")
-    return choices, extra
+    return choices, _extra(form)
 
 
 def _frame(face: Face, folder: Path) -> tuple[str | None, str | None]:
@@ -118,13 +132,17 @@ def _frame(face: Face, folder: Path) -> tuple[str | None, str | None]:
 
 
 def _open(face: Face, folder: Path, request: Request) -> str:
-    """§ 4.4's three states, and § 6's unreadable choices."""
+    """§ 4.4's three states, PRESS-0276's route choice, and § 6's
+    unreadable choices."""
     with editor.LOCK, face.capture() as notices:
-        if not store.style_code_path(folder).is_file():
-            return render_notices(notices) + _imported()
+        styled = _has_style_code(folder)
+        route = None
+        if _offers_routes(folder):
+            asked = request.query.get("route", "")
+            route = asked if asked in (OWN, PRESSLESS) else PRESSLESS if styled else OWN
         try:
             base = look.digest(folder)
-            made = look.made_here(folder)
+            made = look.made_here(folder) or not styled
             choices = look.read(folder)
             extra = look.read_extra(folder)
         except store.StoreError as exc:     # LookUnreadable among them
@@ -135,44 +153,51 @@ def _open(face: Face, folder: Path, request: Request) -> str:
             choices = look.defaults(asked if asked in look.LAYOUTS else look.LAYOUTS[0])
         frame, failure = _frame(face, folder)
     return render_notices(notices) + _page(choices, extra, base, made, restart, frame, failure,
-                                           SAVED in request.query)
-
-
-def _imported() -> str:
-    return (f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>'
-            f'<h1>{say("look_screen.title")}</h1><p>{say("look_screen.imported")}</p>')
+                                           SAVED in request.query, route, styled)
 
 
 def _preview(face: Face, folder: Path, request: Request) -> Reply:
-    """§ 4.4's live preview: the style code the form makes, and its warnings.
-    Writes nothing."""
+    """§ 4.4's live preview: the style code the form makes, its warnings, and
+    the site's own stylesheets the frame links first where the route keeps
+    them (PRESS-0276 § 4.3). Writes nothing."""
     form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
-            _refuse_without_style_code(folder)
+            if _route(folder, form) == OWN:
+                return editor.json_reply({
+                    "css": _extra(form), "warnings": [],
+                    "sheets": [editor.PREVIEW_ADDRESS + sheet for sheet in builder.STYLESHEETS]})
             choices, extra = _posted(form)
-        except (NoStyleCode, LookRefused) as exc:
+        except LookRefused as exc:
             return editor.failed(face, notices, exc)
-    return editor.json_reply({"css": look.css(choices, extra), "warnings": look.warnings(choices)})
+    return editor.json_reply({"css": look.css(choices, extra), "warnings": look.warnings(choices),
+                              "sheets": []})
 
 
 def _save(face: Face, folder: Path, request: Request) -> Reply:
     """§ 4.4's Save: nothing is written where the look changed since the
     screen was drawn, or where choices.json cannot be read (§ 4.1). Style code
     the choices did not make is copied into the bin first, and left in place
-    until look.save replaces it last (INV-7)."""
+    until look.save replaces it last (INV-7). The route keeping the site's
+    own stylesheets writes the CSS on top, then moves any style code to the
+    bin, leaving the choices for a later switch (PRESS-0276 § 4.3)."""
     form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
-            _refuse_without_style_code(folder)
+            route = _route(folder, form)
             if look.digest(folder) != form.get("base", ""):
                 raise editor.ChangedElsewhere("the site's look changed since this window read it")
-            look.read(folder)
-            choices, extra = _posted(form)
-            if not look.made_here(folder):
-                store.copy_to_bin(folder, store.style_code_path(folder))
-            look.save(folder, choices, extra)
-        except (store.StoreError, editor.ChangedElsewhere, NoStyleCode, LookRefused) as exc:
+            if route == OWN:
+                store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form))
+                if _has_style_code(folder):
+                    store.move_to_bin(folder, store.style_code_path(folder))
+            else:
+                look.read(folder)
+                choices, extra = _posted(form)
+                if _has_style_code(folder) and not look.made_here(folder):
+                    store.copy_to_bin(folder, store.style_code_path(folder))
+                look.save(folder, choices, extra)
+        except (store.StoreError, editor.ChangedElsewhere, LookRefused) as exc:
             return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=f"{ADDRESS}?{SAVED}=1")
 
@@ -185,9 +210,15 @@ def _warning(scheme: str, text: str, ground: str, ratio: float) -> str:
 
 
 def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: bool,
-          frame: str | None, failure: str | None, saved: bool) -> str:
+          frame: str | None, failure: str | None, saved: bool,
+          route: str | None, styled: bool) -> str:
     def attr(value: str) -> str:
         return html.escape(value, quote=True)
+
+    # PRESS-0276 § 4.3: what one route shows and the other hides, all of it
+    # below the route choice, so choosing moves nothing above it.
+    def shown(on: str) -> str:
+        return f' data-route="{on}"' + (" hidden" if route not in (None, on) else "")
 
     def options(field: str, chosen: str, named: dict[str, str]) -> str:
         return (f'<select name="{field}">' + "".join(
@@ -216,13 +247,26 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
         f'{" checked" if name in choices.effects else ""}> {say(key)}</label>'
         for name, key in _EFFECT_WORDS.items())
     said = say("look_screen.saved") if saved else ""
-    replaces = "" if made else f'<p class="look-replaces">{say("look_screen.replaces")}</p>'
+    replaces = ("" if made else
+                f'<p class="look-replaces"{shown(PRESSLESS)}>{say("look_screen.replaces")}</p>')
+    if route is not None and styled:
+        replaces += f'<p class="look-replaces"{shown(OWN)}>{say("look_screen.back")}</p>'
+    routes = "" if route is None else (
+        f'<fieldset class="look-route"><legend>{say("look_screen.route")}</legend>' + "".join(
+            f'<label><input type="radio" name="route" value="{name}"'
+            f'{" checked" if name == route else ""}> {say(key)}</label>'
+            for name, key in ((OWN, "look_screen.route.own"),
+                              (PRESSLESS, "look_screen.route.pressless"))) + "</fieldset>")
+    own_about = ("" if route is None else
+                 f'<p{shown(OWN)}>{say("look_screen.extra.own_about")}</p>')
     return f"""<p class="nav"><a href="/">{say("face.your_writing")}</a></p>
 <h1>{say("look_screen.title")}</h1>
 <p>{say("look_screen.about")}</p>
 <p id="look-status" class="press-status" role="status">{said}</p>
 <form id="look" method="post" action="{ADDRESS}/save"{' data-restart' if restart else ''}>
 <input type="hidden" name="base" value="{attr(base)}">
+{routes}
+<div id="look-panel"{shown(PRESSLESS)}>
 <fieldset class="looks"><legend>{say("look_screen.layout")}</legend>
 {setup.look_choices("layout", choices.layout)}
 {f'<p>{say("look_screen.restart")}</p>' if restart else ""}</fieldset>
@@ -240,8 +284,9 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <p><label>{say("look_screen.width")} {options("width", choices.width, _WIDTH_WORDS)}</label></p>
 <fieldset class="look-effects"><legend>{say("look_screen.effects")}</legend>
 <p>{say("look_screen.effects.about")}</p>{effects}</fieldset>
+</div>
 <h2>{say("look_screen.extra")}</h2>
-<p>{say("look_screen.extra.about")}</p>
+<p{shown(PRESSLESS)}>{say("look_screen.extra.about")}</p>{own_about}
 <textarea name="extra" rows="10" spellcheck="false">
 {html.escape(extra)}</textarea>
 {replaces}
@@ -261,21 +306,33 @@ _SCRIPT = r"""
   const form = document.getElementById("look");
   const frame = document.getElementById("preview");
   const status = document.getElementById("look-status");
-  let draft = null, timer = null, asked = 0;
+  let draft = null, sheets = [], timer = null, asked = 0;
 
+  // PRESS-0276 § 4.3: every site sheet the page links is turned off, and
+  // the route's own sheets, then the draft, put in their place.
   function apply() {
     const doc = frame.contentDocument;
     if (draft === null || !doc || !doc.head) return;
+    doc.querySelectorAll("[data-pressless-draft]").forEach((old) => old.remove());
     doc.querySelectorAll("link[rel=stylesheet]").forEach((link) => {
-      if (link.href.endsWith(STYLE_CODE)) link.disabled = true;
+      if (SITE_SHEETS.some((sheet) => link.href.endsWith(sheet))) link.disabled = true;
     });
-    let style = doc.getElementById("pressless-look-draft");
-    if (!style) {
-      style = doc.createElement("style");
-      style.id = "pressless-look-draft";
-      doc.head.appendChild(style);
+    for (const address of sheets) {
+      const link = doc.createElement("link");
+      link.rel = "stylesheet";
+      link.href = address;
+      link.dataset.presslessDraft = "";
+      doc.head.appendChild(link);
     }
+    const style = doc.createElement("style");
+    style.id = "pressless-look-draft";
+    style.dataset.presslessDraft = "";
     style.textContent = draft;
+    doc.head.appendChild(style);
+  }
+  function route() {
+    const picked = form.querySelector("input[name=route]:checked");
+    return picked ? picked.value : "";
   }
   const label = (name) => form.querySelector(`tr[data-colour="${name}"]`).dataset.label;
   function warn(found) {
@@ -296,6 +353,7 @@ _SCRIPT = r"""
       const reply = await answer.json();
       if (mine !== asked) return;
       draft = reply.css;
+      sheets = reply.sheets;
       apply();
       warn(reply.warnings);
       status.textContent = "";
@@ -306,12 +364,18 @@ _SCRIPT = r"""
   form.addEventListener("input", (event) => {
     // A site whose choices were never saved starts again from a layout's own.
     if (form.hasAttribute("data-restart") && event.target.name === "layout") {
-      window.location.href = "/look?layout=" + encodeURIComponent(event.target.value);
+      window.location.href = "/look?route=" + encodeURIComponent(route())
+        + "&layout=" + encodeURIComponent(event.target.value);
       return;
+    }
+    if (event.target.name === "route") {
+      form.querySelectorAll("[data-route]").forEach((part) => {
+        part.hidden = part.dataset.route !== event.target.value;
+      });
     }
     clearTimeout(timer);
     timer = setTimeout(preview, 250);
   });
   frame.addEventListener("load", apply);
 })();
-""".replace("STYLE_CODE", json.dumps(builder.STYLE_CODE))
+""".replace("SITE_SHEETS", json.dumps(builder.SITE_SHEETS))

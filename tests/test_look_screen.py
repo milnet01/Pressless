@@ -16,7 +16,7 @@ from pathlib import Path
 
 from test_editor import _binned, _Browser, _folder, _said
 
-from pressless import editor, face, look_screen, starter, store
+from pressless import builder, editor, face, look_screen, settings, starter, store
 from pressless import look as starter_look
 
 LOOK_FILES = (store.LOOK_CHOICES_NAME, store.EXTRA_CSS_NAME, store.STYLE_CODE_NAME)
@@ -155,22 +155,119 @@ def test_a_look_changed_elsewhere_is_not_saved_over(tmp_path):
     assert _binned(folder) == []
 
 
-# ------------------------------------------------------------------ INV-9 ---
+# --------------------------------------------- PRESS-0276 INV-4 to INV-8 ---
+#
+# A site whose pages link their own stylesheets (docs/specs/
+# PRESS-0276-imported-site-look.md § 4.3). The addresses are written out.
+
+OWN_PAGE = ('<html><head>\n<link rel="stylesheet" href="assets/site.css">\n'
+            '<link rel="stylesheet" href="assets/blog.css">\n</head>\n'
+            '<body><!-- HEADER:START --><!-- HEADER:END --><p>home</p></body></html>\n')
 
 
-def test_a_site_with_no_style_code_is_left_alone(tmp_path):
-    """Breaks when a save creates style code on an imported site."""
+def _own(tmp_path: Path) -> Path:
+    """A set-up folder whose one page links the live site's assets pair."""
     folder = _folder(tmp_path)
-    form = _form(starter_look.defaults("sunrise"), "", starter_look.digest(folder))
+    store.write_html(folder, store.PAGES_FOLDER, "index", OWN_PAGE)
+    return folder
+
+
+def _routed(choices: starter_look.Choices, extra: str, base: str, route: str) -> dict[str, str]:
+    return {**_form(choices, extra, base), "route": route}
+
+
+def test_css_on_top_saves_only_the_extra_css(tmp_path):
+    """INV-4. Breaks when choices.json is binned, or style.css is overwritten
+    rather than moved to the bin."""
+    folder = _own(tmp_path)
     with _served(folder) as browser:
-        status, _, page = browser.request("GET", "/look")
-        assert status == 200
-        assert 'id="look"' not in page and "<iframe" not in page
+        _, _, page = browser.request("GET", "/look")
+        assert re.search(r'type="radio" name="route" value="own" checked', page)
+        status, _, text = browser.request("POST", "/look/save", _routed(
+            starter_look.defaults("sunrise"), "h1 { color: red; }", _base(page), "own"))
+    assert status == 303, text
+    assert _files(folder) == {store.LOOK_CHOICES_NAME: None,
+                              store.EXTRA_CSS_NAME: b"h1 { color: red; }",
+                              store.STYLE_CODE_NAME: None}
+    assert _binned(folder) == []
+
+    starter_look.save(folder, starter_look.defaults("harbour"), "")
+    made = store.read_style_code(folder)
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        assert re.search(r'type="radio" name="route" value="pressless" checked', page)
+        status, _, text = browser.request("POST", "/look/save", _routed(
+            starter_look.defaults("harbour"), "p { margin: 0; }", _base(page), "own"))
+    assert status == 303, text
+    found = _files(folder)
+    assert found[store.STYLE_CODE_NAME] is None
+    assert found[store.EXTRA_CSS_NAME] == b"p { margin: 0; }"
+    assert starter_look.read(folder) == starter_look.defaults("harbour")
+    copies = [path for path in (folder / "bin").rglob("*") if path.is_file()]
+    assert [path.read_text(encoding="utf-8") for path in copies] == [made]
+
+
+def test_a_site_with_its_own_stylesheets_can_take_a_pressless_look(tmp_path):
+    """INV-5. Breaks when the save is refused as PRESS-0196 INV-9 refused it."""
+    folder = _own(tmp_path)
+    meadow = starter_look.defaults("meadow")
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        status, _, text = browser.request(
+            "POST", "/look/save", _routed(meadow, "", _base(page), "pressless"))
+    assert status == 303, text
+    assert starter_look.read(folder) == meadow
+    assert store.read_style_code(folder) == starter_look.css(meadow, "")
+    assert _binned(folder) == []
+    built = tmp_path / "built"
+    builder.build(folder, settings.load(folder), built)
+    home = (built / "index.html").read_text(encoding="utf-8")
+    assert '<link rel="stylesheet" href="look/style.css">' in home
+    assert "assets/" not in home
+
+
+def test_either_route_with_a_stale_digest_writes_nothing(tmp_path):
+    """INV-6. Breaks when the own route skips the digest check."""
+    folder = _own(tmp_path)
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        store.write_look_file(folder, store.EXTRA_CSS_NAME, "h1 { color: red; }")
+        before = _files(folder)
+        for route in ("own", "pressless"):
+            status, _, text = browser.request("POST", "/look/save", _routed(
+                starter_look.defaults("sunrise"), "p {}", _base(page), route))
+            assert status == 409, route
+            assert _said(editor.ChangedElsewhere) in text, route
+    assert _files(folder) == before
+
+
+def test_the_own_route_previews_the_extra_css_on_the_sites_own(tmp_path):
+    """INV-7. Breaks when the reply sends the Pressless stylesheet for route own."""
+    folder = _own(tmp_path)
+    base = starter_look.digest(folder)
+    with _served(folder) as browser:
+        status, _, text = browser.request("POST", "/look/preview", _routed(
+            starter_look.defaults("sunrise"), "h1 { color: red; }", base, "own"))
+    assert status == 200, text
+    assert json.loads(text) == {"css": "h1 { color: red; }", "warnings": [],
+                                "sheets": ["/preview/assets/site.css",
+                                           "/preview/assets/blog.css"]}
+    assert starter_look.digest(folder) == base
+
+
+def test_a_starter_site_offers_no_route(tmp_path):
+    """INV-8. Breaks when the choice is shown on a starter site."""
+    folder = _site(tmp_path)
+    form = _routed(starter_look.defaults("sunrise"), "", starter_look.digest(folder), "own")
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        assert 'type="radio" name="route"' not in page
+        before = _files(folder)
         for route in ("/look/preview", "/look/save"):
             status, _, text = browser.request("POST", route, form)
             assert status == 409, route
-            assert _said(look_screen.NoStyleCode) in text, route
-    assert not (folder / store.LOOK_FOLDER).exists()
+            assert _said(look_screen.LookRefused) in text, route
+    assert _files(folder) == before
 
 
 # --------------------------------------------------------------- § 6, § 4.1 ---

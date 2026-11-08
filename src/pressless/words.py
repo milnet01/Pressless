@@ -288,12 +288,6 @@ _WORDS: dict[str, str] = {
         "Your site keeps its current look. If look/choices.json in Pressless's own folder was"
         " edited by hand, put the earlier copy back from the bin."
     ),
-    "failure.look_screen.NoStyleCode.what": (
-        "Your site's look comes from its own stylesheets, so Pressless changed nothing."
-    ),
-    "failure.look_screen.NoStyleCode.next": (
-        "Change those stylesheets where they are kept. The Look screen cannot change them yet."
-    ),
     "failure.look_screen.LookRefused.what": (
         "One of the look's choices is not one Pressless offers, so nothing was saved."
     ),
@@ -2278,9 +2272,15 @@ _WORDS: dict[str, str] = {
         "Change a choice and the preview beside it shows it at once. Save keeps it, and your"
         " website shows it after you next publish."
     ),
-    "look_screen.imported": (
-        "Your site's look comes from its own stylesheets, which Pressless does not change."
-        " Nothing here can change them yet."
+    "look_screen.route": "How your site is styled",
+    "look_screen.route.own": "Keep its own stylesheets, and add CSS on top",
+    "look_screen.route.pressless": "Use a Pressless design",
+    "look_screen.back": (
+        "Saving puts your site's own stylesheets back. Pressless keeps a copy of the current"
+        " style code in the bin."
+    ),
+    "look_screen.extra.own_about": (
+        "For anyone who knows CSS: it is added after your site's own stylesheets."
     ),
     "look_screen.saved": "Saved. Your website shows this look after you next publish.",
     "look_screen.replaces": (

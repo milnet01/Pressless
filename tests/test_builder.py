@@ -1282,6 +1282,104 @@ def test_the_style_code_replaces_the_assets_links(tmp_path):
             == "body { color: black; }\n")
 
 
+# PRESS-0276 INV-1, INV-2, INV-3 (docs/specs/PRESS-0276-imported-site-look.md
+# §§ 4.1, 4.2). The addresses are written out rather than taken from builder.
+
+OWN_HOME = ("<html><head>\n"
+            "<link href='assets/site.css' rel=stylesheet>\n"
+            '  <link rel="stylesheet" href="assets/blog.css">\n'
+            '<link rel="stylesheet" href="assets/home.css">\n'
+            '<link rel="stylesheet" href="assets/site.css?v=0123abcd">\n'
+            "</head><body><p>home</p></body></html>\n")
+OWN_ABOUT = ("<html><head>\n"
+             '<link rel="stylesheet" href="../assets/site.css">\n'
+             "</head><body><p>about</p></body></html>\n")
+LATER = ("<html><head>\n"
+         '<link rel="stylesheet" href="../look/style.css">\n'
+         "</head><body><p>later</p></body></html>\n")
+
+
+def _own_site(tmp_path: Path) -> Path:
+    return _store(tmp_path, pages={"index": OWN_HOME, "about": OWN_ABOUT, "later": LATER})
+
+
+def _stored(folder: Path) -> dict[str, str]:
+    return {name: store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name))
+            for name in ("index", "about", "later")}
+
+
+def test_a_site_with_no_look_files_builds_its_pages_as_written(tmp_path):
+    """INV-1. Breaks when the rewrite runs on a page whose links already
+    match, or a page linking only one of the pair is given the other."""
+    folder = _store(tmp_path, pages={"index": OWN_HOME, "about": OWN_ABOUT})
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+    assert (into / "index.html").read_bytes().decode("utf-8") == OWN_HOME
+    assert (into / "pages" / "about.html").read_bytes().decode("utf-8") == OWN_ABOUT
+    assert not (into / "look").exists()
+
+
+def test_a_fixed_pages_stylesheet_links_follow_the_sites_look(tmp_path):
+    """INV-2. Breaks when the depth prefix is wrong, a later site-sheet link
+    survives, another link is touched, or the rewrite writes to the Store."""
+    folder = _own_site(tmp_path)
+    before = _stored(folder)
+    store.write_style_code(folder, "body { color: black; }\n")
+    styled = tmp_path / "styled"
+    build(folder, _settings(), styled, today=REPRODUCIBLE_TODAY)
+    home = (styled / "index.html").read_text(encoding="utf-8")
+    assert home == ("<html><head>\n"
+                    '<link rel="stylesheet" href="look/style.css">\n'
+                    '<link rel="stylesheet" href="assets/home.css">\n'
+                    '<link rel="stylesheet" href="assets/site.css?v=0123abcd">\n'
+                    "</head><body><p>home</p></body></html>\n")
+    about = (styled / "pages" / "about.html").read_text(encoding="utf-8")
+    assert '<link rel="stylesheet" href="../look/style.css">\n' in about
+    assert "assets/" not in about
+    later = (styled / "pages" / "later.html").read_text(encoding="utf-8")
+    assert '<link rel="stylesheet" href="../look/style.css">\n' in later
+
+    store.style_code_path(folder).unlink()
+    plain = tmp_path / "plain"
+    build(folder, _settings(), plain, today=REPRODUCIBLE_TODAY)
+    later = (plain / "pages" / "later.html").read_text(encoding="utf-8")
+    assert ('<link rel="stylesheet" href="../assets/site.css">\n'
+            '<link rel="stylesheet" href="../assets/blog.css">\n') in later
+    assert "look/" not in later
+    assert _stored(folder) == before
+
+
+def test_css_on_top_follows_the_sites_own_stylesheets(tmp_path):
+    """INV-3. Breaks when stylesheets ignores extra.css, the build forgets to
+    write it, or white space alone is linked."""
+    folder = _own_site(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_look_file(folder, store.EXTRA_CSS_NAME, "h1 { color: red; }\n")
+    into = tmp_path / "site"
+    build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+    assert (into / "look" / "extra.css").read_text(encoding="utf-8") == "h1 { color: red; }\n"
+    assert not (into / "look" / "style.css").exists()
+    about = (into / "pages" / "about.html").read_text(encoding="utf-8")
+    assert ('<link rel="stylesheet" href="../assets/site.css">\n'
+            '<link rel="stylesheet" href="../look/extra.css">\n') in about
+    entry = next(into.glob("blog/*/*/*/seaside/index.html")).read_text(encoding="utf-8")
+    assert entry.index("assets/blog.css") < entry.index("look/extra.css")
+
+    store.write_look_file(folder, store.EXTRA_CSS_NAME, "\n")
+    blank = tmp_path / "blank"
+    build(folder, _settings(), blank, today=REPRODUCIBLE_TODAY)
+    assert not (blank / "look").exists()
+    assert (blank / "pages" / "about.html").read_bytes().decode("utf-8") == OWN_ABOUT
+
+
+def test_own_stylesheets_are_found_in_published_and_waiting_pages(tmp_path):
+    """§ 4.1. Breaks when a page linking the assets pair is not seen."""
+    folder = _store(tmp_path, pages={"index": "<p>home</p>\n"})
+    assert not builder.own_stylesheets(folder)
+    store.write_html(folder, store.PAGES_FOLDER, "about", OWN_ABOUT, waiting=True)
+    assert builder.own_stylesheets(folder)
+
+
 # PRESS-0199 INV-2, INV-3, INV-4 (docs/specs/PRESS-0199-counting-code.md § 4.2).
 
 TAG = "googletagmanager.com/gtag/js"
