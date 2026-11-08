@@ -1006,6 +1006,15 @@ _WORDS: dict[str, str] = {
         "If GitHub shows settings instead, with no <b>Install</b> button, Pressless already "
         "has permission. Come back here and press <b>Next</b>."
     ),
+    "setup.pick.which": (
+        "Your GitHub account already has these sites. Choose one to bring into "
+        "Pressless, or make a new one."
+    ),
+    "setup.pick.new": "Make a new one",
+    "setup.pick.unlisted": (
+        "Pressless could not list the sites already in your GitHub account. To use one, "
+        "type its name below."
+    ),
     "setup.new_repository": (
         "Pressless now makes a home for your site on GitHub. Its name sets your site's "
         "address."

@@ -1288,13 +1288,16 @@ class _SignInGitHub(_GitHub):
     succeed on GitHub and lose its answer. `refuse_refresh` refuses every
     renewal of the pass. `reached` is whether a `selected` installation lists
     owner/owner.github.io, as it does once the person has added it there.
+    `sites` names the account's repositories GitHub Pages serves, which the
+    installation lists as well (PRESS-0290).
     """
 
     def __init__(self, *, polls: tuple[str, ...] = ("tokens",),
                  selection: str | None = "selected", taken: str | None = None,
                  lose_create: bool = False, refuse_refresh: bool = False,
-                 reached: bool = True, **kwargs) -> None:
+                 reached: bool = True, sites: tuple[str, ...] = (), **kwargs) -> None:
         super().__init__(**kwargs)
+        self.sites = sites
         self.polls = list(polls)
         self.selection = selection
         self.reached = reached
@@ -1314,6 +1317,9 @@ class _SignInGitHub(_GitHub):
         if method == "GET" and path.startswith(REACHED):
             self.calls.append((method, url, headers.get("Authorization", "")))
             listed = [{"full_name": "owner/owner.github.io"}] if self.reached else []
+            listed += [{"full_name": f"owner/{name}", "name": name, "has_pages": True,
+                        "private": False, "owner": {"login": "owner"}}
+                       for name in self.sites]
             return 200, {}, json.dumps({"total_count": len(listed),
                                         "repositories": listed}).encode()
         if method == "GET" and path.startswith("/user/installations"):
@@ -1733,8 +1739,14 @@ def test_a_new_computer_is_pointed_at_its_site_file(tmp_path):
 # ------------------------------------------------------------- PRESS-0340 ---
 
 
-@pytest.mark.parametrize("show", [setup._show_install, setup._show_new_repository,
-                                  setup._show_pages], ids=("install", "repository", "pages"))
+@pytest.mark.parametrize("show", [
+    setup._show_install,
+    lambda answers, hint: setup._show_new_repository(answers, hint, ()),
+    # PRESS-0290: with the account's sites listed, and with the list failed.
+    lambda answers, hint: setup._show_new_repository(answers, hint, ("poems",)),
+    lambda answers, hint: setup._show_new_repository(answers, hint, None),
+    setup._show_pages,
+], ids=("install", "repository", "repository-listed", "repository-unlisted", "pages"))
 def test_github_words_sit_behind_whats_happening(show):
     """PRESS-0340: a step says in plain words what happens, and GitHub's own
     terms wait behind a What's happening box. Words in bold are GitHub's
@@ -1747,3 +1759,55 @@ def test_github_words_sit_behind_whats_happening(show):
     for term in ("repositor", "GitHub Pages", ".nojekyll", "Pressless App"):
         assert term.casefold() not in said.casefold(), term
     assert re.search("repositor|GitHub Pages|Pressless App", box.group(0))
+
+
+# PRESS-0290: the repository step lists the account's sites on GitHub.
+
+def test_the_repository_step_offers_the_accounts_sites(tmp_path, monkeypatch):
+    """Breaks when the step lists a site another site here already holds,
+    ticks an existing site for him, or a site picked from the list is not
+    the one the pages step reads."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    second = _second_site(tmp_path, repository="owner/held")
+    github = _SignInGitHub(taken="full", sites=("poems", "owner.github.io", "held"))
+    with _setup_page(second, github, clock=_Clock(), own=tmp_path) as browser:
+        _walk_to(browser, "signin")
+        browser.post({"step": "signin", "go": "next", "account": "", "reuse": "github"})
+        _, page = _walk(browser, until="repository")
+        assert _step(page) == "repository"
+        offered = re.findall(r'name="pick" value="([^"]*)"( checked)?', page)
+        assert offered == [("owner.github.io", ""), ("poems", ""), ("", " checked")]
+        after = browser.post({"step": "repository", "go": "next",
+                              "repository": "typed-but-hidden",
+                              "pick": "owner.github.io"})[1]
+    assert _step(after) == "pages", after
+    held = json.loads(_progress(second).read_text(encoding="utf-8"))["answers"]
+    assert held["repository"] == "owner.github.io" and held["existing"] == "yes"
+    assert [write for write in github.writes() if write[1].startswith("/")] == [
+        ("POST", "/user/repos")]
+
+
+def test_the_repository_step_says_when_it_cannot_list(tmp_path, monkeypatch):
+    """Breaks when a failed listing hides the box, or says nothing."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+
+    def unreachable(*args):
+        raise publisher.Unreachable("no answer from GitHub")
+
+    monkeypatch.setattr(github_signin, "sites", unreachable)
+    with _setup_page(tmp_path, _SignInGitHub(), clock=_Clock()) as browser:
+        _, page = _walk(browser, until="repository")
+    assert "could not list the sites" in page
+    assert 'name="repository"' in page and 'type="radio" name="pick"' not in page
+
+
+def test_an_account_with_no_sites_sees_the_step_as_before(tmp_path, monkeypatch):
+    """Breaks when an empty list shows an empty choice."""
+    _app(monkeypatch)
+    _Store(monkeypatch, saved_key=FIRST_REFRESH)
+    with _setup_page(tmp_path, _SignInGitHub(), clock=_Clock()) as browser:
+        _, page = _walk(browser, until="repository")
+    assert 'type="radio" name="pick"' not in page and "could not list" not in page
+    assert 'value="owner.github.io"' in page

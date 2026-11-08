@@ -120,6 +120,8 @@ def installation(token: str, login: str, transport=None) -> Installation | None:
 def create_repository(token: str, name: str, transport=None) -> bool: ...
 def reaches(token: str, installation: Installation, repository: str,
             transport=None) -> bool: ...
+def sites(token: str, installation: Installation, login: str,
+          transport=None) -> tuple[str, ...]: ...
 ```
 
 - `begin` POSTs `client_id` to `https://github.com/login/device/code`.
@@ -145,6 +147,12 @@ def reaches(token: str, installation: Installation, repository: str,
   `GET /user/installations/{installation.id}/repositories?per_page=100` and
   answers whether a `full_name` there equals `repository`, ignoring case.
   Otherwise it sends nothing and answers `True`.
+- `sites` (PRESS-0290) reads
+  `GET /user/installations/{installation.id}/repositories?per_page=100&page=N`
+  from page 1 until a page holds fewer than 100, at most 10 pages. It
+  answers the `name` of each repository whose `has_pages` is true,
+  `private` false and `owner.login` is `login` ignoring case, sorted
+  ignoring case.
   Source: https://docs.github.com/en/rest/apps/installations
 - **No device code, access token or refresh token reaches a message.** Each
   failure's text has them replaced, as `google_signin._scrub` does for
@@ -213,7 +221,7 @@ Where `github_signin.available()`, PRESS-0212 § 4.4's steps become:
 | *welcome* | none | what the wizard does; that a GitHub account is needed, with the sign-up link | none |
 | *signin* | `account`, `reuse` | how to sign in with a code, and a box for the account's name; above them, the *Continue as* choice where it is offered | *Continue as*, or the sign-in sequence below |
 | *install* | none | how to install the Pressless app, with `https://github.com/apps/<APP_SLUG>/installations/new` | `installation` is not `None`, else a `Hint`; the answers gain `all_repositories` |
-| *repository* | `repository` | the naming advice of PRESS-0212 § 3 decision 7, the box filled with `<login>.github.io` | the repository sequence below |
+| *repository* | `repository`, `pick` | the naming advice of PRESS-0212 § 3 decision 7, the box filled with `<login>.github.io`; above them, the *Your sites* choice where it is offered | a `pick` replaces `repository`, then the repository sequence below |
 | *pages* | none | as PRESS-0212 | as PRESS-0212, the key in hand from `token`, except that a `Refused` hint says the Pressless app cannot reach this repository and to check its installation on GitHub |
 | *site* | as PRESS-0212 | as PRESS-0212 | as PRESS-0212, the key in hand from `token` |
 
@@ -232,6 +240,13 @@ hand-made key. Next with `reuse` naming one:
    `login`'s answer. The new site's `credentials.github_account` is that
    name, not its own: GitHub retires a refresh token at each renewal, so a
    copy would stop working.
+
+**Your sites** (PRESS-0290). Where `sites` names a repository no other site
+here publishes to, *repository* offers one radio per name, beside *Make a
+new one*, which is ticked. Only that last choice shows the box. No site is
+ticked for him, so Next never brings in a site he did not choose. A
+`PublishError` from `installation` or `sites` is logged, and the step says
+it could not list the sites and shows the box alone.
 
 **signin.** The device code is held by the wizard's owner in memory, never in
 the progress file (PRESS-0212 § 4.2).
@@ -502,6 +517,8 @@ publish again, and record what is shown. CI cannot reach GitHub.
 | INV-15 | `tests/test_setup.py::test_a_second_site_continues_with_the_first_sites_sign_in`, `::test_signing_in_as_someone_else_files_the_sign_in_as_this_sites`, `::test_only_a_sign_in_in_the_keyring_is_offered` |
 | INV-16 | `tests/test_github_setup.py::test_a_pass_is_handed_out_only_for_the_name_it_was_bought_for` |
 | § 4.3 *Continue as* hides the box and the code until *Sign in as someone else* is chosen | **nothing** in CI — checked 2026-11-06 in Chrome and Firefox |
+| § 4.3 *Your sites*: held sites left out, none ticked, a pick read as the name, a failed list said | `tests/test_setup.py::test_the_repository_step_offers_the_accounts_sites`, `::test_the_repository_step_says_when_it_cannot_list`, `::test_an_account_with_no_sites_sees_the_step_as_before`; `tests/test_github_signin.py::test_sites_are_the_accounts_public_pages_repositories` |
+| § 4.3 *Your sites* hides the box until *Make a new one* is chosen | **nothing** in CI — owed to PRESS-0350's hand check |
 | § 4.1 GitHub's real answers to the device flow, refresh and installation requests | **nothing** in CI — the by-hand run of § 7 |
 | § 4.3 the instructions match GitHub's pages | **nothing** — read by hand in § 7's run; GitHub changes its pages without notice |
 

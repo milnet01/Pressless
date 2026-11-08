@@ -212,3 +212,24 @@ def test_a_non_string_error_is_a_publish_error_not_a_crash(call):
         else:
             github_signin.poll(_code(), github)
     assert type(raised.value) is github_signin.PublishError
+
+
+def test_sites_are_the_accounts_public_pages_repositories():
+    """PRESS-0290. Breaks when a private repository, one Pages does not
+    serve, or another account's is offered, or a second page is never read."""
+    def repository(name, *, pages=True, private=False, owner="Owner"):
+        return {"name": name, "has_pages": pages, "private": private,
+                "owner": {"login": owner}}
+
+    first = [repository(f"plain-{number}", pages=False) for number in range(97)] + [
+        repository("poems"), repository("hidden", private=True),
+        repository("theirs", owner="someone-else")]
+    second = [repository("Alpha"), "not a repository"]
+    github = _GitHub((200, {"total_count": 102, "repositories": first}),
+                     (200, {"total_count": 102, "repositories": second}))
+    found = github_signin.sites(ACCESS, github_signin.Installation(7, True), "owner", github)
+    assert found == ("Alpha", "poems")
+    assert [url for _m, url, _b, _h in github.sent] == [
+        f"{publisher.API}/user/installations/7/repositories?per_page=100&page=1",
+        f"{publisher.API}/user/installations/7/repositories?per_page=100&page=2",
+    ]

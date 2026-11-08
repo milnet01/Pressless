@@ -18,7 +18,7 @@ import dataclasses
 import html
 import re
 import urllib.parse
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 
 import pressless_import
@@ -820,13 +820,7 @@ def _sign_ins(own: Path, folder: Path) -> dict[str, str]:
     names the same entry. A sign-in kept in a site's own file stays its
     own."""
     found: dict[str, str] = {}
-    for site in sites.all_sites(own):
-        if site == folder:
-            continue
-        try:
-            saved = settings.load(site)
-        except (settings.NotSetUp, settings.SettingsError):
-            continue
+    for site, saved in _other_sites(own, folder):
         held = saved.credentials
         if held.store != "keyring" or held.github_account in found:
             continue
@@ -1117,7 +1111,31 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             return wizard.Hint("", say("setup.hint.not_installed"))
         return {**answers, "all_repositories": "yes" if found.all_repositories else "no"}
 
+    def listed(answers: wizard.Answers) -> tuple[str, ...] | None:
+        """PRESS-0290: the account's sites on GitHub that no other site here
+        holds, or None where GitHub could not be asked."""
+        account = answers.get("account", "")
+        key = key_for(answers)
+        if isinstance(key, wizard.Stop):
+            return None
+        try:
+            found = github_signin.installation(key, account, transport)
+            names = (() if found is None
+                     else github_signin.sites(key, found, account, transport))
+        except publisher.PublishError as exc:
+            face.fail(exc, publishing=False)    # logged; the step says it could not list
+            return None
+        held = _held_repositories(own, folder)
+        return tuple(name for name in names if f"{account}/{name}".casefold() not in held)
+
+    def show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+        return _show_new_repository(answers, hint, listed(answers))
+
     def check_new_repository(answers: wizard.Answers):
+        # PRESS-0290: a site chosen from the list is named as if typed, so
+        # the checks below take it as they take a taken name.
+        if answers.get("pick"):
+            answers = {**answers, "repository": answers["pick"]}
         name = repository(answers)
         if refused(probe(name)) is not None:
             return wizard.Hint("repository", say("setup.hint.name_alone"))
@@ -1209,8 +1227,8 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
                         check_signin),
             wizard.Step("install", "setup.step.install", (), _show_install,
                         check_install),
-            wizard.Step("repository", "setup.step.repository", ("repository",),
-                        _show_new_repository, check_new_repository),
+            wizard.Step("repository", "setup.step.repository", ("repository", "pick"),
+                        show_new_repository, check_new_repository),
             pages, site,
         ), folder, "/setup")
     return wizard.Wizard("setup", (
@@ -1274,15 +1292,11 @@ def _show_signin(answers: wizard.Answers, hint: wizard.Hint | None,
     chosen = answers.get("reuse", next(iter(offers)))
     chosen = chosen if chosen in offers else ""     # one gone since: sign in afresh
 
-    def choice(value: str, text: str) -> str:
-        ticked = " checked" if value == chosen else ""
-        return (f'<label><input type="radio" name="reuse" value="{e(value, quote=True)}"'
-                f"{ticked}> {text}</label>")
-
-    rows = "".join(choice(name, say("setup.signin.continue_as", account=e(account)))
+    rows = "".join(_radio("reuse", name, say("setup.signin.continue_as", account=e(account)),
+                          chosen)
                    for name, account in offers.items())
     return (f'<fieldset class="sign-ins"><legend>{say("setup.signin.which")}</legend>'
-            + rows + choice("", say("setup.signin.someone_else"))
+            + rows + _radio("reuse", "", say("setup.signin.someone_else"), chosen)
             + f'</fieldset><div class="someone-else">{own}</div>')
 
 
@@ -1304,16 +1318,54 @@ def _show_install(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
             + wizard.happening("install", f"<p>{say('setup.install.happening')}</p>"))
 
 
-def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None) -> str:
+def _show_new_repository(answers: wizard.Answers, hint: wizard.Hint | None,
+                         listed: tuple[str, ...] | None) -> str:
     account = answers.get("account", "")
     filled = {**answers, "repository": answers.get("repository") or f"{account}.github.io"}
-    e = html.escape(account)
-    return (f"<p>{say('setup.new_repository')}</p>"
-            f"<p>{say('setup.new_repository.named', account=e)}</p>"
-            + wizard.field("repository", say("setup.field.home_name"), filled, hint)
-            # PRESS-0340: GitHub's terms, for whoever wants them.
-            + wizard.happening("repository",
-                               f"<p>{say('setup.new_repository.happening')}</p>"))
+    e = html.escape
+    own = (f"<p>{say('setup.new_repository')}</p>"
+           f"<p>{say('setup.new_repository.named', account=e(account))}</p>"
+           + wizard.field("repository", say("setup.field.home_name"), filled, hint)
+           # PRESS-0340: GitHub's terms, for whoever wants them.
+           + wizard.happening("repository",
+                              f"<p>{say('setup.new_repository.happening')}</p>"))
+    if listed is None:
+        return f'<p class="hint">{say("setup.pick.unlisted")}</p>' + own
+    if not listed:
+        return own
+    # PRESS-0290: the account's sites, beside a new one, which is ticked
+    # until he picks; only the new one shows the box beneath.
+    chosen = answers.get("pick", "")
+    chosen = chosen if chosen in listed else ""
+
+    rows = "".join(_radio("pick", name, f"<b>{e(name)}</b>", chosen) for name in listed)
+    return (f'<fieldset class="picks"><legend>{say("setup.pick.which")}</legend>'
+            + rows + _radio("pick", "", say("setup.pick.new"), chosen)
+            + f'</fieldset><div class="new-one">{own}</div>')
+
+
+def _held_repositories(own: Path, folder: Path) -> set[str]:
+    """PRESS-0290: the repositories Pressless's other sites publish to,
+    casefolded."""
+    return {saved.repository.casefold() for _site, saved in _other_sites(own, folder)}
+
+
+def _other_sites(own: Path, folder: Path) -> Iterator[tuple[Path, settings.Settings]]:
+    """Each of Pressless's sites but `folder` that is set up, with its settings."""
+    for site in sites.all_sites(own):
+        if site == folder:
+            continue
+        try:
+            yield site, settings.load(site)
+        except (settings.NotSetUp, settings.SettingsError):
+            continue
+
+
+def _radio(name: str, value: str, text: str, chosen: str) -> str:
+    """One labelled radio of a choice; `text` is markup, escaped by the caller."""
+    ticked = " checked" if value == chosen else ""
+    return (f'<label><input type="radio" name="{name}" '
+            f'value="{html.escape(value, quote=True)}"{ticked}> {text}</label>')
 
 
 def _narrow(repository: str) -> str:

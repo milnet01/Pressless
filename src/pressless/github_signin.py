@@ -32,6 +32,7 @@ TOKEN_URL = "https://github.com/login/oauth/access_token"  # noqa: S105 -- an ad
 INSTALL_URL = "https://github.com/apps/{}/installations/new"
 _DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 _DETAIL_LIMIT = 60                # GitHub's error codes are short words
+_PAGES = 10                       # sites() reads at most this many pages of 100
 
 _FORM = {"Accept": "application/json", "User-Agent": "Pressless",
          "Content-Type": "application/x-www-form-urlencoded"}
@@ -174,6 +175,31 @@ def reaches(token: str, installation: Installation, repository: str,
     wanted = repository.casefold()
     return any(isinstance(found, dict) and str(found.get("full_name", "")).casefold() == wanted
                for found in answer.get("repositories") or ())
+
+
+def sites(token: str, installation: Installation, login: str,
+          transport: Transport | None = None) -> tuple[str, ...]:
+    """PRESS-0290: the names of `login`'s own public repositories that the
+    installation reaches and GitHub Pages serves, sorted. One the app cannot
+    reach is left out, as Pressless could not publish to it."""
+    names: list[str] = []
+    for page in range(1, _PAGES + 1):
+        answer = _api(transport, "GET",
+                      f"/user/installations/{installation.id}/repositories"
+                      f"?per_page=100&page={page}", token)[1]
+        found = answer.get("repositories") or ()
+        for repository in found:
+            if not isinstance(repository, dict):
+                continue
+            owner = repository.get("owner")
+            name = repository.get("name")
+            if (repository.get("has_pages") is True and repository.get("private") is False
+                    and isinstance(name, str) and name and isinstance(owner, dict)
+                    and str(owner.get("login", "")).casefold() == login.casefold()):
+                names.append(name)
+        if len(found) < 100:
+            break
+    return tuple(sorted(names, key=str.casefold))
 
 
 def _form(transport: Transport | None, url: str, fields: dict[str, str], *,
