@@ -439,6 +439,12 @@ class Pages:
     domain: str | None = None        # PRESS-0333: its custom domain
     https_enforced: bool = False     # PRESS-0222
     certificate: str = ""            # PRESS-0222: its HTTPS certificate's state
+    branch: str | None = None        # PRESS-0336: a branch build's branch, not the default
+
+    @property
+    def built_elsewhere(self) -> bool:
+        """Built by Actions, or from another branch: what a takeover replaces."""
+        return self.built_by_actions or self.branch is not None
 
 
 def account_exists(account: str, transport: Transport | None = None) -> bool:
@@ -588,9 +594,9 @@ def _pages(session: _Session, repository: str) -> Pages:
         return Pages(on=False, address=None, serves_root=False)
     source = answer.get("source") if isinstance(answer.get("source"), dict) else {}
     address = answer.get("html_url")
-    serves_root = (answer.get("build_type") in (None, "legacy")
-                   and source.get("path") == "/"
-                   and source.get("branch") == _default_branch(session, repository))
+    served = source.get("branch") if answer.get("build_type") in (None, "legacy") else None
+    default = _default_branch(session, repository) if isinstance(served, str) and served else None
+    serves_root = default is not None and served == default and source.get("path") == "/"
     domain = answer.get("cname")
     certificate = answer.get("https_certificate")
     state = certificate.get("state") if isinstance(certificate, dict) else None
@@ -598,7 +604,8 @@ def _pages(session: _Session, repository: str) -> Pages:
                  serves_root=serves_root, built_by_actions=answer.get("build_type") == "workflow",
                  domain=domain if isinstance(domain, str) and domain else None,
                  https_enforced=answer.get("https_enforced") is True,
-                 certificate=state if isinstance(state, str) else "")
+                 certificate=state if isinstance(state, str) else "",
+                 branch=served if default is not None and served != default else None)
 
 
 def fetch_previous(settings: Settings, token: str, into: Path,

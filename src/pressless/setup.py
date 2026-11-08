@@ -347,7 +347,9 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                                           transport=transport,
                                           address=candidate.site_address if take_over else "")
             if take_over:
-                takeover.mark(folder, takeover.build_files(folder, candidate, key, transport))
+                shown = publisher.pages(candidate.repository, key, transport)
+                takeover.mark(folder, takeover.build_files(folder, candidate, key, shown,
+                                                           transport))
         except publisher.RemoteStateMissing as exc:
             face.fail(exc, publishing=False)            # noted in the log
             return render_notices(filling) + message_box(f"<p>{say('setup.takein.moved')}</p>")
@@ -964,9 +966,11 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             if shown.on and not shown.serves_root:
                 # PRESS-0229: never advice to re-point Pages, which would take
                 # that site offline. PRESS-0333: one Actions builds can be taken
-                # over, and nothing changes on GitHub here.
-                if (not shown.built_by_actions or not shown.address
-                        or not takeover.build_files(folder, probe(name), key, transport)):
+                # over, and nothing changes on GitHub here; PRESS-0336: so can one a
+                # workflow pushes to another branch.
+                if (not shown.built_elsewhere or not shown.address
+                        or not takeover.build_files(folder, probe(name), key, shown,
+                                                    transport)):
                     return wizard.Hint("", say("setup.hint.elsewhere"))
                 plain, commit = takein.look_site(folder, probe(name), key, shown.address,
                                                  transport=transport)
@@ -1184,9 +1188,10 @@ def _first_run_wizard(face: Face, folder: Path, transport: publisher.Transport |
             found = takein.found_held(folder, reading, key, commit, transport, address=address)
             entries = publisher.root_entries(reading, key, transport)
             if taking_over:
+                shown = publisher.pages(reading.repository, key, transport)
                 return _show_take_over(found, entries, folder, address,
-                                       takeover.build_files(folder, reading, key, transport),
-                                       publisher.pages(reading.repository, key, transport).domain)
+                                       takeover.build_files(folder, reading, key, shown,
+                                                            transport), shown)
         except (publisher.PublishError, StoreError, OSError) as exc:
             return face.fail(exc, publishing=False)
         return _show_bring_in(found, entries)
@@ -1366,12 +1371,12 @@ def _codes(rows: Iterable[str]) -> str:
 
 
 def _show_take_over(found: pressless_import.Found, entries: Iterable[str], folder: Path,
-                    address: str, files: tuple[str, ...], domain: str | None) -> str:
-    """The site step's body for a site Actions builds (PRESS-0333 § 4.4, INV-3):
+                    address: str, files: tuple[str, ...], shown: publisher.Pages) -> str:
+    """The site step's body for a site built elsewhere (PRESS-0333 § 4.4, INV-3):
     what the first publish will change, then what a bring-in shows, and what the
     download could not read."""
     stale = any(entry.casefold() == publisher.CNAME.casefold() for entry in entries)
-    rows = takeover.change_rows(files, address, domain, stale and not domain)
+    rows = takeover.change_rows(files, address, shown, stale and not shown.domain)
     unread = pressless_import.read_folder_left(folder / pressless_import.IMPORT_FOLDER)
     body = (_show_bring_in(found, entries, intro="setup.takeover")
             + f"<p>{say('takeover.changes')}</p><ul>"

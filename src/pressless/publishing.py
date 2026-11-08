@@ -568,15 +568,15 @@ def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | No
         saved = settings.load(folder)
         key = github_setup.token(folder, saved.credentials.store,
                                  saved.credentials.github_account)
-        files = takeover.build_files(folder, saved, key, transport)
-        domain = publisher.pages(saved.repository, key, transport).domain
+        shown = publisher.pages(saved.repository, key, transport)
+        files = takeover.build_files(folder, saved, key, shown, transport)
         branch = publisher.default_branch(saved.repository, key, transport)
         entries = publisher.root_entries(saved, key, transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
         return face.fail(exc, publishing=False, secret=say("failure.secret.publishing_key"))
     stale = any(entry.casefold() == publisher.CNAME.casefold() for entry in entries)
-    rows = takeover.change_rows(takeover.named(folder) or files, saved.site_address, domain,
-                                stale and not domain)
+    rows = takeover.change_rows(takeover.named(folder) or files, saved.site_address, shown,
+                                stale and not shown.domain)
     links = "".join(
         f'<li><a href="{e(_delete_link(saved.repository, branch, name), quote=True)}" '
         f'target="_blank" rel="noopener">'
@@ -641,16 +641,16 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             saved = gathered(lambda: settings.load(folder))
             key = github_setup.token(folder, saved.credentials.store,
                                      saved.credentials.github_account)
-            if takeover.build_files(folder, saved, key, transport):                   # step 1
+            shown = publisher.pages(saved.repository, key, transport)                 # step 1
+            if takeover.build_files(folder, saved, key, shown, transport):
                 told(pressing.ended(pressing.PUBLISH, False))
                 hint = message_box("takeover-hint", say("publishing.takeover.still_there"))
                 return _takeover_page(face, folder, transport, hint)
-            shown = publisher.pages(saved.repository, key, transport)                 # step 2
             final = dataclasses.replace(                                              # step 3
                 saved, untouchable=publisher.kept_on_a_branch(saved.untouchable, shown.domain))
             if final != saved:
                 gathered(lambda: settings.save(folder, final))
-            if not shown.built_by_actions:
+            if not shown.built_elsewhere:
                 gathered(lambda: takeover.done(folder))
                 told(pressing.ended(pressing.PUBLISH, True))
                 return f"<p>{say(_already_key(shown))}</p>"
@@ -667,7 +667,7 @@ def _takeover_pressed(face: Face, folder: Path, transport: publisher.Transport |
             return stopped(exc)
     told(pressing.ended(pressing.PUBLISH, True))
     pressing.forget()
-    return render_notices(notices) + _takeover_report(final, shown.domain, files, stale,
+    return render_notices(notices) + _takeover_report(final, shown, files, stale,
                                                       published.outcome)
 
 
@@ -678,13 +678,17 @@ def _already_key(shown: publisher.Pages) -> str:
             else "publishing.takeover.already.elsewhere")
 
 
-def _takeover_report(final: settings.Settings, domain: str | None, files: tuple[str, ...],
+def _takeover_report(final: settings.Settings, shown: publisher.Pages, files: tuple[str, ...],
                      stale: bool, outcome: publisher.Outcome) -> str:
-    """Step 6: what changed, told afterwards (INV-14)."""
+    """Step 6: what changed, told afterwards (INV-14). `shown` is Pages before the switch."""
     e = html.escape
+    domain = shown.domain
     rows = [say("publishing.takeover.done.pages")]
     rows += [say("publishing.takeover.done.file", file=f"<code>{e(name)}</code>") for name in files]
     rows.append(say("publishing.takeover.done.address", address=e(final.site_address)))
+    if shown.branch:
+        rows.append(say("publishing.takeover.done.branch",
+                        branch=f"<code>{e(shown.branch)}</code>"))
     if domain:
         rows.append(say("publishing.takeover.done.domain", domain=e(domain)))
     rows.append(say("publishing.takeover.done.added"))

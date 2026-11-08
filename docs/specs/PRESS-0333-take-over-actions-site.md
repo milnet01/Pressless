@@ -2,6 +2,8 @@
 # PRESS-0333 — Setup takes over a site GitHub Actions builds, in the same repository
 
 **Status:** accepted (2026-11-01). Gated for one round, the user's budget for a new spec; every verified finding fixed, and no lane read the fixes.
+**Amended:** 2026-11-08 by PRESS-0336: a site a workflow pushes to another branch is
+taken over too (§ 3 decision 8). No review; use is the review.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0333 (user decisions 2026-10-23 and 2026-11-01; one
 review round, the user's budget for a new spec, 2026-09-29).
@@ -70,9 +72,13 @@ and any custom domain stay. Afterwards the person is told what changed.
    the action that makes an Actions deployment, and a substring test needs no YAML
    reader, which the standard library lacks. A file also holding other jobs is
    named as a whole, so the person sees that before removing it.
-8. **(decided here) A branch-built site stays refused**, a workflow pushing to
-   `gh-pages` included. `build_type` is `legacy` there, and § 4.1's test does not
-   match.
+8. **(decided here, PRESS-0336) A branch build of a branch other than the default
+   is taken over where a workflow pushes to it.** A build file is then a workflow
+   file naming that branch as a word of its own. One using
+   `peaceiris/actions-gh-pages` or `JamesIves/github-pages-deploy-action` counts
+   where the branch is `gh-pages`, those actions' default. The site is downloaded
+   from its address, as an Actions-built one is. A branch build with no such file
+   stays refused.
 
 Every "(decided here)" is open to the maintainer to overturn.
 
@@ -89,6 +95,9 @@ class Pages:
     serves_root: bool
     built_by_actions: bool = False   # new: build_type is "workflow"
     domain: str | None = None        # new: the answer's cname
+    branch: str | None = None        # PRESS-0336: a branch build's branch, not the default
+    @property
+    def built_elsewhere(self) -> bool: ...  # built_by_actions, or a branch
 
 def head_commit(settings: Settings, token: str,
                 transport: Transport | None = None) -> str: ...
@@ -100,17 +109,19 @@ def switch_pages_to_branch(repository: str, token: str, domain: str | None,
 # src/pressless/takeover.py — new. `publishing` reads it, so it imports neither
 # `takein` nor `pressless_import`.
 BUILD_MARK = "actions/deploy-pages"
-def build_files(folder: Path, settings: Settings, key: str,
+def build_files(folder: Path, settings: Settings, key: str, shown: Pages,
                 transport: publisher.Transport | None = None) -> tuple[str, ...]: ...
 ```
 
-`build_files` calls `publisher.fetch_state` with prefix `.github/workflows/` into
-the fetch area, and answers the sorted paths of each `.yml` or `.yaml` directly in
-that folder whose text holds `BUILD_MARK`. The fetch area is emptied as `look`'s is.
+`build_files` answers nothing where `shown` is not `built_elsewhere`. Otherwise it
+calls `publisher.fetch_state` with prefix `.github/workflows/` into the fetch area,
+and answers the sorted paths of each `.yml` or `.yaml` directly in that folder that
+builds the site: one holding `BUILD_MARK` for an Actions build, and § 3 decision 8's
+test for a branch. The fetch area is emptied as `look`'s is.
 
 **pages step**, in `check_pages`, where `shown.on and not shown.serves_root`:
 
-- Not `built_by_actions`, or `build_files` empty: `setup.hint.elsewhere`, as today.
+- Not `built_elsewhere`, or `build_files` empty: `setup.hint.elsewhere`, as today.
 - Otherwise `takein.look_site` (§ 4.2) lays the live site out. Where `read_folder`
   finds no `index.html` or says `built_by_a_tool`, `takein.forget_folder` runs and
   the answer is a new hint, `setup.hint.site_unreadable`.
@@ -229,6 +240,7 @@ argument, and these, each in its own words:
   publish, stays in the repository's history, and each other file in
   `.github/workflows/` stays;
 - the address stays, and the custom domain, by name, where there is one;
+- the branch Pages served, by name, stays in the repository, no longer served;
 - Finish changes nothing on GitHub, and the old site stays up until then;
 - `.nojekyll`, and `CNAME` where there is a domain, will be added, and a `CNAME` with
   no domain behind it removed;
@@ -263,13 +275,13 @@ for this failure.
 
 **POST**, in `editor.LOCK` and through `pressing.run` as a press is:
 
-1. `build_files` again. Any left: the page again with `publishing.takeover.still_there`,
-   and no write is sent.
-2. `publisher.pages` for the domain.
+1. `publisher.pages`, then `build_files` over it. Any left: the page again with
+   `publishing.takeover.still_there`, and no write is sent.
+2. The domain is that answer's.
 3. Settings saved with `.nojekyll`, and `CNAME` where there is a domain, joined to
    `untouchable`, where absent. With no domain, `CNAME` is taken off it, so step 4's
    publish removes a stale one, which a branch build would read as the domain. Pages
-   no longer built by Actions: the marker is removed, the answer says Pages has
+   no longer `built_elsewhere`: the marker is removed, the answer says Pages has
    already been changed and what it now serves, and the POST ends here.
 4. `publish(..., entry=None, taking_over=True)`. A failure stops here, and is shown
    as a press's is. The old site is still up, and the page can be pressed again.
@@ -278,7 +290,7 @@ for this failure.
    again. A second press's publish finds nothing differing and writes nothing
    (PRESS-0009 INV-4), then this step runs.
 6. `takeover.done`, then the report page: Pages switched, the workflow files
-   named, the domain kept, the files added and removed, the root entries replaced,
+   named, the branch no longer served, the domain kept, the files added and removed, the root entries replaced,
    with `publisher.Outcome`'s counts, and that a first build takes GitHub a few minutes.
    Where `Outcome.commit` is empty, it says an earlier press published the site, in
    place of the counts.
@@ -316,10 +328,10 @@ and `words.py`.
   *Breaks when:* `check_pages` falls through to `switch_pages_on`.
 - **INV-2** — What cannot be taken over is still a `Hint`, and no write is sent.
   *Test:* `tests/test_takeover.py::test_what_cannot_be_taken_over_is_refused`, one
-  fixture each: `build_type` legacy on `gh-pages`; `workflow` with no file naming
-  `BUILD_MARK`; and a front page answering 404, which is the only rule failing in
-  that fixture.
-  *Breaks when:* `built_by_actions` alone opens the way, or a failed front page goes
+  fixture each: `build_type` legacy on `gh-pages` with no file naming it; `workflow`
+  with no file naming `BUILD_MARK`; and a front page answering 404, which is the
+  only rule failing in that fixture.
+  *Breaks when:* `built_elsewhere` alone opens the way, or a failed front page goes
   on with no pages.
 - **INV-3** — Before Finish the *site* step names every § 4.4 row, each build file
   and the domain, and the Store is unchanged.
@@ -392,6 +404,13 @@ and `words.py`.
   `tests/test_takeover.py::test_names_are_escaped`: a workflow named `a&'b x.yml`, which
   Windows can hold, and a domain holding `<`.
   *Breaks when:* a name is written raw into the link or the list.
+- **INV-16** — A site a workflow pushes to another branch is taken over, and a branch
+  name counts only as a word of its own (PRESS-0336). *Test:*
+  `tests/test_takeover.py::test_a_site_a_workflow_pushes_to_a_branch_is_taken_over`, and
+  `::test_build_files_for_a_branch_name_that_branch`, over `site` beside `website` and
+  `BUILD_MARK` on a branch build.
+  *Breaks when:* a branch name matches inside a longer word, or `BUILD_MARK` counts on a
+  branch build.
 
 ## 6. Failure modes
 
@@ -416,7 +435,7 @@ and `words.py`.
 `tests/test_takeover.py` is new, over `tests/test_takein.py`'s `_Repository` double with
 `GET`/`PUT pages`, `PUT` answering 204, Contents and a fake site added: INV-1, INV-2,
 INV-3, INV-4, INV-5,
-INV-6, INV-7, INV-8, INV-9, INV-12, INV-13, INV-14 and INV-15.
+INV-6, INV-7, INV-8, INV-9, INV-12, INV-13, INV-14, INV-15 and INV-16.
 `tests/test_importer_fetch.py` holds INV-10 and INV-11, by its `resolve` and `connect`
 doubles. Each named test is seen to fail against today's code before its change.
 
@@ -439,10 +458,12 @@ output, compared in a browser. This is added to PRESS-0133's list.
 - **Switch at Finish.** Rejected: § 3 decision 6, § 2 item 5.
 - **Publish the workflow's removal in the same commit.** Rejected: it is the write
   § 2 item 4 needs the permission for.
+- **Read a branch-built site from its branch, not its address** (PRESS-0336).
+  Rejected: § 4.2's rewriting of the site's own full addresses runs on a download,
+  and one route serves both builds.
 
 ## 9. Out of scope
 
-- A site a workflow pushes to a branch — deferred; not yet queued. It stays refused.
 - A takeover into a new repository: the user chose the same one.
 - Keeping the tool's source usable afterwards. It stays in the repository where the
   Builder does not replace it, and in its history.
@@ -467,6 +488,7 @@ output, compared in a browser. This is added to PRESS-0133's list.
 | INV-13 | `tests/test_takeover.py::test_finish_writes_what_was_shown` |
 | INV-14 | `tests/test_takeover.py::test_the_report_says_what_changed` |
 | INV-15 | `tests/test_takeover.py::test_names_are_escaped` |
+| INV-16 | `tests/test_takeover.py::test_a_site_a_workflow_pushes_to_a_branch_is_taken_over`, `::test_build_files_for_a_branch_name_that_branch` |
 | GitHub really keeps the domain and the site through the switch | **nothing** — § 7's hand check |
 | GitHub's delete page stays at that address | **nothing** — § 7's hand check |
 | A brought-in site looks as it did | **nothing** — § 7's hand check |

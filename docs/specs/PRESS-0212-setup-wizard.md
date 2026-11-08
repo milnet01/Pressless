@@ -256,11 +256,11 @@ switches GitHub Pages on where it is off.
 
 - **On, serving the default branch's root by a branch build**: Pages is left
   as GitHub has it. No write is sent.
-- **On, built by a workflow PRESS-0333 can take over**: no write is sent. The
-  live site is downloaded, and the takeover waits for the first publish
-  (PRESS-0333 § 4.1).
-- **On, serving anything else** — another branch, `/docs`, or a workflow
-  build PRESS-0333 § 4.1 refuses: a `Hint` saying this repository already puts a site on the web
+- **On, built by a workflow PRESS-0333 can take over**, or from another branch
+  a workflow pushes to (PRESS-0336): no write is sent. The live site is
+  downloaded, and the takeover waits for the first publish (PRESS-0333 § 4.1).
+- **On, serving anything else** — `/docs`, or a build PRESS-0333 § 4.1
+  refuses: a `Hint` saying this repository already puts a site on the web
   another way, and to go Back and choose another repository (PRESS-0229).
   Pressless publishes to the default branch's root and nowhere else, so it
   cannot publish there. It never changes Pages, and never tells him to:

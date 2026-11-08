@@ -1,4 +1,5 @@
-"""Taking over a site GitHub Actions builds, in the same repository (PRESS-0333).
+"""Taking over a site GitHub Actions builds, in the same repository (PRESS-0333), or
+one a workflow pushes to a branch (PRESS-0336).
 
 The contract is docs/specs/PRESS-0333-take-over-actions-site.md. Setup brings the
 live site in and leaves a marker here; while it exists no publish goes through. The
@@ -9,6 +10,7 @@ workflow file, which would need a permission it does not ask for.
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 
 from pressless import publisher, undo
@@ -43,10 +45,13 @@ def done(folder: Path) -> None:
     (Path(folder) / MARKER).unlink(missing_ok=True)
 
 
-def build_files(folder: Path, settings: Settings, key: str,
+def build_files(folder: Path, settings: Settings, key: str, shown: publisher.Pages,
                 transport: publisher.Transport | None = None) -> tuple[str, ...]:
-    """The workflow files at the branch's head that deploy to Pages, read through
-    the fetch area, emptied before and after as a take-in's is."""
+    """The workflow files at the default branch's head that make the site `shown`
+    serves, read through the fetch area, emptied before and after as a take-in's is.
+    Empty where Pages is not built elsewhere: there is nothing to take over."""
+    if not shown.built_elsewhere:
+        return ()
     fetch = Path(folder) / undo.FETCH_FOLDER
     undo.empty_fetch(fetch)
     try:
@@ -55,7 +60,7 @@ def build_files(folder: Path, settings: Settings, key: str,
         return tuple(sorted(
             path for path in fetched.paths
             if "/" not in path.removeprefix(_WORKFLOWS) and path.endswith(_SUFFIXES)
-            and BUILD_MARK in (fetch / path).read_text(encoding="utf-8", errors="replace")))
+            and _builds(shown, (fetch / path).read_text(encoding="utf-8", errors="replace"))))
     finally:
         try:
             undo.empty_fetch(fetch)
@@ -63,13 +68,34 @@ def build_files(folder: Path, settings: Settings, key: str,
             pass    # the next fetch empties the area again
 
 
-def change_rows(files: tuple[str, ...], address: str, domain: str | None,
+# PRESS-0336: the two common actions that push a built site to a branch, each
+# defaulting to gh-pages, so a file using one need not name the branch at all.
+_BRANCH_ACTIONS = ("peaceiris/actions-gh-pages", "jamesives/github-pages-deploy-action")
+_THEIR_BRANCH = "gh-pages"
+
+
+def _builds(shown: publisher.Pages, text: str) -> bool:
+    """An Actions build: the file names `BUILD_MARK`. A branch build (PRESS-0336): it
+    names the branch as a word of its own, so `site` is not found in `website`, or
+    it uses an action whose default is that branch."""
+    if shown.built_by_actions:
+        return BUILD_MARK in text
+    branch = shown.branch or ""
+    if re.search(rf"(?<![\w.-]){re.escape(branch)}(?![\w.-])", text):
+        return True
+    return branch == _THEIR_BRANCH and any(name in text.casefold() for name in _BRANCH_ACTIONS)
+
+
+def change_rows(files: tuple[str, ...], address: str, shown: publisher.Pages,
                 stale_cname: bool) -> list[str]:
     """PRESS-0333 § 4.4: what the first publish changes, each row already escaped."""
     e = html.escape
+    domain = shown.domain
     rows = [say("takeover.pages")]
     rows += [say("takeover.file", file=f"<code>{e(name)}</code>") for name in files]
     rows += [say("takeover.other_files"), say("takeover.address", address=e(address))]
+    if shown.branch:
+        rows.append(say("takeover.branch", branch=f"<code>{e(shown.branch)}</code>"))
     if domain:
         rows.append(say("takeover.domain", domain=e(domain)))
     rows.append(say("takeover.added"))

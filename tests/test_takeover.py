@@ -50,6 +50,7 @@ from pressless import (
 from pressless_import import fetch
 
 HOST = "owner.github.io"
+REPOSITORY_NAME = "owner/owner.github.io"
 SITE = f"https://{HOST}/"
 BUILD = ".github/workflows/deploy.yml"
 BUILD_TEXT = b"jobs:\n  deploy:\n    steps:\n      - uses: actions/deploy-pages@v4\n"
@@ -93,6 +94,7 @@ class _Built(_Repository):
                     return 403, {}, b'{"message": "refused"}'
                 self.sent_pages = json.loads(body)
                 self.build = self.sent_pages["build_type"]
+                self.branch = self.sent_pages["source"]["branch"]
                 self.cname = self.sent_pages.get("cname", self.cname)
                 return 204, {}, b""
             return 200, {}, json.dumps({
@@ -202,7 +204,7 @@ def test_setup_writes_nothing_to_github(tmp_path, monkeypatch):
     (lambda: _Built(), {}, "could not read its front page"),
 ], ids=("a-branch-build", "no-deploy-step", "front-page-404"))
 def test_what_cannot_be_taken_over_is_refused(tmp_path, monkeypatch, github, pages, said):
-    """INV-2. Breaks when `built_by_actions` alone opens the way, or a failed front
+    """INV-2. Breaks when `built_elsewhere` alone opens the way, or a failed front
     page goes on with no pages. The last fixture fails only the front page: its
     repository is built by Actions and names `BUILD_MARK`."""
     _site(monkeypatch, pages)
@@ -591,15 +593,73 @@ def test_pages_reads_the_build_and_the_domain():
     assert pages.built_by_actions and pages.domain == "www.example.org" and not pages.serves_root
     branch_built = publisher.pages("owner/owner.github.io", KEY, _Built(build="legacy"))
     assert not branch_built.built_by_actions
+    assert branch_built.serves_root and branch_built.branch is None
+    assert not branch_built.built_elsewhere
+    other = publisher.pages("owner/owner.github.io", KEY, _Built(build="legacy", branch="gh-pages"))
+    assert other.branch == "gh-pages" and other.built_elsewhere and not other.serves_root
 
 
 def test_build_files_are_those_naming_the_deploy_action(tmp_path):
     github = _Built({**SOURCE, ".github/workflows/deep/x.yml": BUILD_TEXT,
                      ".github/workflows/notes.txt": BUILD_TEXT})
     folder = _empty_store(tmp_path)
-    assert takeover.build_files(folder, _settings(folder), KEY, github) == (BUILD,)
+    shown = publisher.pages(REPOSITORY_NAME, KEY, github)
+    assert takeover.build_files(folder, _settings(folder), KEY, shown, github) == (BUILD,)
     area = folder / undo.FETCH_FOLDER
     assert not area.exists() or not any(area.iterdir())
+
+
+# ------------------------------------------------------------- PRESS-0336 ---
+
+PUSH = ".github/workflows/publish.yml"
+PUSH_TEXT = (b"jobs:\n  publish:\n    steps:\n      - run: npm run build\n"
+             b"      - run: git push origin HEAD:gh-pages\n")
+
+
+@pytest.mark.parametrize(("served", "text", "named"), [
+    ("gh-pages", b"publish_branch: gh-pages\n", True),
+    ("gh-pages", b"- uses: peaceiris/actions-gh-pages@v4\n", True),
+    ("gh-pages", b"- uses: JamesIves/github-pages-deploy-action@v4\n", True),
+    ("gh-pages", b"git push origin HEAD:refs/heads/gh-pages\n", True),
+    ("gh-pages", b"branches: [main]\n", False),
+    ("gh-pages", BUILD_TEXT, False),
+    ("site", b"branch: 'site'\n", True),
+    ("site", b"name: Check the website\n", False),
+    ("site", b"- uses: peaceiris/actions-gh-pages@v4\n", False),
+], ids=("publish-branch", "peaceiris", "jamesives", "git-push", "other-branch",
+        "deploy-pages", "quoted", "inside-a-word", "action-to-another-branch"))
+def test_build_files_for_a_branch_name_that_branch(tmp_path, served, text, named):
+    """PRESS-0336: on a branch build, a build file is one that pushes to the branch
+    Pages serves. Breaks when a branch name matches inside a longer word, or an
+    Actions build's mark counts on a branch build."""
+    github = _Built({**SOURCE, BUILD: text}, build="legacy", branch=served)
+    folder = _empty_store(tmp_path)
+    shown = publisher.pages(REPOSITORY_NAME, KEY, github)
+    assert takeover.build_files(folder, _settings(folder), KEY, shown, github) == (
+        (BUILD,) if named else ())
+
+
+def test_a_site_a_workflow_pushes_to_a_branch_is_taken_over(tmp_path, monkeypatch):
+    """PRESS-0336, end to end: setup writes nothing, the screen and the report say
+    the branch stays, and Pages moves to the default branch's root."""
+    _site(monkeypatch)
+    files = {name: data for name, data in SOURCE.items() if name != BUILD}
+    github = _Built({**files, PUSH: PUSH_TEXT}, build="legacy", branch="gh-pages")
+    folder = _empty_store(tmp_path, "setup")
+    _Store(monkeypatch)
+    with _setup(folder, github) as browser:
+        page = _walk_to(browser, "site")
+        assert PUSH in page and "gh-pages" in page, page
+        done = _next(browser, page)
+    assert _step(done) is None, done
+    assert github.repository_writes() == []
+    assert takeover.named(folder) == (PUSH,)
+    assert PUSH in _shown(folder, github)
+    github.remove(PUSH)
+    pressed = _press(folder, github)
+    assert "GitHub Pages switched" in pressed and "gh-pages" in pressed, pressed
+    assert github.sent_pages["source"] == {"branch": "main", "path": "/"}
+    assert not takeover.owed(folder)
 
 
 # ------------------------------------------------------------- PRESS-0339 ---

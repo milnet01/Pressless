@@ -140,8 +140,9 @@ ways, and only one:
   added file, and each published web-sized photograph as its original.
   The Builder's naming rule maps a published name back to the original
   name the marks use, and the take-in asks it to. A site GitHub Actions
-  builds holds no pages, so Import downloads the live site as that folder,
-  and the first publish switches its Pages (PRESS-0333).
+  builds, or a workflow pushes to another branch, holds no pages, so Import
+  downloads the live site as that folder, and the first publish switches
+  its Pages (PRESS-0333, PRESS-0336).
 - **An Import** (S13): a WordPress export, its files fetched from the old
   site or taken from a media download, or a folder of web pages.
 

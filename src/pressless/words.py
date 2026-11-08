@@ -791,6 +791,9 @@ _WORDS: dict[str, str] = {
     "publishing.takeover.done.pages": "GitHub Pages switched to what Pressless publishes.",
     "publishing.takeover.done.file": "{file} is gone, and stays in the repository's history.",
     "publishing.takeover.done.address": "Your site kept its address, {address}.",
+    "publishing.takeover.done.branch": (
+        "The branch {branch} is still in the repository, and GitHub Pages no longer serves it."
+    ),
     "publishing.takeover.done.domain": "Your site kept its own domain, {domain}.",
     "publishing.takeover.done.added": "Pressless added an empty file, .nojekyll.",
     "publishing.takeover.done.added_domain": (
@@ -1237,6 +1240,10 @@ _WORDS: dict[str, str] = {
         "You remove the build file {file} on GitHub. It stays in the repository's history."
     ),
     "takeover.other_files": "Any other file in .github/workflows stays.",
+    "takeover.branch": (
+        "The branch {branch} stays in the repository as it is, but GitHub Pages stops "
+        "serving it."
+    ),
     "takeover.address": "Your site keeps its address, {address}.",
     "takeover.domain": "Your site keeps its own domain, {domain}.",
     "takeover.added": (

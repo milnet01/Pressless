@@ -17,6 +17,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **Bringing in a folder of web pages takes the folder itself** (PRESS-0335)
   On Import's folder step, Choose the folder picks your site's folder, with no ZIP file to
   make first. A ZIP file still works, and the steps for making one are folded below.
+- **Setup takes over a site a workflow pushes to a branch** (PRESS-0336)
+  A site whose build script publishes it to a branch such as `gh-pages` can switch to
+  Pressless too, as one GitHub Actions builds already could. Its address stays, and the
+  branch stays in the repository, no longer served.
 
 ### Fixed
 
