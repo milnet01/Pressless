@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=349 -->
+<!-- ants-roadmap-id-high-water: PRESS=350 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6581,10 +6581,18 @@ more places, and an imported site can take a Pressless look.
   Source: spec-PRESS-0210-2026-10-31.
   Lanes: Import, Face.
 
-- 📋 [PRESS-0336] **Setup takes over a site a workflow pushes to a branch.**
+- ✅ [PRESS-0336] **Setup takes over a site a workflow pushes to a branch.**
   PRESS-0333 § 3 decision 8 leaves it refused: build_type is legacy there,
   so its test for an Actions build does not match, and setup answers
   setup.hint.elsewhere.
+  Shipped in 9eec7e5 as an amendment to PRESS-0333 (section 3 decision 8,
+  INV-16). A build file is a workflow naming the served branch as a word
+  of its own, or peaceiris/actions-gh-pages or
+  JamesIves/github-pages-deploy-action where the branch is gh-pages. The
+  site is downloaded from its address, as an Actions-built one is. Tests:
+  tests/test_takeover.py::test_a_site_a_workflow_pushes_to_a_branch_is_taken_over
+  and ::test_build_files_for_a_branch_name_that_branch. The GitHub hand
+  check is PRESS-0350.
   **Layman:** Someone whose build script publishes their site to a separate branch can switch it to Pressless too.
   Kind: feature.
   Source: spec-PRESS-0333-2026-11-01.
@@ -6603,6 +6611,19 @@ more places, and an imported site can take a Pressless look.
   **Layman:** The Pressless page on the projects website gets pictures of the new editor.
   Kind: marketing.
   Source: hub-message-1596-2026-11-06.
+
+- 📋 [PRESS-0350] **Check by hand, on real GitHub, the takeover of a site a workflow pushes to gh-pages.**
+  PRESS-0333 section 7's hand check, for PRESS-0336's route. On a scratch
+  repository of the test account, a workflow builds a small static site
+  and pushes it to gh-pages, with a custom domain. Check: setup through
+  Finish leaves the site unchanged; the delete link works signed in; the
+  takeover keeps the domain and HTTPS; Pages moves to the default branch's
+  root and builds; a publish after it keeps the domain. Owed before 0.14.0
+  ships. Method: the memory note on hand checks.
+  **Layman:** Before the next release, a person tries switching a real branch-published site to Pressless, to see it keep working.
+  Kind: test.
+  Source: PRESS-0336-ship-2026-11-08.
+  Lanes: setup, Publisher.
 
 ## 0.15.0 — an AI helper can drive Pressless
 
