@@ -18,6 +18,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   On Import's folder step, Choose the folder picks your site's folder, with no ZIP file to
   make first. A ZIP file still works, and the steps for making one are folded below.
 
+### Fixed
+
+- **The box before a press lists each page once** (PRESS-0345)
+  The list of pages that will change no longer names About or the home page twice, or
+  shows the header, menu and footer as file names. They count among the other files.
+
 ## [0.13.0] - 2026-11-06
 
 **Theme:** anyone finds their way around

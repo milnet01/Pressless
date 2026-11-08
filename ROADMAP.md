@@ -6590,12 +6590,16 @@ more places, and an imported site can take a Pressless look.
   Source: spec-PRESS-0333-2026-11-01.
   Lanes: setup, Publisher.
 
-- 📋 [PRESS-0349] **Send the website session fresh screenshots of the 0.13.0 screens.**
+- ✅ [PRESS-0349] **Send the website session fresh screenshots of the 0.13.0 screens.**
   Promised in reply 1597 to the ants-projects-hub-website session: its
   gallery still shows the editor before 0.13.0. Shots wanted: the entry
   editor as it looks (PRESS-0346), the publish preview (PRESS-0345) and
   the finish-setting-up list (PRESS-0344). Method: the memory note on hub
   screenshots. Send with session_message to ants-projects-hub-website.
+  Sent 2026-11-08 as message 1611: entry editor, publish preview and
+  finish-setting-up shots, from a throwaway made-up site. Making them
+  found the publish box listing the content/ source copy as pages
+  (About and Home twice, parts by path); fixed in 3c4c15b.
   **Layman:** The Pressless page on the projects website gets pictures of the new editor.
   Kind: marketing.
   Source: hub-message-1596-2026-11-06.
