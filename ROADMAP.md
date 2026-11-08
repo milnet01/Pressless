@@ -6546,7 +6546,7 @@ more places, and an imported site can take a Pressless look.
   Source: user-decision-2026-10-15 PRESS-0274.
   Lanes: Builder, Face.
 
-- 🚧 [PRESS-0276] **An imported site can take a Pressless look, or extra CSS on top of its own stylesheets.**
+- ✅ [PRESS-0276] **An imported site can take a Pressless look, or extra CSS on top of its own stylesheets.**
   Split from PRESS-0196 by the user's 2026-10-15 choice. An imported site
   has no style code: its pages link assets/site.css and assets/blog.css,
   which live only in the published repository, and each imported fixed
@@ -6562,6 +6562,11 @@ more places, and an imported site can take a Pressless look.
   the CSS on top publishes as look/extra.css; going back bins
   style.css and keeps choices.json. Amends PRESS-0196 § 4.5 and INV-9,
   PRESS-0126 § 4.6, PRESS-0008 INV-8.
+  Shipped 2026-11-08 in 7bbd2b8: the route choice, look/extra.css, the
+  build-time link rewrite and the preview's sheet swap. INV-1 to INV-8
+  tested, each seen red and killed by a hand mutation. Headless Chrome
+  drove both routes and both ways back on a scratch site. Not yet seen
+  on the writer's own site.
   **Layman:** A site that brought its own stylesheets can use the Look panel too, either by adding its own styling on top or by switching to a Pressless design, and switching back.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0196.
