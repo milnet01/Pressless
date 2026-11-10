@@ -6541,6 +6541,11 @@ more places, and an imported site can take a Pressless look.
   app finds and loads it, matching the bundled Python on each system,
   and checking that the download is the genuine one before it runs.
   Needs a spec before building.
+  2026-11-10: review-contract gate run, one round (the user's budget for
+  a new spec). 13 verified, 13 fixed (dd03869); spec accepted (ec4f4f1).
+  Loop log: docs/reviews/PRESS-0275-jpeg-xl-extra-loop-log.md. Decoder
+  runtime behaviour was out of the review's reach; INV-9's hand run on
+  Linux and the Windows box covers it.
   **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
