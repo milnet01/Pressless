@@ -6551,6 +6551,11 @@ more places, and an imported site can take a Pressless look.
   made with cjxl, INV-9 run on Linux and the Windows box,
   scripts/publish-jpeg-xl.py publishing the pre-release, and the
   packaged-build hand check of spec § 7.
+  2026-11-10: fixtures made; INV-9 passes on Linux (4 passed). The
+  jpeg-xl-0.12.0 pre-release is published, its assets read back matching
+  the pins, and releases/latest is still v0.13.0. Still owed, both
+  needing the Windows box: INV-9 there with djxl.exe, and § 7's
+  packaged-build click on each system.
   **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
