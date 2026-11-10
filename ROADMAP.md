@@ -6527,7 +6527,7 @@ No new sign. It widens S13: more kinds of existing site come in, from
 
 more places, and an imported site can take a Pressless look.
 
-- 🚧 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
+- ✅ [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
   Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
   Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
   and the BSD readers need numpy. Most browsers do not show JPEG XL,
@@ -6556,6 +6556,18 @@ more places, and an imported site can take a Pressless look.
   the pins, and releases/latest is still v0.13.0. Still owed, both
   needing the Windows box: INV-9 there with djxl.exe, and § 7's
   packaged-build click on each system.
+  2026-11-10: INV-9 passes on the Windows box: 4 passed in
+  tests/test_jpegxl_real.py, with the box's djxl.exe hash equal to the
+  windows pin. Still owed: spec § 7's packaged-build click on each
+  system, then the scratch-site publish.
+  2026-11-10: spec § 7's hand check passed on both systems. A frozen
+  build of HEAD (release-requirements, PyInstaller 6.22.3) on Linux and
+  on the Windows box: Add JPEG XL support downloaded the decoder with
+  the pin's size and hash and showed "ready"; the three tests/jxl
+  fixtures previewed; publish to milnet02/pressless-test-3 put
+  entries jpeg-xl-check and jpeg-xl-check-windows live, each serving
+  still 64x48 red|blue, oriented 48x64 upright, animation's first frame.
+  Windows' WebP copies are byte-identical to Linux's.
   **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
@@ -6678,6 +6690,9 @@ publish and anything that deletes.
   Constraints any shape keeps: no key reachable by the assistant
   (PRESS-0266, PRESS-0217's invariant), and the writer approves a
   publish or anything that deletes.
+  Shape decided by the user, 2026-11-10: an MCP server. Build its
+  actions as one set a command line could reuse later; no command line
+  now.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
