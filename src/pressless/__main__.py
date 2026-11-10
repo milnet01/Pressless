@@ -40,6 +40,7 @@ from pressless import (
     google_setup,
     importing,
     installer,
+    jpegxl_screen,
     look_screen,
     page_editor,
     paths,
@@ -227,6 +228,7 @@ def _serve_once(own: Path) -> bool:
         files_screen.register(served, folder)
         pressing.register(served)
         updating.register(served, own)
+        jpegxl_screen.register(served, own)
         restarting.register(served, restart.set)
         sites_screen.register(served, own, restart.set)
         importing.register(served, folder)

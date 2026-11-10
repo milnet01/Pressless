@@ -2439,8 +2439,8 @@ _VISUAL_SCRIPT = r"""
                                {method: "POST", body: file});
     const reply = await answer.text();
     if (answer.status !== 200) { document.getElementById("failure").innerHTML = reply; return; }
-    const name = JSON.parse(reply).name;
-    const address = up + "photographs/" + encodeURIComponent(name);
+    const {name, address: published} = JSON.parse(reply);
+    const address = up + published;
     const option = document.createElement("option");
     option.value = address; option.textContent = name;
     document.getElementById("photograph-list").append(option);

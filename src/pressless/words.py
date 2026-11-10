@@ -249,8 +249,10 @@ _WORDS: dict[str, str] = {
         "That file is not a picture Pressless can put on your site, so it was not added."
     ),
     "failure.photographs.NotAPhotograph.next": (
-        "Choose a JPEG, PNG, WebP, GIF or AVIF photograph."
+        "Choose a JPEG, PNG, WebP, GIF, AVIF or JPEG XL photograph."
     ),
+    "failure.jpegxl.NotInstalled.what": "This is a JPEG XL photograph.",
+    "failure.jpegxl.NotInstalled.next": "Add JPEG XL support from the list page first.",
     "failure.files.NotAllowed.what": (
         "That file is not a kind Pressless can put on your site, or its name does not match"
         " what is inside it, so it was not added."
@@ -1774,6 +1776,18 @@ _WORDS: dict[str, str] = {
     "dashboard.people.one": "1 person",
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
+    # JPEG XL support (jpegxl_screen.py): its line below the list.
+    "jpegxl.line": "JPEG XL photographs: not added yet.",
+    "jpegxl.ready": "JPEG XL photographs: ready.",
+    "jpegxl.add": "Add JPEG XL support ({size} MB)",
+    "jpegxl.no_connection": (
+        "JPEG XL support could not be downloaded. Check your internet connection and try again."
+    ),
+    "jpegxl.disk_full": (
+        "There is not enough room on this computer for JPEG XL support. Free some space, then "
+        "try again."
+    ),
+    "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
     # Updating (updating.py): the offer, the switch, Update now's pages and console line.
     "updating.offer": "Pressless {version} is ready to install. Your writing stays where it is.",
     "updating.update_now": "Update now",

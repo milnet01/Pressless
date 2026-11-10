@@ -27,7 +27,7 @@ VERSION = 1
 # and Import's own folder, so a saved site never carries the export
 # (PRESS-0125 § 4.2).
 LEFT_OUT = frozenset({"credentials.json", "site", "preview", "fetch", "insights.json",
-                      "youtube.json", "wizards", "choices.json", "import"})
+                      "youtube.json", "wizards", "choices.json", "import", "jpeg-xl-views"})
 KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})

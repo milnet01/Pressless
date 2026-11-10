@@ -23,6 +23,7 @@ from pressless import (
     face,
     insights,
     installer,
+    jpegxl,
     log,
     paths,
     settings,
@@ -106,10 +107,10 @@ def test_every_name_is_on_one_side() -> None:
                   credentials.FILE_NAME, setup.SITE_FOLDER, editor.PREVIEW_FOLDER,
                   paths.PREVIEW_ASSETS, starter.MARKER, takeover.MARKER, insights.CACHE_NAME,
                   youtube.CACHE_NAME, undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME,
-                  pressless_import.IMPORT_FOLDER}
+                  pressless_import.IMPORT_FOLDER, editor.VIEWS_FOLDER}
     machine_names = {log.FILE_NAME, log.OLD_NAME, updater.FILE_NAME, installer.LOG_NAME,
                      main_module._LOCK_NAME, themes.FILE_NAME, usage.FILE_NAME,
-                     usage.SENT_NAME, backups.FILE_NAME, OPEN, SITES}
+                     usage.SENT_NAME, backups.FILE_NAME, OPEN, SITES, jpegxl.FOLDER_NAME}
     assert sites.SITE_NAMES == site_names
     assert sites.MACHINE_NAMES == machine_names
     assert not site_names & machine_names

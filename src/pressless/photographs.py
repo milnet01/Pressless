@@ -30,10 +30,11 @@ LONGEST_NAME = 60         # before the suffix; editor.LONGEST_ADDRESS, which a t
 # where the chosen file carries another: a JPEG named .png would be sent to
 # browsers as a PNG.
 SUFFIXES = {"JPEG": (".jpg", ".jpeg"), "MPO": (".jpg", ".jpeg"), "PNG": (".png",),
-            "WEBP": (".webp",), "GIF": (".gif",), "AVIF": (".avif",)}
+            "WEBP": (".webp",), "GIF": (".gif",), "AVIF": (".avif",), "JXL": (".jxl",)}
 
-# What both upload boxes offer: the types of the formats above (PRESS-0274).
-ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif"
+# What both upload boxes offer: the types of the formats above (PRESS-0274),
+# and .jxl, since a file picker may not know JPEG XL's type (PRESS-0275).
+ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif,image/jxl,.jxl"
 
 
 class NotAPhotograph(Exception):

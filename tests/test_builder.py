@@ -697,11 +697,13 @@ def test_writing_renders_through_marks(tmp_path, monkeypatch):
 
 _ALLOWED_IMPORTS = {
     "__future__",
-    "dataclasses", "datetime", "fnmatch", "html", "os", "pathlib", "re", "shutil",
+    "contextlib", "dataclasses", "datetime", "fnmatch", "html", "os", "pathlib", "re",
+    "shutil", "tempfile",
     "urllib", "urllib.parse",               # percent-encoding an address -- never fetching
     "PIL", "PIL.Image", "PIL.ImageOps", "PIL.ImageSequence",
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
     "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
+    "pressless.jpegxl",                      # PRESS-0275 § 4.1: runs the decoder, no network
 }
 
 
@@ -2035,3 +2037,115 @@ def test_font_and_icon_kinds_are_checked_by_content(suffix, opening):
     """PRESS-0210 INV-21. Breaks when the suffix alone decides."""
     assert builder.file_allowed(f"a{suffix}", opening + b"rest")
     assert not builder.file_allowed(f"a{suffix}", b"plain text, not that kind")
+
+
+# ------------------------------------------------------------- PRESS-0275 ---
+# docs/specs/PRESS-0275-jpeg-xl-extra.md: JPEG XL through a stand-in decoder.
+
+
+def _jxl_store(tmp_path, monkeypatch, body="{photo: seaside.jxl}", *, decoder=True,
+               name="seaside.jxl", pages=None):
+    import _jxl_standin as standin
+    folder = _store(tmp_path, pages=pages)
+    _photograph(folder, name, standin.CONTAINER)
+    store.write(folder, _entry("seaside", body=body), draft=False)
+    picture = standin.png(tmp_path / "decoded.png", size=(3000, 1500))
+    if decoder:
+        standin.installed(monkeypatch, tmp_path / "own", picture)
+    else:
+        monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "own"))
+    return folder
+
+
+def test_jpeg_xl_publishes_as_webp(tmp_path, monkeypatch):
+    """INV-5: the web copy is WebP at seaside.jxl.webp, shrunk and bare; no
+    .jxl is published, and the page names the .webp."""
+    folder = _jxl_store(tmp_path, monkeypatch)
+    entry = store.read(store.path_for(folder, "seaside", draft=False))
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    held = [name for name in _files(into) if name.startswith("photographs/")]
+    assert held == ["photographs/seaside.jxl.webp"], held
+    with Image.open(into / "photographs" / "seaside.jxl.webp") as web:
+        assert web.format == "WEBP"
+        assert max(web.size) == LONGEST_SIDE
+        assert len(web.getexif()) == 0
+    page = _entry_page(into, entry).read_text(encoding="utf-8")
+    assert "photographs/seaside.jxl.webp" in page
+    assert "photographs/seaside.jxl\"" not in page
+
+
+def test_jpeg_xl_without_the_extra_stops(tmp_path, monkeypatch):
+    """INV-6, publish half: no decoder stops the build with its own
+    sentence, never "could not be read"."""
+    folder = _jxl_store(tmp_path, monkeypatch, decoder=False)
+    with pytest.raises(BuildStopped, match="seaside.jxl") as stopped:
+        build(folder, _settings(), tmp_path / "site")
+    assert "JPEG XL support" in str(stopped.value)
+    assert "could not be read" not in str(stopped.value)
+
+
+def test_jpeg_xl_named_without_jxl_stops(tmp_path, monkeypatch):
+    """§ 4.5: a JPEG XL original under another type's suffix is refused, so
+    no WebP goes out as a .png."""
+    folder = _jxl_store(tmp_path, monkeypatch, body="{photo: odd.png}", name="odd.png")
+    with pytest.raises(BuildStopped, match="odd.png"):
+        build(folder, _settings(), tmp_path / "site")
+
+
+def test_a_png_named_jxl_stops(tmp_path, monkeypatch):
+    """§ 4.5's other half: a .jxl name holding a PNG would publish PNG bytes
+    as .jxl.webp."""
+    folder = _jxl_store(tmp_path, monkeypatch, body="{photo: fake.jxl}", name="fake.jxl")
+    _photograph(folder, "fake.jxl", _image("PNG"))
+    with pytest.raises(BuildStopped, match="fake.jxl"):
+        build(folder, _settings(), tmp_path / "site")
+
+
+def test_a_web_name_taken_by_another_photograph_stops(tmp_path, monkeypatch):
+    """§ 4.5: seaside.jxl.webp held as its own photograph clashes with the
+    JPEG XL's web copy; both are named."""
+    folder = _jxl_store(tmp_path, monkeypatch)
+    _photograph(folder, "seaside.jxl.webp", _image("WEBP"))
+    with pytest.raises(BuildStopped, match=r"seaside\.jxl\b.*seaside\.jxl\.webp"):
+        build(folder, _settings(), tmp_path / "site")
+
+
+def test_the_named_record_uses_the_web_name(tmp_path, monkeypatch):
+    """§ 4.5: a build that writes no photographs records the .webp name."""
+    folder = _jxl_store(tmp_path, monkeypatch, decoder=False)
+    built = build(folder, _settings(), tmp_path / "site", photographs=False)
+    assert "photographs/seaside.jxl.webp" in built.named
+
+
+def test_a_page_naming_the_web_copy_publishes_it(tmp_path, monkeypatch):
+    """§ 4.5: a page picture naming photographs/seaside.jxl.webp is read as
+    the original seaside.jxl."""
+    picture = ('<!-- pressless:picture --><img src="../photographs/seaside.jxl.webp" '
+               'alt="Sea"><!-- /pressless:picture -->')
+    page = SECTIONED.replace("<!-- pressless:text -->", picture + "<!-- pressless:text -->")
+    folder = _jxl_store(tmp_path, monkeypatch, body="Words.",
+                        pages={"index": SECTIONED, "about": page})
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    held = [name for name in _files(into) if name.startswith("photographs/")]
+    assert held == ["photographs/seaside.jxl.webp"], held
+
+
+def test_web_name():
+    assert builder.web_name("seaside.jxl") == "seaside.jxl.webp"
+    assert builder.web_name("Seaside.JXL") == "Seaside.JXL.webp"
+    assert builder.web_name("seaside.jpg") == "seaside.jpg"
+    assert builder.web_photograph("my sea.jxl") == "photographs/my%20sea.jxl.webp"
+
+
+def test_jpeg_xl_reads_as_a_photograph_only_with_the_decoder(tmp_path, monkeypatch):
+    """§ 4.5: photograph_format says JXL with the decoder, and raises
+    NotInstalled without it, never None."""
+    from pressless import jpegxl
+    folder = _jxl_store(tmp_path, monkeypatch)
+    original = store.photograph_path_for(folder, "seaside.jxl")
+    assert builder.photograph_format(original) == "JXL"
+    monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "elsewhere"))
+    with pytest.raises(jpegxl.NotInstalled):
+        builder.photograph_format(original)

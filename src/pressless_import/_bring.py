@@ -484,7 +484,7 @@ def _held(channel, ns, media: Path):
 
     def is_photo(path: Path) -> bool:
         if path not in photo:
-            photo[path] = builder.photograph_format(path) is not None
+            photo[path] = builder.is_photograph(path)
         return photo[path]
 
     names, by_address, by_id, unheld = _photographs(channel, ns, media, strict=False,

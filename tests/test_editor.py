@@ -13,7 +13,9 @@ import contextlib
 import dataclasses
 import hashlib
 import html
+import http.client
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -1247,3 +1249,59 @@ def test_an_entry_opens_in_the_view_last_chosen(tmp_path):
         assert view.search(browser.request("GET", "/edit?slug=draft")[2])[1] == "marks"
         assert browser.request("POST", "/edit/view", {"view": "visual"})[0] == 200
         assert view.search(browser.request("GET", "/edit?slug=draft")[2])[1] == "visual"
+
+
+# ------------------------------------------------------------- PRESS-0275 ---
+
+
+def _get_bytes(browser: _Browser, path: str) -> tuple[int, str, bytes]:
+    conn = http.client.HTTPConnection("127.0.0.1", browser.port, timeout=10)
+    try:
+        conn.putrequest("GET", path, skip_host=True, skip_accept_encoding=True)
+        conn.putheader("Host", browser.host)
+        conn.putheader("Cookie", browser.cookie)
+        conn.endheaders()
+        response = conn.getresponse()
+        return response.status, response.getheader("Content-Type", ""), response.read()
+    finally:
+        conn.close()
+
+
+def test_jpeg_xl_view_copy(tmp_path, monkeypatch):
+    """PRESS-0275 INV-7: the original's address and its .jxl.webp address
+    both answer a WebP view copy, never the JPEG XL bytes; without the
+    decoder, both are 404."""
+    import _jxl_standin as standin
+    folder = _folder(tmp_path)
+    original = store.photograph_path_for(folder, "seaside.jxl")
+    original.parent.mkdir(parents=True)
+    original.write_bytes(standin.CONTAINER)
+    standin.installed(monkeypatch, tmp_path / "own", standin.png(tmp_path / "p.png"))
+    with _editor(folder) as browser:
+        for path in ("/originals/seaside.jxl", "/preview/photographs/seaside.jxl.webp",
+                     "/originals/seaside.jxl.webp", "/preview/photographs/seaside.jxl"):
+            status, kind, body = _get_bytes(browser, path)
+            assert (status, kind) == (200, "image/webp"), path
+            assert body.startswith(b"RIFF") and body[8:12] == b"WEBP", path
+        assert (folder / "jpeg-xl-views" / "seaside.jxl.webp").is_file()
+        monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "elsewhere"))
+        (folder / "jpeg-xl-views" / "seaside.jxl.webp").unlink()
+        assert _get_bytes(browser, "/originals/seaside.jxl")[0] == 404
+
+
+def test_a_view_copy_is_remade_when_the_original_is_newer(tmp_path, monkeypatch):
+    """PRESS-0275 § 4.7: an older view copy is replaced."""
+    import _jxl_standin as standin
+    folder = _folder(tmp_path)
+    original = store.photograph_path_for(folder, "seaside.jxl")
+    original.parent.mkdir(parents=True)
+    original.write_bytes(standin.CONTAINER)
+    standin.installed(monkeypatch, tmp_path / "own", standin.png(tmp_path / "p.png"))
+    view = folder / "jpeg-xl-views" / "seaside.jxl.webp"
+    view.parent.mkdir()
+    view.write_bytes(b"stale")
+    os.utime(view, (1, 1))
+    assert editor.photograph_file(folder, "seaside.jxl") == view
+    assert view.read_bytes()[8:12] == b"WEBP"
+    assert editor.photograph_file(folder, "seaside.jpg") == store.photograph_path_for(
+        folder, "seaside.jpg")

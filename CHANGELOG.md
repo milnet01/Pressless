@@ -24,6 +24,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **A site with its own stylesheets can use the Look screen** (PRESS-0276)
   Keep those stylesheets and add your own CSS on top, or switch to a Pressless design. The
   preview shows either before you save, and the same choice switches back.
+- **Photographs in JPEG XL can be added** (PRESS-0275)
+  Click Add JPEG XL support below the list once. It downloads the JPEG XL project's own
+  decoder, about 5 MB, which Pressless checks is the exact file it expects every time it
+  uses it. The site gets a WebP copy that every browser shows.
 
 ### Fixed
 

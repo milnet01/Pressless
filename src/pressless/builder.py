@@ -17,11 +17,13 @@ references below are to it.
 """
 from __future__ import annotations
 
+import contextlib
 import fnmatch
 import html
 import os
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -29,7 +31,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from PIL import Image, ImageOps, ImageSequence
 
-from pressless import blocks, marks, store, votes
+from pressless import blocks, jpegxl, marks, store, votes
 from pressless.settings import Settings
 
 # Every top-level name a build writes must be here, or the next build refuses
@@ -90,8 +92,11 @@ _DATA_NAV = re.compile(r"\bdata-nav\s*=", re.IGNORECASE)
 _JOURNAL_HREF = re.compile(rf"""\bhref\s*=\s*["']{re.escape(JOURNAL_ADDRESS)}["']""",
                            re.IGNORECASE)
 
-# §4.6: re-encoded in their own format. Anything else Pillow opens is refused.
-_REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF"}
+# §4.6: re-encoded in their own format, JPEG XL as WebP (PRESS-0275 § 4.5).
+# Anything else Pillow opens is refused.
+_REENCODED = {"JPEG": "JPEG", "MPO": "JPEG", "PNG": "PNG", "WEBP": "WEBP", "AVIF": "AVIF",
+              "JXL": "WEBP"}
+_JXL_SUFFIX = ".jxl"
 
 def _entries_text(count: int) -> str:
     """§4.3's count: `1 entry`, `2 entries`."""
@@ -230,18 +235,65 @@ def _relinked(text: str, depth: int, style_code: bool, extra: bool) -> str:
     return "".join(out)
 
 
+def web_name(name: str) -> str:
+    """The name the photograph `name`'s web copy is published under: a JPEG
+    XL's is WebP, so `.webp` is added (PRESS-0275 § 4.5)."""
+    return name + ".webp" if name.lower().endswith(_JXL_SUFFIX) else name
+
+
 def web_photograph(name: str) -> str:
     """The address of a picture's web copy, from the site's root (§4.1). The
-    file itself is `photographs/<name>`; only the address is encoded."""
-    return f"{store.PHOTOGRAPHS_FOLDER}/{quote(name, safe='')}"
+    file itself is `photographs/<web_name(name)>`; only the address is encoded."""
+    return f"{store.PHOTOGRAPHS_FOLDER}/{quote(web_name(name), safe='')}"
+
+
+@contextlib.contextmanager
+def open_original(path: Path):
+    """The one place the Builder opens an original (PRESS-0275 § 4.5). A
+    JPEG XL file is decoded by the extra into a work directory, and the PNG
+    it gives is yielded with `format` "JXL"; anything else is Image.open's.
+    Raises jpegxl.NotInstalled where the extra is missing."""
+    with open(path, "rb") as source:
+        head = source.read(16)
+    if not jpegxl.is_jpeg_xl(head):
+        with Image.open(path) as picture:
+            yield picture
+        return
+    program = jpegxl.program()
+    if program is None:
+        raise jpegxl.NotInstalled("JPEG XL support is not added")
+    work = Path(tempfile.mkdtemp(prefix="pressless-jxl-"))
+    try:
+        with Image.open(jpegxl.decode(program, Path(path), work)) as picture:
+            picture.format = "JXL"
+            yield picture
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def webp_copy(original: Path, target: Path) -> None:
+    """`original` as a WebP at `target`, made as a JPEG XL's web copy is: the
+    editor's view copy (PRESS-0275 § 4.7). Raises what open_original raises,
+    and OSError where `target` cannot be written."""
+    with open_original(original) as picture:
+        copy, options = _reencoded(picture, "WEBP")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle, staged = tempfile.mkstemp(dir=target.parent, prefix=".view-")
+    os.close(handle)
+    try:
+        copy.save(staged, "WEBP", **options)
+        os.replace(staged, target)
+    finally:
+        Path(staged).unlink(missing_ok=True)
 
 
 def photograph_format(path: Path) -> str | None:
     """The picture format of the file at `path`, where `web_copy` publishes
     that format; None for anything else, so a photograph is refused when it is
-    added rather than at the press (PRESS-0016)."""
+    added rather than at the press (PRESS-0016). A JPEG XL file without the
+    extra raises jpegxl.NotInstalled, never None."""
     try:
-        with Image.open(path) as picture:
+        with open_original(path) as picture:
             fmt = picture.format
             # Every frame decoded, as web_copy will: a file cut short opens.
             for frame in ImageSequence.Iterator(picture):
@@ -249,6 +301,16 @@ def photograph_format(path: Path) -> str | None:
     except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
         return None
     return fmt if fmt in _REENCODED or fmt == "GIF" else None
+
+
+def is_photograph(path: Path) -> bool:
+    """Import's test of a site's file: one photograph_format reads, or a JPEG
+    XL file without the extra, so its originals are kept and a publish stops
+    until the extra is added (PRESS-0275 § 4.5)."""
+    try:
+        return photograph_format(path) is not None
+    except jpegxl.NotInstalled:
+        return True
 
 
 def web_file(name: str) -> str:
@@ -691,9 +753,14 @@ def _held_pictures(folder: Path, relative: str, text: str,
     """PRESS-0260 § 4.6: the photographs the Store holds that the page's
     picture sections name, by `src` read from the page's place. `held` is
     the folder's listing where the caller already has it."""
-    return _named(relative, text, store.PHOTOGRAPHS_FOLDER,
-                  held if held is not None else set(store.list_photographs(folder)),
-                  (blocks.PICTURE, blocks.ENLARGE), ("src",))
+    held = held if held is not None else frozenset(store.list_photographs(folder))
+    # PRESS-0275 § 4.5: a page names a JPEG XL's web copy, `<n>.jxl.webp`,
+    # which is read as the original `<n>.jxl`.
+    by_web_name = {web_name(name): name for name in held
+                   if web_name(name) != name and web_name(name) not in held}
+    found = _named(relative, text, store.PHOTOGRAPHS_FOLDER, set(held) | set(by_web_name),
+                   (blocks.PICTURE, blocks.ENLARGE), ("src",))
+    return list(dict.fromkeys(by_web_name.get(name, name) for name in found))
 
 
 def _held_files(folder: Path, relative: str, text: str,
@@ -1089,14 +1156,23 @@ class _Build:
         original = store.photograph_path_for(self.folder, name)
         if not original.is_file():
             raise BuildStopped(f"the photograph {name} is not in the photographs folder")
+        published = web_name(name)
+        if published != name and published in self.held_photographs:
+            raise BuildStopped(f"the photograph {name} would be published as {published}, "
+                               "which is another photograph's name")
         if not self.photographs:
-            self._name(f"{store.PHOTOGRAPHS_FOLDER}/{name}")
+            self._name(f"{store.PHOTOGRAPHS_FOLDER}/{published}")
             self.copied.add(name)
             return
         # Decoded and transformed first, so a picture Pillow cannot read is
         # told apart from a site folder that cannot be written.
         try:
-            with Image.open(original) as picture:
+            with open_original(original) as picture:
+                # A web copy's suffix must say what it holds (§ 4.5).
+                if (picture.format == "JXL") != (published != name):
+                    raise BuildStopped(
+                        f"the photograph {name} is a {picture.format} picture, and only "
+                        "a JPEG XL picture's name ends in .jxl")
                 fmt = _REENCODED.get(picture.format, picture.format)
                 if fmt == "GIF":
                     frames, durations = _gif_frames(picture)
@@ -1107,20 +1183,18 @@ class _Build:
                         options["loop"] = loop
                     copy = frames[0]
                 elif picture.format in _REENCODED:
-                    options = ({"quality": 82, "progressive": True, "optimize": True}
-                               if fmt == "JPEG" else {})
-                    if "icc_profile" in picture.info:
-                        options["icc_profile"] = picture.info["icc_profile"]
-                    copy = _bare(_shrunk(ImageOps.exif_transpose(picture)))
+                    copy, options = _reencoded(picture, fmt)
                 else:
                     copy = None
+        except jpegxl.NotInstalled:
+            raise BuildStopped(_no_jpeg_xl(name)) from None
         except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
             raise BuildStopped(
                 f"the photograph {name} could not be read as a picture") from None
         if copy is None:
             raise BuildStopped(
                 f"the photograph {name} is a {fmt} picture, which Pressless does not publish")
-        relative = f"{store.PHOTOGRAPHS_FOLDER}/{name}"
+        relative = f"{store.PHOTOGRAPHS_FOLDER}/{published}"
         target = self.root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         copy.save(target, fmt, **options)
@@ -1144,11 +1218,13 @@ class _Build:
             self._name(SITE_ICON)
             return
         try:
-            with Image.open(original) as picture:
+            with open_original(original) as picture:
                 # The first frame. RGBA before the fit: PNG cannot hold a
                 # CMYK JPEG's mode, and a palette would be resized coarsely.
                 upright = ImageOps.exif_transpose(picture).convert("RGBA")
                 icon = ImageOps.fit(upright, (ICON_SIDE, ICON_SIDE))
+        except jpegxl.NotInstalled:
+            raise BuildStopped(_no_jpeg_xl(name)) from None
         except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
             raise BuildStopped(
                 f"the photograph {name} could not be read as a picture") from None
@@ -1459,6 +1535,21 @@ def _comment_html(body: str) -> str:
         marks.Paragraph(tuple(marks.Line((marks.Text(line),)) for line in part.split("\n")))
         for part in parts if part)
     return marks.to_html(paragraphs, _no_photographs)
+
+
+def _no_jpeg_xl(name: str) -> str:
+    return (f"the photograph {name} is a JPEG XL picture, and JPEG XL support is not "
+            "added: add it from the list page")
+
+
+def _reencoded(picture: Image.Image, fmt: str) -> tuple[Image.Image, dict]:
+    """§4.6: a still picture upright, shrunk and bare, with the options it is
+    saved in `fmt` with; its colour profile kept."""
+    options = ({"quality": 82, "progressive": True, "optimize": True}
+               if fmt == "JPEG" else {})
+    if "icc_profile" in picture.info:
+        options["icc_profile"] = picture.info["icc_profile"]
+    return _bare(_shrunk(ImageOps.exif_transpose(picture))), options
 
 
 def _shrunk(picture: Image.Image) -> Image.Image:

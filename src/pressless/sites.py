@@ -34,12 +34,13 @@ SITE_NAMES = frozenset({
     "preview", "preview-assets", "starter-unpublished", "takeover-owed", "insights.json",
     "youtube.json",
     "fetch",
-    "wizards", "choices.json", "import",
+    "wizards", "choices.json", "import", "jpeg-xl-views",
 })
 # § 4.2: what belongs to the machine, left at the top.
 MACHINE_NAMES = frozenset({
     "pressless.log", "pressless.log.1", "updates.json", "update.log", "pressless.lock",
     "theme.json", "usage.json", "usage-sent.json", "backups.json", OPEN_FILE, SITES_FOLDER,
+    "extras",
 })
 
 

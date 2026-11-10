@@ -549,7 +549,7 @@ def _sort_files(folder: Path, names: list[str]):
                 left[path] = say("import.folder.why.verification")
             else:
                 pages[path] = decoded
-        elif builder.photograph_format(where) is not None:
+        elif builder.is_photograph(where):
             photographs.append(path)
         elif builder.file_allowed(path.rsplit("/", 1)[-1], where.read_bytes()):
             files.append(path)

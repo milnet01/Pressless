@@ -28,6 +28,7 @@ from pressless import (
     cheatsheet,
     choices,
     files,
+    jpegxl,
     marks,
     paths,
     photographs,
@@ -59,6 +60,7 @@ PREVIEW_ADDRESS = "/preview/"
 ASSETS_ADDRESS = "/preview/assets/"
 LOOK_ADDRESS = "/preview/look/"     # PRESS-0126: the Store's style code
 ORIGINALS_ADDRESS = "/originals/"
+VIEWS_FOLDER = "jpeg-xl-views"      # PRESS-0275 § 4.7: JPEG XL originals as WebP, in a site
 # PRESS-0346 § 4.1: an entry's two views.
 VISUAL = "visual"
 MARKS = "marks"
@@ -107,6 +109,13 @@ SENTENCES[photographs.NotAPhotograph] = Sentence(
     "failure.photographs.NotAPhotograph.what",
     Site.UNCHANGED,
     "failure.photographs.NotAPhotograph.next",
+)
+# A decoder that gives no picture is a file that is not one (PRESS-0275 § 6).
+SENTENCES[jpegxl.Unreadable] = SENTENCES[photographs.NotAPhotograph]
+SENTENCES[jpegxl.NotInstalled] = Sentence(
+    "failure.jpegxl.NotInstalled.what",
+    Site.UNCHANGED,
+    "failure.jpegxl.NotInstalled.next",
 )
 SENTENCES[files.NotAllowed] = Sentence(
     "failure.files.NotAllowed.what",
@@ -170,6 +179,22 @@ def working_copy(folder: Path, slug: str) -> str | None:
     return found[0] if found else None
 
 
+def photograph_file(folder: Path, name: str) -> Path:
+    """The file the two photograph routes send for `name` (PRESS-0275 § 4.7):
+    for a JPEG XL original the Store holds, named as itself or as its web
+    copy, its WebP view copy, made or remade here; else the original. Raises
+    where the view copy cannot be made, which the Face answers as a 404."""
+    original_name = name[:-len(".webp")] if name.lower().endswith(".jxl.webp") else name
+    if original_name.lower().endswith(".jxl"):
+        original = store.photograph_path_for(folder, original_name)
+        if original.is_file():
+            view = Path(folder) / VIEWS_FOLDER / (original_name + ".webp")
+            if not view.is_file() or view.stat().st_mtime < original.stat().st_mtime:
+                builder.webp_copy(original, view)
+            return view
+    return store.photograph_path_for(folder, name)
+
+
 def photo_src(name: str) -> str:
     """The preview's address for a photograph's original (§ 4.1)."""
     return ORIGINALS_ADDRESS + urllib.parse.quote(name, safe="")
@@ -199,10 +224,11 @@ def register(face: Face, folder: Path) -> None:
     face.add_files(LOOK_ADDRESS, within(folder / store.LOOK_FOLDER))
     face.add_files(PREVIEW_ADDRESS, within(folder / PREVIEW_FOLDER))
     # PRESS-0260 § 4.6: a page's picture names its photograph as the site
-    # will, so the preview serves the Store's originals there and copies none.
+    # will, so the preview serves the Store's originals there and copies none;
+    # a JPEG XL original as its WebP view copy (PRESS-0275 § 4.7).
     face.add_files(PREVIEW_ADDRESS + store.PHOTOGRAPHS_FOLDER + "/",
-                   lambda name: store.photograph_path_for(folder, name))
-    face.add_files(ORIGINALS_ADDRESS, lambda name: store.photograph_path_for(folder, name))
+                   lambda name: photograph_file(folder, name))
+    face.add_files(ORIGINALS_ADDRESS, lambda name: photograph_file(folder, name))
 
 
 # ------------------------------------------------------------- the Store ---
@@ -965,13 +991,16 @@ def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request
     with lock, face.capture() as notices:
         try:
             name = photographs.add(folder, request.query.get("name", ""), request.body)
-        except (store.StoreError, photographs.NotAPhotograph, OSError) as exc:
+        except (store.StoreError, photographs.NotAPhotograph, jpegxl.NotInstalled,
+                OSError) as exc:
             failure: Exception | None = exc
         else:
             failure = None
     if failure is not None:
         return failed(face, notices, failure)
-    return json_reply({"name": name, "notices": render_notices(notices)})
+    # `address`: where the site publishes it, which a page's picture names.
+    return json_reply({"name": name, "address": builder.web_photograph(name),
+                       "notices": render_notices(notices)})
 
 
 def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:

@@ -133,7 +133,8 @@ def test_the_upload_box_offers_every_format_kept():
     """PRESS-0274: both upload boxes take their list from ACCEPT, so a format
     the Builder publishes can be chosen. Breaks when one is left off."""
     offered = set(photographs.ACCEPT.split(","))
-    assert offered == {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
+    assert offered == {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif",
+                       "image/jxl", ".jxl"}
 
 
 # -------------------------------------------------------------- missing ---
@@ -228,3 +229,36 @@ def test_the_editor_says_which_photographs_it_lacks(tmp_path):
                              "application/x-www-form-urlencoded")
     assert f'data-missing="{html.escape(json.dumps(["lack.jpg"]))}"' in page
     assert status == 200 and json.loads(text)["missing"] == ["gone.png"]
+
+
+# ------------------------------------------------------------- PRESS-0275 ---
+
+
+def test_jpeg_xl_without_the_extra(tmp_path, monkeypatch):
+    """PRESS-0275 INV-6, adding half: no decoder refuses the file with its
+    own sentence, never "not a picture"."""
+    import _jxl_standin as standin
+    monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "own"))
+    folder = _folder(tmp_path)
+    with _served(folder) as (port, cookie):
+        status, text = _post(port, cookie, "/photograph?name=Sea.jxl", standin.CONTAINER)
+    assert status == 409
+    assert "This is a JPEG XL photograph." in text
+    assert "Add JPEG XL support from the list page first." in text
+    assert "not a picture" not in text
+    assert _originals(folder) == {}
+
+
+def test_jpeg_xl_with_the_extra_is_kept(tmp_path, monkeypatch):
+    """PRESS-0275 § 4.5: kept under .jxl, and the reply gives the address
+    its web copy is published at, which the page editor writes."""
+    import _jxl_standin as standin
+    standin.installed(monkeypatch, tmp_path / "own", standin.png(tmp_path / "p.png"))
+    folder = _folder(tmp_path)
+    with _served(folder) as (port, cookie):
+        status, text = _post(port, cookie, "/photograph?name=Sea.JXL", standin.CODESTREAM)
+    assert status == 200
+    reply = json.loads(text)
+    assert reply["name"] == "sea.jxl"
+    assert reply["address"] == "photographs/sea.jxl.webp"
+    assert _originals(folder) == {"sea.jxl": standin.CODESTREAM}
