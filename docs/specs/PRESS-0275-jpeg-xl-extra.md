@@ -8,8 +8,8 @@
 
 **Builds on:** PRESS-0023 (`updater.download`, its TLS and its size and hash
 checks), PRESS-0008 § 4.6 (the web copy). **Changes:** PRESS-0008 § 4.6
-step 3, PRESS-0260 § 4.6's "serves the Store's originals", PRESS-0223's
-names table.
+step 3 and INV-11's allowlist, PRESS-0260 § 4.6's "serves the Store's
+originals", PRESS-0223's names table.
 
 Layman: a writer can add photographs saved as JPEG XL. The first time, one
 click downloads a small decoder made by the JPEG XL project. Pressless checks
@@ -77,9 +77,13 @@ it.
 
 ### 4.1 The parts
 
-A new module, `src/pressless/jpegxl.py`. It may import `updater` (for
-`download` and its errors), `paths` and the standard library. It may not
-import a network module; PRESS-0262 INV-9 already fails if it does.
+Two new modules. `src/pressless/jpegxl.py` imports only `paths` and the
+standard library, so the Builder may import it: PRESS-0008 INV-11's
+allowlist gains `pressless.jpegxl`, with `contextlib` and `tempfile` for
+`open_original`. `src/pressless/jpegxl_screen.py` is the
+Face side, as `updating.py` is the Updater's: it imports `updater`, `jpegxl`
+and the Face, holds `install` and the § 4.6 line and route, and is imported
+only by `__main__`.
 
 ```python
 @dataclass(frozen=True)
@@ -99,12 +103,15 @@ FOLDER_NAME = "extras"               # in Pressless's own folder; a MACHINE_NAME
 DECODE_SECONDS = 120
 
 class NotInstalled(Exception): ...   # no decoder, or one whose bytes are not the pin's
-class Unreadable(Exception): ...     # the decoder ran and produced no picture
+class Unreadable(OSError): ...       # no picture; caught where Pillow's errors are
 
 def is_jpeg_xl(head: bytes) -> bool: ...
 def installed(folder: Path, platform: str) -> Path | None: ...
-def install(folder: Path, platform: str, transport=None) -> Path: ...
+def program() -> Path | None: ...    # installed(paths.own_folder(), this system)
 def decode(program: Path, original: Path, work: Path) -> Path: ...
+
+# jpegxl_screen.py
+def install(folder: Path, platform: str, transport=None) -> Path: ...
 ```
 
 The pins are the bytes of `tools/djxl` in libjxl v0.12.0's
@@ -169,7 +176,7 @@ installed".** The line in § 4.6 then offers the download again.
 the Builder opens an original. For a JPEG XL file it decodes the file into a
 work directory and yields the PNG opened by Pillow, with `format` reported as
 `"JXL"`. For anything else it yields `Image.open(path)`. It raises
-`jpegxl.NotInstalled` where the decoder is missing. The three places that
+`jpegxl.NotInstalled` where `jpegxl.program()` is `None`. The three places that
 call `Image.open` on an original use it: `photograph_format`, the web copy
 and the site icon.
 
@@ -177,7 +184,11 @@ and the site icon.
   the decoder reads. `photographs.SUFFIXES` gains `"JXL": (".jxl",)`.
   `photographs.ACCEPT` gains `image/jxl,.jxl`; the suffix is there because
   a file picker may not know the type. `NotInstalled` reaches the upload
-  route as its own failure with its own sentence (§ 4.6).
+  route as its own failure: `editor._photograph` catches it, and `editor`
+  registers `SENTENCES[jpegxl.NotInstalled]` with § 4.6's sentence. Import's two
+  callers, in `pressless_import/_folder.py` and `_bring.py`, count a file
+  raising `NotInstalled` as a photograph, so a site's `.jxl` originals are
+  kept and its publish stops until the decoder is added.
 - **Publishing.** PRESS-0008 § 4.6 step 3 gains JXL: the decoded picture is
   rotated, shrunk and stripped as a PNG is, and saved as WebP with Pillow's
   defaults and any ICC profile. The decoder is told nothing about
@@ -188,7 +199,11 @@ and the site icon.
   the web copy's target and the `photographs=False` record all use it, so
   `seaside.jxl` publishes as `photographs/seaside.jxl.webp`. Where that name
   is also another photograph's own name, the build is `BuildStopped` naming
-  both.
+  both. A page's picture names the web copy, so `_held_pictures` reads the
+  place `photographs/<n>.jxl.webp` as the original `<n>.jxl` where the Store
+  holds it. A JPEG XL original whose name does not end `.jxl` is
+  `BuildStopped`, naming it, so no WebP is published under another type's
+  suffix.
 - **No decoder at publish.** `NotInstalled` becomes `BuildStopped`, naming
   the photograph and the § 4.6 line.
 
@@ -200,10 +215,12 @@ one button. Before the decoder is installed: **Add JPEG XL support**, and the
 size in MB. After: *ready*, and no button. The line keeps its place and
 height in both states.
 
-The button posts to `/jpeg-xl`. The route calls `jpegxl.install` and answers
-with the line re-rendered. Each failure has a sentence in `editor.SENTENCES`'
-manner: no connection, a full disk, and *the download was not the expected
-file, so it was thrown away* for `UpdateRejected`.
+The button posts to `/jpeg-xl`. The route calls `install` and answers with
+the line re-rendered. On a failure the line carries its own sentence: no
+connection, a full disk, and *the download was not the expected file, so it
+was thrown away* for `UpdateRejected`. These three are not added to
+`SENTENCES`, which is keyed by type and already holds the update's sentences
+for them.
 
 **A JPEG XL photograph added without the decoder** is refused with: *This is
 a JPEG XL photograph. Add JPEG XL support from the list page first.*
@@ -218,10 +235,12 @@ The two photograph routes, `ORIGINALS_ADDRESS` and `PREVIEW_ADDRESS +
   holds → the **view copy** of that original;
 - any other name → `store.photograph_path_for(folder, name)`, as today.
 
-The view copy is `<site>/jpeg-xl-views/<name>.webp`, made by the same
-function as the published web copy. It is remade when the original is newer
-than it. The Face sends it as `image/webp` from its suffix, so PRESS-0012's
-Content-Type table gains no row. `jpeg-xl-views` joins `SITE_NAMES`. The
+The view copy is `<site>/jpeg-xl-views/<name>.webp`, made by
+`builder.webp_copy(original, target)`, a module function the web copy's JXL
+branch also calls. It is remade when the original is newer than it. The Face
+sends it as `image/webp` from its suffix, so PRESS-0012's Content-Type table
+gains no row. `jpeg-xl-views` is `editor.VIEWS_FOLDER`. It joins `SITE_NAMES`
+and `sitefile.LEFT_OUT`, being remade on demand as the preview is. The
 Builder and the Publisher never read it. Where the decoder is missing, the
 route answers 404, as it does for a missing original.
 
@@ -239,7 +258,11 @@ route answers 404, as it does for a missing original.
 3. Creates the release `RELEASE` on `milnet01/Pressless` as a
    **pre-release, never the latest**. Its body says it is libjxl's decoder,
    for Pressless's JPEG XL support. It uploads the two programs under the
-   pins' names, and libjxl's `LICENSE.*` files from the Linux archive.
+   pins' names, and each archive's licence files: the Linux archive's
+   `LICENSE.*`, and the Windows archive's
+   `x64-windows-static/licenses/LICENSE.*` with a `windows-` prefix. The
+   Windows program links libraries, such as libjpeg-turbo and libwebp, whose
+   notices only that archive carries.
 4. Reads the asset list back and requires exactly those names.
 
 **The release must exist before any Pressless carrying its pin is
@@ -258,9 +281,9 @@ published.** The pre-release mark keeps it away from the updater:
 - **INV-2** — `install` keeps nothing whose size or hash is not the pin's.
   It never writes outside `extras/`, and never under a name other than the
   pin's. *Test:* `tests/test_jpegxl.py::test_install_rows` — a transport
-  double serving the right bytes, one byte changed, one byte short and an
-  http redirect. Only the first leaves a file, and `extras/` then holds
-  exactly the pin's name. *Breaks when:* the file is renamed onto the pin's
+  double serving the right bytes, one byte changed and one byte short. Only
+  the first leaves a file, and `extras/` then holds exactly the pin's name.
+  A spy on `updater.download` sees every row reach it. *Breaks when:* the file is renamed onto the pin's
   name before the hash is compared, or `install` re-implements the download
   instead of calling `updater.download`.
 - **INV-3** — The decoder runs with no shell, with absolute paths, a
@@ -318,7 +341,7 @@ published.** The pre-release mark keeps it away from the updater:
 | The installed decoder is changed or damaged on disk | The line offers the download again; nothing runs |
 | A Pressless update moves the pin | The same |
 | The decoder crashes, fails or runs past `DECODE_SECONDS` | *Could not be read as a picture*, today's sentence |
-| The decoder writes its animation as numbered files, not `decoded.png` | The same; INV-9's animation fixture shows which happens |
+| The decoder writes its animation as numbered files, not `decoded.png` | INV-9's animation fixture fails before shipping, and § 4.4 is amended to read the first file, keeping decision 6 |
 | The decoded picture is past Pillow's pixel limit | The same, as for any picture today |
 | A site holding `.jxl` photographs is opened on a machine without the decoder | Previews show no picture (404); a publish stops with § 4.5's sentence |
 | An antivirus program blocks the decoder on Windows | *Could not be read as a picture*; the hand check in § 7 looks for it |
@@ -390,14 +413,17 @@ Each test is seen to fail before the code it locks exists.
 ## 11. Cross-doc impact
 
 - PRESS-0008 § 4.6 step 3: JXL is decoded by the extra and published as WebP.
+  INV-11's allowlist: `pressless.jpegxl`, `contextlib`, `tempfile`.
+- PRESS-0224 § 4.1: `jpeg-xl-views` is left out of a saved site.
 - PRESS-0260 § 4.6 and `editor.register`'s comment: a JPEG XL original is
   served as its view copy.
 - PRESS-0223's names table: `jpegxl.FOLDER_NAME` (machine) and
   `jpeg-xl-views` (site).
-- `docs/design.md` § The parts: `jpegxl.py`.
+- `docs/design.md` § The parts: `jpegxl.py` and `jpegxl_screen.py`.
 - `docs/working-here.md` *Releasing*: a new libjxl version means running
   `scripts/publish-jpeg-xl.py` before the Pressless release that pins it.
-- README: JPEG XL in the photograph formats; CHANGELOG.
+- README and `failure.photographs.NotAPhotograph.next`: JPEG XL in the
+  photograph formats; CHANGELOG.
 
 ## 12. Cold-eyes loop log
 
