@@ -3826,6 +3826,13 @@ it decides how pages, the menu and the look are held.
   Cleanup done: the domain off pressless-test-3 (Pages and its CNAME
   file), the three scratch repositories deleted, local scratch removed.
   The DNS rows scratch-a and scratch-b are the user's to delete.
+  0.14.0, 2026-11-10, all PASSED on the release commit a82400d:
+  windows-gate.sh --browsers edge chrome, 164/164 in each. Draft round
+  on the box: the draft's Windows zip, started by Start Pressless.bat
+  from a desktop task; its console window shows the report with "store:
+  keyring Windows WinVaultKeyring"; a real publish through Press to
+  site and Publish now put draft-0-14-0-check live on
+  milnet02/pressless-test-3. Signed and published after.
   **Layman:** Some checks that only a person can do were never done; they are owed before the next release.
   Kind: test.
   Source: review residue 2026-09-21, from the three items' own shipped notes.
