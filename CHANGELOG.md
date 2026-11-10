@@ -12,8 +12,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-10
+
+**Theme:** more ways to bring a site in
+
 ### Added
 
+- **Setup lists the sites already in your GitHub account** (PRESS-0290)
+  On setup's A home for your site step, tick one of your account's sites to bring it
+  into Pressless instead of typing its name. Make a new one is still there.
 - **Bringing in a folder of web pages takes the folder itself** (PRESS-0335)
   On Import's folder step, Choose the folder picks your site's folder, with no ZIP file to
   make first. A ZIP file still works, and the steps for making one are folded below.
