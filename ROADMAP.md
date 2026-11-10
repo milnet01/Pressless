@@ -6527,7 +6527,7 @@ No new sign. It widens S13: more kinds of existing site come in, from
 
 more places, and an imported site can take a Pressless look.
 
-- 📋 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
+- 🚧 [PRESS-0275] **Photographs in JPEG XL are taken in, through a plugin downloaded separately.**
   Split from PRESS-0274 by the user's 2026-10-15 choice. Waits on
   Pillow reading JPEG XL natively: the one Pillow plugin is GPL-3.0,
   and the BSD readers need numpy. Most browsers do not show JPEG XL,
@@ -6546,6 +6546,11 @@ more places, and an imported site can take a Pressless look.
   Loop log: docs/reviews/PRESS-0275-jpeg-xl-extra-loop-log.md. Decoder
   runtime behaviour was out of the review's reach; INV-9's hand run on
   Linux and the Windows box covers it.
+  Built 2026-11-10 (0d3740f, docs ab2bcb3); suite green on Linux. Owed
+  before shipping: the allow rules for djxl and cjxl, the INV-9 fixtures
+  made with cjxl, INV-9 run on Linux and the Windows box,
+  scripts/publish-jpeg-xl.py publishing the pre-release, and the
+  packaged-build hand check of spec § 7.
   **Layman:** You will be able to add JPEG XL photographs by downloading a small extra for Pressless.
   Kind: feature.
   Source: user-decision-2026-10-15 PRESS-0274.
