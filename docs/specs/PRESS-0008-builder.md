@@ -323,7 +323,9 @@ literal (PRESS-0004 §4.2) — and only where `photo_src` is `None`:
    tag, shrunk to fit `LONGEST_SIDE` on each side and never enlarged, and
    saved in its own format — an `MPO` as a JPEG of its first picture —
    carrying no EXIF, XMP or comment block. A JPEG is saved progressive at
-   quality 82, as today's `_work/resize.py` does.
+   quality 82, as today's `_work/resize.py` does. A JPEG XL file is decoded
+   by the extra and re-encoded the same way, saved as WebP under
+   `web_name(name)` (PRESS-0275 § 4.5).
 4. **A `GIF` is re-saved with every frame**, each shrunk the same way, its
    timing kept and no comment or XMP block carried. So no original is
    published (§4.5).
@@ -544,7 +546,8 @@ Sitemap: <the address>/sitemap.xml
   — walks `builder.py`'s imports against an allowlist of full dotted names,
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
   `pressless.blocks` (PRESS-0215), `pressless.votes` (PRESS-0211),
-  `pressless.settings`, `PIL` and named standard-library modules.
+  `pressless.jpegxl` (PRESS-0275), `pressless.settings`, `PIL` and named
+  standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.
 

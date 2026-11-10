@@ -266,7 +266,8 @@ with `../` before it on a page in `pages/`.
   `photographs/<name>` for a photograph the Store holds.
 - **The preview shows it.** `editor.register` adds
   `face.add_files(PREVIEW_ADDRESS + "photographs/", ...)` serving the
-  Store's originals, so the preview copies nothing.
+  Store's originals, so the preview copies nothing. A JPEG XL original is
+  served as its WebP view copy (PRESS-0275 § 4.7).
 
 ### 4.7 What this item retires
 

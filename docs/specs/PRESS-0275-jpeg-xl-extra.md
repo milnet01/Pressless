@@ -108,6 +108,7 @@ class Unreadable(OSError): ...       # no picture; caught where Pillow's errors 
 def is_jpeg_xl(head: bytes) -> bool: ...
 def installed(folder: Path, platform: str) -> Path | None: ...
 def program() -> Path | None: ...    # installed(paths.own_folder(), this system)
+def download_url(platform: str) -> str: ...  # the pin's asset on RELEASE
 def decode(program: Path, original: Path, work: Path) -> Path: ...
 
 # jpegxl_screen.py
@@ -134,6 +135,7 @@ when that file exists and its size and SHA-256 equal the pin. Otherwise it
 returns `None`. It hashes the whole file on every call.
 
 `install` builds an `updater.Offer` from the pin: version `RELEASE`, the URL
+`download_url(platform)`, which is
 `https://github.com/milnet01/Pressless/releases/download/<RELEASE>/<name>`,
 and the pin's size and hash. It calls `updater.download(offer, beside)` with
 `beside = folder / FOLDER_NAME`, created first. That call already streams
@@ -185,10 +187,14 @@ and the site icon.
   `photographs.ACCEPT` gains `image/jxl,.jxl`; the suffix is there because
   a file picker may not know the type. `NotInstalled` reaches the upload
   route as its own failure: `editor._photograph` catches it, and `editor`
-  registers `SENTENCES[jpegxl.NotInstalled]` with § 4.6's sentence. Import's two
-  callers, in `pressless_import/_folder.py` and `_bring.py`, count a file
-  raising `NotInstalled` as a photograph, so a site's `.jxl` originals are
-  kept and its publish stops until the decoder is added.
+  registers `SENTENCES[jpegxl.NotInstalled]` with § 4.6's sentence, and
+  `jpegxl.Unreadable` with `NotAPhotograph`'s. The route's reply carries
+  `address`, `builder.web_photograph(name)`, which the page editor writes
+  into a picture section. Import's two callers, in
+  `pressless_import/_folder.py` and `_bring.py`, call
+  `builder.is_photograph`, which counts a file raising `NotInstalled` as a
+  photograph, so a site's `.jxl` originals are kept and its publish stops
+  until the decoder is added.
 - **Publishing.** PRESS-0008 § 4.6 step 3 gains JXL: the decoded picture is
   rotated, shrunk and stripped as a PNG is, and saved as WebP with Pillow's
   defaults and any ICC profile. The decoder is told nothing about
@@ -202,8 +208,8 @@ and the site icon.
   both. A page's picture names the web copy, so `_held_pictures` reads the
   place `photographs/<n>.jxl.webp` as the original `<n>.jxl` where the Store
   holds it. A JPEG XL original whose name does not end `.jxl` is
-  `BuildStopped`, naming it, so no WebP is published under another type's
-  suffix.
+  `BuildStopped`, naming it, and so is a `.jxl` name holding another
+  format. So no web copy is published under another type's suffix.
 - **No decoder at publish.** `NotInstalled` becomes `BuildStopped`, naming
   the photograph and the § 4.6 line.
 
@@ -215,8 +221,10 @@ one button. Before the decoder is installed: **Add JPEG XL support**, and the
 size in MB. After: *ready*, and no button. The line keeps its place and
 height in both states.
 
-The button posts to `/jpeg-xl`. The route calls `install` and answers with
-the line re-rendered. On a failure the line carries its own sentence: no
+The button posts to `/jpeg-xl`. The route calls `install` and sends the
+browser back to `/`, where the line is drawn again. Once installed, the
+button is hidden but keeps its place. On a failure the line carries its own
+sentence until the next try: no
 connection, a full disk, and *the download was not the expected file, so it
 was thrown away* for `UpdateRejected`. These three are not added to
 `SENTENCES`, which is keyed by type and already holds the update's sentences
@@ -236,8 +244,8 @@ The two photograph routes, `ORIGINALS_ADDRESS` and `PREVIEW_ADDRESS +
 - any other name → `store.photograph_path_for(folder, name)`, as today.
 
 The view copy is `<site>/jpeg-xl-views/<name>.webp`, made by
-`builder.webp_copy(original, target)`, a module function the web copy's JXL
-branch also calls. It is remade when the original is newer than it. The Face
+`builder.webp_copy(original, target)`. It and the web copy re-encode
+through one function, so the two match. It is remade when the original is newer than it. The Face
 sends it as `image/webp` from its suffix, so PRESS-0012's Content-Type table
 gains no row. `jpeg-xl-views` is `editor.VIEWS_FOLDER`. It joins `SITE_NAMES`
 and `sitefile.LEFT_OUT`, being remade on demand as the preview is. The
@@ -290,7 +298,9 @@ published.** The pre-release mark keeps it away from the updater:
   timeout, and no output kept. *Test:*
   `tests/test_jpegxl.py::test_decode_runs_one_fixed_command` — the argv
   recorded by a stand-in equals § 4.4's list. A stand-in that sleeps past a
-  shortened timeout raises `Unreadable` and leaves no process behind.
+  shortened timeout raises `Unreadable` and leaves no process behind. The
+  last half runs on Linux only: on Windows the stand-in is a batch file, and
+  the kill does not reach the Python it starts.
   *Breaks when:* `shell=True`, a relative path, or a missing timeout.
 - **INV-4** — A JPEG XL file is recognised by its bytes alone. *Test:*
   `tests/test_jpegxl.py::test_recognised_by_bytes` — both signatures named
@@ -324,7 +334,8 @@ published.** The pre-release mark keeps it away from the updater:
   never parsing as a version.
 - **INV-9** — The pins decode real JPEG XL. *Test:*
   `tests/test_jpegxl_real.py`, skipped unless `PRESSLESS_DJXL` names a file
-  matching this platform's pin. It decodes the committed fixtures — a lossy
+  matching this platform's pin. It decodes the fixtures in `tests/jxl/`,
+  made once by `scripts/make-jxl-fixtures.py` with `cjxl` — a lossy
   still, a JPEG recompressed with EXIF orientation 6, and an animation —
   and checks size, upright orientation and first frame. Run on Linux and on
   the Windows box before shipping. *Breaks when:* a pin names a build that

@@ -147,6 +147,10 @@ git config --add ants.pressless.signingKey <path to the key>
 key file and never prints it. It also publishes, so it runs last, after
 the by-hand checks; `.claude/bump.json` lists it as the final step.
 
+**A new libjxl version runs `scripts/publish-jpeg-xl.py` first**, before
+the Pressless release that pins it (PRESS-0275 § 4.8). It publishes the
+decoder's own pre-release, so a session warns the user before running it.
+
 **A release needs the Actions secret `GOOGLE_CLIENT_SECRET`.** Both
 release jobs write it into the program before building, and fail there
 without it (PRESS-0122 § 4.7).

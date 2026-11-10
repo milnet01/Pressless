@@ -65,7 +65,8 @@ VERSION = 1
 KEPT = frozenset({...})     # the Store's folders, settings.json,
                             # preview-assets, starter-unpublished
 LEFT_OUT = frozenset({...}) # credentials.json, site, preview, fetch,
-                            # insights.json, youtube.json, wizards, choices.json
+                            # insights.json, youtube.json, wizards, choices.json,
+                            # jpeg-xl-views (PRESS-0275)
 
 def save(site: Path, target: Path) -> None: ...
 def check(source: Path, room: int) -> None: ...      # raises Refused
