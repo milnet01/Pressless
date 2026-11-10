@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0275 — JPEG XL photographs, through a decoder downloaded once and checked before every use
 
-**Status:** spec draft (2026-11-10).
+**Status:** accepted (2026-11-10). Gated for one round, the user's budget for a new spec; every verified finding fixed.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0275 (split from PRESS-0274 by the user's
 2026-10-15 choice; plugin route decided by the user 2026-10-22).
