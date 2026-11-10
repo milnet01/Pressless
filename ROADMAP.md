@@ -6659,7 +6659,7 @@ more places, and an imported site can take a Pressless look.
   Kind: marketing.
   Source: hub-message-1596-2026-11-06.
 
-- 📋 [PRESS-0350] **Check by hand, on real GitHub, the takeover of a site a workflow pushes to gh-pages.**
+- ✅ [PRESS-0350] **Check by hand, on real GitHub, the takeover of a site a workflow pushes to gh-pages.**
   PRESS-0333 section 7's hand check, for PRESS-0336's route. On a scratch
   repository of the test account, a workflow builds a small static site
   and pushes it to gh-pages, with a custom domain. Check: setup through
@@ -6670,6 +6670,23 @@ more places, and an imported site can take a Pressless look.
   and in Chrome and Firefox the name box hides while a listed site is
   ticked. Owed before 0.14.0
   ships. Method: the memory note on hand checks.
+  2026-11-10, all PASSED on real GitHub. Scratch repository: a Hugo
+  0.139.0 site pushed to gh-pages by peaceiris/actions-gh-pages, with a
+  custom domain; Pressless from HEAD via the in-memory-keyring runner.
+  - Setup through Finish: Pages settings, last commit and every live
+    file byte-identical to before.
+  - The delete link removed the workflow file, signed in (user's Chrome).
+  - Takeover: Pages moved to main /, built; domain, CNAME and HTTPS
+    (enforced, certificate approved) kept; gh-pages left as it was.
+  - Around the switch: a 3-second probe saw no failed answer.
+  - Old and new pages compared in Chrome: 0 differing pixels for home
+    and both notes; the old note addresses forward.
+  - A later publish kept the domain and went live over HTTPS.
+  - PRESS-0290: the repository step listed the scratch site; the name
+    box hides while a listed site is ticked, in Chrome and in
+    Playwright's Firefox 146. A second site's list leaves out a
+    repository the first holds, by design.
+  Repository deleted after; custom domain removed first.
   **Layman:** Before the next release, a person tries switching a real branch-published site to Pressless, to see it keep working.
   Kind: test.
   Source: PRESS-0336-ship-2026-11-08.
