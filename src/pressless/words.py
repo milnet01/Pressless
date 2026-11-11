@@ -275,6 +275,11 @@ _WORDS: dict[str, str] = {
     "failure.pressless_import.ImportStopped.next": (
         "The details below say why. If it keeps happening, send them to whoever helps you."
     ),
+    # PRESS-0337 § 4.7: a refusal whose own hint is the words.
+    "failure.editor.AddressRefused.what": "{hint}",
+    "failure.editor.AddressRefused.next": "Choose another address, or keep the one it has.",
+    "failure.page_editor.NameRefused.what": "{hint}",
+    "failure.page_editor.NameRefused.next": "Choose another name, or leave the page as it is.",
     "failure.files_screen.FileInUse.what": (
         "That file is used on {pages}, so it was not removed."
     ),

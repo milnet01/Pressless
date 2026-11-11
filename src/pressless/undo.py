@@ -507,19 +507,26 @@ def _undo(face: Face, folder: Path, request: Request,
                         lambda told: _pressed(face, folder, transport, told))
 
 
+def press_undo(folder: Path, *,
+               capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+               notices: list[str] | None = None,
+               transport: publisher.Transport | None = None) -> Undone:
+    """§ 4.2's press: `undo` with the key fetched here, so it never reaches the
+    caller. The caller holds editor.LOCK (PRESS-0337 § 4.7)."""
+    gathered = notices if notices is not None else []
+    saved = gatherer(capture, gathered)(lambda: settings.load(folder))
+    key = github_setup.token(folder, saved.credentials.store, saved.credentials.github_account)
+    return undo(folder, saved, key, capture=capture, notices=gathered, transport=transport)
+
+
 def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
              told: Callable[[pressing.Outcome], None]) -> Reply:
     notices: list[str] = []
 
-    gathered = gatherer(face.capture, notices)
-
     with editor.LOCK:
         try:
-            saved = gathered(lambda: settings.load(folder))
-            key = github_setup.token(folder, saved.credentials.store,
-                                     saved.credentials.github_account)
-            result = undo(folder, saved, key, capture=face.capture,
-                          notices=notices, transport=transport)
+            result = press_undo(folder, capture=face.capture, notices=notices,
+                                transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
             # Steps 1 to 5 change nothing on GitHub and step 6 raises OutcomeUnknown
             # for every failure an upload can leave unknown, so an unforeseen

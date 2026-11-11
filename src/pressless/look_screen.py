@@ -174,29 +174,35 @@ def _preview(face: Face, folder: Path, request: Request) -> Reply:
                               "sheets": []})
 
 
-def _save(face: Face, folder: Path, request: Request) -> Reply:
+def save(folder: Path, form: dict[str, str]) -> None:
     """§ 4.4's Save: nothing is written where the look changed since the
     screen was drawn, or where choices.json cannot be read (§ 4.1). Style code
     the choices did not make is copied into the bin first, and left in place
     until look.save replaces it last (INV-7). The route keeping the site's
     own stylesheets writes the CSS on top, then moves any style code to the
-    bin, leaving the choices for a later switch (PRESS-0276 § 4.3)."""
+    bin, leaving the choices for a later switch (PRESS-0276 § 4.3). Takes no
+    lock (PRESS-0337 § 4.7)."""
+    route = _route(folder, form)
+    if look.digest(folder) != form.get("base", ""):
+        raise editor.ChangedElsewhere("the site's look changed since this window read it")
+    if route == OWN:
+        store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form))
+        if _has_style_code(folder):
+            store.move_to_bin(folder, store.style_code_path(folder))
+    else:
+        look.read(folder)
+        choices, extra = _posted(form)
+        if _has_style_code(folder) and not look.made_here(folder):
+            store.copy_to_bin(folder, store.style_code_path(folder))
+        look.save(folder, choices, extra)
+
+
+def _save(face: Face, folder: Path, request: Request) -> Reply:
+    """§ 4.4's Save, through `save`."""
     form = editor.form_fields(request)
     with editor.LOCK, face.capture() as notices:
         try:
-            route = _route(folder, form)
-            if look.digest(folder) != form.get("base", ""):
-                raise editor.ChangedElsewhere("the site's look changed since this window read it")
-            if route == OWN:
-                store.write_look_file(folder, store.EXTRA_CSS_NAME, _extra(form))
-                if _has_style_code(folder):
-                    store.move_to_bin(folder, store.style_code_path(folder))
-            else:
-                look.read(folder)
-                choices, extra = _posted(form)
-                if _has_style_code(folder) and not look.made_here(folder):
-                    store.copy_to_bin(folder, store.style_code_path(folder))
-                look.save(folder, choices, extra)
+            save(folder, form)
         except (store.StoreError, editor.ChangedElsewhere, LookRefused) as exc:
             return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=f"{ADDRESS}?{SAVED}=1")

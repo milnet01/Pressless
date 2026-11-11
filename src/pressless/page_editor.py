@@ -21,6 +21,7 @@ import re
 import threading
 import urllib.parse
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 from pressless import (
@@ -48,6 +49,7 @@ from pressless.face import (
     Site,
     gatherer,
     message_box,
+    nothing_captured,
     render_notices,
     true_colours,
 )
@@ -805,17 +807,22 @@ def _save(face: Face, folder: Path, lock: threading.Lock, request: Request) -> R
     return editor.json_reply(reply)
 
 
+def discard(folder: Path, kind: str, name: str, base: str) -> None:
+    """§ 4.8: bin the waiting copy this window read. Takes no lock
+    (PRESS-0337 § 4.7)."""
+    copy = store.html_path_for(folder, kind, name, waiting=True)
+    if not copy.is_file() or editor.digest(copy) != base:
+        raise editor.ChangedElsewhere(f"the waiting copy of {name} is not the one this window read")
+    store.move_to_bin(folder, copy)
+
+
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """§ 4.8."""
+    """§ 4.8, through `discard`."""
     form = editor.form_fields(request)
     kind, name = form.get("kind", ""), form.get("name", "")
     with lock, face.capture() as notices:
         try:
-            copy = store.html_path_for(folder, kind, name, waiting=True)
-            if not copy.is_file() or editor.digest(copy) != form.get("base", ""):
-                raise editor.ChangedElsewhere(
-                    f"the waiting copy of {name} is not the one this window read")
-            store.move_to_bin(folder, copy)
+            discard(folder, kind, name, form.get("base", ""))
         except (store.StoreError, editor.ChangedElsewhere) as exc:
             failure: Exception | None = exc
         else:
@@ -844,12 +851,81 @@ def _publish(face: Face, folder: Path, request: Request,
                         lambda told: _pressed(face, folder, form, transport, told))
 
 
+def press_page(folder: Path, form: dict[str, str], *,
+               capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+               notices: list | None = None,
+               transport: publisher.Transport | None = None) -> publishing.Published:
+    """§ 4.7's press: write the form's waiting copy, then publish it. Raises
+    what `_write` refuses with, or what the publish raises. The caller holds
+    editor.LOCK (PRESS-0337 § 4.7)."""
+    gathered = notices if notices is not None else []
+    new, _ = gatherer(capture, gathered)(lambda: _write(folder, form))
+    return _press_written(folder, form.get("kind", ""), form.get("name", ""), new,
+                          capture=capture, notices=gathered, transport=transport)
+
+
+def _press_written(folder: Path, kind: str, name: str, new: str, *,
+                   capture: Callable[[], AbstractContextManager[list[str]]],
+                   notices: list, transport: publisher.Transport | None
+                   ) -> publishing.Published:
+    """`press_page` after its write, which the screen's press splits from the
+    write to answer each failure differently. Adds the menu's notices, and the
+    kept copy's, to `notices` whatever the outcome."""
+    said: list[str] = []
+    gathered = gatherer(capture, notices)
+    copy = store.html_path_for(folder, kind, name, waiting=True)
+
+    def kept_after_binning() -> bool:
+        """§ 4.7 step 5: bins the waiting copy; True where it could not be
+        binned and is left behind."""
+        try:
+            gathered(lambda: store.move_to_bin(folder, copy))
+        except Exception:  # noqa: BLE001 -- never replaces the publish's result
+            return True
+        return False
+
+    try:
+        saved = gathered(lambda: settings.load(folder))
+        key = github_setup.token(folder, saved.credentials.store,
+                                 saved.credentials.github_account)
+        changes = _Changes(folder)
+        # PRESS-0195 § 4.3: a new page's first press, with no live file.
+        first = (kind == store.PAGES_FOLDER
+                 and not store.html_path_for(folder, kind, name).is_file())
+        try:
+            gathered(lambda: changes.write(kind, name, new))
+            if first:
+                words = _title(new) or builder.label(name)
+                if not gathered(lambda: _edit_menu(folder, changes,
+                                                   lambda text: menu.add(text, name, words))):
+                    said.append(say("notice.pages.menu_unusual"))
+        except BaseException:
+            # As a failed publish is: nothing half-made is left live.
+            gathered(changes.put_back)
+            raise
+
+        def unknown() -> None:
+            if kept_after_binning():
+                notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
+                                      Site.UNKNOWN))
+
+        result = _publish_or_put_back(folder, saved, key, changes, notices, transport,
+                                      gathered, unknown, capture=capture)
+        kept = kept_after_binning()
+    except Exception as exc:
+        notices.extend(_menu_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
+        raise
+    notices.extend(_menu_said(said, True, False))
+    if kept:
+        notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
+    return publishing.Published(result.outcome, kept)
+
+
 def _pressed(face: Face, folder: Path, form: dict[str, str],
              transport: publisher.Transport | None,
              told: Callable[[pressing.Outcome], None]) -> Reply:
     kind, name = form.get("kind", ""), form.get("name", "")
     notices: list[str | Notice] = []
-    said: list[str] = []
     gathered = gatherer(face.capture, notices)
 
     with editor.LOCK:
@@ -858,57 +934,17 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
         except _REFUSED as exc:
             told(pressing.ended(pressing.PUBLISH, False, face.fail(exc, publishing=False)))
             return editor.failed(face, notices, exc)
-
-        copy = store.html_path_for(folder, kind, name, waiting=True)
-
-        def kept_after_binning() -> bool:
-            """§ 4.7 step 5: bins the waiting copy; True where it could not be
-            binned and is left behind."""
-            try:
-                gathered(lambda: store.move_to_bin(folder, copy))
-            except Exception:  # noqa: BLE001 -- never replaces the publish's result
-                return True
-            return False
-
         try:
-            saved = gathered(lambda: settings.load(folder))
-            key = github_setup.token(folder, saved.credentials.store,
-                                     saved.credentials.github_account)
-            changes = _Changes(folder)
-            # PRESS-0195 § 4.3: a new page's first press, with no live file.
-            first = (kind == store.PAGES_FOLDER
-                     and not store.html_path_for(folder, kind, name).is_file())
-            try:
-                gathered(lambda: changes.write(kind, name, new))
-                if first:
-                    words = _title(new) or builder.label(name)
-                    if not gathered(lambda: _edit_menu(folder, changes,
-                                                       lambda text: menu.add(text, name, words))):
-                        said.append(say("notice.pages.menu_unusual"))
-            except BaseException:
-                # As a failed publish is: nothing half-made is left live.
-                gathered(changes.put_back)
-                raise
-            def unknown() -> None:
-                if kept_after_binning():
-                    notices.append(Notice(say("notice.page_editor.kept_copy_unknown"),
-                                          Site.UNKNOWN))
-
-            _publish_or_put_back(face, folder, saved, key, changes, notices, transport,
-                                 gathered, unknown)
-            kept = kept_after_binning()
+            _press_written(folder, kind, name, new, capture=face.capture, notices=notices,
+                           transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = (face.fail(exc, publishing=False,
                                              secret=say("failure.secret.publishing_key"))
                                    + publishing.replace_link(exc))
             published = False
-            notices.extend(_menu_said(said, False, isinstance(exc, publisher.OutcomeUnknown)))
         else:
             failure = None
             published = True
-            notices.extend(_menu_said(said, True, False))
-            if kept:
-                notices.append(Notice(say("notice.page_editor.kept_copy"), Site.UPDATED))
         told(pressing.ended(pressing.PUBLISH, published, failure))
         waiting, base = gathered(lambda: _left(folder, kind, name))
 
@@ -1019,29 +1055,52 @@ def _name_refused(folder: Path, page: str, moving: str = "") -> str | None:
     return None
 
 
-def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """§ 4.3: the page's waiting copy, and nothing else."""
-    named = editor.form_fields(request).get("name", "").strip()
+class NameRefused(Exception):
+    """A page name or a change of one refused; `hint` is the words key saying
+    why, and `code` the new page's editor.PAGE_HINTS code where it has one."""
+
+    def __init__(self, hint: str, code: str = "") -> None:
+        super().__init__(hint)
+        self.hint, self.code = hint, code
+        self.slots = {"hint": say(hint)}
+
+
+SENTENCES[NameRefused] = Sentence(
+    "failure.page_editor.NameRefused.what",
+    Site.UNCHANGED,
+    "failure.page_editor.NameRefused.next",
+)
+
+
+def new_page(folder: Path, named: str) -> str:
+    """§ 3: the page's waiting copy, and nothing else; returns its name.
+    Raises NameRefused. Takes no lock (PRESS-0337 § 4.7)."""
     page = editor.name_address(named)
+    refused = _name_refused(folder, page)
+    if refused is not None:
+        raise NameRefused(editor.PAGE_HINTS[refused], refused)
+    store.write_html(folder, store.PAGES_FOLDER, page,
+                     starter.new_page(page, named, builder.stylesheets(folder)), waiting=True)
+    pressing.forget()
+    return page
+
+
+def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """§ 4.3, through `new_page`."""
+    named = editor.form_fields(request).get("name", "").strip()
     with lock, face.capture() as notices:
         try:
-            refused = _name_refused(folder, page)
-            if refused is None:
-                store.write_html(folder, store.PAGES_FOLDER, page,
-                                 starter.new_page(page, named, builder.stylesheets(folder)),
-                                 waiting=True)
-                pressing.forget()
+            location = _page_address(store.PAGES_FOLDER, new_page(folder, named))
+        except NameRefused as refused:
+            location = "/?" + urllib.parse.urlencode({"page_hint": refused.code})
         except store.StoreError as exc:
             return editor.failed(face, notices, exc)
-    location = ("/?" + urllib.parse.urlencode({"page_hint": refused}) if refused
-                else _page_address(store.PAGES_FOLDER, page))
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
 
 
-def _reshape_hint(folder: Path, form: dict[str, str], renaming: bool,
-             saved: settings.Settings) -> str | None:
+def _reshape_hint(folder: Path, name: str, to: str, renaming: bool,
+                  saved: settings.Settings) -> str | None:
     """§ 4.4's refusals, as a words key; None where the change may go ahead."""
-    name = form.get("name", "")
     if name == HOME:
         return "page_hint.home"
     if not store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
@@ -1054,7 +1113,7 @@ def _reshape_hint(folder: Path, form: dict[str, str], renaming: bool,
         return "page_hint.privacy_rename"
     if store.html_path_for(folder, store.PAGES_FOLDER, name, waiting=True).is_file():
         return "page_hint.changes"
-    refused = _name_refused(folder, editor.name_address(form.get("to", "")), moving=name)
+    refused = _name_refused(folder, editor.name_address(to), moving=name)
     return editor.PAGE_HINTS[refused] if refused else None
 
 
@@ -1111,37 +1170,58 @@ def _reshape(face: Face, folder: Path, request: Request,
                                                renaming))
 
 
+def reshape(folder: Path, name: str, to: str, *, renaming: bool,
+            capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+            notices: list | None = None,
+            transport: publisher.Transport | None = None) -> publishing.Published:
+    """§ 4.4: remove the page `name`, or rename it to `to`, and publish at
+    once. Raises NameRefused, or what the publish raises; adds the menu's
+    notices to `notices` whatever the outcome. The caller holds editor.LOCK
+    (PRESS-0337 § 4.7)."""
+    gathered_notices = notices if notices is not None else []
+    said: list[str] = []
+    gathered = gatherer(capture, gathered_notices)
+    try:
+        saved = gathered(lambda: settings.load(folder))
+        hint = gathered(lambda: _reshape_hint(folder, name, to, renaming, saved))
+        if hint is not None:
+            raise NameRefused(hint)
+        key = github_setup.token(folder, saved.credentials.store,
+                                 saved.credentials.github_account)
+        changes = _Changes(folder)
+        try:
+            if renaming:
+                gathered(lambda: _renamed(folder, name, to, changes))
+            else:
+                gathered(lambda: _removed(folder, name, changes, said))
+        except BaseException:
+            # Nothing is published yet: a half-made change is undone.
+            gathered(changes.put_back)
+            raise
+        result = _publish_or_put_back(folder, saved, key, changes, gathered_notices,
+                                      transport, gathered, capture=capture)
+    except Exception as exc:
+        gathered_notices.extend(_menu_said(said, False,
+                                           isinstance(exc, publisher.OutcomeUnknown)))
+        raise
+    gathered_notices.extend(_menu_said(said, True, False))
+    return result
+
+
 def _reshaped(face: Face, folder: Path, form: dict[str, str],
               transport: publisher.Transport | None,
               told: Callable[[pressing.Outcome], None], renaming: bool) -> Reply:
     name, to = form.get("name", ""), form.get("to", "").strip()
     notices: list = []
-    said: list[str] = []
-    gathered = gatherer(face.capture, notices)
     hint: str | None = None
     failure: str | None = None
-    unknown = False
     with editor.LOCK:
         try:
-            saved = gathered(lambda: settings.load(folder))
-            hint = gathered(lambda: _reshape_hint(folder, form, renaming, saved))
-            if hint is None:
-                key = github_setup.token(folder, saved.credentials.store,
-                                         saved.credentials.github_account)
-                changes = _Changes(folder)
-                try:
-                    if renaming:
-                        gathered(lambda: _renamed(folder, name, to, changes))
-                    else:
-                        gathered(lambda: _removed(folder, name, changes, said))
-                except BaseException:
-                    # Nothing is published yet: a half-made change is undone.
-                    gathered(changes.put_back)
-                    raise
-                _publish_or_put_back(face, folder, saved, key, changes, notices, transport,
-                                     gathered)
+            reshape(folder, name, to, renaming=renaming, capture=face.capture,
+                    notices=notices, transport=transport)
+        except NameRefused as refused:
+            hint = refused.hint
         except Exception as exc:  # noqa: BLE001 -- every failure is shown on the page
-            unknown = isinstance(exc, publisher.OutcomeUnknown)
             failure = (face.fail(exc, publishing=False,
                                  secret=say("failure.secret.publishing_key"))
                        + publishing.replace_link(exc))
@@ -1154,25 +1234,25 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
         else:
             address = "/"
     published = hint is None and failure is None
-    notices.extend(_menu_said(said, published, unknown))
     told(pressing.ended(pressing.PUBLISH, published, failure))
     return editor.json_reply({"published": published, "failure": failure,
                   "hint": say(hint) if hint else None,
                   "notices": render_notices(notices), "busy": False, "address": address})
 
 
-def _publish_or_put_back(face: Face, folder: Path, saved: settings.Settings, key: str,
+def _publish_or_put_back(folder: Path, saved: settings.Settings, key: str,
                          changes: _Changes, notices: list,
                          transport: publisher.Transport | None,
-                         gathered: Callable, unknown: Callable[[], None] = lambda: None
-                         ) -> None:
+                         gathered: Callable, unknown: Callable[[], None] = lambda: None, *,
+                         capture: Callable[[], AbstractContextManager[list[str]]]
+                         ) -> publishing.Published:
     """Publish what `changes` wrote, and on a failure put every file back
     before raising it. If putting back fails, that failure replaces the
     publish's (§ 4.7). An unknown outcome puts nothing back: the site may
     already hold the new files (PRESS-0195 INV-10). `unknown` runs first."""
     try:
-        publishing.publish(folder, saved, key, entry=None, capture=face.capture,
-                           notices=notices, transport=transport)
+        return publishing.publish(folder, saved, key, entry=None, capture=capture,
+                                  notices=notices, transport=transport)
     except publisher.OutcomeUnknown:
         unknown()
         raise

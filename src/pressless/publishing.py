@@ -392,25 +392,41 @@ def register(face: Face, folder: Path, *,
                   lambda request: _take_over(face, folder, transport))
 
 
+def _signed_in(folder: Path, gathered: Callable) -> tuple[settings.Settings, str]:
+    """Settings and the publishing key, fetched where the press runs so the key
+    never reaches its caller (PRESS-0337 § 4.7)."""
+    saved = gathered(lambda: settings.load(folder))
+    return saved, github_setup.token(folder, saved.credentials.store,
+                                     saved.credentials.github_account)
+
+
+def plan(folder: Path, *, entry: str | None = None, page: tuple[str, str] | None = None,
+         transport: publisher.Transport | None = None) -> Preview:
+    """PRESS-0345 § 4.3: the preview of pressing the entry `entry`, or the page
+    or part `page` (kind, name) as its waiting copy holds it, or the site as it
+    stands. Writes nothing."""
+    saved, key = _signed_in(folder, lambda step: step())
+    if entry is not None:
+        return preview(folder, saved, key, entry=entry, transport=transport)
+    held = None
+    if page is not None:
+        waiting = store.html_path_for(folder, *page, waiting=True)
+        if waiting.is_file():
+            held = builder.Html(*page, store.read_html(waiting))
+    return preview(folder, saved, key, page=held, transport=transport)
+
+
 def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
-    """PRESS-0345 § 4.3: the preview of pressing the entry `slug`, or the page
-    or part `kind` and `name` as its waiting copy holds it. The editor saves
-    first, so the Store holds what would be pressed. Writes nothing."""
+    """PRESS-0345 § 4.3: `plan` for the entry `slug`, or the page or part
+    `kind` and `name`. The editor saves first, so the Store holds what would
+    be pressed."""
     form = {name: values[0] for name, values in urllib.parse.parse_qs(
         request.body.decode("utf-8"), keep_blank_values=True).items()}
     try:
-        saved = settings.load(folder)
-        key = github_setup.token(folder, saved.credentials.store,
-                                 saved.credentials.github_account)
-        if "slug" in form:
-            shown = preview(folder, saved, key, entry=form["slug"], transport=transport)
-        else:
-            kind, name = form.get("kind", ""), form.get("name", "")
-            waiting = store.html_path_for(folder, kind, name, waiting=True)
-            page = (builder.Html(kind, name, store.read_html(waiting))
-                    if waiting.is_file() else None)
-            shown = preview(folder, saved, key, page=page, transport=transport)
+        shown = (plan(folder, entry=form["slug"], transport=transport) if "slug" in form
+                 else plan(folder, page=(form.get("kind", ""), form.get("name", "")),
+                           transport=transport))
     except Exception as exc:  # noqa: BLE001 -- every failure is shown as a press's is
         failure = (face.fail(exc, publishing=False,
                              secret=say("failure.secret.publishing_key")) + replace_link(exc))
@@ -439,6 +455,42 @@ def _publish(face: Face, folder: Path, request: Request,
                         lambda told: _pressed(face, folder, form, transport, told))
 
 
+def press_entry(folder: Path, form: dict[str, str], *,
+                capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+                notices: list[str | Notice] | None = None,
+                transport: publisher.Transport | None = None
+                ) -> tuple[store.Entry, Published]:
+    """§ 4.2's press: save the form, then publish the entry it wrote. Raises
+    editor.SAVE_FAILURES from the save, or what `publish` raises. The caller
+    holds editor.LOCK (PRESS-0337 § 4.7)."""
+    gathered = notices if notices is not None else []
+    written, _ = gatherer(capture, gathered)(lambda: editor.save(folder, form))
+    return written, _press_written(folder, written, capture=capture, notices=gathered,
+                                   transport=transport)
+
+
+def _press_written(folder: Path, written: store.Entry, *,
+                   capture: Callable[[], AbstractContextManager[list[str]]],
+                   notices: list, transport: publisher.Transport | None) -> Published:
+    """`press_entry` after its save, which the screen's press splits from the
+    save to answer each failure differently."""
+    saved, key = _signed_in(folder, gatherer(capture, notices))
+    return publish(folder, saved, key, entry=written.slug, capture=capture,
+                   notices=notices, transport=transport)
+
+
+def press_site(folder: Path, *,
+               capture: Callable[[], AbstractContextManager[list[str]]] = nothing_captured,
+               notices: list[str | Notice] | None = None,
+               transport: publisher.Transport | None = None) -> Published:
+    """The whole site as the Store holds it, published with the key fetched
+    here. The caller holds editor.LOCK (PRESS-0337 § 4.7)."""
+    gathered = notices if notices is not None else []
+    saved, key = _signed_in(folder, gatherer(capture, gathered))
+    return publish(folder, saved, key, entry=None, capture=capture, notices=gathered,
+                   transport=transport)
+
+
 def _pressed(face: Face, folder: Path, form: dict[str, str],
              transport: publisher.Transport | None,
              told: Callable[[pressing.Outcome], None]) -> Reply:
@@ -456,11 +508,8 @@ def _pressed(face: Face, folder: Path, form: dict[str, str],
             return Reply(body.encode("utf-8"), "text/html; charset=utf-8", status=409)
 
         try:
-            saved = gathered(lambda: settings.load(folder))
-            key = github_setup.token(folder, saved.credentials.store,
-                                     saved.credentials.github_account)
-            result = publish(folder, saved, key, entry=written.slug, capture=face.capture,
-                             notices=notices, transport=transport)
+            result = _press_written(folder, written, capture=face.capture, notices=notices,
+                                    transport=transport)
         except Exception as exc:  # noqa: BLE001 -- every failure is shown beside the save
             failure: str | None = (face.fail(exc, publishing=False,
                                              secret=say("failure.secret.publishing_key"))

@@ -112,17 +112,22 @@ def _upload(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
     return editor.json_reply({"name": name, "notices": render_notices(notices)})
 
 
-def _remove(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+def remove(folder: Path, name: str) -> None:
     """§ 4.4: refused while any page, published or waiting, names the file;
-    else the file goes to the bin."""
+    else the file goes to the bin. Takes no lock (PRESS-0337 § 4.7)."""
+    path = store.file_path_for(folder, name)
+    pages = builder.files_named(folder).get(name)
+    if pages:
+        raise FileInUse(f"pages name {name}", _pages(pages))
+    store.move_to_bin(folder, path)
+
+
+def _remove(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
+    """§ 4.4, through `remove`."""
     name = editor.form_fields(request).get("name", "")
     with lock, face.capture() as notices:
         try:
-            path = store.file_path_for(folder, name)
-            pages = builder.files_named(folder).get(name)
-            if pages:
-                raise FileInUse(f"pages name {name}", _pages(pages))
-            store.move_to_bin(folder, path)
+            remove(folder, name)
         except (store.StoreError, FileInUse) as exc:
             return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303,

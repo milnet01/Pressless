@@ -570,22 +570,28 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
                    len(items[store.FURNITURE_FOLDER]), carry_on)
 
 
+def new_draft(folder: Path, title: str, template: str) -> store.Entry:
+    """§ 4.6: a new draft titled `title`, from the template `template` or from
+    nothing. Takes no lock; the caller holds LOCK (PRESS-0337 § 4.7)."""
+    # PRESS-0017 § 4.3: the template's words, categories and tags; never its
+    # title, and the template file is only read.
+    shape = (store.read(store.template_path_for(folder, template)) if template
+             else store.Entry(slug="", title="", date=datetime.now(),
+                              categories=(), tags=(), body="", extra=()))
+    entry = store.Entry(
+        slug=free_address(folder, address_for(title)), title=title.strip(),
+        date=datetime.now().replace(microsecond=0), categories=shape.categories,
+        tags=shape.tags, body=shape.body, extra=())
+    store.write(folder, entry, draft=True)
+    return entry
+
+
 def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.6."""
     form = form_fields(request)
-    title, chosen = form.get("title", ""), form.get("template", "")
     with lock, face.capture() as notices:
         try:
-            # PRESS-0017 § 4.3: the template's words, categories and tags;
-            # never its title, and the template file is only read.
-            shape = (store.read(store.template_path_for(folder, chosen)) if chosen
-                     else store.Entry(slug="", title="", date=datetime.now(),
-                                      categories=(), tags=(), body="", extra=()))
-            slug = free_address(folder, address_for(title))
-            store.write(folder, store.Entry(
-                slug=slug, title=title.strip(), date=datetime.now().replace(microsecond=0),
-                categories=shape.categories, tags=shape.tags, body=shape.body, extra=()),
-                draft=True)
+            slug = new_draft(folder, form.get("title", ""), form.get("template", "")).slug
         except store.StoreError as exc:
             return failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(slug))
@@ -1003,6 +1009,37 @@ def _photograph(face: Face, folder: Path, lock: threading.Lock, request: Request
                        "notices": render_notices(notices)})
 
 
+class AddressRefused(Exception):
+    """An address change `_address_refused` turns down; `hint` says why."""
+
+    def __init__(self, hint: str) -> None:
+        super().__init__(hint)
+        self.hint = hint
+        self.slots = {"hint": hint}
+
+
+SENTENCES[AddressRefused] = Sentence(
+    "failure.editor.AddressRefused.what",
+    Site.UNCHANGED,
+    "failure.editor.AddressRefused.next",
+)
+
+
+def change_address(folder: Path, slug: str, base: str, address: str, *, draft: bool) -> str:
+    """§ 4.9, and PRESS-0182 § 4.2 for a published entry: move the entry at
+    `slug` to `address` and return its new digest, or `base` where the address
+    is its own. Raises AddressRefused. Takes no lock (PRESS-0337 § 4.7)."""
+    entry = (store.read(store.path_for(folder, slug, draft=draft))
+             if slug in store.list_slugs(folder, draft=draft) else None)
+    hint = _address_refused(folder, entry, slug, address, draft=draft)
+    if hint is not None:
+        raise AddressRefused(hint)
+    if address == slug:
+        return base
+    return _move(folder, _keeping_votes(folder, entry, draft=draft), slug, address, base,
+                 draft=draft)
+
+
 def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.9, and PRESS-0182 § 4.2 for a published entry: its old address
     forwards to the new one."""
@@ -1012,17 +1049,16 @@ def _address(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     # A request without `draft` has PRESS-0012 § 4.9's shape, from before a
     # published entry could move, and then only a draft could.
     draft = form.get("draft", "1") == "1"
+    hint = None
     with lock, face.capture() as notices:
         try:
-            entry = (store.read(store.path_for(folder, slug, draft=draft))
-                     if slug in store.list_slugs(folder, draft=draft) else None)
-            hint = _address_refused(folder, entry, slug, address, draft=draft)
-            if hint is None and address != slug:
-                base = _move(folder, _keeping_votes(folder, entry, draft=draft), slug, address,
-                             base, draft=draft)
-                slug = address
+            base = change_address(folder, slug, base, address, draft=draft)
+            slug = address
+        except AddressRefused as refused:
+            hint = refused.hint
+            failure: Exception | None = None
         except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
-            failure: Exception | None = exc
+            failure = exc
         else:
             failure = None
     if failure is not None:
@@ -1100,20 +1136,25 @@ def _move(folder: Path, entry: store.Entry, slug: str, address: str, base: str, 
     return digest(store.path_for(folder, address, draft=draft))
 
 
+def discard(folder: Path, slug: str, base: str) -> str:
+    """§ 4.10: bin the working copy `slug` and return the published entry's
+    address. Takes no lock (PRESS-0337 § 4.7)."""
+    if slug not in store.list_slugs(folder, draft=True):
+        raise ChangedElsewhere(f"the draft {slug} is not there")
+    path = store.path_for(folder, slug, draft=True)
+    named = _replaced(folder, store.read(path))
+    if named is None or digest(path) != base:
+        raise ChangedElsewhere(f"the draft {slug} is not the working copy this window read")
+    store.move_to_bin(folder, path)
+    return named
+
+
 def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """§ 4.10."""
     form = form_fields(request)
-    slug, base = form.get("slug", ""), form.get("base", "")
     with lock, face.capture() as notices:
         try:
-            if slug not in store.list_slugs(folder, draft=True):
-                raise ChangedElsewhere(f"the draft {slug} is not there")
-            path = store.path_for(folder, slug, draft=True)
-            named = _replaced(folder, store.read(path))
-            if named is None or digest(path) != base:
-                raise ChangedElsewhere(f"the draft {slug} is not the working copy this "
-                                       "window read")
-            store.move_to_bin(folder, path)
+            named = discard(folder, form.get("slug", ""), form.get("base", ""))
         except (store.StoreError, ChangedElsewhere) as exc:
             failure: Exception | None = exc
         else:
@@ -1123,39 +1164,44 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_edit_address(named))
 
 
+def throw(folder: Path, slug: str, base: str, *, draft: bool) -> None:
+    """PRESS-0128: bin the entry -- a draft, or a published entry and any
+    working copy of it -- with its comments file. A published one leaves the
+    site at the next press, and undoing that press brings it back. The entry
+    goes first, so an interruption leaves at most a draft or a comments file
+    behind, never an entry half thrown away. Takes no lock (PRESS-0337 § 4.7)."""
+    if slug not in store.list_slugs(folder, draft=draft):
+        raise ChangedElsewhere(f"the entry {slug} is not there")
+    path = store.path_for(folder, slug, draft=draft)
+    if digest(path) != base:
+        raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
+    if draft:
+        named = _replaced(folder, store.read(path))
+    elif working_copy(folder, slug) is not None:
+        raise ChangedElsewhere(f"the entry {slug} gained a working copy")
+    else:
+        named = slug
+    if named is not None:
+        store.move_to_bin(folder, store.path_for(folder, named, draft=False))
+        # PRESS-0182 § 4.2: its old addresses go with it.
+        forwards = store.read_forwards(folder)
+        kept = {old: new for old, new in forwards.items() if new != named}
+        if kept != forwards:
+            store.write_forwards(folder, kept)
+    comments = store.comments_path_for(folder, named or slug)
+    if comments.is_file():
+        store.move_to_bin(folder, comments)
+    if draft:
+        store.move_to_bin(folder, path)
+
+
 def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """PRESS-0128: bin the entry this window shows -- a draft, or a published
-    entry and any working copy of it -- with its comments file. A published
-    one leaves the site at the next press, and undoing that press brings it
-    back. The entry goes first, so an interruption leaves at most a draft or a
-    comments file behind, never an entry half thrown away."""
+    """PRESS-0128: bin the entry this window shows (`throw`)."""
     form = form_fields(request)
-    slug, draft, base = form.get("slug", ""), form.get("draft") == "1", form.get("base", "")
     with lock, face.capture() as notices:
         try:
-            if slug not in store.list_slugs(folder, draft=draft):
-                raise ChangedElsewhere(f"the entry {slug} is not there")
-            path = store.path_for(folder, slug, draft=draft)
-            if digest(path) != base:
-                raise ChangedElsewhere(f"the entry {slug} changed since this window read it")
-            if draft:
-                named = _replaced(folder, store.read(path))
-            elif working_copy(folder, slug) is not None:
-                raise ChangedElsewhere(f"the entry {slug} gained a working copy")
-            else:
-                named = slug
-            if named is not None:
-                store.move_to_bin(folder, store.path_for(folder, named, draft=False))
-                # PRESS-0182 § 4.2: its old addresses go with it.
-                forwards = store.read_forwards(folder)
-                kept = {old: new for old, new in forwards.items() if new != named}
-                if kept != forwards:
-                    store.write_forwards(folder, kept)
-            comments = store.comments_path_for(folder, named or slug)
-            if comments.is_file():
-                store.move_to_bin(folder, comments)
-            if draft:
-                store.move_to_bin(folder, path)
+            throw(folder, form.get("slug", ""), form.get("base", ""),
+                  draft=form.get("draft") == "1")
         except (store.StoreError, ChangedElsewhere, TooManyCopies) as exc:
             failure: Exception | None = exc
         else:
