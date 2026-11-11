@@ -6774,7 +6774,7 @@ Before 1.0 the on-disk format may still change; after it, S3 becomes a
 compatibility guarantee. The exit condition and the breaking surfaces are
 owned by docs/standards/versioning-overrides.md.
 
-- 📋 [PRESS-0138] **Freeze the breaking surfaces, and put a check on each one.**
+- ✅ [PRESS-0138] **Freeze the breaking surfaces, and put a check on each one.**
   `docs/standards/versioning-overrides.md` names the breaking surfaces --
   the writer's own files, Setup state, and the live site -- and its own
   `What checks this` table answers "Nothing" for most of them. So the
@@ -6800,6 +6800,10 @@ owned by docs/standards/versioning-overrides.md.
   whatever 0.8.0 to 0.11.0 add to the on-disk format, such as how a
   page, the menu and the site's look are held. List them from the
   design once it is rewritten.
+  Shipped 2026-11-11. versioning-overrides.md lists every surface,
+  declares them frozen from 1.0.0, and its § Which test holds each
+  surface names a pinning test per surface. tests/test_frozen.py adds
+  the ones that had none. Nothing checks the list is complete.
   **Layman:** Before version 1.0, the shapes of his files, his setup and his site are promised not to change without warning — and a test proves each promise, so nothing can break it quietly.
   Kind: implement.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
