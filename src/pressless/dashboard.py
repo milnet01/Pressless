@@ -127,6 +127,25 @@ def _set_up(saved: settings.Settings) -> bool:
     return bool(saved.analytics_property_id) and saved.credentials.google_account is not None
 
 
+def figures(folder: Path, days: int, *, client: insights.Transport | None = None
+            ) -> insights.Report:
+    """The figures `_show` shows, with the Google token fetched here so it never
+    reaches the caller (PRESS-0337 § 4.5): the last reply kept for the window
+    where Google cannot be reached for a token. Raises NotConfigured where the
+    dashboard was never set up."""
+    saved = settings.load(folder)
+    if not _set_up(saved):
+        raise insights.NotConfigured("no Analytics property id in Settings")
+    try:
+        token = google_setup.token(folder)
+    except insights.Unreachable:
+        kept = _kept(folder, days)
+        if kept is None:
+            raise
+        return kept
+    return insights.read(saved, token, folder, days=days, client=client)
+
+
 def _kept(folder: Path, days: int) -> insights.Report | None:
     """The last reply kept for this window, marked stale, or None.
 

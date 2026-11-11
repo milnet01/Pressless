@@ -13,7 +13,9 @@ from pathlib import Path
 
 from test_network_timeouts import _SRC, _imports_network_machinery
 
-_ALLOWED = {"https.py", "updater.py"}
+# PRESS-0337 § 4.4: the bridge reaches only the Face on 127.0.0.1;
+# tests/test_bridge.py::test_bridge_reaches_only_this_computer holds that.
+_ALLOWED = {"https.py", "updater.py", "bridge.py"}
 
 
 def _reaching(package: Path) -> set[str]:

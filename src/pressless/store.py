@@ -17,6 +17,7 @@ look as though it had touched the whole site (§4.2).
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import re
@@ -1252,6 +1253,29 @@ def write_look_file(folder: Path, name: str, text: str) -> Path:
     target = look_path_for(folder, name)
     _write_atomically(folder, target, text, prefix=".look-", newline="")
     return target
+
+
+def mark(folder: Path, *others: Path) -> str:
+    """PRESS-0337 § 4.6: a digest of the relative path, size and modification
+    time of every file in the Store's folders, photographs included, and of
+    each of `others` (the settings file, which the build reads too). Equal
+    marks mean nothing a press reads has changed."""
+    handed = Path(folder)
+    rows: list[str] = []
+    try:
+        for name in sorted({*_BINNABLE, PHOTOGRAPHS_FOLDER}):
+            for path in sorted((handed / name).rglob("*")):
+                if path.is_file():
+                    found = path.stat()
+                    rows.append(f"{path.relative_to(handed).as_posix()}\t{found.st_size}"
+                                f"\t{found.st_mtime_ns}")
+        for other in others:
+            if other.is_file():
+                found = other.stat()
+                rows.append(f"{other.name}\t{found.st_size}\t{found.st_mtime_ns}")
+    except OSError as exc:
+        raise StoreError(f"the Store's folders could not be read: {_why(exc)}") from exc
+    return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
 
 
 # PRESS-0126 § 4.2: the folders whose files make a site. Not templates/, which

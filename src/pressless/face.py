@@ -1091,7 +1091,8 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
     '</svg>', safe="")
 
 
-def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100) -> str:
+def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100,
+          after: str = "") -> str:
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
     if size != 100:
         chosen += f' data-size="{size}"'
@@ -1127,7 +1128,7 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100
         # PRESS-0278: beside Usage reports.
         f'<a href="/about">{say("face.about")}</a>'
         f'{themes.picker(theme)}{themes.size_picker(size)}</div></details></header>'
-        f"<main>{body}</main><script>{_SCRIPT}</script></body></html>"
+        f"<main>{body}</main><script>{_SCRIPT}</script>{after}</body></html>"
     )
 
 
@@ -1186,8 +1187,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _send_page(self, face: Face, status: int, body: str) -> None:
         """`body` wrapped in the Face's frame, carrying the frames policy."""
-        self._send(status, _page(body, face._theme, face.live_address(), face._size), "text/html",
-                   (("Content-Security-Policy", _FRAMES_POLICY),))
+        after = "".join(render() for render in face._every_page)
+        self._send(status, _page(body, face._theme, face.live_address(), face._size, after),
+                   "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int) -> int | None:
         """The declared body length, or None once the request is refused.
@@ -1241,6 +1243,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         parts = urllib.parse.urlsplit(self.path)
         query = dict(urllib.parse.parse_qsl(parts.query))
+        door = face._doors.get(parts.path)
+        if door is not None:
+            self._through_door(face, method, parts.path, query, *door)
+            return
         if method == "GET" and "t" in query:
             # The link is honoured once: it reached the browser on its command
             # line, so it must not stay the key for the whole run (§ 4.5).
@@ -1313,6 +1319,21 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
         self._answer_then(face, page, request, publishing)
+
+    def _through_door(self, face: Face, method: str, path: str, query: dict[str, str],
+                      page: Page, admits: Callable[[str], bool]) -> None:
+        """PRESS-0337 § 4.3: a door is answered without the cookie, and only
+        to a POST with no Origin header whose Authorization `admits` takes.
+        The cookie never opens it."""
+        if (method != "POST" or self.headers.get("Origin") is not None
+                or not admits(self.headers.get("Authorization", ""))):
+            self._refuse()
+            return
+        length = self._body_length(_MAX_BODY)
+        if length is None:
+            return
+        body = self.rfile.read(length) if length else b""
+        self._answer_then(face, page, Request(method, path, query, body), False)
 
     def _answer_then(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
         """Answer, then run what the page asked to run after (PRESS-0023 § 4.9)."""
@@ -1541,6 +1562,9 @@ class Face:
         self._files: dict[str, Locate] = {}
         self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
         self._unseen: list[Callable[[], bool]] = []
+        self._doors: dict[str, tuple[Page, Callable[[str], bool]]] = {}
+        self._every_page: list[Callable[[], str]] = []
+        self._at_stop: list[Callable[[], None]] = []
         self._reply = threading.local()
         try:
             self._server = _Server(("127.0.0.1", port), _Handler)
@@ -1586,6 +1610,25 @@ class Face:
         """
         self.add_page("GET", path, page)
         self._returns.add(path)
+
+    def add_door(self, path: str, page: Page, admits: Callable[[str], bool]) -> None:
+        """Register `page` for POST `path`, answered WITHOUT the session cookie
+        to a request with no Origin header whose Authorization header
+        `admits(header)` takes, and refused otherwise (PRESS-0337 § 4.3). The
+        Host check still runs first; the page's answer is sent as it is."""
+        self._doors[path] = (page, admits)
+
+    def add_to_every_page(self, render: Callable[[], str]) -> None:
+        """Have every wrapped page end with `render()`'s HTML (PRESS-0337 § 4.6)."""
+        self._every_page.append(render)
+
+    def at_stop(self, action: Callable[[], None]) -> None:
+        """Run `action` when the Face stops, before its log closes."""
+        self._at_stop.append(action)
+
+    @property
+    def port(self) -> int:
+        return int(self._server.server_address[1])
 
     @property
     def origin(self) -> str:
@@ -1672,6 +1715,11 @@ class Face:
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=5)
+        for action in self._at_stop:
+            try:
+                action()
+            except Exception as exc:  # noqa: BLE001 -- the next one still runs
+                self._log.note(f"a stop step failed: {type(exc).__name__}")
         self._log.close()
 
 

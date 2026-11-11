@@ -202,7 +202,17 @@ _CSS = "CSS"
 # Literals that are not words on a screen, named by the constant they are
 # assigned to where they have one, else by their text, with why.
 NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
+    "assistant.py": {"Bearer": "the HTTP Authorization header's scheme"},
     "backups.py": {"DEFAULT_FOLDER": "a folder's name on disk"},
+    # PRESS-0337 § 4.4: the bridge's JSON-RPC errors are read by the AI app.
+    "bridge.py": {
+        **dict.fromkeys(("not JSON", "not a JSON-RPC 2.0 message", "params is not an object",
+                         "arguments is not an object", "no tool", "no method"),
+                        "a JSON-RPC error message, read by the AI app"),
+        "Unsupported protocol version": "MCP's own message for its error -32022",
+        "Bearer": "the HTTP Authorization header's scheme",
+        **dict.fromkeys(("Host", "Authorization", "Content-Type"), _HTTP_HEADERS),
+    },
     "dashboard.py": {
         "_CHANNELS": "Google's channel names, matched against its answer",
         "where": "a value Google sends",
@@ -229,7 +239,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
         **dict.fromkeys(("Content-Type", "Content-Length", "Cache-Control",
                          "Content-Security-Policy", "X-Content-Type-Options", "Set-Cookie",
                          "Content-Disposition",
-                         "Location", "Host", "Origin", "Cookie", "origin", "location",
+                         "Location", "Host", "Origin", "Cookie", "Authorization",
+                         "origin", "location",
                          "length", "left", "jar"), _HTTP_HEADERS),
     },
     "page_editor.py": {

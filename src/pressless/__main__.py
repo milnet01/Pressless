@@ -1,6 +1,8 @@
 """The program that gets packaged — PRESS-0022 § 4.5 and PRESS-0013 § 4.5.
 
-Both routes print the same report first, one machine-readable line each. The
+`--assistant` is the AI helper's bridge (PRESS-0337 § 4.4): it prints no
+report, since its stdout belongs to the protocol. The other two routes print
+the same report first, one machine-readable line each. The
 report's shape is a contract: the release job reads the exit code and
 tests/features/packaging/ parses the lines.
 
@@ -27,7 +29,9 @@ from typing import BinaryIO
 
 from pressless import (
     about,
+    assistant,
     backups,
+    bridge,
     cheatsheet,
     checklist,
     credentials,
@@ -62,7 +66,7 @@ from pressless import (
 )
 from pressless.words import say
 
-_USAGE = "usage: pressless [--self-check]"
+_USAGE = "usage: pressless [--self-check | --assistant]"
 _LOCK_NAME = "pressless.lock"
 
 
@@ -75,9 +79,12 @@ def main(argv: list[str]) -> int:
     lost its metadata, and PRESS-0022 § 7 decides which by controlling the
     machine.
     """
-    if argv not in ([], ["--self-check"]):
+    if argv not in ([], ["--self-check"], ["--assistant"]):
         print(_USAGE, file=sys.stderr)
         raise SystemExit(2)
+    if argv == ["--assistant"]:
+        # PRESS-0337 § 4.4: before the report, since stdout is the protocol's.
+        return bridge.main()
 
     _unbundle_environment()
     print("pressless: ok")
@@ -232,6 +239,7 @@ def _serve_once(own: Path) -> bool:
         restarting.register(served, restart.set)
         sites_screen.register(served, own, restart.set)
         importing.register(served, folder)
+        assistant.register(served, folder, own=own)         # PRESS-0337
         _refresh_shortcuts(served)
 
         first = "/"

@@ -444,6 +444,10 @@ _WORDS: dict[str, str] = {
     "script.plan.nothing": "Nothing on your site would change.",
     "script.plan.go": "Publish now",
     "script.plan.wait": "Not yet",
+    # PRESS-0337 § 4.6: the same box, when the AI helper asks.
+    "script.assistant.title": "Your AI helper asks to change your site",
+    "script.assistant.go": "Yes, do it",
+    "script.assistant.wait": "Not yet",
     "script.press.undoing": "Putting your site back… this can take a few minutes.",
     "script.press.published": "Published. Your site shows it within a few minutes.",
     "script.press.not_published": "Not published. The reason is below.",
@@ -1782,6 +1786,77 @@ _WORDS: dict[str, str] = {
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
     # JPEG XL support (jpegxl_screen.py): its line below the list.
+    # PRESS-0337: the AI helper. The AI app reads the assistant. sentences
+    # that are not the screen's.
+    "assistant.title": "AI helper",
+    "assistant.about": (
+        "An AI app on this computer, such as Claude or ChatGPT, can write and edit your site "
+        "through Pressless. Nothing is published, undone or put in the bin until you press "
+        "Yes in Pressless. It cannot reach your keys, your settings, or any page's code."
+    ),
+    "assistant.on": "On: an AI app can connect while Pressless is open.",
+    "assistant.off": "Off: no AI app can connect.",
+    "assistant.switch_on": "Switch on",
+    "assistant.switch_off": "Switch off",
+    "assistant.connect": "Connecting an AI app",
+    "assistant.program": "The AI app starts this program, with this argument:",
+    "assistant.block": "Or, where the app asks for its settings as text:",
+    "assistant.copy": "Copy",
+    "assistant.app.claude_desktop": "Claude Desktop",
+    "assistant.app.claude_code": "Claude Code",
+    "assistant.app.chatgpt": "ChatGPT",
+    "assistant.steps.claude_desktop": (
+        "Open Settings, then Developer, then Edit Config. Paste the text above into that file, "
+        "keeping any servers already in it, save it, and start Claude Desktop again."
+    ),
+    "assistant.steps.claude_code": (
+        "In a terminal, run: claude mcp add pressless -- {program}"
+    ),
+    "assistant.steps.chatgpt": (
+        "Where your ChatGPT app's settings offer a local MCP server, add one that starts the "
+        "program above with its argument."
+    ),
+    "assistant.open_pressless": (
+        "Pressless is not open, or its AI helper is switched off. Ask the writer to open "
+        "Pressless and switch on AI helper, then try again."
+    ),
+    "assistant.restart_app": (
+        "Pressless was updated after this AI app started its helper. Restart the AI app."
+    ),
+    "assistant.bad_call": "That call cannot run: {why}.",
+    "assistant.not_json": "That call cannot run: it is not a JSON object.",
+    "assistant.bad_data": "The file's data is not base64.",
+    "assistant.one_waiting": (
+        "A request is already waiting for the writer's answer. Ask request_status until it "
+        "is answered."
+    ),
+    "assistant.locked_section": (
+        "That change adds, changes, moves or removes a script, style or code section, which "
+        "the AI helper may not do. Keep each locked section as it is, in its place."
+    ),
+    "assistant.sections_owed": "Give the page's sections.",
+    "assistant.links_owed": "The navigation takes links, not sections.",
+    "assistant.entry_or_page": "Name an entry or a page, not both.",
+    "assistant.own_stylesheets": (
+        "This site uses its own stylesheets, so its look is changed in Pressless's Look "
+        "screen, not by the AI helper."
+    ),
+    "assistant.box.undo": "Put your site back as it was before the last publish.",
+    "assistant.box.remove": "Remove the page {name} from your site, now.",
+    "assistant.box.rename": "Rename the page {name} to {to}, now.",
+    "assistant.box.bin": "Put {name} in the bin.",
+    "assistant.box.discard": "Throw away the changes waiting on {name}.",
+    "assistant.status.waiting": "Waiting for the writer's answer.",
+    "assistant.status.refused": "The writer said not yet. Nothing changed.",
+    "assistant.status.expired": "Nobody answered within 30 minutes. Nothing changed.",
+    "assistant.status.running": "Running now.",
+    "assistant.status.done": "Done.",
+    "assistant.status.failed": "It did not finish.",
+    "assistant.status.unknown": (
+        "Pressless does not know that request. It may have been restarted since."
+    ),
+    "failure.assistant.Refused.what": "{said}",
+    "failure.assistant.Refused.next": "Nothing changed.",
     "jpegxl.line": "JPEG XL photographs: not added yet.",
     "jpegxl.ready": "JPEG XL photographs: ready.",
     "jpegxl.add": "Add JPEG XL support ({size} MB)",

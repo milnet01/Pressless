@@ -201,7 +201,9 @@ window.presslessCheck = window.presslessCheck || (async (body) => {
 });
 // PRESS-0345 § 4.4: what a press would change, in a box over the page. True
 // for Publish now; false for Not yet, Escape or a box that cannot open.
-window.presslessPlan = window.presslessPlan || ((plan) => new Promise((resolve) => {
+// PRESS-0337 § 4.6: `plan.lines` are more sentences; `options` names the words
+// of the title and the two buttons, and the request the box shows.
+window.presslessPlan = window.presslessPlan || ((plan, options = {}) => new Promise((resolve) => {
   const make = (tag, text) => {
     const made = document.createElement(tag);
     if (text !== undefined) made.textContent = text;
@@ -209,8 +211,11 @@ window.presslessPlan = window.presslessPlan || ((plan) => new Promise((resolve) 
   };
   const box = make("dialog");
   box.classList.add("message", "plan");
-  box.append(make("h2", say("script.plan.title")));
+  if (options.request) box.dataset.request = options.request;
+  box.append(make("h2", say(options.title || "script.plan.title")));
   const pages = plan.pages || [], added = plan.added || 0, removed = plan.removed || 0;
+  const lines = plan.lines || [];
+  lines.forEach((line) => box.append(make("p", line)));
   if (pages.length) {
     box.append(make("p", say("script.plan.pages")));
     const list = make("ul");
@@ -221,8 +226,11 @@ window.presslessPlan = window.presslessPlan || ((plan) => new Promise((resolve) 
     : "script.plan.added", {count: added})));
   if (removed) box.append(make("p", say(removed === 1 ? "script.plan.removed_one"
     : "script.plan.removed", {count: removed})));
-  if (!pages.length && !added && !removed) box.append(make("p", say("script.plan.nothing")));
-  const go = make("button", say("script.plan.go")), wait = make("button", say("script.plan.wait"));
+  if (!pages.length && !added && !removed && !lines.length) {
+    box.append(make("p", say("script.plan.nothing")));
+  }
+  const go = make("button", say(options.go || "script.plan.go"));
+  const wait = make("button", say(options.wait || "script.plan.wait"));
   go.type = wait.type = "button";
   const row = make("p");
   row.append(go, " ", wait);

@@ -272,3 +272,20 @@ def test_windows_helper_starts_outside_the_folder_it_renames(tmp_path, monkeypat
     installer.apply_windows(program, staged, folder)
     [(_, kwargs)] = spawned.calls
     assert Path(kwargs.get("cwd") or "") == program.parent, kwargs.get("cwd")
+
+
+def test_helper_ends_bridges():
+    """PRESS-0337 INV-13, its script half: each pass of the wait loop ends a
+    process started from the program folder whose command line ends in
+    --assistant, before it looks for what still runs. § 7's by-hand check
+    runs it on the Windows box.
+
+    Breaks when the stop step matches every process in the folder, or sits
+    outside the loop, so a bridge started during the wait holds the folder.
+    """
+    script = installer.WINDOWS_SCRIPT
+    loop = script[script.index("while ($true) {"):script.index("if (-not $running) { break }")]
+    stop = loop[loop.index("Get-CimInstance Win32_Process"):loop.index("$running =")]
+    assert "Invoke-CimMethod -MethodName Terminate" in stop
+    assert ".EndsWith('--assistant')" in stop
+    assert "$_.ExecutablePath.StartsWith($inside" in stop

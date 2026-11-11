@@ -75,6 +75,16 @@ Stamp 'waiting' -First
 $inside = (Join-Path $Program '')
 $deadline = (Get-Date).AddSeconds(60)
 while ($true) {
+    # PRESS-0337 § 4.9: an AI app keeps its bridge running, which would hold
+    # the folder for good. A bridge holds no state, so each pass ends any
+    # started from this folder, one started during the wait included.
+    try {
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.ExecutablePath -and
+            $_.ExecutablePath.StartsWith($inside, [StringComparison]::OrdinalIgnoreCase) -and
+            $_.CommandLine -and $_.CommandLine.TrimEnd().EndsWith('--assistant') } |
+            Invoke-CimMethod -MethodName Terminate -ErrorAction SilentlyContinue | Out-Null
+    } catch { }
     $running = Get-Process -ErrorAction SilentlyContinue | Where-Object {
         $_.Path -and $_.Path.StartsWith($inside, [StringComparison]::OrdinalIgnoreCase) }
     if (-not $running) { break }
