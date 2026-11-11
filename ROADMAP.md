@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=350 -->
+<!-- ants-roadmap-id-high-water: PRESS=351 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6765,6 +6765,23 @@ publish and anything that deletes.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
+
+- 📋 [PRESS-0351] **On the Windows box, setup's take-in test once saw the repository created twice.**
+  tests/test_takein.py::test_a_take_in_writes_nothing_to_github failed in
+  the Windows half of local-ci.sh on 2026-11-11 (pytest-randomly seed
+  693768463): github.writes() held POST /user/repos twice, where the test
+  expects it once. The same suite passed on the box an hour earlier with
+  another seed. Linux passed the whole suite, and test_takein.py with
+  test_setup.py under that seed.
+
+  The test's Browser opens a fresh connection per request and never
+  retries (tests/_face_session.py), so the second call comes from setup's
+  repository check (setup.py, check_new_repository) running twice, or
+  from the GitHub double. Not yet located.
+  **Layman:** One automatic check failed once on Windows: during setup, Pressless asked GitHub to make the new site twice instead of once.
+  Kind: fix.
+  Source: gate-run-2026-11-11.
+  Lanes: setup, tests.
 
 ## 1.0.0 — every sign holds, and the format is frozen
 
