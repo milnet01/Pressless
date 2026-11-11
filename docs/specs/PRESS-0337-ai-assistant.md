@@ -201,7 +201,8 @@ write with a stale `version` is refused with `ChangedElsewhere`'s sentence,
 as the screens refuse it. So the assistant cannot overwrite what the writer
 typed meanwhile.
 
-**Reads** (no lock beyond the door's):
+**Reads** (a read returning a `version` takes `editor.LOCK`, as `editor._edit`
+does, so the version matches what it returned):
 
 | Tool | Arguments | Returns |
 |---|---|---|
@@ -214,7 +215,7 @@ typed meanwhile.
 | `list_files` | — | each added file and photograph: name, and the pages naming it (`builder.files_named`) |
 | `read_look` | — | `look.Choices` as JSON, `version` |
 | `read_insights` | `days`, one of `dashboard.WINDOWS`' spans | `insights.Report`'s figures as JSON. `NotConfigured` answers its sentence |
-| `request_status` | `request` | `waiting`, `refused`, `expired`, `running`, `done` or `failed`, with the press's outcome sentence |
+| `request_status` | `request` | `waiting`, `refused`, `expired`, `running`, `done`, `failed` or `unknown`, with the press's outcome sentence |
 
 **Writes** (under `editor.LOCK`; nothing goes live):
 
@@ -227,14 +228,14 @@ typed meanwhile.
 | `save_page` | `name`, `version`, `sections` or `links` | `page_editor._write` with a `view` other than `"code"`; refused if it adds, changes, moves or removes a locked section (§ 4.8) |
 | `add_photograph` | `filename`, `data` (base64) | `photographs.add`; returns its name and `builder.web_photograph` address |
 | `add_file` | `filename`, `data` (base64) | `files.add`, with its own size and kind checks |
-| `save_look` | `version`, `choices` | `look.save(folder, choices, look.read_extra(folder))`: the hand-written CSS is kept as it is |
+| `save_look` | `version`, `choices` | `look_screen.save` (§ 4.7), with the route and hand-written CSS the Look screen would post unchanged, so neither changes |
 
 **Asks** (each makes a request, § 4.6, and changes nothing):
 
 | Tool | Arguments | The press it asks for |
 |---|---|---|
-| `publish` | `entry` or `page`, or neither for the whole site | `publishing.press_entry`, `page_editor.press_page` or `publishing.publish(entry=None)` |
-| `undo_last_publish` | — | `undo.undo` |
+| `publish` | `entry` or `page`, or neither for the whole site | `publishing.press_entry`, `page_editor.press_page` or `publishing.press_site` (§ 4.7) |
+| `undo_last_publish` | — | `undo.press_undo` (§ 4.7) |
 | `remove_entry` | `address`, `version` | `editor.throw` (§ 4.7) |
 | `discard_changes` | `entry` or `page`, `version` | `editor.discard` or `page_editor.discard` (§ 4.7) |
 | `remove_page` | `name` | `page_editor.reshape(renaming=False)` |
@@ -255,22 +256,25 @@ in-memory offer.
 
 A request holds its id (`secrets.token_urlsafe(8)`), the press it asks for,
 the time, the plan, and the **Store's mark**. The plan is
-`publishing.preview`'s answer for a publish, or a list of what goes to the
+`publishing.plan`'s answer for a publish, or a list of what goes to the
 bin. The mark is a digest of the relative path, size and modification time of
-every file under the site folder's Store (`store.mark(folder)`, new).
+every file under the site folder's Store, and of `settings.json`
+(`settings.path_for`), since the build reads both (`store.mark(folder)`, new).
 
 **The box.** Every Face page asks `GET /assistant/waiting` every two seconds
 while the switch is on. A waiting request opens PRESS-0345's box, headed
 `assistant.box.title`, listing the plan, with **Yes, do it** and **Not yet**.
-Everything in the box is Pressless's own words or escaped page titles. A
+Everything in the box is Pressless's own words or page titles shown as text. A
 request carries no message from the assistant, so the box cannot be made to
 say "this is safe".
 
 **Yes** is `POST /assistant/answer` with `yes=1`, behind the Face's cookie
 and Origin checks like every screen button. The door then:
 
-1. takes the press record (`pressing.run`), then `editor.LOCK`, as every
-   press does;
+1. takes the press record (`pressing.run`) for an ask that publishes or
+   undoes, as `PUBLISH` or `UNDO` like its screen, then `editor.LOCK`.
+   `remove_entry`, `discard_changes` and `remove_file` take `editor.LOCK`
+   alone, as their screens do;
 2. compares `store.mark(folder)` with the request's. **A difference means the
    site changed since the box was drawn**, so the press does not run. The
    request is re-planned and stays waiting, and the box redraws with the new
@@ -299,16 +303,28 @@ takes a lock; its caller holds `editor.LOCK`.
 | `page_editor.press_page` | `page_editor._pressed` | `(folder, form, *, capture, notices) -> Published` |
 | `publishing.press_entry` | `publishing._pressed` | `(folder, form, *, capture, notices) -> tuple[store.Entry, Published]` |
 | `files_screen.remove` | `files_screen._remove` | `(folder, name) -> None`, raising `FileInUse` |
+| `look_screen.save` | `look_screen._save` | `(folder, form) -> None`: the route check, the base check and the copy to the bin, then `look.save` |
+| `publishing.plan` | `publishing._plan` | `(folder, *, entry, page) -> Preview` |
+| `publishing.press_site` | `page_editor._publish_or_put_back`'s call | `(folder, *, capture, notices) -> Published`: `publish(entry=None)` |
+| `undo.press_undo` | `undo._pressed` | `(folder, *, capture, notices) -> Undone` |
 
-The press functions fetch the key themselves through `github_setup.token`,
-inside the function, so it never reaches the door's frame.
+`publishing.preview`, `publishing.publish` and `undo.undo` take the key as an
+argument, so the door calls none of them directly. Every function above that
+needs the key fetches it through `github_setup.token`, inside the function, so
+it never reaches the door's frame.
+
+The door builds the form `press_entry` and `press_page` take from the stored
+entry or waiting copy, with its digest as `base`, so the press saves nothing
+new.
 
 ### 4.8 What the assistant may not touch
 
 - **A page's script, style or code section** (`blocks.SCRIPT`,
   `blocks.STYLE`, `blocks.CODE`). `save_page` compares the posted sections
   with the stored ones and refuses `assistant.locked_section` if any locked
-  section was added, changed, moved or removed. The page's code view is not
+  section was added, changed, moved or removed. Moved means the locked
+  sections, read in order, are no longer the same list; an unlocked section
+  added or removed around them moves none. The page's code view is not
   offered at all.
 - **The look's hand-written CSS** (`look.read_extra`) and the "own
   stylesheet" route of `look_screen`.
@@ -323,8 +339,9 @@ Entries need no rule: Marks escapes everything it writes
 The Windows update helper waits up to 60 seconds for every process whose
 image is inside the program folder (`installer.WINDOWS_SCRIPT`), then gives
 up. A bridge the AI app keeps running is such a process, so it would stop
-every update. The helper first ends every such process whose command line
-ends in `--assistant`. A bridge holds no state and no lock, so ending it loses
+every update. On each pass of its wait, the helper ends every such process
+whose command line ends in `--assistant`, so a bridge started during the wait
+is ended too. A bridge holds no state and no lock, so ending it loses
 at most a call in flight. Its AI app sees the call fail and starts a new bridge
 when next needed.
 
@@ -339,8 +356,8 @@ Every test below is new; none can run before the code exists.
 - **INV-1** — No tool result, `said` sentence or log line carries a
   credential. *Test:* `tests/test_assistant.py::test_no_tool_returns_a_key`
   runs every catalogue tool against a site whose fake keyring answers a
-  sentinel key, including failing presses whose error text quotes it. It
-  asserts the sentinel appears in no reply and no log line.
+  sentinel key, including failing presses whose transport's error replies
+  quote it. It asserts the sentinel appears in no reply and no log line.
   *Breaks when:* a raised failure's own words quote the key, or a tool
   returns a settings object or transport that holds one.
 
@@ -378,8 +395,8 @@ Every test below is new; none can run before the code exists.
   one of each through `save_page`, once per breach, and asserts
   `assistant.locked_section` and an unchanged waiting copy. One more case
   changes only an unlocked section and must succeed.
-  *Breaks when:* the comparison matches by position, so moving a locked
-  section passes.
+  *Breaks when:* the comparison ignores order, so swapping two locked
+  sections passes.
 
 - **INV-7** — With `--assistant`, stdout carries only protocol messages.
   *Test:* `tests/test_bridge.py::test_stdout_is_protocol_only` runs `main
@@ -409,17 +426,18 @@ Every test below is new; none can run before the code exists.
   `save_page` and `save_look`. *Breaks when:* a tool reads the digest
   itself instead of taking it from the caller.
 
-- **INV-12** — The box shows nothing the assistant wrote unescaped. *Test:*
+- **INV-12** — The box shows nothing the assistant wrote as markup. *Test:*
   `tests/test_assistant.py::test_box_is_escaped` publishes an entry titled
-  `<img src=x onerror=alert(1)>` and reads `/assistant/waiting`. The title
-  appears escaped. *Breaks when:* the plan's titles are inserted as HTML.
+  `<img src=x onerror=alert(1)>` and reads `/assistant/waiting`, whose JSON
+  carries the title as it is. It then reads the box's script for any plan
+  field written other than through `textContent`. *Breaks when:* the plan's
+  titles are inserted as HTML.
 
-- **INV-13** — The Windows update helper ends `--assistant` processes before
+- **INV-13** — The Windows update helper ends `--assistant` processes while
   it waits. *Test:* `tests/test_installer.py::test_helper_ends_bridges` reads
-  `WINDOWS_SCRIPT` for the stop step ahead of the wait loop, and the by-hand
+  `WINDOWS_SCRIPT` for the stop step inside the wait loop, and the by-hand
   check in § 7 runs it on the Windows box. *Breaks when:* the stop step
-  matches every process in the folder, which would end Pressless's own
-  successor.
+  matches every process in the folder.
 
 ## 6. Failure modes
 
@@ -518,7 +536,7 @@ By hand, before release, on Linux and the Windows box:
   Bridge row; § State gains the waiting request beside Updating's offer;
   § The stack names the hand-written MCP subset.
 - PRESS-0022 § 4.5: a third route, `--assistant`, which prints no report.
-- PRESS-0023: INV-12's helper now ends bridges first (§ 4.9).
+- PRESS-0023: INV-12's helper now ends bridges while it waits (§ 4.9).
 - PRESS-0345: its box gains a second caller.
 - The words table: the `assistant.` keys.
 - README and the Hub: what the AI helper is and how to connect it.
