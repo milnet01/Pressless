@@ -136,9 +136,11 @@ Files link and before `<details class="more">`.
 
 ### 4.5 Packaging
 
-`scripts/freeze_flags.py` gains `DATA: list[tuple[str, str]]`, the
+`scripts/freeze_flags.py` gains `DATA: list[tuple[Path, str]]`, the
 "data pairs" PRESS-0022 § 4.4 already names, holding
-`("src/pressless/manual_files", "pressless/manual_files")`.
+`(ROOT / "src" / "pressless" / "manual_files", "pressless/manual_files")`.
+The source is absolute because PyInstaller reads a relative one from
+`--specpath`, the work folder.
 `pyinstaller_args` passes each as `--add-data SRC:DEST`, the form
 PyInstaller 6 takes on every system (pinned at 6.22.3 in
 `packaging/release-requirements.txt`).

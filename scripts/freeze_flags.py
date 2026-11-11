@@ -29,6 +29,11 @@ ENTRY = ROOT / "src" / "pressless" / "__main__.py"
 ICON = ROOT / "packaging" / "icons" / "pressless.ico"
 HIDDEN_IMPORTS: list[str] = []
 COLLECT_ALL: list[str] = []
+# (source, place in the bundle). The source is absolute because PyInstaller
+# reads a relative one from --specpath, the work folder, not from here.
+DATA: list[tuple[Path, str]] = [
+    (ROOT / "src" / "pressless" / "manual_files", "pressless/manual_files"),
+]
 
 
 def version() -> str:
@@ -54,6 +59,9 @@ def pyinstaller_args(work: Path) -> list[str]:
         args += ["--hidden-import", module]
     for package in COLLECT_ALL:
         args += ["--collect-all", package]
+    # One separator on every system: PyInstaller 6 skips a drive's colon.
+    for source, destination in DATA:
+        args += ["--add-data", f"{source}:{destination}"]
     return [*args, str(ENTRY)]
 
 

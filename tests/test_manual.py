@@ -15,6 +15,7 @@ import urllib.parse
 from pathlib import Path
 
 from _face_session import session_cookie
+from _scripts import load_script
 
 from pressless import face, manual, words
 
@@ -173,3 +174,13 @@ def test_a_malformed_construct_is_a_paragraph():
     page = manual.render("== t | T\npicture p.png\n")
     assert "<img" not in page
     assert "<p>picture p.png</p>" in page
+
+
+def test_freeze_bundles_the_manual(tmp_path):
+    """INV-7. Breaks when DATA loses the pair, or the folder is renamed.
+
+    Only the flag is checked here; a built artefact proves the files arrive."""
+    args = load_script("freeze_flags.py").pyinstaller_args(tmp_path)
+    pairs = [args[i + 1] for i, flag in enumerate(args) if flag == "--add-data"]
+    assert f"{FILES}:pressless/manual_files" in pairs, pairs
+    assert FILES.is_dir()
