@@ -67,6 +67,7 @@ from pressless import (  # noqa: E402
     face,
     files_screen,
     importing,
+    manual,
     marks,
     page_editor,
     publishing,
@@ -136,6 +137,8 @@ def main() -> int:
         try:
             editor.register(served, folder)
             cheatsheet.register(served)
+            # PRESS-0219: a manual of its own, so the search rows know its words.
+            manual.register(served, _manual_folder(Path(tmp)))
             templates.register(served, folder)
             publishing.register(served, folder, transport=tp._github())
             undo.register(served, folder, transport=tp._github())
@@ -557,6 +560,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         true_colours_kept(page, origin)
         text_sizes(page, origin)
         more_menu(page, origin)
+        manual_search(page, origin)
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
         furniture_views(page, origin, folder)
@@ -1294,6 +1298,43 @@ def more_menu(page, origin: str) -> None:
           before["rows"] < before["line"] / 2 and opened["open"]
           and opened["main"] == before["main"] and not clicked_away and not escaped,
           f"{before} {opened} {clicked_away} {escaped}")
+
+
+# Only "publishing" holds both "publish" and "page"; "publish" alone is in two.
+_MANUAL = """\
+== photograph | Adding a photograph
+1. Click Add a photograph in the editor.
+== publishing | Publishing a page
+1. Click Publish now to send the page.
+== theme | Choosing a theme
+1. Pick a theme on the Look screen, then publish.
+"""
+
+
+def _manual_folder(tmp: Path) -> Path:
+    folder = tmp / "manual"
+    (folder / "media").mkdir(parents=True)
+    (folder / f"{manual.LANGUAGE}.txt").write_text(_MANUAL, encoding="utf-8")
+    return folder
+
+
+def manual_search(page, origin: str) -> None:
+    """PRESS-0219 INV-8: a task shows exactly when every typed word is in its
+    words, ignoring case, and the status line gives the count."""
+    page.goto(f"{origin}{manual.ADDRESS}", wait_until="networkidle")
+
+    def shown(typed: str) -> tuple[list[str], str]:
+        page.fill("#manual-search", typed)
+        return (page.eval_on_selector_all("section.manual-task:not([hidden])",
+                                          "tasks => tasks.map(t => t.id)"),
+                page.inner_text("#manual-found"))
+
+    both, one, nothing = shown("PUBLISH page"), shown("publish"), shown("")
+    check("PRESS-0219 INV-8: every word, any case; the count; nothing typed shows all",
+          both == (["publishing"], words.say("script.manual.found_one"))
+          and one == (["publishing", "theme"], words.say("script.manual.found", count="2"))
+          and nothing == (["photograph", "publishing", "theme"], ""),
+          f"{both} {one} {nothing}")
 
 
 def _overflows(page, address: str) -> bool:
