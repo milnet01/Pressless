@@ -6729,6 +6729,11 @@ publish and anything that deletes.
     chats are out, since they would need a server of Pressless's own.
   Spec owed: security boundary plus a tool contract AI apps bind to;
   review-contract gates it before building.
+  Spec accepted 2026-11-11: docs/specs/PRESS-0337-ai-assistant.md.
+  One review-contract loop (two lanes): 12 verified, all fixed; the
+  last, what the box shows for undo, page and bin asks, was settled by
+  me in § 4.6 after the loop, so no lane read it. Open before building:
+  confirm 2025-06-18 as a legacy MCP version (spec § 13).
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.

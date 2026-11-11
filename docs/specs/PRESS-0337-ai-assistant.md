@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0337 — Let an AI assistant drive Pressless
 
-**Status:** spec draft (2026-11-11).
+**Status:** accepted (2026-11-11). One review loop, by the user's one-round budget; its fixes are read by no lane.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0337 (user request, 2026-11-03).
 
@@ -255,9 +255,20 @@ it. That is the same reason `docs/design.md` § State allows Updating's
 in-memory offer.
 
 A request holds its id (`secrets.token_urlsafe(8)`), the press it asks for,
-the time, the plan, and the **Store's mark**. The plan is
-`publishing.plan`'s answer for a publish, or a list of what goes to the
-bin. The mark is a digest of the relative path, size and modification time of
+the time, the plan, and the **Store's mark**. The plan is what the box lists:
+
+| Ask | Plan |
+|---|---|
+| `publish` | `publishing.plan`'s answer: the pages it writes, and how many other files it adds and removes |
+| `undo_last_publish` | `assistant.box.undo`: the site goes back to how it was before the last publish |
+| `remove_page`, `rename_page` | the page's name, and `assistant.box.remove` or `assistant.box.rename` with the new name; both go live at once, as on screen |
+| `remove_entry`, `discard_changes`, `remove_file` | each entry, page or file that goes to the bin, by name |
+
+`GET /assistant/waiting` answers `_plan`'s JSON shape, `pages`, `added` and
+`removed`, plus `lines`: the plan's other sentences, as text. PRESS-0345's
+`presslessPlan` gains `lines`. No ask runs a build to plan except `publish`;
+the box for the others, deferred on PRESS-0345, stays a sentence here too.
+The mark is a digest of the relative path, size and modification time of
 every file under the site folder's Store, and of `settings.json`
 (`settings.path_for`), since the build reads both (`store.mark(folder)`, new).
 
