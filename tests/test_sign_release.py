@@ -7,13 +7,13 @@ and every key is made inside the test.
 from __future__ import annotations
 
 import base64
-import importlib.util
 import os
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+from _scripts import load_script
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
@@ -23,10 +23,7 @@ _SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "sign-release.py"
 
 
 def _signer():
-    spec = importlib.util.spec_from_file_location("sign_release", _SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_script("sign-release.py")
 
 
 def _public(key: Ed25519PrivateKey) -> str:

@@ -5,24 +5,18 @@ module name. `gh` is replaced by a recorder; nothing reaches GitHub.
 """
 from __future__ import annotations
 
-import importlib.util
 import io
 import json
 import lzma
 import tarfile
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "publish-jpeg-xl.py"
+from _scripts import load_script
 
 
 def _script():
-    spec = importlib.util.spec_from_file_location("publish_jpeg_xl", _SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_script("publish-jpeg-xl.py")
 
 
 class _Gh:

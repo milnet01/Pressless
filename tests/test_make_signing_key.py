@@ -5,20 +5,14 @@ key is made, and the real one is never touched.
 """
 from __future__ import annotations
 
-import importlib.util
 import os
-from pathlib import Path
 
 import pytest
-
-_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "make-signing-key.py"
+from _scripts import load_script
 
 
 def _maker():
-    spec = importlib.util.spec_from_file_location("make_signing_key", _SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_script("make-signing-key.py")
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Windows keeps access in ACLs")

@@ -5,16 +5,12 @@ disarm() makes is passed through monkeypatch, so it is undone after each test.
 """
 from __future__ import annotations
 
-import importlib.util
 import sys
-from pathlib import Path
 
 import pytest
+from _scripts import load_script
 
 from pressless import github_signin, google_signin, insights, publisher, settings, updater
-
-_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "practice.py"
-
 
 # The practice copy keeps its made-up key in a file, which Pressless refuses
 # on Windows; run.sh, its only starter, is Linux's.
@@ -23,10 +19,7 @@ pytestmark = pytest.mark.skipif(sys.platform == "win32",
 
 
 def _practice():
-    spec = importlib.util.spec_from_file_location("practice", _SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_script("practice.py")
 
 
 @pytest.mark.parametrize("text, port", [(None, 0), ("", 0), (" ", 0),
