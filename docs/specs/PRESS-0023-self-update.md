@@ -481,7 +481,10 @@ window and start it again."* and exits 3, serving nothing.
   PowerShell by absolute path. *Test:* `tests/test_installer.py::test_windows_helper`
   reads the command and script: no `-Id`, an absolute `powershell.exe`, the
   paths as arguments only. *Breaks when:* the wait uses `$PID` or `-Id`, or a
-  path is written into the script text.
+  path is written into the script text. Each pass of the wait also ends any
+  AI helper bridge started from the program folder (PRESS-0337 § 4.9,
+  `tests/test_installer.py::test_helper_ends_bridges`), so a bridge an AI app
+  keeps running cannot hold the update off.
 - **INV-13** — Skip persists and Later does not. *Test:*
   `tests/test_updating.py::test_skip_and_later` — after Skip 0.1.3, a new
   process offered 0.1.3 shows nothing and one offered 0.1.4 shows it; after

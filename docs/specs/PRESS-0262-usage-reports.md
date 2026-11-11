@@ -272,8 +272,10 @@ custom dimension; the document lists them.
   *Breaks when:* `.gitignore` loses the line.
 
 - **INV-9** — Within `src/pressless/`, only `https.py`, the client the
-  Publisher, Insights and usage reports share (PRESS-0331), and
-  `updater.py` import a network module.
+  Publisher, Insights and usage reports share (PRESS-0331), `updater.py`,
+  and `bridge.py`, which reaches only the Face on 127.0.0.1 (PRESS-0337
+  § 4.4, held by `tests/test_bridge.py::test_bridge_reaches_only_this_computer`),
+  import a network module.
   Outside it, `pressless_import.fetch` is the one network module
   (PRESS-0125 § 4.4, amended 2026-10-22), and
   `tests/test_importer.py::test_import_reaches_no_network` holds it.

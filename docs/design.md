@@ -35,7 +35,8 @@ defensible answers it has an ADR in `docs/decisions/`, named here.
 | **Updater** | Asking GitHub whether a newer Pressless is out, proving the release against the keys built into the program, downloading it, and putting it in place of the running program (PRESS-0023). | The user's writing, the Store, Settings, Credentials, the site |
 | **JPEG XL extra** | Downloading libjxl's decoder on the user's click, checking its bytes against the hash built into Pressless before every use, and running it as its own process to turn a JPEG XL photograph into a picture the Builder reads (PRESS-0275). `jpegxl.py`, which the Builder imports; `jpegxl_screen.py`, its line on the list. | The site, the user's writing, GitHub beyond the one download |
 | **Usage** | Sending the anonymous usage reports the user agreed to, to a Google Analytics property kept for Pressless alone, and keeping the last ones sent for them to read (PRESS-0262). | The site, the user's writing, Settings' values, the Store |
-| **Face** | The local web server and the pages the user sees in their browser — the entry editor, visual and marks, the page editor, visual and code, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, and setup with its step-by-step help. Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Face** | The local web server and the pages the user sees in their browser — the entry editor, visual and marks, the page editor, visual and code, the look's choices, the preview, the buttons, the cheat sheet, the dashboard, setup with its step-by-step help, and the door an AI app's calls come through, with its AI helper screen (PRESS-0337). Turns the parts' typed failures into sentences, and writes the rolling log (§ Logging). | *Nothing calls it* |
+| **Bridge** | The program an AI app starts, `pressless --assistant`: speaks the Model Context Protocol over stdio, lists the tools from `assistant_tools.py`, and passes each call to the Face's door (PRESS-0337). `bridge.py`. | The site, the Store, Settings, Credentials |
 | **Words** | Every word the screens show, in one table keyed by name, looked up when a page is shown (PRESS-0242). English is its only table so far. | Files, the network, GitHub, the browser |
 
 **Marks and Blocks are parts rather than details inside the editors**,
@@ -124,6 +125,12 @@ which marks cannot express without becoming HTML.
     (PRESS-0023).
 12. **Any part may ask Words for words.** Words touches no disk and no
     network, and reads only Marks' table and the flag data (PRESS-0242).
+13. **The Bridge reads only the tool list, Words and the door file in
+    Pressless's own folder, and talks only to the Face on 127.0.0.1.**
+    Every call goes through the Face's door, so rules 1 and 10 hold for
+    an AI app as for the user (PRESS-0337 § 4.1).
+    `tests/test_bridge.py::test_bridge_imports` and
+    `::test_bridge_reaches_only_this_computer` check it.
 
 **Setup's three starts.** Setup fills an empty Store in one of three
 ways, and only one:
@@ -604,10 +611,12 @@ one: a cache of the user's writing would be a second copy that can
 disagree with the first, and which one is true is exactly the question
 S3 exists to make unaskable.
 
-**Updating holds one thing in memory, and it is the exception.** A newer
-version found at start, and the user's Later, last as long as the
-process (PRESS-0023 § 4.9). Nothing of theirs is in them, and losing
-them costs one check at the next start.
+**Two parts hold something in memory, and they are the exceptions.**
+Updating holds a newer version found at start, and the user's Later, for
+as long as the process (PRESS-0023 § 4.9). The AI helper's door holds
+the one request waiting for the user's yes (PRESS-0337 § 4.6). Nothing
+of theirs is in either. Losing them costs one check at the next start,
+or one question the AI app asks again.
 
 ### Persistence
 
@@ -677,7 +686,9 @@ user does on purpose.
 **Chosen:** Python 3, the standard library's own web server for the
 Face, `Pillow` for photographs (already proven — `_work/resize.py` in
 the sibling workspace turns 220 MB of camera originals into 31 MB), the
-operating system's keyring for the key, and PyInstaller to package one
+operating system's keyring for the key, a hand-written subset of the
+Model Context Protocol on the standard library for AI apps (PRESS-0337
+§ 8), and PyInstaller to package one
 artefact per system — an AppImage on Linux, an extracted folder shipped
 as a zip on Windows, which is what § Where everything sits on disk
 resolves against.

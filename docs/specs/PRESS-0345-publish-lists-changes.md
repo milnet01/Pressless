@@ -108,6 +108,10 @@ now closes it and runs the press as PRESS-0013 § 4.4 and PRESS-0339 say. Not
 yet closes it and puts the standing words back. A failure opens the failure
 box, as a press's does.
 
+**The AI helper's requests open the same box** (PRESS-0337 § 4.6), with
+their own title and buttons, and `lines`: sentences for an ask whose plan
+is not a build. Every field is written as text.
+
 ## 5. Invariants
 
 - **INV-1** — A plan writes nothing to GitHub.

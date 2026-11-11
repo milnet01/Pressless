@@ -358,8 +358,10 @@ metadata; §2 is the whole reason. Which of the two it is, is §7's to
 decide, and it decides it by controlling the machine.
 
 `--self-check` prints the same report and is what CI and the Windows
-box run. There is no other flag: the double-click and the check take
-the same path, so the writer's route is the one that was tested.
+box run. The double-click and the check take the same path, so the
+writer's route is the one that was tested. **`--assistant` is the third
+route** (PRESS-0337 § 4.4): the AI helper's bridge, taken before the
+report, which it never prints, because its stdout is the protocol's.
 
 **It writes nothing but the folder.** No settings file, no credential,
 no probe left behind — `credentials.choose()` already deletes its own

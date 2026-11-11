@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0337 — Let an AI assistant drive Pressless
 
-**Status:** accepted (2026-11-11). One review loop, by the user's one-round budget; its fixes are read by no lane.
+**Status:** accepted (2026-11-11). One review loop, by the user's one-round budget; its fixes are read by no lane. Built 2026-11-11, with the build's corrections folded in (`impl` row); § 7's by-hand checks are owed before release.
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0337 (user request, 2026-11-03).
 
@@ -114,7 +114,8 @@ for the writer.
 
 ### 4.3 The door
 
-`POST /assistant`, registered through a new `Face.add_door(path, page)`. The
+`POST /assistant`, registered through a new `Face.add_door(path, page, admits)`,
+where `admits` takes the `Authorization` header. The
 Face's `_dispatch` answers it before its cookie check, and only where all of
 these hold. Any failure gets the same 403 as any refused request, and nothing
 runs:
@@ -174,11 +175,16 @@ The protocol is a subset of MCP over stdio. Source:
 - **Methods.** `server/discover`, `initialize`, `notifications/initialized`
   (ignored), `ping` (legacy, answers `{}`), `tools/list`, `tools/call`,
   `notifications/cancelled` (ignored: a call already at the door finishes).
-  Anything else is -32601.
+  Anything else is -32601. A request naming no version in `_meta` is
+  legacy.
+- **Modern results** carry `resultType: "complete"`. `server/discover`
+  answers `supportedVersions`, `capabilities` and the server's name under
+  `_meta["io.modelcontextprotocol/serverInfo"]`.
 - **`tools/list`** answers from the catalogue the bridge imports, never from
   the door. So the list is the same whether or not Pressless is open, and the
   AI app learns the tools even when it starts first. One page, no cursor,
-  deterministic order, `ttlMs` and `cacheScope` on modern requests.
+  deterministic order, `ttlMs` and `cacheScope: "public"` on modern
+  requests and on `server/discover`.
 - **`tools/call`** checks the name against the catalogue (-32602 if
   unknown), reads the door file, and posts to the door with a 300-second
   timeout. A missing file, a refused connection or a 403 answers a tool
@@ -211,7 +217,7 @@ does, so the version matches what it returned):
 | `list_entries` | — | each entry: address, title, date, `draft`, `has_changes` (a working copy exists) |
 | `read_entry` | `address` | title, date, categories, tags, body in marks, `draft`, `version`. A published entry with a working copy returns the working copy, as `editor._edit` does |
 | `list_pages` | — | each page and part (`header`, `footer`, `navigation`): name, `changed` (a waiting copy exists) |
-| `read_page` | `name` | its sections (`page_editor.outline`) or, for `navigation`, its links; `version`. A script, style or code section appears with its kind and `"locked": true`, and no code |
+| `read_page` | `name` | each section by path, kind and fields, or, for `navigation`, its links; `version`. A script, style or code section, and words holding a Builder placeholder, appear with their kind and `"locked": true`, and no code. `header`, `footer` and `navigation` name the parts |
 | `list_files` | — | each added file and photograph: name, and the pages naming it (`builder.files_named`) |
 | `read_look` | — | `look.Choices` as JSON, `version` |
 | `read_insights` | `days`, one of `dashboard.WINDOWS`' spans | `insights.Report`'s figures as JSON. `NotConfigured` answers its sentence |
@@ -225,7 +231,7 @@ does, so the version matches what it returned):
 | `save_entry` | `address`, `version`, any of `title`, `body`, `categories`, `tags` | `editor.save` in the marks view (`view` other than `"visual"`); a published entry gets its working copy, as on screen |
 | `change_entry_address` | `address`, `version`, `to` | `editor.change_address` (§ 4.7) |
 | `new_page` | `name` | `page_editor.new_page` (§ 4.7): a waiting copy only |
-| `save_page` | `name`, `version`, `sections` or `links` | `page_editor._write` with a `view` other than `"code"`; refused if it adds, changes, moves or removes a locked section (§ 4.8) |
+| `save_page` | `name`, `version`, `sections` or `links` | `page_editor._write` with a `view` other than `"code"`; a top-level section not kept is removed; refused if it adds, changes, moves or removes a locked section (§ 4.8) |
 | `add_photograph` | `filename`, `data` (base64) | `photographs.add`; returns its name and `builder.web_photograph` address |
 | `add_file` | `filename`, `data` (base64) | `files.add`, with its own size and kind checks |
 | `save_look` | `version`, `choices` | `look_screen.save` (§ 4.7), with the route and hand-written CSS the Look screen would post unchanged, so neither changes |
@@ -234,7 +240,7 @@ does, so the version matches what it returned):
 
 | Tool | Arguments | The press it asks for |
 |---|---|---|
-| `publish` | `entry` or `page`, or neither for the whole site | `publishing.press_entry`, `page_editor.press_page` or `publishing.press_site` (§ 4.7) |
+| `publish` | `entry` or `page`, or neither for the whole site | `publishing.press_entry`, `page_editor.press_page` or `publishing.press_site` (§ 4.7). An entry or page with nothing waiting publishes the site as it stands |
 | `undo_last_publish` | — | `undo.press_undo` (§ 4.7) |
 | `remove_entry` | `address`, `version` | `editor.throw` (§ 4.7) |
 | `discard_changes` | `entry` or `page`, `version` | `editor.discard` or `page_editor.discard` (§ 4.7) |
@@ -270,7 +276,8 @@ the time, the plan, and the **Store's mark**. The plan is what the box lists:
 the box for the others, deferred on PRESS-0345, stays a sentence here too.
 The mark is a digest of the relative path, size and modification time of
 every file under the site folder's Store, and of `settings.json`
-(`settings.path_for`), since the build reads both (`store.mark(folder)`, new).
+(`settings.path_for`), since the build reads both
+(`store.mark(folder, settings.path_for(folder))`, new).
 
 **The box.** Every Face page asks `GET /assistant/waiting` every two seconds
 while the switch is on. A waiting request opens PRESS-0345's box, headed
@@ -300,7 +307,9 @@ Neither changes anything.
 Each handler below is split into a plain function and the handler that calls
 it, so the door and the screen run the same code (rule 1). Each plain function
 takes `folder` and plain arguments, raises what the handler caught, and never
-takes a lock; its caller holds `editor.LOCK`.
+takes a lock; its caller holds `editor.LOCK`. Each press function also takes
+`transport`, as the press it came from did. `AddressRefused` and
+`NameRefused` carry the hint as their sentence.
 
 | New function | Taken from | Signature |
 |---|---|---|
@@ -318,6 +327,7 @@ takes a lock; its caller holds `editor.LOCK`.
 | `publishing.plan` | `publishing._plan` | `(folder, *, entry, page) -> Preview` |
 | `publishing.press_site` | `page_editor._publish_or_put_back`'s call | `(folder, *, capture, notices) -> Published`: `publish(entry=None)` |
 | `undo.press_undo` | `undo._pressed` | `(folder, *, capture, notices) -> Undone` |
+| `dashboard.figures` | `dashboard._show` | `(folder, days) -> insights.Report`, the Google token fetched inside |
 
 `publishing.preview`, `publishing.publish` and `undo.undo` take the key as an
 argument, so the door calls none of them directly. Every function above that
@@ -352,7 +362,8 @@ image is inside the program folder (`installer.WINDOWS_SCRIPT`), then gives
 up. A bridge the AI app keeps running is such a process, so it would stop
 every update. On each pass of its wait, the helper ends every such process
 whose command line ends in `--assistant`, so a bridge started during the wait
-is ended too. A bridge holds no state and no lock, so ending it loses
+is ended too. It ends them through `Invoke-CimMethod Terminate`, since
+PRESS-0023 INV-12 bars `-Id` from the script. A bridge holds no state and no lock, so ending it loses
 at most a call in flight. Its AI app sees the call fail and starts a new bridge
 when next needed.
 
@@ -549,6 +560,8 @@ By hand, before release, on Linux and the Windows box:
 - PRESS-0022 § 4.5: a third route, `--assistant`, which prints no report.
 - PRESS-0023: INV-12's helper now ends bridges while it waits (§ 4.9).
 - PRESS-0345: its box gains a second caller.
+- PRESS-0262 INV-9: `bridge.py` joins the modules that import a network
+  module; it reaches only 127.0.0.1.
 - The words table: the `assistant.` keys.
 - README and the Hub: what the AI helper is and how to connect it.
 - CHANGELOG at release.
@@ -559,6 +572,7 @@ Rows live in `../reviews/PRESS-0337-ai-assistant-loop-log.md`.
 
 ## 13. Open questions
 
-- **The legacy version list.** `2025-11-25` is confirmed by the 2026-07-28
-  versioning page. `2025-06-18` is not yet confirmed from the spec's own pages;
-  confirm it before building, or drop it.
+None. `2025-06-18` is a published MCP version
+(<https://modelcontextprotocol.io/specification/2025-06-18>), and the
+2026-07-28 versioning page counts "`2025-11-25` and earlier" as legacy,
+checked 2026-11-11.
