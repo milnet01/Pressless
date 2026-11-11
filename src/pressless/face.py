@@ -472,6 +472,8 @@ _FILE_TYPES = {
     ".pdf": "application/pdf",
     ".zip": "application/zip",
     ".txt": "text/plain; charset=utf-8",
+    # PRESS-0219 § 4.3: the manual's video captions.
+    ".vtt": "text/vtt; charset=utf-8",
 }
 
 # Every wrapped page carries this, so a frame on a Face page can only show an
@@ -1118,6 +1120,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100
         f'<a href="/look">{say("face.look")}</a>'
         # PRESS-0197 § 4.4: beside Look.
         f'<a href="/files">{say("face.files")}</a>'
+        # PRESS-0219 § 4.4: outside More, where a lost newcomer looks.
+        f'<a href="/manual">{say("face.help")}</a>'
         # PRESS-0343: the rest under More, which opens over the page, so the
         # bar keeps to one line.
         f'<details class="more"><summary>{say("face.more")}</summary><div>'

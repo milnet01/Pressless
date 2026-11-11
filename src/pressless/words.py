@@ -287,6 +287,12 @@ _WORDS: dict[str, str] = {
         "Take it out of those pages first, publishing or discarding any page still being"
         " edited, then remove it."
     ),
+    "failure.manual.ManualMissing.what": (
+        "Pressless could not find its manual, so this copy of Pressless may be damaged."
+    ),
+    "failure.manual.ManualMissing.next": (
+        "Everything else still works. Download Pressless again to get the manual back."
+    ),
     "failure.look.LookUnreadable.what": (
         "Pressless could not read the settings your site's look is made from, so it"
         " changed nothing."
@@ -465,6 +471,7 @@ _WORDS: dict[str, str] = {
     "face.usage": "Usage reports",
     "face.about": "About",
     "face.more": "More",
+    "face.help": "Help",
     # The editor and the list (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "
@@ -2056,6 +2063,13 @@ _WORDS: dict[str, str] = {
     "cheatsheet.print": "A page to print",
     "cheatsheet.title": "Pressless cheat sheet",
     "cheatsheet.where": "Type these in the box where you write an entry.",
+    # The manual (manual.py); its own words are in manual_files, not here.
+    "manual.title": "Pressless manual",
+    "manual.search": "Search the manual",
+    "manual.captions": "English",
+    "script.manual.found_one": "1 task matches.",
+    "script.manual.found": "{count} tasks match.",
+    "script.manual.none": "No task matches. Try fewer words.",
     # The theme picker in the top bar (themes.py).
     "themes.label": "Theme",
     "themes.follow": "Follow my computer",

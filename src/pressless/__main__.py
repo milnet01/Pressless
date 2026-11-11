@@ -47,6 +47,7 @@ from pressless import (
     installer,
     jpegxl_screen,
     look_screen,
+    manual,
     page_editor,
     paths,
     pressing,
@@ -252,6 +253,7 @@ def _serve_once(own: Path) -> bool:
         dashboard.register(served, folder)
         editor.register(served, folder)
         cheatsheet.register(served)
+        manual.register(served)                             # PRESS-0219
         report.register(served)
         about.register(served)
         usage.register(served, own, site=folder)

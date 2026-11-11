@@ -1,0 +1,11 @@
+This manual shows how to do each thing Pressless can do. Type in the
+search box to show only the tasks holding those words.
+
+== finding-help | Finding help
+Help is in the bar at the top of every Pressless screen.
+
+1. Click Help in the bar at the top of the screen.
+picture help-link.png | The bar at the top of a Pressless screen, with Help after Files.
+2. Type what you want to do in the search box.
+3. Read the steps under the task that matches.
+video searching.webm | Typing a word in the search box, and the tasks that do not hold it disappearing.

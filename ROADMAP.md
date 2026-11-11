@@ -6809,7 +6809,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
   Lanes: Store, Settings, Builder.
 
-- 📋 [PRESS-0219] **A searchable manual inside the app that shows, with pictures and short videos, how to do every task.**
+- 🚧 [PRESS-0219] **A searchable manual inside the app that shows, with pictures and short videos, how to do every task.**
   Discovery's Help row: whatever Pressless cannot do for them comes
   with step-by-step instructions. Written once every feature before
   1.0.0 has shipped, so it describes what exists.
@@ -6836,6 +6836,14 @@ owned by docs/standards/versioning-overrides.md.
   - It stays at 1.0.0, and is the last item there: the tray icon and
     the languages moved to 1.2.0, so its pictures are made once.
   Needs a spec: it touches docs, Face and packaging.
+  Step 1 done 2026-11-11: manual.py, the text format, /manual
+  with its search box, the Help link after Files, the .vtt type,
+  and en.txt with one task. Its picture and video are stand-ins
+  (a plain colour and a test pattern) until step 3 records real
+  ones. The bar measured one line at 1280 px in Chrome and
+  Firefox with Help added, so PRESS-0343's test now allows seven
+  links. Search checked once in Chrome; INV-8's browser case is
+  still owed.
   **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
