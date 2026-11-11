@@ -6749,6 +6749,19 @@ publish and anything that deletes.
   Hub session told what the helper is; it waits for the release
   before publishing a page. Still owed: § 7 by hand (the user),
   the Hub page after release, CHANGELOG at release.
+  § 7 run 2026-11-11, packaged builds of 900e88f:
+  - Linux, Claude Code (real AppImage): connect, list tools, save an
+    entry, ask to publish, Yes in the browser, live site changed. PASS.
+  - Windows box, MCP Python SDK client standing in for an app: the same
+    steps PASS, and an update with a bridge running completed (update.log
+    waiting, swapped, started; bridge ended; a new bridge worked).
+  Found and fixed in c6f2325: Windows screen named the program folder,
+  not Pressless.exe; door file left on SIGHUP/SIGTERM; Claude Code line
+  now --scope user with its own Copy; replace refusal said "below";
+  waiting status now tells the app to ask again later.
+  ChatGPT dropped from the named apps (user has no account; its steps
+  cannot be checked). Still owed: Claude Desktop on the Windows box,
+  which needs the user's sign-in.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
