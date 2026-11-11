@@ -6734,6 +6734,17 @@ publish and anything that deletes.
   last, what the box shows for undo, page and bin asks, was settled by
   me in § 4.6 after the loop, so no lane read it. Open before building:
   confirm 2025-06-18 as a legacy MCP version (spec § 13).
+  Built 2026-11-11 (commits 403932d, cce9175, 3a32428): door, bridge,
+  tool list, box, Windows helper step, documents. Gate green: 1968
+  passed here, 1849 on the Windows box. INV-1 to INV-13 each seen red
+  by mutating its guard. 2025-06-18 confirmed as a legacy MCP version.
+  Still owed before this ships:
+  - README section and a Hub page on what the AI helper is and how to
+    connect it (spec § 11); CHANGELOG at release.
+  - § 7 by hand on Linux and the Windows box: Claude Desktop, Claude
+    Code, ChatGPT desktop (list tools, save an entry, ask to publish,
+    yes in the browser, site changes); a Windows update with an AI app
+    connected. The ChatGPT steps in words.py are unchecked.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
