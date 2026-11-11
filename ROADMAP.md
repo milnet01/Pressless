@@ -6717,6 +6717,18 @@ publish and anything that deletes.
   Shape decided by the user, 2026-11-10: an MCP server. Build its
   actions as one set a command line could reuse later; no command line
   now.
+  User decisions 2026-11-11 (each was my recommendation unless
+  marked):
+  - The writer approves a publish, an undo or a delete in Pressless's
+    own window, never in the AI app.
+  - Pressless must be open; with it closed the assistant is told to
+    open it first.
+  - First version covers entries, pages, photographs and files, and the
+    look plus Insights (the last two beyond my recommendation).
+  - Desktop AI apps only (a local helper the app starts); browser-only
+    chats are out, since they would need a server of Pressless's own.
+  Spec owed: security boundary plus a tool contract AI apps bind to;
+  review-contract gates it before building.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
