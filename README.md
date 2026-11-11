@@ -143,6 +143,29 @@ keeps the last seven. They go to a `Pressless-backups` folder beside
 the program. Choose another folder on the Sites screen, on a USB stick
 or in a cloud folder, so a lost computer does not take them too.
 
+## Letting an AI app help
+
+**From 0.15.0, an AI app on your computer can write and edit your site
+through Pressless.** Claude Desktop, Claude Code and the ChatGPT desktop
+app are the ones Pressless gives steps for. You ask the app in your own words,
+and it makes the change in Pressless.
+
+**Nothing goes live or is thrown away until you say yes in Pressless.**
+When the app asks to publish, undo a publish or put something in the
+bin, Pressless shows a box listing what would change, with **Yes, do
+it** and **Not yet**. The app cannot reach your keys, your settings, or
+any page's code.
+
+It is off until you switch it on:
+
+1. In Pressless, click **AI helper**, under the list of your writing.
+2. Click **Switch on**.
+3. The same screen shows what to give your AI app, with a **Copy**
+   button, and the steps for each app.
+
+Pressless must be open while the app works. A chat that runs only in a
+web browser cannot connect.
+
 ## Moving an existing blog in
 
 **You cannot bring your own blog in yet.** You start with an empty site
