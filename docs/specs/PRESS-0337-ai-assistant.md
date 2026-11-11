@@ -102,7 +102,9 @@ While the switch is on and a Face serves, the **door file**
 
 Written when the Face starts or the switch turns on, through
 `safe_write.write_whole`, with owner-only permissions where the system has them.
-Removed when the Face stops or the switch turns off. A new token every
+Removed when the Face stops or the switch turns off; a closed terminal
+stops it as Ctrl+C does. A Pressless ended outright leaves the file, and
+the bridge's call is refused until the next start replaces it. A new token every
 time. A restart, an update or a switch of site (PRESS-0223) writes a new
 file, and the bridge reads the file on every call, so it follows.
 
@@ -488,7 +490,7 @@ Each invariant's test is seen failing before its code exists.
 
 By hand, before release, on Linux and the Windows box:
 
-- connect Claude Desktop, Claude Code and the ChatGPT desktop app; list
+- connect Claude Desktop and Claude Code; list
   tools; save an entry; ask to publish; answer yes in the browser; see the
   site change;
 - update Pressless on Windows with an AI app connected; the update

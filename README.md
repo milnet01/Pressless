@@ -146,8 +146,8 @@ or in a cloud folder, so a lost computer does not take them too.
 ## Letting an AI app help
 
 **From 0.15.0, an AI app on your computer can write and edit your site
-through Pressless.** Claude Desktop, Claude Code and the ChatGPT desktop
-app are the ones Pressless gives steps for. You ask the app in your own words,
+through Pressless.** Claude Desktop and Claude Code are the ones
+Pressless gives steps for. You ask the app in your own words,
 and it makes the change in Pressless.
 
 **Nothing goes live or is thrown away until you say yes in Pressless.**

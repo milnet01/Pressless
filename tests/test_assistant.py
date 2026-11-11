@@ -638,3 +638,31 @@ def test_the_setup_screen_and_the_box(tmp_path):
         assert "On: an AI app can connect while Pressless is open." in page
         assert "/assistant/waiting" in pressless.browser.request("GET", "/")[2]
         assert pressless.waiting() == {"request": None}
+
+
+def test_the_screen_names_the_program_on_windows(monkeypatch, tmp_path):
+    """§ 4.2, found by § 7 on the Windows box: an AI app starts a program, and
+    on Windows the packaged artefact is a folder, so the screen names the
+    Pressless.exe inside it. Breaks when the folder is named."""
+    program = tmp_path / "Pressless" / "Pressless.exe"
+    monkeypatch.setattr(assistant.sys, "platform", "win32")
+    monkeypatch.setattr(assistant.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(assistant.sys, "executable", str(program))
+    assert assistant._program() == (str(program), ["--assistant"])
+
+
+def test_the_screen_gives_each_app_its_own_line(tmp_path):
+    """§ 4.2: Claude Code's line adds Pressless for every folder and has its
+    own Copy button; only the apps checked by hand (§ 7) are named."""
+    with _pressless(tmp_path) as pressless:
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+    assert "claude mcp add --scope user pressless -- " in page
+    assert 'data-copy="assistant-claude-code"' in page
+    assert "ChatGPT" not in page
+
+
+def test_a_refusal_names_no_place_on_a_screen():
+    """§ 4.3: the AI app relays a refusal to the writer in a chat, where no
+    "below" exists, so the replace refusal says where in Pressless to go."""
+    said = assistant._said(publishing.WouldReplaceASite("held"))
+    assert "below" not in said and "Publish" in said

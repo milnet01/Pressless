@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import errno
 import os
+import signal
 import sys
 import threading
 import urllib.parse
@@ -190,9 +191,36 @@ def _serve(own: Path) -> int:
         if stopped is not None:
             print(stopped)
             return 1
-        return _serve_held(own)
+        kept = _stop_on_close()
+        try:
+            return _serve_held(own)
+        finally:
+            for number, handler in kept.items():
+                signal.signal(number, handler)
     finally:
         held.close()
+
+
+_CLOSE_SIGNALS = tuple(getattr(signal, name) for name in ("SIGTERM", "SIGHUP")
+                       if hasattr(signal, name))
+
+
+def _stop_on_close() -> dict[int, object]:
+    """A closed terminal (SIGHUP) or a stop from the system (SIGTERM) takes
+    Ctrl+C's way out, so the Face's stop steps run and the AI helper's door
+    file goes with it (PRESS-0337 § 4.2). A handler another program set
+    stays. Returns the handlers to put back."""
+    if threading.current_thread() is not threading.main_thread():
+        return {}
+    return {number: signal.signal(number, _interrupt) for number in _CLOSE_SIGNALS
+            if signal.getsignal(number) == signal.SIG_DFL}
+
+
+def _interrupt(number: int, frame: object) -> None:
+    # A second signal while stopping must not cut the stop short (PRESS-0208).
+    for each in _CLOSE_SIGNALS:
+        signal.signal(each, signal.SIG_IGN)
+    raise KeyboardInterrupt
 
 
 def _serve_held(own: Path) -> int:
@@ -296,8 +324,8 @@ def _refresh_shortcuts(served: face.Face) -> None:
 
 
 def _wait(restart: threading.Event) -> bool:
-    """Block until `restart` is set, then return True. Closing the console
-    kills the process and an interrupt raises, so it never returns False."""
+    """Block until `restart` is set, then return True. An interrupt raises,
+    a closed terminal included (_stop_on_close), so it never returns False."""
     restart.wait()
     return True
 

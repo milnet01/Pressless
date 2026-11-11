@@ -1790,7 +1790,7 @@ _WORDS: dict[str, str] = {
     # that are not the screen's.
     "assistant.title": "AI helper",
     "assistant.about": (
-        "An AI app on this computer, such as Claude or ChatGPT, can write and edit your site "
+        "An AI app on this computer, such as Claude, can write and edit your site "
         "through Pressless. Nothing is published, undone or put in the bin until you press "
         "Yes in Pressless. It cannot reach your keys, your settings, or any page's code."
     ),
@@ -1804,17 +1804,22 @@ _WORDS: dict[str, str] = {
     "assistant.copy": "Copy",
     "assistant.app.claude_desktop": "Claude Desktop",
     "assistant.app.claude_code": "Claude Code",
-    "assistant.app.chatgpt": "ChatGPT",
+    "assistant.app.other": "Another AI app",
     "assistant.steps.claude_desktop": (
         "Open Settings, then Developer, then Edit Config. Paste the text above into that file, "
         "keeping any servers already in it, save it, and start Claude Desktop again."
     ),
     "assistant.steps.claude_code": (
-        "In a terminal, run: claude mcp add pressless -- {program}"
+        "Copy this line, paste it into a terminal, and press Enter. Claude Code then finds "
+        "Pressless whichever folder it starts in."
     ),
-    "assistant.steps.chatgpt": (
-        "Where your ChatGPT app's settings offer a local MCP server, add one that starts the "
-        "program above with its argument."
+    "assistant.steps.other": (
+        "An app that can start a local MCP server may work too: give it the program and "
+        "argument above. Pressless is checked only with the two apps named here."
+    ),
+    "assistant.next.would_replace": (
+        "If the writer means to replace it, they press Publish in Pressless and choose "
+        "Replace the site on GitHub; then ask to publish again."
     ),
     "assistant.open_pressless": (
         "Pressless is not open, or its AI helper is switched off. Ask the writer to open "
@@ -1846,7 +1851,10 @@ _WORDS: dict[str, str] = {
     "assistant.box.rename": "Rename the page {name} to {to}, now.",
     "assistant.box.bin": "Put {name} in the bin.",
     "assistant.box.discard": "Throw away the changes waiting on {name}.",
-    "assistant.status.waiting": "Waiting for the writer's answer.",
+    "assistant.status.waiting": (
+        "Waiting for the writer's answer in Pressless's own window. Tell the writer, and ask "
+        "again once they say they have answered. It waits up to 30 minutes."
+    ),
     "assistant.status.refused": "The writer said not yet. Nothing changed.",
     "assistant.status.expired": "Nobody answered within 30 minutes. Nothing changed.",
     "assistant.status.running": "Running now.",

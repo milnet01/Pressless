@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import errno
+import signal
 import sys
 import threading
 import urllib.parse
@@ -450,3 +451,40 @@ def test_a_switch_hands_the_new_site_to_every_part(monkeypatch, tmp_path, capsys
     # and stops them when it ends.
     assert [call[0] for call in started] == [own, own]
     assert all(call[1].is_set() for call in started)
+
+
+def test_a_closed_window_stops_pressless_as_ctrl_c_does(monkeypatch, tmp_path, capsys):
+    """PRESS-0337 § 4.2, found by § 7: closing the terminal (SIGHUP) or a stop
+    from the system (SIGTERM) runs the same shutdown as Ctrl+C, so the AI
+    helper's door file goes with the Face. A handler another program set
+    stays, and the old ones are back afterwards."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    _Opened(monkeypatch)
+    own = artefact.parent / _FOLDER_NAME
+    own.mkdir(parents=True, exist_ok=True)
+    (own / "assistant.json").write_text('{"on": true}', encoding="utf-8")
+    names = [name for name in ("SIGTERM", "SIGHUP") if hasattr(signal, name)]
+    before = {name: signal.getsignal(getattr(signal, name)) for name in names}
+    for name in names:
+        signal.signal(getattr(signal, name), signal.SIG_DFL)
+    seen = []
+
+    def wait(restart):
+        assert (own / "assistant-door.json").exists()
+        handler = signal.getsignal(getattr(signal, names[-1]))
+        seen.append(handler)
+        handler(getattr(signal, names[-1]), None)   # what the closed window sends
+        return True                                  # never reached
+
+    monkeypatch.setattr(main_module, "_wait", wait)
+    try:
+        assert main_module.main([]) == 0
+        assert callable(seen[0])
+        assert not (own / "assistant-door.json").exists()
+        assert all(signal.getsignal(getattr(signal, name)) == signal.SIG_DFL
+                   for name in names)
+    finally:
+        for name, handler in before.items():
+            signal.signal(getattr(signal, name), handler)

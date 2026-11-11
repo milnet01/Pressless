@@ -41,8 +41,8 @@ class Tool:
 
 
 _ASKS = (" Nothing changes yet: this asks the writer, who answers yes or not yet in "
-         "Pressless's own window. It answers a request id at once; ask request_status "
-         "later.")
+         "Pressless's own window. It answers a request id at once; tell the writer, "
+         "and ask request_status once they say they have answered.")
 
 TOOLS: tuple[Tool, ...] = (
     # ------------------------------------------------------------ reads ---

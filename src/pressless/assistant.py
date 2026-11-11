@@ -155,7 +155,12 @@ def _said(failure: BaseException, *, secret: str | None = None) -> str:
     if isinstance(failure, Refused):
         return failure.slots["said"]
     told = sentence_for(failure, publishing=False, secret=secret)
-    return " ".join(part for part in (told.what, told.site.words, told.next) if part)
+    # A screen's next step may point "below" at a link; a chat has none.
+    following = say(_CHAT_NEXT[type(failure)]) if type(failure) in _CHAT_NEXT else told.next
+    return " ".join(part for part in (told.what, told.site.words, following) if part)
+
+
+_CHAT_NEXT = {publishing.WouldReplaceASite: "assistant.next.would_replace"}
 
 
 class _Door:
@@ -654,8 +659,16 @@ class _Door:
             "command": program, "args": arguments}}}, indent=2)
         e = html.escape
         command = " ".join([f'"{program}"', *arguments])
-        steps = "".join(f"<h3>{say(app)}</h3><p>{e(say(how, program=command))}</p>"
-                        for app, how in _APPS)
+        # § 4.2: the apps named are the ones § 7 checks by hand.
+        steps = (f'<h3>{say("assistant.app.claude_desktop")}</h3>'
+                 f'<p>{say("assistant.steps.claude_desktop")}</p>'
+                 f'<h3>{say("assistant.app.claude_code")}</h3>'
+                 f'<p>{say("assistant.steps.claude_code")}</p>'
+                 f'<pre id="assistant-claude-code">'
+                 f'{e("claude mcp add --scope user pressless -- " + command)}</pre>'
+                 f'<p><button type="button" data-copy="assistant-claude-code">'
+                 f'{say("assistant.copy")}</button></p>'
+                 f'<h3>{say("assistant.app.other")}</h3><p>{say("assistant.steps.other")}</p>')
         return (f'<h1>{say("assistant.title")}</h1><p>{say("assistant.about")}</p>'
                 f'<form method="post" action="{SETUP}" class="switch-row">'
                 f'<div class="states"><p>{say("assistant.on" if on else "assistant.off")}</p>'
@@ -783,18 +796,16 @@ def _shown(path: tuple[int, ...], section: blocks.Section) -> dict:
 
 def _program() -> tuple[str, list[str]]:
     """What an AI app starts: the packaged program, else this Python running
-    the package, each with --assistant (§ 4.2)."""
+    the package, each with --assistant (§ 4.2). On Windows the artefact is
+    the program's folder, and an app starts the Pressless.exe inside it."""
     try:
-        return str(paths.artefact_path()), ["--assistant"]
+        artefact = paths.artefact_path()
     except paths.NotPackaged:
         return sys.executable, ["-m", "pressless", "--assistant"]
+    if sys.platform == "win32":
+        return sys.executable, ["--assistant"]
+    return str(artefact), ["--assistant"]
 
-
-# § 4.2: each app's name and its steps, checked by hand per app before a
-# release (§ 7).
-_APPS = (("assistant.app.claude_desktop", "assistant.steps.claude_desktop"),
-         ("assistant.app.claude_code", "assistant.steps.claude_code"),
-         ("assistant.app.chatgpt", "assistant.steps.chatgpt"))
 
 _COPY_SCRIPT = """
 document.querySelectorAll("button[data-copy]").forEach((button) => {
