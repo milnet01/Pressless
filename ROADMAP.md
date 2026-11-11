@@ -6745,6 +6745,10 @@ publish and anything that deletes.
     Code, ChatGPT desktop (list tools, save an entry, ask to publish,
     yes in the browser, site changes); a Windows update with an AI app
     connected. The ChatGPT steps in words.py are unchecked.
+  README section written and pushed 2026-11-11 (54a4cf5).
+  Hub session told what the helper is; it waits for the release
+  before publishing a page. Still owed: § 7 by hand (the user),
+  the Hub page after release, CHANGELOG at release.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
