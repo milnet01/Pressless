@@ -176,6 +176,14 @@ def test_a_malformed_construct_is_a_paragraph():
     assert "<p>picture p.png</p>" in page
 
 
+def test_search_box_is_labelled_on_screen(tmp_path):
+    """A box with only a hidden name is a blank box to anyone who can see."""
+    status, page = _served(tmp_path, ADDRESS)
+    assert status == 200
+    assert (f'<label for="manual-search">{words.say("manual.search")}</label>'
+            in page), page
+
+
 def test_freeze_bundles_the_manual(tmp_path):
     """INV-7. Breaks when DATA loses the pair, or the folder is renamed.
 

@@ -7,3 +7,4 @@
 | Loop | Date | Lanes | Q1 | Q2 | Q3 | Q4 | Outcome |
 |------|------|-------|----|----|----|----|---------|
 | impl | 2026-11-11 | none dispatched | — | — | — | — | § 4.5: DATA's source made absolute; PyInstaller reads a relative one from --specpath |
+| impl | 2026-11-11 | none dispatched | — | — | — | — | § 4.3: the search box's name is a visible label, not aria-label alone |

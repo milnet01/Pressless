@@ -116,7 +116,7 @@ a paragraph, and INV-1's test fails on it.
 
 ```
 <h1>             words key manual.title
-<input type="search" aria-label=…>      words key manual.search
+<label> and <input type="search">     words key manual.search, on screen
 <p role="status">                       empty until something is typed
 <section id=…> per task, in file order
 ```

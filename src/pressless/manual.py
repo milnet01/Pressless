@@ -146,7 +146,8 @@ def _page(folder: Path):
         cut = body.find("<section")
         cut = len(body) if cut < 0 else cut
         return (f'{_STYLE}<h1>{_e(say("manual.title"))}</h1>{body[:cut]}'
-                f'<input type="search" id="manual-search" aria-label="{_e(say("manual.search"))}">'
+                f'<p><label for="manual-search">{_e(say("manual.search"))}</label><br>'
+                '<input type="search" id="manual-search"></p>'
                 '<p role="status" id="manual-found"></p>'
                 f"{body[cut:]}<script>{_SCRIPT}</script>")
     return page
