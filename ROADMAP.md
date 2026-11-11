@@ -6825,14 +6825,17 @@ owned by docs/standards/versioning-overrides.md.
   - Searchable: a search box finds every task whose words match, as he
     types. It searches the manual's own text, so it works offline.
 
-  Recommendations, to confirm when this is started:
-  - Ship the pictures and videos inside the app rather than online, so
-    the manual matches the version he has and works offline. Keep each
-    video short and silent, with captions, to keep the download small.
-  - Write it for low vision too: large text, captions on every video,
+  Decided by the user 2026-11-11:
+  - The pictures and videos ship inside the app, not online, so the
+    manual matches the version they have and works offline. Each video
+    is short and silent, with captions, to keep the download small.
+  - Written for low vision too: large text, captions on every video,
     and alt text on every picture.
-  - Keep it at 1.0.0: pictures go stale with every screen change, so
-    making them earlier means making them twice.
+  - English now, kept translatable: the words sit apart from the
+    pictures, so PRESS-0241 can add a translation without a rewrite.
+  - It stays at 1.0.0, and is the last item there: the tray icon and
+    the languages moved to 1.2.0, so its pictures are made once.
+  Needs a spec: it touches docs, Face and packaging.
   **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
@@ -7055,71 +7058,6 @@ owned by docs/standards/versioning-overrides.md.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
 
-- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
-  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
-  browser is closed the only way back is the console window, and the
-  opening link is spent, so reopening means a restart. A tray icon would
-  offer open, restart and quit. Must work on Windows and Linux (Windows
-  parity is the priority), and adds a dependency and packaging work.
-  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
-  Recommendation for the user (2026-10-02), not yet asked: leave the tray
-  icon until after 1.0. Why: it adds a dependency and packaging work on
-  both systems, the user called it a "perhaps", and PRESS-0203's Restart
-  covers the most common need.
-  Settled 2026-10-03: the user said to go ahead with the
-  recommendations. The tray icon waits until after 1.0; move it out of
-  0.8.0 when next touching the section.
-  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher, Package.
-
-- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
-  Asked for by the user 2026-10-02. LWSM (the user's local web-server
-  manager) manages every app that runs a web server: start, stop,
-  restart, and open the page in the browser of choice. Where LWSM runs
-  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
-  open: LWSM sets PORT in the environment it starts Pressless with
-  (PRESS-0202 records its contract), which is one candidate signal.
-  Depends on PRESS-0204.
-  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
-  this item applies on Linux only. On Windows the tray icon always shows
-  as PRESS-0204 has it, and the check need not run there.
-  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
-  Kind: feature.
-  Source: user request 2026-10-02.
-  Lanes: Launcher.
-
-- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
-  The user, 2026-10-07, asked whether the app has multilanguage
-  support. It has none: every screen's words are English strings in the
-  Python modules and the page scripts, with no translation layer. Still
-  to settle with the user: which languages first, whether the published
-  site's own words (the starter pages, dates) are in scope or only the
-  app's screens, and how a language is chosen. Touches every screen, so
-  it needs a spec before building.
-  Timing (2026-10-07, the user): the languages come after 1.0.0;
-  the prep comes before it, as PRESS-0242 in 1.0.0.
-  User 2026-10-08: when translating, use Chrome and Gemini to help
-  settle the right wording.
-  Decided by the user 2026-10-08: Pressless picks the computer's
-  language at startup and switches to it; where it has no translation
-  for that language it uses English; where the language cannot be told
-  it offers a list of languages to choose from. The sample pages are
-  translated too. PRESS-0242's words.use() is the hook
-  (docs/specs/PRESS-0242-screen-words.md).
-  Left for this item by PRESS-0242 (2026-10-08): month and day names
-  on the list and the dashboard still come from strftime's %b and %a,
-  so they stay English; the app's pages and the starter pages say
-  lang="en"; template file names (poem, lyric, photograph, journal)
-  and the shortcut's file names stay English, being file names.
-  tests/test_words.py's INV-2 test lets the month and day names
-  through until then.
-  **Layman:** You can use Pressless in your own language, not only English.
-  Kind: feature.
-  Source: user-request-2026-10-07.
-  Lanes: Face, Editor, Setup.
-
 - ✅ [PRESS-0243] **Drop the Google review notice once Google approves Pressless.**
   The verification request went in on 2026-10-10 (PRESS-0200). When
   Google's approval email arrives, set google_signin.APPROVED to True;
@@ -7233,6 +7171,73 @@ does not wait on them.
   Kind: feature.
   Source: user-request-2026-09-02.
   Lanes: Insights.
+
+## 1.2.0 — a tray icon, and Pressless in your language
+
+- 📋 [PRESS-0204] **A tray icon to control Pressless when the browser is closed.**
+  Asked for by the user 2026-10-02 ("perhaps"). Today, once the
+  browser is closed the only way back is the console window, and the
+  opening link is spent, so reopening means a restart. A tray icon would
+  offer open, restart and quit. Must work on Windows and Linux (Windows
+  parity is the priority), and adds a dependency and packaging work.
+  Restart shares its mechanism with PRESS-0203. Hidden under PRESS-0205.
+  Recommendation for the user (2026-10-02), not yet asked: leave the tray
+  icon until after 1.0. Why: it adds a dependency and packaging work on
+  both systems, the user called it a "perhaps", and PRESS-0203's Restart
+  covers the most common need.
+  Settled 2026-10-03: the user said to go ahead with the
+  recommendations. The tray icon waits until after 1.0; moved to 1.2.0
+  on 2026-11-11.
+  **Layman:** A small Pressless icon by the clock: open the page again, restart, or quit, even after you have closed the browser.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher, Package.
+
+- 📋 [PRESS-0205] **No tray icon when the local web-server manager runs Pressless.**
+  Asked for by the user 2026-10-02. LWSM (the user's local web-server
+  manager) manages every app that runs a web server: start, stop,
+  restart, and open the page in the browser of choice. Where LWSM runs
+  Pressless, PRESS-0204's tray icon must not show. How Pressless tells is
+  open: LWSM sets PORT in the environment it starts Pressless with
+  (PRESS-0202 records its contract), which is one candidate signal.
+  Depends on PRESS-0204.
+  Scope (user, 2026-10-03): LWSM looks set to be a Linux-only app, so
+  this item applies on Linux only. On Windows the tray icon always shows
+  as PRESS-0204 has it, and the check need not run there.
+  **Layman:** When your web-server manager is looking after Pressless, Pressless hides its own tray icon, because the manager already starts, stops and opens it.
+  Kind: feature.
+  Source: user request 2026-10-02.
+  Lanes: Launcher.
+
+- 📋 [PRESS-0241] **Pressless speaks more languages than English.**
+  The user, 2026-10-07, asked whether the app has multilanguage
+  support. It has none: every screen's words are English strings in the
+  Python modules and the page scripts, with no translation layer. Still
+  to settle with the user: which languages first, whether the published
+  site's own words (the starter pages, dates) are in scope or only the
+  app's screens, and how a language is chosen. Touches every screen, so
+  it needs a spec before building.
+  Timing (2026-10-07, the user): the languages come after 1.0.0;
+  the prep comes before it, as PRESS-0242 in 1.0.0.
+  User 2026-10-08: when translating, use Chrome and Gemini to help
+  settle the right wording.
+  Decided by the user 2026-10-08: Pressless picks the computer's
+  language at startup and switches to it; where it has no translation
+  for that language it uses English; where the language cannot be told
+  it offers a list of languages to choose from. The sample pages are
+  translated too. PRESS-0242's words.use() is the hook
+  (docs/specs/PRESS-0242-screen-words.md).
+  Left for this item by PRESS-0242 (2026-10-08): month and day names
+  on the list and the dashboard still come from strftime's %b and %a,
+  so they stay English; the app's pages and the starter pages say
+  lang="en"; template file names (poem, lyric, photograph, journal)
+  and the shortcut's file names stay English, being file names.
+  tests/test_words.py's INV-2 test lets the month and day names
+  through until then.
+  **Layman:** You can use Pressless in your own language, not only English.
+  Kind: feature.
+  Source: user-request-2026-10-07.
+  Lanes: Face, Editor, Setup.
 
 ## Done outside a version
 
