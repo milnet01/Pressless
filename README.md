@@ -181,6 +181,10 @@ An import anyone can run is planned (PRESS-0125 on the
 
 ## Getting help
 
+**Pressless has a manual inside it.** Click **Help** in the bar at the top
+of any screen. It shows each task with steps, pictures and short videos,
+has a search box, and needs no internet.
+
 If something goes wrong or does not make sense, open an issue on
 [GitHub Issues](https://github.com/milnet01/Pressless/issues). Say what
 you pressed, what you expected, and what Pressless showed you. A security
