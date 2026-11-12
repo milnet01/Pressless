@@ -16,6 +16,7 @@ import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar
 
 # Windows refuses to replace a file another program holds open -- its own
 # scanners open what was just written for a moment -- where Linux does not
@@ -23,6 +24,7 @@ from pathlib import Path
 # marked read-only is refused throughout and fails as before (PRESS-0159).
 _WINDOWS_TRIES = 10
 _WINDOWS_PAUSE = 0.1
+_T = TypeVar("_T")
 
 
 def write_whole(
@@ -68,15 +70,16 @@ def write_whole(
         raise
 
 
-def patiently(step: Callable[[], None]) -> None:
-    """Run `step`, retrying a PermissionError for a moment on Windows only.
+def patiently(step: Callable[[], _T]) -> _T:
+    """Run `step` and return what it returns, retrying a PermissionError for a
+    moment on Windows only.
 
-    write_whole replaces through it, and the Store's own rename does too: the
-    scanner refuses both the same way (PRESS-0135 #2)."""
+    write_whole replaces through it, the Store's own rename does too, and the
+    wizard reads its progress file through it: the scanner refuses all three
+    the same way (PRESS-0135 #2, PRESS-0351)."""
     for attempt in range(_WINDOWS_TRIES):
         try:
-            step()
-            return
+            return step()
         except PermissionError:
             if not _is_windows() or attempt == _WINDOWS_TRIES - 1:
                 raise

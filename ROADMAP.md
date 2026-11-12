@@ -6766,7 +6766,7 @@ publish and anything that deletes.
   Kind: feature.
   Source: user-request-2026-11-03.
 
-- 📋 [PRESS-0351] **On the Windows box, setup's take-in test once saw the repository created twice.**
+- ✅ [PRESS-0351] **On the Windows box, setup's take-in test once saw the repository created twice.**
   tests/test_takein.py::test_a_take_in_writes_nothing_to_github failed in
   the Windows half of local-ci.sh on 2026-11-11 (pytest-randomly seed
   693768463): github.writes() held POST /user/repos twice, where the test
@@ -6777,7 +6777,17 @@ publish and anything that deletes.
   The test's Browser opens a fresh connection per request and never
   retries (tests/_face_session.py), so the second call comes from setup's
   repository check (setup.py, check_new_repository) running twice, or
-  from the GitHub double. Not yet located.
+  from the GitHub double.
+
+  Located 2026-11-12: Wizard._read took any OSError reading the progress
+  file as no progress and started over at the first step. A Windows
+  scanner holding the file just written refuses a read for a moment, as
+  it refuses the replace (PRESS-0135). The walk then passed every step a
+  second time, which matches the failed run: the steps seen ended
+  "repository, pages, site" and only the write count was wrong. The read
+  now goes through safe_write.patiently. The cause is inferred, not caught
+  on the box: test_a_moment_locked_progress_file_is_read_again reproduces
+  it on any platform.
   **Layman:** One automatic check failed once on Windows: during setup, Pressless asked GitHub to make the new site twice instead of once.
   Kind: fix.
   Source: gate-run-2026-11-11.

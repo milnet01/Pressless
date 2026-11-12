@@ -173,7 +173,9 @@ Written whole with `safe_write.write_whole`, under a lock held by the
   from the answers before writing. A step that needs a secret kept stores it
   itself, through Credentials (§ 4.4 step *key*).
 - **It is a convenience, never a record.** A file that will not read as this
-  shape is treated as absent. Nothing else reads it.
+  shape is treated as absent. Nothing else reads it. A read Windows refuses
+  for a moment is tried again through `safe_write.patiently` first: a
+  scanner holding the file just written is no missing progress (PRESS-0351).
 - **`Done` removes it.** A failure to remove it is logged, not shown: the
   next GET of a finished setup shows Settings regardless (§ 4.3).
 

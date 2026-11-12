@@ -180,7 +180,10 @@ class Wizard:
 
     def _read(self) -> tuple[int, Answers]:
         try:
-            record = json.loads(self.progress.read_text(encoding="utf-8"))
+            # A scanner holding the file just written refuses a read of it
+            # for a moment on Windows; that is no missing progress (PRESS-0351).
+            record = json.loads(safe_write.patiently(
+                lambda: self.progress.read_text(encoding="utf-8")))
             names = [step.name for step in self._steps]
             answers = record["answers"]
             if (record.get("version") != VERSION or record.get("step") not in names

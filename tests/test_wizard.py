@@ -6,14 +6,16 @@
 # pattern alone. Setup's own steps are tests/test_setup.py's.
 from __future__ import annotations
 
+import builtins
 import contextlib
+import io
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
 from test_setup import _Browser
 
-from pressless import face, wizard
+from pressless import face, safe_write, wizard
 
 ADDRESS = "/try"
 
@@ -104,6 +106,31 @@ def test_a_new_launch_resumes(tmp_path):
         resumed = _get(browser)
         back = _go(browser, "third", "back")
     assert "Step 3 of 3" in resumed
+    assert "Step 2 of 3" in back and 'value="b"' in back
+
+
+def test_a_moment_locked_progress_file_is_read_again(tmp_path, monkeypatch):
+    """INV-3, on Windows: a scanner holding the progress file just written
+    refuses a read of it for a moment, as it refuses the replace (PRESS-0351).
+    Breaks when that refusal reads as no progress, which starts the wizard
+    again at its first step and runs every check a second time."""
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write, "_WINDOWS_PAUSE", 0)
+    with _served(tmp_path, _steps()) as browser:
+        _go(browser, "first", "next", one="a")
+        _go(browser, "second", "next", two="b")
+        refusals = [PermissionError(13, "The file is in use", str(_progress(tmp_path)))]
+        opened = io.open
+
+        def scanned(file, *args, **kwargs):
+            if refusals and file == _progress(tmp_path):
+                raise refusals.pop()
+            return opened(file, *args, **kwargs)
+
+        monkeypatch.setattr(io, "open", scanned)
+        monkeypatch.setattr(builtins, "open", scanned)
+        back = _go(browser, "third", "back")
+    assert refusals == [], "the progress file was never read"
     assert "Step 2 of 3" in back and 'value="b"' in back
 
 
