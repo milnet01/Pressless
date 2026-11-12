@@ -104,6 +104,8 @@ def render(text: str) -> str:
 
 _STYLE = """<style>
 .manual-task img, .manual-task video { display: block; max-width: 100%; height: auto; }
+/* § 4.6: every video is 16:9. Unplayed, preload="none" would leave a small box. */
+.manual-task video { width: 100%; aspect-ratio: 16 / 9; background: #000; }
 .manual-task { margin-block: 2em; }
 </style>"""
 

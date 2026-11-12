@@ -9,3 +9,444 @@ picture help-link.png | The bar at the top of a Pressless screen, with Help afte
 2. Type what you want to do in the search box.
 3. Read the steps under the task that matches.
 video searching.webm | Typing a word in the search box, and the tasks that do not hold it disappearing.
+
+== setting-up | Setting up Pressless the first time
+The first time Pressless starts, it takes you through setup one screen
+at a time. You need an email address. Your site lives on GitHub, which
+hosts it for free.
+
+1. Read each screen and do what it says. Some steps happen on GitHub's own pages, and the screen says what to click there.
+picture setup-welcome.png | The first setup screen, headed Set up Pressless, with a Next button.
+2. Click Next to go on, or Back to return to the screen before.
+3. Click What's happening on a screen to read what that step does.
+4. On the last screen, click Go to your list.
+
+If you close Pressless partway, it starts again where you left off.
+
+== your-writing | Finding your way around
+Your writing is the first screen, and the first link in the bar. It
+lists everything on your site.
+
+1. Click Your writing in the bar.
+picture your-writing.png | The Your writing screen, with the lists Drafts, On your site, Your pages and Parts of every page.
+2. Click a heading, such as Drafts or Your pages, to open its list.
+3. Click a name in a list to open it.
+
+Drafts are entries only on this computer. On your site lists the entries
+you have published. Your pages are pages such as Home and About. Parts
+of every page are the header, the footer and the menu.
+
+== finishing-setup | Finishing setting up
+After setup, the Your writing screen shows a list headed Finish setting
+up. A tick marks each thing already done.
+
+1. Click a line that is not ticked. Pressless opens the screen where it is done.
+picture finish-setting-up.png | The Finish setting up list, with two lines ticked and three still to do.
+2. Do it there, then click Your writing to see the list again.
+
+== writing-an-entry | Writing a new entry
+An entry is a dated piece of writing, like a blog post. Your journal
+lists your entries, newest first.
+
+1. Click Your writing in the bar.
+2. Type the entry's name in the Title box.
+3. Click New entry.
+picture new-entry.png | The Title box holding the words Low tide, with the Start from list and the New entry button beside it.
+4. Click under the title on the page and type your words. The page shows the entry as your site will show it.
+video writing-an-entry.webm | Naming a new entry, clicking New entry, then typing words onto the page.
+
+Pressless saves as you type, and says Saved at the top. The entry is a
+draft, on this computer only, until you publish it.
+
+== styling-words | Making words bold, italic or coloured, and adding a link
+1. Open the entry and click the paragraph.
+2. Select the words to change.
+3. Click Bold or Italic.
+picture style-buttons.png | The buttons Bold, Italic and Link, with the colour buttons under them.
+4. For a link, click Link and type the address the words should open.
+5. For a colour, click Your site's highlight or Your site's quieter ink. For any other colour, choose it beside Any colour, then click Use this colour.
+
+== adding-a-paragraph | Adding a paragraph or a quotation to an entry
+1. Open the entry.
+2. Click the part the new one should follow. With nothing clicked, it goes at the end.
+3. Beside Add, choose Paragraph or Quotation.
+4. Click Add, then type its words on the page.
+
+== adding-a-photograph | Adding a photograph or picture to an entry
+1. Open the entry.
+2. Click the part the photograph should follow.
+3. Beside Add, choose Photograph, then click Add.
+4. Click Add a photograph and choose the picture file on your computer.
+picture photograph-part.png | An entry with a photograph of a harbour, and beside it the Photograph list and the Caption box.
+5. Type a caption in the Caption box, if you want one.
+
+A photograph you added before is in the Photograph list, so you can use
+it again without choosing the file.
+
+== moving-parts | Moving or removing part of an entry
+1. Open the entry and click the paragraph, photograph or quotation.
+2. Click Move up or Move down to move it.
+3. Click Remove to take it out.
+
+== writing-in-marks | Writing with marks instead of buttons
+Marks are a few signs typed among your words. Two stars each side of a
+word make it bold.
+
+1. Open the entry and click Show me the marks.
+picture marks.png | The box of an entry's words, with the cheat sheet open under it.
+2. Type your words in the box, with marks where you want them.
+3. Click Cheat sheet: how to style your words, under the box, to see every mark.
+4. Click View editor to go back to writing on the page.
+
+The cheat sheet's A page to print link opens it as a page of its own.
+
+== categories-and-tags | Giving an entry categories and tags
+1. Open the entry.
+2. Type the categories in the Categories box, or the tags in the Tags box.
+
+== entry-address | Changing an entry's address
+The address is the last part of the entry's web address. Pressless makes
+it from the title.
+
+1. Open the entry.
+2. Type the new address in the Address box.
+3. Click Change address.
+
+== publishing | Publishing: putting your writing on your site
+Nothing reaches your site until you publish it.
+
+1. Open the entry or page.
+2. Click Press to site.
+3. Pressless shows a box headed Before your site changes, listing the pages that will change.
+picture publish-plan.png | The box headed Before your site changes, with the buttons Publish now and Not yet.
+4. Click Publish now. Click Not yet to leave your site as it is.
+video publishing.webm | Clicking Press to site, then Publish now, and the line Published appearing.
+
+Pressless says Published when it is done. Your site shows the change
+within a few minutes. View your site opens your site in a new tab.
+
+== changing-published | Changing an entry that is already on your site
+1. Click Your writing, then On your site, then the entry.
+2. Change it. Your changes stay on this computer, and your site still shows the entry as it was.
+3. Click Press to site to publish the changes.
+4. To give the changes up instead, click Bin this proof.
+
+== undoing | Undoing the last publish
+Undo puts your site back as it was before your last publish. What you
+wrote stays on this computer as a draft.
+
+1. Click Your writing in the bar.
+2. Click Undo the last press.
+
+Pressless cannot undo your very first publish.
+
+== throwing-away | Throwing an entry away
+1. Open the entry.
+2. Click Throw this draft away, under the entry. For an entry on your site, the button says Throw this entry away.
+3. Click OK when Pressless asks.
+
+The entry moves to the bin in your Pressless-data folder.
+
+== using-a-template | Starting an entry from a template
+A template is a ready-made start: a poem, a lyric with verses, an entry
+around one photograph, or a plain journal entry.
+
+1. Click Your writing in the bar.
+2. Type the entry's name in the Title box.
+3. Choose a template in the Start from list.
+4. Click New entry.
+
+== making-a-template | Making or changing your own template
+1. Click Your writing in the bar.
+2. Under Your templates, type a name in the Name box and click New template. To change one, click its name.
+3. Type the title and the words every entry started from it should begin with.
+4. Click Save.
+
+Bin this template removes it. A template is never put on your site.
+
+== journal | Turning the journal on or off
+The journal is the dated part of a site, like a blog. With it off, your
+site is pages only.
+
+1. Click Your writing in the bar.
+2. Click Turn the journal off, or Turn the journal on.
+
+Turning it off takes your published entries off your site at your next
+publish. Turning it on again brings them back.
+
+== changing-a-page | Changing a page, such as Home or About
+1. Click Your writing, then Your pages, then the page.
+2. Click a heading, paragraph or any section on the page.
+picture page-editor.png | The Home page open for changing, with the page on one side and the Add list on the other.
+3. Type on the page to change words. The boxes beside the page change anything else about that section.
+4. Click Press to site to publish the page.
+
+== adding-a-page | Adding a new page
+1. Click Your writing, then Your pages.
+2. Type the page's name in the Page name box.
+3. Click New page.
+picture new-page.png | The Your pages list open, with the Page name box and the New page button.
+
+Pressless opens the new page and adds a link to it in your menu.
+
+== renaming-a-page | Renaming or removing a page
+1. Open the page.
+2. Click Rename this page and type its new name. The old address still reaches the page.
+3. Or click Remove this page. It goes to the bin in your Pressless-data folder, and leaves your site and your menu.
+
+The Home page cannot be renamed or removed.
+
+== adding-a-section | Adding a section to a page: a heading, picture, button, video, music or download
+1. Open the page.
+2. Click the section the new one should follow. With nothing clicked, it goes at the end of the page.
+3. Choose what to add in the Add list.
+picture add-section.png | The Add list with every kind of section showing, from Paragraph and Heading down to Your own CSS.
+4. Click Add.
+5. Fill in the boxes that appear for it, such as Words that describe it for a picture.
+
+A video, music or download section has an Upload a file button for a
+file on your computer. The list also has columns, a row of pictures,
+a picture slideshow, questions that fold open, a picture that enlarges,
+a back to top link and a countdown.
+
+== moving-a-section | Moving or removing a section of a page
+1. Open the page and click the section.
+2. Click Move up or Move down.
+3. To put it in a column, choose the column in the Move to list and click Move.
+4. Click Remove to take it out.
+
+== changing-the-menu | Changing the menu
+The menu is the row of links on every page of your site. Pressless calls
+it Navigation.
+
+1. Click Your writing, then Parts of every page, then Navigation.
+picture menu.png | The menu's links, each with a Words box, a Goes to box, and the buttons Move up, Move down and Remove.
+2. Change the words of a link in its Words box.
+3. Click Move up or Move down to change the order, or Remove to take a link out.
+4. Click Add a link for a new one.
+5. Click Press to site to publish the menu.
+
+== header-and-footer | Changing the header or footer
+The header is the top of every page of your site, and the footer is the
+bottom.
+
+1. Click Your writing, then Parts of every page, then Header or Footer.
+2. Change it as you would a page.
+3. Beside Show it on, click a page's name to see the change on that page.
+4. Click Press to site to publish it.
+
+== page-code | Seeing or changing a page's code
+For anyone who knows HTML.
+
+1. Open the page, the header, the footer or Navigation.
+2. Click Show me the code.
+3. Click View editor to go back.
+
+== site-look | Changing how your site looks: layout, colours and fonts
+1. Click Look in the bar.
+2. Choose a layout, colours, fonts, the text size, the page width or effects. The preview beside each choice shows it at once.
+picture look.png | The Look screen, with the layouts and colours to choose from and a preview of the site beside them.
+3. Click Save.
+video changing-the-look.webm | Choosing another headings font on the Look screen, the preview changing to match, and clicking Save.
+
+Your site shows the new look after you next publish. Each colour has a
+light and a dark choice: a visitor whose computer is set to dark sees
+the dark one.
+
+== files | Seeing or removing the files you uploaded
+Files are the songs, videos, PDFs, ZIP files and text files you have
+uploaded for your pages.
+
+1. Click Files in the bar.
+2. The list shows each file, its size and the pages that use it.
+3. Click Remove beside a file to move it to the bin.
+
+You upload a file from a video, music or download section on a page.
+
+== site-name | Changing your site's name, description, icon or sharing picture
+1. Click Settings in the bar.
+picture settings.png | The Settings screen, with boxes for the repository, the site's name and its description.
+2. Type in the box for your site's name or its short description.
+3. For the icon or the sharing picture, click Choose a picture.
+4. Click the ? beside a box to read what it is for.
+5. Click Check the repository again and save.
+
+== own-domain | Using your own domain name
+If you have bought a web address, such as example.com, your site can
+appear at it. Publish your site once first.
+
+1. Click Settings, then Use your own domain name.
+2. Type the name you bought and click Next.
+picture own-domain.png | The first step of Your own domain name, with a box for the name and a Next button.
+3. Follow each screen. Pressless shows what to enter where you bought the name.
+
+You can close Pressless between steps. Settings, then Use your own
+domain name, opens the step you had reached.
+
+== visitor-numbers | Turning on visitor numbers
+Pressless can show how many people read your site, by reading the
+numbers from Google Analytics. It is optional.
+
+1. Click Settings, then the line about seeing how many people read your site.
+2. Click Sign in with Google and sign in on Google's page.
+3. Choose the site Pressless should show numbers for, and click Use this site.
+
+Turn off visitor numbers, on the same screen, stops it.
+
+== who-is-reading | Seeing who reads your site
+1. Click Your writing in the bar.
+2. Under Who is reading, click the link.
+picture who-is-reading.png | The Who is reading screen, with a count of people, a chart of people each day and a table of countries.
+3. Click Last 7 days, Last 4 weeks or Last 12 months.
+
+The screen shows how many people read your site, where they are, how
+they found you and what they read.
+
+== like-buttons | Adding Like and Dislike buttons under your entries
+The counts live in your own free Firebase database, from Google.
+
+1. Click Settings, then Like and Dislike buttons under your entries, if you want them.
+2. Follow the steps on the screen to make the database.
+3. Paste the firebaseConfig text into the box and click Save and check.
+
+== youtube | Showing your YouTube channel's figures
+1. Click Settings, then Your YouTube channel's public figures, if you want them.
+2. Follow the steps on the screen to make a key.
+3. Type your channel's address, paste the key and click Save and check.
+
+== publishing-key | Signing in to GitHub again, or changing your publishing key
+1. Click Settings in the bar.
+2. Click Sign in to GitHub again, and follow the screen. Or paste a new key in the Your publishing key box.
+3. Click Check the repository again and save.
+
+Leave the key box empty to keep the key Pressless already has.
+
+== more-sites | Looking after more than one site
+1. Click Sites in the bar.
+picture sites.png | The Sites screen, listing one site marked open now, with the Start a new site button.
+2. Click Start a new site to make another one. Pressless opens again and takes you through setup for it.
+3. Click Open beside a site to work on that one.
+4. Click Remove beside a site to take it off this computer. Pressless saves it as one file first, and its site stays on the web.
+
+Opening another site restarts Pressless in a new tab, so finish what
+you are writing first.
+
+== saving-a-site | Saving a whole site to one file, and opening it again
+The file holds the site's writing, photographs and settings. It never
+holds the publishing key.
+
+1. Click Sites in the bar.
+2. Click Save this site to a file. Your browser saves the file.
+3. To bring a site back, click Open a site file and choose the file.
+4. Open Settings for that site and enter the publishing key once.
+
+== moving-computer | Moving Pressless to a new computer
+1. Click Sites in the bar.
+2. Click Move Pressless to a new computer.
+picture move-computer.png | The box headed Move Pressless to a new computer, at its first step, Save each site to a file.
+3. Follow its steps with Next: save each site to a file, take the files to the new computer, and open each file there.
+
+== backups | Backups, and choosing where they are kept
+Each day Pressless saves every site to a file by itself, and keeps the
+most recent ones. They go to the Pressless-backups folder beside the
+program.
+
+1. Click Sites in the bar.
+2. Under Daily backups, paste the whole address of another folder, such as one on a USB stick or in a cloud folder.
+3. Click Use this folder.
+
+A backup opens with Open a site file, like any saved site.
+
+== bringing-in-wordpress | Bringing in a WordPress site
+A site that holds nothing yet offers this, at the end of setup.
+
+1. Click Bring it into Pressless.
+2. In WordPress, choose Tools, then Export, then All content, and click Download Export File.
+3. In Pressless, click Choose the export file and choose that file.
+4. Follow each screen with Next. Pressless copies your photographs and files from your old site, and lists any it could not copy.
+5. Choose a look, because a WordPress theme does not come across.
+
+Posts, pages, the menu, comments, photographs and files come across.
+Nothing is on the web until you publish.
+
+== bringing-in-a-folder | Bringing in a site that is a folder of web pages
+A site that holds nothing yet offers this, at the end of setup.
+
+1. Click Bring that in instead.
+2. Click Choose the folder and choose your site's folder. If it is in a ZIP file, click Choose a ZIP file.
+3. Click Next. Pressless shows what will come across and what will not.
+
+The site keeps its look and its addresses.
+
+== theme | Changing how Pressless itself looks: light, dark or high contrast
+1. Click More in the bar.
+picture more.png | More open, showing Suggest or report a problem, Usage reports, About, and the Theme and Text size lists.
+2. Choose a theme in the Theme list. Follow my computer uses light or dark as your computer is set.
+
+This changes Pressless on your screen only, never your site.
+
+== text-size | Making Pressless's text larger
+1. Click More in the bar.
+2. Choose Large, Larger or Largest in the Text size list.
+
+== updating | Updating Pressless
+When a new version is out, the Your writing screen says so.
+
+1. Click Update now. Pressless installs it and opens again by itself.
+2. Or click Later, or Skip this version.
+
+Your writing stays where it is. To stop Pressless looking for new
+versions, click Stop looking, low on the Your writing screen.
+
+== jpeg-xl | Using JPEG XL photographs
+JPEG XL is a kind of photograph file. Pressless needs one download
+before it can use them.
+
+1. Click Your writing in the bar.
+2. Click Add JPEG XL support, low on the screen.
+
+== shortcuts | Putting Pressless in the menu or on the desktop
+1. Click Settings in the bar.
+2. Tick the box for the menu, the desktop, or both. Untick one to take it away.
+3. Click Save these.
+
+This works when Pressless runs from the file you downloaded.
+
+== ai-helper | Letting an AI app help
+An AI app on your computer, such as Claude, can write and edit your
+site through Pressless. It is off until you switch it on.
+
+1. Click Your writing in the bar, then AI helper, low on the screen.
+2. Click Switch on.
+picture ai-helper.png | The top of the AI helper screen, saying Off: no AI app can connect, with the Switch on button.
+3. Click Copy, and follow the steps on the screen for your app.
+
+Nothing is published, undone or put in the bin until you click Yes in
+Pressless. The app cannot reach your keys, your settings or any page's
+code. Pressless must be open while the app works.
+
+== usage-reports | Turning usage reports on or off
+Usage reports are anonymous: which screens are used, where setup stops
+and what goes wrong. They never hold your writing or your site's address.
+
+1. Click More in the bar, then Usage reports.
+2. Click Turn usage reports on, or turn them off there.
+
+The same screen lists every report sent.
+
+== reporting-a-problem | Suggesting something or reporting a problem
+1. Click More in the bar, then Suggest or report a problem.
+2. Click Open the report on GitHub.
+3. Answer the questions on GitHub's page and submit it.
+
+A report is public. Leave out your site's address, your writing and your
+publishing key.
+
+== restarting | Restarting Pressless
+1. Click Settings in the bar.
+2. Click Restart Pressless, then Restart.
+
+Every Pressless tab open stops working, and a new one opens.
+
+== version | Finding which version you have
+1. Click More in the bar, then About.

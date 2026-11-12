@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=351 -->
+<!-- ants-roadmap-id-high-water: PRESS=352 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6846,9 +6846,9 @@ owned by docs/standards/versioning-overrides.md.
   - Inside the app: a Help link on every page opens the manual in the
     same browser tab Pressless already uses, with no internet needed.
   - Showing: each task carries screenshots, and a short video where a
-    picture cannot show the steps. The record-demo skill makes both on
-    a private display, from a seeded throwaway copy, so no real site or
-    person appears in them.
+    picture cannot show the steps. A headless browser makes both, from
+    a seeded throwaway copy, so no real desktop, site or person
+    appears in them (spec § 4.6).
   - Searchable: a search box finds every task whose words match, as he
     types. It searches the manual's own text, so it works offline.
 
@@ -6871,6 +6871,13 @@ owned by docs/standards/versioning-overrides.md.
   Firefox with Help added, so PRESS-0343's test now allows seven
   links. Search checked once in Chrome; INV-8's browser case is
   still owed.
+  Step 3 written 2026-11-12: en.txt holds every task, with real
+  pictures and four captioned videos from a seeded throwaway site.
+  Every button name in it was checked against words.ENGLISH. Still
+  owed: the by-hand check in spec § 7 (Linux build offline, then the
+  Windows box), README's pointer to Help, and the CHANGELOG entry.
+  The recording kit is in the scratch folder manual-0219, not in the
+  repository.
   **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
@@ -7110,6 +7117,20 @@ owned by docs/standards/versioning-overrides.md.
   Kind: chore.
   Source: PRESS-0200 resolution 2026-10-10.
   Lanes: Insights.
+
+- 📋 [PRESS-0352] **Choosing another layout on the Look screen keeps the saved colours, so the preview hardly changes.**
+  Seen 2026-11-12 in a seeded site saved with the Harbour layout:
+  choosing Meadow ("calm greens") left the preview navy, because the
+  saved colours stay. Only a site whose choices were never saved starts
+  again from a layout's own (look_screen.py, the data-restart branch).
+  The menu "in a panel beside the page" did not show either, in the
+  narrow preview. Decide: is keeping the colours intended? If so, say so
+  beside the layouts, or offer "use this layout's own colours".
+  A change here may stale the manual's look.png (PRESS-0219).
+  **Layman:** On the Look screen, picking a different layout barely changes the preview once a look has been saved, though each layout promises its own colours.
+  Kind: ux.
+  Source: found-recording-PRESS-0219-2026-11-12.
+  Lanes: face.
 
 ## 1.1.0 — music figures
 

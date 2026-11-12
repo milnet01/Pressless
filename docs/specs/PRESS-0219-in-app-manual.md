@@ -147,9 +147,13 @@ PyInstaller 6 takes on every system (pinned at 6.22.3 in
 
 ### 4.6 Making the pictures and videos
 
-With the `record-demo` skill, on a private display, from a seeded
-throwaway site, so no real site or person appears. Pictures are PNG. Videos are WebM, silent, with a `.vtt`
-file giving the captions as timed text.
+In a headless Chrome driven by Playwright, from a seeded throwaway site,
+so no real desktop, site or person appears. A headless browser finds each
+control by name, where `record-demo` needs screen positions found by
+trial. Pictures are PNG. Videos are WebM, silent, 16:9, with a pointer the
+recording script draws, and a `.vtt` file giving the captions as timed
+text. The page gives a video its full width at 16:9, because
+`preload="none"` leaves an unplayed one a small box.
 Source: <https://www.htmhell.dev/tips/the-track-element>.
 
 ### 4.7 Building it
