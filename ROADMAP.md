@@ -6878,6 +6878,15 @@ owned by docs/standards/versioning-overrides.md.
   Windows box), README's pointer to Help, and the CHANGELOG entry.
   The recording kit is in the scratch folder manual-0219, not in the
   repository.
+  § 7 by hand, 2026-11-12, Linux: a PyInstaller freeze of 38ed4a7 with
+  the release's pinned packages, run with the network cut off. Help
+  opened the manual from three screens, every picture loaded, search
+  matched, all four videos played with captions showing, the largest
+  text size held, and no request left the app. It was the frozen
+  folder, not the AppImage wrap. README now points at Help.
+  INV-8's browser case passed on the Windows box in Chrome, Edge and
+  Firefox. Still owed: the same by-hand run of a built Windows
+  artefact, which only a release build makes, and the CHANGELOG entry.
   **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
