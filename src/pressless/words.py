@@ -1813,8 +1813,10 @@ _WORDS: dict[str, str] = {
     "assistant.app.claude_code": "Claude Code",
     "assistant.app.other": "Another AI app",
     "assistant.steps.claude_desktop": (
-        "Open Settings, then Developer, then Edit Config. Paste the text above into that file, "
-        "keeping any servers already in it, save it, and start Claude Desktop again."
+        "Open Settings, then Desktop app. At the bottom of that page, click Manage beside "
+        "Extensions, then Edit config. A folder opens with a file selected: open that file in "
+        "a text editor. Paste the text above into it, keeping what is already there, save it, "
+        "and start Claude Desktop again."
     ),
     "assistant.steps.claude_code": (
         "Copy this line, paste it into a terminal, and press Enter. Claude Code then finds "

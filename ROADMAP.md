@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=352 -->
+<!-- ants-roadmap-id-high-water: PRESS=356 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6762,6 +6762,14 @@ publish and anything that deletes.
   ChatGPT dropped from the named apps (user has no account; its steps
   cannot be checked). Still owed: Claude Desktop on the Windows box,
   which needs the user's sign-in.
+  § 7 with Claude Desktop, 2026-11-13, Windows box, packaged build of
+  36fa8cf, Claude Desktop 5.11492.2, the user signed in and typing:
+  it started the bridge from its config file, listed the tools, saved
+  an entry, asked to publish it, the user pressed Yes, do it in
+  Pressless, and the entry's live page answered 200 with its text. PASS.
+  Found: the screen's Claude Desktop steps name Settings, Developer,
+  Edit Config; this version has Settings, Desktop app, Extensions,
+  Edit config. Claude Desktop started two bridges at once; both ran.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
@@ -6792,6 +6800,28 @@ publish and anything that deletes.
   Kind: fix.
   Source: gate-run-2026-11-11.
   Lanes: setup, tests.
+
+- 📋 [PRESS-0355] **A new site with no published entry is refused at Home with no next step.**
+  Seen 2026-11-13 on the Windows box, packaged build of 36fa8cf: site
+  seeded with the starter, journal turned on, no entry published.
+  Pressing Home refused with "Publishing now would leave your site with
+  no entries" and "Send the details below to whoever helps you", while
+  the home screen said to open Home and press it. Publishing a first
+  entry cleared it. The refusal's box showed again on the next visit to
+  the home screen until OK was pressed. Not yet reproduced on Linux or
+  from a setup run by hand; the seeded route may be the cause.
+  **Layman:** On a brand-new site, pressing Home can refuse with a message that tells you nothing you can do about it.
+  Kind: fix.
+  Source: by-hand-check-2026-11-13 PRESS-0337.
+
+- 📋 [PRESS-0356] **The home screen's lists stay as they were after an AI helper's publish.**
+  Seen 2026-11-13 on the Windows box in Edge: Yes, do it on the box
+  published the entry (the live page answered 200), and the home screen
+  still read Drafts (1), On your site (1). A reload read Drafts (0),
+  On your site (2).
+  **Layman:** After you say yes to an AI helper's publish, the home screen still lists the entry as a draft until you reload it.
+  Kind: fix.
+  Source: by-hand-check-2026-11-13 PRESS-0337.
 
 ## 1.0.0 — every sign holds, and the format is frozen
 
@@ -7141,6 +7171,22 @@ owned by docs/standards/versioning-overrides.md.
   Source: found-recording-PRESS-0219-2026-11-12.
   Lanes: face.
 
+- 📋 [PRESS-0353] **Redesign Pressless's screens around a full website editor, so they are easier to use.**
+  The user, 2026-11-13: the project began on a misunderstanding. Claude
+  took the ask to be a blog editor; it was always a fully featured
+  website editor, to replace WordPress for the writer and for anyone
+  else who needs one. The screens still carry the blog shape: the home
+  screen is Your writing, and pages, the look and files hang off it.
+  Before 1.0.0, because the manual's pictures (PRESS-0219) and the
+  frozen surfaces follow the screens.
+  Open, for the design step: what the first screen is, how the parts of
+  a site are grouped, and which screens change. Needs a design the user
+  agrees before any screen is rebuilt. The manual's pictures and videos
+  are re-made after it, with the manual media kit.
+  **Layman:** Pressless's screens are laid out afresh as a website editor, so a newcomer finds each thing without hunting.
+  Kind: ux.
+  Source: user-request-2026-11-13.
+
 ## 1.1.0 — music figures
 
 No new sign. It widens S11 to the music services, where they publish
@@ -7303,6 +7349,20 @@ does not wait on them.
   Kind: feature.
   Source: user-request-2026-10-07.
   Lanes: Face, Editor, Setup.
+
+## 1.3.0 — a home other than GitHub
+
+A site can be published to a free host other than GitHub Pages.
+
+- 📋 [PRESS-0354] **A site can be published to another free host, such as Netlify.**
+  The user, 2026-11-13: later, add other free website hosts, Netlify
+  named as the example. After 1.0.0.
+  Open, for the design step: which hosts, how sign-in and the
+  publishing key work on each, and what undo and a custom address mean
+  there. Needs a spec: it touches setup, publishing and the keyring.
+  **Layman:** You could put your site on a free host other than GitHub, such as Netlify.
+  Kind: feature.
+  Source: user-request-2026-11-13.
 
 ## Done outside a version
 
