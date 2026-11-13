@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=360 -->
+<!-- ants-roadmap-id-high-water: PRESS=361 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6850,7 +6850,7 @@ publish and anything that deletes.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
 
-- 🚧 [PRESS-0357] **Pressless connects Claude Desktop itself, instead of asking for a hand edit.**
+- ✅ [PRESS-0357] **Pressless connects Claude Desktop itself, instead of asking for a hand edit.**
   Seen 2026-11-13 on the Windows box: Claude Desktop's settings file is
   not empty on a fresh install. It already holds a preferences block,
   so the text the AI helper screen offers cannot be pasted in whole;
@@ -6870,6 +6870,16 @@ publish and anything that deletes.
   it was beside it first. Seen in Linux Chrome against a stand-in
   file. Owed before it ships: the button pressed on the Windows box,
   and Claude Desktop there listing Pressless after a restart.
+  By-hand check PASSED 2026-11-13 on the Windows box, run by a helper
+  agent on a build of 5d95942 frozen there, against the real Claude
+  Desktop. The button kept both keys the file held, added
+  mcpServers.pressless naming the running Pressless.exe, and left a
+  byte-identical copy of the file as it was. A second press changed
+  neither file. After a full quit and restart, Claude Desktop started
+  Pressless.exe --assistant itself. Its logs folder was empty, so the
+  evidence is the process list. Closing Claude Desktop's window (asked
+  by program, not clicked) left it running, so the screen's sentence
+  now says to quit it fully. The box's file was put back and compared.
   **Layman:** One button would connect Claude Desktop to Pressless, instead of you editing a settings file by hand.
   Kind: ux.
   Source: by-hand-check-2026-11-13 PRESS-0337.
@@ -7284,6 +7294,17 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.
+
+- 📋 [PRESS-0361] **The kit that makes the manual's pictures and videos lives in the repository.**
+  The kit that made PRESS-0219's pictures and videos sits in a scratch
+  folder on one machine, outside git. A screen change stales a picture
+  (PRESS-0352 and PRESS-0357 each may), and remaking it needs the kit.
+  Move it under scripts/, with a line in docs/working-here.md on running
+  it. Recommended by the session 2026-11-13; placed in 1.0.0 with the
+  screen redesign, which will stale most pictures.
+  **Layman:** The tools that make the manual's pictures and videos are kept with the project, so the manual can be redone whenever a screen changes.
+  Kind: chore.
+  Source: handover-2026-11-13.
 
 ## 1.1.0 — music figures
 

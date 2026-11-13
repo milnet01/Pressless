@@ -1822,7 +1822,8 @@ _WORDS: dict[str, str] = {
     ),
     "assistant.connect.button": "Connect Claude Desktop",
     "assistant.connect.done": (
-        "Claude Desktop is connected. Quit Claude Desktop and start it again."
+        "Claude Desktop is connected. Quit Claude Desktop fully and start it again. Closing "
+        "its window can leave it running."
     ),
     "assistant.connect.not_found": (
         "Pressless could not find Claude Desktop on this computer, so it changed nothing. "
