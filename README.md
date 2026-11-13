@@ -38,19 +38,25 @@ does:
 - start a new entry from a template;
 - let you pick how Pressless itself looks: light, dark, high contrast,
   and more;
+- build your whole site: your own homepage, pages added and removed,
+  the menu, and the site's colours, fonts and layout;
+- put music, video, downloads and documents on it;
+- bring an existing site in: a WordPress site, a folder of web pages, or
+  a site already on GitHub;
+- show how many people read your site, and where they are, when you
+  connect Google Analytics;
+- keep more than one site, back a site up to one file, and move
+  everything to a new computer;
+- open a manual from inside Pressless, under Help (from 0.15.0);
 - update itself when a new version is out.
 
 Still to come:
 
-- **a dashboard** showing how many people read your site, and from which
-  countries;
-- **bringing in a WordPress blog** yourself;
-- **running your whole site**: building your own homepage, adding and
-  removing pages, changing the site's look, and putting music,
-  downloads and documents on it.
-
-The aim is for Pressless to replace WordPress entirely, and that comes
-before version 1.0.
+- **many more ready-made looks** to choose from, and screens redesigned
+  to be easier to use;
+- **figures for your music** on Spotify, Apple Music and Amazon Music;
+- **a tray icon**, and Pressless in languages other than English;
+- **publishing to a free host other than GitHub**.
 
 [ROADMAP.md](ROADMAP.md) has the detail. [CHANGELOG.md](CHANGELOG.md)
 lists what each release added.
@@ -166,18 +172,22 @@ It is off until you switch it on:
 Pressless must be open while the app works. A chat that runs only in a
 web browser cannot connect.
 
-## Moving an existing blog in
+## Moving an existing site in
 
-**You cannot bring your own blog in yet.** You start with an empty site
-and write from there.
+**When you set up a new, empty site, Pressless offers to bring an old one
+in.** It takes:
 
-An import from WordPress exists, but it was built for one site. It needs
-that site's own files, so it only runs on the maintainer's computer.
-[docs/specs/PRESS-0007-import.md](docs/specs/PRESS-0007-import.md)
-explains what it carries across.
+- **a WordPress site**: its posts, pages, menu, comments, photographs and
+  files. Pressless shows how to make WordPress's export file, then
+  fetches the pictures and files from the old site while it is still
+  online;
+- **a folder of web pages**, handed over as a folder or a ZIP, or held in
+  a GitHub repository;
+- **a site Pressless already published to GitHub**, on another computer
+  or after a reinstall.
 
-An import anyone can run is planned (PRESS-0125 on the
-[roadmap](ROADMAP.md)).
+You are told what will come across before anything is written, and a
+report afterwards lists anything that did not.
 
 ## Getting help
 

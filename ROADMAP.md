@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=359 -->
+<!-- ants-roadmap-id-high-water: PRESS=360 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6873,6 +6873,15 @@ publish and anything that deletes.
   **Layman:** One button would connect Claude Desktop to Pressless, instead of you editing a settings file by hand.
   Kind: ux.
   Source: by-hand-check-2026-11-13 PRESS-0337.
+
+- ✅ [PRESS-0360] **The README's status and import sections say what Pressless does today.**
+  README § Where it stands listed the dashboard, a WordPress import and
+  running the whole site as still to come, and § Moving an existing
+  blog in said no import could be run. All shipped by 0.14.0. Rewritten
+  2026-11-13 from the changelog's entries and the roadmap's open items.
+  **Layman:** The README no longer lists as still to come things Pressless already does, such as bringing a WordPress site in.
+  Kind: doc-fix.
+  Source: handover-2026-11-13.
 
 ## 1.0.0 — every sign holds, and the format is frozen
 
