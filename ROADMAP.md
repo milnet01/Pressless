@@ -7295,13 +7295,16 @@ owned by docs/standards/versioning-overrides.md.
   Kind: feature.
   Source: user-request-2026-11-13.
 
-- 📋 [PRESS-0361] **The kit that makes the manual's pictures and videos lives in the repository.**
+- ✅ [PRESS-0361] **The kit that makes the manual's pictures and videos lives in the repository.**
   The kit that made PRESS-0219's pictures and videos sits in a scratch
   folder on one machine, outside git. A screen change stales a picture
   (PRESS-0352 and PRESS-0357 each may), and remaking it needs the kit.
   Move it under scripts/, with a line in docs/working-here.md on running
   it. Recommended by the session 2026-11-13; placed in 1.0.0 with the
   screen redesign, which will stale most pictures.
+  Shipped 2026-11-13: scripts/manual-media/, with its how-to in
+  docs/working-here.md. Run from there, every picture matched the shipped
+  one but who-is-reading.png, whose figures follow the date.
   **Layman:** The tools that make the manual's pictures and videos are kept with the project, so the manual can be redone whenever a screen changes.
   Kind: chore.
   Source: handover-2026-11-13.

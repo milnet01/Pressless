@@ -268,6 +268,46 @@ Edge is the box's installed one. Firefox is Playwright's build of it,
 never the installed Firefox, which Playwright cannot drive. The
 script's docstring names what still needs a person.
 
+## Remaking the manual's pictures and videos
+
+**The kit is `scripts/manual-media/`** (PRESS-0361), and PRESS-0219 § 4.6
+says what it makes. Linux only. It needs Playwright under the system
+`python3`, `/usr/bin/google-chrome`, `ffmpeg`, and the project's `.venv`.
+
+```bash
+python3 scripts/manual-media/shots.py [name ...]   # pictures
+python3 scripts/manual-media/video.py [name ...]   # videos and captions
+scripts/manual-media/frozen-check.sh               # § 7's by-hand check
+```
+
+With no name, each of the first two makes everything. Each starts its own
+throwaway instance: a made-up site, the tests' pretend GitHub, made-up
+visitor figures. Nothing real is reached.
+
+**Nothing is written into the tree.** Results land under
+`scratch/manual-media/`, which is gitignored, or under the folder
+`PRESSLESS_MANUAL_WORK` names. Look at each result, then copy the ones
+wanted into `src/pressless/manual_files/media/`.
+`tests/test_manual.py` then checks the folder against `en.txt`.
+
+**Run one at a time, on a quiet machine.** The videos are timed from the
+run. The publishing video timed out once, 2026-11-13, while the freeze ran
+beside it; it passed alone. The cause was not established.
+
+**A remade picture is not byte-for-byte the old one.** The visitor figures
+follow today's date, so `who-is-reading.png` always differs. Compare with
+ImageMagick's `compare -metric AE` to see which pictures a screen change
+moved.
+
+**Gotchas.** A `<select>` does not draw open headless, so `shots.py` sizes
+it. The AI helper screen shows the machine's paths, so its picture is cut
+above them. A paragraph line in `en.txt` must not start with `picture`,
+`video`, or a number and a dot.
+
+`frozen-check.sh` freezes the program with the release's pinned packages,
+runs it with the network cut, and prints what the manual did. A person
+reads the lines against § 7. The Windows half of § 7 is not covered.
+
 ## Editing the roadmap
 
 `roadmap_log op:"amend_field"` corrects a bullet's `Layman:` after

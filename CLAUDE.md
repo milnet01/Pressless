@@ -110,6 +110,8 @@ a time (`read_region` with `section=`). A comment or spec saying
   key or touching the usage-report property's setup.
 - *Windows and browser checks* — before checking anything on the Windows
   box or in a browser.
+- *Remaking the manual's pictures and videos* — before retaking a
+  picture or video after a screen changes.
 - *Editing the roadmap* — before changing a `Layman:` line or a section
   intro.
 - *Editing documents and building reviews* — before an exact-match edit
