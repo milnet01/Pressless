@@ -92,6 +92,19 @@ A line on the Face's list, **AI helper**, opens `/assistant/setup`. It holds:
 - the program path and the argument `--assistant`, with a copy button, and
   the same as an `mcpServers` JSON block. Each app's exact steps are words in
   the words table, checked by hand per app before release (§ 7).
+- **Connect Claude Desktop**, a button (`POST /assistant/connect`,
+  PRESS-0357). A fresh install's settings file already holds a preferences
+  block, so the JSON block cannot be pasted in whole. The button sets
+  `mcpServers.pressless` in `claude_desktop_config.json` to the program and
+  argument the screen names, and keeps every other key. The file is in the
+  `Claude` folder under `%APPDATA%` on Windows, `~/Library/Application
+  Support` on macOS, and `$XDG_CONFIG_HOME` or `~/.config` elsewhere. Before
+  the write, the file as it was is copied beside it as
+  `claude_desktop_config.before-pressless.json`. An entry already the same
+  writes nothing. With no `Claude` folder, or a file that does not read as a
+  JSON object whose `mcpServers` is an object, nothing is written and the
+  screen says so. The by-hand steps stay below the button. The user agreed
+  on 2026-11-13 that Pressless may write this one file of another program.
 
 While the switch is on and a Face serves, the **door file**
 `assistant-door.json` sits in Pressless's own folder:
@@ -469,6 +482,14 @@ Every test below is new; none can run before the code exists.
   check in § 7 runs it on the Windows box. *Breaks when:* the stop step
   matches every process in the folder.
 
+- **INV-14** — Connecting Claude Desktop changes `mcpServers.pressless` and
+  nothing else in its settings file, keeps a copy of the file as it was, and
+  leaves a file it cannot read exactly as it is. *Test:*
+  `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest`
+  and `::test_connecting_changes_nothing_it_cannot_read`. *Breaks when:* the
+  file is rewritten from Pressless's block alone, or an unreadable file is
+  replaced.
+
 ## 6. Failure modes
 
 | What breaks | What happens |
@@ -486,8 +507,8 @@ Every test below is new; none can run before the code exists.
 ## 7. Tests
 
 - `tests/test_assistant.py` locks INV-1, INV-2, INV-3, INV-4, INV-5, INV-6,
-  INV-9, INV-10, INV-11 and INV-12: the door, the catalogue and the
-  requests.
+  INV-9, INV-10, INV-11, INV-12 and INV-14: the door, the catalogue, the
+  requests and the Connect button.
 - `tests/test_bridge.py` locks INV-7 and INV-8, and checks § 4.4's framing,
   versions and methods.
 - `tests/test_installer.py` locks INV-13's script half.
@@ -496,7 +517,7 @@ Each invariant's test is seen failing before its code exists.
 
 By hand, before release, on Linux and the Windows box:
 
-- connect Claude Desktop and Claude Code; list
+- connect Claude Desktop with its button, and Claude Code; list
   tools; save an entry; ask to publish; answer yes in the browser; see the
   site change;
 - update Pressless on Windows with an AI app connected; the update
@@ -556,6 +577,8 @@ By hand, before release, on Linux and the Windows box:
 | INV-11 | `tests/test_assistant.py::test_stale_version_refused` |
 | INV-12 | `tests/test_assistant.py::test_box_is_escaped` |
 | INV-13 | **Partial:** `tests/test_installer.py::test_helper_ends_bridges` reads the script; only the § 7 Windows check runs it |
+| INV-14 | `tests/test_assistant.py::test_connecting_claude_desktop_keeps_the_rest` and `::test_connecting_changes_nothing_it_cannot_read` |
+| Claude Desktop's file is where § 4.2 says | **Partial:** `::test_claude_desktops_file_on_each_system` checks our reading; only the § 7 check runs the real app, and only on Windows |
 | The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
 | Names stay stable (§ 4.5) | **nothing** — a renamed tool passes every test; caught only by review |
 | Each app's connection steps (§ 4.2) | **Partial:** the § 7 by-hand check, for the three apps named there |

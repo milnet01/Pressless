@@ -15,8 +15,7 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 ### Added
 
 - **An AI app on your computer can write and edit your site** (PRESS-0337)
-  Click AI helper under the list of your writing, then Switch on. The screen gives the
-  steps for Claude Desktop and Claude Code. Nothing is published, undone or put in the bin
+  Click AI helper under the list of your writing, then Switch on. One button connects Claude Desktop, and the screen gives the steps for Claude Code. Nothing is published, undone or put in the bin
   until you click Yes, do it in Pressless, and the app cannot reach your keys, your
   settings or any page's code.
 - **A manual opens from inside Pressless** (PRESS-0219)

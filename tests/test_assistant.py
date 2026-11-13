@@ -666,3 +666,100 @@ def test_a_refusal_names_no_place_on_a_screen():
     "below" exists, so the replace refusal says where in Pressless to go."""
     said = assistant._said(publishing.WouldReplaceASite("held"))
     assert "below" not in said and "Publish" in said
+
+
+# ----------------------------------------------------------------- INV-14 ---
+
+# Windows line endings and a letter outside ASCII: both are kept.
+_HELD = ('{\r\n  "preferences": {"sidebarMode": "café", "nested": [1, {"deep": true}]},\r\n'
+         '  "mcpServers": {"other": {"command": "other-program", "args": ["--flag"]}}\r\n}\r\n')
+
+
+def test_connecting_claude_desktop_keeps_the_rest(tmp_path):
+    """INV-14. Breaks when the file is rewritten from Pressless's block alone,
+    or when no copy of the file as it was is kept."""
+    config = tmp_path / "Claude" / "claude_desktop_config.json"
+    config.parent.mkdir()
+    config.write_bytes(_HELD.encode("utf-8"))
+    said = assistant.connect_claude_desktop(config, "the-program", ["--assistant"])
+    assert said == "assistant.connect.done"
+    now, was = json.loads(config.read_text(encoding="utf-8")), json.loads(_HELD)
+    assert now["preferences"] == was["preferences"]
+    assert now["mcpServers"]["other"] == was["mcpServers"]["other"]
+    assert now["mcpServers"]["pressless"] == {"command": "the-program",
+                                              "args": ["--assistant"]}
+    assert set(now) == {"preferences", "mcpServers"}
+    assert "café" in config.read_text(encoding="utf-8")
+    copy = config.with_name("claude_desktop_config.before-pressless.json")
+    assert copy.read_bytes() == _HELD.encode("utf-8")
+    # A second press changes nothing, so the copy stays the file as it was.
+    held = config.read_bytes()
+    assert assistant.connect_claude_desktop(
+        config, "the-program", ["--assistant"]) == "assistant.connect.done"
+    assert config.read_bytes() == held and copy.read_bytes() == _HELD.encode("utf-8")
+
+
+@pytest.mark.parametrize("text", ["{not json", "[1, 2]", '{"mcpServers": "words"}'])
+def test_connecting_changes_nothing_it_cannot_read(tmp_path, text):
+    """INV-14. Breaks when a file Pressless cannot read as Claude Desktop's
+    settings is replaced."""
+    config = tmp_path / "Claude" / "claude_desktop_config.json"
+    config.parent.mkdir()
+    config.write_text(text, encoding="utf-8")
+    said = assistant.connect_claude_desktop(config, "the-program", ["--assistant"])
+    assert said == "assistant.connect.unreadable"
+    assert config.read_text(encoding="utf-8") == text
+    assert [path.name for path in config.parent.iterdir()] == [config.name]
+
+
+def test_connecting_needs_claude_desktop(tmp_path):
+    """§ 4.2: with no Claude folder nothing is made; with the folder and no
+    file, the file is made holding Pressless alone."""
+    config = tmp_path / "Claude" / "claude_desktop_config.json"
+    said = assistant.connect_claude_desktop(config, "the-program", ["--assistant"])
+    assert said == "assistant.connect.not_found" and not config.parent.exists()
+    config.parent.mkdir()
+    assert assistant.connect_claude_desktop(
+        config, "the-program", ["--assistant"]) == "assistant.connect.done"
+    assert json.loads(config.read_text(encoding="utf-8")) == {"mcpServers": {"pressless": {
+        "command": "the-program", "args": ["--assistant"]}}}
+    assert [path.name for path in config.parent.iterdir()] == [config.name]
+
+
+def test_claude_desktops_file_on_each_system(monkeypatch, tmp_path):
+    """§ 4.2: where Claude Desktop keeps its settings file, by system."""
+    monkeypatch.setattr(assistant.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    name = "claude_desktop_config.json"
+    for platform, folder in (("win32", tmp_path / "Roaming"),
+                             ("darwin", tmp_path / "Library" / "Application Support"),
+                             ("linux", tmp_path / "xdg")):
+        monkeypatch.setattr(assistant.sys, "platform", platform)
+        assert assistant.claude_desktop_config() == folder / "Claude" / name
+    monkeypatch.delenv("XDG_CONFIG_HOME")
+    assert assistant.claude_desktop_config() == tmp_path / ".config" / "Claude" / name
+
+
+def test_the_connect_button(monkeypatch, tmp_path):
+    """§ 4.2: the button writes the program the screen names into Claude
+    Desktop's file, and the screen then says what happened."""
+    config = tmp_path / "Claude" / "claude_desktop_config.json"
+    monkeypatch.setattr(assistant, "claude_desktop_config", lambda: config)
+    with _pressless(tmp_path) as pressless:
+        page = pressless.browser.request("GET", "/assistant/setup")[2]
+        assert 'action="/assistant/connect"' in page and "Connect Claude Desktop" in page
+        status, headers, _ = pressless.browser.request("POST", "/assistant/connect")
+        assert status == 303 and not config.parent.exists()
+        page = pressless.browser.request("GET", headers["Location"])[2]
+        assert "could not find Claude Desktop" in page
+        config.parent.mkdir()
+        status, headers, _ = pressless.browser.request("POST", "/assistant/connect")
+        page = pressless.browser.request("GET", headers["Location"])[2]
+        assert "Claude Desktop is connected" in page
+        program, arguments = assistant._program()
+        assert json.loads(config.read_text(encoding="utf-8"))["mcpServers"]["pressless"] == {
+            "command": program, "args": arguments}
+        # The words shown come from a fixed list, never from the address.
+        page = pressless.browser.request("GET", "/assistant/setup?connect=<b>x</b>")[2]
+        assert "<b>x</b>" not in page

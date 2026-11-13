@@ -1815,11 +1815,29 @@ _WORDS: dict[str, str] = {
     "assistant.app.claude_desktop": "Claude Desktop",
     "assistant.app.claude_code": "Claude Code",
     "assistant.app.other": "Another AI app",
+    "assistant.connect.about": (
+        "Pressless can connect Claude Desktop for you. The button adds Pressless to Claude "
+        "Desktop's settings file and keeps everything else in it. A copy of the file as it "
+        "was is kept beside it."
+    ),
+    "assistant.connect.button": "Connect Claude Desktop",
+    "assistant.connect.done": (
+        "Claude Desktop is connected. Quit Claude Desktop and start it again."
+    ),
+    "assistant.connect.not_found": (
+        "Pressless could not find Claude Desktop on this computer, so it changed nothing. "
+        "Install Claude Desktop and open it once, then press the button again."
+    ),
+    "assistant.connect.unreadable": (
+        "Pressless could not read or change Claude Desktop's settings file, so it is as it "
+        "was. "
+        "Follow the steps below instead."
+    ),
     "assistant.steps.claude_desktop": (
-        "Open Settings, then Desktop app. At the bottom of that page, click Manage beside "
-        "Extensions, then Edit config. A folder opens with a file selected: open that file in "
-        "a text editor. Paste the text above into it, keeping what is already there, save it, "
-        "and start Claude Desktop again."
+        "To do it by hand instead: open Settings, then Desktop app. At the bottom of that "
+        "page, click Manage beside Extensions, then Edit config. A folder opens with a file "
+        "selected: open that file in a text editor. Paste the text above into it, keeping "
+        "what is already there, save it, and start Claude Desktop again."
     ),
     "assistant.steps.claude_code": (
         "Copy this line, paste it into a terminal, and press Enter. Claude Code then finds "

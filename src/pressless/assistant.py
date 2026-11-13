@@ -23,6 +23,7 @@ import contextlib
 import dataclasses
 import html
 import json
+import os
 import secrets
 import sys
 import threading
@@ -72,6 +73,7 @@ ADDRESS = "/assistant"
 SETUP = "/assistant/setup"
 WAITING = "/assistant/waiting"
 ANSWER = "/assistant/answer"
+CONNECT = "/assistant/connect"
 EXPIRES_SECONDS = 30 * 60
 
 # A request's states (§ 4.5's request_status).
@@ -657,10 +659,16 @@ class _Door:
         program, arguments = _program()
         block = json.dumps({"mcpServers": {"pressless": {
             "command": program, "args": arguments}}}, indent=2)
+        # The outcome's words are picked from this list, never taken from the address.
+        told = _CONNECT_WORDS.get(request.query.get("connect", ""))
         e = html.escape
         command = " ".join([f'"{program}"', *arguments])
         # § 4.2: the apps named are the ones § 7 checks by hand.
         steps = (f'<h3>{say("assistant.app.claude_desktop")}</h3>'
+                 f'<p>{say("assistant.connect.about")}</p>'
+                 f'<form method="post" action="{CONNECT}"><p><button>'
+                 f'{say("assistant.connect.button")}</button></p></form>'
+                 f'<p role="status">{say(told) if told else ""}</p>'
                  f'<p>{say("assistant.steps.claude_desktop")}</p>'
                  f'<h3>{say("assistant.app.claude_code")}</h3>'
                  f'<p>{say("assistant.steps.claude_code")}</p>'
@@ -691,6 +699,14 @@ class _Door:
             self.shut()
         return Reply(b"", "text/plain; charset=utf-8", status=303, location=SETUP)
 
+    def connect(self, request: Request) -> Reply:
+        """POST /assistant/connect (§ 4.2): Pressless's entry into Claude
+        Desktop's settings file, then the screen saying how it went."""
+        said = connect_claude_desktop(claude_desktop_config(), *_program())
+        self.face.note(f"assistant: connect Claude Desktop, {said.rsplit('.', 1)[1]}")
+        return Reply(b"", "text/plain; charset=utf-8", status=303,
+                     location=f"{SETUP}?connect={said.rsplit('.', 1)[1]}")
+
     def list_line(self) -> str:
         on = is_on(self.own)
         return (f'<p class="assistant-line"><a href="{SETUP}">{say("assistant.title")}</a> '
@@ -709,6 +725,7 @@ def register(face: Face, folder: Path, *, own: Path,
     face.add_door(ADDRESS, door.call, door.admits)
     face.add_page("GET", SETUP, door.setup_page)
     face.add_page("POST", SETUP, door.set_switch)
+    face.add_page("POST", CONNECT, door.connect)
     face.add_page("GET", WAITING, door.waiting_now)
     face.add_page("POST", ANSWER, door.answer)
     face.add_to_list(door.list_line, above=False)
@@ -805,6 +822,54 @@ def _program() -> tuple[str, list[str]]:
     if sys.platform == "win32":
         return sys.executable, ["--assistant"]
     return str(artefact), ["--assistant"]
+
+
+_CLAUDE_FILE = "claude_desktop_config.json"
+_CLAUDE_COPY = "claude_desktop_config.before-pressless.json"
+_CLAUDE_FOLDER = "Claude"
+_WINDOWS_SETTINGS = ("AppData", "Roaming")     # where %APPDATA% is unset
+_MAC_SETTINGS = ("Library", "Application Support")
+_CONNECT_WORDS = {word: "assistant.connect." + word
+                  for word in ("done", "not_found", "unreadable")}
+
+
+def claude_desktop_config() -> Path:
+    """Where Claude Desktop keeps its settings file on this system (§ 4.2)."""
+    if sys.platform == "win32":
+        folder = Path(os.environ.get("APPDATA") or Path.home().joinpath(*_WINDOWS_SETTINGS))
+    elif sys.platform == "darwin":
+        folder = Path.home().joinpath(*_MAC_SETTINGS)
+    else:
+        folder = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return folder / _CLAUDE_FOLDER / _CLAUDE_FILE
+
+
+def connect_claude_desktop(config: Path, program: str, arguments: list[str]) -> str:
+    """Put Pressless's entry into Claude Desktop's settings file, keeping
+    everything else in it, and answer the words saying how it went (§ 4.2,
+    INV-14). A copy of the file as it was is kept beside it first. A file that
+    does not read as that app's settings is left exactly as it is."""
+    if not config.parent.is_dir():
+        return "assistant.connect.not_found"
+    try:
+        # Bytes, so the copy keeps the file's own line endings.
+        text = config.read_bytes().decode("utf-8-sig") if config.is_file() else ""
+        held = json.loads(text) if text.strip() else {}
+        servers = held.get("mcpServers", {}) if isinstance(held, dict) else None
+        if not isinstance(servers, dict):
+            return "assistant.connect.unreadable"
+        entry = {"command": program, "args": arguments}
+        if servers.get("pressless") != entry:
+            if config.is_file():
+                safe_write.write_whole(config.with_name(_CLAUDE_COPY), text,
+                                       prefix=".pressless-", newline="")
+            held["mcpServers"] = {**servers, "pressless": entry}
+            safe_write.write_whole(
+                config, json.dumps(held, indent=2, ensure_ascii=False) + "\n",
+                prefix=".pressless-")
+    except (OSError, ValueError):     # not read, not JSON, or not written
+        return "assistant.connect.unreadable"
+    return "assistant.connect.done"
 
 
 _COPY_SCRIPT = """

@@ -6850,7 +6850,7 @@ publish and anything that deletes.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
 
-- 📋 [PRESS-0357] **Pressless connects Claude Desktop itself, instead of asking for a hand edit.**
+- 🚧 [PRESS-0357] **Pressless connects Claude Desktop itself, instead of asking for a hand edit.**
   Seen 2026-11-13 on the Windows box: Claude Desktop's settings file is
   not empty on a fresh install. It already holds a preferences block,
   so the text the AI helper screen offers cannot be pasted in whole;
@@ -6864,6 +6864,12 @@ publish and anything that deletes.
   Decided by the user 2026-11-13, on the recommendation put to them:
   0.15.0 waits for this button, and Pressless may write its own entry
   into Claude Desktop's settings file when the button is pressed.
+  Built 2026-11-13: the AI helper screen's Connect Claude Desktop
+  button, spec PRESS-0337 § 4.2 and INV-14. It sets
+  mcpServers.pressless, keeps every other key, and copies the file as
+  it was beside it first. Seen in Linux Chrome against a stand-in
+  file. Owed before it ships: the button pressed on the Windows box,
+  and Claude Desktop there listing Pressless after a restart.
   **Layman:** One button would connect Claude Desktop to Pressless, instead of you editing a settings file by hand.
   Kind: ux.
   Source: by-hand-check-2026-11-13 PRESS-0337.

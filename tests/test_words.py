@@ -204,7 +204,9 @@ _CSS = "CSS"
 NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     "assistant.py": {"Bearer": "the HTTP Authorization header's scheme",
                      "claude mcp add --scope user pressless --":
-                         "a command line Claude Code reads, never translated"},
+                         "a command line Claude Code reads, never translated",
+                     **dict.fromkeys(("_CLAUDE_FOLDER", "_WINDOWS_SETTINGS", "_MAC_SETTINGS"),
+                                     "a folder's name on disk")},
     "backups.py": {"DEFAULT_FOLDER": "a folder's name on disk"},
     # PRESS-0337 § 4.4: the bridge's JSON-RPC errors are read by the AI app.
     "bridge.py": {
