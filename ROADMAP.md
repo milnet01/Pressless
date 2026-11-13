@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=358 -->
+<!-- ants-roadmap-id-high-water: PRESS=359 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6824,7 +6824,7 @@ publish and anything that deletes.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
 
-- 📋 [PRESS-0356] **The home screen's lists stay as they were after an AI helper's publish.**
+- ✅ [PRESS-0356] **The home screen's lists stay as they were after an AI helper's publish.**
   Seen 2026-11-13 on the Windows box in Edge: Yes, do it on the box
   published the entry (the live page answered 200), and the home screen
   still read Drafts (1), On your site (1). A reload read Drafts (0),
@@ -6839,6 +6839,13 @@ publish and anything that deletes.
   hold typing, so they are not reloaded.
   No browser row covers the box: scripts/by-hand-browser-checks.py has
   none for the AI helper. The fix owes one.
+  Fixed 2026-11-13. The answer comes back only when the press has
+  ended, so the box's script now starts the press row's asker on Yes
+  and reloads the home screen when the door says it ran the ask.
+  Spec PRESS-0337 § 4.6 says so. Seen failing, then passing, in
+  scripts/by-hand-browser-checks.py's PRESS-0356 row on Linux Chrome.
+  Not yet run on the Windows box: the release's --browsers run covers it.
+  No changelog entry: the fault never reached a release.
   **Layman:** After you say yes to an AI helper's publish, the home screen still lists the entry as a draft until you reload it.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
@@ -6854,6 +6861,9 @@ publish and anything that deletes.
   app. Open: the user decides whether 0.15.0 waits for it; whether
   Pressless should write another program's file at all; where the file
   is on each system.
+  Decided by the user 2026-11-13, on the recommendation put to them:
+  0.15.0 waits for this button, and Pressless may write its own entry
+  into Claude Desktop's settings file when the button is pressed.
   **Layman:** One button would connect Claude Desktop to Pressless, instead of you editing a settings file by hand.
   Kind: ux.
   Source: by-hand-check-2026-11-13 PRESS-0337.
@@ -7209,6 +7219,9 @@ owned by docs/standards/versioning-overrides.md.
   narrow preview. Decide: is keeping the colours intended? If so, say so
   beside the layouts, or offer "use this layout's own colours".
   A change here may stale the manual's look.png (PRESS-0219).
+  Decided by the user 2026-11-13, on the recommendation put to them:
+  saved colours stay by default, and a button beside the layouts
+  switches the preview to the chosen layout's own colours.
   **Layman:** On the Look screen, picking a different layout barely changes the preview once a look has been saved, though each layout promises its own colours.
   Kind: ux.
   Source: found-recording-PRESS-0219-2026-11-12.
@@ -7245,6 +7258,17 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** A new site with the journal on cannot publish a page until it has published an entry, though nothing would be lost.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0355.
+
+- 📋 [PRESS-0359] **Many more layouts and styles to choose from on the Look screen.**
+  User, 2026-11-13: "We will probably have to add a lot of themes and
+  styles that users can choose from."
+  Open: how many, which kinds of site they serve, and how a long list
+  is browsed. PRESS-0352's button for a layout's own colours and
+  PRESS-0353's redesign both touch the same screen.
+  Placed in 1.0.0 beside those two by the session; the user may move it.
+  **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
+  Kind: feature.
+  Source: user-request-2026-11-13.
 
 ## 1.1.0 — music figures
 

@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import functools
+import http.client
 import io
 import json
 import sys
@@ -59,6 +60,8 @@ from test_votes import _Google as _CheckedGoogle  # noqa: E402
 
 import pressless_import  # noqa: E402
 from pressless import (  # noqa: E402
+    __version__,
+    assistant,
     blocks,
     builder,
     cheatsheet,
@@ -70,6 +73,7 @@ from pressless import (  # noqa: E402
     manual,
     marks,
     page_editor,
+    pressing,
     publishing,
     settings,
     setup,
@@ -147,6 +151,11 @@ def main() -> int:
             setup.register(served, folder, transport=tp._github(),
                            shortcut_places=lambda: None)
             votes_setup.register(served, folder, client=_CheckedGoogle())
+            # PRESS-0356: the AI helper's door, switched off until its row.
+            helper_own = Path(tmp) / "helper-own"
+            helper_own.mkdir()
+            pressing.register(served)
+            assistant.register(served, folder, own=helper_own, transport=tp._github())
             # PRESS-0223: the Sites screen over a Pressless-data of its own,
             # holding two sites; a restart is only recorded.
             sites_own = Path(tmp) / "sites-own"
@@ -159,7 +168,7 @@ def main() -> int:
             parts = urllib.parse.urlsplit(served.url)
             secret = urllib.parse.parse_qs(parts.query)["t"][0]
             origin = f"http://{parts.netloc}"
-            run(origin, secret, folder)
+            run(origin, secret, folder, helper_own)
         finally:
             served.stop()
 
@@ -169,7 +178,7 @@ def main() -> int:
     return 1 if failed else 0
 
 
-def run(origin: str, secret: str, folder: Path) -> None:
+def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
@@ -577,6 +586,7 @@ def run(origin: str, secret: str, folder: Path) -> None:
         settings_pictures(page, origin, folder)
         votes_screen(page, origin, folder)
         votes_buttons(page, folder)
+        helper_publish(page, origin, folder, helper_own)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -1298,6 +1308,51 @@ def more_menu(page, origin: str) -> None:
           before["rows"] < before["line"] / 2 and opened["open"]
           and opened["main"] == before["main"] and not clicked_away and not escaped,
           f"{before} {opened} {clicked_away} {escaped}")
+
+
+def helper_publish(page, origin: str, folder: Path, own: Path) -> None:
+    """PRESS-0356: after Yes to an AI helper's publish, the home screen's
+    lists show the entry on the site without a reload by hand."""
+    counts = """() => [...document.querySelectorAll('details.fold h2')]
+      .map(heading => heading.textContent)"""
+    store.write(folder, tp._entry("helper-row", body="Words."), draft=True)
+    page.goto(f"{origin}{assistant.SETUP}", wait_until="networkidle")
+    page.click("button[name=on]")
+    page.goto(f"{origin}/", wait_until="networkidle")
+    before = page.evaluate(counts)
+    door = json.loads((own / assistant.DOOR_NAME).read_text(encoding="utf-8"))
+    # The door, as the bridge calls it: its own token, no cookie.
+    calling = http.client.HTTPConnection(urllib.parse.urlsplit(origin).netloc, timeout=30)
+    try:
+        calling.request("POST", assistant.ADDRESS, headers={
+            "Authorization": f"Bearer {door['token']}"}, body=json.dumps({
+                "tool": "publish", "arguments": {"entry": "helper-row"},
+                "version": __version__}))
+        answer = json.loads(calling.getresponse().read())
+    finally:
+        calling.close()
+    after = before
+    try:
+        page.get_by_role("button", name=words.say("script.assistant.go"),
+                         exact=True).click(timeout=15000)
+        page.wait_for_function(f"before => JSON.stringify(({counts})()) !== before",
+                               arg=json.dumps(before, separators=(",", ":")), timeout=15000)
+        after = page.evaluate(counts)
+    except Exception as exc:  # noqa: BLE001 -- a row that fails says why
+        answer = f"{answer} {type(exc).__name__}"
+    finally:
+        page.goto(f"{origin}{assistant.SETUP}", wait_until="networkidle")
+        page.click("button[name=on]")
+
+    def count(listed: list[str], key: str) -> int:
+        named = words.say(key)
+        return next(int(text.rsplit("(", 1)[1].rstrip(")")) for text in listed
+                    if text.startswith(named))
+
+    check("PRESS-0356: a helper's publish, once said yes to, shows in the home screen's lists",
+          count(after, "editor.list.drafts") == count(before, "editor.list.drafts") - 1
+          and count(after, "editor.list.on_site") == count(before, "editor.list.on_site") + 1,
+          f"{before} {after} {answer}")
 
 
 # Only "publishing" holds both "publish" and "page"; "publish" alone is in two.

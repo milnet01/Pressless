@@ -833,9 +833,16 @@ window.presslessHelper = window.presslessHelper || (() => {
     const yes = await window.presslessPlan(now, {title: "script.assistant.title",
       go: "script.assistant.go", wait: "script.assistant.wait", request: stamp});
     const body = new URLSearchParams({request: now.request, yes: yes ? "1" : "0"});
+    // PRESS-0356: the answer comes back when the press has ended. Until then a
+    // page with a press row shows it running; after it the home screen, whose
+    // lists the press changed, is drawn again. Other screens may hold typing.
+    if (yes) window.presslessPress.ask();
     try {
       const reply = await (await fetch("/assistant/answer", {method: "POST", body})).json();
       if (reply.busy || reply.replanned) shown = "";
+      else if (yes && reply.answered && window.location.pathname === "/") {
+        window.location.reload();
+      }
     } catch (error) { shown = ""; }
   };
   setInterval(ask, 2000);

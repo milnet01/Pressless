@@ -301,6 +301,12 @@ and Origin checks like every screen button. The door then:
    plan;
 3. runs the press and records its outcome on the request.
 
+**After Yes.** The answer comes back when the press has ended. Until then a
+page with a press row shows the press running, as after its own button
+(PRESS-0235 § 4.5). When the door answers that it ran the ask, the home
+screen is loaded again, since its lists are what an ask changes. No other
+screen reloads: it may hold typing (PRESS-0356).
+
 **Not yet** refuses the request. A request waiting for 30 minutes expires.
 Neither changes anything.
 
@@ -550,6 +556,7 @@ By hand, before release, on Linux and the Windows box:
 | INV-11 | `tests/test_assistant.py::test_stale_version_refused` |
 | INV-12 | `tests/test_assistant.py::test_box_is_escaped` |
 | INV-13 | **Partial:** `tests/test_installer.py::test_helper_ends_bridges` reads the script; only the § 7 Windows check runs it |
+| The home screen after Yes (§ 4.6) | `scripts/by-hand-browser-checks.py`'s PRESS-0356 row, run before a release; nothing in the gate |
 | Names stay stable (§ 4.5) | **nothing** — a renamed tool passes every test; caught only by review |
 | Each app's connection steps (§ 4.2) | **Partial:** the § 7 by-hand check, for the three apps named there |
 | The protocol subset matches MCP (§ 4.4) | **Partial:** `tests/test_bridge.py` checks our reading of the spec, not the spec; the § 7 check runs real apps |
