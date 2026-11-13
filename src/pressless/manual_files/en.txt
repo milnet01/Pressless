@@ -419,7 +419,7 @@ site through Pressless. It is off until you switch it on.
 1. Click Your writing in the bar, then AI helper, low on the screen.
 2. Click Switch on.
 picture ai-helper.png | The top of the AI helper screen, saying Off: no AI app can connect, with the Switch on button.
-3. Click Copy, and follow the steps on the screen for your app.
+3. For Claude Desktop, click Connect Claude Desktop, then quit Claude Desktop fully and start it again. For another app, follow the steps on the screen.
 
 Nothing is published, undone or put in the bin until you click Yes in
 Pressless. The app cannot reach your keys, your settings or any page's

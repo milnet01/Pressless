@@ -12,6 +12,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The manual's AI helper steps name the Connect Claude Desktop button** (PRESS-0357)
+  The steps still said to click Copy, which is no longer the way for Claude Desktop.
+
 ## [0.15.0] - 2026-11-13
 
 **Theme:** An AI helper can drive Pressless
