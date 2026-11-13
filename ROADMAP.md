@@ -7264,6 +7264,21 @@ owned by docs/standards/versioning-overrides.md.
   a site are grouped, and which screens change. Needs a design the user
   agrees before any screen is rebuilt. The manual's pictures and videos
   are re-made after it, with the manual media kit.
+  Decided by the user 2026-11-13, each on the recommendation put to them:
+  - The first screen is Your site: a tile for each part (Pages, Journal,
+    Look, Menu header and footer, Files, Visitors), the publish state and
+    Publish at the top, and Finish setting up below.
+  - The top bar is by part of the site: the site's name (opens the sites),
+    Your site, Pages, Journal, Look, Files, Visitors, Settings, Help, More.
+  - The journal has its own screen: its switch, drafts, published entries
+    and New entry. Off, it says what a journal is and offers to turn it on.
+  - Settings opens on a short list of sections, each its own short screen.
+  Next: the spec, through write-spec.
+  Spec: docs/specs/PRESS-0353-screens-redesign.md, accepted 2026-11-13.
+  Three stages, each releasable: the bar with Your site, Pages and Journal;
+  Settings in sections; the manual's words and pictures. The drawing's
+  count of unpublished changes is left out (spec decision 5): it needs
+  GitHub on every visit.
   **Layman:** Pressless's screens are laid out afresh as a website editor, so a newcomer finds each thing without hunting.
   Kind: ux.
   Source: user-request-2026-11-13.
