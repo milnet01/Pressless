@@ -622,9 +622,6 @@ document.addEventListener("click", (event) => {
   if (opener) document.getElementById(opener.dataset.help).showModal();
   const closer = event.target.closest("button[data-close]");
   if (!closer) return;
-  // PRESS-0235 § 4.5: OK on a press's failure box forgets the outcome, or the
-  // box reopens on every page.
-  if (closer.hasAttribute("data-forget")) fetch("/press/forget", {method: "POST"});
   closer.closest("dialog").close();
 });
 // PRESS-0236: a message box opens when its words change, so nothing beside a
@@ -644,6 +641,12 @@ for (const box of document.querySelectorAll("dialog.message")) {
     {childList: true, subtree: true, characterData: true});
   look();
   box.addEventListener("close", () => {
+    // PRESS-0235 § 4.5: shutting a press's failure box forgets the outcome, or
+    // the box reopens on every page. Here and not on OK's click, so Escape
+    // forgets too (PRESS-0358). Words cleared away were forgotten already.
+    if (shown && box.querySelector("button[data-forget]")) {
+      fetch("/press/forget", {method: "POST"});
+    }
     const field = box.dataset.focus &&
       document.querySelector(`[name="${CSS.escape(box.dataset.focus)}"]`);
     if (field) field.focus();

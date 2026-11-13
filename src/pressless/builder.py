@@ -1512,6 +1512,15 @@ def entry_path(entry: store.Entry) -> str:
     return f"blog/{when.year:04d}/{when.month:02d}/{when.day:02d}/{entry.slug}"
 
 
+def built_without_entries(site: Path) -> bool:
+    """Whether `site` holds a built site with no entry page or forward: the
+    sitemap every build writes, and nothing at an `entry_path`. False for a
+    folder never built into, which shows nothing either way (PRESS-0358)."""
+    site = Path(site)
+    return (site / "sitemap.xml").is_file() and not any(
+        site.glob("blog/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*/index.html"))
+
+
 def label(category: str) -> str:
     """Decision 7: each hyphen a space, the first letter upper case."""
     text = category.replace("-", " ")

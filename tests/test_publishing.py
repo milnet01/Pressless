@@ -310,7 +310,54 @@ def test_nothing_moves_without_a_key(tmp_path, monkeypatch):
 # ------------------------------------------------------------------ INV-6 ---
 
 
+def _entries_gone(folder: Path) -> settings.Settings:
+    """A site published with an entry, whose Store then lost it: the accident
+    the guard is for. The site folder still holds the entry's page."""
+    saved = _settings(folder)
+    store.write(folder, _entry("seaside"), draft=True)
+    publishing.publish(folder, saved, KEY, entry="seaside", transport=_github())
+    store.path_for(folder, "seaside", draft=False).unlink()
+    return saved
+
+
 def test_publishing_nothing_is_refused(tmp_path):
+    folder = _folder(tmp_path)
+    saved = _entries_gone(folder)
+    built = _hashes(saved.site_folder)
+    github = _github()
+    with pytest.raises(publishing.NothingToPublish):
+        publishing.publish(folder, saved, KEY, entry=None, transport=github)
+    assert _hashes(saved.site_folder) == built
+    assert github.requests == []
+
+    publishing.publish(folder, saved, KEY, entry=None, emptying=True, transport=github)
+    assert _hashes(saved.site_folder) != built
+    assert github.requests
+
+
+def test_a_site_that_never_had_an_entry_publishes(tmp_path):
+    """PRESS-0358. Breaks when the guard refuses a site whose last build held
+    no entry page, or a starter's first publish."""
+    folder = _folder(tmp_path)
+    saved = _settings(folder)
+    store.write_journal(folder, False)
+    publishing.publish(folder, saved, KEY, entry=None, transport=_github())
+    store.write_journal(folder, True)
+    github = _github()
+    publishing.publish(folder, saved, KEY, entry=None, transport=github)
+    assert github.requests
+
+    (tmp_path / "new").mkdir()
+    starter = _starter_folder(tmp_path / "new")
+    store.write_journal(starter, True)
+    github = _github()
+    publishing.publish(starter, _settings(starter), KEY, entry=None, transport=github)
+    assert github.requests
+
+
+def test_a_site_never_built_here_is_refused(tmp_path):
+    """PRESS-0358. Breaks when no site folder is read as no entries lost: a
+    Store restored without its entries has no last build to show for them."""
     folder = _folder(tmp_path)
     saved = _settings(folder)
     github = _github()
@@ -319,9 +366,23 @@ def test_publishing_nothing_is_refused(tmp_path):
     assert not saved.site_folder.exists()
     assert github.requests == []
 
-    publishing.publish(folder, saved, KEY, entry=None, emptying=True, transport=github)
-    assert saved.site_folder.is_dir()
-    assert github.requests
+    saved.site_folder.mkdir()
+    with pytest.raises(publishing.NothingToPublish):
+        publishing.publish(folder, saved, KEY, entry=None, transport=github)
+
+
+def test_the_preview_refuses_as_the_press_does(tmp_path):
+    """PRESS-0358. Breaks when the preview skips the guard, and so lists pages
+    for a press that then refuses."""
+    folder = _folder(tmp_path)
+    saved = _entries_gone(folder)
+    before = _hashes(folder)
+    with pytest.raises(publishing.NothingToPublish):
+        publishing.preview(folder, saved, KEY, transport=_github())
+    assert _hashes(folder) == before
+
+    store.write(folder, _entry("low-tide"), draft=True)
+    publishing.preview(folder, saved, KEY, entry="low-tide", transport=_github())
 
 
 # ------------------------------------------------------------------ INV-7 ---
@@ -469,13 +530,14 @@ def test_a_move_that_cannot_publish_leaves_the_draft_as_it_was(tmp_path, monkeyp
 def test_the_guard_runs_only_with_a_journal(tmp_path):
     """INV-5. Breaks when the guard ignores the switch, or is dropped."""
     folder = _folder(tmp_path)
-    saved = _settings(folder)
+    saved = _entries_gone(folder)
     store.write_journal(folder, False)
     github = _github()
     publishing.publish(folder, saved, KEY, entry=None, transport=github)
     assert github.requests
 
     store.write_journal(folder, True)
+    saved = _entries_gone(folder)
     with pytest.raises(publishing.NothingToPublish):
         publishing.publish(folder, saved, KEY, entry=None, transport=_github())
 
@@ -717,6 +779,7 @@ def test_the_plan_route_answers_titles_and_counts(tmp_path, monkeypatch):
     store.write_html(folder, store.PAGES_FOLDER, "about", "<title>About us</title>",
                      waiting=True)
     _key(monkeypatch)
+    (folder / MARKER).write_bytes(b"")   # a first publish: the guard passes it
     github = _github()
     with _pressless(folder, github) as browser:
         entry = json.loads(browser.request("POST", publishing.PLAN_ADDRESS,

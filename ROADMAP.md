@@ -7268,7 +7268,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: ux.
   Source: user-request-2026-11-13.
 
-- 📋 [PRESS-0358] **A site that never had an entry is still refused a publish with the journal on.**
+- ✅ [PRESS-0358] **A site that never had an entry is still refused a publish with the journal on.**
   Left from PRESS-0355. docs/design.md says the no-entries refusal
   guards a Store emptied by accident; on a site that never published an
   entry nothing was emptied. Three things to settle:
@@ -7280,6 +7280,16 @@ owned by docs/standards/versioning-overrides.md.
   - the refusal's box showed again on the next visit to the home
     screen. face.py's forget request has no keepalive, so leaving the
     page fast may drop it. Read only; not established.
+  Shipped 2026-11-13. Decided by the user 2026-11-13, on the
+  recommendation put to them: let such a site through. The guard passes a
+  starter's first publish, and a site whose last build wrote no entry page;
+  a site folder never built into is still refused. Amended: docs/design.md,
+  docs/specs/PRESS-0013-publish.md, PRESS-0345-publish-lists-changes.md and
+  PRESS-0235-press-status.md. PRESS-0214, PRESS-0126 and PRESS-0015 state
+  the old guard only as background, and were left.
+  The preview runs the same guard. The box that showed again was Escape:
+  only OK forgot the outcome. Leaving at once after OK did not bring it
+  back in Chrome, so no keepalive was added.
   **Layman:** A new site with the journal on cannot publish a page until it has published an entry, though nothing would be lost.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0355.

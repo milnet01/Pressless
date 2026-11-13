@@ -12,3 +12,4 @@
 | 4 | 2026-09-26 | 3, cold — identical brief, packet rebuilt from disk, no prior-loop findings carried. All lanes held every question. Lanes disclosed loop 3's commit subject from the git snapshot | 0 | 0 | 0 | 0 | **Converged: no finding.** Open questions: § 6 has no row for an unknown outcome with a copy left; § 4.3 and INV-4 settle it, so not material. |
 | impl | 2026-11-06 | none — amendment for PRESS-0339; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: Publishing shows at once, before the wait for a save in flight. |
 | impl | 2026-11-06 | none — pointer for PRESS-0345; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a click lists what will change first, per PRESS-0345. |
+| impl | 2026-11-13 | none — amendment for PRESS-0358; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3 and INV-6: the guard passes a site with no entries to lose; `preview` runs it too. |

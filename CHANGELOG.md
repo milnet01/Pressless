@@ -21,6 +21,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A new site with the journal on can publish its pages** (PRESS-0358)
+  Pressless refused until an entry was published, though the site had no
+  entries to lose. It still stops a publish that would wipe entries the site had.
+  The list of what will change now says so up front, and a failure box closed
+  with Escape no longer comes back on the next screen.
+
 - **The manual's AI helper steps name the Connect Claude Desktop button** (PRESS-0357)
   The steps still said to click Copy, which is no longer the way for Claude Desktop.
 

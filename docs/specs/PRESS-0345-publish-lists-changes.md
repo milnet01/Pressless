@@ -74,8 +74,10 @@ slug and date for a working copy (PRESS-0015 § 4.5) moves into a function
 both call. The page `change` is the page's waiting copy as a `builder.Html`.
 
 `preview` runs the press's refusals that need no write: the journal being
-off, a takeover owed, and the build's own stops. Each raises as the press
-would.
+off, a takeover owed, the no-entries guard where no entry is pressed
+(PRESS-0358), and the build's own stops. Each raises as the press would.
+`tests/test_publishing.py::test_the_preview_refuses_as_the_press_does`
+holds the guard.
 
 ### 4.3 The routes
 

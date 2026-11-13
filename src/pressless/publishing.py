@@ -171,9 +171,8 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
 
     def guard_and_build() -> None:
         _refuse(folder, settings, key, transport, taking_over=taking_over)
-        if (not emptying and store.journal_on(folder)
-                and not store.list_slugs(folder, draft=False)):
-            raise NothingToPublish("no published entry would remain")
+        if not emptying:
+            _guard(folder, settings)
         builder.build(folder, settings, settings.site_folder)
         # PRESS-0197 § 4.7: the Publisher leaves a kept folder alone, so a
         # build filling one would be dropped in silence.
@@ -252,6 +251,19 @@ def _refuse(folder: Path, settings: settings.Settings, key: str,
         raise WouldReplaceASite("the repository already holds a site")
 
 
+def _guard(folder: Path, settings: settings.Settings) -> None:
+    """Design rule 9: a site whose journal is on, when no published entry
+    would remain. It guards a Store that lost its entries, so it passes where
+    Pressless can see there were none to lose (PRESS-0358): a starter's first
+    publish, and a site whose last build wrote no entry page. A site folder
+    never built into shows nothing either way, and is refused."""
+    if not store.journal_on(folder) or store.list_slugs(folder, draft=False):
+        return
+    if starter.unpublished(folder) or builder.built_without_entries(settings.site_folder):
+        return
+    raise NothingToPublish("no published entry would remain")
+
+
 @dataclass(frozen=True)
 class Preview:
     """What a press would change on the site (PRESS-0345 § 4.2)."""
@@ -271,6 +283,8 @@ def preview(folder: Path, settings: settings.Settings, key: str, *,
     if entry is not None and not store.journal_on(folder):   # PRESS-0214 § 4.3
         raise JournalOff("the journal is off")
     _refuse(folder, settings, key, transport)
+    if entry is None:   # pressing an entry publishes it, so one would remain
+        _guard(folder, settings)
     change = _going(folder, entry).published if entry is not None else page
     scratch = Path(tempfile.mkdtemp(prefix="press-plan-", dir=folder))
     try:

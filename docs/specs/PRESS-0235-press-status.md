@@ -164,9 +164,10 @@ ends what decision 6 shows.
   failure goes in its `#failure` box (PRESS-0236).
 - **The failure box of the list, the entry editor and the page editor**
   carries `data-forget` on its OK, whatever the box holds:
-  `face.message_box(..., forgets=True)`. No other box carries it. OK there
-  posts `POST /press/forget`, then closes the box. A page left without
-  pressing OK shows the box again on the next page.
+  `face.message_box(..., forgets=True)`. No other box carries it. Closing
+  that box, by OK or by Escape, posts `POST /press/forget` (PRESS-0358
+  added Escape). A page left with the box open shows it again on the next
+  page.
 - **`editor._edit` and `page_editor._open` during a press** answer at once,
   without taking `editor.LOCK`, with a holding page: the running words in a
   `press-status` line, and a script that asks `GET /press` and reloads the
