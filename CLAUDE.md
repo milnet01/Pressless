@@ -72,7 +72,7 @@ listed at the end of this section.
 
 ```bash
 git config core.hooksPath .githooks
-git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.txt|*.rst'
+git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.rst'
 ```
 
 **`core.hooksPath` is what makes any hook fire at all.** Unset here and
@@ -83,13 +83,14 @@ rather than blocks.
 
 **`local-gate.md` § 6.2 makes the UNSET key the breach**: a shared hook
 cannot know what a given pipeline reads, so it has to be told, and that
-standard's own table says nothing announces the omission. The value
-here is the hook's own fallback, so setting it alters no behaviour
-today — set it anyway. The wide list is right because
-`--docs` runs the leak sweep, which is the check a markdown edit in this
-repository can actually breach, and no test reads a document as data.
-Narrow it if either stops being true — and a narrowing reverts on any
-clone where the key is unset.
+standard's own table says nothing announces the omission. A clone
+where the key is unset runs the whole gate on every push. The list is
+right because `--docs` runs the leak sweep, which is the check a
+markdown edit in this repository can actually breach, and no test reads
+a markdown file as data. Narrow it if either stops being true.
+**`*.txt` is left out on purpose** (PRESS-0362): the pattern crosses
+folders, a test reads the manual's `en.txt`, and the release build
+reads `packaging/release-requirements.txt`.
 
 **Read `docs/working-here.md` when the task comes up**, one section at
 a time (`read_region` with `section=`). A comment or spec saying

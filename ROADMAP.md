@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=361 -->
+<!-- ants-roadmap-id-high-water: PRESS=362 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7305,6 +7305,22 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** The tools that make the manual's pictures and videos are kept with the project, so the manual can be redone whenever a screen changes.
   Kind: chore.
   Source: handover-2026-11-13.
+
+- ✅ [PRESS-0362] **A push that changes the manual's text or the release pins runs the whole local gate.**
+  Seen 2026-11-13: pushing 219d5f2, which changed
+  src/pressless/manual_files/en.txt, was classed documentation-only and
+  ran the leak sweep alone. The machine-local ants.gate.docsGlob held
+  `*.txt`, and the hook's pattern crosses folders. tests/test_manual.py
+  reads that file, and packaging/release-requirements.txt is matched the
+  same way. GitHub's CI still ran the whole gate.
+  Fix: drop `*.txt` from the key and from CLAUDE.md's line for it.
+  Done 2026-11-13: the key on this machine and CLAUDE.md's line both
+  drop `*.txt`. Checked with the hook's own comparison: the manual's
+  en.txt and the release pins no longer match, CLAUDE.md and
+  docs/design.md still do. Another clone keeps its old key until it is set again.
+  **Layman:** Changing the manual's words now runs every check before it is published, as changing any other part of the program does.
+  Kind: fix.
+  Source: found-push-2026-11-13 PRESS-0357.
 
 ## 1.1.0 — music figures
 
