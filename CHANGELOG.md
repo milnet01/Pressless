@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-13
+
+**Theme:** An AI helper can drive Pressless
+
 ### Added
 
 - **An AI app on your computer can write and edit your site** (PRESS-0337)
