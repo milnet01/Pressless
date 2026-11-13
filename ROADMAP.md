@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=356 -->
+<!-- ants-roadmap-id-high-water: PRESS=358 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -6707,7 +6707,7 @@ works Pressless on the writer's behalf, and the writer approves each
 
 publish and anything that deletes.
 
-- 📋 [PRESS-0337] **An AI assistant can drive Pressless on the writer's behalf.**
+- ✅ [PRESS-0337] **An AI assistant can drive Pressless on the writer's behalf.**
   Open, for the design step: the shape. A command line, an MCP server
   (the protocol AI assistants use to call tools), or both over one
   set of actions. The user was unsure which on 2026-11-03.
@@ -6770,6 +6770,9 @@ publish and anything that deletes.
   Found: the screen's Claude Desktop steps name Settings, Developer,
   Edit Config; this version has Settings, Desktop app, Extensions,
   Edit config. Claude Desktop started two bridges at once; both ran.
+  CHANGELOG entry written 2026-11-13. Every § 7 row has passed. What the
+  check found is PRESS-0356 and PRESS-0357. The Hub page waits for the
+  release.
   **Layman:** You could ask an AI helper to write, edit or publish on your site, instead of clicking through Pressless yourself.
   Kind: feature.
   Source: user-request-2026-11-03.
@@ -6801,7 +6804,7 @@ publish and anything that deletes.
   Source: gate-run-2026-11-11.
   Lanes: setup, tests.
 
-- 📋 [PRESS-0355] **A new site with no published entry is refused at Home with no next step.**
+- ✅ [PRESS-0355] **A new site with no published entry is refused at Home with no next step.**
   Seen 2026-11-13 on the Windows box, packaged build of 36fa8cf: site
   seeded with the starter, journal turned on, no entry published.
   Pressing Home refused with "Publishing now would leave your site with
@@ -6810,6 +6813,13 @@ publish and anything that deletes.
   entry cleared it. The refusal's box showed again on the next visit to
   the home screen until OK was pressed. Not yet reproduced on Linux or
   from a setup run by hand; the seeded route may be the cause.
+  Cause, 2026-11-13: not the seeding. Setup's starter writes pages and
+  no entries with the journal off; Turn the journal on only flips the
+  switch; publishing.publish's guard then raises NothingToPublish on
+  any page press. Reproduced with the suite's fake GitHub.
+  Fixed in words alone: the refusal's next step now says to publish an
+  entry first or turn the journal off. The guard is unchanged; four
+  specs fix it. What is left is PRESS-0358.
   **Layman:** On a brand-new site, pressing Home can refuse with a message that tells you nothing you can do about it.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
@@ -6819,8 +6829,33 @@ publish and anything that deletes.
   published the entry (the live page answered 200), and the home screen
   still read Drafts (1), On your site (1). A reload read Drafts (0),
   On your site (2).
+  Cause, read 2026-11-13: assistant.py's _BOX_SCRIPT posts the answer
+  and does nothing more, so the page shows neither the press running
+  nor its outcome, and its lists are not redrawn. Spec PRESS-0337 § 4.6
+  says nothing of what the page shows after Yes.
+  A fix to weigh: after a Yes the door accepts, call
+  presslessPress.ask() where the page has a press row, and reload the
+  home screen once GET /press says no press runs. Other screens may
+  hold typing, so they are not reloaded.
+  No browser row covers the box: scripts/by-hand-browser-checks.py has
+  none for the AI helper. The fix owes one.
   **Layman:** After you say yes to an AI helper's publish, the home screen still lists the entry as a draft until you reload it.
   Kind: fix.
+  Source: by-hand-check-2026-11-13 PRESS-0337.
+
+- 📋 [PRESS-0357] **Pressless connects Claude Desktop itself, instead of asking for a hand edit.**
+  Seen 2026-11-13 on the Windows box: Claude Desktop's settings file is
+  not empty on a fresh install. It already holds a preferences block,
+  so the text the AI helper screen offers cannot be pasted in whole;
+  it has to be merged into the file's JSON by hand. A general user
+  cannot be expected to do that.
+  Idea: a Connect Claude Desktop button that adds Pressless's entry to
+  that file, keeping everything else in it, and says to restart the
+  app. Open: the user decides whether 0.15.0 waits for it; whether
+  Pressless should write another program's file at all; where the file
+  is on each system.
+  **Layman:** One button would connect Claude Desktop to Pressless, instead of you editing a settings file by hand.
+  Kind: ux.
   Source: by-hand-check-2026-11-13 PRESS-0337.
 
 ## 1.0.0 — every sign holds, and the format is frozen
@@ -6866,7 +6901,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: in-session-2026-09-21, filed because 1.0.0 carried no item while the heading claimed a frozen format.
   Lanes: Store, Settings, Builder.
 
-- 🚧 [PRESS-0219] **A searchable manual inside the app that shows, with pictures and short videos, how to do every task.**
+- ✅ [PRESS-0219] **A searchable manual inside the app that shows, with pictures and short videos, how to do every task.**
   Discovery's Help row: whatever Pressless cannot do for them comes
   with step-by-step instructions. Written once every feature before
   1.0.0 has shipped, so it describes what exists.
@@ -6917,6 +6952,14 @@ owned by docs/standards/versioning-overrides.md.
   INV-8's browser case passed on the Windows box in Chrome, Edge and
   Firefox. Still owed: the same by-hand run of a built Windows
   artefact, which only a release build makes, and the CHANGELOG entry.
+  § 7 by hand, 2026-11-13, Windows box: a PyInstaller freeze of 36fa8cf
+  made on the box from the release's pinned packages, in Edge. Help
+  opened the manual from three screens, every picture decoded, search
+  matched as typed, all four videos played with captions showing, the
+  largest text size held, and no page request left 127.0.0.1. Not
+  re-read there for a real name; the files are the ones read on Linux.
+  CHANGELOG entry written 2026-11-13. Nothing owed. PRESS-0353's
+  redesign re-makes the pictures.
   **Layman:** A manual opens from inside Pressless, with pictures, short videos and a search box, showing a newcomer how to do everything it offers.
   Kind: feature.
   Source: user-decision-2026-10-02 PRESS-0198; user-request-2026-10-03.
@@ -7186,6 +7229,22 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** Pressless's screens are laid out afresh as a website editor, so a newcomer finds each thing without hunting.
   Kind: ux.
   Source: user-request-2026-11-13.
+
+- 📋 [PRESS-0358] **A site that never had an entry is still refused a publish with the journal on.**
+  Left from PRESS-0355. docs/design.md says the no-entries refusal
+  guards a Store emptied by accident; on a site that never published an
+  entry nothing was emptied. Three things to settle:
+  - whether the guard should pass such a site, and what tells it one
+    (specs PRESS-0013, PRESS-0214, PRESS-0126 and PRESS-0015 all state
+    the guard, so a change amends each);
+  - the box listing what a press would change offers pages and the
+    press then refuses: publishing's preview has no such check;
+  - the refusal's box showed again on the next visit to the home
+    screen. face.py's forget request has no keepalive, so leaving the
+    page fast may drop it. Read only; not established.
+  **Layman:** A new site with the journal on cannot publish a page until it has published an entry, though nothing would be lost.
+  Kind: fix.
+  Source: by-hand-check-2026-11-13 PRESS-0355.
 
 ## 1.1.0 — music figures
 

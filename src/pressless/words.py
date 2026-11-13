@@ -200,7 +200,10 @@ _WORDS: dict[str, str] = {
     "failure.publishing.NothingToPublish.what": (
         "Publishing now would leave your site with no entries, so Pressless stopped."
     ),
-    "failure.publishing.NothingToPublish.next": "Send the details below to whoever helps you.",
+    "failure.publishing.NothingToPublish.next": (
+        "Publish an entry first, or click Turn the journal off on Your writing. If entries "
+        "of yours have gone missing, send the details below to whoever helps you."
+    ),
     "failure.publishing.JournalOff.what": (
         "Your journal is off, so entries are not on your site. This entry is still saved as a "
         "draft."

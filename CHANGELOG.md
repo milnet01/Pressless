@@ -12,6 +12,28 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **An AI app on your computer can write and edit your site** (PRESS-0337)
+  Click AI helper under the list of your writing, then Switch on. The screen gives the
+  steps for Claude Desktop and Claude Code. Nothing is published, undone or put in the bin
+  until you click Yes, do it in Pressless, and the app cannot reach your keys, your
+  settings or any page's code.
+- **A manual opens from inside Pressless** (PRESS-0219)
+  Help, in the bar at the top of every screen, shows how to do each task, with pictures
+  and short captioned videos. A search box narrows the tasks as you type. It needs no
+  internet.
+
+### Fixed
+
+- **Setup on Windows no longer starts over after a step** (PRESS-0351)
+  When a virus scanner held setup's progress file for a moment, setup went back to its
+  first step and asked GitHub to make the site a second time. It now reads the file again.
+- **A new site refused a publish now says what to do** (PRESS-0355)
+  With the journal on and no entry published, publishing a page stops with "would leave
+  your site with no entries". It now says to publish an entry first or turn the journal
+  off, where it used to say only to send the details to someone.
+
 ## [0.14.0] - 2026-11-10
 
 **Theme:** more ways to bring a site in

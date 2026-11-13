@@ -494,6 +494,15 @@ def test_an_entry_will_not_publish_with_the_journal_off(tmp_path):
     assert face.sentence_for(publishing.JournalOff("x"), publishing=False).what
 
 
+def test_no_entry_remaining_names_a_step_the_person_can_take() -> None:
+    """PRESS-0355: a new site with the journal on and nothing published meets
+    this refusal on its first press, with nothing lost and nobody to send
+    details to. Breaks when its next step names no way out of that."""
+    step = face.sentence_for(publishing.NothingToPublish("x"), publishing=False).next
+    assert "Publish an entry first" in step
+    assert "Turn the journal off" in step
+
+
 # PRESS-0126 INV-9 to INV-12 (docs/specs/PRESS-0126-starter-site.md § 4.5).
 # The marker's name is written out rather than imported.
 
