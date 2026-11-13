@@ -10,13 +10,14 @@ and anyone who can change the workflow could sign (scope decision 5).
 1. Reads every key path from `git config --get-all ants.pressless.signingKey`.
 2. Refuses unless the release is a draft and the release workflow run that
    built it was for the tag's own commit (FIBR-0318).
-3. Downloads the two artefacts, writes the signed list (§ 4.3), and signs it
-   with each key.
+3. Downloads the two artefacts, writes the signed list (§ 4.3) and the
+   changes file (§ 4.12, from CHANGELOG.md at the tag), and signs each with
+   each key.
 4. Verifies every signature against update_key.TRUSTED as committed at the
    tag -- never against the key it just signed with -- and attaches nothing
    if one fails.
-5. Uploads the list and its .sig, reads the asset list back, and requires
-   exactly the four names (FIBR-0275).
+5. Uploads both files and their .sig files, reads the asset list back, and
+   requires exactly those names beside the two artefacts (FIBR-0275).
 6. Publishes the draft.
 
 PRESSLESS_UPDATE_REPOSITORY names another repository for one run, as it does
@@ -47,6 +48,9 @@ ROOT = Path(__file__).resolve().parent.parent
 REPOSITORY = os.environ.get("PRESSLESS_UPDATE_REPOSITORY") or "milnet01/Pressless"
 WORKFLOW = "release.yml"
 _TAG = re.compile(r"v([0-9]+\.[0-9]+\.[0-9]+)", re.ASCII)
+# What an installed copy will read of a changes file: updater.CHANGES_LIMIT.
+# Written out, because this script reads nothing of Pressless's but at the tag.
+CHANGES_LIMIT = 512 * 1024
 
 
 class Refused(Exception):
@@ -121,6 +125,22 @@ def _list(version: str, folder: Path) -> bytes:
     return ("\n".join(lines) + "\n").encode("ascii")
 
 
+def changes_text(version: str, changelog: str) -> bytes:
+    """The changes file (§ 4.12): CHANGELOG.md from `version`'s heading down.
+    Past CHANGES_LIMIT the oldest releases are left off, each one whole."""
+    start = changelog.find(f"\n## [{version}]")
+    if start < 0:
+        raise Refused(f"CHANGELOG.md has no heading for {version}")
+    header = f"pressless-changes 1\nversion {version}\n"
+    kept = changelog[start + 1:]
+    while len((header + kept).encode("utf-8")) > CHANGES_LIMIT:
+        cut = kept.rfind("\n## [")
+        if cut < 0:
+            raise Refused(f"{version}'s own changelog entry is past the changes file's size")
+        kept = kept[:cut + 1]
+    return (header + kept).encode("utf-8")
+
+
 def load_keys(configured: str) -> list[Ed25519PrivateKey]:
     """The signing keys, one path per line of `git config --get-all`.
 
@@ -185,21 +205,26 @@ def sign(tag: str) -> None:
         _run("gh", "release", "download", tag, "--repo", REPOSITORY, "--dir", str(work),
              "--pattern", f"Pressless-{version}-x86_64.AppImage",
              "--pattern", f"Pressless-{version}-windows.zip")
-        text = _list(version, work)
-        signatures = b"".join(key.sign(text) for key in keys)
-        require_trusted(text, signatures, trusted)
-        listed = work / f"Pressless-{version}-release.txt"
-        listed.write_bytes(text)
-        (work / f"{listed.name}.sig").write_bytes(signatures)
-        _run("gh", "release", "upload", tag, "--repo", REPOSITORY,
-             str(listed), f"{listed}.sig")
+        changes = changes_text(version, _run("git", "-C", str(ROOT), "show",
+                                             f"{tag}:CHANGELOG.md"))
+        # Both are signed and proved before either is attached.
+        uploads: list[str] = []
+        for name, data in ((f"Pressless-{version}-release.txt", _list(version, work)),
+                           (f"Pressless-{version}-changes.txt", changes)):
+            signatures = b"".join(key.sign(data) for key in keys)
+            require_trusted(data, signatures, trusted)
+            (work / name).write_bytes(data)
+            (work / f"{name}.sig").write_bytes(signatures)
+            uploads += [str(work / name), str(work / f"{name}.sig")]
+        _run("gh", "release", "upload", tag, "--repo", REPOSITORY, *uploads)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
     names = {asset["name"] for asset in json.loads(_run(
         "gh", "release", "view", tag, "--repo", REPOSITORY, "--json", "assets"))["assets"]}
     wanted = {f"Pressless-{version}-x86_64.AppImage", f"Pressless-{version}-windows.zip",
-              f"Pressless-{version}-release.txt", f"Pressless-{version}-release.txt.sig"}
+              f"Pressless-{version}-release.txt", f"Pressless-{version}-release.txt.sig",
+              f"Pressless-{version}-changes.txt", f"Pressless-{version}-changes.txt.sig"}
     if names != wanted:
         raise Refused(f"the release holds {sorted(names)}, not exactly {sorted(wanted)}")
     _run("gh", "release", "edit", tag, "--repo", REPOSITORY, "--draft=false")

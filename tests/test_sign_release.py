@@ -119,3 +119,38 @@ def test_the_committed_trusted_holds_a_key():
 def test_the_signer_runs_by_its_own_name():
     """PRESS-0184: working-here.md gives the command without `python3`."""
     assert os.access(_SCRIPT, os.X_OK)
+
+
+def test_the_changes_file_starts_at_the_release(monkeypatch):
+    """PRESS-0023 INV-25. Breaks when the file starts above the release being
+    signed, is cut inside a release, or outgrows what an installed copy reads."""
+    from pressless import updater
+
+    signer = _signer()
+    log = ("# Changelog\n\n## [Unreleased]\n\n## [0.1.3] - d\n\nthree\n\n"
+           "## [0.1.2] - d\n\ntwo\n\n## [0.1.1] - d\n\none\n")
+    whole = (b"pressless-changes 1\nversion 0.1.3\n## [0.1.3] - d\n\nthree\n\n"
+             b"## [0.1.2] - d\n\ntwo\n\n## [0.1.1] - d\n\none\n")
+    assert signer.changes_text("0.1.3", log) == whole
+    with pytest.raises(signer.Refused):
+        signer.changes_text("0.1.4", log)
+
+    assert signer.CHANGES_LIMIT == updater.CHANGES_LIMIT
+    # One byte short of the whole: the oldest release goes, whole.
+    monkeypatch.setattr(signer, "CHANGES_LIMIT", len(whole) - 1)
+    cut = signer.changes_text("0.1.3", log)
+    assert cut == whole[:whole.index(b"## [0.1.1]")], cut
+    monkeypatch.setattr(signer, "CHANGES_LIMIT", 40)
+    with pytest.raises(signer.Refused):
+        signer.changes_text("0.1.3", log)
+
+
+def test_an_installed_copy_reads_the_real_changelog():
+    """What the signer writes from this repository's CHANGELOG.md is what the
+    Updater reads back: the one release after 0.14.0, up to 0.15.0."""
+    from pressless import updater
+
+    log = (_SCRIPT.parent.parent / "CHANGELOG.md").read_text(encoding="utf-8")
+    found = updater.read_changes(_signer().changes_text("0.15.0", log), "0.15.0", "0.14.0")
+    assert [version for version, _ in found] == ["0.15.0"], found
+    assert "An AI helper can drive Pressless" in found[0][1], found

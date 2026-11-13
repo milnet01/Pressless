@@ -537,3 +537,80 @@ def test_a_full_disk_is_named(tmp_path, monkeypatch):
         with pytest.raises(updater.DiskFull):
             updater.unpack(archive, program)
         assert list(program.iterdir()) == [], list(program.iterdir())
+
+
+# ------------------------------------------------- INV-22, INV-23: changes ---
+
+CHANGES = (
+    b"pressless-changes 1\nversion 0.1.5\n"
+    b"## [0.1.5] - 2026-01-05\n\nfive\n\n"
+    b"## [0.1.4] - 2026-01-04\n\nfour\n\n"
+    b"## [0.1.3] - 2026-01-03\n\nthree\n\n"
+    b"## [0.1.2] - 2026-01-02\n\ntwo\n\n"
+    b"## [0.1.1] - 2026-01-01\n\none\n"
+)
+
+
+def _with_changes(release: _Release, text: bytes,
+                  signers: list[Ed25519PrivateKey]) -> dict[str, object]:
+    """The release's answers, plus a changes file and its .sig as two assets."""
+    release.names["changes"] = f"Pressless-{release.version}-changes.txt"
+    release.names["changes_sig"] = f"Pressless-{release.version}-changes.txt.sig"
+    answers = release.answers()
+    answers[release.url("changes")] = text
+    answers[release.url("changes_sig")] = b"".join(key.sign(text) for key in signers)
+    return answers
+
+
+def test_the_offer_carries_every_version_between(tmp_path, signer):
+    """INV-22. RUNNING is 0.1.2 and 0.1.5 is offered: the three releases after
+    the running one, in the file's order, and neither 0.1.2 nor 0.1.1. Breaks
+    when only the offered release is kept, or the running one is included."""
+    release = _Release("v0.1.5", _list("0.1.5"), [signer])
+    found, _ = _check(tmp_path, _with_changes(release, CHANGES, [signer]))
+    assert isinstance(found, updater.Offer), found
+    assert found.changes == (("0.1.5", "five"), ("0.1.4", "four"), ("0.1.3", "three")), found
+
+
+def test_unproven_changes_are_dropped_and_the_offer_stands(tmp_path, signer, monkeypatch):
+    """INV-23. Each fixture is refused by one rule alone, and each still gives
+    the same offer with no changes. Breaks when unsigned text is carried, or
+    a bad changes file stops the offer."""
+    stranger, _ = _key()
+
+    def release() -> _Release:
+        return _Release("v0.1.5", _list("0.1.5"), [signer])
+
+    cases: list[tuple[str, dict[str, object]]] = [("no changes file", release().answers())]
+    cases.append(("signed by a stranger", _with_changes(release(), CHANGES, [stranger])))
+
+    made = release()
+    answers = _with_changes(made, CHANGES, [signer])
+    answers[made.url("changes")] = CHANGES.replace(b"five", b"FIVE")
+    cases.append(("one word changed after signing", answers))
+
+    other = CHANGES.replace(b"version 0.1.5\n", b"version 0.1.4\n")
+    cases.append(("signed, for another release", _with_changes(release(), other, [signer])))
+
+    made = release()
+    answers = _with_changes(made, CHANGES, [signer])
+    del answers[made.url("changes_sig")]
+    cases.append(("the .sig cannot be fetched", answers))
+
+    made = release()
+    answers = _with_changes(made, CHANGES, [signer])
+    answers[API] = json.dumps({"tag_name": made.tag, "assets": [
+        *made.assets(), {"name": made.names["changes"],
+                         "browser_download_url": made.url("changes")}]}).encode("utf-8")
+    cases.append(("two changes assets", answers))
+
+    plain, _ = _check(tmp_path, release().answers())
+    assert isinstance(plain, updater.Offer) and plain.changes == (), plain
+    for what, answers in cases:
+        found, _ = _check(tmp_path, answers)
+        assert found == plain, (what, found)
+
+    # Signed and whole, but past the bound.
+    monkeypatch.setattr(updater, "CHANGES_LIMIT", len(CHANGES) - 1)
+    found, _ = _check(tmp_path, _with_changes(release(), CHANGES, [signer]))
+    assert found == plain, ("past the bound", found)

@@ -4,6 +4,8 @@
 **Amended 2026-09-27, before implementation** (PRESS-0174): a full disk
 during the download or the unpack is `DiskFull`, with its own sentence.
 That changes direction, so the gate re-armed.
+**Amended 2026-11-13** (PRESS-0363): the offer shows what changed since the
+running version (§ 4.12, INV-22 to INV-25).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0023 (user-request-2026-08-25; finbreak's
 updater lessons, FIBR-*).
@@ -61,6 +63,8 @@ move after it is not.
 2. **The offer is Update now, Later, and Skip this version.** Decided by the
    user 2026-09-25, following finbreak. Later hides the offer until Pressless
    next starts. Skip hides that one version for good; a newer one is offered.
+   The user asked on 2026-11-13 for the offer to show what changed as well
+   (§ 4.12).
 3. **(decided here) One signed list per release, not one signature per file.**
    The list names the version and each artefact's size and SHA-256. Signing the
    version is what stops an old release being served as new (Problem 3), and
@@ -138,7 +142,9 @@ windows Pressless-<X.Y.Z>-windows.zip <size in bytes> <sha256, 64 lowercase hex>
 The `.sig` holds one to four raw 64-byte Ed25519 signatures over the list's
 exact bytes, concatenated. It verifies if any one of them verifies against any
 key in `update_key.TRUSTED`. A list that differs
-from this shape in any byte is refused whole.
+from this shape in any byte is refused whole. § 4.12 adds a second signed
+file beside it; the list itself is unchanged, so a copy from before § 4.12
+still reads it.
 
 ### 4.4 The check
 
@@ -149,6 +155,7 @@ class Offer:
     asset_url: str    # https, the platform's artefact
     size: int         # from the signed list
     sha256: str       # from the signed list
+    changes: tuple[tuple[str, str], ...] = ()   # § 4.12
 
 def check(folder: Path, running: str, platform: str,
           transport: Transport = _Urllib()) -> Offer | Miss: ...
@@ -334,12 +341,12 @@ repository — a fork carrying the release workflow — is signed the same way:
 1. Reads every key path from `git config --get-all ants.pressless.signingKey`.
 2. Refuses unless the release is a draft and the release workflow run that
    built it was for the tag's own commit (FIBR-0318).
-3. Downloads the two artefacts, writes the list (§ 4.3), and signs it with
-   each key.
+3. Downloads the two artefacts, writes the list (§ 4.3) and the changes file
+   (§ 4.12), and signs each with each key.
 4. **Verifies every signature against `update_key.TRUSTED` as committed at
    the tag**, and refuses to attach anything if one fails.
-5. Uploads the list and its `.sig`, reads the asset list back, and requires
-   exactly the four names (FIBR-0275).
+5. Uploads both files and their `.sig` files, reads the asset list back, and
+   requires exactly those names beside the two artefacts (FIBR-0275).
 6. Publishes the draft.
 
 ### 4.9 What he sees
@@ -356,7 +363,8 @@ look for new versions."* with **Look when Pressless starts**. It posts to
 
 **The offer**, above the list at `/` once a check returns one: *"Pressless
 <X.Y.Z> is ready to install. Your writing stays where it is."* with three
-buttons, posting to `/update`, `/update/later` and `/update/skip`.
+buttons, posting to `/update`, `/update/later` and `/update/skip`. Below the
+buttons it shows what changed (§ 4.12).
 
 `updates.json` sits in Pressless's own folder:
 
@@ -414,6 +422,42 @@ non-blocking OS lock on it for the life of the process: `fcntl.flock` on
 Linux, `msvcrt.locking` on Windows. Where the lock is held already, it prints
 *"Pressless is already running. Use the browser tab it opened, or close its
 window and start it again."* and exits 3, serving nothing.
+
+### 4.12 What changed
+
+Added 2026-11-13 (PRESS-0363). The user asked that someone several versions
+behind sees every version's changes, not only the newest.
+
+**The changes file.** Every release from this amendment on carries two more
+assets: `Pressless-<X.Y.Z>-changes.txt` and its `.sig`, signed as the list is
+(§ 4.3). The file is UTF-8 with LF line endings. Its first two lines are
+`pressless-changes 1` and `version <X.Y.Z>`. The rest is `CHANGELOG.md` as
+committed at the tag, from the `## [<X.Y.Z>]` heading to the end. So one file
+holds every earlier release too.
+
+**Signing.** `sign-release.py`'s `changes_text` writes it. A tag whose
+`CHANGELOG.md` has no heading for the version is refused. A file past
+`CHANGES_LIMIT` loses its oldest releases, each one whole. `updater.py` holds
+the same figure as its read bound.
+
+**Reading.** Once `check` has an offer, `updater._changes` looks for the two
+assets as step 4 does, reads the file up to `CHANGES_LIMIT`, and verifies it
+against `TRUSTED`. The second line must name the offered version, so a signed
+file from another release is not shown. `read_changes` then keeps each
+`## [<version>]` section whose version is after the running one and no later
+than the offered one, in the file's order.
+
+**Nothing here can stop an offer.** A file that is absent, unsigned, too
+large, for another release, or unreadable gives an offer with no changes.
+Releases from before this amendment carry no file, and a copy from before it
+ignores the two new assets.
+
+**Showing.** `updating._changes_html` puts the changes below the offer's
+buttons, folded shut under *"What is new since version <running>"*, one
+*"Version <X.Y.Z>"* heading per release. Every character of the text is
+escaped. After escaping, three marks of the changelog's own are read: a `###`
+heading, a `- ` item and `**bold**`. A link keeps its words and loses its
+address. A roadmap id in brackets is left out.
 
 ## 5. Invariants
 
@@ -536,6 +580,36 @@ window and start it again."* and exits 3, serving nothing.
   and is not a `DiskFull`. *Breaks when:* either half of the full-disk test
   is missed on one path, or the close is left outside the mapping.
 
+- **INV-22** — The offer carries the changes of every release after the
+  running version, up to the offered one, and of no other. *Test:*
+  `tests/test_updater.py::test_the_offer_carries_every_version_between` — a
+  signed file of five releases, with the running version the second oldest
+  and the newest offered, gives the three between. *Breaks when:* only the
+  offered release is kept, or the running one is included.
+- **INV-23** — Changes that are not proved are not carried, and the offer
+  stands without them. *Test:*
+  `tests/test_updater.py::test_unproven_changes_are_dropped_and_the_offer_stands`
+  — each fixture is refused by one rule alone: no file, a stranger's
+  signature, a word changed after signing, a signed file naming another
+  release, a `.sig` that cannot be fetched, two assets of the name, and a
+  signed file past the bound. Each gives the offer a plain release gives.
+  *Breaks when:* unsigned text is carried, or a bad changes file gives a
+  `Miss`.
+- **INV-24** — The offer shows the changes, and none of their text reaches
+  the page as markup. *Test:*
+  `tests/test_updating.py::test_the_offer_shows_what_changed` — a signed
+  file holding a `<script>` element shows it escaped, under its version's
+  heading; a release with no file shows the offer alone. *Breaks when:* the
+  changes are left off the page, or their text is written unescaped.
+- **INV-25** — The changes file starts at the release being signed, is cut
+  only between releases, and is no larger than an installed copy reads.
+  *Test:* `tests/test_sign_release.py::test_the_changes_file_starts_at_the_release`
+  — the script's bound equals `updater.CHANGES_LIMIT`; one byte under the
+  whole drops the oldest release whole; a version with no heading is
+  refused. `test_an_installed_copy_reads_the_real_changelog` reads this
+  repository's `CHANGELOG.md` through both ends. *Breaks when:* the file
+  starts above the release, is cut inside one, or the two bounds differ.
+
 ## 6. Failure modes
 
 - **GitHub is unreachable, slow or answers nonsense at start.** No offer, and
@@ -614,8 +688,8 @@ over SSH cannot reach the credential vault).
 
 - **The Publisher's and Insights' certificate check** (Problem 5). Same cause,
   same fix, a different part. Deferred; not yet queued.
-- **Showing what changed in the new version.** The user chose the offer without
-  it (scope decision 2). Deferred; not yet queued.
+- ~~**Showing what changed in the new version.**~~ Withdrawn 2026-11-13: the
+  user asked for it, and § 4.12 holds it.
 - **A "check now" button.** Deferred; not yet queued.
 - **Automating a key change.** Scope decision 4. Deferred; not yet queued.
 - **macOS.** No artefact exists.
@@ -645,8 +719,13 @@ over SSH cannot reach the credential vault).
 | INV-19 | `tests/test_sign_release.py` |
 | INV-20 | `tests/test_face.py::test_every_failure_type_has_a_sentence` |
 | INV-21 | `tests/test_updater.py::test_a_full_disk_is_named` |
+| INV-22 | `tests/test_updater.py::test_the_offer_carries_every_version_between` |
+| INV-23 | `tests/test_updater.py::test_unproven_changes_are_dropped_and_the_offer_stands` |
+| INV-24 | `tests/test_updating.py::test_the_offer_shows_what_changed` |
+| INV-25 | `tests/test_sign_release.py::test_the_changes_file_starts_at_the_release` |
 | § 4.7 the helpers restart the new version | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
+| § 4.12 a real release carries a changes file an installed copy shows | Nothing in the suite: `sign` itself runs only at a release. The first release after 2026-11-13 is its check |
 
 ## 11. Cross-doc impact
 
@@ -677,7 +756,8 @@ A download needs free space beside the artefact equal to its size — about
 36 MB for the v0.1.2 AppImage and 18 MB for its Windows zip, read with
 `gh release view v0.1.2 --json assets`. On Windows the unpacked folder needs
 its own size again until the old one is removed. Memory holds one chunk at a
-time. One request at each start, three when a release is offered.
+time. One request at each start, three when a release is offered, and five
+where that release carries a changes file (§ 4.12).
 
 ## 14. Open questions
 

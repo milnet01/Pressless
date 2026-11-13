@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **The update offer shows what changed** (PRESS-0363)
+  When a new version is ready, a line under the buttons opens a list of what is new in
+  every version since yours, not only the latest. It shows from the first release
+  after this one.
+
 ### Fixed
 
 - **The manual's AI helper steps name the Connect Claude Desktop button** (PRESS-0357)

@@ -1912,6 +1912,8 @@ _WORDS: dict[str, str] = {
     "updating.update_now": "Update now",
     "updating.later": "Later",
     "updating.skip": "Skip this version",
+    "updating.changes": "What is new since version {version}",
+    "updating.changes.version": "Version {version}",
     "updating.checking": "Pressless looks for a new version each time it starts.",
     "updating.stop_looking": "Stop looking",
     "updating.not_checking": "Pressless does not look for new versions.",

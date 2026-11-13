@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=362 -->
+<!-- ants-roadmap-id-high-water: PRESS=363 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7321,6 +7321,27 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** Changing the manual's words now runs every check before it is published, as changing any other part of the program does.
   Kind: fix.
   Source: found-push-2026-11-13 PRESS-0357.
+
+- ✅ [PRESS-0363] **The update offer shows what changed in every version between the one running and the one offered.**
+  User, 2026-11-13: someone on 0.5.0 updating to the latest should see
+  the full changelog between the two versions.
+  Today the offer shows no changelog at all: updating.py's _offer_html
+  prints "Pressless {version} is ready to install" and three buttons.
+  Open, for the design: where the text comes from before the download
+  (the signed list, or GitHub's release pages, which nothing signs), and
+  how a long list is shown. Amends spec PRESS-0023.
+  Built 2026-11-13. Contract: docs/specs/PRESS-0023-self-update.md
+  § 4.12, INV-22 to INV-25. Each release now carries a signed
+  changes file, CHANGELOG.md from its own heading down; the offer shows
+  every release after the running one, folded under the buttons. A bad
+  or missing file never stops an offer.
+  Not yet seen on a real release: sign-release.py's upload of the two
+  new files runs first at the next release, and the offer shows changes
+  only when updating to a release that carries them. Check both then
+  (PRESS-0133).
+  **Layman:** Before you press Update now, Pressless lists what is new in every version you skipped, not only the latest.
+  Kind: feature.
+  Source: user-request-2026-11-13.
 
 ## 1.1.0 — music figures
 

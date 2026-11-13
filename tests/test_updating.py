@@ -249,3 +249,37 @@ def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
             time.sleep(0.1)
         assert exited.codes == [0]
         assert editor.LOCK.locked(), "the lock was released before the exit"
+
+
+# ----------------------------------------------------------------- INV-24 ---
+
+
+def test_the_offer_shows_what_changed(tmp_path, signer):
+    """Breaks when the changes are left off the page, or their text reaches
+    the page unescaped."""
+    from test_updater import _with_changes
+
+    folder = _folder(tmp_path)
+    artefact = _artefact(tmp_path)
+    text = (
+        b"pressless-changes 1\nversion 0.1.4\n"
+        b"## [0.1.4] - 2026-01-04\n\n### Added\n\n"
+        b"- **A bold thing** (PRESS-0001)\n  It does <script>alert(1)</script> more.\n\n"
+        b"## [0.1.3] - 2026-01-03\n\n**Theme:** Third\n\n"
+        b"## [0.1.2] - 2026-01-02\n\nthe running one\n"
+    )
+    release = _Release("v0.1.4", _list("0.1.4", linux=NEW), [signer])
+
+    with _pressless(folder, artefact, _with_changes(release, text, [signer])) as browser:
+        page = _shown(browser)
+    assert "What is new since version 0.1.2" in page, page
+    assert "Version 0.1.4" in page and "Version 0.1.3" in page, page
+    assert "<strong>A bold thing</strong>" in page and "<h4>Added</h4>" in page, page
+    assert "It does &lt;script&gt;alert(1)&lt;/script&gt; more." in page, page
+    assert "<script>alert(1)" not in page and "PRESS-0001" not in page, page
+    assert "Third" in page and "the running one" not in page, page
+
+    _, plain = _release(signer, "0.1.4")
+    with _pressless(folder, artefact, plain) as browser:
+        page = _shown(browser)
+    assert f"Pressless 0.1.4 {OFFER}" in page and "What is new" not in page, page

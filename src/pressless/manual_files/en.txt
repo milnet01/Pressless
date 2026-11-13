@@ -391,6 +391,7 @@ This changes Pressless on your screen only, never your site.
 
 == updating | Updating Pressless
 When a new version is out, the Your writing screen says so.
+Click What is new since version, under the buttons, to read what changed.
 
 1. Click Update now. Pressless installs it and opens again by itself.
 2. Or click Later, or Skip this version.

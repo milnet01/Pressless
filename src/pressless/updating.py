@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import html
 import os
+import re
 import sys
 import threading
 import urllib.parse
@@ -113,7 +114,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
     face.add_page("POST", "/update/later", later)
     face.add_page("POST", "/update/skip", skip)
     face.add_page("POST", "/update/checking", checking)
-    face.add_to_list(lambda: _offer_html(shown()), above=True)
+    face.add_to_list(lambda: _offer_html(shown(), running), above=True)
     face.add_to_list(lambda: _switch_html(updater.read_state(own)[0]), above=False)
 
     if artefact is not None:
@@ -136,7 +137,7 @@ def _home() -> Reply:
     return Reply(b"", "text/plain", status=303, location="/")
 
 
-def _offer_html(offer: updater.Offer | None) -> str:
+def _offer_html(offer: updater.Offer | None, running: str) -> str:
     if offer is None:
         return ""
     buttons = "".join(
@@ -146,7 +147,52 @@ def _offer_html(offer: updater.Offer | None) -> str:
                             ("/update/later", "updating.later"),
                             ("/update/skip", "updating.skip")))
     words = say("updating.offer", version=html.escape(offer.version))
-    return f'<section id="update"><p>{words}</p>{buttons}</section>'
+    # Below the buttons, so opening it moves none of them.
+    return (f'<section id="update"><p>{words}</p>{buttons}'
+            f"{_changes_html(offer.changes, running)}</section>")
+
+
+_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_ITEM_ID = re.compile(r" \([A-Z]+-[0-9]+(?:, [A-Z]+-[0-9]+)*\)")
+
+
+def _changes_html(changes: tuple[tuple[str, str], ...], running: str) -> str:
+    """§ 4.12: every release since `running`, folded shut under one line."""
+    if not changes:
+        return ""
+    releases = "".join(
+        f'<h3>{say("updating.changes.version", version=html.escape(version))}</h3>'
+        f"{_release_html(text)}" for version, text in changes)
+    summary = say("updating.changes", version=html.escape(running))
+    return f"<details><summary>{summary}</summary>{releases}</details>"
+
+
+def _release_html(text: str) -> str:
+    """One release's changelog text as headings, lists and paragraphs. The
+    text is escaped first; the only marks read after that are the changelog's
+    own: a `###` heading, a `- ` item, and `**bold**`."""
+    blocks: list[tuple[str, str]] = []   # (tag, words)
+    for line in text.splitlines():
+        words = html.escape(_LINK.sub(r"\1", line.strip()), quote=False)
+        if not words:
+            blocks.append(("", ""))
+        elif line.startswith("### "):
+            blocks.append(("h4", words.removeprefix("### ")))
+        elif line.startswith("- "):
+            blocks.append(("li", words.removeprefix("- ")))
+        elif blocks and blocks[-1][0] in ("li", "p"):
+            blocks[-1] = (blocks[-1][0], f"{blocks[-1][1]} {words}")
+        else:
+            blocks.append(("p", words))
+    # Once a block is whole: an item's ids and its bold may run over a line end.
+    out = ""
+    for tag, words in blocks:
+        if tag:
+            words = _BOLD.sub(r"<strong>\1</strong>", _ITEM_ID.sub("", words))
+            out += f"<{tag}>{words}</{tag}>"
+    # Each run of items becomes one list.
+    return re.sub(r"(?:<li>.*?</li>)+", lambda run: f"<ul>{run.group(0)}</ul>", out)
 
 
 def _switch_html(checking: bool) -> str:

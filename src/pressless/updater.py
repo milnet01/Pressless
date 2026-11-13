@@ -48,6 +48,9 @@ FILE_NAME = "updates.json"
 
 _API_LIMIT = 256 * 1024
 _LIST_LIMIT = 16 * 1024
+# The changes file (§ 4.12). scripts/sign-release.py holds the same figure and
+# cuts the file to fit; tests/test_sign_release.py keeps the two equal.
+CHANGES_LIMIT = 512 * 1024
 # One to four 64-byte signatures (PRESS-0023 § 4.3), one per signing key. A
 # fifth key in update_key.TRUSTED signing at once would make every
 # client refuse the release at step 5, so the cap rises with it.
@@ -95,6 +98,9 @@ class Offer:
     asset_url: str    # https, the platform's artefact
     size: int         # from the signed list
     sha256: str       # from the signed list
+    # (version, text) for each release after the running one, in the changes
+    # file's order; empty where that file is absent or unproven (§ 4.12).
+    changes: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -210,6 +216,8 @@ def _read(transport: Transport, url: str, limit: int) -> bytes:
 def _names(version: str) -> dict[str, str]:
     return {"list": f"Pressless-{version}-release.txt",
             "sig": f"Pressless-{version}-release.txt.sig",
+            "changes": f"Pressless-{version}-changes.txt",
+            "changes_sig": f"Pressless-{version}-changes.txt.sig",
             "linux": f"Pressless-{version}-x86_64.AppImage",
             "windows": f"Pressless-{version}-windows.zip"}
 
@@ -261,6 +269,59 @@ def parse_list(text: bytes) -> tuple[str, dict[str, tuple[str, int, str]]]:
     return version, parsed
 
 
+# ---------------------------------------------------------------- changes ---
+
+_HEADING = re.compile(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\][^\n]*\n", re.MULTILINE)
+
+
+def read_changes(data: bytes, version: str, running: str) -> tuple[tuple[str, str], ...]:
+    """§ 4.12: (version, text) for each release after `running` and up to
+    `version`, in the file's order. ValueError for a file that is not
+    `version`'s own."""
+    text = data.decode("utf-8")
+    header = f"pressless-changes 1\nversion {version}\n"
+    low, high = parse_version(running), parse_version(version)
+    if not text.startswith(header) or low is None or high is None:
+        raise ValueError("the changes file is not this release's")
+    # One group in the pattern, so the split alternates heading and body.
+    parts = _HEADING.split(text[len(header):])
+    found = []
+    for heading, body in zip(parts[1::2], parts[2::2], strict=True):
+        at = parse_version(heading)
+        if at is not None and low < at <= high:
+            found.append((heading, body.strip()))
+    return tuple(found)
+
+
+def _asset_url(assets: object, name: str) -> str | None:
+    """The https address of the one asset called `name`, or None."""
+    matching = [asset for asset in assets if isinstance(asset, dict)
+                and asset.get("name") == name]
+    if len(matching) != 1:
+        return None
+    url = matching[0].get("browser_download_url")
+    return url if isinstance(url, str) and url.startswith("https://") else None
+
+
+def _changes(transport: Transport, assets: object, version: str,
+             running: str) -> tuple[tuple[str, str], ...]:
+    """What changed since `running`, proved as the list is (§ 4.3). Never
+    raises and never stops an offer: anything wrong gives no changes."""
+    try:
+        names = _names(version)
+        text_url = _asset_url(assets, names["changes"])
+        sig_url = _asset_url(assets, names["changes_sig"])
+        if text_url is None or sig_url is None:
+            return ()
+        text = _read(transport, text_url, CHANGES_LIMIT)
+        signatures = _read(transport, sig_url, max(_SIG_SIZES))
+        if len(signatures) not in _SIG_SIZES or not _verifies(text, signatures):
+            return ()
+        return read_changes(text, version, running)
+    except Exception:  # noqa: BLE001 -- the offer stands without them
+        return ()
+
+
 # ------------------------------------------------------------------ check ---
 
 
@@ -300,12 +361,8 @@ def check(folder: Path, running: str, platform: str,
         urls: dict[str, str] = {}
         assets = release.get("assets")
         for which in ("list", "sig", platform):
-            matching = [asset for asset in assets if isinstance(asset, dict)
-                        and asset.get("name") == names[which]]
-            if len(matching) != 1:
-                return Miss(4)
-            url = matching[0].get("browser_download_url")
-            if not isinstance(url, str) or not url.startswith("https://"):
+            url = _asset_url(assets, names[which])
+            if url is None:
                 return Miss(4)
             urls[which] = url
 
@@ -328,7 +385,8 @@ def check(folder: Path, running: str, platform: str,
         name, size, sha256 = artefacts[platform]
         if name != names[platform] or size > _LARGEST:
             return Miss(8)
-        return Offer(version, urls[platform], size, sha256)
+        return Offer(version, urls[platform], size, sha256,
+                     _changes(transport, assets, version, running))
     except Exception:  # noqa: BLE001 -- INV-5: a failed check is silent
         return Miss(step)
 
