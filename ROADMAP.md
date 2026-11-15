@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=363 -->
+<!-- ants-roadmap-id-high-water: PRESS=364 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7252,7 +7252,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: found-recording-PRESS-0219-2026-11-12.
   Lanes: face.
 
-- 📋 [PRESS-0353] **Redesign Pressless's screens around a full website editor, so they are easier to use.**
+- ✅ [PRESS-0353] **Redesign Pressless's screens around a full website editor, so they are easier to use.**
   The user, 2026-11-13: the project began on a misunderstanding. Claude
   took the ask to be a blog editor; it was always a fully featured
   website editor, to replace WordPress for the writer and for anyone
@@ -7279,6 +7279,10 @@ owned by docs/standards/versioning-overrides.md.
   Settings in sections; the manual's words and pictures. The drawing's
   count of unpublished changes is left out (spec decision 5): it needs
   GitHub on every visit.
+  Shipped 2026-11-15 in three commits: the bar, Your site, Pages,
+  Journal and places (87e6a77); Settings in sections (850b548); the
+  manual's pictures and videos (bd7e9d0). The count of unpublished
+  changes the spec left out is PRESS-0364.
   **Layman:** Pressless's screens are laid out afresh as a website editor, so a newcomer finds each thing without hunting.
   Kind: ux.
   Source: user-request-2026-11-13.
@@ -7370,6 +7374,23 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** Before you press Update now, Pressless lists what is new in every version you skipped, not only the latest.
   Kind: feature.
   Source: user-request-2026-11-13.
+
+- 📋 [PRESS-0364] **Say on Your site how many changes are not on the site yet.**
+  The drawing the user chose for PRESS-0353 showed this count. The
+  spec left it out (decision 5): an exact count needs GitHub's listing,
+  and the first screen must not wait on the network (ADR-0005).
+  A count from this computer alone is possible: pages and parts with a
+  waiting copy, published entries with changes not on the site, and
+  drafts. Pressless already marks each of these "changes not on your
+  site yet" on Pages and Journal. It would miss a change GitHub holds
+  that this computer does not, which only another computer makes.
+  Waiting-on: user (Show a count of waiting changes on Your site, worked
+  out on this computer with no network? Recommended: yes, worded "N
+  changes not on your site yet" beside Publish, since it needs no
+  network and the screen stays instant. 2026-11-15)
+  **Layman:** Your site's first screen says how many of your changes are still waiting to be published.
+  Kind: ux.
+  Source: PRESS-0353-decision-5-2026-11-15.
 
 ## 1.1.0 — music figures
 

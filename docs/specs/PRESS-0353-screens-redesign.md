@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0353 — Lay the screens out as a website editor
 
-**Status:** accepted (2026-11-13). No review: no contract or hard-to-reverse trigger fires (`CLAUDE.md` rule 14); the user chose the design from drawn alternatives.
+**Status:** accepted (2026-11-13), implemented. No review: no contract or hard-to-reverse trigger fires (`CLAUDE.md` rule 14); the user chose the design from drawn alternatives.
 **Kind:** ux.
 **Source:** ROADMAP PRESS-0353 (user request 2026-11-13).
 
@@ -312,7 +312,7 @@ its screen. `scripts/by-hand-browser-checks.py` carries the rows.
 ## 9. Out of scope
 
 - The Look screen's own changes — tracked by PRESS-0352 and PRESS-0359.
-- A count of unpublished changes — decision 5; deferred; not yet queued.
+- A count of unpublished changes — decision 5; tracked by PRESS-0364.
 - First-run setup's steps — decision 7.
 - Choosing the manual's language — tracked by PRESS-0241.
 
