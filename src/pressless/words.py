@@ -1484,6 +1484,28 @@ _WORDS: dict[str, str] = {
     ),
     "setup.key_kept": "Leave the key box empty to keep the key Pressless already has.",
     "setup.save": "Check the repository again and save",
+    # Settings' sections (setup.py, PRESS-0353 § 4.5): each one's name, and
+    # the line saying what it holds.
+    "setup.section.site": "Your site's name and pictures",
+    "setup.section.site.holds": (
+        "Its name, the line describing it, its icon and its sharing picture."
+    ),
+    "setup.section.address": "Your site's address",
+    "setup.section.address.holds": "Where your site is on the web, and your own domain name.",
+    "setup.section.connection": "GitHub",
+    "setup.section.connection.holds": "The repository your site is published to, and its key.",
+    "setup.section.visitors": "Visitors and Google",
+    "setup.section.visitors.holds": "Counting your visitors with Google, and your YouTube videos.",
+    "setup.section.journal": "Journal",
+    "setup.section.journal.holds": "Entries left out of the journal by tag, and likes.",
+    "setup.section.assistant": "AI helper",
+    "setup.section.assistant.holds": "Letting an AI app on this computer work on your site.",
+    "setup.section.computer": "This computer",
+    "setup.section.computer.holds": (
+        "Pressless in the menu and on the desktop, restarting, updates and JPEG XL."
+    ),
+    "setup.section.saved": "Saved.",
+    "setup.section.elsewhere": "Not saved. First change this in {section}: {hint}",
     "setup.starter.box": (
         "Start with a starter site: a homepage, an About page, a menu, a header and a footer, "
         "ready for you to change."

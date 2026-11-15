@@ -862,7 +862,7 @@ def settings_pictures(page, origin: str, folder: Path) -> None:
     """PRESS-0227 INV-9: Settings' picture rows upload, show and remove."""
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))
-    page.goto(f"{origin}/setup", wait_until="networkidle")
+    page.goto(f"{origin}/setup/site", wait_until="networkidle")  # PRESS-0353 § 4.5
     row = page.locator('[data-picture="site_icon"]')
     kept = row.locator('input[name="site_icon"]')
     shown = row.locator(".picture-shown img")

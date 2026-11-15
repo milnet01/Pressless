@@ -151,8 +151,8 @@ class _Store:
 
 
 class _Browser(Browser):
-    def get(self) -> tuple[int, str]:
-        status, _, page = self.request("GET", "/setup")
+    def get(self, path: str = "/setup") -> tuple[int, str]:
+        status, _, page = self.request("GET", path)
         return status, page
 
     def post(self, answers: dict[str, str], *, cookie: bool = True,
@@ -640,7 +640,7 @@ def test_the_filter_is_the_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     settings_path.mkdir()
     _saved(settings_path, daily_prompt_filter="dailyprompt-*")
     with _setup_page(settings_path, _GitHub()) as browser:
-        _, shown = browser.get()
+        _, shown = browser.get("/setup/journal")
         assert 'value="dailyprompt-*"' in shown
         browser.post(_answers(key="", daily_prompt_filter="x-*"))
         assert settings.load(settings_path).daily_prompt_filter == "x-*"
@@ -877,25 +877,33 @@ def test_settings_shows_the_shortcuts_as_they_are(tmp_path, monkeypatch):
     where = _places(tmp_path / "places")
     shortcuts.apply(where, menu=True, desktop=False)
     with _setup_page(tmp_path, _GitHub(), where) as browser:
-        _, page = browser.get()
+        _, page = browser.get("/setup/computer")
     assert _boxes(page) == {"menu": True, "desktop": False}
 
 
 def test_every_settings_box_has_help_beside_it(tmp_path, monkeypatch):
     """PRESS-0228: each box on Settings has a "?" that opens a dialog of its
-    own and never submits the form; the key's help is the wizard's steps."""
+    own and never submits the form; the key's help is the wizard's steps.
+    Walks every section screen that holds a form."""
     _Store(monkeypatch)
     _saved(tmp_path)
+    every: list[str] = []
     with _setup_page(tmp_path, _GitHub()) as browser:
-        _, page = browser.get()
-    boxes = re.findall(r'<input type="(?:text|password|hidden)" name="([^"]+)"', page)
-    assert "key" in boxes and "repository" in boxes
-    for name in boxes:
-        assert re.search(rf'<button type="button" class="help" data-help="{name}-help"',
-                         page), f"{name} has no help button"
-        assert f'<dialog id="{name}-help"' in page, f"{name} has no help dialog"
-    assert page.count('class="help"') == len(boxes)
-    assert setup._new_key() in page and setup._new_key() in setup._show_key({}, None)
+        for section in ("site", "address", "connection", "visitors", "journal"):
+            _, page = browser.get(f"/setup/{section}")
+            boxes = re.findall(r'<input type="(?:text|password|hidden)" name="([^"]+)"', page)
+            assert boxes, f"{section} has no boxes"
+            for name in boxes:
+                assert re.search(
+                    rf'<button type="button" class="help" data-help="{name}-help"',
+                    page), f"{name} has no help button"
+                assert f'<dialog id="{name}-help"' in page, f"{name} has no help dialog"
+            assert page.count('class="help"') == len(boxes)
+            every += boxes
+            if section == "connection":
+                assert setup._new_key() in page
+    assert "key" in every and "repository" in every
+    assert setup._new_key() in setup._show_key({}, None)
 
 
 def test_the_key_steps_ask_for_administration(tmp_path, monkeypatch):
@@ -1122,8 +1130,13 @@ def test_a_finished_setup_shows_settings(tmp_path, monkeypatch):
     with _setup_page(tmp_path, _GitHub()) as browser:
         _first_run(browser)
         _, shown = browser.get()
+        assert "<h1>Settings</h1>" in shown
+        for section in ("site", "address", "connection", "visitors", "journal",
+                        "computer"):
+            assert f'href="/setup/{section}"' in shown, section
+            assert browser.get(f"/setup/{section}")[0] == 200, section
+        assert 'href="/assistant/setup"' in shown
     assert not _progress(tmp_path).exists()
-    assert _offers_the_form(shown) and "<h1>Settings</h1>" in shown
 
 
 def test_the_wizard_sits_behind_the_faces_boundary(tmp_path, monkeypatch):
@@ -1250,7 +1263,7 @@ def test_settings_page_edits_the_identity(tmp_path, monkeypatch):
     store.write_identity(tmp_path, store.Identity("Shown Name", "Shown words."))
     _Store(monkeypatch)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        page = browser.get()[1]
+        page = browser.get("/setup/site")[1]
         assert 'value="Shown Name"' in page and 'value="Shown words."' in page
         browser.post(_answers(key="", site_name="Renamed", site_description="New words."))
     assert store.read_identity(tmp_path) == store.Identity("Renamed", "New words.")
@@ -1703,7 +1716,7 @@ def test_settings_choose_the_icon_and_picture(tmp_path, monkeypatch):
         browser.post(_answers(key="", site_icon="a.png", site_picture="b.jpg", **shown))
         assert store.read_identity(tmp_path) == store.Identity(
             "Shown Name", "Shown words.", "a.png", "b.jpg")
-        page = browser.get()[1]
+        page = browser.get("/setup/site")[1]
         assert re.search(r'<input type="hidden" name="site_icon" value="a.png"', page)
         assert "/originals/a.png" in page and "/originals/b.jpg" in page
 
@@ -1813,3 +1826,86 @@ def test_an_account_with_no_sites_sees_the_step_as_before(tmp_path, monkeypatch)
         _, page = _walk(browser, until="repository")
     assert 'type="radio" name="pick"' not in page and "could not list" not in page
     assert 'value="owner.github.io"' in page
+
+
+# ------------------------------------------- PRESS-0353 INV-6 and INV-7 ----
+
+# Each section's answers, as a save from it changes them.
+_CHANGED = {
+    "site": {"site_name": "Changed Name", "site_description": "Changed words.",
+             "site_icon": "a.png", "site_picture": "b.jpg"},
+    "address": {"site_address": "https://example.org/changed"},
+    "connection": {"repository": "owner/owner.github.io", "key": SENTINEL_KEY},
+    "visitors": {"measurement_id": "G-CHANGED1"},
+    "journal": {"daily_prompt_filter": "dailyprompt-*"},
+}
+_ALL_FIELDS = {field for answers in _CHANGED.values() for field in answers}
+
+
+def _held(folder: Path) -> tuple[dict[str, str], dict]:
+    """Every answer Settings shows, and the rest of the settings file."""
+    saved = settings.load(folder)
+    rest = dataclasses.asdict(saved)
+    for name in ("repository", "site_address", "daily_prompt_filter", "measurement_id"):
+        rest.pop(name)
+    return setup._values_from(folder, saved), rest
+
+
+def test_a_section_saves_only_its_fields(tmp_path, monkeypatch):
+    """PRESS-0353 INV-6. Every field holds a value; each section is saved in
+    turn with its own answers changed and forged values for every other
+    section's. Breaks when a section builds its settings from the request
+    alone, or accepts a field it does not hold."""
+    _saved(tmp_path, measurement_id="G-FIRST01", daily_prompt_filter="first-*")
+    store.write_identity(tmp_path, store.Identity("First Name", "First words.",
+                                                  "first.png", "first.jpg"))
+    _Store(monkeypatch)
+    with _setup_page(tmp_path, _GitHub()) as browser:
+        for section, changed in _CHANGED.items():
+            before, rest = _held(tmp_path)
+            forged = {field: "forged" for field in _ALL_FIELDS - set(changed)}
+            status, page = browser.post({**forged, **changed}, path=f"/setup/{section}")
+            assert status == 200, section
+            assert "Saved." in page, section
+            after, rest_after = _held(tmp_path)
+            expected = {**before, **{field: value for field, value in changed.items()
+                                     if field != "key"}}
+            assert after == expected, section
+            assert rest_after == rest, section
+
+
+def test_a_section_save_is_checked(tmp_path, monkeypatch):
+    """PRESS-0353 INV-7. A repository GitHub cannot find, saved from the
+    GitHub section, is refused with the sentence the one-page form gives, and
+    nothing is written. Breaks when a section writes the settings file
+    without setup._save_sequence."""
+    keyring = _Store(monkeypatch)
+    _saved(tmp_path)
+    store.write_identity(tmp_path, store.Identity("A Journal"))
+    before = _settings_file(tmp_path).read_bytes()
+    refused = words.say("setup.hint.no_such_repository")
+    with _setup_page(tmp_path, _GitHub(refuse={"/commits/HEAD": 404})) as browser:
+        whole = browser.post(_answers())[1]
+        status, page = browser.post({"repository": "owner/owner.github.io",
+                                     "key": SENTINEL_KEY}, path="/setup/connection")
+    assert refused in whole
+    assert status == 200 and refused in page and _hint_for("repository", page)
+    assert 'action="/setup/connection"' in page
+    assert _settings_file(tmp_path).read_bytes() == before
+    assert keyring.writes == []
+
+
+def test_a_section_names_a_refusal_it_does_not_show(tmp_path, monkeypatch):
+    """PRESS-0353 § 6: a section's save refused for an answer another section
+    holds says which section, and writes nothing. Breaks when the refusal is
+    only on a box this screen does not show."""
+    _saved(tmp_path)      # no identity file, so the name is empty
+    before = _settings_file(tmp_path).read_bytes()
+    _Store(monkeypatch)
+    github = _GitHub()
+    with _setup_page(tmp_path, github) as browser:
+        page = browser.post({"site_address": "https://example.org/changed"},
+                            path="/setup/address")[1]
+    assert 'Not saved. First change this in <a href="/setup/site">' in page
+    assert github.calls == []
+    assert _settings_file(tmp_path).read_bytes() == before

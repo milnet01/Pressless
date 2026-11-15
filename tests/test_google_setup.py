@@ -396,13 +396,13 @@ def test_an_unregistered_copy_offers_no_sign_in(
         assert "Sign in with Google" not in page and "/setup/google/start" not in page
         status, headers, _ = browser.send("POST", "/setup/google/start")
         assert status == 200 and "Location" not in headers
-        assert 'href="/setup/google"' not in browser.send("GET", "/setup")[2]
+        assert 'href="/setup/google"' not in browser.send("GET", "/setup/visitors")[2]
 
         monkeypatch.setattr(google_signin, empty, {"CLIENT_ID": CLIENT,
                                                     "CLIENT_SECRET": SECRET}[empty])
         # The control: with a client, the same pages offer it.
         assert "Sign in with Google" in browser.send("GET", "/setup/google")[2]
-        assert 'href="/setup/google"' in browser.send("GET", "/setup")[2]
+        assert 'href="/setup/google"' in browser.send("GET", "/setup/visitors")[2]
     assert [url for _m, url, _f in google.calls] == []
 
 
@@ -425,11 +425,11 @@ def test_the_privacy_policy_is_linked_where_google_is_offered(
     _saved(tmp_path)
     with _served(tmp_path, _Google(), with_setup=True) as browser:
         assert link in browser.send("GET", "/setup/google")[2]
-        assert link in browser.send("GET", "/setup")[2]
+        assert link in browser.send("GET", "/setup/visitors")[2]
     _signed_in(tmp_path)
     with _served(tmp_path, _Google(), with_setup=True) as browser:
         assert link in browser.send("GET", "/setup/google")[2]
-        assert link in browser.send("GET", "/setup")[2]
+        assert link in browser.send("GET", "/setup/visitors")[2]
 
 
 # -------------------------------------------------------------- INV-17 ----
@@ -524,7 +524,7 @@ def test_settings_names_visitor_numbers_once_they_are_on(
     _Store(monkeypatch)
     (_signed_in if signed_in else _saved)(tmp_path)
     with _served(tmp_path, _Google(), with_setup=True) as browser:
-        page = browser.send("GET", "/setup")[2]
+        page = browser.send("GET", "/setup/visitors")[2]
     assert 'href="/setup/google"' in page
     assert ("Visitor numbers are on" in page) is signed_in
     assert ("Optional: " in page) is not signed_in

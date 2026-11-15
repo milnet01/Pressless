@@ -631,7 +631,7 @@ def test_the_settings_page_links_to_the_screen(tmp_path: Path) -> None:
     """§ 4.6: reached from a row on the Settings page."""
     _saved(tmp_path)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        assert 'href="/votes"' in browser.request("GET", "/setup")[2]
+        assert 'href="/votes"' in browser.request("GET", "/setup/journal")[2]
 
 
 def test_a_save_stores_adds_privacy_and_checks(tmp_path: Path) -> None:

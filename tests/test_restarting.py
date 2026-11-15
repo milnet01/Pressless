@@ -15,7 +15,7 @@ def test_settings_links_to_restart(tmp_path, monkeypatch):
     _Store(monkeypatch)
     _saved(tmp_path)
     with _setup_page(tmp_path, _GitHub()) as browser:
-        _, page = browser.get()
+        _, page = browser.get("/setup/computer")
     assert f'href="{restarting.PATH}"' in page
 
 

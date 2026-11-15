@@ -17,7 +17,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **Pressless opens on Your site, and each part of a site has its own screen** (PRESS-0353)
   Your site shows a tile for your pages, journal, look, menu, files and visitors, with
   Publish and Undo at the top. The bar names the same parts. Pages and Journal are
-  screens of their own, and the switches for updates and JPEG XL are in Settings.
+  screens of their own.
+
+- **Settings opens on a short list of sections** (PRESS-0353)
+  Each section is a short screen of its own: your site's name and pictures, its address,
+  GitHub, visitors, the journal, the AI helper, and this computer. Saving a section
+  changes only what that section holds.
 
 ### Added
 

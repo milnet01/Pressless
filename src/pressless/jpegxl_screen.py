@@ -55,7 +55,7 @@ def register(face: Face, own: Path, *, platform: str | None = None,
                 failure.append("jpegxl.rejected")
             except (updater.UpdateError, OSError):
                 failure.append("jpegxl.no_connection")
-        return Reply(b"", "text/plain", status=303, location="/setup")
+        return Reply(b"", "text/plain", status=303, location="/setup/computer")
 
     face.add_page("POST", "/jpeg-xl", add)
     face.add_piece("computer", lambda: line_html(jpegxl.installed(own, platform) is not None,

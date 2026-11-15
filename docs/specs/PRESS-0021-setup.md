@@ -137,6 +137,9 @@ Every request to `/setup` first runs `settings.load(folder)` inside
 | any other `SettingsError` | shows it through `Face.fail`; no form, and a POST writes nothing |
 | a `Settings` | **Settings**: the form filled from it |
 
+*PRESS-0353 § 4.5: with a `Settings`, `/setup` lists the sections, and each
+section's screen at `/setup/<section>` holds part of § 4.3's form.*
+
 Setup never reads the Store (§ 3 decision 9). A folder holding no Store is
 first run like any other.
 
@@ -153,6 +156,9 @@ writes § 4.5's first-run values over that file, the Google fields included:
 
 *PRESS-0231 § 4.4 adds the signed-in line above the key box, and
 `/setup/github`.*
+
+*PRESS-0353 § 4.5 splits this form into sections; a section's save takes
+only its own fields and runs § 4.4 to § 4.6 as written.*
 
 Five fields, posted under these names: `repository`, `site_name`,
 `site_address`, `daily_prompt_filter` and `key`. The filter is optional on

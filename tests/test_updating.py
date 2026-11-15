@@ -130,11 +130,11 @@ def test_the_switch(tmp_path, signer):
     with _pressless(folder, artefact, answers) as browser:
         site = _shown(browser)
         assert LOOKING not in site and site.index(OFFER) < site.index('<div class="tiles">')
-        page = _shown(browser, "/setup")
+        page = _shown(browser, "/setup/computer")
         assert LOOKING in page and "Stop looking" in page
         status, headers, _ = browser.request("POST", "/update/checking", {"check": "false"})
-        assert status == 303 and headers.get("Location") == "/setup"
-        page = _shown(browser, "/setup")
+        assert status == 303 and headers.get("Location") == "/setup/computer"
+        page = _shown(browser, "/setup/computer")
         assert NOT_LOOKING in page and "Look when Pressless starts" in page
     assert json.loads((folder / "updates.json").read_text(encoding="utf-8")) == {
         "version": 1, "check": False, "skip": None}

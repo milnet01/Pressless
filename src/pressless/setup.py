@@ -48,7 +48,7 @@ from pressless import (
     votes,
     wizard,
 )
-from pressless.face import Face, Request, message_box, render_notices
+from pressless.face import Face, Reply, Request, message_box, render_notices
 from pressless.store import StoreError
 from pressless.words import say
 
@@ -174,6 +174,12 @@ def register(face: Face, folder: Path, *,
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
     face.add_page("POST", SHORTCUTS, change)
+    # PRESS-0353 § 4.5: each section of Settings is a screen of its own.
+    for name in _SECTION_FIELDS:
+        def section(request: Request, name: str = name) -> str | Reply:
+            return _section(face, folder, request, name, transport, shortcut_places)
+        face.add_page("GET", f"/setup/{name}", section)
+        face.add_page("POST", f"/setup/{name}", section)
 
 
 def _unpublished_starter(folder: Path) -> str:
@@ -220,28 +226,16 @@ def _setup(face: Face, folder: Path, request: Request,
     if saved is None:
         return render_notices(notices) + first_run.page(face, request)
     if request.method != "POST":
-        # PRESS-0183: Settings shows the shortcuts as they are now.
-        where = shortcut_places()
-        try:
-            values = _values_from(folder, saved)
-        except StoreError as exc:
-            return render_notices(notices) + face.fail(exc, publishing=False)
-        return (render_notices(notices)
-                + _form(values, {}, google_on=_google_on(saved),
-                        start=False if offer else None,
-                        signed_in=_signed_in(folder, saved))
-                + (_shortcut_form(where, shortcuts.present(where)) if where else "")
-                + restarting.link()
-                # PRESS-0353 § 4.6: what the machine's parts add here.
-                + "".join(face.pieces("computer")))
+        return render_notices(notices) + _sections()
     return render_notices(notices) + _submit(face, folder, saved,
                                              _read_answers(request.body), transport, offer)
 
 
 def _submit(face: Face, folder: Path, saved: settings.Settings,
             answers: dict[str, str], transport: publisher.Transport | None,
-            offer: bool) -> str:
-    """Settings: check the answers, then the save sequence."""
+            offer: bool, section: str | None = None) -> str:
+    """Settings: check the answers, then the save sequence. With `section`,
+    a refusal shows that section again, and a save says so there."""
     box = (answers["start"] == "starter") if offer else None   # PRESS-0126 § 4.4
     typed_key = answers["key"]
     values = {name: answers[name] for name in _FIELDS}
@@ -264,8 +258,9 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
     if refused_identity is not None:
         hints[refused_identity] = say(_HINTS[refused_identity])
     if hints:
-        return _form(values, hints, google_on=_google_on(saved), start=box,
-                     look=answers["look"], signed_in=_signed_in(folder, saved))
+        return _elsewhere(hints, section) + _form(
+            values, hints, google_on=_google_on(saved), start=box, look=answers["look"],
+            signed_in=_signed_in(folder, saved), section=section)
 
     # § 4.6 step 1: the key in hand, or the pass a sign-in buys (PRESS-0231).
     key = typed_key
@@ -281,11 +276,13 @@ def _submit(face: Face, folder: Path, saved: settings.Settings,
     done = _save_sequence(face, folder, candidate, identity, key, transport,
                           typed_key=typed_key, starter_ticked=answers["start"] == "starter",
                           look=answers["look"], choice=None, where=None,
-                          kept=saved.untouchable)
+                          kept=saved.untouchable,
+                          after=None if section is None else (
+                              lambda final: _section_saved(folder, final, section)))
     if isinstance(done, publisher.RemoteStateMissing):
         return _form(values, {"repository": say("setup.hint.no_such_repository")},
                      google_on=_google_on(saved), start=box, look=answers["look"],
-                     signed_in=_signed_in(folder, saved))
+                     signed_in=_signed_in(folder, saved), section=section)
     return done
 
 
@@ -303,6 +300,7 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
                    narrow: str = "", kept: tuple[str, ...] = (),
                    take_in_commit: str = "", bring_in_commit: str = "",
                    take_over: bool = False,
+                   after: Callable[[settings.Settings], str] | None = None,
                    ) -> str | publisher.RemoteStateMissing:
     """PRESS-0021 § 4.6 from step 2: ask GitHub, store a typed key, fill the
     starter where ticked, in the look chosen (PRESS-0239), write the identity
@@ -414,9 +412,11 @@ def _save_sequence(face: Face, folder: Path, candidate: settings.Settings,
     report = _brought_report(face, folder, brought) if brought is not None else ""
     if take_over:
         report += f"<p>{say('setup.done.take_over')}</p>"
-    return (render_notices(filling) + render_notices(notices) + privacy_failure
-            + _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
-                    taken=taken.found if taken is not None else None, brought=report)
+    # PRESS-0353 § 4.5: a section's save shows that section again.
+    said = (after(final) if after is not None else
+            _done(final, choice, filled, signed_in=signed_in, narrow=narrow, empty=empty,
+                  taken=taken.found if taken is not None else None, brought=report))
+    return (render_notices(filling) + render_notices(notices) + privacy_failure + said
             + privacy
             + (_shortcut_form(where, (True, True)) if where else ""))
 
@@ -537,37 +537,141 @@ def _credential_failure(face: Face, failure: Exception,
 
 def _form(values: dict[str, str], hints: dict[str, str], *,
           google_on: bool = False, start: bool | None = None, look: str = "",
-          signed_in: bool = False) -> str:
-    """The Settings page. `start` is None where the starter site is not
-    offered, else whether its box is ticked (PRESS-0126 § 4.4), and `look`
-    the look chosen for it (PRESS-0239). `signed_in`
-    says the stored secret is a GitHub sign-in (PRESS-0231 § 4.4)."""
+          signed_in: bool = False, section: str | None = None) -> str:
+    """The Settings form: one section's (PRESS-0353 § 4.5), or with `section`
+    None every field at once, which POST /setup still takes. `start` is None
+    where the starter site is not offered, else whether its box is ticked
+    (PRESS-0126 § 4.4), and `look` the look chosen for it (PRESS-0239).
+    `signed_in` says the stored secret is a GitHub sign-in (PRESS-0231 § 4.4)."""
     def field(name: str, label: str, kind: str = "text") -> str:
         hint = wizard.Hint(name, hints[name]) if name in hints else None
         return wizard.field(name, label, values, hint, kind, _settings_help(name))
 
+    def shown(name: str) -> bool:
+        return section is None or section == name
+
+    held = (
+        (field("repository", say("setup.field.repository")) if shown("connection") else "")
+        + (field("site_name", say("setup.field.site_name"))
+           + field("site_description", say("setup.field.site_description"))
+           + _picture_row("site_icon", say("setup.field.site_icon"), values, hints)
+           + _picture_row("site_picture", say("setup.field.site_picture"), values, hints)
+           if shown("site") else "")
+        + (field("site_address", say("setup.field.site_address")) if shown("address") else "")
+        + (field("daily_prompt_filter", say("setup.field.daily_prompt_filter"))
+           if shown("journal") else "")
+        + (field("measurement_id", say("setup.field.measurement_id"))
+           if shown("visitors") else "")
+        + (_starter_box(start, look) if shown("site") else "")
+        + ((f'<p id="signed-in">{say("setup.signed_in")}</p>' if signed_in else "")
+           + f"<p>{say('setup.key_kept')}</p>"
+           + field("key", say("setup.field.key"), "password") if shown("connection") else ""))
+    links = (
+        (f'<p><a href="{domain.ADDRESS}">{say("domain.settings_link")}</a></p>'
+         if shown("address") else "")
+        + (_google_link(google_on) if shown("visitors") else "")
+        + (f'<p><a href="{votes.ADDRESS}">{say("votes_setup.settings_link")}</a></p>'
+           if shown("journal") else "")
+        + (f'<p><a href="{settings.YOUTUBE_ADDRESS}/setup">{say("youtube.settings_link")}</a></p>'
+           if shown("visitors") else ""))
+    heading = say("face.settings") if section is None else say(_SECTIONS[section][0])
+    back = ("" if section is None else
+            f'<p class="nav"><a href="/setup">{say("face.settings")}</a></p>')
+    action = "/setup" if section is None else f"/setup/{section}"
     return (
-        f"<h1>{say('face.settings')}</h1>"
-        '<form method="post" action="/setup">'
-        + field("repository", say("setup.field.repository"))
-        + field("site_name", say("setup.field.site_name"))
-        + field("site_description", say("setup.field.site_description"))
-        + _picture_row("site_icon", say("setup.field.site_icon"), values, hints)
-        + _picture_row("site_picture", say("setup.field.site_picture"), values, hints)
-        + field("site_address", say("setup.field.site_address"))
-        + field("daily_prompt_filter", say("setup.field.daily_prompt_filter"))
-        + field("measurement_id", say("setup.field.measurement_id"))
-        + _starter_box(start, look)
-        + (f'<p id="signed-in">{say("setup.signed_in")}</p>' if signed_in else "")
-        + f"<p>{say('setup.key_kept')}</p>"
-        + field("key", say("setup.field.key"), "password")
+        back + f"<h1>{heading}</h1>"
+        f'<form method="post" action="{action}">' + held
         + f'<p><button type="submit">{say("setup.save")}</button></p></form>'
-        + f'<p><a href="{domain.ADDRESS}">{say("domain.settings_link")}</a></p>'
-        + _google_link(google_on)
-        + f'<p><a href="{votes.ADDRESS}">{say("votes_setup.settings_link")}</a></p>'
-        + f'<p><a href="{settings.YOUTUBE_ADDRESS}/setup">{say("youtube.settings_link")}</a></p>'
-        + f"<script>{_PICTURE_SCRIPT}</script>"
+        + links + (f"<script>{_PICTURE_SCRIPT}</script>" if shown("site") else "")
     )
+
+
+# PRESS-0353 § 4.5: each section of Settings, by its address, and the answers
+# it holds; the AI helper's section is its own screen, at assistant.SETUP.
+_SECTION_FIELDS = {
+    "site": ("site_name", "site_description", "site_icon", "site_picture", "start", "look"),
+    "address": ("site_address",),
+    "connection": ("repository", "key"),
+    "visitors": ("measurement_id",),
+    "journal": ("daily_prompt_filter",),
+    "computer": (),
+}
+# Each section's name and the line saying what it holds, in the list's order.
+_SECTIONS = {
+    "site": ("setup.section.site", "setup.section.site.holds"),
+    "address": ("setup.section.address", "setup.section.address.holds"),
+    "connection": ("setup.section.connection", "setup.section.connection.holds"),
+    "visitors": ("setup.section.visitors", "setup.section.visitors.holds"),
+    "journal": ("setup.section.journal", "setup.section.journal.holds"),
+    "assistant": ("setup.section.assistant", "setup.section.assistant.holds"),
+    "computer": ("setup.section.computer", "setup.section.computer.holds"),
+}
+_ASSISTANT_SETUP = "/assistant/setup"
+
+
+def _sections() -> str:
+    """Settings, once setup is done: a line for each section, saying what it holds."""
+    cards = "".join(
+        f'<section class="card tile"><h2><a href="'
+        f'{_ASSISTANT_SETUP if name == "assistant" else "/setup/" + name}">{say(title)}</a>'
+        f"</h2><p>{say(holds)}</p></section>"
+        for name, (title, holds) in _SECTIONS.items())
+    return f'<h1>{say("face.settings")}</h1><div class="tiles sections">{cards}</div>'
+
+
+def _section(face: Face, folder: Path, request: Request, name: str,
+             transport: publisher.Transport | None,
+             shortcut_places: Callable[[], shortcuts.Places | None]) -> str | Reply:
+    """PRESS-0353 § 4.5: one section of Settings. Its save starts from the
+    saved settings and takes from the request only the answers it holds, so
+    a field it does not hold can be neither blanked nor forged."""
+    with face.capture() as notices:
+        try:
+            saved = settings.load(folder)
+            offer = starter.offered(folder)
+            values = _values_from(folder, saved)
+        except settings.NotSetUp:
+            return Reply(b"", "text/plain; charset=utf-8", status=303, location="/setup")
+        except (settings.SettingsError, StoreError) as exc:
+            return render_notices(notices) + face.fail(exc, publishing=False)
+    if name == "computer":
+        where = shortcut_places()   # PRESS-0183: the shortcuts as they are now
+        return (render_notices(notices)
+                + f'<p class="nav"><a href="/setup">{say("face.settings")}</a></p>'
+                + f"<h1>{say(_SECTIONS['computer'][0])}</h1>"
+                + (_shortcut_form(where, shortcuts.present(where)) if where else "")
+                + restarting.link()
+                # PRESS-0353 § 4.6: what the machine's parts add here.
+                + "".join(face.pieces("computer")))
+    if request.method != "POST":
+        return render_notices(notices) + _form(
+            values, {}, google_on=_google_on(saved), start=False if offer else None,
+            signed_in=_signed_in(folder, saved), section=name)
+    posted = _read_answers(request.body)
+    answers = {**values, "key": "", "start": "", "look": ""}
+    answers.update({field: posted[field] for field in _SECTION_FIELDS[name]})
+    return render_notices(notices) + _submit(face, folder, saved, answers, transport, offer,
+                                             section=name)
+
+
+def _elsewhere(hints: dict[str, str], section: str | None) -> str:
+    """A refused answer this section does not show, with the section that
+    shows it, so a save is never refused for a reason nobody can see."""
+    if section is None:
+        return ""
+    lines = "".join(
+        f"<p>{say('setup.section.elsewhere', section=link, hint=html.escape(hint))}</p>"
+        for field, hint in hints.items() if field not in _SECTION_FIELDS[section]
+        for name, held in _SECTION_FIELDS.items() if field in held
+        for link in [f'<a href="/setup/{name}">{say(_SECTIONS[name][0])}</a>'])
+    return message_box("elsewhere", lines) if lines else ""
+
+
+def _section_saved(folder: Path, final: settings.Settings, name: str) -> str:
+    """The section again, as saved, under a line saying so."""
+    return (message_box("section-saved", f"<p>{say('setup.section.saved')}</p>")
+            + _form(_values_from(folder, final), {}, google_on=_google_on(final),
+                    signed_in=_signed_in(folder, final), section=name))
 
 
 def _picture_row(name: str, label: str, values: dict[str, str], hints: dict[str, str]) -> str:

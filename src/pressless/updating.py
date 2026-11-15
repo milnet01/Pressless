@@ -102,7 +102,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
         form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
         wanted = (form.get("check") or ["true"])[0] != "false"
         updater.write_state(own, check=wanted, skip=updater.read_state(own)[1])
-        return Reply(b"", "text/plain", status=303, location="/setup")  # where the switch is
+        return Reply(b"", "text/plain", status=303, location="/setup/computer")  # the switch
 
     def update_now(request: Request) -> str | Reply:
         offer = shown()

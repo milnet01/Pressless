@@ -27,6 +27,8 @@ checked before Next moves on. Pressless switches GitHub Pages on itself.
 Closing Pressless halfway keeps what was done, and the next launch resumes at
 the step reached. Settings, once setup is done, is the one page it is today.
 
+*PRESS-0353 § 4.5: Settings is now a list of sections; the wizard is unchanged.*
+
 The wizard pattern itself is shared, so the later wizards PRESS-0220 names
 are built on it rather than beside it.
 
@@ -505,7 +507,8 @@ GitHub.
   (PRESS-0222).
 - Several sites in one Pressless — PRESS-0223, which will change where the
   progress file and the key are filed.
-- Settings as a wizard. Settings stays one page.
+- Settings as a wizard. Settings stays a form, split into sections by
+  PRESS-0353 § 4.5.
 
 ## 10. What checks this
 

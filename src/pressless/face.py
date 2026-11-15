@@ -752,9 +752,6 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   display: grid; gap: 0 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
 .face .tiles .card { margin: .6rem 0; }
-.face .fold > summary { cursor: pointer; }
-.face .fold > summary h2 { display: inline; margin: 0; }
-.face .fold[open] > summary { margin-bottom: .75rem; }
 .face #checklist ul { list-style: none; padding: 0; }
 .face #checklist li { margin: .35rem 0; }
 .face #checklist li.done a { color: var(--soft); }

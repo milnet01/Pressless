@@ -265,8 +265,8 @@ uploaded for your pages.
 You upload a file from a video, music or download section on a page.
 
 == site-name | Changing your site's name, description, icon or sharing picture
-1. Click Settings in the bar.
-picture settings.png | The Settings screen, with boxes for the repository, the site's name and its description.
+1. Click Settings in the bar, then Your site's name and pictures.
+picture settings.png | The section of Settings for your site's name and pictures, with boxes for the name and the description.
 2. Type in the box for your site's name or its short description.
 3. For the icon or the sharing picture, click Choose a picture.
 4. Click the ? beside a box to read what it is for.
@@ -276,19 +276,19 @@ picture settings.png | The Settings screen, with boxes for the repository, the s
 If you have bought a web address, such as example.com, your site can
 appear at it. Publish your site once first.
 
-1. Click Settings, then Use your own domain name.
+1. Click Settings, then Your site's address, then Use your own domain name.
 2. Type the name you bought and click Next.
 picture own-domain.png | The first step of Your own domain name, with a box for the name and a Next button.
 3. Follow each screen. Pressless shows what to enter where you bought the name.
 
-You can close Pressless between steps. Settings, then Use your own
-domain name, opens the step you had reached.
+You can close Pressless between steps. Use your own domain name opens
+the step you had reached.
 
 == visitor-numbers | Turning on visitor numbers
 Pressless can show how many people read your site, by reading the
 numbers from Google Analytics. It is optional.
 
-1. Click Settings, then the line about seeing how many people read your site.
+1. Click Settings, then Visitors and Google, then the line about seeing how many people read your site.
 2. Click Sign in with Google and sign in on Google's page.
 3. Choose the site Pressless should show numbers for, and click Use this site.
 
@@ -305,17 +305,17 @@ they found you and what they read.
 == like-buttons | Adding Like and Dislike buttons under your entries
 The counts live in your own free Firebase database, from Google.
 
-1. Click Settings, then Like and Dislike buttons under your entries, if you want them.
+1. Click Settings, then Journal, then Like and Dislike buttons under your entries, if you want them.
 2. Follow the steps on the screen to make the database.
 3. Paste the firebaseConfig text into the box and click Save and check.
 
 == youtube | Showing your YouTube channel's figures
-1. Click Settings, then Your YouTube channel's public figures, if you want them.
+1. Click Settings, then Visitors and Google, then Your YouTube channel's public figures, if you want them.
 2. Follow the steps on the screen to make a key.
 3. Type your channel's address, paste the key and click Save and check.
 
 == publishing-key | Signing in to GitHub again, or changing your publishing key
-1. Click Settings in the bar.
+1. Click Settings in the bar, then GitHub.
 2. Click Sign in to GitHub again, and follow the screen. Or paste a new key in the Your publishing key box.
 3. Click Check the repository again and save.
 
@@ -338,7 +338,7 @@ holds the publishing key.
 1. Click Sites in the bar.
 2. Click Save this site to a file. Your browser saves the file.
 3. To bring a site back, click Open a site file and choose the file.
-4. Open Settings for that site and enter the publishing key once.
+4. Open Settings, then GitHub, for that site and enter the publishing key once.
 
 == moving-computer | Moving Pressless to a new computer
 1. Click Sites in the bar.
@@ -397,17 +397,17 @@ Click What is new since version, under the buttons, to read what changed.
 2. Or click Later, or Skip this version.
 
 Your sites stay where they are. To stop Pressless looking for new
-versions, click Stop looking, low on the Settings screen.
+versions, click Settings, then This computer, then Stop looking.
 
 == jpeg-xl | Using JPEG XL photographs
 JPEG XL is a kind of photograph file. Pressless needs one download
 before it can use them.
 
-1. Click Settings in the bar.
-2. Click Add JPEG XL support, low on the screen.
+1. Click Settings in the bar, then This computer.
+2. Click Add JPEG XL support.
 
 == shortcuts | Putting Pressless in the menu or on the desktop
-1. Click Settings in the bar.
+1. Click Settings in the bar, then This computer.
 2. Tick the box for the menu, the desktop, or both. Untick one to take it away.
 3. Click Save these.
 
@@ -444,7 +444,7 @@ A report is public. Leave out your site's address, your writing and your
 publishing key.
 
 == restarting | Restarting Pressless
-1. Click Settings in the bar.
+1. Click Settings in the bar, then This computer.
 2. Click Restart Pressless, then Restart.
 
 Every Pressless tab open stops working, and a new one opens.

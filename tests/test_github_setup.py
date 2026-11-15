@@ -313,9 +313,9 @@ def test_settings_says_it_is_signed_in(tmp_path, monkeypatch):
     _saved(tmp_path)
     keyring = _Store(monkeypatch, REFRESH)
     with _served(tmp_path, _GitHub(), _Clock(), with_setup=True) as browser:
-        signed_in = browser.request("GET", "/setup")[2]
+        signed_in = browser.request("GET", "/setup/connection")[2]
         keyring.saved = KEY
-        with_a_key = browser.request("GET", "/setup")[2]
+        with_a_key = browser.request("GET", "/setup/connection")[2]
     assert "Pressless is signed in to GitHub" in signed_in
     assert f'href="{PAGE}"' in signed_in
     assert "Pressless is signed in to GitHub" not in with_a_key
