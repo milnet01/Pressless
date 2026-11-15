@@ -7235,7 +7235,7 @@ owned by docs/standards/versioning-overrides.md.
   Source: PRESS-0200 resolution 2026-10-10.
   Lanes: Insights.
 
-- 📋 [PRESS-0352] **Choosing another layout on the Look screen keeps the saved colours, so the preview hardly changes.**
+- ✅ [PRESS-0352] **Choosing another layout on the Look screen keeps the saved colours, so the preview hardly changes.**
   Seen 2026-11-12 in a seeded site saved with the Harbour layout:
   choosing Meadow ("calm greens") left the preview navy, because the
   saved colours stay. Only a site whose choices were never saved starts
@@ -7247,6 +7247,11 @@ owned by docs/standards/versioning-overrides.md.
   Decided by the user 2026-11-13, on the recommendation put to them:
   saved colours stay by default, and a button beside the layouts
   switches the preview to the chosen layout's own colours.
+  Shipped 2026-11-15 (bdffa40): the screen says a layout keeps the
+  colours, and "Use this layout's own colours" fills the boxes with the
+  chosen layout's; Save keeps them. Meadow's side-panel menu shows only
+  at 56rem and wider, so the narrower preview shows the top menu by
+  design, not a defect.
   **Layman:** On the Look screen, picking a different layout barely changes the preview once a look has been saved, though each layout promises its own colours.
   Kind: ux.
   Source: found-recording-PRESS-0219-2026-11-12.
@@ -7320,6 +7325,17 @@ owned by docs/standards/versioning-overrides.md.
   is browsed. PRESS-0352's button for a layout's own colours and
   PRESS-0353's redesign both touch the same screen.
   Placed in 1.0.0 beside those two by the session; the user may move it.
+  Waiting-on: user (How many layouts, for which kinds of site, and
+  how is the list browsed? Recommended: split it in two. Layouts are
+  the shape of a page, such as a band across the top or a menu panel
+  beside it. Colour styles are sets of colours any layout can wear.
+  Add five layouts, one for each common kind of site: portfolio, small
+  business, musician or band, club or community, plain document. Add
+  eight colour styles. Show both as a grid of small drawings, as the
+  three layouts are shown now, with the kind of site under each
+  drawing. Then 8 layouts and 11 colour sets give many looks without a
+  long list. It needs a spec before building, since it changes the
+  Look screen, the starter and the saved look. 2026-11-15)
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.
