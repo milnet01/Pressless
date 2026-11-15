@@ -38,12 +38,14 @@ def _show(face: Face, folder: Path) -> str:
         tiles = "".join(tile(folder) for tile in (_pages, _journal, _look))
         tiles += _parts() + _files(folder) + _visitors(face, folder)
         below = checklist.render(folder)
+    with face.capture():  # its reads repeat the tiles', and Pages shows the rest
+        waiting = _waiting(folder)
     # PRESS-0235 § 4.5: the press row is the undo line, and Publish shares it.
     said, running, ended = pressing.shown("")
     buttons = (f'{face.view_site()} <button type="button" data-editor="publish" '
                f'data-publish-site>{say("overview.publish")}</button> ')
     return (render_notices(notices) + f"<h1>{say('face.your_site')}</h1>" + site
-            + editor._undo_row(said, running=running, before=buttons)
+            + editor._undo_row(said, running=running, before=buttons) + waiting
             + "".join(face.pieces("site-notices"))
             # PRESS-0236: a press's failure opens over the screen.
             + message_box("failure", ended or "", forgets=True)
@@ -51,6 +53,39 @@ def _show(face: Face, folder: Path) -> str:
             + f'<div class="tiles">{tiles}{"".join(face.pieces("site-tiles"))}</div>'
             + below + "".join(face.pieces("site-below")) + "</div>"
             + f"<script>{editor._UNDO_SCRIPT}{_PUBLISH_SCRIPT}</script>")
+
+
+def _waiting(folder: Path) -> str:
+    """PRESS-0364: how many changes are not on the site yet, by kind, each
+    kind linking to the screen that publishes it. Counted from the Store
+    alone, so a change only GitHub holds is missed. Its own line, apart from
+    Publish, which sends none of them. Nothing waiting, or nothing readable,
+    draws nothing."""
+    try:
+        counts = [
+            (len(store.list_html(folder, store.PAGES_FOLDER, waiting=True)),
+             ("overview.waiting.pages.one", "overview.waiting.pages.many"), editor.PAGES_ADDRESS),
+            (len(store.list_html(folder, store.FURNITURE_FOLDER, waiting=True)),
+             ("overview.waiting.parts.one", "overview.waiting.parts.many"), editor.PAGES_ADDRESS),
+        ]
+        if store.journal_on(folder):  # off, no entry can reach the site
+            entries, _ = editor.read_entries(folder)
+            counts.append((
+                len(entries.drafts) + len(entries.unreadable[True]) + len(entries.changed),
+                ("overview.waiting.entries.one", "overview.waiting.entries.many"),
+                editor.JOURNAL_ADDRESS))
+    except store.StoreError:
+        return ""
+    total = sum(count for count, _, _ in counts)
+    if not total:
+        return ""
+    kinds = ", ".join(
+        f'<a href="{html.escape(address, quote=True)}">'
+        f'{say(keys[0] if count == 1 else keys[1], count=count)}</a>'
+        for count, keys, address in counts if count)
+    said = say("overview.waiting.one" if total == 1 else "overview.waiting.many",
+               count=total, kinds=kinds)
+    return f'<p class="waiting">{said}</p>'
 
 
 def _tile(heading: str, figures: str, links: str) -> str:

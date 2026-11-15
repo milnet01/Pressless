@@ -45,10 +45,11 @@ session's recommendation, from drawn alternatives.
 3. **The journal has its own screen.** Off, it says what a journal is and
    offers to turn it on.
 4. **Settings opens on a short list of sections**, each its own screen.
-5. **No count of unpublished changes on Your site.** *(decided here)* The
-   drawing the user chose showed one. Knowing it needs GitHub's listing,
-   and the first screen must not wait on the network (ADR-0005). Publish
-   opens PRESS-0345's box, which lists the changes.
+5. **Your site counts the changes not on it from this computer alone.**
+   A change only GitHub holds is missed: finding it needs the network,
+   and the first screen must not wait on it (ADR-0005). The count is a
+   line of its own, apart from Publish, which sends none of those
+   changes (PRESS-0364).
 6. **Screen addresses are free to change.** *(decided here)* Nothing binds
    them: `docs/standards/versioning-overrides.md` freezes no screen
    address, and the AI door calls functions, not screens.
@@ -99,7 +100,8 @@ In this order, and the order does not change with the site's state:
 
 1. **The site's line**: its name and address (`editor._site_line` moves
    here), View your site, Publish, and Undo the last press
-   (`editor._undo_row`).
+   (`editor._undo_row`), then the count of changes not on the site
+   yet, by kind, each linking to Pages or Journal (decision 5).
 2. **Notices**: the place `site-notices` (§ 4.6), then the press's
    failure box (PRESS-0235 INV-8 holds as written).
 3. **Tiles**, each a heading, one line of figures, and its links:
@@ -312,7 +314,6 @@ its screen. `scripts/by-hand-browser-checks.py` carries the rows.
 ## 9. Out of scope
 
 - The Look screen's own changes — tracked by PRESS-0352 and PRESS-0359.
-- A count of unpublished changes — decision 5; tracked by PRESS-0364.
 - First-run setup's steps — decision 7.
 - Choosing the manual's language — tracked by PRESS-0241.
 

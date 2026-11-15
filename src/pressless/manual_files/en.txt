@@ -113,8 +113,10 @@ it from the title.
 3. Click Change address.
 
 == publishing | Publishing: putting your writing on your site
-Nothing reaches your site until you publish it. To publish everything
-waiting at once, click Publish on Your site.
+Nothing reaches your site until you publish it. Each entry and page is
+published from its own editor. Your site says how many changes are not
+on your site yet, and links to where they are. Publish on Your site
+publishes the site as it already stands, such as after a change of look.
 
 1. Open the entry or page.
 2. Click Press to site.

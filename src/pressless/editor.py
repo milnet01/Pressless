@@ -391,12 +391,14 @@ JOURNAL_ADDRESS = "/journal"
 @dataclasses.dataclass(frozen=True)
 class Entries:
     """The entries the Journal screen and Your site's tile read: the drafts
-    to list with their notes, the published entries, and the slugs that did
-    not read, by draft or not."""
+    to list with their notes, the published entries, the slugs that did
+    not read, by draft or not, and the published entries with changes not on
+    the site yet."""
     drafts: list[store.Entry]
     published: list[store.Entry]
     unreadable: dict[bool, list[str]]
     notes: dict[str, str]
+    changed: set[str]
 
 
 def read_entries(folder: Path) -> tuple[Entries, Exception | None]:
@@ -415,8 +417,8 @@ def read_entries(folder: Path) -> tuple[Entries, Exception | None]:
     # list_slugs, so an unreadable published entry still has its working copy
     # (PRESS-0162).
     published = {entry.slug for entry in readable[False]} | set(unreadable[False])
-    drafts, notes = _drafts_and_notes(readable[True], published)
-    return Entries(drafts, readable[False], unreadable, notes), first_failure
+    drafts, notes, changed = _drafts_and_notes(readable[True], published)
+    return Entries(drafts, readable[False], unreadable, notes, changed), first_failure
 
 
 def _pages_screen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
@@ -468,10 +470,10 @@ def _card(heading: str, inside: str) -> str:
 
 
 def _drafts_and_notes(read_drafts: list[store.Entry], published: set[str],
-                      ) -> tuple[list[store.Entry], dict[str, str]]:
-    """The drafts to list -- every draft but a working copy -- and the note
+                      ) -> tuple[list[store.Entry], dict[str, str], set[str]]:
+    """The drafts to list -- every draft but a working copy -- the note
     beside an entry, by slug: a published entry's waiting changes, and undo's
-    marks."""
+    marks -- and the published entries with waiting changes."""
     changed = {replaces_field(entry) for entry in read_drafts} & published
     drafts = [entry for entry in read_drafts if replaces_field(entry) not in published]
     # PRESS-0015 § 4.6: the draft undo took off the site, and a draft whose
@@ -481,7 +483,7 @@ def _drafts_and_notes(read_drafts: list[store.Entry], published: set[str],
     notes.update({entry.slug: say("editor.list.later_changes") for entry in drafts
                   if replaces_field(entry) in undone})
     notes.update({slug: say("editor.list.changed") for slug in changed})
-    return drafts, notes
+    return drafts, notes, changed
 
 
 def _rows(entries: list[store.Entry], broken: list[str], notes: dict[str, str]) -> str:
