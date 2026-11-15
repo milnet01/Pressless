@@ -186,7 +186,7 @@ picture page-editor.png | The Home page open for changing, with the page on one 
 1. Click Pages in the bar.
 2. Type the page's name in the Page name box.
 3. Click New page.
-picture new-page.png | The Your pages list open, with the Page name box and the New page button.
+picture new-page.png | The Your pages card on the Pages screen, with the Page name box and the New page button.
 
 Pressless opens the new page and adds a link to it in your menu.
 

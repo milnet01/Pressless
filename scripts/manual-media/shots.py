@@ -29,8 +29,6 @@ BOX = """([s]) => {
   const r = document.querySelector(s).getBoundingClientRect();
   return [r.x + scrollX, r.y + scrollY, r.width, r.height];
 }"""
-OPEN_LISTS = """(open) => document.querySelectorAll('#listing details')
-  .forEach((d, i) => d.open = open.includes(i))"""
 SHORT_MARKS_BOX = """() => {
   document.getElementById('cheat-sheet').open = true;
   const t = document.querySelector('textarea[name=body]');
@@ -85,15 +83,14 @@ def open_page(browser, mode):
     return p, kit.origin(link)
 
 
-def home(p):
+def home(p, go):
+    """Your site, then the Pages screen's New page card (PRESS-0353)."""
     snap(p, "help-link", union(p, "header.bar", pad=0))
     snap(p, "finish-setting-up", union(p, "#checklist"))
-    p.evaluate(OPEN_LISTS, [0, 1, 2])
-    snap(p, "your-writing", union(p, "#listing"))
-    p.evaluate(OPEN_LISTS, [2])
+    snap(p, "your-writing", union(p, "main h1", "main .tiles"))
+    go("/pages")
     p.fill("form[action='/page/new'] input", "Contact")
-    third = "#listing details:nth-of-type(3)"
-    snap(p, "new-page", union(p, third) if p.locator(third).count() else None)
+    snap(p, "new-page", union(p, "main section.card:has(form[action='/page/new'])"))
 
 
 def entry_editor(p, go):
@@ -139,7 +136,7 @@ def other_screens(p, go):
     p.locator("form#look").scroll_into_view_if_needed()
     p.mouse.wheel(0, -60)
     snap(p, "look", view=True)
-    go("/setup")
+    go("/setup/site")
     snap(p, "settings", view=True)
     go("/domain")
     snap(p, "own-domain", union(p, "main h1", "main form"))
@@ -173,10 +170,10 @@ def main():
             p.goto(base + path)
             p.wait_for_timeout(1300)
 
-        home(p)
-        go("/")
+        home(p, go)
+        go("/journal")
         p.fill("input[name=title]", "Low tide")
-        snap(p, "new-entry", union(p, "#listing form:has(input[name=title])"))
+        snap(p, "new-entry", union(p, "form:has(input[name=title])"))
         entry_editor(p, go)
         page_editor(p, go)
         other_screens(p, go)

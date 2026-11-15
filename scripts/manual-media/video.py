@@ -184,7 +184,7 @@ def look(p, cue, to):
 
 CLIPS = (
     ("searching", "/manual", searching),
-    ("writing-an-entry", "/", writing),
+    ("writing-an-entry", "/journal", writing),
     ("publishing", "/edit?slug=rain-on-the-quay", publishing),
     ("changing-the-look", "/look", look),
 )
