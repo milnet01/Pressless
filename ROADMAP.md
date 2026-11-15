@@ -7390,7 +7390,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: feature.
   Source: user-request-2026-11-13.
 
-- 📋 [PRESS-0364] **Say on Your site how many changes are not on the site yet.**
+- ✅ [PRESS-0364] **Say on Your site how many changes are not on the site yet.**
   The drawing the user chose for PRESS-0353 showed this count. The
   spec left it out (decision 5): an exact count needs GitHub's listing,
   and the first screen must not wait on the network (ADR-0005).
@@ -7401,6 +7401,9 @@ owned by docs/standards/versioning-overrides.md.
   that this computer does not, which only another computer makes.
   Decided by the user, 2026-11-15: yes, counted on this computer with
   no network, worded "N changes not on your site yet" beside Publish.
+  Shipped 2026-11-15 in f5d6647. The line stands apart from Publish, by
+  the user's choice, since Publish sends none of these changes. The
+  manual's claim that it did was corrected in the same commit.
   **Layman:** Your site's first screen says how many of your changes are still waiting to be published.
   Kind: ux.
   Source: PRESS-0353-decision-5-2026-11-15.
