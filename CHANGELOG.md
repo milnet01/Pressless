@@ -24,6 +24,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   GitHub, visitors, the journal, the AI helper, and this computer. Saving a section
   changes only what that section holds.
 
+- **The Look screen can switch to a layout's own colours** (PRESS-0352)
+  Choosing another layout keeps your colours, and the screen now says so. A button beside
+  the layouts puts the chosen layout's own colours in place; Save keeps them.
+
 ### Added
 
 - **The update offer shows what changed** (PRESS-0363)

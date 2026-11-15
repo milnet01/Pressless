@@ -328,3 +328,23 @@ def test_the_screen_offers_every_choice_look_makes():
     for kind, (shown, made) in lists.items():
         assert list(shown) == list(made), kind
         assert all(key == f"look_screen.{kind}.{name}" for name, key in shown.items()), kind
+
+
+# --------------------------------------------------------------- PRESS-0352 ---
+
+
+def test_a_saved_look_offers_each_layouts_own_colours(tmp_path: Path) -> None:
+    """PRESS-0352: once a look is saved, choosing a layout keeps its colours,
+    the screen says so, and its button carries every layout's own colours.
+    Breaks when the button is missing, or a palette differs from the layout's."""
+    folder = _site(tmp_path, "harbour")
+    with _served(folder) as browser:
+        page = browser.request("GET", "/look")[2]
+    assert "Choosing another layout keeps your colours." in page
+    found = re.search(r'data-own-colours="([^"]*)"', page)
+    assert found, "no button for a layout's own colours"
+    palettes = json.loads(found.group(1).replace("&quot;", '"'))
+    assert set(palettes) == set(starter_look.LAYOUTS)
+    for layout in starter_look.LAYOUTS:
+        own = starter_look.defaults(layout)
+        assert palettes[layout] == {"light": own.light, "dark": own.dark}, layout

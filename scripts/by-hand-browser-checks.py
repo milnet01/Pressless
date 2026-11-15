@@ -71,6 +71,7 @@ from pressless import (  # noqa: E402
     face,
     files_screen,
     importing,
+    look,
     look_screen,
     manual,
     marks,
@@ -594,6 +595,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         votes_screen(page, origin, folder)
         votes_buttons(page, folder)
         helper_publish(page, origin, folder, helper_own)
+        layout_colours(page, origin, folder)    # last: it saves a look
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -1315,6 +1317,24 @@ def more_menu(page, origin: str) -> None:
           before["rows"] < before["line"] / 2 and opened["open"]
           and opened["main"] == before["main"] and not clicked_away and not escaped,
           f"{before} {opened} {clicked_away} {escaped}")
+
+
+def layout_colours(page, origin: str, folder: Path) -> None:
+    """PRESS-0352: with a look saved, another layout keeps the colours, and
+    the button puts that layout's own colours in the boxes."""
+    look.save(folder, look.defaults("harbour"), "")
+    page.goto(f"{origin}/look", wait_until="networkidle")
+    page.check("input[name=layout][value=meadow]")
+    page.wait_for_timeout(500)
+    kept = page.input_value('input[name="light.paper"]')
+    with page.expect_response(lambda r: r.url.endswith("/look/preview")):
+        page.click("button[data-own-colours]")
+    meadow = look.defaults("meadow")
+    filled = {name: page.input_value(f'input[name="light.{name}"]') for name in meadow.light}
+    check("PRESS-0352: another layout keeps the saved colours until the button is clicked",
+          kept == look.defaults("harbour").light["paper"], kept)
+    check("PRESS-0352: the button fills the boxes with the layout's own colours",
+          filled == meadow.light, f"{filled}"[:160])
 
 
 def tiles_open(page, origin: str) -> None:

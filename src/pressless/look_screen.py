@@ -275,7 +275,7 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <div id="look-panel"{shown(PRESSLESS)}>
 <fieldset class="looks"><legend>{say("look_screen.layout")}</legend>
 {setup.look_choices("layout", choices.layout)}
-{f'<p>{say("look_screen.restart")}</p>' if restart else ""}</fieldset>
+{f'<p>{say("look_screen.restart")}</p>' if restart else _own_colours()}</fieldset>
 <h2>{say("look_screen.colours")}</h2>
 <p>{say("look_screen.colours.about")}</p>
 <table class="look-colours"><thead><tr><td></td><th scope="col">{say(_SCHEME_WORDS["light"])}</th>
@@ -302,6 +302,16 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <iframe id="preview" class="undimmed" title="{attr(say("look_screen.preview_title"))}"
  sandbox="allow-same-origin" src="{attr(frame or "about:blank")}"></iframe></div>
 <script>{_SCRIPT}</script>"""
+
+
+def _own_colours() -> str:
+    """PRESS-0352: saved colours stay when the layout changes; this button puts
+    the chosen layout's own colours in the boxes, and Save keeps them."""
+    palettes = {layout: {"light": look.defaults(layout).light, "dark": look.defaults(layout).dark}
+                for layout in look.LAYOUTS}
+    return (f'<p>{say("look_screen.colours_kept")} <button type="button" data-own-colours='
+            f'"{html.escape(json.dumps(palettes), quote=True)}">'
+            f'{say("look_screen.own_colours")}</button></p>')
 
 
 # § 4.4's live preview. Every change posts the form; the answer's style code
@@ -381,6 +391,21 @@ _SCRIPT = r"""
     }
     clearTimeout(timer);
     timer = setTimeout(preview, 250);
+  });
+  // PRESS-0352: the chosen layout's own colours into the boxes.
+  const own = form.querySelector("button[data-own-colours]");
+  if (own) own.addEventListener("click", () => {
+    const layout = form.querySelector("input[name=layout]:checked");
+    const palette = layout && JSON.parse(own.dataset.ownColours)[layout.value];
+    if (!palette) return;
+    for (const scheme of ["light", "dark"]) {
+      for (const [name, value] of Object.entries(palette[scheme])) {
+        const box = form.querySelector(`input[name="${scheme}.${name}"]`);
+        if (box) box.value = value;
+      }
+    }
+    clearTimeout(timer);
+    preview();
   });
   frame.addEventListener("load", apply);
 })();

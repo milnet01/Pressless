@@ -254,6 +254,9 @@ Your site shows the new look after you next publish. Each colour has a
 light and a dark choice: a visitor whose computer is set to dark sees
 the dark one.
 
+Choosing another layout keeps your colours. Click Use this layout's own
+colours to change them to that layout's, then Save to keep them.
+
 == files | Seeing or removing the files you uploaded
 Files are the songs, videos, PDFs, ZIP files and text files you have
 uploaded for your pages.

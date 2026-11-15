@@ -2471,6 +2471,8 @@ _WORDS: dict[str, str] = {
     ),
     "look_screen.restart": "Choosing a layout here starts again from its own colours and fonts.",
     "look_screen.layout": "Layout",
+    "look_screen.colours_kept": "Choosing another layout keeps your colours.",
+    "look_screen.own_colours": "Use this layout's own colours",
     "look_screen.colours": "Colours",
     "look_screen.colours.about": (
         "Light is used when a visitor's computer is set to light, and dark when it is set to"
