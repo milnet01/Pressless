@@ -211,7 +211,7 @@ def _finished(domain: str) -> str:
     link = f'<a href="{address}">{e(domain)}</a>'
     return (f"<h1>{say('domain.done.heading')}</h1><p>{say('domain.done', link=link)}</p>"
             f"<p>{say('domain.done.publish')}</p><p>{say('domain.done.remove')}</p>"
-            f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>')
+            f'<p class="nav"><a href="/">{say("face.your_site")}</a></p>')
 
 
 def register(face: Face, folder: Path, *, transport: publisher.Transport | None = None,

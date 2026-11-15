@@ -54,6 +54,9 @@ installed version and needs no internet.
 6. **Help sits in the bar, after Files and before More.** *(decided
    here)* PRESS-0343 put the rest under More to keep the bar short; Help
    is the one link a lost newcomer looks for, and More hides it.
+
+   *Moved by PRESS-0353 § 4.2: the bar is Your site, Pages, Journal, Look,
+   Files, Visitors, Settings, Help, then More.*
 7. **One page, filtered in the browser.** *(decided here)* Every task is
    on `/manual`; the search box hides tasks rather than asking the Face.
 8. **A small fixed text format, not Markdown.** *(decided here)* § 4.2
@@ -131,6 +134,8 @@ Source: <https://wcag.dock.codes/documentation/wcag413> (WCAG 4.1.3).
 
 ### 4.4 The Help link
 
+*Moved by PRESS-0353 § 4.2: Help follows Settings, still before More.*
+
 `face._page` adds `<a href="/manual">{say("face.help")}</a>` after the
 Files link and before `<details class="more">`.
 
@@ -191,6 +196,9 @@ Source: <https://www.htmhell.dev/tips/the-track-element>.
   *Test:* `tests/test_manual.py::test_every_page_has_help` — renders
   `face._page` and finds `href="/manual"` before `class="more"`.
   *Breaks when:* the bar is rebuilt without it, or it moves under More.
+
+  *Moved by PRESS-0353 § 4.2: the bar's order is that section's; Help still
+  comes before More.*
 
 - **INV-5** — The manual names nothing outside the Face: no `src` or
   `href` on `/manual` starts with a scheme or `//`.

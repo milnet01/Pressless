@@ -61,12 +61,12 @@ def test_the_issue_is_ready_filled_and_carries_nothing_of_theirs(tmp_path):
     assert platform.system() in text
     for blank in ("What I pressed", "What I expected", "What I saw"):
         assert blank in text
-    # PRESS-0232: the top bar links every page to his own site; nothing else
-    # on this one may name it.
-    visit = (f'<a href="https://{SENTINEL}.example.org" target="_blank" rel="noopener" '
-             "data-site>")
-    assert body.count(visit) == 1
-    assert SENTINEL not in body.replace(visit, "")
+    # PRESS-0353 § 4.2: the top bar names the open site once, by its name and
+    # not its address; nothing else on this page may name it.
+    named = f'<a href="/sites">{SENTINEL}</a>'
+    assert body.count(named) == 1
+    assert "data-site" not in body
+    assert SENTINEL not in body.replace(named, "")
 
 
 def test_it_says_the_issue_is_public_and_points_security_elsewhere(tmp_path):

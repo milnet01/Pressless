@@ -168,8 +168,8 @@ def register(face: Face, folder: Path, *,
     def change(request: Request) -> str:
         return _shortcuts(face, shortcut_places(), request)
 
-    face.add_to_list(lambda: _unpublished_starter(folder), above=True)
-    face.add_to_list(lambda: _takeover_owed(folder), above=True)
+    face.add_piece("site-notices", lambda: _unpublished_starter(folder))
+    face.add_piece("site-notices", lambda: _takeover_owed(folder))
     face.add_unseen(lambda: starter.unpublished(folder))
     face.add_page("GET", "/setup", page)
     face.add_page("POST", "/setup", page)
@@ -231,7 +231,9 @@ def _setup(face: Face, folder: Path, request: Request,
                         start=False if offer else None,
                         signed_in=_signed_in(folder, saved))
                 + (_shortcut_form(where, shortcuts.present(where)) if where else "")
-                + restarting.link())
+                + restarting.link()
+                # PRESS-0353 § 4.6: what the machine's parts add here.
+                + "".join(face.pieces("computer")))
     return render_notices(notices) + _submit(face, folder, saved,
                                              _read_answers(request.body), transport, offer)
 

@@ -239,7 +239,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", ADDRESS, page)
     face.add_upload(f"{ADDRESS}/export", export_file, folder)
     face.add_upload(f"{ADDRESS}/media", media_file, folder)
-    face.add_to_list(offer, above=True)
+    face.add_piece("site-notices", offer)
     _register_folder(face, folder, empty, room, to_the_list)
 
 

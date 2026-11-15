@@ -16,7 +16,7 @@ from pathlib import Path
 import _jxl_standin as standin
 import pytest
 
-from pressless import jpegxl, jpegxl_screen, updater
+from pressless import jpegxl, jpegxl_screen, setup, updater
 
 DOWNLOADS = "https://github.com/milnet01/Pressless/releases/download"
 
@@ -283,13 +283,14 @@ def test_the_line_adds_support_on_a_click(tmp_path, monkeypatch, served, said):
         "djxl-test", len(_RIGHT), hashlib.sha256(_RIGHT).hexdigest()))
     net = _Net(f"{DOWNLOADS}/jpeg-xl-0.12.0/djxl-test", served)
     with _editor(folder) as browser:
+        setup.register(browser.served, folder)
         jpegxl_screen.register(browser.served, own, platform="linux", transport=net)
-        before = _line_html(browser.request("GET", "/")[2])
+        before = _line_html(browser.request("GET", "/setup")[2])
         assert "JPEG XL photographs: not added yet." in before
         assert "Add JPEG XL support (0.0 MB)</button>" in before
         status, headers, _ = _Browser.request(browser, "POST", "/jpeg-xl")
-        assert status == 303
-        after = _line_html(browser.request("GET", "/")[2])
+        assert status == 303 and headers.get("Location") == "/setup"
+        after = _line_html(browser.request("GET", "/setup")[2])
     assert said in after
     assert "<button" in after
     assert ("<button hidden>" in after) == (served == _RIGHT)

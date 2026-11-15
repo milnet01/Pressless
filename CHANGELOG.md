@@ -12,6 +12,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pressless opens on Your site, and each part of a site has its own screen** (PRESS-0353)
+  Your site shows a tile for your pages, journal, look, menu, files and visitors, with
+  Publish and Undo at the top. The bar names the same parts. Pages and Journal are
+  screens of their own, and the switches for updates and JPEG XL are in Settings.
+
 ### Added
 
 - **The update offer shows what changed** (PRESS-0363)

@@ -92,7 +92,7 @@ def test_a_new_page_waits(tmp_path):
         status, headers, _ = _new(browser, "Gigs & Tours")
         assert status == 303
         assert headers["Location"] == "/page?kind=pages&name=gigs-tours"
-        listed = browser.request("GET", "/")[2]
+        listed = browser.request("GET", "/pages")[2]
     copy = _waiting(folder, "pages", "gigs-tours").read_text(encoding="utf-8")
     assert "<title>Gigs &amp; Tours</title>" in copy
     assert '<!-- HEADER:START page="gigs-tours" -->' in copy
@@ -117,7 +117,7 @@ def test_a_taken_page_name_is_refused(tmp_path, name, code):
     with _pages(folder) as browser:
         status, headers, _ = _new(browser, name)
         listed = browser.request("GET", headers["Location"])[2]
-    assert status == 303 and headers["Location"] == f"/?page_hint={code}"
+    assert status == 303 and headers["Location"] == f"/pages?page_hint={code}"
     assert _held(folder) == before
     hint = listed.split('<p id="page-hint" role="status">', 1)[1].split("</p>", 1)[0]
     assert hint, listed
@@ -190,9 +190,9 @@ def test_an_unusual_menu_is_left_and_said(tmp_path, monkeypatch):
     assert say("site.updated") in notices and say("site.unchanged") not in notices
 
 
-def test_throwing_away_a_new_page_returns_to_the_list(tmp_path):
+def test_throwing_away_a_new_page_returns_to_the_pages_screen(tmp_path):
     """§ 4.3: throwing away a never-pressed page bins its only copy and
-    answers with the list, not an editor with nothing to open.
+    answers with the Pages screen, not an editor with nothing to open.
 
     Breaks when the 303 still names the page."""
     folder = _folder_with_menu(tmp_path)
@@ -201,7 +201,7 @@ def test_throwing_away_a_new_page_returns_to_the_list(tmp_path):
         copy = _waiting(folder, "pages", "gigs")
         status, headers, _ = browser.request("POST", "/page/discard", {
             "kind": "pages", "name": "gigs", "base": _digest(copy)})
-    assert status == 303 and headers["Location"] == "/"
+    assert status == 303 and headers["Location"] == "/pages"
     assert not copy.exists()
 
 

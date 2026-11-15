@@ -38,7 +38,7 @@ def install(folder: Path, platform: str, transport: updater.Transport | None = N
 
 def register(face: Face, own: Path, *, platform: str | None = None,
              transport: updater.Transport | None = None) -> None:
-    """Add the line below the list, and its route. `own` is Pressless's own
+    """Add the line to Settings' place for this computer, and its route. `own` is Pressless's own
     folder."""
     own = Path(own)
     platform = platform or jpegxl.this_system()
@@ -55,12 +55,11 @@ def register(face: Face, own: Path, *, platform: str | None = None,
                 failure.append("jpegxl.rejected")
             except (updater.UpdateError, OSError):
                 failure.append("jpegxl.no_connection")
-        return Reply(b"", "text/plain", status=303, location="/")
+        return Reply(b"", "text/plain", status=303, location="/setup")
 
     face.add_page("POST", "/jpeg-xl", add)
-    face.add_to_list(lambda: line_html(jpegxl.installed(own, platform) is not None,
-                                       jpegxl.PINS[platform].size, failure[:1]),
-                     above=False)
+    face.add_piece("computer", lambda: line_html(jpegxl.installed(own, platform) is not None,
+                                                 jpegxl.PINS[platform].size, failure[:1]))
 
 
 def line_html(ready: bool, size: int, failure: list[str]) -> str:

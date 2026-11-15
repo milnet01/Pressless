@@ -351,6 +351,10 @@ repository — a fork carrying the release workflow — is signed the same way:
 
 ### 4.9 What he sees
 
+*Moved by PRESS-0353 § 4.6: the offer is a `site-notices` piece on Your site, `/`. The
+switch is a `computer` piece, drawn at the end of Settings, `/setup`.
+`Face.add_piece(place, render)` replaces `add_to_list`.*
+
 **`updating` reaches the page at `/` through a new
 `Face.add_to_list(render, *, above)`**, where `render` returns HTML.
 `editor._list` reads them back with `Face.list_pieces(above)` and puts each

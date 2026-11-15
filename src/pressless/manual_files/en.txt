@@ -19,36 +19,36 @@ hosts it for free.
 picture setup-welcome.png | The first setup screen, headed Set up Pressless, with a Next button.
 2. Click Next to go on, or Back to return to the screen before.
 3. Click What's happening on a screen to read what that step does.
-4. On the last screen, click Go to your list.
+4. On the last screen, click Go to your site.
 
 If you close Pressless partway, it starts again where you left off.
 
 == your-writing | Finding your way around
-Your writing is the first screen, and the first link in the bar. It
-lists everything on your site.
+Your site is the first screen. It has a tile for each part of your
+site, and the bar at the top names each part too.
 
-1. Click Your writing in the bar.
-picture your-writing.png | The Your writing screen, with the lists Drafts, On your site, Your pages and Parts of every page.
-2. Click a heading, such as Drafts or Your pages, to open its list.
-3. Click a name in a list to open it.
+1. Click Your site in the bar.
+picture your-writing.png | The Your site screen, with a tile for each part of the site.
+2. Click a tile's link, such as Open your pages, to open that part.
+3. Or click a part in the bar: Pages, Journal, Look, Files or Visitors.
 
-Drafts are entries only on this computer. On your site lists the entries
-you have published. Your pages are pages such as Home and About. Parts
-of every page are the header, the footer and the menu.
+Pages are pages such as Home and About. The journal holds your entries:
+Drafts are only on this computer, and On your site lists the entries
+you have published. The menu, header and footer are parts of every page.
 
 == finishing-setup | Finishing setting up
-After setup, the Your writing screen shows a list headed Finish setting
-up. A tick marks each thing already done.
+After setup, the Your site screen shows a list headed Finish setting
+up, under its tiles. A tick marks each thing already done.
 
 1. Click a line that is not ticked. Pressless opens the screen where it is done.
 picture finish-setting-up.png | The Finish setting up list, with two lines ticked and three still to do.
-2. Do it there, then click Your writing to see the list again.
+2. Do it there, then click Your site to see the list again.
 
 == writing-an-entry | Writing a new entry
 An entry is a dated piece of writing, like a blog post. Your journal
 lists your entries, newest first.
 
-1. Click Your writing in the bar.
+1. Click Journal in the bar.
 2. Type the entry's name in the Title box.
 3. Click New entry.
 picture new-entry.png | The Title box holding the words Low tide, with the Start from list and the New entry button beside it.
@@ -113,7 +113,8 @@ it from the title.
 3. Click Change address.
 
 == publishing | Publishing: putting your writing on your site
-Nothing reaches your site until you publish it.
+Nothing reaches your site until you publish it. To publish everything
+waiting at once, click Publish on Your site.
 
 1. Open the entry or page.
 2. Click Press to site.
@@ -126,7 +127,7 @@ Pressless says Published when it is done. Your site shows the change
 within a few minutes. View your site opens your site in a new tab.
 
 == changing-published | Changing an entry that is already on your site
-1. Click Your writing, then On your site, then the entry.
+1. Click Journal in the bar, then the entry under On your site.
 2. Change it. Your changes stay on this computer, and your site still shows the entry as it was.
 3. Click Press to site to publish the changes.
 4. To give the changes up instead, click Bin this proof.
@@ -135,7 +136,7 @@ within a few minutes. View your site opens your site in a new tab.
 Undo puts your site back as it was before your last publish. What you
 wrote stays on this computer as a draft.
 
-1. Click Your writing in the bar.
+1. Click Your site in the bar.
 2. Click Undo the last press.
 
 Pressless cannot undo your very first publish.
@@ -151,13 +152,13 @@ The entry moves to the bin in your Pressless-data folder.
 A template is a ready-made start: a poem, a lyric with verses, an entry
 around one photograph, or a plain journal entry.
 
-1. Click Your writing in the bar.
+1. Click Journal in the bar.
 2. Type the entry's name in the Title box.
 3. Choose a template in the Start from list.
 4. Click New entry.
 
 == making-a-template | Making or changing your own template
-1. Click Your writing in the bar.
+1. Click Journal in the bar.
 2. Under Your templates, type a name in the Name box and click New template. To change one, click its name.
 3. Type the title and the words every entry started from it should begin with.
 4. Click Save.
@@ -168,21 +169,21 @@ Bin this template removes it. A template is never put on your site.
 The journal is the dated part of a site, like a blog. With it off, your
 site is pages only.
 
-1. Click Your writing in the bar.
+1. Click Journal in the bar.
 2. Click Turn the journal off, or Turn the journal on.
 
 Turning it off takes your published entries off your site at your next
 publish. Turning it on again brings them back.
 
 == changing-a-page | Changing a page, such as Home or About
-1. Click Your writing, then Your pages, then the page.
+1. Click Pages in the bar, then the page.
 2. Click a heading, paragraph or any section on the page.
 picture page-editor.png | The Home page open for changing, with the page on one side and the Add list on the other.
 3. Type on the page to change words. The boxes beside the page change anything else about that section.
 4. Click Press to site to publish the page.
 
 == adding-a-page | Adding a new page
-1. Click Your writing, then Your pages.
+1. Click Pages in the bar.
 2. Type the page's name in the Page name box.
 3. Click New page.
 picture new-page.png | The Your pages list open, with the Page name box and the New page button.
@@ -219,7 +220,7 @@ a back to top link and a countdown.
 The menu is the row of links on every page of your site. Pressless calls
 it Navigation.
 
-1. Click Your writing, then Parts of every page, then Navigation.
+1. Click Pages in the bar, then Navigation under Parts of every page.
 picture menu.png | The menu's links, each with a Words box, a Goes to box, and the buttons Move up, Move down and Remove.
 2. Change the words of a link in its Words box.
 3. Click Move up or Move down to change the order, or Remove to take a link out.
@@ -230,7 +231,7 @@ picture menu.png | The menu's links, each with a Words box, a Goes to box, and t
 The header is the top of every page of your site, and the footer is the
 bottom.
 
-1. Click Your writing, then Parts of every page, then Header or Footer.
+1. Click Pages in the bar, then Header or Footer under Parts of every page.
 2. Change it as you would a page.
 3. Beside Show it on, click a page's name to see the change on that page.
 4. Click Press to site to publish it.
@@ -294,10 +295,9 @@ numbers from Google Analytics. It is optional.
 Turn off visitor numbers, on the same screen, stops it.
 
 == who-is-reading | Seeing who reads your site
-1. Click Your writing in the bar.
-2. Under Who is reading, click the link.
+1. Click Visitors in the bar.
 picture who-is-reading.png | The Who is reading screen, with a count of people, a chart of people each day and a table of countries.
-3. Click Last 7 days, Last 4 weeks or Last 12 months.
+2. Click Last 7 days, Last 4 weeks or Last 12 months.
 
 The screen shows how many people read your site, where they are, how
 they found you and what they read.
@@ -390,20 +390,20 @@ This changes Pressless on your screen only, never your site.
 2. Choose Large, Larger or Largest in the Text size list.
 
 == updating | Updating Pressless
-When a new version is out, the Your writing screen says so.
+When a new version is out, the Your site screen says so.
 Click What is new since version, under the buttons, to read what changed.
 
 1. Click Update now. Pressless installs it and opens again by itself.
 2. Or click Later, or Skip this version.
 
-Your writing stays where it is. To stop Pressless looking for new
-versions, click Stop looking, low on the Your writing screen.
+Your sites stay where they are. To stop Pressless looking for new
+versions, click Stop looking, low on the Settings screen.
 
 == jpeg-xl | Using JPEG XL photographs
 JPEG XL is a kind of photograph file. Pressless needs one download
 before it can use them.
 
-1. Click Your writing in the bar.
+1. Click Settings in the bar.
 2. Click Add JPEG XL support, low on the screen.
 
 == shortcuts | Putting Pressless in the menu or on the desktop
@@ -417,7 +417,7 @@ This works when Pressless runs from the file you downloaded.
 An AI app on your computer, such as Claude, can write and edit your
 site through Pressless. It is off until you switch it on.
 
-1. Click Your writing in the bar, then AI helper, low on the screen.
+1. Click Your site in the bar, then AI helper, near the top.
 2. Click Switch on.
 picture ai-helper.png | The top of the AI helper screen, saying Off: no AI app can connect, with the Switch on button.
 3. For Claude Desktop, click Connect Claude Desktop, then quit Claude Desktop fully and start it again. For another app, follow the steps on the screen.

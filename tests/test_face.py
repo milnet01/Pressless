@@ -34,6 +34,7 @@ from pressless import (
     face,
     insights,
     look,
+    overview,
     page_editor,
     publisher,
     store,
@@ -506,8 +507,8 @@ def test_every_page_links_to_settings(tmp_path: Path) -> None:
         served.stop()
 
 
-def test_every_page_links_back_to_your_writing(tmp_path: Path) -> None:
-    """PRESS-0281. Breaks when the top bar has no way back to the list, on an
+def test_every_page_links_back_to_your_site(tmp_path: Path) -> None:
+    """PRESS-0281. Breaks when the top bar has no way back to Your site, on an
     ordinary page or on a failure page."""
     def broken(request: face.Request) -> str:
         raise ValueError("x")
@@ -521,45 +522,73 @@ def test_every_page_links_back_to_your_writing(tmp_path: Path) -> None:
             status, _, body = client.request("GET", path)
             bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
             assert status == expected, path
-            assert '<a href="/">Your writing</a>' in bar, path
+            assert '<a href="/">Your site</a>' in bar, path
     finally:
         served.stop()
 
 
-def test_the_bar_keeps_a_short_main_menu_and_the_rest_under_more(tmp_path: Path) -> None:
-    """PRESS-0343: the bar wrapped onto two lines with nine links and two
-    choices. Breaks when more than seven links stand on the bar itself, or a
-    screen or choice moved under More goes missing. Seven since PRESS-0219's
-    Help, measured one line at 1280 px in Chrome and Firefox."""
+def test_the_bar_names_the_parts_of_a_site(tmp_path: Path) -> None:
+    """INV-1 (PRESS-0353 § 4.2), with PRESS-0343's More: on a normal page and a
+    failure page the parts of a site stand on the bar in order, and Report,
+    Usage, About and the two pickers stay under More. Breaks when a link is
+    missing, added or out of order, or View your site is still in the bar."""
+    def broken(request: face.Request) -> str:
+        raise ValueError("x")
+
     _saved(tmp_path)
     served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/words", lambda request: "<p>Words</p>")
-        body = _Client(served).request("GET", "/words")[2]
+        served.add_page("GET", "/broken", broken)
+        client = _Client(served)
+        bodies = [client.request("GET", path) for path in ("/words", "/broken")]
     finally:
         served.stop()
-    bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
-    more = re.search(r'<details class="more">(.*?)</details>', bar, re.S)
-    assert more, "no More menu"
-    standing = bar.replace(more.group(0), "")
-    assert len(re.findall(r"<a ", standing)) <= 7
-    assert "<select" not in standing
-    for inside in ('href="/report"', 'href="/about"', usage.ADDRESS,
-                   "data-theme-picker", "data-size-picker"):
-        assert inside in more.group(1), inside
-    for kept in ('href="/"', 'href="/sites"', 'href="/setup"', 'href="/look"',
-                 'href="/files"', 'href="/manual"', "data-site"):
-        assert kept in standing, kept
+    assert [status for status, _, _ in bodies] == [200, 500]
+    for _, _, body in bodies:
+        bar = body.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
+        more = re.search(r'<details class="more">(.*?)</details>', bar, re.S)
+        assert more, "no More menu"
+        standing = bar.replace(more.group(0), "")
+        assert re.findall(r'<a href="([^"]*)"', standing) == [
+            "/sites", "/", "/pages", "/journal", "/look", "/files", "/visitors", "/setup",
+            "/manual"]
+        assert "<select" not in standing and "data-site" not in standing
+        assert "View your site" not in standing
+        for inside in ('href="/report"', 'href="/about"', usage.ADDRESS,
+                       "data-theme-picker", "data-size-picker"):
+            assert inside in more.group(1), inside
 
-def test_the_bar_links_to_the_live_site_once_set_up(tmp_path: Path) -> None:
-    """PRESS-0232. Breaks when the top bar has no link to the site's address
-    once settings hold one, shows one before, or a missing or unreadable
-    settings file stops a page from rendering."""
+
+def test_a_piece_shows_in_its_place(tmp_path: Path) -> None:
+    """INV-5 (PRESS-0353 § 4.6). Breaks when places share one list, or a
+    mistyped place is accepted and its piece never shows."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_piece("journal-below", lambda: "<p>a journal piece</p>")
+        with pytest.raises(ValueError):
+            served.add_piece("nowhere", lambda: "<p>lost</p>")
+        assert served.pieces("journal-below") == ["<p>a journal piece</p>"]
+        assert all(served.pieces(place) == [] for place in face.PLACES
+                   if place != "journal-below")
+        editor.register(served, tmp_path)
+        overview.register(served, tmp_path)
+        client = _Client(served)
+        journal = client.request("GET", "/journal")[2]
+        home = client.request("GET", "/")[2]
+    finally:
+        served.stop()
+    assert "a journal piece" in journal and "a journal piece" not in home
+
+
+def test_the_bar_leaves_the_live_site_to_your_site_screen(tmp_path: Path) -> None:
+    """PRESS-0232, as PRESS-0353 § 4.2 reshapes it: View your site is no
+    longer in the top bar, set up or not, and a missing or unreadable
+    settings file stops no page from rendering. Breaks when the link returns
+    to the bar or the bar reads the settings in a way that fails a page."""
     def broken(request: face.Request) -> str:
         raise ValueError("x")
 
-    link = ('<a href="https://example.org" target="_blank" rel="noopener" '
-            "data-site>View your site</a>")
     served = face.serve(tmp_path)
     try:
         served.add_page("GET", "/words", lambda request: "<p>Words</p>")
@@ -575,13 +604,15 @@ def test_the_bar_links_to_the_live_site_once_set_up(tmp_path: Path) -> None:
             return found
 
         assert [status for status, _ in bars()] == [200, 500]
-        assert all("View your site" not in bar for _, bar in bars())
         _saved(tmp_path)
-        for status, bar in bars():
-            assert link + '<a href="/setup">Settings</a>' in bar, status
         (tmp_path / "settings.json").write_text("{not json", encoding="utf-8")
         for (status, bar), expected in zip(bars(), (200, 500), strict=True):
-            assert status == expected and "View your site" not in bar
+            assert status == expected and '<a href="/sites">Sites</a>' in bar
+        (tmp_path / "settings.json").unlink()
+        _saved(tmp_path)
+        for status, bar in bars():
+            assert "View your site" not in bar and "data-site" not in bar, status
+            assert '<a href="/setup">Settings</a>' in bar, status
     finally:
         served.stop()
 
@@ -765,7 +796,7 @@ def test_the_bar_and_a_screens_own_links_look_like_buttons(tmp_path: Path) -> No
                                      "/page?kind=pages&name=index",
                                      "/page?kind=pages&name=index&view=code"])
 def test_the_editors_way_back_and_switch_are_buttons(tmp_path: Path, address: str) -> None:
-    """PRESS-0286. Breaks when an editor's Your writing or its view switch
+    """PRESS-0286. Breaks when an editor's way back or its view switch
     sits outside a `.nav` line, so it shows as a plain link."""
     folder = tmp_path / "data"
     folder.mkdir()
@@ -782,7 +813,9 @@ def test_the_editors_way_back_and_switch_are_buttons(tmp_path: Path, address: st
     finally:
         served.stop()
     lines = re.findall(r'<p class="nav">(.*?)</p>', body, re.S)
-    assert any('<a href="/">Your writing</a>' in line for line in lines), address
+    back = ('<a href="/journal">Journal</a>' if address.startswith("/edit")
+            else '<a href="/pages">Pages</a>')
+    assert any(back in line for line in lines), address
     if address.startswith("/page"):
         assert any("Show me the code" in line or "View editor" in line
                    for line in lines), address

@@ -170,6 +170,9 @@ site's entry instead (PRESS-0231 § 4.3, *Continue as*).
 
 ### 4.6 The Sites screen
 
+*Moved by PRESS-0353 § 4.2: Sites is the bar's first link and shows the open site's
+name. View your site is on Your site, `/`.*
+
 `src/pressless/sites_screen.py`, at `/sites`, linked from every screen's
 top bar after Your writing. Look and View your site keep their places
 beside Settings (PRESS-0196, PRESS-0232).

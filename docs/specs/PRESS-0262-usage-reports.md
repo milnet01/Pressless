@@ -139,6 +139,9 @@ the call has passed, before anything is built.
   them** and **No thanks**, through `face.add_to_list(..., above=True)`.
   Showing it calls `set_answer(folder, False)` first, so leaving it
   unanswered is no. **Yes** posts to `/usage/yes`.
+
+  *Moved by PRESS-0353 § 4.6: the question is a `site-notices` piece on
+  Your site, `/`, through `Face.add_piece`.*
 - **The Usage reports screen** at `/usage` says whether reports are on,
   has one button to turn them on or off (`/usage/yes`, `/usage/no`),
   and lists the contents of `usage-sent.json`, newest first, each as the

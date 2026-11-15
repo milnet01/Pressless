@@ -585,7 +585,8 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
         f'<link rel="stylesheet" href="{attr(editor.PREVIEW_ADDRESS + sheet)}">'
         for sheet in sheets)
     return f"""{stylesheets}
-<p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
+<p class="nav"><a href="{editor.PAGES_ADDRESS}">{say("face.pages")}</a>
+<span id="save-status"></span></p>
 <h1>{html.escape(title)}</h1>{every_page}
 <div id="standing" data-waiting="{'1' if waiting else '0'}">
 <p data-when="1"{'' if waiting else ' hidden'}>{say("editor.standing.waiting")}</p>
@@ -833,7 +834,8 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     # has nothing left to open.
     live = store.html_path_for(folder, kind, name)
     return Reply(b"", "text/plain; charset=utf-8", status=303,
-                 location=_page_address(kind, name) if live.is_file() else "/")
+                 location=_page_address(kind, name) if live.is_file()
+                 else editor.PAGES_ADDRESS)
 
 
 def _publish(face: Face, folder: Path, request: Request,
@@ -1092,7 +1094,8 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
         try:
             location = _page_address(store.PAGES_FOLDER, new_page(folder, named))
         except NameRefused as refused:
-            location = "/?" + urllib.parse.urlencode({"page_hint": refused.code})
+            location = (editor.PAGES_ADDRESS + "?"
+                        + urllib.parse.urlencode({"page_hint": refused.code}))
         except store.StoreError as exc:
             return editor.failed(face, notices, exc)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)

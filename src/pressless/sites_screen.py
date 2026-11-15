@@ -184,7 +184,7 @@ def _screen(own: Path, hint: str = "", *, raw: bool = False) -> str:
     where = say("sites_screen.backups.chosen_folder" if chosen
                 else "sites_screen.backups.default_folder")
     value = attr(str(backups.folder_of(own))) if chosen else ""
-    return (f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>'
+    return (f'<p class="nav"><a href="/">{say("face.your_site")}</a></p>'
             f'<h1>{say("sites_screen.title")}</h1><p>{say("sites_screen.about")}</p>'
             f'{said}<ul class="sites">{"".join(rows)}</ul>'
             f'<form method="post" action="{ADDRESS}/new">'

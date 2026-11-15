@@ -109,6 +109,9 @@ usable once PRESS-0016 can put an original in the Store**; both are
 
 ### 4.3 Picking one
 
+*Moved by PRESS-0353 § 4.4: the New entry form, with its template choice, is on the
+Journal screen, `/journal`.*
+
 The list's New form (`editor._list`, PRESS-0012 § 4.5) gains a `<select
 name="template">` after the title field. Its first option is a blank
 entry, value `""`. Then one option per `store.list_templates(folder)`
@@ -154,6 +157,9 @@ the name as typed, and answers 303 to its page.
 answers 303 to the list.
 
 The list page shows the templates under **Your templates**, each linking
+
+*Moved by PRESS-0353 § 4.6: Your templates is the `journal-below` piece on the Journal
+screen, `/journal`, registered with `Face.add_piece`.*
 to its page, with the New template form below them. It reaches the list
 through `face.add_to_list(..., above=False)`, so `editor` does not import
 this module.

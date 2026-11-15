@@ -338,7 +338,7 @@ line, in the stage that moves it, and a labelled loop-log row.
 
 - The list at `/`: PRESS-0012 § 4.5, PRESS-0014 § 4.4, PRESS-0015 § 4.6,
   PRESS-0017 § 4.3, PRESS-0023 § 4.9, PRESS-0214 § 3 decision 4 and
-  § 4.5, PRESS-0262 § 4.3, PRESS-0275 § 4.3, PRESS-0333 § 4.3,
+  § 4.5, PRESS-0262 § 4.3, PRESS-0275 § 4.6, PRESS-0333 § 4.3,
   PRESS-0337 § 4.6.
 - The bar: PRESS-0219 § 3 decision 6, § 4.4 and INV-4; PRESS-0223 § 4.6;
   PRESS-0196 § 4.4; PRESS-0197 § 4.4.

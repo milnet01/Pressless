@@ -229,6 +229,8 @@ as a ZIP's does, and `_work_out` adds `Found.left` itself. `forget_folder` also 
 that file. The Store's list page shows `setup.takeover.owed` above the list while the
 marker exists, as `_unpublished_starter` does for the starter.
 
+*Moved by PRESS-0353 § 4.6: the notice is a `site-notices` piece on Your site, `/`.*
+
 ### 4.4 The warning, before Finish (Face)
 
 The *site* step, where the answers carry `take_over`, shows `_show_take_over`, which

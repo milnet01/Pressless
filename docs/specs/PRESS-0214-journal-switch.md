@@ -48,6 +48,8 @@ builds exactly as before.
 4. **The switch sits on the "Your writing" page.** *(decided here)* That page
    lists the entries the switch governs. The Settings page asks GitHub on
    every save, which a switch has no reason to do.
+
+   *Moved by PRESS-0353 § 4.4: the switch is on the Journal screen, `/journal`.*
 5. **Publishing an entry while the journal is off is refused.** *(decided
    here)* The alternative publishes a file that no page shows, and Publish
    would appear to do nothing.
@@ -143,6 +145,9 @@ the journal off after an undo to a state where it was on. Every other kind
 keeps PRESS-0015 § 4.4's rule that a file the fetched state lacks is kept.
 
 ### 4.5 The "Your writing" page
+
+*Moved by PRESS-0353 § 4.4: the switch, its line and its notes are on the Journal
+screen, `/journal`, and `POST /journal` returns there.*
 
 `editor._list` shows one line saying whether the journal is on, and one
 button that posts to a new `POST /journal`, which `editor.register` adds.

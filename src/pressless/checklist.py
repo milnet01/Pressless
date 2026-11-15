@@ -1,8 +1,7 @@
-"""The finish-setting-up list at the top of Your writing (PRESS-0344).
+"""The finish-setting-up list at the foot of Your site (PRESS-0344, PRESS-0353).
 
 Each item is read from the Store, so it ticks itself as the site gets there,
-and the list goes once every item is done. It reaches the list through
-Face.add_to_list, so the editor never imports it.
+and the list goes once every item is done. Your site draws it.
 """
 from __future__ import annotations
 
@@ -10,14 +9,9 @@ import html
 from pathlib import Path
 
 from pressless import starter, store
-from pressless.face import Face
 from pressless.words import say
 
 _HOME = "/page?kind=pages&name=index"
-
-
-def register(face: Face, folder: Path) -> None:
-    face.add_to_list(lambda: render(folder), above=True)
 
 
 def render(folder: Path) -> str:

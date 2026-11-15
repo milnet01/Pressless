@@ -51,7 +51,7 @@ def test_sites_keep_their_own_writing(tmp_path: Path) -> None:
     restarts: list[int] = []
     served, browser = _serve(own, restarts)
     try:
-        assert "Seaside-Walk" in browser.request("GET", "/")[2]
+        assert "Seaside-Walk" in browser.request("GET", "/journal")[2]
         status, _, page = browser.request("POST", "/sites/open", {"site": "site-2"})
         assert status == 200 and "Pressless is restarting." in page
     finally:
@@ -59,7 +59,7 @@ def test_sites_keep_their_own_writing(tmp_path: Path) -> None:
     assert _settled(restarts, 1) == [1]
     served, browser = _serve(own, restarts)
     try:
-        assert "Seaside-Walk" not in browser.request("GET", "/")[2]
+        assert "Seaside-Walk" not in browser.request("GET", "/journal")[2]
     finally:
         served.stop()
     assert (own / "sites" / "site-1" / "drafts" / "seaside-walk.txt").is_file()

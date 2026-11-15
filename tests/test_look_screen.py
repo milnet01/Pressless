@@ -311,7 +311,8 @@ def test_the_bar_links_to_the_look_screen(tmp_path):
     with _served(_folder(tmp_path)) as browser:
         _, _, page = browser.request("GET", "/look")
     bar = page.split('<header class="bar">', 1)[1].split("</header>", 1)[0]
-    assert '<a href="/setup">Settings</a><a href="/look">Look</a>' in bar
+    assert ('<a href="/journal">Journal</a><a href="/look">Look</a>'
+            '<a href="/files">Files</a>') in bar
 
 
 def test_the_screen_offers_every_choice_look_makes():

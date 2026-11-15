@@ -148,7 +148,7 @@ def test_a_template_bin_touches_only_its_file(tmp_path):
     with _served(folder) as browser:
         status, headers, _ = browser.request("POST", "/template/bin", {
             "name": "poem", "base": _digest(path)})
-    assert (status, headers.get("Location")) == (303, "/")
+    assert (status, headers.get("Location")) == (303, "/journal")
     assert store.list_templates(folder) == ()
     assert [p.name for p in (folder / "bin").rglob("*.txt")] == ["poem.txt"]
     assert store.list_slugs(folder, draft=True) == ("poem",)
@@ -198,7 +198,7 @@ def test_the_list_offers_each_template_by_its_title(tmp_path):
     _template(folder, "poem", title="A poem")
     _template(folder, "blank-title")
     with _served(folder) as browser:
-        status, _, page = browser.request("GET", "/")
+        status, _, page = browser.request("GET", "/journal")
     assert status == 200
     assert '<option value="">' in page
     assert '<option value="poem">A poem</option>' in page

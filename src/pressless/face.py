@@ -748,6 +748,10 @@ body.face { all: unset; display: block; margin: 0; background: var(--paper); col
   padding: 1.1rem 1.4rem; margin: 1.25rem 0; box-shadow: 0 4px 18px var(--shadow); }
 .face .card > h2:first-child { margin-top: 0; }
 .face .card > :last-child { margin-bottom: 0; }
+.face .tiles { /* PRESS-0353 § 4.3: as many tiles to a row as fit */
+  display: grid; gap: 0 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.face .tiles .card { margin: .6rem 0; }
 .face .fold > summary { cursor: pointer; }
 .face .fold > summary h2 { display: inline; margin: 0; }
 .face .fold[open] > summary { margin-bottom: .75rem; }
@@ -1096,15 +1100,18 @@ _ICON = "data:image/svg+xml," + urllib.parse.quote(
     '</svg>', safe="")
 
 
-def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100,
+def _page(body: str, theme: str = themes.FOLLOW, name: str = "", size: int = 100,
           after: str = "") -> str:
     chosen = "" if theme == themes.FOLLOW else f' data-theme="{html.escape(theme, quote=True)}"'
     if size != 100:
         chosen += f' data-size="{size}"'
-    # PRESS-0232: the editors' publish notes copy this link, so it is the one
-    # place a page reads the site's address from.
-    visit = (f'<a href="{html.escape(site, quote=True)}" target="_blank" rel="noopener" '
-             f"data-site>{say('face.view_site')}</a>" if site else "")
+    # PRESS-0353 § 4.2: the parts of a site, led by the open site's name.
+    links = (("/sites", html.escape(name) if name else say("face.sites")),
+             ("/", say("face.your_site")), ("/pages", say("face.pages")),
+             ("/journal", say("face.journal")), ("/look", say("face.look")),
+             ("/files", say("face.files")), ("/visitors", say("face.visitors")),
+             ("/setup", say("face.settings")), ("/manual", say("face.help")))
+    bar = "".join(f'<a href="{address}">{words_}</a>' for address, words_ in links)
     return (
         f'<!doctype html><html lang="en"{chosen}><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -1113,20 +1120,8 @@ def _page(body: str, theme: str = themes.FOLLOW, site: str = "", size: int = 100
         # PRESS-0242 § 4.3: before <main>, whose scripts run as they load.
         '<script type="application/json" id="pressless-words">'
         f"{words.for_scripts()}</script><script>{_SAY}</script></head>"
-        f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>'
-        # PRESS-0281: first, so every screen leads back to the list.
-        f'<a href="/">{say("face.your_writing")}</a>'
-        # PRESS-0223 § 4.6: beside it, the sites he can open.
-        f'<a href="/sites">{say("face.sites")}</a>'
-        f'{visit}<a href="/setup">{say("face.settings")}</a>'
-        # PRESS-0196 § 4.4: beside Settings.
-        f'<a href="/look">{say("face.look")}</a>'
-        # PRESS-0197 § 4.4: beside Look.
-        f'<a href="/files">{say("face.files")}</a>'
-        # PRESS-0219 § 4.4: outside More, where a lost newcomer looks.
-        f'<a href="/manual">{say("face.help")}</a>'
-        # PRESS-0343: the rest under More, which opens over the page, so the
-        # bar keeps to one line.
+        f'<body class="face"><header class="bar">{_MARK}<b>Press<span>less</span></b>{bar}'
+        # PRESS-0343: the rest under More, which opens over the page.
         f'<details class="more"><summary>{say("face.more")}</summary><div>'
         # PRESS-0179: on every screen, failure pages included.
         f'<a href="/report">{say("face.report")}</a>'
@@ -1195,7 +1190,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     def _send_page(self, face: Face, status: int, body: str) -> None:
         """`body` wrapped in the Face's frame, carrying the frames policy."""
         after = "".join(render() for render in face._every_page)
-        self._send(status, _page(body, face._theme, face.live_address(), face._size, after),
+        self._send(status, _page(body, face._theme, face.site_name(), face._size, after),
                    "text/html", (("Content-Security-Policy", _FRAMES_POLICY),))
 
     def _body_length(self, limit: int) -> int | None:
@@ -1546,6 +1541,10 @@ def _room(folder: Path) -> int:
         return -1
 
 
+# PRESS-0353 § 4.6: where a part can show something on a screen it does not own.
+PLACES = ("site-notices", "site-tiles", "site-below", "journal-below", "computer")
+
+
 class Face:
     """The running server. Made by `serve`; one per launch."""
 
@@ -1567,7 +1566,7 @@ class Face:
         self._pages: dict[tuple[str, str], tuple[Page, bool]] = {}
         self._returns: set[str] = set()
         self._files: dict[str, Locate] = {}
-        self._list_pieces: dict[bool, list[Callable[[], str]]] = {True: [], False: []}
+        self._pieces: dict[str, list[Callable[[], str]]] = {place: [] for place in PLACES}
         self._unseen: list[Callable[[], bool]] = []
         self._doors: dict[str, tuple[Page, Callable[[str], bool]]] = {}
         self._every_page: list[Callable[[], str]] = []
@@ -1647,15 +1646,28 @@ class Face:
         names for the rest of the path (PRESS-0012 § 4.3)."""
         self._files[prefix] = locate
 
-    def add_to_list(self, render: Callable[[], str], *, above: bool) -> None:
-        """Have the list at / show `render()`'s HTML above or below the list
-        (PRESS-0023 § 4.9), so a part can reach that page without the editor
-        importing it."""
-        self._list_pieces[above].append(render)
+    def add_piece(self, place: str, render: Callable[[], str]) -> None:
+        """Have the screen holding `place` show `render()`'s HTML there
+        (PRESS-0353 § 4.6), so a part can reach a screen without its owner
+        importing it. A place outside PLACES is refused."""
+        if place not in self._pieces:
+            raise ValueError(f"there is no place {place!r}")
+        self._pieces[place].append(render)
 
-    def list_pieces(self, above: bool) -> list[str]:
-        """What every part registered for that side of the list shows now."""
-        return [render() for render in self._list_pieces[above]]
+    def pieces(self, place: str) -> list[str]:
+        """What every part registered for `place` shows now, in registration order."""
+        return [render() for render in self._pieces[place]]
+
+    def site_name(self) -> str:
+        """The open site's name for the top bar, or "" before setup or where
+        it cannot be read: the bar then says Sites."""
+        if not self.live_address():
+            return ""
+        try:
+            identity = store.read_identity(self._site)
+        except store.StoreError:
+            return ""
+        return identity.name if identity is not None else ""
 
     def live_address(self) -> str:
         """The site's address for the top bar (PRESS-0232), or "" before setup

@@ -215,6 +215,9 @@ and the site icon.
 
 ### 4.6 What the writer sees
 
+*Moved by PRESS-0353 § 4.6: the line is a `computer` piece, drawn at the end of
+Settings, `/setup`.*
+
 **One line under the list at `/`**, registered with `face.add_to_list(...,
 above=False)` as the update switch is. It reads *JPEG XL photographs* with
 one button. Before the decoder is installed: **Add JPEG XL support**, and the

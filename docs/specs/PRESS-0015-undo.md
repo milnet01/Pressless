@@ -374,6 +374,9 @@ His two drafts are left as they were, and the bin keeps the copy undo wrote.
 
 ### 4.6 The pages
 
+*Moved by PRESS-0353 § 4.3 and § 4.4: Undo the last press is on Your site, `/`. The
+Drafts list and its labels are on the Journal screen, `/journal`.*
+
 The pages' words and asking during a press: [PRESS-0235](PRESS-0235-press-status.md) §§ 4.3 and 4.5.
 
 **The front page** (`editor._list`) gains an **Undo the last press** button.

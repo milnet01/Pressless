@@ -42,7 +42,7 @@ def register(face: Face, folder: Path, *, client: insights.Transport | None = No
     face.add_page("GET", SETUP, lambda request: _setup(face, folder))
     face.add_page("POST", SETUP, lambda request: _save(face, folder, client, request))
     face.add_page("POST", PAGE + "/off", lambda request: _off(face, folder))
-    face.add_to_list(lambda: _card(face, folder), above=True)
+    face.add_piece("site-tiles", lambda: _card(face, folder))
 
 
 def _set_up(saved: settings.Settings) -> bool:

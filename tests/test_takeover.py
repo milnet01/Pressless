@@ -38,6 +38,7 @@ from pressless import (
     builder,
     editor,
     face,
+    overview,
     publisher,
     publishing,
     settings,
@@ -155,6 +156,7 @@ def _pressing(folder: Path, github: _Built) -> Iterator[_Browser]:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         publishing.register(served, folder, transport=github)
         setup.register(served, folder, transport=github)
         yield _Browser(served)

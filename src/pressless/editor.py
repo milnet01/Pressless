@@ -208,7 +208,9 @@ def register(face: Face, folder: Path) -> None:
     def route(handler):
         return lambda request: handler(face, folder, LOCK, request)
 
-    face.add_page("GET", "/", route(_list))
+    # PRESS-0353 § 4.4: Your site at / is overview.py's.
+    face.add_page("GET", PAGES_ADDRESS, route(_pages_screen))
+    face.add_page("GET", JOURNAL_ADDRESS, route(_journal_screen))
     face.add_page("POST", "/new", route(_new))
     face.add_page("GET", "/edit", route(_edit))
     face.add_page("POST", "/save", route(_save))
@@ -379,65 +381,90 @@ def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -
         except store.StoreError as exc:
             return failed(face, notices, exc)
     pressing.forget()  # PRESS-0235 decision 6
-    return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location=JOURNAL_ADDRESS)
 
 
-def _list(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
-    """§ 4.5."""
+PAGES_ADDRESS = "/pages"
+JOURNAL_ADDRESS = "/journal"
+
+
+@dataclasses.dataclass(frozen=True)
+class Entries:
+    """The entries the Journal screen and Your site's tile read: the drafts
+    to list with their notes, the published entries, and the slugs that did
+    not read, by draft or not."""
+    drafts: list[store.Entry]
+    published: list[store.Entry]
+    unreadable: dict[bool, list[str]]
+    notes: dict[str, str]
+
+
+def read_entries(folder: Path) -> tuple[Entries, Exception | None]:
+    """Every entry, and the first failure reading one. The caller captures."""
     readable: dict[bool, list[store.Entry]] = {True: [], False: []}
     unreadable: dict[bool, list[str]] = {True: [], False: []}
     first_failure: Exception | None = None
-    with face.capture() as notices:
-        for draft in (True, False):
-            for slug in store.list_slugs(folder, draft=draft):
-                try:
-                    readable[draft].append(store.read(store.path_for(folder, slug, draft=draft)))
-                except store.StoreError as exc:
-                    first_failure = first_failure or exc
-                    unreadable[draft].append(slug)
-        hint = request.query.get("page_hint", "")
-        try:
-            listed = _pages(folder, hint)
-        except store.StoreError as exc:
-            first_failure = first_failure or exc
-            listed = _Listed(f"<p>{say('editor.list.pages_unreadable')}</p>", 0, "", 0, "")
-        site = _site_line(folder)
-        try:
-            journal: bool | None = store.journal_on(folder)
-        except store.StoreError as exc:
-            first_failure = first_failure or exc
-            journal = None
+    for draft in (True, False):
+        for slug in store.list_slugs(folder, draft=draft):
+            try:
+                readable[draft].append(store.read(store.path_for(folder, slug, draft=draft)))
+            except store.StoreError as exc:
+                first_failure = first_failure or exc
+                unreadable[draft].append(slug)
     # Every listed slug, readable or not: _replaced and working_copy ask
     # list_slugs, so an unreadable published entry still has its working copy
     # (PRESS-0162).
     published = {entry.slug for entry in readable[False]} | set(unreadable[False])
     drafts, notes = _drafts_and_notes(readable[True], published)
+    return Entries(drafts, readable[False], unreadable, notes), first_failure
+
+
+def _pages_screen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
+    """PRESS-0353 § 4.4: the New page form, the pages, and the parts of every
+    page, each card open."""
+    hint = request.query.get("page_hint", "")
+    failure = ""
+    with face.capture() as notices:
+        try:
+            listed = _pages(folder, hint)
+        except store.StoreError as exc:
+            failure = face.fail(exc, publishing=False)
+            listed = _Listed(f"<p>{say('editor.list.pages_unreadable')}</p>", "", "")
+    return (render_notices(notices) + failure + f"<h1>{say('face.pages')}</h1>"
+            + listed.carry_on + _card("editor.list.pages", listed.pages)
+            + (_card("editor.list.parts", listed.parts) if listed.parts else ""))
+
+
+def _journal_screen(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str:
+    """PRESS-0353 § 4.4: the switch; with the journal on, the New entry form,
+    Drafts and On your site; off, the entries there are under a line saying
+    they are off the site, and no New entry form."""
+    with face.capture() as notices:
+        entries, first_failure = read_entries(folder)
+        try:
+            journal: bool | None = store.journal_on(folder)
+        except store.StoreError as exc:
+            first_failure = first_failure or exc
+            journal = None
+        form = _new_entry_form(folder) if journal is not False else ""
     failure = face.fail(first_failure, publishing=False) if first_failure else ""
-    # PRESS-0235 § 4.5: the list's press row is the undo line.
-    said, running, ended = pressing.shown("")
-    header = (render_notices(notices) + failure +
-              f"<h1>{say('face.your_writing')}</h1>" + site + listed.carry_on
-              # PRESS-0023 § 4.9: what other parts show here, without this
-              # module importing them.
-              + "".join(face.list_pieces(above=True))
-              # PRESS-0236: a press's failure opens over the list.
-              + message_box("failure", ended or "", forgets=True))
-    controls = (_new_entry_form(folder) + _undo_row(said, running=running)
-                + _journal_switch(journal, bool(published)))
-    # PRESS-0189: each list is a card. PRESS-0344: folded shut under its count,
-    # so the screen opens short; Your pages opens to show a refused name's hint.
-    cards = (_fold("editor.list.drafts", len(drafts) + len(unreadable[True]),
-                   _rows(drafts, unreadable[True], notes))
-             + _fold("editor.list.on_site", len(readable[False]) + len(unreadable[False]),
-                     _rows(readable[False], unreadable[False], notes))
-             + _fold("editor.list.pages", listed.page_count, listed.pages,
-                     shown=hint in PAGE_HINTS)
-             + (_fold("editor.list.parts", listed.part_count, listed.parts)
-                if listed.parts else ""))
-    return (header + '<div id="undo-result"></div>'
-            + '<div id="listing">' + controls + cards + "</div>"
-            + "".join(face.list_pieces(above=False))
-            + f"<script>{_UNDO_SCRIPT}</script>")
+    published = bool(entries.published or entries.unreadable[False])
+    drafted = bool(entries.drafts or entries.unreadable[True])
+    cards = (_card("editor.list.drafts", _rows(entries.drafts, entries.unreadable[True],
+                                                entries.notes))
+             + _card("editor.list.on_site", _rows(entries.published, entries.unreadable[False],
+                                                  entries.notes)))
+    if journal is False:
+        # Entries kept while it is off stay reachable, under a line saying so.
+        cards = (f"<p>{say('editor.journal.kept_off')}</p>" + cards
+                 if published or drafted else "")
+    return (render_notices(notices) + failure + f"<h1>{say('face.journal')}</h1>"
+            + _journal_switch(journal, published) + form + cards
+            + "".join(face.pieces("journal-below")))
+
+
+def _card(heading: str, inside: str) -> str:
+    return f'<section class="card"><h2>{say(heading)}</h2>{inside}</section>'
 
 
 def _drafts_and_notes(read_drafts: list[store.Entry], published: set[str],
@@ -474,19 +501,12 @@ def _rows(entries: list[store.Entry], broken: list[str], notes: dict[str, str]) 
     return "<ul>" + "".join(items) + "</ul>" if items else f"<p>{say('editor.list.none')}</p>"
 
 
-def _fold(heading: str, count: int, inside: str, *, shown: bool = False) -> str:
-    return (f'<details class="card fold"{" open" if shown else ""}><summary>'
-            f"<h2>{say(heading)} ({count})</h2></summary>{inside}</details>")
-
-
 @dataclasses.dataclass(frozen=True)
 class _Listed:
-    """Your pages and the parts of every page, each with its count, and the
-    Carry on with line, which leads the screen rather than a folded list."""
+    """Your pages, the parts of every page, and the Carry on with line, which
+    leads the Pages screen."""
     pages: str
-    page_count: int
     parts: str
-    part_count: int
     carry_on: str
 
 
@@ -497,10 +517,10 @@ def _new_entry_form(folder: Path) -> str:
             f"<button>{say('editor.list.new')}</button></form>")
 
 
-def _undo_row(said: str, *, running: bool) -> str:
+def _undo_row(said: str, *, running: bool, before: str = "") -> str:
     """PRESS-0015 § 4.6: it always shows, and nothing asks GitHub before
-    showing it (§ 3 decision 3)."""
-    return (f'<p><button type="button" data-undo>{say("editor.undo")}</button></p>'
+    showing it (§ 3 decision 3). `before` leads the same row of buttons."""
+    return (f'<p>{before}<button type="button" data-undo>{say("editor.undo")}</button></p>'
             f'<p id="undo-status" class="press-status" role="status"'
             f'{_RUNNING if running else ""}>{html.escape(said)}</p>')
 
@@ -566,8 +586,7 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
              f'<p id="page-hint" role="status">{html.escape(said)}</p>')
     parts = (f"<p>{say('editor.list.parts_note')}</p>"
              "<ul>" + "".join(items[store.FURNITURE_FOLDER]) + "</ul>")
-    return _Listed(pages, len(items[store.PAGES_FOLDER]), parts,
-                   len(items[store.FURNITURE_FOLDER]), carry_on)
+    return _Listed(pages, parts, carry_on)
 
 
 def new_draft(folder: Path, title: str, template: str) -> store.Entry:
@@ -689,7 +708,8 @@ def _page(folder: Path, entry: store.Entry, draft: bool, base: str,
         for to, key in ((MARKS, "editor.show_marks"), (VISUAL, "page_editor.show_visual"))
     ) + "</p>"
     return f"""{stylesheets}
-<p class="nav"><a href="/">{say("face.your_writing")}</a> <span id="save-status"></span></p>
+<p class="nav"><a href="{JOURNAL_ADDRESS}">{say("face.journal")}</a>
+<span id="save-status"></span></p>
 <div class="states">{standing}</div>
 {switch}
 {message_box("notices")}
@@ -2129,7 +2149,7 @@ _EDITOR_SCRIPT = pressing.SCRIPT + LEAVING_SCRIPT + SAVING_SCRIPT + """
       const text = await answer.text();
       if (answer.status !== 200) { stop(text); return; }
       stopped = true;
-      window.location.assign("/");
+      window.location.assign("/journal");
     } catch (error) {
       stop("");
     } finally {

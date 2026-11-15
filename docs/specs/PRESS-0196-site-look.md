@@ -212,6 +212,8 @@ None hides content before it animates in a browser that lacks the feature.
 
 ### 4.4 The Look screen
 
+*Moved by PRESS-0353 § 4.2: Look follows Journal and precedes Files in the bar.*
+
 `look_screen.py`, registered in `__main__` with the other screens, adds
 `GET /look`, `POST /look/preview` and `POST /look/save`, and the Face's bar
 gains a "Look" link beside Settings (`face._page`).

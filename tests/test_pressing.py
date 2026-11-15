@@ -27,6 +27,7 @@ from pressless import (
     credentials,
     editor,
     face,
+    overview,
     page_editor,
     pressing,
     publishing,
@@ -86,6 +87,7 @@ def _pressless(folder: Path, transport: _Transport) -> Iterator[_Quick]:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         publishing.register(served, folder, transport=transport)
         page_editor.register(served, folder, transport=transport)
         undo.register(served, folder, transport=transport)

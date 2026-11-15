@@ -96,6 +96,7 @@ class TakeoverOwed(Exception):
 
 TAKEOVER_ADDRESS = "/publish/takeover"
 PLAN_ADDRESS = "/publish/plan"
+SITE_ADDRESS = "/publish/site"
 
 SENTENCES[TakeoverOwed] = Sentence(
     "failure.publishing.TakeoverOwed.what",
@@ -398,6 +399,9 @@ def register(face: Face, folder: Path, *,
     # PRESS-0345 § 4.3: what a press would change, asked before it runs.
     face.add_page("POST", PLAN_ADDRESS,
                   lambda request: _plan(face, folder, request, transport))
+    # PRESS-0353 § 4.3: Your site's Publish, the whole site as it stands.
+    face.add_page("POST", SITE_ADDRESS,
+                  lambda request: _publish_site(face, folder, transport))
     face.add_page("GET", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
     face.add_page("POST", REPLACE_ADDRESS, lambda request: _replace(face, folder, request))
     face.add_page("GET", TAKEOVER_ADDRESS,
@@ -433,14 +437,18 @@ def plan(folder: Path, *, entry: str | None = None, page: tuple[str, str] | None
 def _plan(face: Face, folder: Path, request: Request,
           transport: publisher.Transport | None) -> Reply:
     """PRESS-0345 § 4.3: `plan` for the entry `slug`, or the page or part
-    `kind` and `name`. The editor saves first, so the Store holds what would
-    be pressed."""
+    `kind` and `name`, or the site where the form names neither (PRESS-0353
+    § 4.3). The editor saves first, so the Store holds what would be pressed."""
     form = {name: values[0] for name, values in urllib.parse.parse_qs(
         request.body.decode("utf-8"), keep_blank_values=True).items()}
     try:
-        shown = (plan(folder, entry=form["slug"], transport=transport) if "slug" in form
-                 else plan(folder, page=(form.get("kind", ""), form.get("name", "")),
-                           transport=transport))
+        if "slug" in form:
+            shown = plan(folder, entry=form["slug"], transport=transport)
+        elif "kind" in form or "name" in form:
+            shown = plan(folder, page=(form.get("kind", ""), form.get("name", "")),
+                         transport=transport)
+        else:
+            shown = plan(folder, transport=transport)
     except Exception as exc:  # noqa: BLE001 -- every failure is shown as a press's is
         failure = (face.fail(exc, publishing=False,
                              secret=say("failure.secret.publishing_key")) + replace_link(exc))
@@ -467,6 +475,37 @@ def _publish(face: Face, folder: Path, request: Request,
 
     return pressing.run(pressing.PUBLISH, busy,
                         lambda told: _pressed(face, folder, form, transport, told))
+
+
+def _publish_site(face: Face, folder: Path,
+                  transport: publisher.Transport | None) -> Reply:
+    """PRESS-0353 § 4.3: `press_site`, run as a press (PRESS-0235 § 4.4)."""
+
+    def busy(said: str) -> Reply:
+        return Reply(json.dumps({"published": False, "failure": None, "notices": "",
+                                 "busy": True, "said": said}).encode("utf-8"),
+                     "application/json")
+
+    def press(told: Callable[[pressing.Outcome], None]) -> Reply:
+        notices: list[str | Notice] = []
+        with editor.LOCK:
+            try:
+                result = press_site(folder, capture=face.capture, notices=notices,
+                                    transport=transport)
+            except Exception as exc:  # noqa: BLE001 -- every failure is shown on the screen
+                failure: str | None = (face.fail(exc, publishing=False,
+                                                 secret=say("failure.secret.publishing_key"))
+                                       + replace_link(exc))
+            else:
+                failure = None
+                if result.copy_kept:
+                    notices.append(Notice(say("notice.publishing.kept_copy"), Site.UPDATED))
+        told(pressing.ended(pressing.PUBLISH, failure is None, failure))
+        return Reply(json.dumps({"published": failure is None, "failure": failure,
+                                 "notices": render_notices(notices), "busy": False,
+                                 }).encode("utf-8"), "application/json")
+
+    return pressing.run(pressing.PUBLISH, busy, press)
 
 
 def press_entry(folder: Path, form: dict[str, str], *,
@@ -580,7 +619,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
     e = html.escape
     if not starter.unpublished(folder):
         return (f"<h1>{say('publishing.nothing.heading')}</h1><p>{say('publishing.nothing')} "
-                f'<a href="/">{say("face.your_writing")}</a></p>')
+                f'<a href="/">{say("face.your_site")}</a></p>')
     try:
         saved = settings.load(folder)
     except (settings.NotSetUp, settings.SettingsError) as exc:
@@ -602,7 +641,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             pressing.forget()  # PRESS-0272: this answers the refusal's box
             return (f"<h1>{say('publishing.ready.heading')}</h1>"
                     f"<p>{say('publishing.ready', repository=e(saved.repository))}</p>"
-                    f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>')
+                    f'<p class="nav"><a href="/">{say("face.your_site")}</a></p>')
         hint = message_box("repository-hint", say("publishing.hint"), focus="repository")
     boxes = "".join(
         f'<li><label><input type="checkbox" name="keep" value="{e(entry, quote=True)}" '
@@ -625,7 +664,7 @@ def _takeover_page(face: Face, folder: Path, transport: publisher.Transport | No
     """What will change, a link to remove each build file, and the go-ahead."""
     if not takeover.owed(folder):
         return (f"<h1>{say('publishing.nothing.heading')}</h1><p>{say('publishing.nothing')} "
-                f'<a href="/">{say("face.your_writing")}</a></p>')
+                f'<a href="/">{say("face.your_site")}</a></p>')
     e = html.escape
     try:
         saved = settings.load(folder)
@@ -765,5 +804,5 @@ def _takeover_report(final: settings.Settings, shown: publisher.Pages, files: tu
     return (f"<h1>{say('publishing.takeover.done.heading')}</h1><ul>"
             + "".join(f"<li>{row}</li>" for row in rows) + "</ul>"
             + f"<p>{say('publishing.takeover.done.wait')}</p>"
-            + f'<p class="nav"><a href="/">{say("face.your_writing")}</a></p>')
+            + f'<p class="nav"><a href="/">{say("face.your_site")}</a></p>')
 

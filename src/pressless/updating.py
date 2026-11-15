@@ -5,8 +5,8 @@ it finds is held in memory for the life of the process, as is a Later: losing
 either costs one check at the next start, and nothing of his is in them. Skip
 and the switch are written to updates.json.
 
-Imported by __main__ alone. The editor draws the offer and the switch through
-Face.add_to_list and never imports this module.
+Imported by __main__ alone. Your site draws the offer, and Settings the switch,
+through Face.add_piece; neither imports this module.
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
         form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
         wanted = (form.get("check") or ["true"])[0] != "false"
         updater.write_state(own, check=wanted, skip=updater.read_state(own)[1])
-        return _home()
+        return Reply(b"", "text/plain", status=303, location="/setup")  # where the switch is
 
     def update_now(request: Request) -> str | Reply:
         offer = shown()
@@ -114,8 +114,8 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
     face.add_page("POST", "/update/later", later)
     face.add_page("POST", "/update/skip", skip)
     face.add_page("POST", "/update/checking", checking)
-    face.add_to_list(lambda: _offer_html(shown(), running), above=True)
-    face.add_to_list(lambda: _switch_html(updater.read_state(own)[0]), above=False)
+    face.add_piece("site-notices", lambda: _offer_html(shown(), running))
+    face.add_piece("computer", lambda: _switch_html(updater.read_state(own)[0]))
 
     if artefact is not None:
         def look() -> None:

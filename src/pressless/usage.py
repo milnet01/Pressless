@@ -242,7 +242,7 @@ def register(face: Face, folder: Path, *, site: Path | None = None,
     face.add_page("GET", ADDRESS, screen)
     face.add_page("POST", f"{ADDRESS}/yes", yes)
     face.add_page("POST", f"{ADDRESS}/no", no)
-    face.add_to_list(lambda: _question(face, folder, site), above=True)
+    face.add_piece("site-notices", lambda: _question(face, folder, site))
 
 
 def _question(face: Face, folder: Path, site: Path) -> str:

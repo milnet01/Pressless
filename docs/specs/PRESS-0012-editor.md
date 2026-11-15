@@ -292,6 +292,10 @@ rule 7).
 
 ### 4.5 The list
 
+*Moved by PRESS-0353 § 4.4: entries are on the Journal screen, `/journal`, and pages on
+Pages, `/pages`. `/` is Your site (§ 4.3). Parts register through
+`Face.add_piece` (§ 4.6), not `add_to_list`.*
+
 During a press, `#undo-status` shows it: [PRESS-0235](PRESS-0235-press-status.md) § 4.5.
 
 Drafts, then published entries, each newest date first, ties by address. Each

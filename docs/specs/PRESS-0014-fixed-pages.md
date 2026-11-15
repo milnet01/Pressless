@@ -215,6 +215,9 @@ are not on the site yet. `editor._list` draws it from `store.list_html` and
 `store.html_path_for(..., waiting=True)`, so `editor.py` imports nothing of
 `page_editor.py`, which imports it.
 
+*Moved by PRESS-0353 § 4.4: the fixed pages, New page and Parts of every page are on
+Pages, `/pages`, not at `/`.*
+
 ### 4.5 The page editor
 
 `GET /page` during a press answers a holding page: [PRESS-0235](PRESS-0235-press-status.md) § 4.5.

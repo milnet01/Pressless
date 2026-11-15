@@ -66,7 +66,7 @@ def register(face: Face, folder: Path) -> None:
     face.add_page("POST", "/template/save", route(_save))
     face.add_page("POST", "/template/new", route(_new))
     face.add_page("POST", "/template/bin", route(_bin))
-    face.add_to_list(lambda: _listed(folder), above=False)
+    face.add_piece("journal-below", lambda: _listed(folder))
 
 
 def _address(name: str) -> str:
@@ -107,7 +107,7 @@ def _page(template: store.Entry, base: str) -> str:
         return html.escape(value, quote=True)
 
     tags = say("editor.tags")
-    return f"""<p class="nav"><a href="/">{say('face.your_writing')}</a></p>
+    return f"""<p class="nav"><a href="{editor.JOURNAL_ADDRESS}">{say('face.journal')}</a></p>
 <p>{say('templates.about', name=html.escape(template.slug))}</p>
 <form method="post" action="/template/save">
 <input type="hidden" name="name" value="{attr(template.slug)}">
@@ -183,4 +183,4 @@ def _bin(face: Face, folder: Path, request: Request) -> Reply:
             store.move_to_bin(folder, path)
         except (store.StoreError, editor.ChangedElsewhere) as exc:
             return editor.failed(face, notices, exc)
-    return Reply(b"", "text/plain; charset=utf-8", status=303, location="/")
+    return Reply(b"", "text/plain; charset=utf-8", status=303, location=editor.JOURNAL_ADDRESS)

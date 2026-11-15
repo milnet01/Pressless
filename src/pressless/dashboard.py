@@ -102,13 +102,12 @@ def _sign_in_again() -> str:
 
 def register(face: Face, folder: Path, *,
              client: insights.Transport | None = None) -> None:
-    """Add the dashboard page, and its card at the top of the list. `client`
+    """Add the dashboard page; Your site draws its tile (PRESS-0353). `client`
     is the Transport double a test hands in, as `google_setup.register` takes."""
     folder = Path(folder)
     face.add_page("GET", PAGE,
                   lambda request: _show(face, folder, request, client)
                   + f'<p><a href="/">{say("script.undo.back")}</a></p>')
-    face.add_to_list(lambda: _card(face, folder), above=True)
 
 
 def _days(raw: str) -> int:
@@ -155,24 +154,6 @@ def _kept(folder: Path, days: int) -> insights.Report | None:
     """
     kept = insights._cached(insights.cache_path(folder), days)
     return dataclasses.replace(kept, stale=True) if kept is not None else None
-
-
-# ---------------------------------------------------------------- the card ----
-
-
-def _card(face: Face, folder: Path) -> str:
-    """The list's card. Reads the cache and never Google, so the list does not
-    wait on the network (ADR-0005)."""
-    saved, _ = loaded_settings(face, folder)
-    if saved is None or not _set_up(saved):
-        return ""
-    kept = insights._cached(insights.cache_path(folder), DEFAULT_DAYS)
-    if kept is None:
-        line = say("dashboard.card.ask", page=PAGE)
-    else:
-        line = say("dashboard.card.read", people=_people(kept.people),
-                   window=_sentence(DEFAULT_DAYS), when=_when(kept.fetched_at), page=PAGE)
-    return f'<section class="card"><h2>{say("dashboard.title")}</h2><p>{line}</p></section>'
 
 
 # ---------------------------------------------------------------- the page ----

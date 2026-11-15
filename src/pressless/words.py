@@ -41,7 +41,7 @@ _WORDS: dict[str, str] = {
     ),
     "failure.store.StoreError.what": "Pressless could not use one of your files.",
     "failure.store.EntryNotFound.what": "Pressless could not find that entry.",
-    "failure.store.EntryNotFound.next": "Go back to your list of entries and choose it again.",
+    "failure.store.EntryNotFound.next": "Go back to Journal and choose the entry again.",
     "failure.store.SlugInUse.what": (
         "Another entry already uses that address, so nothing was moved."
     ),
@@ -201,7 +201,7 @@ _WORDS: dict[str, str] = {
         "Publishing now would leave your site with no entries, so Pressless stopped."
     ),
     "failure.publishing.NothingToPublish.next": (
-        "Publish an entry first, or click Turn the journal off on Your writing. If entries "
+        "Publish an entry first, or click Turn the journal off on the Journal screen. If entries "
         "of yours have gone missing, send the details below to whoever helps you."
     ),
     "failure.publishing.JournalOff.what": (
@@ -209,7 +209,7 @@ _WORDS: dict[str, str] = {
         "draft."
     ),
     "failure.publishing.JournalOff.next": (
-        "Turn the journal on from Your writing, then publish this entry again."
+        "Turn the journal on from the Journal screen, then publish this entry again."
     ),
     "failure.publishing.KeptFolderBuilt.what": (
         "Your site now makes {folder}, and Settings keeps {folder} on GitHub as it is, "
@@ -238,7 +238,7 @@ _WORDS: dict[str, str] = {
         "save over it."
     ),
     "failure.editor.ChangedElsewhere.next": (
-        "Copy anything you typed since, then open the entry again from your list."
+        "Copy anything you typed since, then open the entry again from Journal."
     ),
     "failure.editor.TooManyCopies.what": (
         "More than one draft holds unpublished changes to this entry, so Pressless did not "
@@ -255,7 +255,7 @@ _WORDS: dict[str, str] = {
         "Choose a JPEG, PNG, WebP, GIF, AVIF or JPEG XL photograph."
     ),
     "failure.jpegxl.NotInstalled.what": "This is a JPEG XL photograph.",
-    "failure.jpegxl.NotInstalled.next": "Add JPEG XL support from the list page first.",
+    "failure.jpegxl.NotInstalled.next": "Add JPEG XL support from Settings first.",
     "failure.files.NotAllowed.what": (
         "That file is not a kind Pressless can put on your site, or its name does not match"
         " what is inside it, so it was not added."
@@ -465,7 +465,10 @@ _WORDS: dict[str, str] = {
     # The Face's frame, on every screen.
     "face.running": "Pressless is running.",
     "face.view_site": "View your site",
-    "face.your_writing": "Your writing",  # the way back to the list
+    "face.your_site": "Your site",  # the first screen (PRESS-0353)
+    "face.pages": "Pages",
+    "face.journal": "Journal",
+    "face.visitors": "Visitors",
     "face.settings": "Settings",
     "face.sites": "Sites",
     "face.look": "Look",
@@ -475,7 +478,7 @@ _WORDS: dict[str, str] = {
     "face.about": "About",
     "face.more": "More",
     "face.help": "Help",
-    # The editor and the list (editor.py).
+    # The editor, and the Pages and Journal screens (editor.py).
     "editor.journal.on": (
         "Your journal is on: each published entry has a page of its own on your site, and "
         "your journal lists them, newest first."
@@ -489,9 +492,29 @@ _WORDS: dict[str, str] = {
         "Your journal is off. A journal is the dated part of a site, like a blog: each entry "
         "gets a page of its own, and the journal lists them, newest first. While it is off, "
         "your entries stay here and are not on your site. If your menu links to the journal, "
-        "that link stays until you remove it from the header or navigation in Your pages."
+        "that link stays until you remove it from the header or navigation on the Pages screen."
     ),
     "editor.journal.turn_on": "Turn the journal on",
+    "editor.journal.kept_off": (
+        "These entries are kept here, and are not on your site while the journal is off."
+    ),
+    # Your site, the first screen (overview.py, PRESS-0353).
+    "overview.publish": "Publish",
+    "overview.parts": "Menu, header and footer",
+    "overview.open_pages": "Open your pages",
+    "overview.open_journal": "Open your journal",
+    "overview.open_look": "Change the look",
+    "overview.open_files": "Open your files",
+    "overview.open_visitors": "See who is reading",
+    "overview.journal.figures": "{published} on your site, {drafts}.",
+    "overview.drafts.one": "1 draft",
+    "overview.drafts.many": "{count} drafts",
+    "overview.journal.off": "Off.",
+    "overview.files.one": "1 file.",
+    "overview.files.many": "{count} files.",
+    "overview.visitors.not_set_up": "Not set up yet.",
+    "overview.visitors.none_yet": "No figures yet.",
+    "overview.visitors.read": "{people} read your site in {window}.",
     "editor.site_line.unnamed": "Your site",
     "editor.site_line": "Editing <b>{name}</b> at {address}",
     "editor.list.pages_unreadable": "Pressless cannot open your pages folder.",
@@ -505,7 +528,7 @@ _WORDS: dict[str, str] = {
     "editor.list.drafts": "Drafts",
     "editor.list.on_site": "On your site",
     "editor.list.pages": "Your pages",
-    # The finish-setting-up list at the top of Your writing (checklist.py, PRESS-0344).
+    # The finish-setting-up list on Your site (checklist.py, PRESS-0344).
     "checklist.title": "Finish setting up",
     "checklist.count": "{done} of {total} done.",
     "checklist.describe": "Describe your site in a line",
@@ -551,7 +574,7 @@ _WORDS: dict[str, str] = {
     "script.standing.on_site": "On your site",
     "script.standing.changes": "Changes not published yet",
     "script.standing.off_site": "Not on your site yet",
-    "script.undo.back": "Back to your writing",
+    "script.undo.back": "Back to Your site",
     "script.undo.unreachable": "Pressless could not reach itself. Your site was not changed.",
     "script.editor.throw_entry": "Throw this entry away",
     "script.editor.not_saved": "Not saved",
@@ -1478,7 +1501,7 @@ _WORDS: dict[str, str] = {
     ),
     "setup.starter.unpublished": "Your starter site is not on the web yet.",
     "setup.starter.publish": (
-        "To put it on the web, open <b>Home</b> under <b>Your pages</b> on your list, and "
+        "To put it on the web, open <b>Home</b> on the <b>Pages</b> screen, and "
         "press <b>Press to site</b>."
     ),
     "setup.done": "Setup is done.",
@@ -1501,7 +1524,7 @@ _WORDS: dict[str, str] = {
         "No keyring was found on this computer, so it is kept in a file only your account "
         "can read, in the Pressless-data folder."
     ),
-    "setup.onward": "Go to your list",
+    "setup.onward": "Go to your site",
     # PRESS-0125: the Import wizard. Each report line's values come from the
     # export, and the page escapes the whole line.
     "import.offer": (
@@ -1737,7 +1760,7 @@ _WORDS: dict[str, str] = {
     "setup.shortcuts.icon_added": "There is a Pressless icon on your desktop.",
     "setup.shortcuts.icon_removed": "The Pressless icon is gone from your desktop.",
     "setup.shortcuts.unchanged": "Nothing needed changing.",
-    # The visitor numbers page and its card on the list (dashboard.py).
+    # The visitor numbers page (dashboard.py).
     "dashboard.title": "Who is reading",
     "dashboard.window.7": "Last 7 days",
     "dashboard.window.7.phrase": "the last 7 days",
@@ -1745,11 +1768,6 @@ _WORDS: dict[str, str] = {
     "dashboard.window.28.phrase": "the last 4 weeks",
     "dashboard.window.365": "Last 12 months",
     "dashboard.window.365.phrase": "the last 12 months",
-    "dashboard.card.ask": "<a href=\"{page}\">See who is reading your site</a>",
-    "dashboard.card.read": (
-        "{people} read your site in {window}, as of {when}. <a href=\"{page}\">See where they "
-        "are</a>"
-    ),
     "dashboard.off": (
         "Visitor numbers are off. Pressless can read them from Google Analytics if you sign "
         "in with Google: <a href=\"{page}\">turn on visitor numbers</a>."
@@ -1795,7 +1813,7 @@ _WORDS: dict[str, str] = {
     "dashboard.people.one": "1 person",
     "dashboard.people.many": "{count} people",
     "dashboard.when": "{date} at {clock}",
-    # JPEG XL support (jpegxl_screen.py): its line below the list.
+    # JPEG XL support (jpegxl_screen.py): its line in Settings.
     # PRESS-0337: the AI helper. The AI app reads the assistant. sentences
     # that are not the screen's.
     "assistant.title": "AI helper",
@@ -1908,7 +1926,7 @@ _WORDS: dict[str, str] = {
     ),
     "jpegxl.rejected": "The download was not the expected file, so it was thrown away.",
     # Updating (updating.py): the offer, the switch, Update now's pages and console line.
-    "updating.offer": "Pressless {version} is ready to install. Your writing stays where it is.",
+    "updating.offer": "Pressless {version} is ready to install. Your sites stay where they are.",
     "updating.update_now": "Update now",
     "updating.later": "Later",
     "updating.skip": "Skip this version",
@@ -2136,7 +2154,7 @@ _WORDS: dict[str, str] = {
     "themes.yellow_town": "Yellow town",
     "themes.time_box": "Time box",
     "themes.bounty_hunter": "Bounty hunter",
-    # Templates (templates.py): the list card, a template's page, and the four starters.
+    # Templates (templates.py): the Journal's card, a template's page, and the starters.
     "templates.yours": "Your templates",
     "templates.unreadable": "Pressless cannot open your templates folder.",
     "templates.name": "Name",

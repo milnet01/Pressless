@@ -28,10 +28,10 @@ from _face_session import Browser
 from test_setup import _saved
 
 from pressless import (
-    checklist,
     editor,
     face,
     marks,
+    overview,
     page_editor,
     pressing,
     publishing,
@@ -66,6 +66,7 @@ def _editor(folder: Path) -> Iterator[_Browser]:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         yield _Browser(served)
     finally:
         served.stop()
@@ -436,7 +437,7 @@ def test_the_list_shows_copies_and_unreadable_files(tmp_path):
     store.write(folder, _entry("plain"), draft=True)
     store.path_for(folder, "broken", draft=True).write_bytes(b"\xff\xfe not an entry")
     with _editor(folder) as browser:
-        status, _, page = browser.request("GET", "/")
+        status, _, page = browser.request("GET", "/journal")
     assert status == 200
     assert "/edit?slug=seaside" in page and "/edit?slug=plain" in page
     assert "/edit?slug=seaside-changes" not in page
@@ -524,7 +525,7 @@ def test_the_list_says_which_draft_undo_took_off(tmp_path):
     store.write(folder, _entry("plain-changes", title="Windows test entry",
                                extra=((REPLACES, "plain"),)), draft=True)
     with _editor(folder) as browser:
-        status, _, page = browser.request("GET", "/")
+        status, _, page = browser.request("GET", "/journal")
     assert status == 200
     rows = {slug: row for row in re.findall(r"<li>.*?</li>", page)
             for slug in re.findall(r'/edit\?slug=([\w-]+)"', row)}
@@ -778,12 +779,12 @@ def test_the_journal_button_switches_it(tmp_path):
     options = folder / "options" / "options.json"
     with _editor(folder) as browser:
         status, headers, _ = browser.request("POST", "/journal")
-        assert status == 303 and headers.get("Location") == "/"
+        assert status == 303 and headers.get("Location") == "/journal"
         assert json.loads(options.read_text(encoding="utf-8")) == {"journal": False}
-        _, _, off = browser.request("GET", "/")
+        _, _, off = browser.request("GET", "/journal")
         browser.request("POST", "/journal")
         assert json.loads(options.read_text(encoding="utf-8")) == {"journal": True}
-        status, _, page = browser.request("GET", "/")
+        status, _, page = browser.request("GET", "/journal")
     assert status == 200 and 'action="/journal"' in page
     # PRESS-0133's 0.8.0 run: both states are in the page, and the one shown
     # must be the one the options file holds.
@@ -875,10 +876,9 @@ def test_the_parts_of_every_page_are_listed_apart(tmp_path):
     Breaks when they are listed with the pages again."""
     store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>Words.</p>")
     with _editor(tmp_path) as browser:
-        listing = browser.request("GET", "/")[2]
+        listing = browser.request("GET", "/pages")[2]
     cards = {heading: inside for heading, inside in re.findall(
-        r'<details class="card fold"[^>]*><summary><h2>(.*?) \(\d+\)</h2></summary>'
-        r"(.*?)</details>", listing, re.S)}
+        r'<section class="card"><h2>(.*?)</h2>(.*?)</section>', listing, re.S)}
     assert ">Home</a>" in cards["Your pages"]
     parts = cards["Parts of every page"]
     assert "shows on every page" in parts
@@ -1045,8 +1045,8 @@ def test_an_edit_during_an_address_change_is_saved_at_the_new_address(tmp_path):
 def _checklist(folder: Path) -> list[tuple[bool, str]]:
     served = face.serve(folder)
     try:
-        checklist.register(served, folder)
         editor.register(served, folder)
+        overview.register(served, folder)
         listing = _Browser(served).request("GET", "/")[2]
     finally:
         served.stop()
@@ -1075,19 +1075,23 @@ def test_the_list_opens_on_a_checklist_that_ticks_as_the_site_is_set_up(tmp_path
     assert _checklist(folder) == []
 
 
-def test_the_lists_fold_shut_with_their_counts(tmp_path):
-    """PRESS-0344: each list folds shut under its heading and count, so the
-    screen opens short. Your pages opens where it carries a hint. Breaks when
-    a list stands open, or a refused page name's hint is folded away."""
+def test_the_cards_stand_open_and_a_refused_names_hint_shows(tmp_path):
+    """PRESS-0353 § 4.4 (was PRESS-0344's folded lists): every card on the
+    Pages and Journal screens stands open with no count in its heading, and
+    the Pages screen carries a refused page name's hint. Breaks when a card
+    folds shut or a heading carries a count again."""
     folder = _folder(tmp_path)
     store.write(folder, _entry("seaside"), draft=True)
     with _editor(folder) as browser:
-        listing = browser.request("GET", "/")[2]
-        hinted = browser.request("GET", "/?page_hint=taken")[2]
-    assert '<details class="card fold"><summary><h2>Drafts (1)</h2></summary>' in listing
-    assert "<details class=\"card fold\" open>" not in listing
-    assert '<details class="card fold" open><summary><h2>Your pages' in hinted
-
+        journal = browser.request("GET", "/journal")[2]
+        pages = browser.request("GET", "/pages")[2]
+        hinted = browser.request("GET", "/pages?page_hint=taken")[2]
+    assert '<section class="card"><h2>Drafts</h2>' in journal
+    for shown in (journal, pages):
+        assert "<details class=\"card fold\"" not in shown
+        assert not re.search(r"<h2>[^<]*\(\d+\)</h2>", shown)
+    assert say("page_hint.taken") not in pages
+    assert say("page_hint.taken") in hinted
 
 
 # ------------------------------------------- PRESS-0346: the visual view ---

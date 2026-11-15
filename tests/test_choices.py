@@ -84,17 +84,17 @@ def test_the_furniture_shows_the_page_he_last_picked(tmp_path) -> None:
     assert 'data-show="index"' in gone
 
 
-def test_the_list_offers_the_page_he_last_opened(tmp_path) -> None:
-    """Breaks when the list offers no way back to the last page, names it by
+def test_the_pages_screen_offers_the_page_he_last_opened(tmp_path) -> None:
+    """Breaks when the pages screen offers no way back to the last page, names it by
     its file rather than its label, or offers a page that has gone."""
     folder = _folder(tmp_path)
     with _pages(folder) as browser:
-        before = browser.request("GET", "/")[2]
+        before = browser.request("GET", "/pages")[2]
         browser.request("GET", "/page?kind=furniture&name=navigation")
         browser.request("GET", "/page?kind=pages&name=about")
-        after = browser.request("GET", "/")[2]
+        after = browser.request("GET", "/pages")[2]
         (folder / store.PAGES_FOLDER / "about.html").unlink()
-        gone = browser.request("GET", "/")[2]
+        gone = browser.request("GET", "/pages")[2]
     assert "Carry on with:" not in before
     assert ('<p>Carry on with: <a href="/page?kind=pages&amp;name=about">About</a></p>'
             in after), after

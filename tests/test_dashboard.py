@@ -15,7 +15,15 @@ from pathlib import Path
 import pytest
 from _face_session import Browser
 
-from pressless import credentials, dashboard, face, google_setup, google_signin, settings
+from pressless import (
+    credentials,
+    dashboard,
+    face,
+    google_setup,
+    google_signin,
+    overview,
+    settings,
+)
 
 REFRESH = "1//SENTINELrefresh0123456789"
 COUNTRIES = (("ZA", 7), ("US", 3), ("(not set)", 1))
@@ -67,7 +75,11 @@ class _Browser(Browser):
         return page
 
     def card(self) -> str:
-        return "".join(self.served.list_pieces(above=True))
+        """The Visitors tile on Your site (PRESS-0353 § 4.3)."""
+        tile = re.search(r'<section class="card tile"><h2>Visitors</h2>.*?</section>',
+                         self.get("/"), re.S)
+        assert tile is not None
+        return tile.group(0)
 
 
 def _seen(page: str) -> str:
@@ -81,6 +93,7 @@ def _served(folder: Path, google: _Google) -> Iterator[_Browser]:
     try:
         google_setup.register(served, folder, client=google)
         dashboard.register(served, folder, client=google)
+        overview.register(served, folder)
         yield _Browser(served)
     finally:
         served.stop()
@@ -127,7 +140,7 @@ def test_flags_are_pictures_and_countries_have_names(tmp_path: Path) -> None:
     with _served(tmp_path, _Google()) as browser:
         page = browser.get("/visitors")
     assert "10 people read your site in the last 4 weeks." in _seen(page)
-    assert '<a href="/">Back to your writing</a>' in page
+    assert '<a href="/">Back to Your site</a>' in page
     assert page.count('src="data:image/svg+xml;base64,') == 2
     assert "South Africa" in page and "United States of America" in page
     assert "Somewhere Google could not tell" in page
@@ -163,7 +176,8 @@ def test_turned_off_shows_the_way_on_and_asks_nobody(tmp_path: Path) -> None:
     google = _Google()
     with _served(tmp_path, google) as browser:
         page = browser.get("/visitors")
-        assert browser.card() == ""
+        tile = browser.card()
+    assert "Not set up yet." in tile and "people read" not in tile
     assert 'href="/setup/google"' in page and "Visitor numbers are off" in page
     assert google.requests == 0
 
@@ -203,19 +217,20 @@ def test_a_refused_sign_in_offers_signing_in_again(tmp_path: Path) -> None:
 
 
 def test_the_card_reads_the_cache_and_never_google(tmp_path: Path) -> None:
-    """ADR-0005: the list never waits on Google. Breaks when drawing the card
-    makes a request."""
+    """ADR-0005: Your site never waits on Google. Breaks when drawing the
+    Visitors tile makes a request."""
     _saved(tmp_path)
     google = _Google()
     with _served(tmp_path, google) as browser:
         before = browser.card()
         assert google.requests == 0
-        assert 'href="/visitors">See who is reading your site<' in before
+        assert 'href="/visitors">See who is reading<' in before
+        assert "No figures yet." in before
         browser.get("/visitors")
         asked = google.requests
         after = browser.card()
         assert google.requests == asked
-    assert "10 people read your site in the last 4 weeks, as of" in after
+    assert "10 people read your site in the last 4 weeks" in _seen(after)
 
 
 def test_a_kept_report_is_marked_stale(tmp_path: Path) -> None:

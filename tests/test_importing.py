@@ -197,17 +197,17 @@ def test_a_count_of_one_takes_the_singular(tmp_path):
 
 
 def test_import_is_offered_only_on_a_store_holding_no_site(tmp_path):
-    """§ 4.1: the list page links to /import while the Store holds no site."""
+    """§ 4.1: Your site links to /import while the Store holds no site."""
     folder = tmp_path / "site"
     folder.mkdir()
     served = face.serve(folder)
     try:
         importing.register(served, folder)
-        assert any(importing.ADDRESS in piece for piece in served.list_pieces(above=True))
+        assert any(importing.ADDRESS in piece for piece in served.pieces("site-notices"))
         store.write(folder, store.Entry(slug="his", title="", date=__import__(
             "datetime").datetime(2020, 1, 2), categories=(), tags=(), body="Words.",
             extra=()), draft=False)
-        assert not any(importing.ADDRESS in piece for piece in served.list_pieces(above=True))
+        assert not any(importing.ADDRESS in piece for piece in served.pieces("site-notices"))
     finally:
         served.stop()
     assert setup.IMPORT == importing.ADDRESS

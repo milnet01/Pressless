@@ -244,7 +244,7 @@ def test_jpeg_xl_without_the_extra(tmp_path, monkeypatch):
         status, text = _post(port, cookie, "/photograph?name=Sea.jxl", standin.CONTAINER)
     assert status == 409
     assert "This is a JPEG XL photograph." in text
-    assert "Add JPEG XL support from the list page first." in text
+    assert "Add JPEG XL support from Settings first." in text
     assert "not a picture" not in text
     assert _originals(folder) == {}
 

@@ -280,20 +280,20 @@ def test_off_asks_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         settings.save(folder, each)
         with _screen(folder, client) as browser:
             page = browser.request("GET", "/youtube")[2]
-            card = "".join(browser.served.list_pieces(above=True))
+            card = "".join(browser.served.pieces("site-tiles"))
         assert "/youtube/setup" in page
         assert card == ""
     assert client.calls == []
 
 
 def test_the_card_never_asks_youtube(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """INV-4. Set up, with nothing kept: the list says to look, and asks nothing."""
+    """INV-4. Set up, with nothing kept: Your site says to look, and asks nothing."""
     keys = _Keys(monkeypatch)
     folder = _fresh(tmp_path)
     _on(folder, keys)
     client = _YouTube()
     with _screen(folder, client) as browser:
-        card = "".join(browser.served.list_pieces(above=True))
+        card = "".join(browser.served.pieces("site-tiles"))
     assert 'href="/youtube"' in card and client.calls == []
 
 

@@ -30,6 +30,7 @@ from pressless import (
     face,
     github_setup,
     github_signin,
+    overview,
     publisher,
     settings,
     setup,
@@ -918,19 +919,20 @@ def test_setup_links_the_sites_address(tmp_path):
 
 
 def test_a_finished_setup_says_how_to_publish_the_starter(tmp_path, monkeypatch):
-    """The done page leads on to the list and says how the starter site first
-    reaches the web; the list says so too, until the first publish."""
+    """The done page leads on to Your site and says how the starter site first
+    reaches the web; Your site says so too, until the first publish."""
     _Store(monkeypatch)
     with _setup_page(tmp_path, _GitHub()) as browser:
         done = _first_run(browser, start="starter")
     assert "Setup is done." in done and starter.unpublished(tmp_path)
-    assert '<a href="/">Go to your list</a>' in done
+    assert '<a href="/">Go to your site</a>' in done
     assert "<b>Press to site</b>" in done
 
     served = face.serve(tmp_path)
     try:
         setup.register(served, tmp_path, transport=_GitHub())
         editor.register(served, tmp_path)
+        overview.register(served, tmp_path)
         browser = Browser(served)
         assert 'id="starter-unpublished"' in browser.request("GET", "/")[2]
         starter.published(tmp_path)

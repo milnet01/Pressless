@@ -265,7 +265,7 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
                               (PRESSLESS, "look_screen.route.pressless"))) + "</fieldset>")
     own_about = ("" if route is None else
                  f'<p{shown(OWN)}>{say("look_screen.extra.own_about")}</p>')
-    return f"""<p class="nav"><a href="/">{say("face.your_writing")}</a></p>
+    return f"""<p class="nav"><a href="/">{say("face.your_site")}</a></p>
 <h1>{say("look_screen.title")}</h1>
 <p>{say("look_screen.about")}</p>
 <p id="look-status" class="press-status" role="status">{said}</p>

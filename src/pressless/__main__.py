@@ -34,7 +34,6 @@ from pressless import (
     backups,
     bridge,
     cheatsheet,
-    checklist,
     credentials,
     dashboard,
     domain,
@@ -48,6 +47,7 @@ from pressless import (
     jpegxl_screen,
     look_screen,
     manual,
+    overview,
     page_editor,
     paths,
     pressing,
@@ -242,8 +242,6 @@ def _serve_once(own: Path) -> bool:
     folder = sites.open_site(own)
     served = face.serve(own, site=folder)
     try:
-        # PRESS-0344: first above the list, so it leads the screen.
-        checklist.register(served, folder)
         setup.register(served, folder, own=own)
         github_setup.register(served, folder)
         google_setup.register(served, folder)
@@ -252,6 +250,7 @@ def _serve_once(own: Path) -> bool:
         domain.register(served, folder)
         dashboard.register(served, folder)
         editor.register(served, folder)
+        overview.register(served, folder)                   # PRESS-0353
         cheatsheet.register(served)
         manual.register(served)                             # PRESS-0219
         report.register(served)

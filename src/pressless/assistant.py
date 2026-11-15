@@ -728,7 +728,7 @@ def register(face: Face, folder: Path, *, own: Path,
     face.add_page("POST", CONNECT, door.connect)
     face.add_page("GET", WAITING, door.waiting_now)
     face.add_page("POST", ANSWER, door.answer)
-    face.add_to_list(door.list_line, above=False)
+    face.add_piece("site-notices", door.list_line)
     face.add_to_every_page(door.every_page)
     face.at_stop(door.shut)
     if is_on(own):
@@ -899,13 +899,14 @@ window.presslessHelper = window.presslessHelper || (() => {
       go: "script.assistant.go", wait: "script.assistant.wait", request: stamp});
     const body = new URLSearchParams({request: now.request, yes: yes ? "1" : "0"});
     // PRESS-0356: the answer comes back when the press has ended. Until then a
-    // page with a press row shows it running; after it the home screen, whose
-    // lists the press changed, is drawn again. Other screens may hold typing.
+    // page with a press row shows it running; after it Your site, Pages or Journal,
+    // whose lists the press changed, is drawn again. Other screens may hold typing.
     if (yes) window.presslessPress.ask();
     try {
       const reply = await (await fetch("/assistant/answer", {method: "POST", body})).json();
       if (reply.busy || reply.replanned) shown = "";
-      else if (yes && reply.answered && window.location.pathname === "/") {
+      else if (yes && reply.answered
+               && ["/", "/pages", "/journal"].includes(window.location.pathname)) {
         window.location.reload();
       }
     } catch (error) { shown = ""; }

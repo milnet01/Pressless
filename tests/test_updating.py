@@ -19,9 +19,9 @@ import pytest
 from test_editor import _Browser, _folder
 from test_updater import _list, _Net, _Release
 
-from pressless import editor, face, installer, update_key, updating
+from pressless import editor, face, installer, overview, setup, update_key, updating
 
-OFFER = "is ready to install. Your writing stays where it is."
+OFFER = "is ready to install. Your sites stay where they are."
 LOOKING = "Pressless looks for a new version each time it starts."
 NOT_LOOKING = "Pressless does not look for new versions."
 INSTALLING = "Pressless is installing version 0.1.3 and will open again by itself"
@@ -70,10 +70,12 @@ def _release(signer, version: str) -> tuple[_Release, dict[str, object]]:
 
 @contextlib.contextmanager
 def _pressless(folder: Path, artefact: Path, answers: dict[str, object]) -> Iterator[_Browser]:
-    """One run of Pressless: a fresh Face, the editor, and updating."""
+    """One run of Pressless: a fresh Face, Your site, Settings, and updating."""
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
+        setup.register(served, folder)
         running = updating.register(served, folder, artefact=artefact, platform="linux",
                                     running="0.1.2", transport=_Net(answers))
         running.wait(10)
@@ -82,8 +84,8 @@ def _pressless(folder: Path, artefact: Path, answers: dict[str, object]) -> Iter
         served.stop()
 
 
-def _shown(browser: _Browser) -> str:
-    status, _, text = browser.request("GET", "/")
+def _shown(browser: _Browser, address: str = "/") -> str:
+    status, _, text = browser.request("GET", address)
     assert status == 200, text
     return text
 
@@ -119,18 +121,20 @@ def test_skip_and_later(tmp_path, signer, monkeypatch):
 
 
 def test_the_switch(tmp_path, signer):
-    """§ 4.9: one line under the list, and it writes updates.json."""
+    """§ 4.9, as PRESS-0353 § 4.6 places it: the offer is on Your site, above
+    the tiles, and the line that switches checking is on Settings, and
+    writes updates.json."""
     folder = _folder(tmp_path)
     artefact = _artefact(tmp_path)
     _, answers = _release(signer, "0.1.3")
     with _pressless(folder, artefact, answers) as browser:
-        page = _shown(browser)
+        site = _shown(browser)
+        assert LOOKING not in site and site.index(OFFER) < site.index('<div class="tiles">')
+        page = _shown(browser, "/setup")
         assert LOOKING in page and "Stop looking" in page
-        assert page.index(LOOKING) > page.index("Your pages"), "the switch sits under the list"
-        assert page.index(OFFER) < page.index("Drafts"), "the offer sits above the list"
-        status, _, _ = browser.request("POST", "/update/checking", {"check": "false"})
-        assert status == 303
-        page = _shown(browser)
+        status, headers, _ = browser.request("POST", "/update/checking", {"check": "false"})
+        assert status == 303 and headers.get("Location") == "/setup"
+        page = _shown(browser, "/setup")
         assert NOT_LOOKING in page and "Look when Pressless starts" in page
     assert json.loads((folder / "updates.json").read_text(encoding="utf-8")) == {
         "version": 1, "check": False, "skip": None}
@@ -146,6 +150,7 @@ def test_an_unpackaged_run_never_checks(tmp_path, signer):
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         updating.register(served, folder, transport=net).wait(10)
         assert net.requests == []
         assert OFFER not in _shown(_Browser(served))

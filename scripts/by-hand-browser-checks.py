@@ -66,12 +66,15 @@ from pressless import (  # noqa: E402
     builder,
     cheatsheet,
     credentials,
+    dashboard,
     editor,
     face,
     files_screen,
     importing,
+    look_screen,
     manual,
     marks,
+    overview,
     page_editor,
     pressing,
     publishing,
@@ -140,6 +143,9 @@ def main() -> int:
         served = face.serve(folder, OPTIONS.port)
         try:
             editor.register(served, folder)
+            overview.register(served, folder)
+            look_screen.register(served, folder)
+            dashboard.register(served, folder)
             cheatsheet.register(served)
             # PRESS-0219: a manual of its own, so the search rows know its words.
             manual.register(served, _manual_folder(Path(tmp)))
@@ -285,7 +291,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         check("PRESS-0016: the note goes when the name does", note.is_hidden())
 
         # ---- PRESS-0017 s7: a template picked from the New form ---------------
-        page.goto(f"{origin}/", wait_until="networkidle")
+        page.goto(f"{origin}/journal", wait_until="networkidle")
         page.fill("input[name=title]", "Rain")
         page.select_option("select[name=template]", "poem")
         page.click("text=New entry")
@@ -469,7 +475,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
                   f"{len(said)} status changes: {said!r}"[:180])
             result = page.inner_text("#undo-result")
             check("PRESS-0015 s4.6: the reply replaces the box and links back",
-                  "Back to your writing" in result
+                  words.say("script.undo.back") in result
                   and page.locator("#listing").is_hidden(),
                   repr(result[:140]))
             check("PRESS-0015 s4.6: the page did not reload itself",
@@ -548,16 +554,16 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
               f"hidden for the proof={hidden}")
 
         # ---- PRESS-0128: throwing away a draft with a change still unsaved ----
-        page.goto(f"{origin}/", wait_until="networkidle")
+        page.goto(f"{origin}/journal", wait_until="networkidle")
         page.fill("input[name=title]", "Gull")
         page.click("text=New entry")
         page.wait_for_load_state("networkidle")
         page.locator("textarea[name=body]").type("Unsaved", delay=10)
         page.once("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Throw this draft away", exact=True).click()
-        page.wait_for_url(f"{origin}/", timeout=5000)
+        page.wait_for_url(f"{origin}/journal", timeout=5000)
         binned = sorted(p.name for p in (folder / "bin").rglob("gull*.txt"))
-        check("PRESS-0128: saying yes bins the draft and goes back to the list",
+        check("PRESS-0128: saying yes bins the draft and goes back to Journal",
               "gull" not in store.list_slugs(folder, draft=True) and binned == ["gull.txt"],
               f"{binned!r} {page.url}")
 
@@ -569,6 +575,7 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         true_colours_kept(page, origin)
         text_sizes(page, origin)
         more_menu(page, origin)
+        tiles_open(page, origin)
         manual_search(page, origin)
         move_between_columns(page, origin, folder)
         drag_sections(page, origin, folder)
@@ -1310,15 +1317,30 @@ def more_menu(page, origin: str) -> None:
           f"{before} {opened} {clicked_away} {escaped}")
 
 
+def tiles_open(page, origin: str) -> None:
+    """PRESS-0353 § 7: each link on a Your site tile opens a screen."""
+    page.goto(f"{origin}/", wait_until="networkidle")
+    links = page.evaluate("""() => [...document.querySelectorAll('.tile a')]
+      .map(a => a.getAttribute('href'))""")
+    broken = []
+    for link in links:
+        answer = page.goto(f"{origin}{link}", wait_until="networkidle")
+        if answer is None or answer.status != 200 or not page.inner_text("main").strip():
+            broken.append(link)
+    check("PRESS-0353: each tile's link on Your site opens its screen",
+          bool(links) and not broken, f"{len(links)} links, broken {broken}")
+
+
 def helper_publish(page, origin: str, folder: Path, own: Path) -> None:
     """PRESS-0356: after Yes to an AI helper's publish, the home screen's
     lists show the entry on the site without a reload by hand."""
-    counts = """() => [...document.querySelectorAll('details.fold h2')]
-      .map(heading => heading.textContent)"""
+    counts = """() => [...document.querySelectorAll('section.card')]
+      .map(card => `${card.querySelector('h2').textContent} `
+        + `(${card.querySelectorAll('li').length})`)"""
     store.write(folder, tp._entry("helper-row", body="Words."), draft=True)
     page.goto(f"{origin}{assistant.SETUP}", wait_until="networkidle")
     page.click("button[name=on]")
-    page.goto(f"{origin}/", wait_until="networkidle")
+    page.goto(f"{origin}/journal", wait_until="networkidle")
     before = page.evaluate(counts)
     door = json.loads((own / assistant.DOOR_NAME).read_text(encoding="utf-8"))
     # The door, as the bridge calls it: its own token, no cookie.

@@ -84,6 +84,9 @@ why it holds no lock and no state.
 
 ### 4.2 Switching it on
 
+*Moved by PRESS-0353 § 4.6: the AI helper's line is a `site-notices` piece on Your
+site, `/`.*
+
 A line on the Face's list, **AI helper**, opens `/assistant/setup`. It holds:
 
 - a switch, kept in `assistant.json` in Pressless's own folder as
@@ -268,6 +271,9 @@ not wait for the writer: AI apps time calls out, and the writer may be away.
 The assistant asks `request_status` later.
 
 ### 4.6 Requests and the writer's yes
+
+*Moved by PRESS-0353 § 4.3: the home screen is Your site, `/`. The reload after Yes
+also runs on `/pages` and `/journal`.*
 
 The door keeps **at most one waiting request**, in memory. A second ask while
 one waits is refused with `assistant.one_waiting`. Memory is right: losing it

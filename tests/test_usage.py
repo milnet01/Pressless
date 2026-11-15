@@ -20,7 +20,7 @@ from test_publishing import _folder as _publishing_folder
 from test_publishing import _settings as _publishing_settings
 from test_setup import _GitHub, _step
 
-from pressless import editor, face, publishing, settings, setup, store, usage
+from pressless import editor, face, overview, publishing, settings, setup, store, usage
 
 # Plain words a report must never carry (INV-4): each names one thing of the
 # user's -- the site, an entry, its words, the repository, the folder.
@@ -63,7 +63,7 @@ class _NoFace:
     def add_page(self, *args, **kwargs) -> None:
         return None
 
-    def add_to_list(self, *args, **kwargs) -> None:
+    def add_piece(self, *args, **kwargs) -> None:
         return None
 
 
@@ -133,6 +133,7 @@ def _served(folder: Path, recorder: _Recorder) -> Iterator[Browser]:
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         usage.register(served, folder, transport=recorder)
         yield Browser(served)
     finally:
@@ -263,6 +264,7 @@ def test_no_users_words_are_sent(tmp_path, monkeypatch):
     served = face.serve(folder)
     try:
         editor.register(served, folder)
+        overview.register(served, folder)
         publishing.register(served, folder, transport=_refusing())
         usage.register(served, folder, transport=recorder)
         served.add_page("GET", "/broken", broken)

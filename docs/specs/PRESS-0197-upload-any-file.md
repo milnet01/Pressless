@@ -138,6 +138,8 @@ sits outside `content/`.
 
 ### 4.4 The Face
 
+*Moved by PRESS-0353 § 4.2: Files follows Look and precedes Visitors in the bar.*
+
 - **`face._FILE_TYPES`** holds § 4.1's suffixes and types.
   `FILES_POLICY` is unchanged: audio and video fall under its
   `default-src 'self'`.

@@ -103,8 +103,8 @@ live** before you first start it.
 Pressless takes you through setup one screen at a time, with **Back** and
 **Next**. Some steps happen on GitHub's own pages, and each screen says
 exactly what to click there. If you close Pressless partway, it starts
-again where you left off. When it is done, it shows the list of your
-writing, where **New entry** starts one.
+again where you left off. When it is done, it shows **Your site**, with a
+tile for each part of your site: pages, journal, look, files and visitors.
 
 When setup is done, Pressless offers to put itself in the Start Menu (on
 Linux, your app menu) and on the desktop, so you need not find the
@@ -117,9 +117,9 @@ nothing else.
 ### Upgrading without losing anything
 
 **From 0.5.0 on, Pressless updates itself.** When a new version is out,
-the list of your writing says so. **Update now** installs it in place and
+**Your site** says so. **Update now** installs it in place and
 opens Pressless again; **Later** and **Skip this version** leave it. It
-installs only a version signed by its maintainer. The line under the list
+installs only a version signed by its maintainer. A line in **Settings**
 turns this checking off.
 
 **Coming from an older version, put the new one in the same place.**
@@ -128,7 +128,7 @@ turns this checking off.
 - On Windows, extract the new zip over the old copy.
 
 Put it anywhere else and it starts with an empty `Pressless-data`
-folder. Your writing stays beside the old copy, and that folder is the
+folder. Your sites stay beside the old copy, and that folder is the
 only place it is kept.
 
 **From 0.10.0, `Pressless-data` keeps each site in its own folder**,
@@ -164,7 +164,7 @@ any page's code.
 
 It is off until you switch it on:
 
-1. In Pressless, click **AI helper**, under the list of your writing.
+1. In Pressless, click **AI helper**, on **Your site**.
 2. Click **Switch on**.
 3. The same screen shows what to give your AI app, with a **Copy**
    button, and the steps for each app.
