@@ -7325,8 +7325,7 @@ owned by docs/standards/versioning-overrides.md.
   is browsed. PRESS-0352's button for a layout's own colours and
   PRESS-0353's redesign both touch the same screen.
   Placed in 1.0.0 beside those two by the session; the user may move it.
-  Waiting-on: user (How many layouts, for which kinds of site, and
-  how is the list browsed? Recommended: split it in two. Layouts are
+  Decided by the user, 2026-11-15, as recommended: split it in two. Layouts are
   the shape of a page, such as a band across the top or a menu panel
   beside it. Colour styles are sets of colours any layout can wear.
   Add five layouts, one for each common kind of site: portfolio, small
@@ -7335,7 +7334,7 @@ owned by docs/standards/versioning-overrides.md.
   three layouts are shown now, with the kind of site under each
   drawing. Then 8 layouts and 11 colour sets give many looks without a
   long list. It needs a spec before building, since it changes the
-  Look screen, the starter and the saved look. 2026-11-15)
+  Look screen, the starter and the saved look.
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.
@@ -7400,10 +7399,8 @@ owned by docs/standards/versioning-overrides.md.
   drafts. Pressless already marks each of these "changes not on your
   site yet" on Pages and Journal. It would miss a change GitHub holds
   that this computer does not, which only another computer makes.
-  Waiting-on: user (Show a count of waiting changes on Your site, worked
-  out on this computer with no network? Recommended: yes, worded "N
-  changes not on your site yet" beside Publish, since it needs no
-  network and the screen stays instant. 2026-11-15)
+  Decided by the user, 2026-11-15: yes, counted on this computer with
+  no network, worded "N changes not on your site yet" beside Publish.
   **Layman:** Your site's first screen says how many of your changes are still waiting to be published.
   Kind: ux.
   Source: PRESS-0353-decision-5-2026-11-15.
