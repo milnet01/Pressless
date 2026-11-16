@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=392 -->
+<!-- ants-roadmap-id-high-water: PRESS=393 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7552,7 +7552,7 @@ does not wait on them.
   Source: user-request-2026-09-02.
   Lanes: Insights.
 
-- 📋 [PRESS-0366] **Your site counts changes that its Publish button does not send, and does not say where they go out.**
+- ✅ [PRESS-0366] **Your site counts changes that its Publish button does not send, and does not say where they go out.**
   Seen 2026-11-16 on the Windows box, on the 1.0.0 draft's zip in Edge.
   After an edit to a published entry, Your site read "1 change is not
   on your site yet: 1 journal entry". Publish then said "Nothing on your
@@ -7570,6 +7570,11 @@ does not wait on them.
   line adds that each change goes out from its own Press to site, and
   Publish's "nothing would change" answer says the same and links the
   waiting changes. Fixed with PRESS-0383 (subject 13).
+  Shipped 2026-11-17 in 8adc88b (PRESS-0383): the count line ends "Each
+  goes out from its own Press to site." Where changes wait, Publish's
+  nothing-would-change answer names them as links. The also-seen
+  checklist tick moved to PRESS-0393. A browser check of the plan box is
+  owed before the release.
   **Layman:** Your site says a change is waiting, but pressing Publish there says nothing would change; the change goes out from the entry's own button.
   Kind: ux.
   Source: by-hand-check-2026-11-16 1.0.0 draft round.
@@ -7764,6 +7769,11 @@ does not wait on them.
   Among them: two Update now presses race; leftover update files are
   never swept; a raw OSError escapes updater's typed failures.
   Ledger: close-findings-2026-11-17/lane-11-update-entry.json.
+  From PRESS-0383's sweep (2026-11-17): updater._allowed has the same
+  start-only drive check sitefile.stays_inside had, so `Pressless/D:/x`
+  passes. The update archive is signature-checked, so the risk is lower.
+  Check every part, as sitefile.stays_inside now does, and reuse it
+  rather than copying.
   **Layman:** Fixes in how Pressless checks for, proves and installs a new version.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7781,7 +7791,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: AI helper.
 
-- 📋 [PRESS-0383] **Review fixes: sites, site files, backups and Your site.**
+- ✅ [PRESS-0383] **Review fixes: sites, site files, backups and Your site.**
   Subject 13 of the 2026-11-16 full review, closed with close-findings.
   review-code: 1 critical (calibrated high), 7 medium, 12 low.
   review-readability: 1 high, 5 medium, 8 low.
@@ -7792,6 +7802,15 @@ does not wait on them.
   decides what every saved file and backup holds.
   PRESS-0366's wording rides here (user decision 2026-11-16).
   Ledger: close-findings-2026-11-17/lane-13-sites.json.
+  Shipped 2026-11-17, a0e8f5e..bf1a2f7. 38 findings: 35 fixed, 0 queued,
+  3 dismissed (Windows-invalid names are refused by the Store
+  everywhere, PRESS-0164; a downgrade-only case, not supported per the
+  user 2026-11-16; open_site's rename gains nothing and touches
+  PRESS-0223 INV-1). stays_inside checks every part, so the zip slip is
+  closed. Site-file manifests and member counts are bounded. Specs
+  PRESS-0224, 0125, 0223, 0126, 0353 and 0285 amended. The PRESS-0366
+  script half was checked in source only: a browser row is owed before
+  the release. Ledger: close-findings-2026-11-17/lane-13-sites.json.
   **Layman:** Fixes in keeping several sites, saving a site to one file, and daily backups, including a security hole on Windows.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7915,6 +7934,17 @@ does not wait on them.
   Kind: review-fix.
   Source: review-code-2026-11-16 lane-14 open question.
   Lanes: Import.
+
+- 📋 [PRESS-0393] **Finish setting up ticks Put your site on the web before Pressless has published anything.**
+  Split from PRESS-0366 on 2026-11-17, whose wording part shipped with
+  PRESS-0383. Seen on the Windows box: the repository already held a
+  site, so the tick may be right (a site is on the web), or wrong (none
+  of Pressless's own pages are). Decide which the checklist means, then
+  fix the words or the check. checklist.py reads starter.unpublished.
+  **Layman:** On a site set up over a GitHub repository that already held a website, the checklist says the site is on the web before Pressless has sent anything.
+  Kind: investigate.
+  Source: by-hand-check-2026-11-16 1.0.0 draft round (PRESS-0366, also seen).
+  Lanes: Sites.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
