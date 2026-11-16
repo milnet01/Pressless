@@ -16,7 +16,7 @@ cd "$ROOT"
 "$W/venv/bin/pip" install -q --require-hashes -r packaging/release-requirements.txt
 rm -rf "$W/freeze" "$W/frozen-home" "$W/frozen-link.txt"
 mapfile -t args < <("$W/venv/bin/python" scripts/freeze_flags.py args "$W/freeze")
-PYTHONPATH=src "$W/venv/bin/python" -m PyInstaller --log-level WARN "${args[@]}"
+"$W/venv/bin/python" -m PyInstaller --log-level WARN "${args[@]}"
 
 # The program keeps its folder beside the file $APPIMAGE names, so naming one
 # in a fresh folder gives it an empty install and leaves the real one alone.

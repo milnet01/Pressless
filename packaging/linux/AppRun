@@ -4,5 +4,10 @@
 # Shell built-ins only. The release job runs the AppImage in a clean room with
 # PATH=/nonexistent (PRESS-0022 INV-7), where dirname and readlink do not
 # exist. The AppImage runtime sets $APPDIR to the mount; ${0%/*} covers a run
-# straight from the AppDir.
-exec "${APPDIR:-${0%/*}}/usr/bin/Pressless/Pressless" "$@"
+# straight from the AppDir, and a $0 with no slash (`sh AppRun` inside it)
+# means the AppDir is the current folder.
+case $0 in
+*/*) here=${0%/*} ;;
+*) here=. ;;
+esac
+exec "${APPDIR:-$here}/usr/bin/Pressless/Pressless" "$@"
