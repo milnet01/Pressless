@@ -52,8 +52,6 @@ does:
 
 Still to come:
 
-- **many more ready-made looks** to choose from, and screens redesigned
-  to be easier to use;
 - **figures for your music** on Spotify, Apple Music and Amazon Music;
 - **a tray icon**, and Pressless in languages other than English;
 - **publishing to a free host other than GitHub**.

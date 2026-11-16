@@ -7597,10 +7597,11 @@ does not wait on them.
   Source: verify-delivery-2026-11-16.
   Lanes: Look.
 
-- 📋 [PRESS-0369] **The README still lists the new looks and the redesigned screens as still to come.**
+- ✅ [PRESS-0369] **The README still lists the new looks and the redesigned screens as still to come.**
   verify-delivery 2026-11-16. README.md "Still to come" names "many more
   ready-made looks" and "screens redesigned"; both shipped in 1.0.0
   (PRESS-0359, PRESS-0353).
+  Shipped 2026-11-16: the bullet is gone from README's Still to come.
   **Layman:** The front page of the project says two things are coming that already shipped in 1.0.0.
   Kind: doc-fix.
   Source: verify-delivery-2026-11-16.
