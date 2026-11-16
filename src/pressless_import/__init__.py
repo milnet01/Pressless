@@ -38,7 +38,7 @@ from pressless import store
 from pressless.marks import render
 from pressless.paths import PREVIEW_ASSETS
 
-from ._html import Lookup, autop, convert, is_markup, visible_lines, wordpress_markup
+from ._html import Lookup, autop, convert, is_markup, prepared, visible_lines, wordpress_markup
 
 __all__ = [
     "FOLDER",
@@ -535,7 +535,7 @@ def _convert(item: _Item, markup: Callable[[str], bool], by_address: Lookup,
     """One body in marks, what it dropped and every difference the self-check
     found listed on the item. A body `markup` rejects is compared as `autop`
     gives it, since that is what a reader saw (PRESS-0125 § 4.5)."""
-    source = item.body if markup(item.body) else autop(item.body)
+    source = prepared(item.body, markup)
     try:
         text, whats = convert(source, by_address, by_id, old_site=old_site)
         differences = _differences(source, text)

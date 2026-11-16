@@ -31,7 +31,8 @@ _COLOUR = next(row.arg for row in MARKS if row.name == "colour")
 _LINK = next(row.arg for row in MARKS if row.name == "link")
 
 _GALLERY = re.compile(r"\[gallery\b[^\]]*\]")
-_GALLERY_IDS = re.compile(r'\bids\s*=\s*"([^"]*)"')
+# Its value in double quotes, single quotes or none, as WordPress reads it.
+_GALLERY_IDS = re.compile(r"""\bids\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'\]]+))""")
 _SOCIAL_LINK = re.compile(r"^\s*wp:social-link\s+(\{.*\})\s*/?\s*$", re.S)
 
 # HTML's own whitespace. Not \s: a no-break space the writer typed is not
@@ -73,13 +74,19 @@ _BLOCK_TAG = re.compile(
     r"|section|table|tbody|td|tfoot|th|thead|tr|ul|video)\b", re.I)
 _PRE = re.compile(r"<pre\b.*?</pre\s*>", re.I | re.S)
 _BLANK_LINE = re.compile(r"\n[ \t]*\n")
+# A tag or a comment, whose own newlines are never a break or a blank line.
+_MARKUP = re.compile(r"<!--.*?-->|<[^>]*>", re.S)
+# What _paragraphs holds a tag as: XML cannot carry a NUL, so no body has one.
+_HELD = re.compile(r"\x00(\d+)\x00")
 
 
 def autop(body: str) -> str:
     """A classic post as WordPress shows it, written from PRESS-0125 § 4.5's
     description of that behaviour and never from WordPress's code (INV-12
     there): a blank line ends a paragraph and a lone newline is a line break,
-    outside <pre> and runs holding a block-level tag."""
+    except inside <pre>, beside a block-level tag, or inside a tag or a
+    comment. A paragraph holding a block-level tag is laid out by it, so it
+    takes no <p>."""
     text = body.replace("\r\n", "\n").replace("\r", "\n")
     parts, position = [], 0
     for found in _PRE.finditer(text):
@@ -90,11 +97,59 @@ def autop(body: str) -> str:
     return "\n".join(part for part in parts if part)
 
 
+def prepared(body: str, markup: Callable[[str], bool]) -> str:
+    """The body as its reader saw it: as it is where `markup` accepts it,
+    else given paragraphs by `autop` (PRESS-0125 § 4.5)."""
+    return body if markup(body) else autop(body)
+
+
 def _paragraphs(text: str) -> str:
-    runs = (run.strip("\n") for run in _BLANK_LINE.split(text))
-    return "\n".join(
-        run if _BLOCK_TAG.search(run) else "<p>" + run.replace("\n", "<br>\n") + "</p>"
-        for run in runs if run.strip())
+    held: list[str] = []
+
+    def hold(found: re.Match) -> str:
+        held.append(found.group(0))
+        return f"\x00{len(held) - 1}\x00"
+
+    def back(text: str) -> str:
+        return _HELD.sub(lambda found: held[int(found.group(1))], text)
+
+    def block(piece: str) -> bool:
+        found = _HELD.fullmatch(piece)
+        return found is not None and bool(_BLOCK_TAG.match(held[int(found.group(1))]))
+
+    out = []
+    for run in _BLANK_LINE.split(_MARKUP.sub(hold, text)):
+        run = run.strip("\n")
+        if not run.strip():
+            continue
+        pieces = _HELD.split(run)
+        # split() keeps each held number between the text around it.
+        pieces = [f"\x00{piece}\x00" if number % 2 else piece
+                  for number, piece in enumerate(pieces)]
+        if not any(block(piece) for piece in pieces):
+            out.append("<p>" + back(run.replace("\n", "<br>\n")) + "</p>")
+            continue
+        # Between two block tags, a newline beside either is no break.
+        laid, between = [], []
+        for piece in [*pieces, None]:
+            if piece is not None and not block(piece):
+                between.append(piece)
+                continue
+            laid.append(_broken("".join(between)))
+            between = []
+            if piece is not None:
+                laid.append(piece)
+        out.append(back("".join(laid)))
+    return "\n".join(out)
+
+
+def _broken(text: str) -> str:
+    """Each newline inside `text` a line break; those at its ends left be."""
+    inner = text.strip()
+    if "\n" not in inner:
+        return text
+    start = text.index(inner)
+    return text[:start] + inner.replace("\n", "<br>\n") + text[start + len(inner):]
 
 
 # ------------------------------------------------------------- the tree ----
@@ -189,8 +244,9 @@ def _plain_text(element: _Element) -> str:
 
 # ------------------------------------------------------------ the lines ----
 
-# PRESS-0161: a list item, a table's row or cell, a rule and a preformatted
-# block each make a line too (PRESS-0125 § 4.5).
+# PRESS-0161: a list item, a table's row or cell and a rule each make a line
+# too (PRESS-0125 § 4.5). So does a preformatted block, which is named beside
+# _LINES rather than in it: each newline inside it makes a line as well.
 _LINES = frozenset({"li", "tr", "td", "th", "hr"})
 _SPLITS = (frozenset({"br", "img", "div", "p", "blockquote", "figure", "pre"})
            | _HEADINGS | _LINES)
@@ -229,6 +285,9 @@ def visible_lines(markup: str) -> tuple[str, ...]:
     current: list[str] = []
 
     def end_line():
+        # Every kind of space, not _HTML_SPACE: the check asks whether a line
+        # holds the same words, and judges no no-break space. The converter
+        # keeps those (_HTML_SPACE).
         text = re.sub(r"\s+", " ", html.unescape("".join(current))).strip()
         if text:
             lines.append(text)
@@ -393,7 +452,8 @@ class _Converter:
         if ids is None:
             self.dropped.append("a gallery with no pictures in it, left out")
             return
-        for attachment_id in (part.strip() for part in ids.group(1).split(",")):
+        listed = next(value for value in ids.groups() if value is not None)
+        for attachment_id in (part.strip() for part in listed.split(",")):
             name = self._by_id(attachment_id) if attachment_id else None
             if name is None:
                 self.dropped.append(
@@ -641,8 +701,8 @@ def convert(body: str, picture_by_address: Lookup, picture_by_id: Lookup, *,
     rejects is passed through `autop` first (PRESS-0125 § 4.5); with no
     `markup`, the body converts as it is.
     """
-    if markup is not None and not markup(body):
-        body = autop(body)
+    if markup is not None:
+        body = prepared(body, markup)
     converter = _Converter(picture_by_address, picture_by_id, old_site)
     blocks = _Blocks()
     converter.walk(_tree(body), _PLAIN, blocks)

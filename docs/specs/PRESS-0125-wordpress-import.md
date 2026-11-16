@@ -226,8 +226,8 @@ and passes a body `markup` rejects through `autop` before converting it.
 Import's run passes `wordpress_markup`: a body holding `<!-- wp:` is block
 content and converts as it is. `autop` does what WordPress's `wpautop`
 does to a classic post — a blank line
-ends a paragraph and a lone newline is a line break, outside `pre` and
-block-level tags. The self-check compares such a body's conversion with
+ends a paragraph and a lone newline is a line break, except inside `pre`,
+beside a block-level tag, or inside a tag or a comment. The self-check compares such a body's conversion with
 `autop(body)`, not the raw body. **`autop` is written from that described
 behaviour and never translated from WordPress's source**, which is
 GPL-licensed. The maintainer's run passes `is_markup`, unchanged, and

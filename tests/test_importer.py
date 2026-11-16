@@ -318,6 +318,9 @@ _ROWS = [
      '<a href="https://example.org">Late</a> light</figcaption></figure>',
      "{photo: a.jpg | Late light}", "caption"),
     ('[gallery ids="1,2"]', "{photo: a.jpg}\n{photo: b.jpg}", None),
+    # WordPress reads a shortcode's value in single quotes or none too.
+    ("[gallery ids='1,2']", "{photo: a.jpg}\n{photo: b.jpg}", None),
+    ('[gallery link="file" ids=1,2 columns="3"]', "{photo: a.jpg}\n{photo: b.jpg}", None),
     ("<blockquote><p>a<br>b</p><p>c</p></blockquote>", "> a\n> b\n>\n> c", None),
     ('<figure class="wp-block-pullquote"><blockquote><p>x</p></blockquote></figure>', "> x", None),
     ('<iframe src="https://video.example.org/v/1"></iframe>',
@@ -1132,6 +1135,23 @@ def test_a_classic_post_keeps_its_paragraphs():
     assert autop("a\nb") == "<p>a<br>\nb</p>", "a lone newline is a line break"
     assert autop("<pre>a\n\nb</pre>") == "<pre>a\n\nb</pre>", "pre is left alone"
     assert autop("<ul>\n<li>a</li>\n</ul>\n\nNext") == "<ul>\n<li>a</li>\n</ul>\n<p>Next</p>"
+
+
+def test_autop_breaks_lines_beside_block_tags_and_never_inside_a_tag():
+    """PRESS-0125 § 4.5: a lone newline between words is a line break in a
+    run that also holds a block tag, and a newline inside a tag or a comment
+    is left as it is.
+
+    Breaks when a run holding a block tag is passed through whole, or a
+    <br> is written inside a tag that spans two lines."""
+    from pressless_import import autop
+
+    poem = "Line one\nLine two\n<blockquote>Quoted\nback</blockquote>\nAfter"
+    assert visible_lines(autop(poem)) == ("Line one", "Line two", "Quoted", "back", "After")
+    assert autop('<img src="x"\nalt="y">') == '<p><img src="x"\nalt="y"></p>'
+    assert visible_lines(autop('Seen\n<img src="x"\nalt="y">')) == ("Seen",)
+    assert autop("a<!-- x\n\ny -->b") == "<p>a<!-- x\n\ny -->b</p>"
+    assert autop("<div>\nx\n</div>") == "<div>\nx\n</div>", "beside a block tag is no break"
 
 
 # ------------------------------------ PRESS-0125: the Import anyone runs ----

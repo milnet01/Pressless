@@ -49,7 +49,7 @@ from . import (
     read,
     resolve_slug,
 )
-from ._html import _host, autop, bare_host, wordpress_markup
+from ._html import _host, bare_host, prepared, wordpress_markup
 
 IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
@@ -176,7 +176,7 @@ def _page_html(page: _Page, sheets: tuple[str, ...], held: Mapping[str, str],
     markup rule, and its addresses moved; Blocks reads what sections it can,
     and the rest is code."""
     root = page.name == "index"
-    body = page.body if wordpress_markup(page.body) else autop(page.body)
+    body = prepared(page.body, wordpress_markup)
     body, listed = _addresses(body, "" if root else "../", held, old_site)
     page.dropped.extend(listed)
     text = starter.new_page("Home" if root else page.name, page.title, sheets,
