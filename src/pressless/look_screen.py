@@ -89,8 +89,12 @@ def _has_style_code(folder: Path) -> bool:
 
 def _offers_routes(folder: Path) -> bool:
     """PRESS-0276 § 4.3: a site with no style code, or whose pages link
-    their own stylesheets, chooses between them and a Pressless look."""
-    return not _has_style_code(folder) or builder.own_stylesheets(folder)
+    their own stylesheets, chooses between them and a Pressless look. A
+    site holding no part of every page yet, before setup, has none of its
+    own to keep (PRESS-0368)."""
+    return ((not _has_style_code(folder)
+             and bool(editor.held_html(folder, store.FURNITURE_FOLDER)))
+            or builder.own_stylesheets(folder))
 
 
 def _route(folder: Path, form: dict[str, str]) -> str:

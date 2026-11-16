@@ -270,6 +270,18 @@ def test_a_starter_site_offers_no_route(tmp_path):
     assert _files(folder) == before
 
 
+def test_a_site_before_setup_offers_no_route(tmp_path):
+    """PRESS-0368. A site setup has not written yet holds no stylesheets of
+    its own to keep, so it gets the Pressless look alone. Breaks when the
+    choice, opening on keeping them, is shown on an empty site."""
+    folder = tmp_path / "empty"
+    folder.mkdir()
+    with _served(folder) as browser:
+        status, _, page = browser.request("GET", "/look")
+    assert status == 200, page
+    assert 'type="radio" name="route"' not in page
+
+
 # --------------------------------------------------------------- § 6, § 4.1 ---
 
 

@@ -104,7 +104,9 @@ reads the style code. `content()` already carries `look/extra.css`
 ### 4.3 The Look screen
 
 `GET /look` now shows a **route choice**, two radio buttons named `route`,
-where the Store has no style code or `builder.own_stylesheets(folder)`:
+where the Store has no style code but holds a part of every page, or
+`builder.own_stylesheets(folder)`. A site before setup holds no part and
+has nothing of its own to keep (PRESS-0368):
 
 - `own` — "Keep its own stylesheets, and add CSS on top". Below it: the
   extra-CSS box alone.
