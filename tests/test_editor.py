@@ -863,6 +863,8 @@ def test_your_pages_labels_each_page_like_the_fixed_ones(tmp_path):
     Footer are, never as its file name."""
     for name in ("index", "about", "my-shows"):
         store.write_html(tmp_path, store.PAGES_FOLDER, name, "<p>Words.</p>")
+    for name in store.FURNITURE_NAMES:
+        store.write_html(tmp_path, store.FURNITURE_FOLDER, name, "<p>Part.</p>")
     found = editor._pages(tmp_path)
     listed = found.pages + found.parts
     for label in ("Home", "About", "My shows", "Header", "Footer"):
@@ -875,6 +877,8 @@ def test_the_parts_of_every_page_are_listed_apart(tmp_path):
     that says a change to one shows on every page, not among the pages.
     Breaks when they are listed with the pages again."""
     store.write_html(tmp_path, store.PAGES_FOLDER, "index", "<p>Words.</p>")
+    for name in store.FURNITURE_NAMES:
+        store.write_html(tmp_path, store.FURNITURE_FOLDER, name, "<p>Part.</p>")
     with _editor(tmp_path) as browser:
         listing = browser.request("GET", "/pages")[2]
     cards = {heading: inside for heading, inside in re.findall(

@@ -36,7 +36,7 @@ def _show(face: Face, folder: Path) -> str:
     with face.capture() as notices:
         site = editor._site_line(folder)
         tiles = "".join(tile(folder) for tile in (_pages, _journal, _look))
-        tiles += _parts() + _files(folder) + _visitors(face, folder)
+        tiles += _parts(folder) + _files(folder) + _visitors(face, folder)
         below = checklist.render(folder)
     with face.capture():  # its reads repeat the tiles', and Pages shows the rest
         waiting = _waiting(folder)
@@ -135,14 +135,20 @@ def _look(folder: Path) -> str:
     return _tile("face.look", figures, _link("/look", "overview.open_look"))
 
 
-def _parts() -> str:
-    """Each part of every page opens its own editor."""
+def _parts(folder: Path) -> str:
+    """Each part of every page the site holds opens its own editor; one with
+    no file yet, before setup writes it, has nothing to open (PRESS-0367)."""
+    try:
+        held = editor.held_html(folder, store.FURNITURE_FOLDER)
+    except store.StoreError:
+        return _tile("overview.parts", "", "")
     links = " ".join(
         _link("/page?" + urllib.parse.urlencode({"kind": store.FURNITURE_FOLDER, "name": name}),
               key)
         for name, key in (("navigation", "editor.pages.navigation"),
-                          ("header", "editor.pages.header"), ("footer", "editor.pages.footer")))
-    return _tile("overview.parts", "", links)
+                          ("header", "editor.pages.header"), ("footer", "editor.pages.footer"))
+        if name in held)
+    return _tile("overview.parts", "" if held else say("overview.parts.none"), links)
 
 
 def _files(folder: Path) -> str:

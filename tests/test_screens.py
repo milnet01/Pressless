@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import html
 import http.client
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -128,6 +130,39 @@ def test_a_journal_that_is_off(tmp_path: Path) -> None:
     assert "not on your site while the journal is off" in journal
     tile = home.split("<h2>Journal</h2>", 1)[1].split("</section>", 1)[0]
     assert "Off." in tile
+
+
+def _without_parts(folder: Path) -> Path:
+    """The site as it stands before setup writes the parts of every page."""
+    for name in store.FURNITURE_NAMES:
+        store.html_path_for(folder, store.FURNITURE_FOLDER, name).unlink()
+    return folder
+
+
+def test_every_part_linked_opens(tmp_path: Path) -> None:
+    """PRESS-0367. Your site and Pages link only the parts of every page
+    the site holds, so none opens "could not find that entry": none before
+    setup writes them, each once it has. Breaks when a part with no file is
+    linked again, or a held one is not."""
+    folder = _site(tmp_path)
+    with _served(folder) as browser:
+        held = _part_links(browser)
+        for link in held:
+            assert "could not find that entry" not in browser.get(html.unescape(link)), link
+    tile, listed = ("navigation", "header", "footer"), ("header", "footer", "navigation")
+    assert held == [f"/page?kind=furniture&amp;name={name}" for name in tile + listed]
+    with _served(_without_parts(folder)) as browser:
+        assert _part_links(browser) == []
+        tile = browser.get("/").split("<h2>Menu, header and footer</h2>", 1)[1]
+    assert "Not set up yet." in tile.split("</section>", 1)[0]
+
+
+def _part_links(browser: _Browser) -> list[str]:
+    """Every link to a part of every page, the tile's then the Pages list's."""
+    tile = browser.get("/").split("<h2>Menu, header and footer</h2>", 1)[1]
+    tile = tile.split("</section>", 1)[0]
+    return [link for page in (tile, browser.get("/pages"))
+            for link in re.findall(r'href="(/page\?kind=furniture[^"]*)"', page)]
 
 
 def _waiting_line(page: str) -> str:

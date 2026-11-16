@@ -501,6 +501,7 @@ _WORDS: dict[str, str] = {
     # Your site, the first screen (overview.py, PRESS-0353).
     "overview.publish": "Publish",
     "overview.parts": "Menu, header and footer",
+    "overview.parts.none": "Not set up yet.",
     "overview.open_pages": "Open your pages",
     "overview.open_journal": "Open your journal",
     "overview.open_look": "Change the look",

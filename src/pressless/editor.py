@@ -552,22 +552,30 @@ PAGE_HINTS = {"empty": "page_hint.empty", "taken": "page_hint.taken",
               "forwarded": "page_hint.forwarded", "unusable": "page_hint.unusable"}
 
 
+def held_html(folder: Path, kind: str) -> list[str]:
+    """The pages or furniture files of `kind` the site holds, live or only
+    waiting to be pressed, sorted. Only these can open in the page editor
+    (PRESS-0367)."""
+    return sorted(set(store.list_html(folder, kind))
+                  | set(store.list_html(folder, kind, waiting=True)))
+
+
 def _pages(folder: Path, hint: str = "") -> _Listed:
-    """PRESS-0014 § 4.4: each fixed page, then the three furniture files, each
+    """PRESS-0014 § 4.4: each fixed page, then the furniture files, each
     saying where its changes are not on the site yet; a page only waiting to
     be pressed is listed too, and the New page box follows (PRESS-0195 § 4.3).
     The pages and the furniture come back apart, the furniture as the parts
     of every page (PRESS-0341). Drawn from the Store alone, so this module
     imports nothing of page_editor.py."""
-    names = sorted(set(store.list_html(folder, store.PAGES_FOLDER))
-                   | set(store.list_html(folder, store.PAGES_FOLDER, waiting=True)))
     rows = [(store.PAGES_FOLDER, name,
              say("editor.pages.home") if name == "index" else builder.label(name))
-            for name in names]
+            for name in held_html(folder, store.PAGES_FOLDER)]
+    parts = held_html(folder, store.FURNITURE_FOLDER)
     rows += [(store.FURNITURE_FOLDER, name, say(key))
              for name, key in (("header", "editor.pages.header"),
                                ("footer", "editor.pages.footer"),
-                               ("navigation", "editor.pages.navigation"))]
+                               ("navigation", "editor.pages.navigation"))
+             if name in parts]
     items: dict[str, list[str]] = {store.PAGES_FOLDER: [], store.FURNITURE_FOLDER: []}
     carry_on = ""
     last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
