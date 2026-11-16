@@ -572,6 +572,16 @@ def test_a_landing_this_computer_cannot_make_is_left_and_the_rest_come(tmp_path)
         [deep, "blog/b.html", "é" * 128 + ".html"])
 
 
+def test_a_css_address_inside_its_tokens_own_words_is_rewritten_in_place(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html("<style>p { background: url(l) }</style><p>H</p>"),
+        "sites.example.org/l": _html("<p>L</p>"),
+    })
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/", into)
+    assert "url(/l.html)" in (into / "index.html").read_text(encoding="utf-8")
+
+
 def test_a_relative_address_that_lands_elsewhere_still_resolves(tmp_path):
     """`team` lands at team.html, and `../other/` from a project site is not the site's."""
     from test_importer_folder import _built, _unresolved

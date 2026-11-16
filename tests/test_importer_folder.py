@@ -597,6 +597,51 @@ def test_stylesheets_become_the_style_code(tmp_path):
     assert (site / "look/style.css").read_text(encoding="utf-8") == code
 
 
+def test_an_address_inside_the_tokens_own_words_is_written_in_its_place(tmp_path):
+    """review-code 2026-11-16: `l` sits inside `url(` and `m` inside `@import`,
+    and each address was written over the first one found."""
+    into, _b = _brought(tmp_path, {
+        "index.html": _page('<p style="background: url(l)">Home</p>',
+                            head='<link rel="stylesheet" href="a.css"><title>Home</title>'),
+        "l.html": _page("<p>L</p>"),
+        "m.html": _page("<p>M</p>"),
+        "a.css": "@import url(m) print;\n.a { color: red; }\n"})
+    page = store.read_html(store.html_path_for(into, store.PAGES_FOLDER, "index"))
+    assert "url(pages/l.html)" in page, page
+    code = store.read_style_code(into)
+    assert code.startswith("@import url(../pages/m.html) print;"), code
+
+
+def test_a_long_chain_of_imports_is_cut_not_a_crash(tmp_path):
+    """A stylesheet importing another, a thousand deep, stops at
+    _IMPORTS_DEEPEST; what lies deeper is left, with why."""
+    deepest = pressless_import._folder._IMPORTS_DEEPEST
+    chain = {f"s{n}.css": f'@import "s{n + 1}.css";\n.s{n} {{ color: red; }}\n'
+             for n in range(1000)}
+    chain["s1000.css"] = ".s1000 { color: red; }\n"
+    into, brought = _brought(tmp_path, {
+        "index.html": _page("<p>Home</p>",
+                            head='<link rel="stylesheet" href="s0.css"><title>H</title>'),
+        **chain})
+    code = store.read_style_code(into)
+    assert f".s{deepest} {{" in code and f".s{deepest + 1} {{" not in code
+    left = dict(brought.report.unfetched)
+    assert left[f"s{deepest + 1}.css"] == say("import.folder.why.deep", most=deepest)
+    assert "s1000.css" in left
+
+
+def test_a_long_chain_of_linked_sheets_importing_each_other_is_joined(tmp_path):
+    """Each sheet is linked, so each is in the style code, and joining one
+    follows the chain no deeper than _IMPORTS_DEEPEST."""
+    links = "".join(f'<link rel="stylesheet" href="s{n}.css">' for n in range(400))
+    chain = {f"s{n}.css": f'@import "s{n + 1}.css";\n.s{n} {{ color: red; }}\n'
+             for n in range(400)}
+    into, _b = _brought(tmp_path, {
+        "index.html": _page("<p>Home</p>", head=f"{links}<title>H</title>"), **chain})
+    code = store.read_style_code(into)
+    assert all(f".s{n} {{" in code for n in range(400))
+
+
 def test_a_site_with_no_stylesheet_has_empty_style_code(tmp_path):
     """§ 4.7: an empty file, so `builder.stylesheets` answers the one sheet."""
     into, _b = _brought(tmp_path, {"index.html": _page("<p>Home</p>")})

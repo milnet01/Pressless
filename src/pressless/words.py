@@ -1735,6 +1735,8 @@ _WORDS: dict[str, str] = {
     "import.folder.why.verification": "it proves to a search engine that the site is yours",
     "import.folder.why.undecodable": "Pressless could not read its words",
     "import.folder.why.sheet": "no page links this stylesheet",
+    "import.folder.why.deep": (
+        "it is reached only through more than {most} stylesheets, each importing the next"),
     "import.folder.why.script": (
         "no page uses this script in a way Pressless can carry inside the page"
     ),

@@ -36,6 +36,9 @@ from ._bring import _MOVING, _WORK, IMPORT_FOLDER, finish
 
 MEMBERS_MOST = 20_000                # a ZIP holding more is refused
 SVG_LARGEST = 256 * 1024             # § 4.6
+# § 4.7: @imports followed one inside another. Deeper ones are left, which
+# also keeps reading and joining them inside Python's recursion limit.
+_IMPORTS_DEEPEST = 32
 BROUGHT = "brought.json"             # in IMPORT_FOLDER: answers a Finish pressed again (§ 4.11)
 FOLDER_LEFT = "folder-left.json"     # in IMPORT_FOLDER: what laying the folder out left out
 
@@ -475,16 +478,12 @@ _IN_IMAGE, _ELSEWHERE = True, False
 
 
 def _url_written(found: re.Match, write: Callable[[str, bool], str | None]) -> str | None:
-    """A url() token through `write`; None where it stays."""
-    address = found.group("u1") or found.group("u2") or found.group("u3")
+    """A url() token through `write`; None where it stays, as an @import does."""
+    address = "" if found.group("import") else _token_address(found)
     if not address:
         return None
     new = write(address, _IN_IMAGE)
-    if new is None:
-        return None
-    whole = found.group(0)
-    at = whole.index(address)
-    return whole[:at] + new + whole[at + len(address):]
+    return None if new is None else _token_with(found, new)
 
 
 def _new_css(css: str, write: Callable[[str, bool], str | None],
@@ -495,7 +494,7 @@ def _new_css(css: str, write: Callable[[str, bool], str | None],
 
     def token(found: re.Match) -> str:
         nonlocal changed
-        if found.group("import") and in_style_code(_import_address(found)):
+        if found.group("import") and in_style_code(_token_address(found)):
             changed = True
             return ""
         new = _url_written(found, write)
@@ -639,6 +638,7 @@ class _Uses:
     sheet_pages: dict[str, set[str]] = field(default_factory=dict)
     scripts: set[str] = field(default_factory=set)
     pictures: set[str] = field(default_factory=set)
+    too_deep: set[str] = field(default_factory=set)            # sheets past _IMPORTS_DEEPEST
 
 
 def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
@@ -674,7 +674,7 @@ def _survey(root: Path, folder: _Folder, pages: dict[str, tuple[str, bool]],
                 _new_value(spot, noted)
             if spot.tag == "style" and spot.kind == _CSS:
                 for token in _CSS_TOKEN.finditer(spot.value):
-                    target = folder.target(_import_address(token), path) if token.group(
+                    target = folder.target(_token_address(token), path) if token.group(
                         "import") else None
                     if is_kind(target, ".css"):
                         uses.links.setdefault(target, token.group("condition").strip())
@@ -692,7 +692,8 @@ def _read_folder(root: Path) -> _Read:
     carried = uses.scripts | pictures
     for path in rest:
         if path not in carried and path not in style:
-            left[path] = say(_why_left(path))
+            left[path] = say("import.folder.why.deep", most=_IMPORTS_DEEPEST) if (
+                path in uses.too_deep) else say(_why_left(path))
     left_links = list(dict.fromkeys((own, target) for own, target in uses.all if target in left))
     built = ".nojekyll" not in names and (
         "_config.yml" in names or "_layouts" in folder.folders
@@ -712,10 +713,29 @@ def _holds_base(text: str) -> bool:
                for event in blocks._scan(text))
 
 
-def _import_address(found: re.Match) -> str:
-    """The address an @import token names."""
-    return next(value for value in (found.group(name) for name in ("i1", "i2", "i3", "i4", "i5"))
-                if value is not None)
+_URL_GROUPS = ("u1", "u2", "u3")
+_IMPORT_GROUPS = ("i1", "i2", "i3", "i4", "i5")
+
+
+def _address_group(found: re.Match) -> str | None:
+    """The group of a `_CSS_TOKEN` match holding the address an @import or a
+    url() names; None for a comment, a string or @charset. Every reader of a
+    token's address asks here, so a new quoting form is one change."""
+    names = _IMPORT_GROUPS if found.group("import") else _URL_GROUPS
+    return next((name for name in names if found.group(name) is not None), None)
+
+
+def _token_address(found: re.Match) -> str:
+    """The address an @import or url() token names; "" for none."""
+    name = _address_group(found)
+    return found.group(name) if name else ""
+
+
+def _token_with(found: re.Match, new: str) -> str:
+    """The token, its address replaced by `new` where it stands: an address
+    can also be a piece of the token's own words, as `l` of `url(`."""
+    start, end = found.span(_address_group(found))
+    return found.string[found.start():start] + new + found.string[end:found.end()]
 
 
 def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> list[str]:
@@ -724,7 +744,7 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
     SVG one names joins the pictures."""
     reached: list[str] = []
 
-    def walk(path: str, seen: set[str], pages: set[str]) -> None:
+    def walk(path: str, seen: set[str], pages: set[str], depth: int) -> None:
         uses.sheet_pages.setdefault(path, set()).update(pages)
         decoded = _decoded((root / path).read_bytes())
         if path in seen or decoded is None:
@@ -734,12 +754,15 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
             reached.append(path)
         for found in _CSS_TOKEN.finditer(decoded[0]):
             if found.group("import"):
-                target = folder.target(_import_address(found), path)
-                if target in rest and target.casefold().endswith(".css"):
-                    walk(target, seen, pages)
+                target = folder.target(_token_address(found), path)
+                if (target in rest and target.casefold().endswith(".css")
+                        and depth < _IMPORTS_DEEPEST):
+                    walk(target, seen, pages, depth + 1)
                 elif target is not None:
                     uses.all.append((path, target))
-            elif (address := found.group("u1") or found.group("u2") or found.group("u3")):
+                    if target in rest and target.casefold().endswith(".css"):
+                        uses.too_deep.add(target)
+            elif (address := _token_address(found)):
                 target = folder.target(address, path)
                 if target is not None:
                     uses.all.append((path, target))
@@ -747,7 +770,7 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
                         uses.pictures.add(target)
 
     for path in uses.links:
-        walk(path, set(), set(uses.sheet_pages[path]))
+        walk(path, set(), set(uses.sheet_pages[path]), 0)
     return reached
 
 
@@ -908,7 +931,7 @@ class _Writer:
                 if new is not None:
                     edits.append((spot.start, spot.end, new))
                     if not linked and any(
-                            token.group("import") and in_style_code(_import_address(token))
+                            token.group("import") and in_style_code(_token_address(token))
                             for token in _CSS_TOKEN.finditer(spot.value)):
                         edits.append((spot.element, spot.element, _STYLE_LINK))
                         linked = True
@@ -974,7 +997,7 @@ def _style_code(held: _Read, writer: _Writer) -> tuple[str, list[str]]:
     listed: list[str] = []
     up = "../" * builder.STYLE_CODE.count("/")
 
-    def joined(path: str, condition: str) -> str:
+    def joined(path: str, condition: str, depth: int) -> str:
         if path in seen:
             return ""
         seen.add(path)
@@ -986,29 +1009,30 @@ def _style_code(held: _Read, writer: _Writer) -> tuple[str, list[str]]:
             if found.group("charset"):
                 return ""
             if found.group("import"):
-                return imported(found, write, condition, path)
+                return imported(found, write, condition, path, depth)
             new = _url_written(found, write)
             return found.group(0) if new is None else new
 
         return _CSS_TOKEN.sub(token, held.text_of(path))
 
-    def imported(found: re.Match, write, condition: str, own: str) -> str:
-        address = _import_address(found)
+    def imported(found: re.Match, write, condition: str, own: str, depth: int) -> str:
+        address = _token_address(found)
         target = held.folder.target(address, own)
         its_own = found.group("condition").strip()
         both = " and ".join(part for part in (condition, its_own) if part)
-        if target in held.style:
-            return _wrapped(joined(target, both), its_own)
+        if target in held.style and depth < _IMPORTS_DEEPEST:
+            # Here the outer @media already wraps this text, so the wrap adds
+            # its own condition alone. `both` goes down for an @import deeper
+            # that leaves the folder: hoisted to the top, it needs them all.
+            return _wrapped(joined(target, both, depth + 1), its_own)
         new = write(address, False)
-        rule = found.group("import").rstrip()[:-1].rstrip()
-        if new is not None:
-            rule = rule.replace(address, new, 1)
+        rule = (found.group(0) if new is None else _token_with(found, new)).rstrip()[:-1].rstrip()
         if condition:
             rule = f"{rule} and {condition}" if its_own else f"{rule} {condition}"
         top.append(f"{rule};\n")
         return ""
 
-    bodies = [_wrapped(joined(path, held.links[path]), held.links[path])
+    bodies = [_wrapped(joined(path, held.links[path], 0), held.links[path])
               for path in held.style if path in held.links]
     return "".join(top) + "\n".join(body for body in bodies if body), listed
 

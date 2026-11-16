@@ -40,12 +40,13 @@ from ._folder import (
     _attribute_edit,
     _declares_utf8,
     _edited,
-    _import_address,
     _new_value,
     _page_text,
     _Paths,
     _quoted,
     _spots,
+    _token_address,
+    _token_with,
     _why_not_kept,
 )
 
@@ -323,18 +324,9 @@ def _landing(path: str, kind: str) -> str:
 def _css_through(css: str, write: Callable[[str, bool], str | None]) -> str:
     """Each url() and @import in `css` through `write`, a None leaving it."""
     def token(found: re.Match) -> str:
-        whole = found.group(0)
-        if found.group("import"):
-            address = _import_address(found)
-        else:
-            address = found.group("u1") or found.group("u2") or found.group("u3")
-        if not address:
-            return whole
-        new = write(address, False)
-        if new is None:
-            return whole
-        at = whole.index(address)
-        return whole[:at] + new + whole[at + len(address):]
+        address = _token_address(found)
+        new = write(address, False) if address else None
+        return found.group(0) if new is None else _token_with(found, new)
     return _CSS_TOKEN.sub(token, css)
 
 

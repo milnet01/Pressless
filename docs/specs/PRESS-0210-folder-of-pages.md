@@ -244,7 +244,9 @@ an image. An SVG over `SVG_LARGEST`, or named in any other way, is `left`.
 Every stylesheet the folder's pages link, by a `<link>` or an `@import` in a
 `style` element, is joined in the order pages first
 link them, pages taken in path order. An `@import` of a stylesheet in the
-folder is replaced by that sheet's text, each sheet once. A `media` attribute
+folder is replaced by that sheet's text, each sheet once. One inside another is
+followed `_IMPORTS_DEEPEST` deep; a sheet reached only deeper is `left`, with
+why, and its `@import` is written as one outside the folder. A `media` attribute
 wraps its sheet's text in `@media`. An `@import` of an address outside the folder
 moves to the top of the result, that `media` as its own condition, because a
 browser ignores one below another rule (run in Firefox, 2026-10-31). `@charset`
