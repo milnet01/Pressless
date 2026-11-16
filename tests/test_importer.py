@@ -439,6 +439,35 @@ def test_renamed_photographs_that_differ_only_in_case_stop_the_import(tmp_path):
         _run(export, originals, into)
 
 
+def test_names_that_differ_only_in_case_are_listed_where_anyone_imports(tmp_path):
+    """PRESS-0125 INV-5: in the Import anyone runs, the second of two names
+    one Windows folder cannot hold is listed, and the rest comes across.
+
+    Breaks when the clash stops bring_in as it stops the maintainer's run."""
+    site, report = _bring(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2019/05/IMG.jpg"),
+        _item(21, kind="attachment", status="inherit", attachment="2019/05/img.jpg"),
+        _item(1, slug="words")), {"2019/05/IMG.jpg": _jpeg(), "2019/05/img.jpg": _jpeg()})
+
+    assert store.list_slugs(site, draft=False) == ("words",)
+    assert store.list_photographs(site) == ("2019-05-IMG.jpg",)
+    assert "differ only in case" in dict(report.unfetched)["2019/05/img.jpg"], report.unfetched
+
+
+def test_names_are_compared_as_windows_compares_them(tmp_path):
+    """Decision 6: a name with a sharp s and one with "ss" are two names in a
+    Windows folder, so each keeps its own.
+
+    Breaks when names are compared by Python's casefold, which folds ß to ss."""
+    site, report = _bring(tmp_path, _export(
+        _item(20, kind="attachment", status="inherit", attachment="2019/05/straße.jpg"),
+        _item(21, kind="attachment", status="inherit", attachment="2019/05/strasse.jpg"),
+        _item(1, slug="words")), {"2019/05/straße.jpg": _jpeg(), "2019/05/strasse.jpg": _jpeg()})
+
+    assert report.renamed_photographs == (), report.renamed_photographs
+    assert sorted(store.list_photographs(site)) == ["strasse.jpg", "straße.jpg"]
+
+
 def test_photographs_arrive_under_their_names(tmp_path):
     """INV-6: every original is copied byte for byte under decision 6's name,
     and every picture mark names a file in the photographs folder.

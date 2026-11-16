@@ -412,6 +412,13 @@ def _place(item, ns) -> str:
     return upload_path
 
 
+def _folded(name: str) -> str:
+    """`name` as a Windows folder compares it: each letter to its one lower
+    case letter, and no letter to two, as casefold takes ß to ss."""
+    return "".join(letter.lower() if len(letter.lower()) == 1 else letter
+                   for letter in name)
+
+
 def _photographs(channel, ns, originals: Path, *, strict: bool = True,
                  shown: Callable[[Path], bool] | None = None):
     """Every attachment -- a file as well as a photograph, whatever the
@@ -420,8 +427,9 @@ def _photographs(channel, ns, originals: Path, *, strict: bool = True,
     (all, where none is given); and each attachment not held, with why. A
     name two attachments share, compared without regard to case, takes its
     upload month in front (decision 6). Where not `strict`, an attachment
-    with no usable place, or a name the Store refuses, is listed rather than
-    stopping Import (PRESS-0125 § 4.4)."""
+    with no usable place, a name the Store refuses, or a name differing
+    only in case from one taken, is listed rather than stopping Import
+    (PRESS-0125 § 4.4)."""
     attachments, unheld = [], []
     for item in channel.findall("item"):
         if _field(item, "post_type", ns) != "attachment":
@@ -434,20 +442,23 @@ def _photographs(channel, ns, originals: Path, *, strict: bool = True,
             unheld.append((_field(item, "attachment_url", ns), str(exc)))
     shared: dict[str, set[str]] = {}
     for _post_id, upload_path in attachments:
-        shared.setdefault(upload_path.rsplit("/", 1)[-1].casefold(), set()).add(upload_path)
+        shared.setdefault(_folded(upload_path.rsplit("/", 1)[-1]), set()).add(upload_path)
     names: dict[str, str] = {}
     by_id_path: dict[str, str] = {}
     taken: dict[str, str] = {}
     for post_id, upload_path in attachments:
         own = upload_path.rsplit("/", 1)[-1]
-        name = own if len(shared[own.casefold()]) == 1 else upload_path.replace("/", "-")
+        name = own if len(shared[_folded(own)]) == 1 else upload_path.replace("/", "-")
         # The renamed names too, as Windows compares them: 2019/05/IMG.jpg and
         # 2019/05/img.jpg become two names one Windows folder cannot hold
         # (decision 6, PRESS-0162).
-        other = taken.setdefault(name.casefold(), upload_path)
+        other = taken.setdefault(_folded(name), upload_path)
         if other != upload_path:
-            raise ImportStopped(f"{other} and {upload_path} would take names that differ "
-                                f"only in case")
+            clash = f"{other} and {upload_path} would take names that differ only in case"
+            if strict:
+                raise ImportStopped(clash)
+            unheld.append((upload_path, clash))
+            continue
         try:
             store.photograph_path_for(Path(), name)
         except store.StoreError:
