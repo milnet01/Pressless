@@ -38,22 +38,45 @@
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 0
 
-staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)
-[ -n "$staged" ] || exit 0
+# Each document's blocks gather here before they are counted. Inside .git,
+# never /tmp: that is RAM on the maintainer's machine, and a fixed name there
+# can be planted.
+blocks=$(mktemp "$(git rev-parse --git-dir)/pre-commit.XXXXXX") || exit 1
+trap 'rm -f "$blocks"' EXIT
+
+# One side of a document's staged diff, `+` or `-`, without its marker, its
+# `+++`/`---` header, or the spaces around it. Every caller cleans a line this
+# way, so a moved line still matches itself.
+#
+# `^-` minus the literal header, never `^-[^-]`: that reads as "skip the
+# `--- a/file` header" and means "skip every markdown bullet", because git
+# emits a deleted `- text` line as `-- text`. A roadmap is entirely
+# bullets, and a rule stated twice is usually a bullet both times, which
+# is the exact case this check is for. The added side is excluded the same
+# way for symmetry.
+side() {
+  git diff --cached -- "$2" | grep -e "^$1" | grep -v -e "^$1$1$1 " |
+    sed "s/^$1//; s/^[[:space:]]*//; s/[[:space:]]*\$//"
+}
 
 fails=0
 
-for f in $staged; do
+# -z, so a name holding a space arrives whole. R, so a document renamed and
+# edited in one commit is checked too.
+while IFS= read -r -d '' f; do
+  case "$f" in *.md) ;; *) continue ;; esac
   [ -f "$f" ] || continue
   case "$f" in docs/*) continue ;; esac
   dir=$(dirname "$f")
+  : >"$blocks"
 
   # --- broken markdown links ------------------------------------------
   # Placeholders are skipped: a template path like `foo-<UTC>/` truncates
-  # to something that looks real and does not resolve.
-  grep -oE '\]\(\.{0,2}/?[A-Za-z0-9._/<>{},-]+\)' "$f" 2>/dev/null |
-    sed -E 's/^\]\(//; s/\)$//' | sed 's/[.,;:]$//' | sort -u |
-    while read -r p; do
+  # to something that looks real and does not resolve. An anchor is
+  # dropped: the file must exist, whichever section the link names.
+  grep -noE '\]\(\.{0,2}/?[A-Za-z0-9._/<>{},-]+(#[^)]*)?\)' "$f" |
+    while IFS=: read -r line link; do
+      p=$(printf '%s\n' "$link" | sed -E 's/^\]\(//; s/\)$//; s/#.*$//; s/[.,;:]$//')
       [ -n "$p" ] || continue
       case "$p" in
       *'<'* | *'>'* | *'{{'* | *'*'* | http* | '#'*) continue ;;
@@ -61,45 +84,35 @@ for f in $staged; do
       esac
       [ -e "$p" ] || [ -e "$dir/$p" ] && continue
       # A dated line was true when written and is not a claim about now.
-      grep -F -- "$p" "$f" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' && continue
-      printf 'BLOCK link %s -> %s\n' "$f" "$p"
-    done >/tmp/.pc-link.$$ 2>/dev/null
+      # Asked of the link's own line, not of every line naming the path.
+      sed -n "${line}p" "$f" | grep -qE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' && continue
+      printf 'BLOCK link %s:%s -> %s\n' "$f" "$line" "$p"
+    done >>"$blocks"
 
   # --- surviving copies of deleted text --------------------------------
   # 45 characters: shorter fragments match everywhere and say nothing.
-  # `^-` minus the literal header, never `^-[^-]`: that reads as "skip the
-  # `--- a/file` header" and means "skip every markdown bullet", because git
-  # emits a deleted `- text` line as `-- text`. A roadmap is entirely
-  # bullets, and a rule stated twice is usually a bullet both times, which
-  # is the exact case this check is for. The added side is excluded the same
-  # way for symmetry.
-  added=$(git diff --cached -- "$f" | grep -E '^\+' | grep -v -e '^+++ ' |
-    sed 's/^+//; s/^[[:space:]]*//; s/[[:space:]]*$//')
-  git diff --cached -- "$f" | grep -E '^-' | grep -v -e '^--- ' |
-    sed 's/^-//; s/^[[:space:]]*//; s/[[:space:]]*$//' |
+  added=$(side + "$f")
+  side - "$f" |
     while IFS= read -r gone; do
       [ ${#gone} -ge 45 ] || continue
-      printf '%s\n' "$added" | grep -qF -- "$gone" && continue
-      git grep -n -F -- "$gone" -- '*.md' ':!docs/' 2>/dev/null |
+      grep -qF -- "$gone" <<<"$added" && continue
+      git grep -n -F -- "$gone" -- '*.md' ':!docs/' |
         while IFS= read -r hit; do
           hf=${hit%%:*}
           [ "$hf" = "$f" ] && continue
           # A copy in a file this same change ADDED the text to is where
           # the text went (CFG-0733). Asked per copy, not of the whole
           # change: a move would otherwise clear every other copy too.
-          git diff --cached -- "$hf" | grep -E '^\+' | grep -v -e '^+++ ' |
-            sed 's/^+//; s/^[[:space:]]*//; s/[[:space:]]*$//' |
-            grep -qF -- "$gone" && continue
+          side + "$hf" | grep -qF -- "$gone" && continue
           printf 'BLOCK survivor %s -> %s\n' "$f" "$hit"
         done
-    done >>/tmp/.pc-link.$$ 2>/dev/null
+    done >>"$blocks"
 
-  if [ -s /tmp/.pc-link.$$ ]; then
-    cut -c1-200 /tmp/.pc-link.$$ >&2
-    fails=$((fails + $(wc -l </tmp/.pc-link.$$)))
+  if [ -s "$blocks" ]; then
+    cut -c1-200 "$blocks" >&2
+    fails=$((fails + $(wc -l <"$blocks")))
   fi
-  rm -f /tmp/.pc-link.$$
-done
+done < <(git diff --cached --name-only -z --diff-filter=ACMR)
 
 if [ "$fails" -gt 0 ]; then
   cat >&2 <<'MSG'
