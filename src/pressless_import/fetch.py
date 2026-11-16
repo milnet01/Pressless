@@ -282,7 +282,7 @@ class _Site:
     def __init__(self, address: str) -> None:
         parts = urlsplit(address)
         self.scheme, self.netloc = parts.scheme, parts.netloc
-        self.host = self._host(parts)
+        self.host_and_port = self._host(parts)
         self.base = parts.path if parts.path.endswith("/") else f"{parts.path}/"
 
     @staticmethod
@@ -301,7 +301,7 @@ class _Site:
         except ValueError:      # an address no parser can read, as `http://[x/`
             return False
         path = parts.path or "/"
-        return (parts.scheme in _DEFAULT_PORTS and self._host(parts) == self.host
+        return (parts.scheme in _DEFAULT_PORTS and self._host(parts) == self.host_and_port
                 and (path.startswith(self.base) or f"{path}/" == self.base))
 
     def asked(self, address: str) -> str:
@@ -375,7 +375,9 @@ class _Crawl:
         self.waiting: deque[str] = deque()
         self.seen: set[str] = set()
         self.landed: dict[str, str] = {}     # the asked address -> the path it landed at
-        self.urls: dict[str, str] = {}       # a text file's path -> the address it came from
+        # Every landed file's path, pictures too -> the address it came from;
+        # MEMBERS_MOST counts it.
+        self.urls: dict[str, str] = {}
         self.taken = _Paths()
         self.left: list[tuple[str, str]] = []
 

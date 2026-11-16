@@ -207,7 +207,8 @@ that is only a fragment. Otherwise it is resolved in this order, its query and
 fragment kept:
 
 1. the file at that path;
-2. that path with `index.html` or `index.htm` joined, where it names a folder;
+2. that path with `index.html` or `index.htm` joined, where it names a folder,
+   its capitals ignored as § 4.4 ignores them for the front page;
 3. that path with `.html` or `.htm` added, as GitHub Pages serves it;
 4. where it began with `/` and its first segment names nothing in the folder,
    the same three without that segment, as a site served under its repository's

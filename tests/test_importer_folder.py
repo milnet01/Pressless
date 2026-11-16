@@ -669,6 +669,15 @@ def test_a_front_page_is_found_whatever_its_capitals(tmp_path):
     assert store.read_address_forwards(into) == {"ABOUT.HTM": "about", "INDEX.HTM": "index"}
 
 
+def test_a_link_to_a_folder_finds_its_index_whatever_its_capitals(tmp_path):
+    """§ 4.5's second step reads a folder's index as § 4.4 finds the front page."""
+    into, brought = _brought(tmp_path, {"index.html": _page('<a href="sub/">Sub</a>'),
+                                        "sub/INDEX.HTM": _page("<p>Sub</p>")})
+    site = _built(tmp_path, into)
+    assert _unresolved(site, "index.html") == []
+    assert "sub/" not in _said(brought)
+
+
 def test_css_that_only_looks_like_an_address_is_left_alone(tmp_path):
     """§ 4.7: a comment and a string are not addresses or rules."""
     css = ('/* @import "gone.css"; url(gone.png) */\n'

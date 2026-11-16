@@ -7,6 +7,10 @@ import/work/ and then all at once.
 
 Every page keeps its bytes but for what the spec names, so nothing here parses a
 page to write it back: each change is an edit at offsets `blocks`' scanner reports.
+
+fetch.py, which downloads a live site as such a folder (PRESS-0333), reads and
+rewrites addresses with this module's own readers and writers, underscore names
+and all. Search it before reshaping one.
 """
 from __future__ import annotations
 
@@ -35,7 +39,9 @@ from pressless.words import say
 from . import Dropped, ImportStopped, Report, _writing, resolve_slug
 from ._bring import _NOT_EMPTY, IMPORT_FOLDER, _holds_a_site, _page_refused, recover, staged
 
-MEMBERS_MOST = 20_000                # a ZIP holding more is refused
+# A ZIP holding more is refused, and a site download stops at it (fetch.py,
+# PRESS-0333 § 4.2), so raising it raises both.
+MEMBERS_MOST = 20_000
 SVG_LARGEST = 256 * 1024             # § 4.6
 # § 4.7: @imports followed one inside another. Deeper ones are left, which
 # also keeps reading and joining them inside Python's recursion limit.
@@ -50,6 +56,7 @@ _STYLE_LINK = f'<link rel="stylesheet" href="{_UP}{builder.STYLE_CODE}">'
 _HOME = "Home"                       # what menu._nav and starter.home_page call the front page
 _FRONT = "index"
 _PAGE_SUFFIXES = (".html", ".htm")
+_INDEX_NAMES = ("index.html", "index.htm")
 _VERIFICATION = ("google", "yandex_", "pinterest-")
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 _CHARSET = re.compile(r"""<meta\b[^>]*?\bcharset\s*=\s*["']?\s*([\w.:-]+)""", re.I)
@@ -358,6 +365,19 @@ def _place_from(path: str, own: str) -> str:
     return "/".join(parts)
 
 
+def _index_pages(paths: list[str]) -> dict[str, str]:
+    """Each folder's index page, by the folder's path ("" for the root):
+    index.html before index.htm, the first in `paths` order where capitals
+    differ. Capitals are ignored, as a site made on Windows may say INDEX.HTM."""
+    found: dict[str, str] = {}
+    for name in _INDEX_NAMES:
+        for path in paths:
+            folder, _slash, own = path.rpartition("/")
+            if own.casefold() == name:
+                found.setdefault(folder, path)
+    return found
+
+
 class _Folder:
     """Every path in the folder, for § 4.5's order of looking."""
 
@@ -366,15 +386,13 @@ class _Folder:
         self.folders = frozenset({"", *(parent for path in files
                                         for parent in _parents(path))})
         self.roots = frozenset(path.split("/")[0] for path in files)
+        self.indexes = _index_pages(files)
 
     def _look(self, place: str) -> str | None:
         if place in self.files:
             return place
-        joined = f"{place}/" if place else ""
-        if place in self.folders:
-            for name in ("index.html", "index.htm"):
-                if f"{joined}{name}" in self.files:
-                    return f"{joined}{name}"
+        if place in self.folders and place in self.indexes:
+            return self.indexes[place]
         for suffix in _PAGE_SUFFIXES:
             if place and f"{place}{suffix}" in self.files:
                 return f"{place}{suffix}"
@@ -822,11 +840,10 @@ def _without_suffix(path: str) -> str:
 
 def _front_page(pages: list[str]) -> tuple[str, bool]:
     """The front page's path, and whether it was chosen rather than found."""
-    # Folded, as a site made on Windows may say INDEX.HTM.
+    index = _index_pages(pages).get("")
+    if index is not None:
+        return index, False
     folded = {path.casefold(): path for path in reversed(pages)}
-    for name in ("index.html", "index.htm"):
-        if name in folded:
-            return folded[name], False
     for stem in ("home", "default"):
         for suffix in _PAGE_SUFFIXES:
             if f"{stem}{suffix}" in folded:
