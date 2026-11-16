@@ -172,6 +172,14 @@ class Export:
 
 # Before the root element: space, the XML declaration, and comments.
 _PROLOG = re.compile(rb"\s+|<\?.*?\?>|<!--.*?-->", re.S)
+# An export may hold one element for each of these bytes, and a few more.
+# The test suite's exports take about twice as many bytes for each, and
+# each element read takes some ninety bytes of memory (measured
+# 2026-11-17). So a tree is never many times what a real export of its size
+# takes, as a file of empty elements would build (PRESS-0125 § 4.3).
+_BYTES_PER_ELEMENT = 24
+_FEW_ELEMENTS = 10_000
+_PIECE = 1 << 20
 
 
 def _declares(data: bytes) -> bool:
@@ -194,13 +202,27 @@ def read(export: Path) -> Export:
     except OSError as exc:
         raise ImportStopped(
             f"the export {export.name} cannot be read ({type(exc).__name__})") from None
+    refused = ImportStopped(f"{export.name} is not a WordPress export Pressless can read")
     if _declares(data):
-        raise ImportStopped(f"{export.name} is not a WordPress export Pressless can read")
+        raise refused
+    room = len(data) // _BYTES_PER_ELEMENT + _FEW_ELEMENTS
+    root, count = None, 0
     try:
-        root = ET.fromstring(data)   # _declares refused every declaration first
+        # _declares refused every declaration first.
+        parser = ET.XMLPullParser(events=("start",))
+        for at in range(0, len(data), _PIECE):
+            parser.feed(data[at:at + _PIECE])
+            for _event, element in parser.read_events():
+                root = element if root is None else root
+                count += 1
+            if count > room:
+                raise refused
+        parser.close()
     except ET.ParseError as exc:
         raise ImportStopped(
             f"the export {export.name} cannot be read ({type(exc).__name__})") from None
+    if root is None:
+        raise ImportStopped(f"the export {export.name} cannot be read (ParseError)")
     # Read off the document, never pinned: WXR has shipped several.
     namespace = next(
         (element.tag[1:].split("}", 1)[0] for element in root.iter()

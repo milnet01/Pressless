@@ -1020,6 +1020,7 @@ def test_an_export_declaring_entities_is_refused(tmp_path, monkeypatch):
 
     monkeypatch.setattr(ET, "fromstring", parsed)
     monkeypatch.setattr(ET, "parse", parsed)
+    monkeypatch.setattr(ET, "XMLPullParser", parsed)
     valid = _export(_item(1, slug="one"))
     head, rest = valid.split("\n", 1)
     nested = ('<!DOCTYPE rss [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;">]>\n')
@@ -1030,6 +1031,24 @@ def test_an_export_declaring_entities_is_refused(tmp_path, monkeypatch):
         export.write_text(text, encoding="utf-8")
         with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
             pressless_import.read(export)
+
+
+def test_an_export_of_tiny_elements_is_refused_as_it_is_read(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.3: an export far denser in elements than WordPress
+    writes is refused as it is read, before its tree outgrows the memory a
+    real export of its size takes.
+
+    Breaks when the size limit is the only one, so a file of empty elements
+    builds a tree many times its own size."""
+    valid = _export(_item(1, slug="one"))
+    dense = valid.replace("</channel>", "<x/>" * 300_000 + "</channel>", 1)
+    export = tmp_path / "export.xml"
+    export.write_text(dense, encoding="utf-8")
+    # Read in small pieces, so the count must span them.
+    monkeypatch.setattr(pressless_import, "_PIECE", 4096)
+
+    with pytest.raises(ImportStopped, match="not a WordPress export Pressless can read"):
+        pressless_import.read(export)
 
 
 def test_a_post_body_naming_a_doctype_is_still_read(tmp_path):

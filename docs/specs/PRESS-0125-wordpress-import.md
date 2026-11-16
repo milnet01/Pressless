@@ -128,7 +128,10 @@ does not begin with markup (`ImportStopped`, "is not a WordPress export
 Pressless can read"): WordPress writes neither, and both are how an XML
 file expands past its size. A post's body quoting one is not in the
 prolog, and reads. An export over `EXPORT_LARGEST = 256 MiB` is
-refused at upload. The S314 exemption in `pyproject.toml` stays, now
+refused at upload. One denser in elements than one for every
+`_BYTES_PER_ELEMENT` bytes, and a few more, is refused as it is read:
+a file of empty elements builds a tree many times its own size, and no
+WordPress export is that dense. The S314 exemption in `pyproject.toml` stays, now
 resting on that refusal.
 
 What is carried, by `wp:post_type`:
