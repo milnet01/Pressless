@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=365 -->
+<!-- ants-roadmap-id-high-water: PRESS=366 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7551,6 +7551,24 @@ does not wait on them.
   Kind: feature.
   Source: user-request-2026-09-02.
   Lanes: Insights.
+
+- 📋 [PRESS-0366] **Your site counts changes that its Publish button does not send, and does not say where they go out.**
+  Seen 2026-11-16 on the Windows box, on the 1.0.0 draft's zip in Edge.
+  After an edit to a published entry, Your site read "1 change is not
+  on your site yet: 1 journal entry". Publish then said "Nothing on your
+  site would change", and the line stayed. The entry editor's Press to
+  site sent it. With only a draft, Publish refused with "Publishing now
+  would leave your site with no entries" (PRESS-0358's guard, right for
+  that test site), and named no way forward.
+  Both behave as designed: PRESS-0364 keeps the line apart from Publish
+  because Publish sends none of these changes. The words do not say so.
+  To weigh: the count line, or Publish's "nothing would change" answer,
+  says entries and pages go out from their own Press to site.
+  Also seen: Finish setting up ticked "Put your site on the web" before
+  anything was published, on a repository that already held a site.
+  **Layman:** Your site says a change is waiting, but pressing Publish there says nothing would change; the change goes out from the entry's own button.
+  Kind: ux.
+  Source: by-hand-check-2026-11-16 1.0.0 draft round.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
