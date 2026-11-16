@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import datetime
 import html
-import secrets
 import urllib.parse
 from collections.abc import Callable
 from pathlib import Path
@@ -39,6 +38,9 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
     `own` is Pressless's own folder; `restart` runs once the answer is sent,
     as restarting.register's does."""
     own = Path(own)
+    # The site this Face serves until its restart: one opened since then is
+    # named in sites.json, and neither may be removed.
+    served = sites.open_site(own)
 
     def screen(request: Request) -> str:
         return _screen(own)
@@ -65,13 +67,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
             if named not in held:
                 return _screen(own, say("sites_screen.not_a_site"))
             site = held[named]
-        target = own / f".saving-{secrets.token_hex(8)}.zip"
-        try:
-            sitefile.save(site, target)
-        except BaseException:
-            target.unlink(missing_ok=True)
-            raise
-        return Download(target, file_name(site))
+        return Download(sitefile.save_part(site, own), file_name(site))
 
     def open_file(path: Path) -> str:
         try:
@@ -95,7 +91,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
         held = {path.name: path for path in sites.all_sites(own)}
         site = held.get(form.get("site", [""])[0])
-        if site is None or site == sites.open_site(own):
+        if site is None or site in (served, sites.open_site(own)):
             return _screen(own, say("sites_screen.not_a_site"))
         if form.get("sure", [""])[0] != "yes":
             return _asking(own, site)
@@ -104,7 +100,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
             sites.remove(site)
         except OSError as exc:
             return _screen(own, face.fail(exc, publishing=False), raw=True)
-        return _screen(own, say("sites_screen.removed", file=str(kept)))
+        return _screen(own, say("sites_screen.removed", file=kept.name, folder=kept.parent.name))
 
     face.add_page("GET", ADDRESS, screen)
     face.add_page("POST", f"{ADDRESS}/open", open_one)
@@ -123,28 +119,21 @@ def file_name(site: Path) -> str:
 def _keep_a_copy(own: Path, site: Path) -> Path:
     """One site file in the backups folder, whole before this returns, which the daily
     round never rotates as its name is not a backup's. An OSError is the caller's."""
-    folder = backups.folder_of(own)
-    folder.mkdir(parents=True, exist_ok=True)
+    folder = backups.ready_folder(own)
     stem = f"{sitefile.stem(site)} removed {datetime.date.today().isoformat()}"
     target = folder / f"{stem}.zip"
     number = 1
     while target.exists():
         number += 1
         target = folder / f"{stem} {number}.zip"
-    part = folder / f".saving-{secrets.token_hex(8)}.zip"
-    try:
-        sitefile.save(site, part)
-        part.rename(target)
-    except BaseException:
-        part.unlink(missing_ok=True)
-        raise
+    sitefile.save_as(site, target)
     return target
 
 
 def _asking(own: Path, site: Path) -> str:
     e = html.escape
     return (f'<h1>{say("sites_screen.remove.title", site=e(sitefile.name_of(site)))}</h1>'
-            f'<p>{say("sites_screen.remove.what", folder=e(str(backups.folder_of(own))))}</p>'
+            f'<p>{say("sites_screen.remove.what", folder=e(backups.folder_of(own).name))}</p>'
             f'<form method="post" action="{ADDRESS}/remove">'
             f'<input type="hidden" name="site" value="{e(site.name, quote=True)}">'
             '<input type="hidden" name="sure" value="yes">'

@@ -190,6 +190,7 @@ def _serve(own: Path) -> int:
         for site in sites.all_sites(own):
             finished = importing.finish_moves(site)    # every site, though one stops
             stopped = stopped or finished
+        backups.clear_leftovers(own)   # PRESS-0383: what a stopped save or open left
         if stopped is not None:
             print(stopped)
             return 1

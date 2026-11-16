@@ -297,3 +297,34 @@ def test_a_second_copy_the_same_day_overwrites_nothing(tmp_path: Path) -> None:
     finally:
         served.stop()
     assert len(list(folder.glob("*.zip"))) == 2
+
+
+def test_removing_names_no_full_path(tmp_path: Path) -> None:
+    """docs/design.md § Logging: a location is a label. Breaks when the
+    asking or the answer shows the backups folder's whole address."""
+    own = _own(tmp_path)
+    other = _other_site(own)
+    served, browser = _serve(own, [])
+    try:
+        asked = browser.request("POST", "/sites/remove", {"site": other.name})[2]
+        page = browser.request("POST", "/sites/remove", {"site": other.name, "sure": "yes"})[2]
+    finally:
+        served.stop()
+    for said in (asked, page):
+        assert str(tmp_path) not in said and backups.DEFAULT_FOLDER in said
+
+
+def test_the_site_this_face_serves_cannot_be_removed(tmp_path: Path) -> None:
+    """Breaks when the check reads sites.json alone: once another site is
+    chosen, the site still served until the restart could be removed."""
+    own = _own(tmp_path)
+    open_now = sites.open_site(own)
+    other = _other_site(own)
+    served, browser = _serve(own, [])
+    try:
+        sites.choose(own, other.name)
+        for name in (open_now.name, other.name):
+            browser.request("POST", "/sites/remove", {"site": name, "sure": "yes"})
+    finally:
+        served.stop()
+    assert open_now.is_dir() and other.is_dir()

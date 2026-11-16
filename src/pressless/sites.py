@@ -13,6 +13,7 @@ it copies.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import secrets
@@ -24,6 +25,8 @@ from pressless.safe_write import write_whole
 SITES_FOLDER = "sites"
 OPEN_FILE = "sites.json"
 _MOVING = ".moving"
+_REMOVING = ".removing-"   # a removed site, its copy kept, being deleted
+_REPLACED = ".replaced-"   # a site moved aside while an opened file takes its place
 _NAME = re.compile(r"site-[1-9][0-9]*")
 
 # § 4.2: what belongs to a site, moved into site-1 by move_in. It also
@@ -118,9 +121,35 @@ def remove(site: Path) -> None:
     """Remove a site's folder, its copy already kept. It is renamed first, so a site half
     deleted is never listed; a rename's OSError leaves it whole, and what a delete leaves
     behind under the new name is no site."""
-    going = site.with_name(f".removing-{site.name}-{secrets.token_hex(4)}")
+    going = site.with_name(f"{_REMOVING}{site.name}-{secrets.token_hex(4)}")
     site.rename(going)
     shutil.rmtree(going, ignore_errors=True)
+
+
+def aside(site: Path) -> Path:
+    """A fresh name beside `site` to move it to while a file opened as a site
+    takes its place (PRESS-0224 § 4.4 step 5). It carries the site's name,
+    so clear_leftovers can put back one a stopped open left."""
+    return site.with_name(f"{_REPLACED}{site.name}-{secrets.token_hex(8)}")
+
+
+def clear_leftovers(own: Path) -> None:
+    """At start, behind the folder's lock: what a stopped remove or open left
+    under sites/. A removed site's copy is already kept, so it goes. A site
+    moved aside comes back where nothing took its place, else it goes."""
+    held = Path(own) / SITES_FOLDER
+    if not held.is_dir():
+        return
+    for path in held.iterdir():
+        if path.name.startswith(_REMOVING):
+            shutil.rmtree(path, ignore_errors=True)
+        elif path.name.startswith(_REPLACED):
+            name = path.name.removeprefix(_REPLACED).rpartition("-")[0]
+            if _NAME.fullmatch(name) and not (held / name).exists():
+                with contextlib.suppress(OSError):   # tried again at the next start
+                    path.rename(held / name)
+            else:
+                shutil.rmtree(path, ignore_errors=True)
 
 
 def choose(own: Path, name: str) -> None:

@@ -94,7 +94,9 @@ stored; the rest are deflated. `settings.json` goes in as read, but with
 `site_folder` set to `""`, so the file names no path on this computer.
 
 `GET /sites/save` saves to `<own>/.saving-<random>.zip` and answers with
-it as a download (§ 4.5), named as § 4.1 says.
+it as a download (§ 4.5), named as § 4.1 says. `save_part` writes that
+file and `save_as` renames it into place; a start deletes one a stopped
+Pressless left.
 
 ### 4.3 Checking
 
@@ -275,7 +277,7 @@ code exists, and mutation-probed once it lands.
   what every other upload uses.
 - **Saving into a folder on disk rather than a download.** Rejected for
   saving by hand: the browser already asks where to save. PRESS-0225's
-  automatic backups write to a folder, and call `save` directly.
+  automatic backups write to a folder, through `save_as`.
 - **Raising `_MAX_BODY`.** Rejected: every body would still be held in
   memory whole.
 - **Keeping the built site and the preview in the file.** Rejected: both

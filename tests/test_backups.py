@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
+import threading
 import zipfile
 from pathlib import Path
 
@@ -171,3 +173,156 @@ def test_the_record_is_the_machines(tmp_path: Path) -> None:
     backups.set_folder(own, str(tmp_path))
     assert json.loads((own / "backups.json").read_text(encoding="utf-8"))["version"] == 1
     assert "backups.json" in sites.MACHINE_NAMES
+
+
+# ------------------------------------------------------- PRESS-0383 fixes ---
+
+
+def test_a_site_whose_settings_are_no_object_never_stops_the_others(tmp_path: Path) -> None:
+    """Breaks when a TypeError from sitefile.save escapes the round, which
+    ends the backup thread with nothing said."""
+    own = _own(tmp_path)
+    (own / "sites" / "site-1" / "settings.json").write_text("[]", encoding="utf-8")
+    said = backups.make_due(own, DAY)
+    assert said is not None and backups.trouble(own) == said
+    assert _made(tmp_path / "Pressless-backups") == ["Hill Notes (site-2) 2026-10-16.zip"]
+
+
+def test_a_failing_round_never_ends_the_backups(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when one round's unforeseen failure ends the hourly thread."""
+    rounds: list[int] = []
+    again = threading.Event()
+
+    def fails_once(own: Path, today: datetime.date) -> str | None:
+        rounds.append(1)
+        if len(rounds) == 1:
+            raise RuntimeError("made up")
+        again.set()
+        return None
+
+    monkeypatch.setattr(backups, "make_due", fails_once)
+    monkeypatch.setattr(backups, "_EVERY", 0.01)
+    heard: list[str] = []
+    stop = threading.Event()
+    worker = backups.start(tmp_path / "own", stop, heard.append)
+    try:
+        assert again.wait(5), "no second round"
+    finally:
+        stop.set()
+        worker.join(5)
+    assert heard and "RuntimeError" in heard[0]
+
+
+def test_a_chosen_folder_that_has_gone_is_not_made_again(tmp_path: Path) -> None:
+    """Breaks when an unplugged drive's folder is made again on the disk
+    under it, where the backups hide once the drive is back."""
+    own = _own(tmp_path)
+    chosen = tmp_path / "usb drive" / "backups"
+    chosen.mkdir(parents=True)
+    backups.set_folder(own, str(chosen))
+    chosen.rmdir()
+    said = backups.make_due(own, DAY)
+    assert said is not None and str(tmp_path) not in said
+    assert not chosen.exists()
+
+
+def test_a_clock_gone_back_keeps_the_backup_it_makes(tmp_path: Path) -> None:
+    """Breaks when seven backups dated later than today rotate out the one
+    made now, so a whole site is written and deleted every hour."""
+    own = _own(tmp_path)
+    folder = tmp_path / "Pressless-backups"
+    folder.mkdir()
+    for offset in range(1, 8):
+        later = DAY + datetime.timedelta(days=offset)
+        (folder / f"Sea Notes (site-1) {later.isoformat()}.zip").write_bytes(b"later")
+    assert backups.make_due(own, DAY) is None
+    assert (folder / "Sea Notes (site-1) 2026-10-16.zip").is_file()
+    assert len([name for name in _made(folder) if "(site-1) " in name]) == 7
+
+
+def test_a_folder_inside_pressless_is_refused(tmp_path: Path) -> None:
+    """Breaks when backups can go inside a site's added files, which
+    publishes every draft and setting they hold."""
+    own = _own(tmp_path)
+    inside = own / "sites" / "site-1" / "files"
+    inside.mkdir()
+    with pytest.raises(ValueError):
+        backups.set_folder(own, str(inside))
+    assert backups.folder_of(own) == tmp_path / "Pressless-backups"
+
+
+def test_a_record_that_cannot_be_read_now_keeps_its_folder(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when a passing read failure, a file held on Windows, is taken
+    for an empty record and the trouble written over the chosen folder."""
+    own = _own(tmp_path)
+    chosen = tmp_path / "chosen"
+    chosen.mkdir()
+    backups.set_folder(own, str(chosen))
+    read_text = Path.read_text
+
+    def held(path: Path, *args: object, **kwargs: object) -> str:
+        if path.name == "backups.json":
+            raise PermissionError(13, "Permission denied")
+        return read_text(path, *args, **kwargs)
+
+    def fails(site: Path, target: Path) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(backups.sitefile, "save", fails)
+    monkeypatch.setattr(Path, "read_text", held)
+    assert backups.make_due(own, DAY) is not None
+    monkeypatch.undo()
+    assert backups.folder_of(own) == chosen
+
+
+def test_a_folder_choice_is_never_lost_to_a_trouble_written_beside_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the record's read, merge and write are not one step, so a
+    round's trouble written as the folder is chosen puts the old record back."""
+    own = _own(tmp_path)
+    chosen = tmp_path / "chosen"
+    chosen.mkdir()
+    inside, go_on = threading.Event(), threading.Event()
+    record = backups._record
+
+    def slow(own: Path, **kwargs: object) -> dict:
+        found = record(own, **kwargs)
+        if threading.current_thread().name == "trouble":
+            inside.set()
+            go_on.wait(5)
+        return found
+
+    monkeypatch.setattr(backups, "_record", slow)
+    trouble = threading.Thread(target=backups._write, args=(own,),
+                               kwargs={"trouble": "made up"}, name="trouble")
+    trouble.start()
+    assert inside.wait(5)
+    choosing = threading.Thread(target=backups.set_folder, args=(own, str(chosen)))
+    choosing.start()
+    choosing.join(0.3)
+    go_on.set()
+    trouble.join(5)
+    choosing.join(5)
+    assert backups.folder_of(own) == chosen and backups.trouble(own) == "made up"
+
+
+def test_half_made_site_files_are_cleared_at_start(tmp_path: Path) -> None:
+    """Breaks when a stopped save leaves a whole site, drafts included,
+    beside Pressless or among the backups for good, or when one another
+    Pressless may be writing now is taken."""
+    own = _own(tmp_path)
+    folder = tmp_path / "Pressless-backups"
+    folder.mkdir()
+    old = (own / ".saving-1.zip", folder / ".saving-2.zip",
+           folder / ".pressless-backup-3.part")
+    for path in old:
+        path.write_bytes(b"half")
+        os.utime(path, (0, 0))
+    writing = folder / ".saving-4.zip"
+    writing.write_bytes(b"half")
+    (folder / "his own .saving-notes.zip").write_bytes(b"his")
+    backups.clear_leftovers(own)
+    assert not any(path.exists() for path in old)
+    assert writing.is_file() and (folder / "his own .saving-notes.zip").is_file()

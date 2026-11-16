@@ -323,3 +323,17 @@ def test_a_second_sites_setup_keeps_the_reports_answer_with_the_machine(
     assert usage.answer(own) is True and usage.answer(second) is None
     (second / "wizards" / "setup.json").unlink()
     assert first_steps()[0] == "account"
+
+
+def test_a_stopped_remove_or_open_is_cleared_at_start(tmp_path: Path) -> None:
+    """Breaks when a site half deleted stays on the disk for good, or when a
+    site moved aside by a stopped open is deleted rather than put back."""
+    own = tmp_path / "own"
+    for name in ("site-1", ".removing-site-2-ab12", ".replaced-site-1-cd34",
+                 ".replaced-site-3-ef56", ".moving"):
+        (own / SITES / name).mkdir(parents=True)
+    (own / SITES / ".replaced-site-3-ef56" / "kept.txt").write_text("words", encoding="utf-8")
+    sites.clear_leftovers(own)
+    assert sorted(path.name for path in (own / SITES).iterdir()) == [
+        ".moving", "site-1", "site-3"]
+    assert (own / SITES / "site-3" / "kept.txt").read_text(encoding="utf-8") == "words"

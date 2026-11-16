@@ -32,6 +32,7 @@ KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})
 _OPENING = ".opening"
+SAVING = ".saving-"   # a site file being written; whole once renamed or handed over
 _SPARE = 1024 * 1024 * 1024   # the drive keeps this much free after an open
 MEMBERS_MOST = 100_000        # § 4.3: a file holding more members is refused
 STEM_MOST = 60                # § 4.1: characters of the site's name in a file's name
@@ -107,6 +108,30 @@ def save(site: Path, target: Path) -> None:
             kind = (zipfile.ZIP_STORED if name.split("/")[0] in _STORED
                     else zipfile.ZIP_DEFLATED)
             made.write(path, name, compress_type=kind)
+
+
+def save_part(site: Path, folder: Path) -> Path:
+    """Save the site to a fresh `.saving-<random>.zip` in `folder`, whole, and
+    return it for the caller to rename or hand over. Nothing is left where
+    the save fails (§ 4.2)."""
+    part = Path(folder) / f"{SAVING}{secrets.token_hex(8)}.zip"
+    try:
+        save(site, part)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
+    return part
+
+
+def save_as(site: Path, target: Path) -> None:
+    """Save the site to `target`, a name nothing holds, so that a file under
+    that name is always whole."""
+    part = save_part(site, Path(target).parent)
+    try:
+        part.rename(target)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 def stays_inside(name: str) -> bool:
@@ -265,8 +290,9 @@ def _replace(target: Path, opening: Path) -> None:
     """§ 4.4 step 5, never losing `target` on the way (PRESS-0299): it moves
     aside, and comes back where the rename fails, so a refusal leaves sites/
     as it was. The aside name is fresh each time, so one left by a stopped
-    open blocks nothing and is never mistaken for a site."""
-    aside = target.with_name(f".replaced-{secrets.token_hex(8)}")
+    open blocks nothing and is never mistaken for a site;
+    sites.clear_leftovers puts it back or deletes it at the next start."""
+    aside = sites.aside(target)
     target.rename(aside)
     try:
         opening.rename(target)
