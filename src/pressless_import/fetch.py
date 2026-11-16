@@ -10,6 +10,7 @@ redirects included. No cookie and no key is ever sent.
 """
 from __future__ import annotations
 
+import errno
 import html
 import http.client
 import ipaddress
@@ -17,6 +18,7 @@ import posixpath
 import re
 import socket
 import ssl
+import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -48,11 +50,15 @@ from ._folder import (
 )
 
 SECONDS = 30                    # without data, a fetch stops (§ 4.4)
+LONGEST = 30 * 60               # a fetch still sending after this stops too
 _REDIRECTS = 5
 _PIECE = 64 * 1024
 _MOVED = frozenset({301, 302, 303, 307, 308})
 _URL_SAFE = "/%:@!$&'()*+,;=~"
 NO_ROOM = "there was no room left on this drive"
+TOO_SLOW = f"it was still arriving after {LONGEST // 60} minutes"
+_NOT_FOUND = "the old site's name could not be found"
+_NOT_WEB = "its address is not a web address"
 _OUT_OF_THE_SITE = "it redirected out of the site"
 _PARENT = "its address climbs out of the site"
 _TOO_MANY = "the site holds too many files to bring in whole"
@@ -63,6 +69,7 @@ _CRAWL_PART = ".crawl-part"
 
 Resolve = Callable[[str, int], list[str]]
 Connect = Callable[[str, str, int, bool], http.client.HTTPConnection]
+_clock = time.monotonic
 
 
 def _resolve(host: str, port: int) -> list[str]:
@@ -92,40 +99,70 @@ def _connect(address: str, host: str, port: int, secure: bool) -> http.client.HT
     return http.client.HTTPConnection(address, port, timeout=SECONDS)
 
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
 def _global(address: str) -> bool:
+    """Whether `address` is global, and so is every IPv4 address it carries:
+    IPv4-mapped, 6to4, Teredo, or NAT64's, which a gateway reaches for it."""
     try:
         found = ipaddress.ip_address(address.split("%", 1)[0])
     except ValueError:
         return False
-    mapped = getattr(found, "ipv4_mapped", None)
-    return (mapped or found).is_global
+    if not found.is_global:
+        return False
+    if found.version == 4:
+        return True
+    carried = [found.ipv4_mapped, found.sixtofour, *(found.teredo or ())]
+    if found in _NAT64:
+        carried.append(ipaddress.IPv4Address(int(found) & 0xFFFFFFFF))
+    return all(one.is_global for one in carried if one is not None)
+
+
+def _not_written(exc: OSError) -> str | None:
+    """Why a write on this computer failed, or None where `exc` came from
+    the network: a file's own error names the file, and a full drive says
+    ENOSPC on every system."""
+    if exc.errno == errno.ENOSPC:
+        return NO_ROOM
+    if exc.filename is not None:
+        return f"it could not be written here ({exc.strerror or type(exc).__name__})"
+    return None
 
 
 def fetch(address: str, target: Path, room: Callable[[], int], *,
-          resolve: Resolve = _resolve, connect: Connect = _connect,
+          resolve: Resolve | None = None, connect: Connect | None = None,
           within: Callable[[str], bool] | None = None,
           answered: list[tuple[str, str]] | None = None) -> str | None:
     """Fetch `address` into `target`: None where it was written, else why not.
     Nothing part-written is left behind. With `within`, a hop it refuses is not
-    made; `answered` gains the address that answered, and its content type."""
+    made; `answered` gains the address that answered, and its content type.
+    `resolve` and `connect` are read from the module when called, so a test
+    can stand in for the network."""
+    resolve, connect = resolve or _resolve, connect or _connect
     if room() < 0:
         return NO_ROOM
     for _hop in range(_REDIRECTS + 1):
         if within is not None and not within(address):
             return _OUT_OF_THE_SITE
-        parts = urlsplit(address)
+        try:
+            parts = urlsplit(address)
+        except ValueError:      # an address no parser can read, as `http://[x/`
+            return _NOT_WEB
         try:
             port = parts.port or (443 if parts.scheme == "https" else 80)
         except ValueError:
             return "its address names no port Pressless can use"
         if parts.scheme not in ("http", "https") or not parts.hostname:
-            return "its address is not a web address"
+            return _NOT_WEB
         try:
             found = resolve(parts.hostname, port)
         except (OSError, UnicodeError):
             # getaddrinfo raises UnicodeError for an empty or over-long label
-            return "the old site's name could not be found"
-        if not found or not all(_global(one) for one in found):
+            return _NOT_FOUND
+        if not found:
+            return _NOT_FOUND
+        if not all(_global(one) for one in found):
             return "its address leads inside this computer or its network"
         connection = connect(found[0], parts.hostname, port, parts.scheme == "https")
         try:
@@ -153,7 +190,9 @@ def fetch(address: str, target: Path, room: Callable[[], int], *,
             return _keep(answer, target, room)
         except TimeoutError:
             return f"the old site sent nothing for {SECONDS} seconds"
-        except (OSError, http.client.HTTPException, ValueError) as exc:
+        except OSError as exc:
+            return _not_written(exc) or f"the connection failed ({type(exc).__name__})"
+        except (http.client.HTTPException, ValueError) as exc:
             return f"the connection failed ({type(exc).__name__})"
         finally:
             connection.close()
@@ -165,6 +204,7 @@ def _keep(answer, target: Path, room: Callable[[], int]) -> str | None:
     largest = builder.FILE_LARGEST
     part = target.with_name(f".{target.name}.part")
     written, why = 0, None
+    ends = _clock() + LONGEST
     try:
         with open(part, "wb") as out:
             while piece := answer.read(_PIECE):
@@ -175,6 +215,9 @@ def _keep(answer, target: Path, room: Callable[[], int]) -> str | None:
                 if room() < 0:
                     why = NO_ROOM
                     break
+                if _clock() > ends:
+                    why = TOO_SLOW
+                    break
                 out.write(piece)
         if why is None:
             part.replace(target)
@@ -184,7 +227,7 @@ def _keep(answer, target: Path, room: Callable[[], int]) -> str | None:
 
 
 def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
-              resolve: Resolve = _resolve, connect: Connect = _connect,
+              resolve: Resolve | None = None, connect: Connect | None = None,
               progress: Callable[[int, int], None] | None = None) -> dict[str, str]:
     """Each attachment the export names, fetched from its `attachment_url`
     into `media/<place>` where it is not there already, so a stopped fetch
@@ -201,13 +244,19 @@ def fetch_all(export: Export, media: Path, room: Callable[[], int], *,
             wanted.append((address, _place(item, export.ns)))
         except ImportStopped as exc:
             missing[address] = str(exc)
+        except ValueError:      # an address no parser can read, as `http://[x]/`
+            missing[address] = _NOT_WEB
     full = False
     for done, (address, place) in enumerate(wanted, start=1):
         target = media / place
         if not target.is_file():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            why = NO_ROOM if full else fetch(address, target, room, resolve=resolve,
-                                             connect=connect)
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                why = _not_written(exc) or f"it could not be written here ({type(exc).__name__})"
+            else:
+                why = NO_ROOM if full else fetch(address, target, room, resolve=resolve,
+                                                 connect=connect)
             full = full or why == NO_ROOM
             if why is not None:
                 missing[place] = why
@@ -313,7 +362,7 @@ class _Crawl:
     """One download: what is waiting, what landed, and what was left."""
 
     def __init__(self, address: str, into: Path, room: Callable[[], int],
-                 resolve: Resolve, connect: Connect) -> None:
+                 resolve: Resolve | None, connect: Connect | None) -> None:
         self.site, self.start = _Site(address), address
         self.into, self.room, self.resolve, self.connect = into, room, resolve, connect
         self.part = into.parent / _CRAWL_PART
@@ -457,8 +506,7 @@ def fetch_site(address: str, into: Path, room: Callable[[], int], *,
     read ends the crawl with nothing kept. Each check `fetch` makes applies to every
     hop, so a host resolving inside the network is never reached."""
     into.mkdir(parents=True, exist_ok=True)
-    # Read from the module when called, so a test can stand in for the network.
-    crawl = _Crawl(address, into, room, resolve or _resolve, connect or _connect)
+    crawl = _Crawl(address, into, room, resolve, connect)
     try:
         first = crawl.site.asked(address)
         crawl.seen.add(first)

@@ -107,17 +107,128 @@ def test_a_name_the_resolver_cannot_encode_is_a_failure_not_a_crash(tmp_path):
     assert why == "the old site's name could not be found"
 
 @pytest.mark.parametrize("answer", [["127.0.0.1"], ["10.0.0.1"], ["169.254.169.254"],
-                                    [GLOBAL, "127.0.0.1"], ["::1"], ["::ffff:127.0.0.1"]])
+                                    [GLOBAL, "127.0.0.1"], ["::1"], ["::ffff:127.0.0.1"],
+                                    # NAT64 carries an IPv4 address in its low bits.
+                                    ["64:ff9b::7f00:1"], ["64:ff9b::c0a8:101"]])
 def test_a_fetch_to_an_address_that_is_not_global_is_refused(tmp_path, answer):
     """INV-3: unless EVERY address the host resolves to is global, nothing is
     opened -- a resolver whose second answer is the computer itself included.
 
-    Breaks when only the first answer, or no answer, is checked."""
+    Breaks when only the first answer, or no answer, is checked, or an IPv4
+    address carried inside an IPv6 one is not checked itself."""
     network = _Network({"old.example.org": answer}, {})
     why, target = _fetch(network, "http://old.example.org/wp-content/uploads/2012/05/a.jpg",
                          tmp_path)
     assert why and not target.exists()
     assert network.connected == [], f"no connection opens to a refused address: {answer}"
+
+
+def test_a_nat64_address_carrying_a_global_one_is_fetched(tmp_path):
+    network = _Network({"old.example.org": ["64:ff9b::808:404"]},
+                       {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
+    assert _fetch(network, "http://old.example.org/a.jpg", tmp_path)[0] is None
+
+
+def test_a_name_that_resolves_to_nothing_is_not_called_inside_the_network(tmp_path):
+    why, _target = _fetch(_Network({}, {}), "http://old.example.org/a.jpg", tmp_path)
+    assert why == "the old site's name could not be found"
+
+
+def test_an_address_no_parser_can_read_is_a_reason(tmp_path):
+    why, _target = _fetch(_Network({}, {}), "http://[x/a.jpg", tmp_path)
+    assert why == "its address is not a web address"
+
+
+def test_a_failed_write_here_is_not_called_a_failed_connection(tmp_path):
+    """review-code 2026-11-16: a local write failure named the network."""
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
+    target = tmp_path / "not-made" / "a.jpg"
+    why = fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12,
+                      resolve=network.resolve, connect=network.connect)
+    assert why is not None and why.startswith("it could not be written here"), why
+
+
+def test_a_full_drive_mid_file_stops_the_rest(tmp_path, monkeypatch):
+    """§ 4.4: a drive that fills while a file is written is no room, and the
+    files after it are not fetched."""
+    import errno
+
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    class Full:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def write(self, piece):
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr(fetch, "open", lambda *args, **kwargs: Full(), raising=False)
+    export = tmp_path / "export.xml"
+    export.write_text(_export(
+        _item(1, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+        _item(2, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+    ), encoding="utf-8")
+    base = "old.example.org/wp-content/uploads"
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {f"{base}/2012/05/a.jpg": _Answer(200, b"a"),
+                        f"{base}/2012/05/b.jpg": _Answer(200, b"b")})
+    missing = fetch.fetch_all(pressless_import.read(export), tmp_path / "media",
+                              lambda: 10**12, resolve=network.resolve,
+                              connect=network.connect)
+    assert missing == {"2012/05/a.jpg": fetch.NO_ROOM, "2012/05/b.jpg": fetch.NO_ROOM}
+    assert len(network.connected) == 1, "nothing is fetched once the drive is full"
+
+
+def test_a_fetch_that_dribbles_stops(tmp_path, monkeypatch):
+    """A server sending a little now and then is stopped by the clock, not
+    only by a silence of SECONDS."""
+    now = iter(range(0, 10**6, 600))
+    monkeypatch.setattr(fetch, "_clock", lambda: next(now))
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/a.jpg": _Answer(200, b"x" * (fetch._PIECE * 8))})
+    why, target = _fetch(network, "http://old.example.org/a.jpg", tmp_path)
+    assert why == fetch.TOO_SLOW and not target.exists()
+
+
+def test_a_stand_in_for_the_network_reaches_every_fetch(tmp_path, monkeypatch):
+    """PRESS-0333's tests patch `fetch._resolve`; `fetch` and `fetch_all` read
+    it when called, as `fetch_site` does."""
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/a.jpg": _Answer(200, b"jpeg")})
+    monkeypatch.setattr(fetch, "_resolve", network.resolve)
+    monkeypatch.setattr(fetch, "_connect", network.connect)
+    target = tmp_path / "a.jpg"
+    assert fetch.fetch("http://old.example.org/a.jpg", target, lambda: 10**12) is None
+    assert network.connected
+
+
+def test_an_attachment_address_no_parser_can_read_is_listed(tmp_path):
+    """§ 4.4: one such address never stops the rest."""
+    from test_importer import _export, _item
+
+    import pressless_import
+
+    bad = "http://[x]/wp-content/uploads/2012/05/bad.jpg"
+    export = tmp_path / "export.xml"
+    export.write_text(_export(
+        _item(1, kind="attachment", status="inherit",
+              extra=f"<wp:attachment_url><![CDATA[{bad}]]></wp:attachment_url>"),
+        _item(2, kind="attachment", status="inherit", attachment="2012/05/good.jpg"),
+    ), encoding="utf-8")
+    network = _Network({"old.example.org": [GLOBAL]},
+                       {"old.example.org/wp-content/uploads/2012/05/good.jpg":
+                        _Answer(200, b"good")})
+    media = tmp_path / "media"
+    missing = fetch.fetch_all(pressless_import.read(export), media, lambda: 10**12,
+                              resolve=network.resolve, connect=network.connect)
+    assert list(missing) == [bad], missing
+    assert (media / "2012" / "05" / "good.jpg").read_bytes() == b"good"
 
 
 @pytest.mark.parametrize("address", ["file:///etc/passwd", "ftp://old.example.org/a.jpg",

@@ -172,18 +172,22 @@ A fetch:
 - uses only an `http` or `https` address the export names as an
   `attachment_url`;
 - resolves the host, and refuses unless every address it resolves to is
-  global (`ipaddress.ip_address(...).is_global`), and connects to an
+  global (`ipaddress.ip_address(...).is_global`), as is any IPv4 address
+  one carries: mapped, 6to4, Teredo or NAT64. It connects to an
   address it checked, never resolving again; each redirect, at most
   five, is checked the same way;
 - sends no cookie and no `Authorization` header, and a `User-Agent` of
   `Pressless/<version>`;
-- stops at 30 seconds without data, and at `builder.FILE_LARGEST` bytes;
+- stops at 30 seconds without data, at 30 minutes in all, and at
+  `builder.FILE_LARGEST` bytes;
 - refuses to start where `room()` is below zero. `importing.py` passes
   `room`, answering `face._room(folder)`, which already keeps
   `face._SPARE` free.
 
 A refused or failed fetch is one Report line, naming the place and why
-("the old site answered 404"). It never stops Import.
+("the old site answered 404"). It never stops Import. A write that fails
+on this computer says so, not that the connection failed. A drive that
+fills lists that file, and each after it, as having no room.
 
 **The media ZIP** (`pressless_import.unpack_media`) fills gaps by place: a member whose name ends in
 `<YYYY>/<MM>/<name>` matching a missing place is unpacked to it. Members
@@ -354,7 +358,8 @@ fetch's reason among them — are `pressless_import`'s English.
 - **INV-3** — A fetch reaches only an address the export names, over
   `http` or `https`, at a global address, redirects included. *Test:*
   `tests/test_importer_fetch.py` — a fake resolver answering `127.0.0.1`,
-  `10.0.0.1` or `169.254.169.254`, a `file:` address, and a redirect from
+  `10.0.0.1`, `169.254.169.254` or a NAT64 address carrying `127.0.0.1`, a
+  `file:` address, and a redirect from
   a global host to `127.0.0.1`, and a resolver whose second answer is
   `127.0.0.1`, are each refused and listed, with no connection opened to
   a refused address.
@@ -455,7 +460,7 @@ fetch's reason among them — are `pressless_import`'s English.
 |--------|--------------|
 | The file is not an export | `export` step says so; nothing is kept |
 | The old site is gone | every fetch fails and is listed; `gaps` offers the ZIP |
-| A fetch hangs | stops at 30 seconds, listed |
+| A fetch hangs | stops at 30 seconds without data, or 30 minutes in all, listed |
 | The disk fills | fetching stops before the spare is reached; each file left is listed as having no room |
 | Pressless closes while fetching | the next visit resumes; held files are kept |
 | Pressless closes during the moves | the next start finishes them (§ 4.7) |
