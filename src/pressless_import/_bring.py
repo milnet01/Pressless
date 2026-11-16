@@ -419,7 +419,8 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     read_in = read(export)
     channel, ns = read_in.channel, read_in.ns
     site_title = (channel.findtext("title") or "").strip()
-    items = _items(channel, ns, page_statuses=_DRAFT_STATUSES, titled_drafts=True)
+    items = _items(channel, ns, page_statuses=_DRAFT_STATUSES, titled_drafts=True,
+                   any_date=True)
     renamed = _resolve(items)
     pages = _pages(channel, ns)
     renamed += _name_pages(pages, site_title)

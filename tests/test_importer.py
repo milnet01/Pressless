@@ -854,6 +854,7 @@ _ALLOWED_IMPORTS = {
     "contextlib",                       # _writing, naming what a failed write was
     "dataclasses",                      # Dropped and Report
     "datetime",                         # an entry's and a comment's date
+    "email", "email.utils",             # a post's RSS pubDate (PRESS-0392)
     "difflib",                          # the self-check's line comparison
     "html", "html.parser",              # reading a markup body
     "json",                             # a social-link block's attributes
@@ -1745,6 +1746,43 @@ def test_an_export_with_no_pages_or_posts_takes_the_starter_home(tmp_path):
                                                    slug="binned")))
     assert store.list_html(site, store.PAGES_FOLDER) == ("index",)
     assert not store.journal_on(site)
+
+
+@pytest.mark.parametrize(("extra", "taken", "said"), [
+    ("<wp:post_date_gmt><![CDATA[2012-05-01 09:00:00]]></wp:post_date_gmt>",
+     "2012-05-01 09:00", "its GMT date"),
+    ("<wp:post_date_gmt><![CDATA[0000-00-00 00:00:00]]></wp:post_date_gmt>"
+     "<pubDate>Tue, 01 May 2012 09:30:00 +0200</pubDate>", "2012-05-01 07:30", "its feed date"),
+    ("<pubDate>not a date either</pubDate>"
+     "<wp:post_modified><![CDATA[2012-05-03 10:00:00]]></wp:post_modified>",
+     "2012-05-03 10:00", "the date it was last changed"),
+])
+def test_a_post_whose_date_will_not_read_takes_the_next_one(tmp_path, extra, taken, said):
+    """PRESS-0392 and PRESS-0125 § 4.5: post_date_gmt, then pubDate, then
+    post_modified, and the Report lists the post with the date it took.
+
+    Breaks when one badly dated post stops the whole import."""
+    site, report = _bring(tmp_path, _export(
+        _item(1, slug="one", date="2012-13-45 99:00:00", extra=extra),
+        _item(2, slug="two")))
+    entry = store.read(store.path_for(site, "one", draft=False))
+    assert entry.date.strftime("%Y-%m-%d %H:%M") == taken
+    assert any(said in what and taken in what for what in _whats(report, "one")), report.dropped
+    assert store.list_slugs(site, draft=False) == ("one", "two")
+
+
+def test_a_post_with_no_date_that_reads_stops_bring_in_naming_it(tmp_path):
+    with pytest.raises(ImportStopped, match="post 7"):
+        _bring(tmp_path, _export(_item(7, slug="seven", date="")))
+
+
+def test_the_maintainers_run_still_stops_on_a_post_date_it_cannot_read(tmp_path):
+    """PRESS-0007's run reproduces today's site, so it takes no other date."""
+    export, originals, into = _world(tmp_path, _export(_item(
+        1, slug="one", date="not a date",
+        extra="<wp:post_date_gmt><![CDATA[2012-05-01 09:00:00]]></wp:post_date_gmt>")))
+    with pytest.raises(ImportStopped, match="post 1"):
+        _run(export, originals, into)
 
 
 def test_bring_in_refuses_a_store_holding_a_site(tmp_path):

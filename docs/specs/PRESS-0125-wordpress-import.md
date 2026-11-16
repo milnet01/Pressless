@@ -220,6 +220,12 @@ that is empty too. WordPress leaves a draft's `post_name` empty until it
 is published, so the post id would become its address. A published item
 keeps PRESS-0007 § 4.4's rule unchanged: its address is live.
 
+**A date that will not read.** In Import's run an item whose `post_date`
+will not read takes its `post_date_gmt`, else its RSS `pubDate` in UTC, else
+its `post_modified`. The Report lists it with the date it took. With none of
+them, Import stops, naming the post. The maintainer's run takes `post_date`
+alone (PRESS-0007 § 4.2).
+
 **The featured image.** In Import's run, a post or draft whose
 `_thumbnail_id` postmeta names an attachment the photograph lookup
 answers for gains `{photo: <name>}` as its body's first line, unless the
@@ -467,14 +473,15 @@ fetch's reason among them — are `pressless_import`'s English.
 | A slug cannot be held | as PRESS-0007 § 4.4: the item takes `<slug>-<post id>`, listed |
 | The export holds no posts | the journal is off, and the pages are the site |
 | A body nests too deeply | as `run`: `ImportStopped`, naming the post |
+| A post's date will not read | it takes the next date the export holds, listed (§ 4.5); with none, `ImportStopped`, naming the post |
 
 ## 7. Tests
 
 - `tests/test_importer.py` — the pure parts: reading (INV-2), files
   that cannot be had (INV-5), the ZIP (INV-6), whole-or-nothing (INV-7),
   markup (INV-8), statuses (INV-9), comments (INV-10), splits (INV-11),
-  the menu (INV-13), unpublished pages (INV-15), draft slugs (INV-16)
-  and featured images (INV-17).
+  the menu (INV-13), unpublished pages (INV-15), draft slugs (INV-16),
+  featured images (INV-17), and a date that will not read (§ 4.5).
 - `tests/test_importer_fetch.py` — the fetch (INV-3, INV-4), through a
   fake resolver and a recording opener; no network.
 - `tests/test_network_timeouts.py` walks `src/pressless_import/` too, so

@@ -30,7 +30,8 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable, Container, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
@@ -255,11 +256,33 @@ def _wall_clock(value: str) -> datetime | None:
         return None
 
 
-def _date(value: str, post_id: str) -> datetime:
-    when = _wall_clock(value)
-    if when is None:
-        raise ImportStopped(f"post {post_id} carries a date the Store cannot hold")
-    return when
+def _feed_date(value: str) -> datetime | None:
+    """An RSS `pubDate` as a wall clock in UTC, as `post_date_gmt` is one."""
+    try:
+        when = parsedate_to_datetime(value.strip())
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    return when if when.tzinfo is None else when.astimezone(UTC).replace(tzinfo=None)
+
+
+def _date(item, ns, post_id: str, *, any_date: bool) -> tuple[datetime, str | None]:
+    """The post's `post_date`, and None. With `any_date`, one that will not
+    read gives way to the next date the export holds, with the Report line
+    saying which it took (PRESS-0125 § 4.5)."""
+    when = _wall_clock(_field(item, "post_date", ns))
+    if when is not None:
+        return when, None
+    if any_date:
+        for said, read in (
+                ("its GMT date", lambda: _wall_clock(_field(item, "post_date_gmt", ns))),
+                ("its feed date", lambda: _feed_date(item.findtext("pubDate") or "")),
+                ("the date it was last changed",
+                 lambda: _wall_clock(_field(item, "post_modified", ns)))):
+            when = read()
+            if when is not None:
+                return when, (f"its date could not be read, so it takes {said}, "
+                              f"{when:%Y-%m-%d %H:%M}")
+    raise ImportStopped(f"post {post_id} carries a date the Store cannot hold")
 
 
 def _comments(item, ns) -> tuple[tuple[store.Comment, ...], list[str]]:
@@ -310,11 +333,12 @@ _DRAFT_STATUSES = ("draft", "private", "pending", "future")
 
 
 def _items(channel, ns, *, page_statuses: Container[str] | None = None,
-           titled_drafts: bool = False) -> list[_Item]:
+           titled_drafts: bool = False, any_date: bool = False) -> list[_Item]:
     """Every carried post, and every page whose status is in `page_statuses`,
     or every page where that is None. With `titled_drafts`, a draft whose
     post_name resolves to nothing takes its title's slug before its post id:
-    WordPress names a draft only when it is published (PRESS-0125 § 4.5)."""
+    WordPress names a draft only when it is published (PRESS-0125 § 4.5).
+    With `any_date`, a post_date that will not read gives way (`_date`)."""
     items = []
     for item in channel.findall("item"):
         kind, status = _field(item, "post_type", ns), _field(item, "status", ns)
@@ -333,9 +357,11 @@ def _items(channel, ns, *, page_statuses: Container[str] | None = None,
             wanted = resolve_slug(title, "")
         meta = {_field(each, "meta_key", ns): _field(each, "meta_value", ns)
                 for each in item.findall("wp:postmeta", ns)}
-        date = _date(_field(item, "post_date", ns), post_id)
+        date, dated = _date(item, ns, post_id, any_date=any_date)
         waiting = {"pending": "", "future": date.strftime("%Y-%m-%d %H:%M")}.get(status)
         comments, listed = _comments(item, ns)
+        if dated:
+            listed.insert(0, dated)
         categories, tags = [], []
         for term in item.findall("category"):
             nicename = term.get("nicename")
