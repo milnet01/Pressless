@@ -25,6 +25,15 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A WordPress post with an unreadable date no longer stops the import** (PRESS-0392)
+  It takes the next date the export holds for it, and the Report lists the post with
+  the date it took.
+
+- **Bringing in a folder of web pages copes with more real sites** (PRESS-0385)
+  Pages and addresses are read as a browser reads them. A file whose name a system
+  cannot hold is left out rather than stopping the whole folder, and a download that
+  fails says why. A bring-in stopped part way recovers at the next start.
+
 - **Saying No to usage reports stops one already being sent** (PRESS-0380)
   A No given while a report was on its way could arrive too late to stop it. The
   answer is now read at the moment of sending.

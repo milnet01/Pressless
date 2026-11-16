@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=395 -->
+<!-- ants-roadmap-id-high-water: PRESS=396 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7844,13 +7844,22 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Import.
 
-- 📋 [PRESS-0385] **Review fixes: the folder import and fetch.**
+- ✅ [PRESS-0385] **Review fixes: the folder import and fetch.**
   Subject 15 of the 2026-11-16 full review, closed with close-findings.
   review-code: 6 medium, 9 low. review-readability: 3 medium, 6 low.
   Among them: NAT64 addresses count as global (probed; calibrated low);
   iso-8859-1 decoded as Latin-1, not windows-1252 (probed); names a
   system cannot hold pass _why_not_kept.
   Ledger: close-findings-2026-11-17/lane-15-import-folder-fetch.json.
+  Shipped 2026-11-17, a52a29a..b9d2960. 30 rows: all fixed, 0 queued, 0
+  dismissed. Among them: a fetch names its true failure; a name no
+  system can hold is left out, not the whole ZIP; pages and addresses
+  decode as a browser does (windows-1252, WHATWG); bring_in_folder
+  stages through _bring.recover and staged; each fetch stops after 30
+  minutes; @import chains stop at 32 deep. PRESS-0125, 0210 and 0333
+  amended. Open design question: PRESS-0396. The full suite on the
+  merged tree: 2205 passed, 26 skipped. Ledger:
+  close-findings-2026-11-17/lane-15-import-folder-fetch.json.
   **Layman:** Fixes in bringing in a folder of web pages and downloading a site.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7933,11 +7942,16 @@ does not wait on them.
   Source: review-readability-2026-11-16 lead .githooks/pre-commit:41,46.
   Lanes: Pipeline.
 
-- 📋 [PRESS-0392] **A WordPress post whose date will not parse stops the whole import.**
+- ✅ [PRESS-0392] **A WordPress post whose date will not parse stops the whole import.**
   Queued from PRESS-0384 (2026-11-17). Today a post whose post_date will
   not parse refuses the whole export. PRESS-0125 § 4.5 and § 6 must say
   which date it takes instead. Recommended: post_date_gmt, then pubDate,
   then post_modified, and the Report lists the post with the date used.
+  Shipped 2026-11-17 in 3f0bd0b: a post whose post_date will not read
+  takes post_date_gmt, then pubDate (to UTC), then post_modified, and
+  the Report lists the date taken. With none of them it still stops,
+  naming the post. The maintainer's run stays strict. PRESS-0125 § 4.5
+  and § 6 amended.
   **Layman:** One badly dated post in a WordPress export stops everything coming in, instead of coming in with the best date the export holds.
   Kind: review-fix.
   Source: review-code-2026-11-16 lane-14 open question.
@@ -7982,6 +7996,17 @@ does not wait on them.
   Kind: review-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
   Lanes: Insights.
+
+- 📋 [PRESS-0396] **Decide which wins when a folder import's SVG or script is both carried and linked.**
+  Surfaced by PRESS-0385 (2026-11-17). An SVG or JS file used both ways,
+  carried inside a page and also linked by an a href or a module script,
+  is carried, so the other link is never warned about. PRESS-0210 § 4.6
+  does not say which should win. Recommended: carry it, and list the
+  link in the Report as pointing at a carried file.
+  **Layman:** When a page both shows a picture inside itself and links to it, the folder import keeps one use and never warns about the other; which should win is a design choice.
+  Kind: investigate.
+  Source: review-code-2026-11-16 (PRESS-0385 sweep).
+  Lanes: Import.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
