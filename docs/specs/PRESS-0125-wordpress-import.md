@@ -184,7 +184,12 @@ A refused or failed fetch is one Report line, naming the place and why
 are checked first by `sitefile.stays_inside` and `sitefile.is_link`, as a
 site file's are — no absolute name, backslash, drive, `..` or link — and
 the members taken must fit `room()`.
-Other members are ignored.
+Other members are ignored. A place `_place` would refuse is never filled:
+`fetch_all` keys an attachment with no usable place by its raw address,
+which can be absolute. Nor is a place whose file would land outside
+`import/media/`, or one whose member is over `builder.FILE_LARGEST`.
+A member's name is matched as its maker wrote it: UTF-8 without the ZIP's
+UTF-8 flag, and accents composed.
 
 ### 4.5 Entries
 
@@ -357,7 +362,11 @@ fetch's reason among them — are `pressless_import`'s English.
   `tests/test_importer.py::test_a_media_zip_fills_gaps_only` — members
   `../x.jpg`, `/abs.jpg`, a link, and a match for a fetched place: the
   first three refuse the ZIP, the last leaves the fetched file unchanged.
-  *Breaks when:* members are matched by bare name.
+  *Breaks when:* members are matched by bare name. Nothing unpacked lands
+  outside `import/media/`, whatever the place. *Test:*
+  `tests/test_importer.py::test_a_media_zip_fills_only_places_import_may_use`
+  — an absolute place, a drive's and a raw address each fill nothing.
+  *Breaks when:* a place is joined onto `import/media/` unchecked.
 
 - **INV-7** — The Store is either untouched or holds the whole site.
   *Test:* `tests/test_importer.py::test_a_stop_leaves_the_store_empty`

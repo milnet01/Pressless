@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shutil
+import unicodedata
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -39,6 +40,7 @@ from . import (
     _items,
     _old_site,
     _photographs,
+    _place_refused,
     _resolve,
     _upload_path,
     _waiting,
@@ -326,8 +328,13 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
     """Fill each missing place from a media download: a member whose name is
     the place, or ends in `/<place>`, is unpacked to `media/<place>`. Every
     member is checked first, as a site file's are, and the members taken must
-    fit `room()`; a refused download writes nothing. Returns the places
-    filled."""
+    fit `room()`; a refused download writes nothing. A place `_place` would
+    refuse is never filled, nor one a member larger than the Builder keeps
+    would fill. Returns the places filled."""
+    # The places are fetch_all's keys, and one with no usable place is keyed
+    # by its raw address, which can be absolute: joined onto `media` it would
+    # replace it outright. So each place is checked here, not only the names.
+    inside = media.resolve()
     try:
         with zipfile.ZipFile(source) as held:
             infos = held.infolist()
@@ -336,14 +343,18 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
                     raise ImportStopped("the media download holds a name outside its folder")
                 if sitefile.is_link(info):
                     raise ImportStopped("the media download holds a link")
+            named = [(_member_name(info), info) for info in infos if not info.is_dir()]
             wanted: dict[str, zipfile.ZipInfo] = {}
             for place in missing:
-                if (media / place).is_file():
+                if (_place_refused(place) is not None
+                        or not (media / place).resolve().is_relative_to(inside)
+                        or (media / place).is_file()):
                     continue
-                for info in infos:
-                    if not info.is_dir() and (info.filename == place
-                                              or info.filename.endswith(f"/{place}")):
-                        wanted[place] = info
+                key = unicodedata.normalize("NFC", place)
+                for name, info in named:
+                    if name == key or name.endswith(f"/{key}"):
+                        if info.file_size <= builder.FILE_LARGEST:
+                            wanted[place] = info
                         break
             if sum(info.file_size for info in wanted.values()) > room():
                 raise ImportStopped("the media download's files are larger than the room "
@@ -362,6 +373,19 @@ def unpack_media(source: Path, media: Path, missing: tuple[str, ...] | list[str]
         raise ImportStopped(f"the media download could not be read "
                             f"({type(exc).__name__})") from None
     return tuple(sorted(wanted))
+
+
+def _member_name(info: zipfile.ZipInfo) -> str:
+    """A member's name as its maker wrote it, for matching only. zipfile
+    reads a name without the UTF-8 flag as cp437, though most tools that
+    leave the flag off write UTF-8; and macOS decomposes accents."""
+    name = info.filename
+    if not info.flag_bits & 0x800:
+        try:
+            name = name.encode("cp437").decode("utf-8")
+        except UnicodeError:
+            pass
+    return unicodedata.normalize("NFC", name)
 
 
 # ------------------------------------------------- writing (§ 4.7) ----

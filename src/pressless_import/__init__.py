@@ -378,24 +378,33 @@ def _resolve(items: list[_Item]) -> list[tuple[str, str]]:
 # ---------------------------------------------------- photographs (§4.5) ----
 
 
+def _place_refused(upload_path: str) -> str | None:
+    """Why an upload path is no place Import may join onto a folder, or None.
+    The media download asks it too, of every place it would fill."""
+    if upload_path.startswith("/") or ".." in PurePosixPath(upload_path).parts:
+        # Joined onto a folder and copied into the Store: an absolute path
+        # replaces the folder outright, and `..` climbs out of it (PRESS-0135).
+        return "address leaves the uploads folder"
+    try:
+        # Each part one name a Windows folder keeps too, as the Store asks of
+        # a photograph's: a decoded backslash is a separator there, and so is
+        # a drive's colon.
+        for part in upload_path.split("/"):
+            store.photograph_path_for(Path(), part)
+    except store.StoreError:
+        return "address names no place a folder can hold"
+    return None
+
+
 def _place(item, ns) -> str:
     """An attachment's upload path, or why it has none Import may use."""
     post_id = _field(item, "post_id", ns)
     upload_path = _upload_path(_field(item, "attachment_url", ns))
     if not upload_path:
         raise ImportStopped(f"attachment {post_id} names no place in the uploads folder")
-    if upload_path.startswith("/") or ".." in PurePosixPath(upload_path).parts:
-        # Joined onto a folder and copied into the Store: an absolute path
-        # replaces the folder outright, and `..` climbs out of it (PRESS-0135).
-        raise ImportStopped(f"attachment {post_id}'s address leaves the uploads folder")
-    try:
-        # Each part one name a Windows folder keeps too, as the Store asks of
-        # a photograph's: a decoded backslash is a separator there.
-        for part in upload_path.split("/"):
-            store.photograph_path_for(Path(), part)
-    except store.StoreError:
-        raise ImportStopped(f"attachment {post_id}'s address names no place a folder "
-                            f"can hold") from None
+    refused = _place_refused(upload_path)
+    if refused is not None:
+        raise ImportStopped(f"attachment {post_id}'s {refused}")
     return upload_path
 
 

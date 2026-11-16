@@ -1221,6 +1221,112 @@ def test_a_media_zip_fills_gaps_only(tmp_path):
         unpack_media(download("uploads/2014/07/other.jpg"), media, missing, lambda: 3)
 
 
+@pytest.mark.parametrize("place", ["ABSOLUTE", "C:/Users/u/Startup/x.bat",
+                                   "http://old.example.org/x.jpg"])
+def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
+    """PRESS-0125 INV-6: a missing place keyed by an attachment's raw address,
+    as fetch_all keys one with no usable place, is never filled, so no member
+    lands outside import/media/ or under a name the Store never reads.
+
+    Breaks when unpack_media joins a place onto media/ without checking it."""
+    import zipfile
+
+    from pressless_import import unpack_media
+
+    outside = tmp_path / "outside" / "x.desktop"
+    place = outside.as_posix() if place == "ABSOLUTE" else place
+    media = tmp_path / "media"
+    media.mkdir()
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr(f"a/{place}", "planted")
+
+    assert unpack_media(made, media, (place,), lambda: 10**9) == ()
+    assert not outside.exists(), "a member was written outside import/media/"
+    assert not list(media.rglob("*")), "a member was written under a raw address"
+
+
+def test_a_media_zip_member_larger_than_a_file_may_be_is_not_taken(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.4: a member over builder.FILE_LARGEST fills nothing, as
+    a fetch of it would stop there.
+
+    Breaks when a member of any size is carried into photographs/ or files/."""
+    import zipfile
+
+    from pressless import builder
+    from pressless_import import unpack_media
+
+    monkeypatch.setattr(builder, "FILE_LARGEST", 4)
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("2013/06/big.jpg", "12345")
+        out.writestr("2013/06/small.jpg", "1234")
+
+    filled = unpack_media(made, media, ("2013/06/big.jpg", "2013/06/small.jpg"),
+                          lambda: 10**9)
+
+    assert filled == ("2013/06/small.jpg",), filled
+    assert not (media / "2013/06/big.jpg").exists()
+
+
+def test_a_media_zip_matches_names_as_their_maker_wrote_them(tmp_path):
+    """PRESS-0125 § 4.4: a member named in UTF-8 without the ZIP's UTF-8
+    flag, or with its accents decomposed as macOS writes them, still fills
+    its place.
+
+    Breaks when members are matched by the name zipfile decodes as cp437."""
+    import unicodedata
+    import zipfile
+
+    from pressless_import import unpack_media
+
+    media = tmp_path / "media"
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("2013/06/café.jpg", "flagless")
+        out.writestr(unicodedata.normalize("NFD", "2013/06/crème.jpg"), "decomposed")
+    # Clear the UTF-8 flag on the first member only, as many tools write it.
+    data = bytearray(made.read_bytes())
+    for signature, at in ((b"PK\x03\x04", 7), (b"PK\x01\x02", 9)):
+        start = data.find(signature)
+        data[start + at] &= ~0x08
+    made.write_bytes(bytes(data))
+    with zipfile.ZipFile(made) as check:
+        assert check.infolist()[0].filename != "2013/06/café.jpg", "the flag is still set"
+
+    filled = unpack_media(made, media, ("2013/06/café.jpg", "2013/06/crème.jpg"),
+                          lambda: 10**9)
+
+    assert filled == ("2013/06/café.jpg", "2013/06/crème.jpg"), filled
+    assert (media / "2013/06/café.jpg").read_text() == "flagless"
+
+
+def test_a_media_zip_follows_no_link_out_of_media(tmp_path):
+    """PRESS-0125 INV-6: a place whose folder in import/media/ is a link
+    elsewhere is not filled, so the write stays inside media/.
+
+    Breaks when unpack_media checks the place's spelling but not where it
+    lands."""
+    import zipfile
+
+    from pressless_import import unpack_media
+
+    media, outside = tmp_path / "media", tmp_path / "outside"
+    media.mkdir()
+    outside.mkdir()
+    try:
+        (media / "2013").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("this system makes a link only with a privilege the suite lacks")
+    made = tmp_path / "media.zip"
+    with zipfile.ZipFile(made, "w") as out:
+        out.writestr("2013/06/x.jpg", "planted")
+
+    assert unpack_media(made, media, ("2013/06/x.jpg",), lambda: 10**9) == ()
+    assert not list(outside.rglob("*"))
+
+
 def test_a_stop_leaves_the_store_empty(tmp_path):
     """PRESS-0125 INV-7: a Store refusal while writing leaves the Store
     holding no site, and the fetched files where they were.
