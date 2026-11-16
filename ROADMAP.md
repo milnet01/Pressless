@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=391 -->
+<!-- ants-roadmap-id-high-water: PRESS=392 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7644,6 +7644,10 @@ does not wait on them.
   enforces; a file handle left open when fstat fails.
   Ledger: the scratchpad's close-findings-2026-11-17/lane-01-face-core.json,
   kept outside this public repository.
+  Queued here from PRESS-0384 (review-code lane-14:52, upload half): an
+  upload route copies a body to disk before checking its size, so the
+  limit should move into Face.add_upload. The harm is a temporary file,
+  bounded by free disk space and deleted afterwards.
   **Layman:** Tidy-ups and small bug fixes in the part of Pressless that serves its screens to your browser.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7793,13 +7797,21 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Sites.
 
-- 📋 [PRESS-0384] **Review fixes: the WordPress import.**
+- ✅ [PRESS-0384] **Review fixes: the WordPress import.**
   Subject 14 of the 2026-11-16 full review, closed with close-findings.
   review-code: 1 high, 8 medium, 7 low. review-readability: 4 medium,
   4 low. The high: _bring.py keys a place-less attachment by its raw
   URL, and media / place with an absolute place discards media, so a
   crafted export and media ZIP can write anywhere the user can.
   Ledger: close-findings-2026-11-17/lane-14-import-wordpress.json.
+  Shipped 2026-11-17, cd9c3a6..58504f0. 31 findings: 26 fixed, 2 queued
+  (the upload limit on PRESS-0371; the post date as PRESS-0392), 3
+  dismissed (renamed_photographs is a saved record's key named by
+  PRESS-0007; every attachment is copied by PRESS-0007 § 4.5's rule;
+  Wizard.page holds its lock, so two presses cannot race). The media
+  download writes only inside import/media/. PRESS-0125 amended in §§
+  4.3, 4.4, 4.5, 4.7 and INV-6. Ledger:
+  close-findings-2026-11-17/lane-14-import-wordpress.json.
   **Layman:** Fixes in bringing a WordPress site in, including a hole where a crafted export could write files anywhere.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7893,6 +7905,16 @@ does not wait on them.
   Kind: investigate.
   Source: review-readability-2026-11-16 lead .githooks/pre-commit:41,46.
   Lanes: Pipeline.
+
+- 📋 [PRESS-0392] **A WordPress post whose date will not parse stops the whole import.**
+  Queued from PRESS-0384 (2026-11-17). Today a post whose post_date will
+  not parse refuses the whole export. PRESS-0125 § 4.5 and § 6 must say
+  which date it takes instead. Recommended: post_date_gmt, then pubDate,
+  then post_modified, and the Report lists the post with the date used.
+  **Layman:** One badly dated post in a WordPress export stops everything coming in, instead of coming in with the best date the export holds.
+  Kind: fix.
+  Source: review-code-2026-11-16 lane-14 open question.
+  Lanes: Import.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
