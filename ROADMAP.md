@@ -7425,7 +7425,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: ux.
   Source: PRESS-0353-decision-5-2026-11-15.
 
-- 📋 [PRESS-0365] **In Edge on Windows, code typed in the page editor does not reach the page view.**
+- ✅ [PRESS-0365] **In Edge on Windows, code typed in the page editor does not reach the page view.**
   Found 2026-11-16 while checking PRESS-0359 on the Windows box:
   `scripts/windows-gate.sh wintest --browsers edge` fails two rows of
   scripts/by-hand-browser-checks.py, twice in a row: "PRESS-0285 INV-2:
@@ -7437,6 +7437,13 @@ owned by docs/standards/versioning-overrides.md.
   page view at once and waits 15 seconds for the new words. Not yet
   known: whether the edit is lost, saved late, or the row's timing is
   wrong for Edge. Start with locate-defect, on the box, in Edge.
+  Shipped 2026-11-16 in 2b60803. Not Edge, and not the row's timing:
+  the edit was saved, but the preview build stopped with "the preview
+  folder could not be replaced: Access is denied". Windows refused a
+  folder rename for a moment, so the frame was left blank. The swap's
+  renames now go through safe_write.patiently, as the Store's move does.
+  Publishing used the same swap. Edge on the box failed 3 of 7 runs
+  before and 0 of 6 after.
   **Layman:** On Windows in Edge, a change typed in a page's code view may not show when you switch back to the page.
   Kind: fix.
   Source: hand-check-2026-11-16.

@@ -45,6 +45,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **On Windows, the page beside the editor no longer goes blank by chance** (PRESS-0365)
+  Now and then, after a change, Pressless said it "could not write the folder your
+  site is built into", and the page view stayed empty. Your change was saved. Windows
+  was holding the folder for a moment, and Pressless now waits for it. Publishing
+  could fail the same way, and is fixed too.
+
 - **A new site with the journal on can publish its pages** (PRESS-0358)
   Pressless refused until an entry was published, though the site had no
   entries to lose. It still stops a publish that would wipe entries the site had.
