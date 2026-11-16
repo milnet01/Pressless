@@ -9,6 +9,7 @@ import contextlib
 import dataclasses
 import html
 import json
+import time
 import urllib.parse
 import urllib.request
 from collections.abc import Iterator
@@ -558,6 +559,8 @@ def test_parse_channel_refuses(text: str) -> None:
      "youtube.hint.refused"),
     ({"channel": HANDLE, "key": KEY}, _YouTube(items=[]), "youtube.hint.not_found"),
     ({"channel": HANDLE, "key": KEY}, _YouTube(raises=True), "youtube.hint.unreachable"),
+    ({"channel": HANDLE, "key": "sentinel\nbroken-key"}, _YouTube(), "youtube.hint.key"),
+    ({"channel": HANDLE, "key": "sentinel-k\u00e9y"}, _YouTube(), "youtube.hint.key"),
 ])
 def test_setup_refused_saves_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
                                      form: dict[str, str], client: _YouTube, hint: str) -> None:
@@ -645,3 +648,75 @@ def test_site_file_renames_the_account(tmp_path: Path) -> None:
     assert loaded.youtube_channel == HANDLE
     assert loaded.credentials.youtube_account == sites.account("youtube", other)
     assert loaded.credentials.youtube_account != "youtube"
+
+
+def test_no_key_held_or_typed_asks_no_store(tmp_path: Path,
+                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when setup reads the store under an empty account name where no
+    key is held, and leans on each store refusing that name."""
+    asked: list[str] = []
+
+    def read(store: str, folder: Path, account: str) -> str:
+        asked.append(account)
+        return KEY
+
+    monkeypatch.setattr(credentials, "read", read)
+    monkeypatch.setattr(credentials, "write", lambda *args: None)
+    folder = _fresh(tmp_path)
+    _saved(folder)
+    with _screen(folder, _YouTube()) as browser:
+        page = browser.request("POST", "/youtube/setup", {"channel": HANDLE, "key": ""})[2]
+    assert html.escape(say("youtube.hint.key")) in page
+    assert asked == []
+
+
+class _ItemsNotAList(_YouTube):
+    def _playlistItems(self, query: dict[str, str]) -> dict:
+        return {"items": 5}
+
+
+def test_items_that_are_not_a_list_are_a_typed_failure(tmp_path: Path) -> None:
+    """Breaks when a malformed `items` escapes as a TypeError, past the typed
+    failure and the kept figures."""
+    with pytest.raises(youtube.YouTubeError):
+        _read(_fresh(tmp_path), _ItemsNotAList())
+
+
+def test_a_kept_video_is_read_as_its_types(tmp_path: Path) -> None:
+    """Breaks when a kept video's fields load as whatever the file holds, and
+    the page fails drawing a count that is text."""
+    folder = _fresh(tmp_path)
+    _read(folder, _YouTube())
+    target = youtube.cache_path(folder)
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["videos"][0].update(views="12", id=5)
+    target.write_text(json.dumps(held), encoding="utf-8")
+    video = youtube.kept(folder, HANDLE, NOW).videos[0]
+    assert (video.views, video.id) == (12, "5")
+
+
+def test_a_kept_report_with_no_honest_time_reads_as_absent(tmp_path: Path) -> None:
+    """Breaks when a `fetched_at` of NaN loads: every age comparison is then
+    false, so it is shown, and drawing its time fails."""
+    folder = _fresh(tmp_path)
+    _read(folder, _YouTube())
+    target = youtube.cache_path(folder)
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["fetched_at"] = float("nan")
+    target.write_text(json.dumps(held), encoding="utf-8")   # json writes NaN
+    assert youtube.kept(folder, HANDLE, NOW) is None
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="the clock's zone is set by tzset")
+def test_the_published_day_is_this_computers_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Breaks when the day is cut from YouTube's UTC time, which is a day out
+    for a video published near midnight away from UTC."""
+    video = youtube.Video("abc", "Late", "2026-01-02T23:30:00Z", 1, 1, 1)
+    monkeypatch.setenv("TZ", "PLUS-3")   # three hours ahead of UTC
+    time.tzset()
+    try:
+        drawn = youtube_screen._videos((video,))
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+    assert ">2026-01-03<" in drawn

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 import re
 import time
 import urllib.parse
@@ -36,7 +37,11 @@ VIDEO_ID = re.compile(r"\A[A-Za-z0-9_-]+\Z")
 
 
 class YouTubeError(InsightsError):
-    """YouTube answered in a way this part did not expect."""
+    """YouTube answered in a way this part did not expect.
+
+    Its subclasses share their names with Insights' failures but are not
+    them: `except insights.Unreachable` does not catch `youtube.Unreachable`.
+    Catch `InsightsError` for either."""
 
 
 class Unreachable(YouTubeError):
@@ -187,7 +192,7 @@ def _video_ids(transport: Transport, uploads: str, key: str) -> list[str]:
         if token:
             query["pageToken"] = token
         answer = _get(transport, "playlistItems", query, key)
-        for item in answer.get("items") or ():
+        for item in _items(answer):
             try:
                 ids.append(str(item["snippet"]["resourceId"]["videoId"]))
             except (KeyError, TypeError):
@@ -202,7 +207,7 @@ def _videos(transport: Transport, ids: list[str], key: str) -> tuple[Video, ...]
     videos: list[Video] = []
     for start in range(0, len(ids), PAGE_SIZE):
         query = {"part": "snippet,statistics", "id": ",".join(ids[start:start + PAGE_SIZE])}
-        for item in _get(transport, "videos", query, key).get("items") or ():
+        for item in _items(_get(transport, "videos", query, key)):
             try:
                 statistics = item.get("statistics") or {}
                 videos.append(Video(str(item["id"]), str(item["snippet"]["title"]),
@@ -213,6 +218,14 @@ def _videos(transport: Transport, ids: list[str], key: str) -> tuple[Video, ...]
             except (KeyError, TypeError, AttributeError):
                 continue
     return tuple(sorted(videos, key=lambda each: (each.views is None, -(each.views or 0))))
+
+
+def _items(answer: dict) -> list:
+    """The answer's items; YouTubeError where they are not a list."""
+    items = answer.get("items") or []
+    if not isinstance(items, list):
+        raise YouTubeError("YouTube's answer has the wrong shape")
+    return items
 
 
 def _count(holder: dict, name: str) -> int | None:
@@ -262,13 +275,24 @@ def _load(target: Path) -> Report | None:
         held = json.loads(target.read_text(encoding="utf-8"))
         if held["version"] != CACHE_VERSION:
             return None
+        fetched_at = float(held["fetched_at"])
+        if not math.isfinite(fetched_at):
+            return None   # NaN passes every age check, then fails where it is drawn
         return Report(str(held["channel"]), str(held["title"]),
-                      None if held["subscribers"] is None else int(held["subscribers"]),
+                      _kept_count(held["subscribers"]),
                       int(held["views"]), int(held["video_count"]),
-                      tuple(Video(**each) for each in held["videos"]),
-                      float(held["fetched_at"]))
+                      tuple(Video(str(each["id"]), str(each["title"]), str(each["published"]),
+                                  _kept_count(each["views"]), _kept_count(each["likes"]),
+                                  _kept_count(each["comments"]))
+                            for each in held["videos"]),
+                      fetched_at)
     except (OSError, ValueError, KeyError, TypeError, OverflowError):
         return None
+
+
+def _kept_count(value: object) -> int | None:
+    """A count as the cache holds it; None stays None, as YouTube gave none."""
+    return None if value is None else int(value)
 
 
 def _store(folder: Path, report: Report) -> None:

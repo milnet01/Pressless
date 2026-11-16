@@ -6,6 +6,7 @@ reads the kept figures and never YouTube.
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import html
 import time
 from pathlib import Path
@@ -133,11 +134,24 @@ def _videos(videos: tuple[youtube.Video, ...]) -> str:
                         for name, value in (("views", video.views), ("likes", video.likes),
                                             ("comments", video.comments)))
         rows.append(f'<tr><td>{title}</td><td class="num" data-label="{labels["published"]}">'
-                    f"{html.escape(video.published[:10])}</td>{cells}</tr>")
+                    f"{html.escape(_published_day(video.published))}</td>{cells}</tr>")
     head = (f'<th scope="col">{say("youtube.video")}</th>'
             + "".join(f'<th scope="col" class="num">{labels[name]}</th>'
                       for name in ("published", "views", "likes", "comments")))
-    return dashboard._panel(say("youtube.table"), head, "".join(rows), wide=True)
+    return dashboard._panel(say("youtube.table"), head, "".join(rows),
+                            cards_when_narrow=True)
+
+
+def _published_day(published: str) -> str:
+    """The day a video went up, on this computer's clock. YouTube's time is
+    UTC, so its own date is a day out near midnight away from UTC."""
+    try:
+        moment = datetime.datetime.fromisoformat(published)
+    except ValueError:
+        return published[:10]
+    if moment.tzinfo is None:
+        return published[:10]
+    return moment.astimezone().date().isoformat()
 
 
 def _number(value: int | None) -> str:
@@ -185,9 +199,14 @@ def _save(face: Face, folder: Path, client: insights.Transport | None, request: 
     except ValueError:
         return refuse("youtube.hint.channel")
     new_key = form.get("key", "").strip()
+    held = saved.credentials.youtube_account
+    # A key goes out in a header, which takes printable ASCII alone; anything
+    # else would read as YouTube unreachable.
+    if ((new_key and not (new_key.isascii() and new_key.isprintable()))
+            or (not new_key and held is None)):
+        return refuse("youtube.hint.key")
     try:
-        key = new_key or credentials.read(saved.credentials.store, folder,
-                                          saved.credentials.youtube_account or "")
+        key = new_key or credentials.read(saved.credentials.store, folder, held)
     except credentials.FAILURES:
         return refuse("youtube.hint.key")
     try:

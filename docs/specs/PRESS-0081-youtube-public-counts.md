@@ -186,7 +186,8 @@ both: reads the key, calls `read`, and shows:
   context of time";
 - subscribers, as "about N" since YouTube rounds down to three significant figures,
   or "hidden"; views; videos;
-- a table of the fifty most viewed: title, published date, views, likes, comments.
+- a table of the fifty most viewed: title, published date (the day on this
+  computer's clock, not YouTube's UTC day), views, likes, comments.
   A `None` shows "hidden". Each title links
   `https://www.youtube.com/watch?v=<id>`. Where more exist, a line says how many
   are shown of how many read;
@@ -199,14 +200,18 @@ setup. A `credentials.FAILURES` failure is told as one, naming the YouTube key.
 **The list's card**, added with `face.add_to_list`, shows only with both settings. It
 calls `kept` and never YouTube, as `dashboard._card` does.
 
+*Moved by PRESS-0353 § 4.6: the card is a `site-tiles` piece on Your site, through
+`Face.add_piece`, and Your site's Visitors tile is the one that reads Insights' cache.*
+
 **`GET /youtube/setup`** shows the state, numbered steps from Words, a channel box and
 a password box. The steps are Words' `youtube.step.*`. They name each console button a
 newcomer presses: create or choose a project, enable YouTube Data API v3, create an API
 key restricted to that API with no application restriction, and paste it.
 
 **`POST /youtube/setup`**: `parse_channel`, then `check`, then `credentials.write` and
-`settings.save`. An empty key box with a key held keeps it. Any failure is a hint beside
-its box, and saves nothing. A changed channel calls `forget`.
+`settings.save`. An empty key box with a key held keeps it; with none held, or with
+a key that is not printable ASCII, which a header cannot carry, the key's hint shows.
+Any failure is a hint beside its box, and saves nothing. A changed channel calls `forget`.
 
 **`POST /youtube/off`** does as `google_setup._off`: deletes the key and the cache and
 clears both settings, each failure stopping nothing, the page saying what may remain.

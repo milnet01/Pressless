@@ -265,8 +265,13 @@ def _meter(value: int, top: int) -> str:
     return f'<span class="meter"><i style="--w:{100 * value / (top or 1):.1f}%"></i></span>'
 
 
-def _panel(title: str, head: str, rows: str, wide: bool = False) -> str:
-    kind, table = ("card wide", "ranked pages") if wide else ("card", "ranked")
+def _panel(title: str, head: str, rows: str, cards_when_narrow: bool = False) -> str:
+    """A ranked table in a card. `cards_when_narrow` widens the card and, on a
+    narrow screen, turns each row into a card of its own (the `.pages` rules),
+    which names each number by its cell's `data-label`: give every number
+    cell one."""
+    kind, table = (("card wide", "ranked pages") if cards_when_narrow
+                   else ("card", "ranked"))
     return (f'<section class="{kind}"><h2>{title}</h2><table class="{table}">'
             f"<thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></section>")
 
@@ -355,7 +360,8 @@ def _pages(pages: tuple[insights.Page, ...], address: str) -> str:
                  f'<th scope="col">{say("dashboard.page")}</th>'
                  f'<th scope="col" class="num">{views}</th>'
                  f'<th scope="col" class="num">{people}</th>'
-                 f'<th scope="col" class="num">{spent}</th>', "".join(rows), wide=True)
+                 f'<th scope="col" class="num">{spent}</th>', "".join(rows),
+                  cards_when_narrow=True)
 
 
 def _duration(seconds: float) -> str:
