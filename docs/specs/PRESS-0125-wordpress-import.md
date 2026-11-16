@@ -285,9 +285,9 @@ no link keeps the starter's Home link.
 
 ### 4.7 Writing, whole or not at all
 
-`pressless_import.bring_in(export, media, into, look, *, unfetched=None)
--> Report` does the work, `unfetched` being `fetch_all`'s answer, in this
-order: read and resolve slugs (PRESS-0007 § 4.4); convert
+`pressless_import.bring_in(export, media, into, look, *, unfetched=None,
+keep=None) -> Report` does the work, `unfetched` being `fetch_all`'s
+answer, in this order: read and resolve slugs (PRESS-0007 § 4.4); convert
 every body; write every Store file into `import/work/` through Store
 calls, moving each held file from `import/media/` into
 `photographs/`, or into `files/` where `builder.photograph_format`
@@ -299,7 +299,11 @@ folder — `templates/`, which `templates.register` seeds at every launch —
 each file moves in alone, and a file already there is kept.
 
 A stop before the moves deletes `import/work/` and leaves the Store
-empty. `import/moving` is an empty file written before the first move
+empty. Each held file is listed in `import/moved.jsonl` before it moves
+into `import/work/`, and that stop moves each back first. Where one will
+not go back, `import/work/` stays, and the next bring-in puts it back
+before reading anything (`pressless_import.recover`).
+`import/moving` is an empty file written before the first move
 and deleted after the last. While it exists,
 `importing.finish_moves(folder)`, which `__main__` calls at start for
 every site as it calls `sites.move_in`, moves what is left in
@@ -307,6 +311,11 @@ every site as it calls `sites.move_in`, moves what is left in
 cannot, since `holds_a_site` is True once a move lands. After the last move,
 `import/media/` and `import/work/` are deleted, and `import/export.xml`
 and `import/report.txt` stay.
+
+`keep` is given the Report before the first move, and the wizard writes
+`import/report.txt` from it, so a stop during the moves keeps it. Where
+no move had landed, the Store still holds no site: Bring it in, pressed
+again, finishes the moves first and shows that Report.
 
 ### 4.8 The Report
 

@@ -73,6 +73,15 @@ def keep(held: Path, said: list[str]) -> None:
         pressless_import.printable(line) for line in said) + "\n", prefix=".report-")
 
 
+def kept(held: Path) -> list[str] | None:
+    """The lines `keep` wrote, or None where there are none to read."""
+    try:
+        text = (held / _REPORT).read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    return text.splitlines()
+
+
 def rows(said: list[str]) -> str:
     """The Report's lines as a list a page shows."""
     return ('<ul class="import-report">'

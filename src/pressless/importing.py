@@ -174,12 +174,22 @@ def register(face: Face, folder: Path) -> None:
         return answers
 
     def check_bring(answers: wizard.Answers):
+        said: list[str] = []
+
+        def keep(report: pressless_import.Report) -> None:
+            said[:] = _kept(face, held, report)
+
         try:
-            report = pressless_import.bring_in(held / _EXPORT, media, folder,
-                                               answers.get("look", ""), unfetched=missing())
+            # Moves an earlier press began, finished first (§ 4.7).
+            pressless_import.recover(folder)
+            if not empty():
+                # They held the whole site, and its Report was kept before them.
+                return wizard.Done(import_report.page(import_report.kept(held) or []))
+            pressless_import.bring_in(held / _EXPORT, media, folder, answers.get("look", ""),
+                                      unfetched=missing(), keep=keep)
         except pressless_import.ImportStopped as exc:
             return wizard.Stop(face.fail(exc, publishing=False))
-        return wizard.Done(_reported(face, held, report))
+        return wizard.Done(import_report.page(said))
 
     steps = (
         wizard.Step("export", "import.step.export", (), lambda answers, hint: _show_export(
@@ -243,14 +253,19 @@ def register(face: Face, folder: Path) -> None:
     _register_folder(face, folder, empty, room, to_the_list)
 
 
-def _reported(face: Face, held: Path, report: pressless_import.Report) -> str:
-    """The Report's page, its words kept beside the import's other files."""
+def _kept(face: Face, held: Path, report: pressless_import.Report) -> list[str]:
+    """The Report's words, kept beside the import's other files."""
     said = import_report.lines(report)
     try:
         import_report.keep(held, said)
     except OSError as exc:
         face.fail(exc, publishing=False)    # logged; the page still shows it
-    return import_report.page(said)
+    return said
+
+
+def _reported(face: Face, held: Path, report: pressless_import.Report) -> str:
+    """The Report's page, its words kept beside the import's other files."""
+    return import_report.page(_kept(face, held, report))
 
 
 def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None:

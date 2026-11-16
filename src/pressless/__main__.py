@@ -188,7 +188,8 @@ def _serve(own: Path) -> int:
         # PRESS-0125 § 4.7: an Import stopped part way through its moves
         # finishes before anything reads that site.
         for site in sites.all_sites(own):
-            stopped = stopped or importing.finish_moves(site)
+            finished = importing.finish_moves(site)    # every site, though one stops
+            stopped = stopped or finished
         if stopped is not None:
             print(stopped)
             return 1

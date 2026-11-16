@@ -233,6 +233,28 @@ def test_moves_left_part_done_finish_at_start(tmp_path, monkeypatch):
     assert not (folder / "import" / "moving").exists()
 
 
+def test_every_site_finishes_its_moves_at_start_though_one_stops(tmp_path, monkeypatch):
+    """§ 4.7: finish_moves runs at start for every site, so one site whose
+    moves stop does not leave a later site's half done.
+
+    Breaks when the first sentence short-circuits the rest."""
+    from pressless import __main__ as main_module
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    asked = []
+
+    def finish_moves(site):
+        asked.append(site)
+        return "the moves stopped" if site == first else None
+
+    monkeypatch.setattr(main_module.sites, "move_in", lambda own: None)
+    monkeypatch.setattr(main_module.sites, "all_sites", lambda own: [first, second])
+    monkeypatch.setattr(main_module.importing, "finish_moves", finish_moves)
+
+    assert main_module._serve(tmp_path) == 1
+    assert asked == [first, second]
+
+
 def test_a_stopped_import_says_so_and_writes_nothing(tmp_path):
     """§ 4.7 and § 6: a Store refusal at Bring it in is shown in Import's own
     words, and the Store still holds no site."""
@@ -245,6 +267,43 @@ def test_a_stopped_import_says_so_and_writes_nothing(tmp_path):
         served.stop()
     assert "could not bring your site in" in page and 'value="bring"' in page
     assert not store.holds_a_site(folder)
+
+
+def test_a_stop_during_the_moves_keeps_the_report_and_a_second_press_shows_it(
+        tmp_path, monkeypatch):
+    """§ 4.7 and § 4.8: where the first move into the site's folder fails,
+    import/report.txt is already written, and pressing Bring it in again
+    finishes the moves and shows that Report.
+
+    Breaks when the Report is written only after the moves end, or a second
+    press deletes import/work/."""
+    import os
+
+    real = os.rename
+    folder = tmp_path / "site"
+    folder.mkdir()
+    moving = folder / "import" / "moving"
+
+    def first_move_fails(source, target):
+        if moving.exists():
+            monkeypatch.setattr(os, "rename", real)
+            raise OSError(13, "the file is in use")
+        return real(source, target)
+
+    served, browser = _serve(folder)
+    try:
+        monkeypatch.setattr(os, "rename", first_move_fails)
+        page = _bring_in(browser, _export(_item(1, slug="one"),
+                                          _item(2, status="pending", slug="waiting")))
+        assert "could not bring your site in" in page, page
+        report = (folder / "import" / "report.txt").read_text(encoding="utf-8")
+        assert "waiting" in report, report
+
+        page = _next(browser, "bring")
+    finally:
+        served.stop()
+    assert "waiting" in page and 'value="bring"' not in page, page
+    assert store.list_slugs(folder, draft=False) == ("one",)
 
 
 def test_setups_done_page_offers_import_where_nothing_was_filled():

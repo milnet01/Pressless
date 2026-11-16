@@ -54,8 +54,13 @@ from ._html import _host, autop, bare_host, wordpress_markup
 IMPORT_FOLDER = "import"   # in the site's folder; never published (§ 4.2)
 _WORK = "work"
 MEDIA_FOLDER = "media"     # in IMPORT_FOLDER: the fetched files; finish deletes it
-FOLDER = "folder"          # in IMPORT_FOLDER: a folder of pages (PRESS-0210); and this
+FOLDER = "folder"          # in IMPORT_FOLDER: a folder of pages (PRESS-0210)
 _MOVING = "moving"
+# In IMPORT_FOLDER: each held file moved into import/work/, one JSON line
+# each, written before it moves, so a stop can put every one back.
+_MOVED = "moved.jsonl"
+_NOT_PUT_BACK = ("files an earlier try moved could not be put back where they were. Nothing "
+                 "was lost. Close anything using the site's folder and try again")
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
 _CARRIED_TYPES = frozenset({"post", "page", "attachment", "nav_menu_item", "wp_navigation"})
 _NAVIGATION = "navigation"
@@ -392,22 +397,24 @@ def _member_name(info: zipfile.ZipInfo) -> str:
 
 
 def bring_in(export: Path, media: Path, into: Path, layout: str, *,
-             unfetched: Mapping[str, str] | None = None) -> Report:
+             unfetched: Mapping[str, str] | None = None,
+             keep: Callable[[Report], None] | None = None) -> Report:
     """§ 4.7, in order: read and resolve slugs; convert every body; write
     every Store file into import/work/, moving each held file in from
     `media`; then move each folder into `into`. `layout` is one of
     starter.LOOKS; `unfetched` is each place the fetch could not have, with
-    why (fetch.fetch_all's answer), so the Report says so."""
+    why (fetch.fetch_all's answer), so the Report says so. `keep` is given
+    the Report before the first move, so a stop during the moves loses it
+    not (§ 4.8)."""
     export, media, into = Path(export), Path(media), Path(into)
     unfetched = unfetched or {}
-    if store.holds_a_site(into):
+    recover(into)
+    if _holds_a_site(into):
         raise ImportStopped("this site already holds a site, and Import writes only "
                             "into an empty one")
     # The wizard's check_look refuses an unknown look first; any other
     # caller gets the first look rather than a stop.
     layout = layout if layout in starter.LOOKS else starter.LOOKS[0]
-    held_folder = into / IMPORT_FOLDER
-    work = held_folder / _WORK
 
     read_in = read(export)
     channel, ns = read_in.channel, read_in.ns
@@ -433,11 +440,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     menu_listed: list[str] = []
     navigation = _navigation(links, menu_listed)
 
-    if work.exists():
-        shutil.rmtree(work)    # an earlier attempt that stopped before its moves
-    work.mkdir(parents=True)
-    moved: list[tuple[Path, Path]] = []
-    try:
+    def write(work: Path, move: Callable[[Path, Path], None]) -> None:
         _write_entries(work, items, entries)
         with _writing("the look"):
             look.save(work, look.defaults(layout), "")
@@ -461,42 +464,32 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
             store.write_journal(work, any(not item.page for item in items))
         for place, (folder, name) in kept.items():
             with _writing(f"the file {place}"):
-                target = (store.photograph_path_for(work, name)
-                          if folder == store.PHOTOGRAPHS_FOLDER
-                          else store.file_path_for(work, name))
-                target.parent.mkdir(exist_ok=True)
-                os.rename(media / place, target)
-                moved.append((media / place, target))
-    except BaseException:
-        for source, target in reversed(moved):
-            try:
-                os.rename(target, source)
-            except OSError:
-                pass
-        shutil.rmtree(work, ignore_errors=True)
-        raise
+                move(media / place, store.photograph_path_for(work, name)
+                     if folder == store.PHOTOGRAPHS_FOLDER
+                     else store.file_path_for(work, name))
+        # After the pages, which list what they dropped as they are written.
+        made.append(Report(
+            **_counts(items),
+            photographs=sum(1 for folder, _name in kept.values()
+                            if folder == store.PHOTOGRAPHS_FOLDER),
+            files=sum(1 for folder, _name in kept.values() if folder == store.FILES_FOLDER),
+            renamed_slugs=tuple(renamed),
+            renamed_photographs=tuple(
+                (place, name) for place, (_folder, name) in kept.items()
+                if name != place.rsplit("/", 1)[-1]),
+            pages=tuple(sorted(page.name for page in pages)) or ("index",),
+            dropped=_dropped(items, pages, menu_listed),
+            waiting=_waiting(items),
+            unfetched=_unfetched(unheld, unfetched),
+            menus=menus,
+            other_types=_other_types(channel, ns),
+        ))
+        if keep is not None:
+            keep(made[0])
 
-    (held_folder / _MOVING).write_bytes(b"")
-    stopped = finish(into)
-    if stopped is not None:
-        raise ImportStopped(stopped)
-
-    return Report(
-        **_counts(items),
-        photographs=sum(1 for folder, _name in kept.values()
-                        if folder == store.PHOTOGRAPHS_FOLDER),
-        files=sum(1 for folder, _name in kept.values() if folder == store.FILES_FOLDER),
-        renamed_slugs=tuple(renamed),
-        renamed_photographs=tuple(
-            (place, name) for place, (_folder, name) in kept.items()
-            if name != place.rsplit("/", 1)[-1]),
-        pages=tuple(sorted(page.name for page in pages)) or ("index",),
-        dropped=_dropped(items, pages, menu_listed),
-        waiting=_waiting(items),
-        unfetched=_unfetched(unheld, unfetched),
-        menus=menus,
-        other_types=_other_types(channel, ns),
-    )
+    made: list[Report] = []
+    staged(into, write)
+    return made[0]
 
 
 def _held(channel, ns, media: Path):
@@ -517,7 +510,14 @@ def _held(channel, ns, media: Path):
     for place, name in names.items():
         if is_photo(media / place):
             kept[place] = (store.PHOTOGRAPHS_FOLDER, name)
-        elif builder.file_allowed(name, (media / place).read_bytes()):
+            continue
+        try:
+            data = (media / place).read_bytes()
+        except OSError as exc:
+            # A held file that cannot be had never stops Import (INV-5).
+            unheld.append((place, f"it could not be read: {exc.strerror or type(exc).__name__}"))
+            continue
+        if builder.file_allowed(name, data):
             kept[place] = (store.FILES_FOLDER, name)
         else:
             unheld.append((place, "it is not a kind of file Pressless keeps"))
@@ -605,6 +605,113 @@ def _move(source: Path, target: Path) -> None:
             _move(child, target / child.name)
 
 
+def _holds_a_site(into: Path) -> bool:
+    try:
+        return store.holds_a_site(into)
+    except store.StoreError as exc:
+        raise ImportStopped(str(exc)) from None
+
+
+def recover(into: Path) -> None:
+    """What an earlier stop left, put right before anything is read: moves
+    into the site's folder that had begun are finished, and held files moved
+    into import/work/ before them go back where they came from. Raises
+    ImportStopped where either cannot be done; nothing is lost then."""
+    stopped = finish(into)
+    if stopped is not None:
+        raise ImportStopped(stopped)
+    if not _put_back(Path(into) / IMPORT_FOLDER):
+        raise ImportStopped(_NOT_PUT_BACK)
+
+
+def _put_back(held_folder: Path) -> bool:
+    """Move each held file import/moved.jsonl lists back where it came from,
+    where it is still in import/work/; whether every one went back. The list
+    is deleted once they all have."""
+    journal = held_folder / _MOVED
+    into = held_folder.parent
+    try:
+        lines = journal.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return True
+    except (OSError, UnicodeError):
+        return False
+    whole = True
+    for line in reversed(lines):
+        try:
+            source, target = (into / part for part in json.loads(line))
+        except (ValueError, TypeError):
+            continue    # cut short by a stop before its move began
+        if target.exists() and not source.exists():
+            try:
+                source.parent.mkdir(parents=True, exist_ok=True)
+                os.rename(target, source)
+            except OSError:
+                whole = False
+    if whole:
+        try:
+            journal.unlink()
+        except OSError:
+            return False
+    return whole
+
+
+def _relative(path: Path, into: Path) -> str:
+    """`path` from `into`, or whole where it is on another drive."""
+    try:
+        return os.path.relpath(path, into)
+    except ValueError:
+        return str(path)
+
+
+def staged(into: Path, write: Callable[[Path, Callable[[Path, Path], None]], None]) -> None:
+    """§ 4.7's whole or nothing. `write(work, move)` writes every Store file
+    into import/work/, moving each held file in by `move(source, target)`;
+    then import/moving is written and each folder moves into `into`. A stop
+    before the moves puts every held file back and deletes import/work/; a
+    stop during them leaves import/moving, so `finish` completes them."""
+    into = Path(into)
+    held_folder = into / IMPORT_FOLDER
+    work = held_folder / _WORK
+    moving = held_folder / _MOVING
+    if moving.exists() or not _put_back(held_folder):
+        # import/work/ holds held files still: `recover` first.
+        raise ImportStopped(_NOT_PUT_BACK)
+    with _writing("the work folder"):
+        if work.exists():
+            shutil.rmtree(work)
+        work.mkdir(parents=True)
+    try:
+        with _writing("the list of held files"):
+            journal = open(held_folder / _MOVED, "a", encoding="utf-8")  # noqa: SIM115
+        with journal:
+
+            def move(source: Path, target: Path) -> None:
+                # Listed first: a stop after the rename can then put it back.
+                journal.write(json.dumps([_relative(source, into),
+                                          _relative(target, into)]) + "\n")
+                journal.flush()
+                target.parent.mkdir(exist_ok=True)
+                os.rename(source, target)
+
+            write(work, move)
+        with _writing("the note that the moves have begun"):
+            moving.write_bytes(b"")
+    except BaseException:
+        try:
+            moving.unlink(missing_ok=True)
+            undone = _put_back(held_folder)
+        except OSError:
+            # import/moving stays, so the next start finishes the moves.
+            undone = False
+        if undone:
+            shutil.rmtree(work, ignore_errors=True)
+        raise
+    stopped = finish(into)
+    if stopped is not None:
+        raise ImportStopped(stopped)
+
+
 def finish(into: Path) -> str | None:
     """§ 4.7: move what is left in import/work/ into the site's folder while
     import/moving says the moves began, then delete import/work/, import/media/
@@ -627,4 +734,8 @@ def finish(into: Path) -> str | None:
     shutil.rmtree(work, ignore_errors=True)
     shutil.rmtree(held_folder / MEDIA_FOLDER, ignore_errors=True)
     shutil.rmtree(held_folder / FOLDER, ignore_errors=True)
+    try:
+        (held_folder / _MOVED).unlink(missing_ok=True)
+    except OSError:
+        pass    # its files are in the site now, so it puts nothing back
     return None

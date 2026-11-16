@@ -1395,6 +1395,165 @@ def test_run_names_what_it_could_not_write(tmp_path, monkeypatch):
     assert not list(into.parent.glob(f".{into.name}-*")), "the work folder is removed"
 
 
+_TWO_FILES = (_item(20, kind="attachment", status="inherit", attachment="2012/05/a.jpg"),
+              _item(21, kind="attachment", status="inherit", attachment="2012/05/b.jpg"),
+              _item(1, slug="one"))
+
+
+def _again(tmp_path: Path):
+    """bring_in once more over what the last one left, writing nothing first."""
+    from pressless_import import bring_in
+
+    held = tmp_path / "site" / "import"
+    return bring_in(held / "export.xml", held / "media", tmp_path / "site", "meadow")
+
+
+def test_a_second_bring_in_after_a_stop_in_the_moves_loses_no_held_file(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: where the first move into the site's folder fails, the
+    Store still holds no site, and a second Bring it in finishes the moves
+    rather than deleting import/work/ and the held files in it.
+
+    Breaks when bring_in deletes import/work/ without asking import/moving."""
+    import os
+
+    real = os.rename
+    moving = tmp_path / "site" / "import" / "moving"
+
+    def first_move_fails(source, target):
+        if moving.exists():
+            monkeypatch.setattr(os, "rename", real)
+            raise OSError(13, "the file is in use")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "rename", first_move_fails)
+    with pytest.raises(ImportStopped, match="Nothing was lost"):
+        _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+    site = tmp_path / "site"
+    assert not store.holds_a_site(site)
+
+    with pytest.raises(ImportStopped, match="already holds a site"):
+        _again(tmp_path)
+
+    assert store.list_photographs(site) == ("a.jpg", "b.jpg")
+    assert store.list_slugs(site, draft=False) == ("one",)
+
+
+def test_a_note_that_cannot_be_written_puts_every_held_file_back(tmp_path, monkeypatch):
+    """PRESS-0125 INV-7: where import/moving cannot be written, the held files
+    go back to import/media/ and the stop names what failed.
+
+    Breaks when the note is written outside the stop's putting back."""
+    real = Path.write_bytes
+
+    def no_note(self, data):
+        if self.name == "moving":
+            raise OSError(28, "No space left on device")
+        return real(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", no_note)
+    with pytest.raises(ImportStopped, match="moves have begun could not be written"):
+        _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+    held = tmp_path / "site" / "import"
+    for name in ("a.jpg", "b.jpg"):
+        assert (held / "media" / "2012" / "05" / name).is_file(), name
+    assert not (held / "work").exists() and not (held / "moving").exists()
+
+
+def test_a_file_that_would_not_go_back_goes_back_at_the_next_try(tmp_path, monkeypatch):
+    """PRESS-0125 INV-7: where a held file cannot be moved back after a stop,
+    import/work/ keeps it, and the next Bring it in puts it back first and
+    carries it.
+
+    Breaks when the stop deletes import/work/ after a failed move back."""
+    import os
+
+    real = os.rename
+    into_work = []
+
+    def flaky(source, target):
+        if "work" in Path(target).parts:
+            into_work.append(target)
+            if len(into_work) == 2:
+                raise OSError(5, "the drive went away")
+        elif "work" in Path(source).parts:
+            raise OSError(13, "the file is in use")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "rename", flaky)
+    with pytest.raises(ImportStopped, match="^the file 2012/05/b.jpg could not be written"):
+        _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+    monkeypatch.setattr(os, "rename", real)
+    site = tmp_path / "site"
+    assert not (site / "import" / "media" / "2012" / "05" / "a.jpg").exists()
+
+    report = _again(tmp_path)
+
+    assert report.photographs == 2, report
+    assert store.list_photographs(site) == ("a.jpg", "b.jpg")
+
+
+def test_the_report_is_given_before_the_moves(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.8: bring_in hands its Report to `keep` before the first
+    move, so a stop during the moves still leaves it to write.
+
+    Breaks when the Report is made only after the moves end."""
+    import os
+
+    from pressless_import import bring_in
+
+    real = os.rename
+    held = tmp_path / "site" / "import"
+    order = []
+
+    def watched(source, target):
+        if (held / "moving").exists():
+            order.append("move")
+        return real(source, target)
+
+    monkeypatch.setattr(os, "rename", watched)
+    _files(held / "media", {})
+    (held / "export.xml").write_text(_export(_item(1, slug="one")), encoding="utf-8")
+    report = bring_in(held / "export.xml", held / "media", tmp_path / "site", "meadow",
+                      keep=lambda kept: order.append(kept))
+
+    assert order[0] is report and "move" in order[1:], order
+
+
+def test_a_store_that_cannot_be_read_stops_import_in_its_own_words(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7: a Store whose folders cannot be read stops Import
+    with ImportStopped, which the wizard shows, never a raw StoreError.
+
+    Breaks when holds_a_site's refusal escapes bring_in."""
+    def unreadable(folder):
+        raise store.StoreError("the Store's folders could not be read: in use")
+
+    monkeypatch.setattr(store, "holds_a_site", unreadable)
+    with pytest.raises(ImportStopped, match="could not be read: in use"):
+        _bring(tmp_path, _export(_item(1, slug="one")))
+
+
+def test_a_held_file_that_cannot_be_read_is_listed(tmp_path, monkeypatch):
+    """PRESS-0125 INV-5: a held file the drive will not read is listed with
+    why, and Import carries on.
+
+    Breaks when its OSError escapes bring_in."""
+    real = Path.read_bytes
+
+    def unreadable(self):
+        if self.name == "notes.pdf":
+            raise OSError(5, "Input/output error")
+        return real(self)
+
+    monkeypatch.setattr(Path, "read_bytes", unreadable)
+    site, report = _bring(tmp_path, _export(
+        _item(21, kind="attachment", status="inherit", attachment="2012/05/notes.pdf"),
+        _item(1, slug="one")), {"2012/05/notes.pdf": b"%PDF- notes"})
+
+    assert dict(report.unfetched)["2012/05/notes.pdf"] == (
+        "it could not be read: Input/output error"), report.unfetched
+    assert store.list_slugs(site, draft=False) == ("one",)
+
+
 def test_a_stop_during_the_moves_finishes_next_start(tmp_path, monkeypatch):
     """PRESS-0125 INV-7: a stop part way through the moves leaves
     import/moving, and finishing them later gives the whole site."""

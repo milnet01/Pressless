@@ -64,6 +64,7 @@ __all__ = [
     "read_brought",
     "read_folder_left",
     "read_folder",
+    "recover",
     "resolve_slug",
     "run",
     "unpack_folder",
@@ -107,8 +108,11 @@ class Report:
 
 
 class ImportStopped(Exception):
-    """INTO was not made. The message names a file by its own name or its
-    upload path, and never by a full path (`docs/design.md` § Logging)."""
+    """Import stopped. From `run`, INTO was not made. From a bring-in, the
+    Store holds no site, unless the moves into the site's folder had begun:
+    then import/moving stays, and `finish` completes them at the next start
+    or press. The message names a file by its own name or its upload path,
+    and never by a full path (`docs/design.md` § Logging)."""
 
 
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -806,6 +810,7 @@ from ._bring import (  # noqa: E402
     MEDIA_FOLDER,
     bring_in,
     finish,
+    recover,
     unpack_media,
 )
 from ._folder import (  # noqa: E402
