@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=390 -->
+<!-- ants-roadmap-id-high-water: PRESS=391 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7837,7 +7837,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Words.
 
-- 📋 [PRESS-0388] **Review fixes: the gate, hooks, workflows and builds.**
+- ✅ [PRESS-0388] **Review fixes: the gate, hooks, workflows and builds.**
   Subject 18 of the 2026-11-16 full review, closed with close-findings.
   review-code: 1 high, 1 medium, 11 low. review-readability: 2 medium,
   8 low. The high: local-ci.sh's sweep drops git grep's "Binary file
@@ -7845,6 +7845,13 @@ does not wait on them.
   tree and the history sweep (probed). Also release.yml hides a
   build's failure inside echo.
   Ledger: close-findings-2026-11-17/lane-18-pipeline-shell-yaml.json.
+  Shipped 2026-11-17, 270395e..466f36e. 28 findings: 27 fixed, 1 queued
+  (PRESS-0391), 0 dismissed. A binary match now fails the leak sweep,
+  which also reads authors, committers, paths and taggers, and prints
+  locations only. A failed Linux release build fails its step. A fresh
+  clone runs scripts/setup-hooks.sh, and docsGlob is committed in
+  .ants/gate.conf. Ledger:
+  close-findings-2026-11-17/lane-18-pipeline-shell-yaml.json.
   **Layman:** Fixes in the checks that run before each push, including one that could let a private name slip into the public repository.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7874,6 +7881,18 @@ does not wait on them.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Tests.
+
+- 📋 [PRESS-0391] **Decide whether the pre-commit survivor check covers a wholly deleted document.**
+  Queued from PRESS-0388 (2026-11-17). The hook now handles renames and
+  names with spaces. Covering deletions would block every deletion of a
+  document whose rules live elsewhere too, including merging two into
+  one home. The skeleton's pre-commit hook in ~/.claude is the owner of
+  the design, so the claude-config session decides first; this hook then
+  follows it.
+  **Layman:** A check that runs before each commit looks at renamed documents but not deleted ones; whether it should is a design choice.
+  Kind: investigate.
+  Source: review-readability-2026-11-16 lead .githooks/pre-commit:41,46.
+  Lanes: Pipeline.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
