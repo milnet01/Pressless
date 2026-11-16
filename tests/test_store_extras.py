@@ -839,6 +839,7 @@ _PRESS_0006_SURFACE = {
 }
 _PRESS_0014_SURFACE = {"WAITING_FOLDERS"}
 _PRESS_0337_SURFACE = {"mark"}           # PRESS-0337 § 4.6: copies nothing
+_PRESS_0224_SURFACE = {"windows_device"}  # PRESS-0224 § 4.3: reads a name
 _PRESS_0182_SURFACE = {"FORWARDS_FOLDER", "FORWARDS_FILE", "forwards_path_for",
                        "read_forwards", "write_forwards"}
 _PRESS_0214_SURFACE = {"OPTIONS_FOLDER", "OPTIONS_FILE", "options_path_for",
@@ -961,13 +962,15 @@ def test_photographs_stay_where_they_are(tmp_path):
                         | _PRESS_0182_SURFACE | _PRESS_0214_SURFACE | _PRESS_0126_SURFACE
                         | _PRESS_0213_SURFACE | _PRESS_0195_SURFACE | _PRESS_0196_SURFACE
                         | _PRESS_0197_SURFACE | _PRESS_0218_SURFACE | _PRESS_0210_SURFACE
-                        | _PRESS_0211_SURFACE | _PRESS_0337_SURFACE)
+                        | _PRESS_0211_SURFACE | _PRESS_0337_SURFACE
+                        | _PRESS_0224_SURFACE)
     assert surface == expected_surface, (
         f"the Store's public names are not PRESS-0005 §4.1's surface together "
         f"with PRESS-0006 §4.1's, PRESS-0014 §4.1's, PRESS-0182 §4.1's, "
         f"PRESS-0214 §4.1's, PRESS-0126 §4.1's, PRESS-0213 §4.1's, "
         f"PRESS-0195 §4.1's, PRESS-0196 §4.1's, PRESS-0197 §4.3's and "
-        f"PRESS-0218 §4.3's, PRESS-0211 §4.2's and PRESS-0337 § 4.6's. "
+        f"PRESS-0218 §4.3's, PRESS-0211 §4.2's, PRESS-0337 § 4.6's and "
+        f"PRESS-0224 § 4.3's. "
         f"Added: {sorted(surface - expected_surface)!r}. "
         f"Missing: {sorted(expected_surface - surface)!r}. A call that copies a "
         f"photograph anywhere is the one INV-11 forbids"

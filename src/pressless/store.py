@@ -1370,7 +1370,13 @@ def _windows_keeps(name: str) -> bool:
     trailing dot or space (Windows drops them), and no device name."""
     if name[-1] in ". " or _WINDOWS_FORBIDDEN & set(name):
         return False
-    return name.split(".")[0].rstrip(" ").casefold() not in _WINDOWS_DEVICES
+    return not windows_device(name)
+
+
+def windows_device(name: str) -> bool:
+    """Whether Windows reads the file name `name` as a device, on the rule
+    beside _WINDOWS_DEVICES. sitefile refuses a member naming one."""
+    return name.split(".")[0].rstrip(" ").casefold() in _WINDOWS_DEVICES
 
 
 def list_photographs(folder: Path) -> tuple[str, ...]:

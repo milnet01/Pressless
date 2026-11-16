@@ -157,13 +157,22 @@ GOOD = {"format": "pressless-site", "version": 1}
         "separator, so this name is drafts/x.txt, inside the site")),
     ({"drafts\\..\\..\\x": b"x"}, GOOD, None),
     ({"C:x": b"x"}, GOOD, None),
+    # PRESS-0383: Windows starts the path again at a later part's drive, and
+    # drops a part's trailing dots and spaces, so `.. ` is `..` there.
+    ({"photographs/D:/x": b"x"}, GOOD, None),
+    ({"drafts/a:b": b"x"}, GOOD, None),
+    ({"drafts/.. /x": b"x"}, GOOD, None),
+    ({"drafts/x.": b"x"}, GOOD, None),
+    ({"drafts/x ": b"x"}, GOOD, None),
+    ({"files/NUL.txt": b"x"}, GOOD, None),
     ({"secrets/x": b"x"}, GOOD, None),
     ({"drafts/../../x": b"x"}, GOOD, None),
     ({}, GOOD, "drafts/a-link"),
     ({"drafts/x.txt": b"x"}, None, None),
     ({"drafts/x.txt": b"x"}, {"format": "pressless-site", "version": 2}, None),
     ({"drafts/x.txt": b"x"}, {"format": "something-else", "version": 1}, None),
-], ids=["dotdot", "absolute", "backslash", "backslash-dotdot", "drive", "not-kept",
+], ids=["dotdot", "absolute", "backslash", "backslash-dotdot", "drive", "later-drive",
+        "colon", "dotdot-space", "trailing-dot", "trailing-space", "device", "not-kept",
         "deep-dotdot", "link",
         "no-manifest", "newer", "other-format"])
 def test_a_bad_file_writes_nothing(tmp_path: Path, members, manifest, link) -> None:
@@ -179,6 +188,117 @@ def test_a_bad_file_writes_nothing(tmp_path: Path, members, manifest, link) -> N
     assert str(tmp_path) not in str(refused.value)
     assert _files(own) == before
     assert not (tmp_path / "x").exists()
+
+
+def test_import_keeps_its_own_leaving_out() -> None:
+    """PRESS-0125 § 4.4 and PRESS-0210 § 4.1 check members by stays_inside.
+    Breaks when a name that climbs out on Windows passes, or when a device
+    name, which Import leaves out by itself, refuses the whole ZIP."""
+    for name in ("wp/D:/x.jpg", "wp/a:b", "wp/.. /x", "wp/x.", "wp/x "):
+        assert not sitefile.stays_inside(name), name
+    for name in ("wp/con/x.txt", "uploads/2012/05/a.jpg", "site/"):
+        assert sitefile.stays_inside(name), name
+
+
+def _flagged(path: Path, name: str, data: bytes) -> Path:
+    """A site file whose member `name` is marked locked (encrypted) in the
+    central directory; zipfile writes no locked member itself."""
+    _zip(path, {"published/good.txt": b"good", name: data}, GOOD)
+    held = bytearray(path.read_bytes())
+    at = held.rindex(b"PK\x01\x02")   # the last member's central entry
+    held[at + 8] |= 0x1
+    path.write_bytes(bytes(held))
+    return path
+
+
+def test_a_member_zipfile_cannot_unpack_is_refused_first(tmp_path: Path) -> None:
+    """§ 4.3. Breaks when a locked or oddly packed member reaches the unpack,
+    where it fails as no refusal and leaves the open half done."""
+    own = _own(tmp_path)
+    store.write(sites.open_site(own), _entry(), draft=True)
+    before = _files(own)
+    packed = tmp_path / "packed.zip"
+    with zipfile.ZipFile(packed, "w") as made:
+        made.writestr(MANIFEST, json.dumps(GOOD))
+        made.writestr("published/good.txt", b"good")
+        made.writestr("drafts/x.txt", b"x" * 100, compress_type=zipfile.ZIP_BZIP2)
+    for bad in (_flagged(tmp_path / "locked.zip", "drafts/x.txt", b"x"), packed):
+        with pytest.raises(sitefile.Refused):
+            sitefile.check(bad, 10**9)
+        with pytest.raises(sitefile.Refused):
+            sitefile.open_into(bad, own)
+        assert _files(own) == before
+
+
+def test_settings_nested_past_reading_are_refused(tmp_path: Path) -> None:
+    """§ 4.4: a refusal removes the folder new_site made. Breaks when JSON
+    nested past Python's depth escapes as no refusal and leaves that site."""
+    own = _own(tmp_path)
+    store.write(sites.open_site(own), _entry(), draft=True)
+    deep = _zip(tmp_path / "deep.zip", {"settings.json": b"[" * 200_000}, GOOD)
+    with pytest.raises(sitefile.Refused):
+        sitefile.open_into(deep, own)
+    assert [path.name for path in sites.all_sites(own)] == ["site-1"]
+
+
+def test_a_large_manifest_is_refused_before_it_is_read(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """§ 4.3: the manifest is read whole. Breaks when its size is not
+    checked first, so a small file can declare gigabytes."""
+    own = _own(tmp_path)
+    bad = tmp_path / "bad.zip"
+    with zipfile.ZipFile(bad, "w", zipfile.ZIP_DEFLATED) as made:
+        made.writestr(MANIFEST, json.dumps(GOOD) + " " * (64 * 1024))
+    read = zipfile.ZipFile.read
+
+    def never(held: zipfile.ZipFile, name: object, pwd: object = None) -> bytes:
+        if getattr(name, "filename", name) == MANIFEST:
+            raise AssertionError("the manifest was read before its size was checked")
+        return read(held, name, pwd)
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", never)
+    with pytest.raises(sitefile.Refused):
+        sitefile.open_into(bad, own)
+
+
+def test_a_file_with_too_many_members_is_refused(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """§ 4.3: MEMBERS_MOST. Breaks when empty members, which add nothing to
+    the size, can fill the drive with files."""
+    monkeypatch.setattr(sitefile, "MEMBERS_MOST", 2)
+    own = _own(tmp_path)
+    bad = _zip(tmp_path / "bad.zip", {"drafts/a": b"", "drafts/b": b""}, GOOD)
+    with pytest.raises(sitefile.Refused):
+        sitefile.open_into(bad, own)
+    assert not (own / "sites" / ".opening").exists()
+
+
+def test_a_site_in_place_that_cannot_be_named_is_no_refusal(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """§ 4.4 step 6. Breaks when the last step's failure says the file could
+    not be opened, although the site is already in place."""
+    _, target = _saved(tmp_path)
+    own = _own(tmp_path)
+    store.write(sites.open_site(own), _entry(), draft=True)
+
+    def full(own: Path, name: str) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(sites, "choose", full)
+    with pytest.raises(OSError) as raised:
+        sitefile.open_into(target, own)
+    assert not isinstance(raised.value, sitefile.Refused)
+    assert (own / "sites" / "site-2" / "settings.json").is_file()
+
+
+def test_a_long_name_is_cut_for_a_file_name(tmp_path: Path) -> None:
+    """§ 4.1. Breaks when a long site name makes every backup's path longer
+    than Windows takes."""
+    site = tmp_path / "site"
+    site.mkdir()
+    store.write_identity(site, store.Identity("Sea " * 40))
+    assert len(sitefile.stem(site)) <= 60
+    assert sitefile.stem(site) == sitefile.stem(site).strip()
 
 
 def test_a_file_that_is_no_zip_is_refused(tmp_path: Path) -> None:
@@ -299,6 +419,24 @@ def test_a_refused_open_leaves_no_new_site(tmp_path: Path,
 
     monkeypatch.setattr(settings, "load", refuses)
     with pytest.raises(sitefile.Refused):
+        sitefile.open_into(target, own)
+    assert [path.name for path in sites.all_sites(own)] == ["site-1"]
+    assert not (own / "sites" / ".opening").exists()
+
+
+def test_an_unforeseen_failure_still_cleans_up(tmp_path: Path,
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    """§ 4.4. Breaks when a failure that is no refusal leaves `.opening` or
+    the site new_site made."""
+    _, target = _saved(tmp_path)
+    own = _own(tmp_path)
+    store.write(sites.open_site(own), _entry(), draft=True)
+
+    def unforeseen(folder: Path) -> settings.Settings:
+        raise LookupError("made up")
+
+    monkeypatch.setattr(settings, "load", unforeseen)
+    with pytest.raises(LookupError):
         sitefile.open_into(target, own)
     assert [path.name for path in sites.all_sites(own)] == ["site-1"]
     assert not (own / "sites" / ".opening").exists()

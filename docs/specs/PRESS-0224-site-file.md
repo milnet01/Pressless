@@ -81,8 +81,8 @@ What is left out is a key, something rebuilt on demand, or where the user
 was last.
 
 `<name>` is the site's name (PRESS-0223 § 4.6) with every character but
-letters, digits, spaces and hyphens removed and its spaces collapsed, else
-`Pressless site`.
+letters, digits, spaces and hyphens removed and its spaces collapsed, cut
+to `STEM_MOST` (60) characters, else `Pressless site`.
 
 ### 4.2 Saving
 
@@ -103,10 +103,14 @@ it as a download (§ 4.5), named as § 4.1 says.
 - not a zip, or no `MANIFEST`, or a manifest whose `format` is not
   `pressless-site`;
 - `version` above `VERSION`, with words saying a newer Pressless made it;
-- a member name that is absolute, holds `..`, a backslash or a drive
-  letter, or whose first part is neither `MANIFEST` nor in `KEPT`
-  (`updater._allowed` is the precedent);
+- more than `MEMBERS_MOST` members, or a manifest over 64 KiB, checked
+  before it is read;
+- a member name that is absolute or holds a backslash, any part of which
+  is `..`, holds a `:` or ends in a dot or space (`stays_inside`), or
+  names a Windows device (`store.windows_device`), or whose first part is
+  neither `MANIFEST` nor in `KEPT` (`updater._allowed` is the precedent);
 - a member that is a link (`external_attr`'s file type is a link);
+- a member marked encrypted, or packed other than stored or deflated;
 - members whose sizes add up to more than `room` bytes.
 
 Nothing is written before `check` passes.
@@ -134,7 +138,8 @@ Nothing is written before `check` passes.
 6. `sites.choose(own, target.name)`, and PRESS-0223's restart opens it.
 
 A refusal at any step removes `.opening` and any folder `new_site` made,
-and leaves `sites/` as it was.
+and leaves `sites/` as it was. Step 6 fails after the site is in place, so
+its failure is not a refusal.
 
 The site opens with no key. Publishing then says Pressless does not have
 the publishing key yet, and to enter it in Settings
@@ -193,7 +198,8 @@ reads *Opening…* and is disabled.
   `tests/test_sitefile.py::test_a_site_comes_back_whole`.
   *Breaks when:* a file is dropped, renamed, or changed in the trip.
 - **INV-3** — `check` refuses a file holding each of: a member `../x`,
-  `/x`, `a\b`, `C:x`, `secrets/x`, a link, no manifest, `version` 2;
+  `/x`, `a\b`, `C:x`, `photographs/D:/x`, `drafts/.. /x`, `files/NUL.txt`,
+  `secrets/x`, a link, no manifest, `version` 2;
   and `open_into` over each leaves `sites/` with the same names and bytes.
   *Test:* `tests/test_sitefile.py::test_a_bad_file_writes_nothing`.
   *Breaks when:* a member is unpacked before every member is checked, or

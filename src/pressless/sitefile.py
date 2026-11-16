@@ -9,11 +9,11 @@ member is checked before a byte is written, and a refused file writes nothing.
 from __future__ import annotations
 
 import json
-import re
 import secrets
 import shutil
 import stat
 import zipfile
+import zlib
 from pathlib import Path, PurePosixPath
 
 from pressless import credentials, editor, settings, sites, store
@@ -31,9 +31,16 @@ LEFT_OUT = frozenset({"credentials.json", "site", "preview", "fetch", "insights.
 KEPT = sites.SITE_NAMES - LEFT_OUT
 # Kept as they are: photographs and added files are compressed already.
 _STORED = frozenset({"photographs", "files"})
-_DRIVE = re.compile(r"^[A-Za-z]:")
 _OPENING = ".opening"
 _SPARE = 1024 * 1024 * 1024   # the drive keeps this much free after an open
+MEMBERS_MOST = 100_000        # § 4.3: a file holding more members is refused
+STEM_MOST = 60                # § 4.1: characters of the site's name in a file's name
+_MANIFEST_MOST = 64 * 1024    # bytes; the manifest is two short fields
+# What reading a member can raise beyond OSError and ValueError: a bad
+# checksum, a locked or oddly packed member, a cut-short file, and JSON nested
+# past Python's depth, whose RecursionError is a RuntimeError.
+_UNREADABLE = (OSError, ValueError, zipfile.BadZipFile, RuntimeError, NotImplementedError,
+               EOFError, zlib.error, settings.SettingsError, store.StoreError)
 
 
 class Refused(Exception):
@@ -62,9 +69,10 @@ def name_of(site: Path) -> str:
 
 def stem(site: Path) -> str:
     """§ 4.1: the site's name kept to letters, digits, spaces and hyphens, its
-    spaces collapsed, for a file's name."""
+    spaces collapsed and cut to STEM_MOST characters, for a file's name. The
+    cut keeps a backup's whole path inside Windows' limit."""
     kept = "".join(c for c in name_of(site) if c.isalnum() or c in " -")
-    return " ".join(kept.split()) or say("sites_screen.file_unnamed")
+    return " ".join(kept.split())[:STEM_MOST].rstrip() or say("sites_screen.file_unnamed")
 
 
 def _members(site: Path) -> list[tuple[str, Path]]:
@@ -102,19 +110,28 @@ def save(site: Path, target: Path) -> None:
 
 
 def stays_inside(name: str) -> bool:
-    """A zip member name that stays inside the folder it is unpacked into:
-    relative, with no `..`, backslash or drive. Import's media download is
-    checked by it too (PRESS-0125 § 4.4)."""
-    if name.startswith("/") or "\\" in name or _DRIVE.match(name):
+    """A zip member name that stays inside the folder it is unpacked into, on
+    every system: relative, with no backslash, and no part that is `..`,
+    holds a `:` or ends in a dot or space. Each part is checked, as Windows
+    starts a path again at a part such as `D:x`, and drops a part's trailing
+    dots and spaces, so `.. ` climbs out. Import's media download and folder
+    ZIP are checked by it too (PRESS-0125 § 4.4, PRESS-0210 § 4.1)."""
+    if name.startswith("/") or "\\" in name:
         return False
     parts = PurePosixPath(name).parts
-    return bool(parts) and ".." not in parts
+    return bool(parts) and not any(
+        part == ".." or ":" in part or part[-1] in ". " for part in parts)
 
 
 def _allowed(name: str) -> bool:
     """A member name that stays inside the site, under a kept name or the
-    manifest."""
-    return stays_inside(name) and (name == MANIFEST or PurePosixPath(name).parts[0] in KEPT)
+    manifest, and names no Windows device, which a write would reach in
+    place of a file."""
+    if not stays_inside(name):
+        return False
+    parts = PurePosixPath(name).parts
+    return name == MANIFEST or (parts[0] in KEPT
+                                and not any(map(store.windows_device, parts)))
 
 
 def is_link(info: zipfile.ZipInfo) -> bool:
@@ -128,13 +145,19 @@ def check(source: Path, room: int) -> None:
     try:
         with zipfile.ZipFile(source) as held:
             infos = held.infolist()
+            if len(infos) > MEMBERS_MOST:
+                raise Refused("the file holds more files than a site does")
             try:
-                manifest = json.loads(held.read(MANIFEST))
+                found = held.getinfo(MANIFEST)
             except KeyError:
                 raise Refused("the file has no Pressless manifest") from None
-            except ValueError:
+            if found.file_size > _MANIFEST_MOST:   # read whole, so its size first
+                raise Refused("the file's manifest is not readable")
+            try:
+                manifest = json.loads(held.read(found))
+            except (ValueError, RecursionError):
                 raise Refused("the file's manifest is not readable") from None
-    except (zipfile.BadZipFile, OSError) as exc:
+    except _UNREADABLE as exc:
         raise Refused("the file is not a zip file Pressless can read") from exc
     if not isinstance(manifest, dict) or manifest.get("format") != FORMAT:
         raise Refused("the file is not a saved Pressless site")
@@ -148,6 +171,11 @@ def check(source: Path, room: int) -> None:
             raise Refused("the file holds a name outside a site")
         if is_link(info):
             raise Refused("the file holds a link")
+        # save writes only these: anything else is locked, or packed in a way
+        # zipfile cannot unpack.
+        if info.flag_bits & 0x1 or info.compress_type not in (zipfile.ZIP_STORED,
+                                                              zipfile.ZIP_DEFLATED):
+            raise Refused("the file holds a member Pressless cannot unpack")
     if sum(info.file_size for info in infos) > room:
         raise Refused("the file is larger than the room on this drive")
 
@@ -157,7 +185,9 @@ def _room(own: Path) -> int:
 
 
 def unused(site: Path) -> bool:
-    """§ 4.4: no settings and nothing written, as on a fresh install."""
+    """§ 4.4: no settings and nothing written, as on a fresh install. Loosen
+    it with care: open_into writes an opened file over a site this calls
+    unused, and deletes what was there; backups skip it too."""
     return not (site / settings.FILE_NAME).exists() and not store.holds_a_site(site)
 
 
@@ -190,7 +220,8 @@ def open_into(source: Path, own: Path) -> Path:
     """§ 4.4: open the file as a site in Pressless's own folder `own`, and
     name it the site the next start opens. Returns its folder. A refusal at
     any step leaves sites/ as it was, apart from an empty site-1 made where
-    there was no site."""
+    there was no site. Naming it is the last step, after the site is in
+    place, so its OSError is no refusal and reaches the caller as it is."""
     own = Path(own)
     check(source, _room(own))
     current = sites.open_site(own)
@@ -198,32 +229,36 @@ def open_into(source: Path, own: Path) -> Path:
     shutil.rmtree(opening, ignore_errors=True)
     made: Path | None = None
     try:
-        with zipfile.ZipFile(source) as held:
-            for info in held.infolist():
-                if info.filename == MANIFEST:
-                    continue
-                to = opening.joinpath(*PurePosixPath(info.filename).parts)
-                if info.is_dir():
-                    to.mkdir(parents=True, exist_ok=True)
-                    continue
-                to.parent.mkdir(parents=True, exist_ok=True)
-                with held.open(info) as piece, open(to, "wb") as out:
-                    shutil.copyfileobj(piece, out)
-        target = current if unused(current) else sites.new_site(own)
-        if target != current:
-            made = target
-        _settle(opening, target)
-        _replace(target, opening)
-        made = None
-        sites.choose(own, target.name)
-    except Refused:
+        try:
+            _unpack(source, opening)
+            target = current if unused(current) else sites.new_site(own)
+            if target != current:
+                made = target
+            _settle(opening, target)
+            _replace(target, opening)
+            made = None
+        except _UNREADABLE as exc:
+            raise Refused("the file could not be opened as a site") from exc
+    except BaseException:
         _clean(opening, made)
         raise
-    except (OSError, ValueError, zipfile.BadZipFile, settings.SettingsError,
-            store.StoreError) as exc:
-        _clean(opening, made)
-        raise Refused("the file could not be opened as a site") from exc
+    sites.choose(own, target.name)
     return target
+
+
+def _unpack(source: Path, opening: Path) -> None:
+    """§ 4.4 step 2: every member but the manifest, under `opening`."""
+    with zipfile.ZipFile(source) as held:
+        for info in held.infolist():
+            if info.filename == MANIFEST:
+                continue
+            to = opening.joinpath(*PurePosixPath(info.filename).parts)
+            if info.is_dir():
+                to.mkdir(parents=True, exist_ok=True)
+                continue
+            to.parent.mkdir(parents=True, exist_ok=True)
+            with held.open(info) as piece, open(to, "wb") as out:
+                shutil.copyfileobj(piece, out)
 
 
 def _replace(target: Path, opening: Path) -> None:

@@ -188,7 +188,7 @@ A refused or failed fetch is one Report line, naming the place and why
 **The media ZIP** (`pressless_import.unpack_media`) fills gaps by place: a member whose name ends in
 `<YYYY>/<MM>/<name>` matching a missing place is unpacked to it. Members
 are checked first by `sitefile.stays_inside` and `sitefile.is_link`, as a
-site file's are — no absolute name, backslash, drive, `..` or link — and
+site file's are — no absolute name, backslash, `..`, `:` or link — and
 the members taken must fit `room()`.
 Other members are ignored. A place `_place` would refuse is never filled:
 `fetch_all` keys an attachment with no usable place by its raw address,
