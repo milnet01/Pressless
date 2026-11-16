@@ -582,6 +582,32 @@ def test_a_css_address_inside_its_tokens_own_words_is_rewritten_in_place(tmp_pat
     assert "url(/l.html)" in (into / "index.html").read_text(encoding="utf-8")
 
 
+def test_a_stylesheet_in_an_older_encoding_keeps_its_words_when_rewritten(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html('<link rel="stylesheet" href="a.css"><p>H</p>'),
+        "sites.example.org/a.css": (200, "/* caf\xe9 */ p { background: url("
+                                    "https://sites.example.org/i.png) url(caf\xe9.png) }"
+                                    .encode("cp1252"), {"Content-Type": "text/css"}),
+        "sites.example.org/i.png": (200, b"png", {"Content-Type": "image/png"}),
+        "sites.example.org/caf%C3%A9.png": (200, b"png", {"Content-Type": "image/png"}),
+    })
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/", into)
+    text = (into / "a.css").read_bytes().decode("utf-8")
+    assert "café" in text and "url(/i.png)" in text
+    assert "café.png" in _landed(into), "an address in its words is read as they are"
+
+
+def test_a_backslash_in_an_address_is_followed_as_a_slash(tmp_path):
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html('<img src="images\\a.png" alt="">'),
+        "sites.example.org/images/a.png": (200, b"png", {"Content-Type": "image/png"}),
+    })
+    into = tmp_path / "folder"
+    _download(network, "https://sites.example.org/", into)
+    assert _landed(into) == {"index.html", "images/a.png"}
+
+
 def test_a_relative_address_that_lands_elsewhere_still_resolves(tmp_path):
     """`team` lands at team.html, and `../other/` from a project site is not the site's."""
     from test_importer_folder import _built, _unresolved

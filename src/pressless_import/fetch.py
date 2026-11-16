@@ -39,6 +39,7 @@ from ._folder import (
     MEMBERS_MOST,
     _attribute_edit,
     _declares_utf8,
+    _decoded,
     _edited,
     _new_value,
     _page_text,
@@ -47,6 +48,7 @@ from ._folder import (
     _spots,
     _token_address,
     _token_with,
+    _web_slashes,
     _why_not_kept,
 )
 
@@ -312,6 +314,18 @@ class _Site:
                        ).removeprefix("/")
 
 
+def _followed(address: str) -> str | None:
+    """`address` as the crawl reads it, stripped and a backslash in its path a
+    slash; None for one it neither follows nor rewrites: empty, a fragment or
+    query alone, which name the page it is on, or another scheme's."""
+    address = _web_slashes(address.strip())
+    scheme = _SCHEME.match(address)
+    if not address or address[0] in "#?" or (
+            scheme and scheme.group(0)[:-1].lower() not in _DEFAULT_PORTS):
+        return None
+    return address
+
+
 def _landing(path: str, kind: str) -> str:
     """§ 4.2: the file an answer to `path` lands at, given its content type."""
     if not path or path.endswith("/"):
@@ -367,9 +381,8 @@ class _Crawl:
 
     def note(self, address: str, base: str) -> None:
         """`address`, read on the page at `base`, waits its turn if it is the site's."""
-        address = address.strip()
-        if not address or address[0] == "#" or (_SCHEME.match(address)
-                                                and not address.lower().startswith("http")):
+        address = _followed(address)
+        if address is None:
             return
         try:
             joined = urljoin(base, address)
@@ -443,7 +456,9 @@ class _Crawl:
             if read is not None:
                 _page_through(read[0], noted)
         elif landing.lower().endswith(".css"):
-            _css_through(target.read_bytes().decode("utf-8", "replace"), noted)
+            read = _decoded(target.read_bytes())
+            if read is not None:
+                _css_through(read[0], noted)
 
     def sitemap(self) -> None:
         """The pages `sitemap.xml` names, where it answers. It is not kept."""
@@ -462,9 +477,8 @@ class _Crawl:
         """§ 4.2's rewrite: the site's own full or root address names where it landed, as
         does a relative one landing elsewhere than it says; one with no host that is not
         the site's becomes full. Others stay."""
-        stripped = address.strip()
-        if not stripped or stripped[0] in "#?" or (
-                _SCHEME.match(stripped) and not stripped.lower().startswith("http")):
+        stripped = _followed(address)
+        if stripped is None:
             return None
         full = bool(_SCHEME.match(stripped)) or stripped.startswith("//")
         try:
@@ -496,9 +510,10 @@ class _Crawl:
                         target.write_text(_declares_utf8(new) if read[1] else new,
                                           encoding="utf-8", newline="")
             elif landing.lower().endswith(".css"):
-                text = target.read_bytes().decode("utf-8", "replace")
-                new = _css_through(text, write)
-                if new != text:
+                read = _decoded(target.read_bytes())
+                new = _css_through(read[0], write) if read is not None else None
+                if new is not None and new != read[0]:
+                    # As UTF-8, which reading it as a folder tries first.
                     target.write_text(new, encoding="utf-8", newline="")
 
 

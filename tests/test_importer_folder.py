@@ -807,6 +807,42 @@ def test_an_older_encoding_is_read(tmp_path):
         store.html_path_for(into, store.PAGES_FOLDER, "index"))
 
 
+@pytest.mark.parametrize("label", ["iso-8859-1", "latin1", "us-ascii"])
+def test_a_charset_label_means_what_it_means_to_a_browser(tmp_path, label):
+    """§ 4.9: the WHATWG Encoding Standard reads these labels as
+    windows-1252, so 0x93 and 0x94 are curly quotes, not control codes."""
+    page = (f'<html><head><meta charset="{label}"><title>T</title></head>'
+            "<body><p>\x93quoted\x94 \x80</p></body></html>").encode("latin-1")
+    into, _b = _brought(tmp_path, {"index.html": page})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "\u201cquoted\u201d \u20ac" in text
+
+
+def test_a_turkish_label_reads_as_windows_1254(tmp_path):
+    page = (b'<html><head><meta charset="iso-8859-9"><title>T</title></head>'
+            b"<body><p>\x93\xde\xf0\x94</p></body></html>")
+    into, _b = _brought(tmp_path, {"index.html": page})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "\u201c\u015e\u011f\u201d" in text
+
+
+def test_a_charset_label_no_browser_knows_is_read_as_none(tmp_path):
+    page = (b'<html><head><meta charset="unicode_escape"><title>T</title></head>'
+            b"<body><p>\\u0041 \xe9</p></body></html>")
+    into, _b = _brought(tmp_path, {"index.html": page})
+    text = store.html_path_for(into, store.PAGES_FOLDER, "index").read_bytes().decode("utf-8")
+    assert "\\u0041 \u00e9" in text
+
+
+def test_a_backslash_in_an_address_is_a_slash_as_a_browser_reads_it(tmp_path):
+    """review-code 2026-11-16: a site made on Windows may write `images\\a.png`."""
+    into, _b = _brought(tmp_path, {
+        "index.html": _page('<img src="images\\pic.png" alt="">'), "images/pic.png": _png()})
+    site = _built(tmp_path, into)
+    assert _unresolved(site, "index.html") == []
+    assert "%5C" not in (site / "index.html").read_text(encoding="utf-8")
+
+
 def test_a_file_nothing_decodes_is_left(tmp_path):
     """§ 4.9: cp1252 has bytes it does not define."""
     folder = _laid_out(tmp_path, {"index.html": _page("<p>Home</p>"),

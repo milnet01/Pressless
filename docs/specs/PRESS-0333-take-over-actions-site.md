@@ -167,7 +167,8 @@ ends the crawl with nothing kept. Otherwise it takes addresses first found first
 - from a stylesheet, or a `style` element or attribute: each `url(...)` and `@import`;
 - from `sitemap.xml` at the site's root, where it answers: each `<loc>`.
 
-A query and a fragment are dropped from what is fetched. An address or a redirect
+A backslash in an address's path is read as a slash, as a browser reads it. A query
+and a fragment are dropped from what is fetched. An address or a redirect
 no parser can read is not followed, and the redirect is `left`.
 
 **What stays in the site.** An address is the site's where its host equals

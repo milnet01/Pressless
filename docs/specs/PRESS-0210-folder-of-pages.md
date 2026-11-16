@@ -201,7 +201,8 @@ joined by `-` before the name, and then a number, and is listed.
 
 Every address in a page's `href`, `src`, `srcset` and `poster`, and in a CSS
 `url(...)` in its `style` attributes and `style` elements, is read against the
-page's old path. An address with a scheme or host stays as written. So does one
+page's old path, a backslash before its query or fragment read as a slash, as a
+browser reads it. An address with a scheme or host stays as written. So does one
 that is only a fragment. Otherwise it is resolved in this order, its query and
 fragment kept:
 
@@ -303,9 +304,11 @@ listed, because new pages will not join it by themselves (`docs/design.md`
 ### 4.9 A page, and writing it
 
 **A page's text.** It is decoded as UTF-8, a leading byte-order mark dropped.
-Failing that, it is decoded by its `<meta charset>`, else as `cp1252`, and the
-declared charset rewritten to `utf-8`; each such page is listed. A file that
-none of these decode is `left`.
+Failing that, it is decoded by its `<meta charset>`, the label read as the WHATWG
+Encoding Standard reads it, so `iso-8859-1` and `us-ascii` mean windows-1252; a
+label naming no encoding there counts as none. With none, it is decoded as
+`cp1252`. Either way the declared charset is rewritten to `utf-8`, and each such
+page is listed. A file that none of these decode is `left`.
 
 Any Builder marker comment or `pressless:page` mark the page holds is removed
 and listed, because the Builder would otherwise fill or read it.

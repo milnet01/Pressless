@@ -11,6 +11,7 @@ page to write it back: each change is an edit at offsets `blocks`' scanner repor
 from __future__ import annotations
 
 import base64
+import codecs
 import dataclasses
 import html
 import json
@@ -257,6 +258,35 @@ def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> Non
 # ------------------------------------------------------------ text (§ 4.9) ----
 
 
+# A `<meta charset>` label as the WHATWG Encoding Standard reads it, which is
+# what a browser does. Python knows a few of its labels by no name, and reads
+# some as other encodings than the standard does.
+_WEB_LABELS = {"windows-874": "cp874", "x-mac-cyrillic": "mac-cyrillic",
+               "iso-8859-8-i": "iso8859-8", "x-sjis": "cp932", "x-cp1252": "cp1252"}
+_WEB_MEANS = {"iso8859-9": "cp1254", "iso8859-11": "cp874", "tis-620": "cp874",
+              "shift_jis": "cp932", "euc_kr": "cp949", "gb2312": "gbk", "big5": "big5hkscs"}
+# The standard's single- and multi-byte encodings, by Python's name. A label
+# naming anything else names none, and the page reads as windows-1252: so do
+# `iso-8859-1` and `us-ascii`, as the standard says, and `unicode_escape`.
+_WEB_ENCODINGS = frozenset((
+    "cp866", "cp874", "cp932", "cp949", *(f"cp{number}" for number in range(1250, 1259)),
+    *(f"iso8859-{number}" for number in (2, 3, 4, 5, 6, 7, 8, 10, 13, 14, 15, 16)),
+    "koi8-r", "koi8-u", "mac-roman", "mac-cyrillic", "gbk", "gb18030", "big5hkscs",
+    "euc_jp", "iso2022_jp"))
+
+
+def _web_encoding(label: str) -> str:
+    """The codec for a page whose `<meta charset>` says `label`; windows-1252,
+    a browser's own default, for a label naming no encoding the standard has."""
+    label = label.strip().lower()
+    try:
+        name = _WEB_LABELS.get(label) or codecs.lookup(label).name
+    except LookupError:
+        return "cp1252"
+    name = _WEB_MEANS.get(name, name)
+    return name if name in _WEB_ENCODINGS else "cp1252"
+
+
 def _decoded(data: bytes, declared: str = "") -> tuple[str, bool] | None:
     """The text, and whether it was in an older encoding; None where nothing
     decodes it."""
@@ -264,10 +294,10 @@ def _decoded(data: bytes, declared: str = "") -> tuple[str, bool] | None:
         return data.removeprefix(b"\xef\xbb\xbf").decode("utf-8"), False
     except UnicodeDecodeError:
         pass
-    for encoding in (declared, "cp1252"):
+    for encoding in dict.fromkeys((_web_encoding(declared), "cp1252")):
         try:
             return data.decode(encoding), True
-        except (UnicodeDecodeError, LookupError):
+        except UnicodeDecodeError:
             continue
     return None
 
@@ -293,10 +323,18 @@ def _declares_utf8(text: str) -> str:
 # ------------------------------------------------------ addresses (§ 4.5) ----
 
 
+def _web_slashes(address: str) -> str:
+    """`address` with each backslash before its query or fragment a slash, as
+    a browser reads a web address: a site made on Windows may write one."""
+    at = min((found for found in (address.find("?"), address.find("#")) if found >= 0),
+             default=len(address))
+    return address[:at].replace("\\", "/") + address[at:]
+
+
 def _split_address(address: str) -> tuple[str, str] | None:
     """The address's path and its query and fragment; None for one that stays
     as written: a scheme or host, only a fragment or query, or nothing."""
-    address = address.strip()
+    address = _web_slashes(address.strip())
     if not address or address[0] in "#?" or address.startswith("//") or _SCHEME.match(address):
         return None
     at = min((found for found in (address.find("?"), address.find("#")) if found >= 0),
