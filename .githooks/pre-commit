@@ -33,7 +33,7 @@
 # unmeasured check is how the advisory channel above died. Add it here only
 # after running it over your own corpus and counting what it finds.
 #
-# Install: git config core.hooksPath .githooks
+# Install: ./scripts/setup-hooks.sh
 
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 0

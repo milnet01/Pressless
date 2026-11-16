@@ -216,6 +216,12 @@ and the Usage reports screen shows every report sent and turns them off.
 | [docs/specs/](docs/specs/) | The detailed plan for one feature, where one was needed |
 | [SECURITY.md](SECURITY.md) | How to report a security problem, and what is protected |
 
+## Changing Pressless itself
+
+Run `./scripts/setup-hooks.sh` once in your copy of the code. It turns on
+the checks that run before every push. Without it nothing is checked, and
+nothing says so.
+
 ## Licence
 
 Free to use, change and share, under the [MIT licence](LICENSE).

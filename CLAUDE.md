@@ -66,14 +66,11 @@ over the commits being pushed. Whether anything is gated at all needs
 `~/.claude/githooks/pre-push` — present and executable.
 `ants.gate.docsGlob` only decides which checks run.
 
-**Machine-local git config keys, and a fresh clone has none of them.**
-The two below are the gate's. The rest are in `docs/working-here.md`,
-listed at the end of this section.
-
-```bash
-git config core.hooksPath .githooks
-git config ants.gate.docsGlob 'docs/*|*.md|LICENSE|*.rst'
-```
+**A fresh clone runs `./scripts/setup-hooks.sh` once.** It sets
+`core.hooksPath`, which git keeps in `.git/config` and no clone
+inherits. `ants.gate.docsGlob` travels committed, in `.ants/gate.conf`;
+a key in the clone's own config wins. The other keys are machine-local,
+in `docs/working-here.md`, listed at the end of this section.
 
 **`core.hooksPath` is what makes any hook fire at all.** Unset here and
 machine-wide, git looks in `.git/hooks`, nothing runs, and nothing says
@@ -81,10 +78,10 @@ so. `.githooks/pre-push` only delegates to the machine-wide gate; where
 that is absent it prints `NOTHING WAS CHECKED` and exits 0, so it warns
 rather than blocks.
 
-**`local-gate.md` § 6.2 makes the UNSET key the breach**: a shared hook
-cannot know what a given pipeline reads, so it has to be told, and that
-standard's own table says nothing announces the omission. A clone
-where the key is unset runs the whole gate on every push. The list is
+**`local-gate.md` § 6.2 makes an unset `docsGlob` the breach**: a
+shared hook cannot know what a given pipeline reads, so it has to be
+told, and nothing announces the omission. That is why it is committed.
+The list is
 right because `--docs` runs the leak sweep, which is the check a
 markdown edit in this repository can actually breach, and no test reads
 a markdown file as data. Narrow it if either stops being true.

@@ -352,3 +352,31 @@ def test_the_archive_keys_reach_the_suite(tmp_path):
     assert "PRESSLESS_SITE_ADDRESS=https://set.example.invalid" in record
     assert "PRESSLESS_ORIGINALS" not in record
     assert "ants.pressless.originals is set but" in record
+
+
+def test_setup_hooks_turns_the_hooks_on_in_a_fresh_clone(tmp_path):
+    """local-gate.md § 2: a clone inherits no core.hooksPath, so a script a
+    clone runs sets it. Breaks when the script stops setting it, and a fresh
+    clone pushes with no gate and no word said."""
+    repository = tmp_path / "clone"
+    (repository / "scripts").mkdir(parents=True)
+    shutil.copy(_SCRIPT.parent / "setup-hooks.sh", repository / "scripts")
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "GIT_CONFIG_NOSYSTEM": "1"}
+    subprocess.run([_GIT, "init", "-q"], cwd=repository, env=env, check=True)  # noqa: S603 -- a scratch repository
+    ran = subprocess.run([_BASH, "scripts/setup-hooks.sh"], cwd=repository, env=env,  # noqa: S603
+                         capture_output=True, text=True, timeout=60, check=False)
+    assert ran.returncode == 0, ran.stderr
+    hooks = subprocess.run([_GIT, "config", "--get", "core.hooksPath"], cwd=repository, env=env,  # noqa: S603
+                           capture_output=True, text=True, check=True)
+    assert hooks.stdout.strip() == ".githooks"
+
+
+def test_the_committed_docs_glob_leaves_out_what_a_test_reads():
+    """PRESS-0362: a test reads the manual's en.txt and the release build reads
+    a .txt lock, so `*.txt` must not make a push documentation-only."""
+    conf = _SCRIPT.parent.parent / ".ants" / "gate.conf"
+    glob = subprocess.run([_GIT, "config", "-f", str(conf), "--get", "ants.gate.docsGlob"],  # noqa: S603
+                          capture_output=True, text=True, check=True).stdout.strip()
+    patterns = glob.split("|")
+    assert "*.md" in patterns
+    assert not any(pattern.endswith(".txt") or pattern in {"*", "*.*"} for pattern in patterns)
