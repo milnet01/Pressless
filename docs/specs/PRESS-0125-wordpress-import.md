@@ -160,6 +160,9 @@ is refused, as below. The file goes to `import/media/<place>`. A file
 already there is not fetched again, so a stopped fetch resumes.
 `fetch.fetch_all` returns each place not fetched with why, and the wizard
 keeps that in `import/unfetched.json` once the fetch has ended.
+A media download handed over before then is refused, and a fetch of an
+export since replaced keeps nothing. A fetch that fails as a whole is
+shown until Next tries it again.
 
 A fetch:
 

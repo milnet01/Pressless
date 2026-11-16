@@ -217,6 +217,12 @@ def _record_path(folder: Path) -> Path:
     return Path(folder) / pressless_import.IMPORT_FOLDER / _FOLDER_RECORD
 
 
+def forget_record(folder: Path) -> None:
+    """The commit import/folder/ held, forgotten: a folder the user hands
+    over is no repository's (PRESS-0210 § 4.2)."""
+    _record_path(folder).unlink(missing_ok=True)
+
+
 def _held_commit(folder: Path) -> str:
     """The commit import/folder/ holds; "" where it is gone or unnamed."""
     if not _held_folder(folder).is_dir():

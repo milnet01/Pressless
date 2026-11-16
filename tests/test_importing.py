@@ -306,6 +306,124 @@ def test_a_stop_during_the_moves_keeps_the_report_and_a_second_press_shows_it(
     assert store.list_slugs(folder, draft=False) == ("one",)
 
 
+def _fetch_ended(folder: Path) -> None:
+    state = importing._fetching(folder)
+    for _ in range(500):
+        if not state.running:
+            return
+        time.sleep(0.01)
+    raise AssertionError("the fetch never ended")
+
+
+def _first_slug(export) -> str:
+    return export.channel.find("item").findtext("wp:post_name", "", export.ns)
+
+
+def test_a_failed_fetch_stays_shown_until_next_tries_it_again(tmp_path, monkeypatch):
+    """§ 4.4: a fetch that fails is shown, and the page neither reloads nor
+    fetches again until the user presses Next.
+
+    Breaks when showing the media step restarts a failed fetch, clearing it."""
+    asked = []
+
+    def fetch_all(export, media, room, *, progress):
+        asked.append(_first_slug(export))
+        if len(asked) == 1:
+            raise OSError(5, "the drive went away")
+        return {}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        _fetch_ended(folder)
+        for _ in range(2):
+            _status, _headers, page = browser.request("GET", importing.ADDRESS)
+        assert asked == ["one"], asked
+        assert "location.replace" not in page and "Next" in page, page
+
+        _next(browser, "media")
+        page = _through_fetching(browser)
+    finally:
+        served.stop()
+    assert asked == ["one", "one"], asked
+
+
+def test_a_media_download_before_the_fetch_ends_is_refused(tmp_path, monkeypatch):
+    """§ 4.4: a media download handed over while the fetch runs writes no
+    import/unfetched.json, so the fetch's own answer is the one kept.
+
+    Breaks when the download writes an empty list of gaps, and the media
+    step passes with the fetch unfinished."""
+    import threading
+
+    let_go = threading.Event()
+
+    def fetch_all(export, media, room, *, progress):
+        let_go.wait(5)
+        return {"2012/05/a.jpg": "the old site answered 404"}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    unfetched = folder / "import" / "unfetched.json"
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="one")).encode("utf-8"))
+        _next(browser, "export")
+        browser.raw("POST", f"{importing.ADDRESS}/media", _zipped({"2012/05/a.jpg": b"x"}))
+        assert not unfetched.exists(), "the download wrote the gaps before the fetch ended"
+        let_go.set()
+        _fetch_ended(folder)
+    finally:
+        let_go.set()
+        served.stop()
+    assert "2012/05/a.jpg" in unfetched.read_text(encoding="utf-8")
+
+
+def test_an_export_handed_over_during_a_fetch_is_fetched_afresh(tmp_path, monkeypatch):
+    """§ 4.4: where a new export arrives while the last one's fetch runs, that
+    fetch's answer is not kept, and the new export is fetched.
+
+    Breaks when the old fetch writes import/unfetched.json for the old export."""
+    import threading
+
+    let_go = threading.Event()
+    asked = []
+
+    def fetch_all(export, media, room, *, progress):
+        asked.append(_first_slug(export))
+        if len(asked) == 1:
+            let_go.wait(5)
+        return {f"{asked[-1]}.jpg": "the old site answered 404"}
+
+    monkeypatch.setattr(importing.fetch, "fetch_all", fetch_all)
+    folder = tmp_path / "site"
+    folder.mkdir()
+    unfetched = folder / "import" / "unfetched.json"
+    served, browser = _serve(folder)
+    try:
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="first")).encode("utf-8"))
+        _next(browser, "export")
+        browser.raw("POST", f"{importing.ADDRESS}/export",
+                    _export(_item(1, slug="second")).encode("utf-8"))
+        let_go.set()
+        _fetch_ended(folder)
+        assert not unfetched.exists(), unfetched.read_text(encoding="utf-8")
+        _through_fetching(browser)
+    finally:
+        let_go.set()
+        served.stop()
+    assert asked == ["first", "second"], asked
+    assert "second.jpg" in unfetched.read_text(encoding="utf-8")
+
+
 def test_setups_done_page_offers_import_where_nothing_was_filled():
     """§ 4.1: setup's done page links to /import where the starter was not
     filled and the Store holds no site, and nowhere else."""

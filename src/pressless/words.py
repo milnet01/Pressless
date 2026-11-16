@@ -1660,6 +1660,7 @@ _WORDS: dict[str, str] = {
         "{count} could not be copied from your old site. Press Next to see which."
     ),
     "import.media.wait": "Pressless is still copying. Wait until it says it has finished.",
+    "import.media.retry": "Press Next to try copying them again.",
     "import.gaps.none": "Nothing is missing. Press Next.",
     "import.gaps.list": "These {count} could not be copied from your old site:",
     "import.gaps.how": (

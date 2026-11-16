@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pressless_import
 from pressless import face as face_module
-from pressless import import_report, safe_write, setup, starter, store, wizard
+from pressless import import_report, safe_write, setup, starter, store, takein, wizard
 from pressless.face import Face, Reply, Request, message_box
 from pressless.import_report import counted as _counted
 from pressless.import_report import shown as _shown
@@ -53,6 +53,8 @@ class _Fetching:
     total: int = 0
     running: bool = False
     failed: str = ""
+    # Counts the exports handed over, so a fetch of an older one keeps nothing.
+    export: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -91,9 +93,11 @@ def register(face: Face, folder: Path) -> None:
     def start_fetching() -> None:
         state = _fetching(folder)
         with state.lock:
-            if state.running or (held / _UNFETCHED).exists():
+            # A failed fetch waits for Next (check_media), so its page holds still.
+            if state.running or state.failed or (held / _UNFETCHED).exists():
                 return
-            state.running, state.failed, state.done = True, "", 0
+            state.running, state.done = True, 0
+            export = state.export
 
         def progress(done: int, total: int) -> None:
             state.done, state.total = done, total
@@ -102,12 +106,18 @@ def register(face: Face, folder: Path) -> None:
             try:
                 left = fetch.fetch_all(pressless_import.read(held / _EXPORT), media,
                                        room, progress=progress)
-                safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
-                                       prefix=".unfetched-")
+                with state.lock:
+                    if state.export == export:
+                        safe_write.write_whole(held / _UNFETCHED,
+                                               json.dumps(left, indent=1) + "\n",
+                                               prefix=".unfetched-")
             except Exception as exc:
                 # Anything at all: a thread that dies unrecorded leaves the
                 # Media step waiting, and reloading, for good.
-                state.failed = face.fail(exc, publishing=False)
+                failed = face.fail(exc, publishing=False)
+                with state.lock:
+                    if state.export == export:
+                        state.failed = failed
             finally:
                 state.running = False
 
@@ -139,7 +149,7 @@ def register(face: Face, folder: Path) -> None:
             files=_counted(total, "import.count.held.one", "import.count.held.many"))
         counts = f"<p>{counts}</p>"
         if state.failed:
-            return counts + state.failed
+            return counts + state.failed + f"<p>{say('import.media.retry')}</p>"
         if state.running or not (held / _UNFETCHED).exists():
             fetching = say("import.media.fetching", done=str(state.done), total=total)
             return counts + f"<p>{fetching}</p><script>{_RELOAD}</script>"
@@ -148,6 +158,12 @@ def register(face: Face, folder: Path) -> None:
                          else f"<p>{say('import.media.done')}</p>")
 
     def check_media(answers: wizard.Answers):
+        state = _fetching(folder)
+        if state.failed:
+            with state.lock:
+                state.failed = ""
+            start_fetching()
+            return wizard.Hint("", say("import.media.wait"))
         if not (held / _UNFETCHED).exists():
             return wizard.Hint("", say("import.media.wait"))
         return answers
@@ -223,14 +239,25 @@ def register(face: Face, folder: Path) -> None:
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.export.refused")))
         held.mkdir(exist_ok=True)
-        os.replace(taken, held / _EXPORT)
-        # A new export is fetched afresh; files already held stay, by place.
-        (held / _UNFETCHED).unlink(missing_ok=True)
+        state = _fetching(folder)
+        with state.lock:
+            os.replace(taken, held / _EXPORT)
+            # A new export is fetched afresh; files already held stay, by place.
+            (held / _UNFETCHED).unlink(missing_ok=True)
+            state.export += 1
+            state.failed = ""
         return shown_again(f"<p>{say('import.export.held')}</p>")
 
     def media_file(taken: Path) -> str | Reply:
         if not empty():
             return to_the_list()
+        state = _fetching(folder)
+        with state.lock:
+            # The gaps are the fetch's answer, so there are none to fill before it.
+            ended = not state.running and (held / _UNFETCHED).exists()
+            export = state.export
+        if not ended:
+            return shown_again(message_box("import-hint", say("import.media.wait")))
         left = missing()
         try:
             filled = pressless_import.unpack_media(taken, media, tuple(left), room)
@@ -238,8 +265,10 @@ def register(face: Face, folder: Path) -> None:
             return shown_again(message_box("import-hint", say("import.gaps.refused")))
         for place in filled:
             left.pop(place, None)
-        safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
-                               prefix=".unfetched-")
+        with state.lock:
+            if state.export == export:
+                safe_write.write_whole(held / _UNFETCHED, json.dumps(left, indent=1) + "\n",
+                                       prefix=".unfetched-")
         return shown_again(f"<p>{say('import.gaps.filled', count=str(len(filled)))}</p>")
 
     def offer() -> str:
@@ -319,7 +348,7 @@ def _register_folder(face: Face, folder: Path, empty, room, to_the_list) -> None
             left = pressless_import.unpack_folder(taken, unpacked, room)
         except pressless_import.ImportStopped:
             return shown_again(message_box("import-hint", say("import.folder.refused")))
-        (held / "folder.json").unlink(missing_ok=True)
+        takein.forget_record(folder)
         if not pressless_import.read_folder(unpacked).pages:
             shutil.rmtree(unpacked, ignore_errors=True)
             return shown_again(message_box("import-hint", say("import.folder.no_page")))
