@@ -52,6 +52,20 @@ _WIDTH_WORDS = {"narrow": "look_screen.width.narrow", "medium": "look_screen.wid
                 "wide": "look_screen.width.wide"}
 _EFFECT_WORDS = {"lift": "look_screen.effect.lift", "reveal": "look_screen.effect.reveal",
                  "smooth": "look_screen.effect.smooth"}
+_STYLE_WORDS = {
+    "sunrise": "look_screen.style.sunrise", "meadow": "look_screen.style.meadow",
+    "harbour": "look_screen.style.harbour", "ink": "look_screen.style.ink",
+    "slate": "look_screen.style.slate", "plum": "look_screen.style.plum",
+    "sand": "look_screen.style.sand", "coral": "look_screen.style.coral",
+    "teal": "look_screen.style.teal", "night": "look_screen.style.night",
+    "sky": "look_screen.style.sky"}
+_STYLE_ABOUT = {
+    "sunrise": "look_screen.style.sunrise.about", "meadow": "look_screen.style.meadow.about",
+    "harbour": "look_screen.style.harbour.about", "ink": "look_screen.style.ink.about",
+    "slate": "look_screen.style.slate.about", "plum": "look_screen.style.plum.about",
+    "sand": "look_screen.style.sand.about", "coral": "look_screen.style.coral.about",
+    "teal": "look_screen.style.teal.about", "night": "look_screen.style.night.about",
+    "sky": "look_screen.style.sky.about"}
 _SCHEME_WORDS = {"light": "script.look.light", "dark": "script.look.dark"}
 _TEXT_COLOURS = {text for text, _ in look.TEXT_PAIRS}
 
@@ -276,6 +290,9 @@ def _page(choices: look.Choices, extra: str, base: str, made: bool, restart: boo
 <fieldset class="looks"><legend>{say("look_screen.layout")}</legend>
 {setup.look_choices("layout", choices.layout)}
 {f'<p>{say("look_screen.restart")}</p>' if restart else _own_colours()}</fieldset>
+<fieldset class="looks"><legend>{say("look_screen.styles")}</legend>
+<p>{say("look_screen.styles.about")}</p>
+{_style_choices(choices)}</fieldset>
 <h2>{say("look_screen.colours")}</h2>
 <p>{say("look_screen.colours.about")}</p>
 <table class="look-colours"><thead><tr><td></td><th scope="col">{say(_SCHEME_WORDS["light"])}</th>
@@ -312,6 +329,19 @@ def _own_colours() -> str:
     return (f'<p>{say("look_screen.colours_kept")} <button type="button" data-own-colours='
             f'"{html.escape(json.dumps(palettes), quote=True)}">'
             f'{say("look_screen.own_colours")}</button></p>')
+
+
+def _style_choices(choices: look.Choices) -> str:
+    """PRESS-0359 § 4.4: a grid of the colour styles, each radio carrying its
+    colours for the script to put in the boxes. The one whose colours fill
+    every box, light and dark, is marked. Save and preview ignore the field."""
+    def cell(style: str) -> str:
+        light, dark = look.palette(style, False), look.palette(style, True)
+        carried = html.escape(json.dumps({"light": light, "dark": dark}), quote=True)
+        return setup.grid_choice(
+            "style", style, (light, dark) == (choices.light, choices.dark), "style", style,
+            say(_STYLE_WORDS[style]), say(_STYLE_ABOUT[style]), f' data-colours="{carried}"')
+    return '<div class="look-grid">' + "".join(cell(style) for style in look.STYLES) + "</div>"
 
 
 # § 4.4's live preview. Every change posts the form; the answer's style code
@@ -377,6 +407,26 @@ _SCRIPT = r"""
       if (mine === asked) status.textContent = say("script.look.no_preview");
     }
   }
+  // PRESS-0359 § 4.4: a colour style's colours into the boxes, and the
+  // style whose colours fill every box marked.
+  const styles = [...form.querySelectorAll("input[name=style]")];
+  const box = (scheme, name) => form.querySelector(`input[name="${scheme}.${name}"]`);
+  function fill(palette) {
+    for (const scheme of ["light", "dark"]) {
+      for (const [name, value] of Object.entries(palette[scheme])) {
+        const found = box(scheme, name);
+        if (found) found.value = value;
+      }
+    }
+  }
+  function mark() {
+    const match = styles.find((radio) => {
+      const palette = JSON.parse(radio.dataset.colours);
+      return ["light", "dark"].every((scheme) => Object.entries(palette[scheme]).every(
+        ([name, value]) => box(scheme, name) && box(scheme, name).value === value));
+    });
+    for (const radio of styles) radio.checked = radio === match;
+  }
   form.addEventListener("input", (event) => {
     // A site whose choices were never saved starts again from a layout's own.
     if (form.hasAttribute("data-restart") && event.target.name === "layout") {
@@ -384,6 +434,8 @@ _SCRIPT = r"""
         + "&layout=" + encodeURIComponent(event.target.value);
       return;
     }
+    if (event.target.name === "style") fill(JSON.parse(event.target.dataset.colours));
+    else if (event.target.type === "color") mark();
     if (event.target.name === "route") {
       form.querySelectorAll("[data-route]").forEach((part) => {
         part.hidden = part.dataset.route !== event.target.value;
@@ -398,12 +450,8 @@ _SCRIPT = r"""
     const layout = form.querySelector("input[name=layout]:checked");
     const palette = layout && JSON.parse(own.dataset.ownColours)[layout.value];
     if (!palette) return;
-    for (const scheme of ["light", "dark"]) {
-      for (const [name, value] of Object.entries(palette[scheme])) {
-        const box = form.querySelector(`input[name="${scheme}.${name}"]`);
-        if (box) box.value = value;
-      }
-    }
+    fill(palette);
+    mark();
     clearTimeout(timer);
     preview();
   });

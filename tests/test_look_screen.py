@@ -324,6 +324,7 @@ def test_the_screen_offers_every_choice_look_makes():
         "size": (look_screen._SIZE_WORDS, starter_look.TEXT_SIZES),
         "width": (look_screen._WIDTH_WORDS, starter_look.WIDTHS),
         "effect": (look_screen._EFFECT_WORDS, starter_look.EFFECTS),
+        "style": (look_screen._STYLE_WORDS, starter_look.STYLES),
     }
     for kind, (shown, made) in lists.items():
         assert list(shown) == list(made), kind
@@ -348,3 +349,44 @@ def test_a_saved_look_offers_each_layouts_own_colours(tmp_path: Path) -> None:
     for layout in starter_look.LAYOUTS:
         own = starter_look.defaults(layout)
         assert palettes[layout] == {"light": own.light, "dark": own.dark}, layout
+
+
+# --------------------------------------------------------------- PRESS-0359 ---
+# Each test names its invariant from
+# docs/specs/PRESS-0359-layouts-and-colour-styles.md § 5.
+
+
+def _marked_styles(page: str) -> list[str]:
+    return re.findall(r'name="style" value="([a-z]+)"[^>]* checked', page)
+
+
+def test_a_posted_style_reaches_the_choices_only_as_the_boxes_colours(tmp_path: Path) -> None:
+    """PRESS-0359 INV-6. Breaks when the save takes colours from the style
+    instead of the boxes, or writes the style's name."""
+    folder = _site(tmp_path)
+    posted = starter_look.defaults("sunrise")
+    assert posted.light != starter_look.palette("night", False)
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        form = {**_form(posted, "", _base(page)), "style": "night"}
+        status, _, text = browser.request("POST", "/look/save", form)
+    assert status == 303, text
+    saved = json.loads(store.read_look_file(folder, store.LOOK_CHOICES_NAME))
+    assert sorted(saved) == sorted(starter_look._FIELDS)
+    assert saved["colours"] == {"light": posted.light, "dark": posted.dark}
+
+
+def test_the_style_whose_colours_fill_the_boxes_is_marked(tmp_path: Path) -> None:
+    """PRESS-0359 INV-7. Breaks when the mark compares the light set only, or
+    marks the layout's own style regardless of the boxes."""
+    folder = _site(tmp_path)
+    market = starter_look.defaults("market")
+    starter_look.save(folder, market, "")
+    with _served(folder) as browser:
+        _, _, page = browser.request("GET", "/look")
+        assert _marked_styles(page) == ["slate"]
+        changed = dataclasses.replace(market, dark={**market.dark, "ink": "#fefefe"})
+        starter_look.save(folder, changed, "")
+        _, _, page = browser.request("GET", "/look")
+    assert _marked_styles(page) == []
+    assert len(re.findall(r'name="style" value=', page)) == len(starter_look.STYLES)

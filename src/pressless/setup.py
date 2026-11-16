@@ -32,6 +32,7 @@ from pressless import (
     google_setup,
     google_signin,
     import_report,
+    look,
     photographs,
     pressing,
     publisher,
@@ -741,24 +742,45 @@ def _signed_in(folder: Path, saved: settings.Settings) -> bool:
     return github_setup.signed_in(secret)
 
 
-# PRESS-0239: each look's name and what it looks like, as words keys.
+# PRESS-0239: each look's name and the kind of site it suits, as words keys.
 _LOOK_WORDS = {"sunrise": ("setup.look.sunrise", "setup.look.sunrise.about"),
                "meadow": ("setup.look.meadow", "setup.look.meadow.about"),
-               "harbour": ("setup.look.harbour", "setup.look.harbour.about")}
+               "harbour": ("setup.look.harbour", "setup.look.harbour.about"),
+               "studio": ("setup.look.studio", "setup.look.studio.about"),
+               "market": ("setup.look.market", "setup.look.market.about"),
+               "stage": ("setup.look.stage", "setup.look.stage.about"),
+               "commons": ("setup.look.commons", "setup.look.commons.about"),
+               "letter": ("setup.look.letter", "setup.look.letter.about")}
+
+# PRESS-0359 § 4.3: the colours a drawing paints, which face's .mini rules
+# read by these names.
+_DRAWN = ("band", "paper", "foot", "link", "line")
+
+
+def grid_choice(field: str, value: str, checked: bool, shape: str, style: str,
+                name: str, about: str, attrs: str = "") -> str:
+    """One cell of a grid of small drawings: a radio, a drawing of `shape` in
+    `style`'s light colours, and under it the name and what it suits. Every
+    cell keeps one size, so marking one moves nothing (PRESS-0359 § 4.3).
+    `attrs` is more of the radio's attributes, already escaped."""
+    colours = look.palette(style, False)
+    painted = "; ".join(f"--{colour}: {colours[colour]}" for colour in _DRAWN)
+    return (f'<label class="look"><input type="radio" name="{field}" value="{value}"{attrs}'
+            + (" checked" if checked else "")
+            + f'> <span class="mini mini-{shape}" style="{painted}" aria-hidden="true">'
+            "<span></span><span></span><span></span></span>"
+            f"<span><b>{name}</b> {about}</span></label>")
 
 
 def look_choices(field: str, chosen: str) -> str:
-    """One radio per look, each with a small drawing of it; the Look screen
+    """A grid of the layouts, each drawn in its own style; the Look screen
     offers its layouts the same way (PRESS-0196 § 4.4). A look Pressless does
     not have chooses the first."""
     chosen = chosen if chosen in starter.LOOKS else starter.LOOKS[0]
-    return "".join(
-        f'<label class="look"><input type="radio" name="{field}" value="{name}"'
-        + (" checked" if name == chosen else "")
-        + f'> <span class="mini mini-{name}" aria-hidden="true">'
-        "<span></span><span></span><span></span></span>"
-        f"<span><b>{say(_LOOK_WORDS[name][0])}</b>: {say(_LOOK_WORDS[name][1])}</span></label>"
-        for name in starter.LOOKS)
+    return '<div class="look-grid">' + "".join(
+        grid_choice(field, name, name == chosen, name, look.OWN_STYLE[name],
+                    say(_LOOK_WORDS[name][0]), say(_LOOK_WORDS[name][1]))
+        for name in starter.LOOKS) + "</div>"
 
 
 def _starter_box(start: bool | None, look: str = "") -> str:

@@ -2149,3 +2149,27 @@ def test_jpeg_xl_reads_as_a_photograph_only_with_the_decoder(tmp_path, monkeypat
     monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path / "elsewhere"))
     with pytest.raises(jpegxl.NotInstalled):
         builder.photograph_format(original)
+
+
+def test_changing_layout_changes_no_page(tmp_path):
+    """PRESS-0359 INV-5 (docs/specs/PRESS-0359-layouts-and-colour-styles.md
+    § 5): switching layout changes only the look's files. Breaks when a layout
+    needs markup of its own, such as a class the Builder writes only for it."""
+    built = {}
+    for layout in starter_look.LAYOUTS:
+        folder = tmp_path / layout / "data"
+        folder.mkdir(parents=True)
+        starter.fill(folder, "A Site", layout)
+        into = tmp_path / layout / "site"
+        build(folder, _settings(), into, today=REPRODUCIBLE_TODAY)
+        built[layout] = _digest(into)
+    pages = {name for name in built["sunrise"] if name.endswith(".html")}
+    assert "index.html" in pages
+    styles = set()
+    for layout, files in built.items():
+        assert {name for name in files if name.endswith(".html")} == pages, layout
+        assert {name: digest for name, digest in files.items() if "look/" not in name} == {
+            name: digest for name, digest in built["sunrise"].items() if "look/" not in name
+        }, layout
+        styles.add(files[f"{store.LOOK_FOLDER}/{store.STYLE_CODE_NAME}"])
+    assert len(styles) == len(starter_look.LAYOUTS)

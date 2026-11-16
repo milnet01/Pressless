@@ -56,7 +56,7 @@ def seed(site) -> None:
         credentials=settings.Credentials(
             store="file", github_account="github", google_account="google"),
         analytics_property_id="999", measurement_id="G-DEMO000000"))
-    starter.fill(site, "Seaside Notes", starter.LOOKS[-1])
+    starter.fill(site, "Seaside Notes", "harbour")
     starter.published(site)
     store.write_identity(site, store.Identity("Seaside Notes", "Notes from a small harbour town"))
     store.write_journal(site, True)

@@ -247,14 +247,18 @@ For anyone who knows HTML.
 
 == site-look | Changing how your site looks: layout, colours and fonts
 1. Click Look in the bar.
-2. Choose a layout, colours, fonts, the text size, the page width or effects. The preview beside each choice shows it at once.
-picture look.png | The Look screen, with the layouts and colours to choose from and a preview of the site beside them.
+2. Choose a layout, a colour style, colours, fonts, the text size, the page width or effects. The preview beside each choice shows it at once.
+picture look.png | The Look screen, with the layouts and colour styles to choose from and a preview of the site beside them.
 3. Click Save.
 video changing-the-look.webm | Choosing another headings font on the Look screen, the preview changing to match, and clicking Save.
 
 Your site shows the new look after you next publish. Each colour has a
 light and a dark choice: a visitor whose computer is set to dark sees
 the dark one.
+
+Each layout and each colour style says what kind of site it suits. Any
+layout can wear any colour style. Choosing a colour style fills the
+colour boxes, and you can still change any colour after.
 
 Choosing another layout keeps your colours. Click Use this layout's own
 colours to change them to that layout's, then Save to keep them.

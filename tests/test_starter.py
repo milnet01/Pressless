@@ -118,7 +118,7 @@ def test_each_look_writes_its_own_style(tmp_path):
         folder.mkdir()
         starter.fill(folder, "A Site", look)
         styles[look] = store.read_style_code(folder)
-    assert len({styles[look] for look in starter.LOOKS}) == len(starter.LOOKS) == 3
+    assert len({styles[look] for look in starter.LOOKS}) == len(starter.LOOKS)
     assert styles["nonsense"] == styles[starter.LOOKS[0]]
     for look in starter.LOOKS:
         assert ".prose" in styles[look], look
@@ -146,15 +146,16 @@ _FLOOR = 7.0
 
 
 @pytest.mark.parametrize("dark", (False, True), ids=("light", "dark"))
-@pytest.mark.parametrize("look", starter.LOOKS)
-def test_every_look_reads_at_seven_to_one_in_light_and_dark(look, dark):
-    """PRESS-0196 INV-2. Breaks when a text colour of a layout's defaults falls
-    below 7:1 on its background in either scheme."""
-    defaults = starter_look.defaults(look)
-    colours = defaults.dark if dark else defaults.light
+@pytest.mark.parametrize("style", starter_look.STYLES)
+def test_every_look_reads_at_seven_to_one_in_light_and_dark(style, dark):
+    """PRESS-0196 INV-2, PRESS-0359 INV-2. Every layout wears these styles and
+    paints the same pairs, so this holds for every layout in every style.
+    Breaks when a text colour of a style falls below 7:1 on its background in
+    either scheme."""
+    colours = starter_look.palette(style, dark)
     for text, ground in _TEXT_PAIRS:
         ratio = _contrast(colours[text], colours[ground])
-        assert ratio >= _FLOOR, f"{look} {text} on {ground}: {ratio:.2f}"
+        assert ratio >= _FLOOR, f"{style} {text} on {ground}: {ratio:.2f}"
 
 
 def test_meadow_footer_sits_on_the_paper():

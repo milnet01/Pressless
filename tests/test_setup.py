@@ -30,6 +30,7 @@ from pressless import (
     face,
     github_setup,
     github_signin,
+    look_screen,
     overview,
     publisher,
     settings,
@@ -40,6 +41,7 @@ from pressless import (
     store,
     words,
 )
+from pressless import look as starter_look
 
 KEY_NOUN = "your publishing key"
 SENTINEL_KEY = "ghp_SENTINELkey0123456789abcdef"
@@ -1909,3 +1911,40 @@ def test_a_section_names_a_refusal_it_does_not_show(tmp_path, monkeypatch):
     assert 'Not saved. First change this in <a href="/setup/site">' in page
     assert github.calls == []
     assert _settings_file(tmp_path).read_bytes() == before
+
+
+# --------------------------------------------------------------- PRESS-0359 ---
+# docs/specs/PRESS-0359-layouts-and-colour-styles.md § 5.
+
+_DRAWN = ("band", "paper", "foot", "link", "line")
+
+
+def _drawings(markup: str, field: str, shape: str | None) -> dict[str, dict[str, str]]:
+    """Each radio's value and the custom properties on the drawing after it."""
+    found = {}
+    for value, kind, props in re.findall(
+            rf'name="{field}" value="([a-z]+)"[^>]*> <span class="mini mini-([a-z]+)" '
+            r'style="([^"]*)"', markup):
+        assert kind == (shape or value), (value, kind)
+        found[value] = dict(re.findall(r"--([a-z]+): ?(#[0-9a-f]{6})", props))
+    return found
+
+
+def test_every_drawing_wears_its_palettes_colours():
+    """PRESS-0359 INV-8. Breaks when a drawing keeps a copied hex, so a
+    palette change leaves it stale."""
+    layouts = _drawings(setup.look_choices("layout", "sunrise"), "layout", None)
+    assert list(layouts) == list(starter_look.LAYOUTS)
+    for layout, drawn in layouts.items():
+        own = starter_look.palette(starter_look.OWN_STYLE[layout], False)
+        assert drawn == {name: own[name] for name in _DRAWN}, layout
+    offered = look_screen._style_choices(starter_look.defaults("sunrise"))
+    styles = _drawings(offered, "style", "style")
+    assert list(styles) == list(starter_look.STYLES)
+    for style, drawn in styles.items():
+        own = starter_look.palette(style, False)
+        assert drawn == {name: own[name] for name in _DRAWN}, style
+    rules = re.findall(r"(\.mini[^{}]*)\{([^}]*)\}", face._STYLE)
+    assert rules, "the Face draws no layout"
+    for selector, body in rules:
+        assert "#" not in body, selector

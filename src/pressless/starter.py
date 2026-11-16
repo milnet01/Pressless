@@ -100,7 +100,7 @@ def _words(key: str) -> str:
     return html.escape(say(key), quote=False)
 
 # PRESS-0196: the looks' colours, layouts and rules live in look.py, which
-# makes the style code from a site's choices. The three looks are its layouts.
+# makes the style code from a site's choices. The looks are its layouts.
 LOOKS = look.LAYOUTS
 
 

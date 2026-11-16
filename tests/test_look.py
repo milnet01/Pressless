@@ -151,7 +151,8 @@ def test_save_makes_the_style_code_from_what_it_wrote(tmp_path):
 
 # ------------------------------------------------------------- PRESS-0314 ---
 
-# What css() made for each layout's defaults with every effect, in 0.10.1.
+# What css() made for each layout's defaults with every effect, in 0.10.1,
+# which had these three layouts and no others (PRESS-0359 INV-4).
 SAVED_BY_0_10_1 = {
     "sunrise": "149c39acf5d31f03a1b806aefffb4ee44443d86b578728ce05756fe792bba113",
     "meadow": "62b5e8efa6b18d34a71306f116b430e4b627131969beddb1eb603a0b5505a3af",
@@ -159,7 +160,7 @@ SAVED_BY_0_10_1 = {
 }
 
 
-@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+@pytest.mark.parametrize("layout", SAVED_BY_0_10_1)
 def test_a_look_saved_by_an_earlier_version_still_reads_as_made_here(layout):
     """PRESS-0314. made_here compares the saved style code with css(), the
     notes' words aside, so any change to css()'s rules makes every saved look
@@ -172,7 +173,7 @@ def test_a_look_saved_by_an_earlier_version_still_reads_as_made_here(layout):
     assert made == SAVED_BY_0_10_1[layout]
 
 
-@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+@pytest.mark.parametrize("layout", SAVED_BY_0_10_1)
 def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeypatch):
     """PRESS-0196 § 4.4 state 2, PRESS-0314. The style code saved here is
     0.10.1's, as the hash above proves. Breaks when made_here compares the
@@ -193,3 +194,35 @@ def test_rewording_a_note_keeps_a_saved_look_made_here(layout, tmp_path, monkeyp
     assert not starter_look.made_here(tmp_path)
     store.write_style_code(tmp_path, saved.replace("*/\n", "*/\np{}\n", 1))
     assert not starter_look.made_here(tmp_path)
+
+
+# ------------------------------------------------------------- PRESS-0359 ---
+# Each test names its invariant from
+# docs/specs/PRESS-0359-layouts-and-colour-styles.md § 5.
+
+
+def test_the_layouts_are_the_eight_in_order():
+    """PRESS-0359 INV-1. Breaks when a layout is dropped, renamed or moved:
+    the keys are saved in sites' files, and the first is the default."""
+    assert starter_look.LAYOUTS == ("sunrise", "meadow", "harbour", "studio", "market",
+                                    "stage", "commons", "letter")
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_every_layout_saves_and_reads_back(tmp_path, layout):
+    """PRESS-0359 INV-1. Breaks when a layout lacks its rules, width or
+    heading font, so defaults or css raises; or from_json refuses one."""
+    choices = starter_look.defaults(layout)
+    starter_look.save(tmp_path, choices, "")
+    assert starter_look.read(tmp_path) == choices
+
+
+@pytest.mark.parametrize("layout", starter_look.LAYOUTS)
+def test_each_layouts_defaults_wear_its_own_style(layout):
+    """PRESS-0359 INV-3. Breaks when a layout keeps colours outside the
+    eleven styles."""
+    style = starter_look.OWN_STYLE[layout]
+    assert style in starter_look.STYLES
+    choices = starter_look.defaults(layout)
+    assert choices.light == starter_look.palette(style, False)
+    assert choices.dark == starter_look.palette(style, True)
