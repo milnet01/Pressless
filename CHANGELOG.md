@@ -12,6 +12,25 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Added
+
+- **Your site says how many changes are not on the site yet** (PRESS-0364)
+  A line on Your site counts the pages, parts of every page and journal entries you
+  have changed and not published. It counts on this computer, without going online.
+
+- **Eight layouts and eleven colour styles** (PRESS-0359)
+  Five new layouts join Sunrise, Meadow and Harbour: Studio for a portfolio, Market for
+  a small business, Stage for a musician or band, Commons for a club or community, and
+  Letter for a plain document. Any layout can wear any of eleven colour styles. The
+  Look screen shows both as small drawings, each with the kind of site it suits.
+  Choosing a colour style fills the colour boxes. Setup and WordPress import offer the
+  eight layouts.
+
+- **The update offer shows what changed** (PRESS-0363)
+  When a new version is ready, a line under the buttons opens a list of what is new in
+  every version since yours, not only the latest. It shows from the first release
+  after this one.
+
 ### Changed
 
 - **Pressless opens on Your site, and each part of a site has its own screen** (PRESS-0353)
@@ -27,21 +46,6 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 - **The Look screen can switch to a layout's own colours** (PRESS-0352)
   Choosing another layout keeps your colours, and the screen now says so. A button beside
   the layouts puts the chosen layout's own colours in place; Save keeps them.
-
-### Added
-
-- **Eight layouts and eleven colour styles** (PRESS-0359)
-  Five new layouts join Sunrise, Meadow and Harbour: Studio for a portfolio, Market for
-  a small business, Stage for a musician or band, Commons for a club or community, and
-  Letter for a plain document. Any layout can wear any of eleven colour styles. The
-  Look screen shows both as small drawings, each with the kind of site it suits.
-  Choosing a colour style fills the colour boxes. Setup and WordPress import offer the
-  eight layouts.
-
-- **The update offer shows what changed** (PRESS-0363)
-  When a new version is ready, a line under the buttons opens a list of what is new in
-  every version since yours, not only the latest. It shows from the first release
-  after this one.
 
 ### Fixed
 

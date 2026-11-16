@@ -6846,6 +6846,8 @@ publish and anything that deletes.
   scripts/by-hand-browser-checks.py's PRESS-0356 row on Linux Chrome.
   Not yet run on the Windows box: the release's --browsers run covers it.
   No changelog entry: the fault never reached a release.
+  Release note (1.0.0): no CHANGELOG entry, as the fault never reached a
+  release.
   **Layman:** After you say yes to an AI helper's publish, the home screen still lists the entry as a draft until you reload it.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0337.
@@ -6889,6 +6891,8 @@ publish and anything that deletes.
   running the whole site as still to come, and § Moving an existing
   blog in said no import could be run. All shipped by 0.14.0. Rewritten
   2026-11-13 from the changelog's entries and the roadmap's open items.
+  Release note (1.0.0): no CHANGELOG entry, as it changes the README
+  only.
   **Layman:** The README no longer lists as still to come things Pressless already does, such as bringing a WordPress site in.
   Kind: doc-fix.
   Source: handover-2026-11-13.
@@ -7366,6 +7370,8 @@ owned by docs/standards/versioning-overrides.md.
   Shipped 2026-11-13: scripts/manual-media/, with its how-to in
   docs/working-here.md. Run from there, every picture matched the shipped
   one but who-is-reading.png, whose figures follow the date.
+  Release note (1.0.0): no CHANGELOG entry, as it moves a maintainer's
+  kit only.
   **Layman:** The tools that make the manual's pictures and videos are kept with the project, so the manual can be redone whenever a screen changes.
   Kind: chore.
   Source: handover-2026-11-13.
@@ -7382,6 +7388,8 @@ owned by docs/standards/versioning-overrides.md.
   drop `*.txt`. Checked with the hook's own comparison: the manual's
   en.txt and the release pins no longer match, CLAUDE.md and
   docs/design.md still do. Another clone keeps its old key until it is set again.
+  Release note (1.0.0): no CHANGELOG entry, as it changes the local gate
+  only.
   **Layman:** Changing the manual's words now runs every check before it is published, as changing any other part of the program does.
   Kind: fix.
   Source: found-push-2026-11-13 PRESS-0357.
