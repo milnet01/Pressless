@@ -195,15 +195,12 @@ eight. `version` stays 1. `look.from_json` already refuses a layout not in
   *Test:* `tests/test_look.py`, parametrized over `look.LAYOUTS`.
   *Breaks when:* a layout keeps colours outside the eleven styles.
 
-- **INV-4** — The three old layouts' style code is unchanged:
-  `look.css(look.defaults(l), "")` hashes as it did before this item.
-  *Test:* `tests/test_look.py` pins the first 16 hex digits of each SHA-256.
-  The values today are `sunrise 9c63a298284c833b`,
-  `meadow c61d76927741d344` and `harbour 0a0d3877f1e4607b`. Changing
-  Sunrise's light `paper` by one digit gave `24a1d0b071802236`.
-  *Breaks when:* moving the palettes changes a value or a rule. A reworded
-  note inside the CSS also breaks it: the test then needs re-pinning, which
-  is deliberate.
+- **INV-4** — The three old layouts' style code is unchanged by this item.
+  *Test:* the existing
+  `tests/test_look.py::test_a_look_saved_by_an_earlier_version_still_reads_as_made_here`
+  already pins the SHA-256 of each old layout's `css` with every effect on
+  (`SAVED_BY_0_10_1`), so no new test is written. It passes today.
+  *Breaks when:* moving the palettes changes a value or a rule.
 
 - **INV-5** — Changing layout changes no page. Building the starter site
   under any two layouts gives byte-equal HTML for every page.
@@ -265,8 +262,8 @@ eight. `version` stays 1. `look.from_json` already refuses a layout not in
 Each test above is seen failing first, against the code before this item
 or with its rule deleted:
 
-- INV-1, INV-3, INV-4: `tests/test_look.py`. INV-4 is written and green
-  *before* the palettes move, so it proves the move.
+- INV-1, INV-3: `tests/test_look.py`. INV-4's existing test stays green
+  through the palette move, which proves the move.
 - INV-2: the existing test in `tests/test_starter.py`, re-pointed.
 - INV-5: `tests/test_builder.py`.
 - INV-6, INV-7: `tests/test_look_screen.py`.

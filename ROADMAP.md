@@ -7339,6 +7339,8 @@ owned by docs/standards/versioning-overrides.md.
   budget for a new spec): four findings verified and fixed in 7e24ae0,
   two dismissed, none deferred. Status: accepted. Ready to build.
   Loop log: docs/reviews/PRESS-0359-layouts-and-colour-styles-loop-log.md.
+  Spec: docs/specs/PRESS-0359-layouts-and-colour-styles.md. It
+  amends docs/specs/PRESS-0196-site-look.md § 4.1's layout row and § 9.
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.

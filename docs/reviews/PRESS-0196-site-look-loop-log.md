@@ -6,3 +6,4 @@
 | impl | 2026-10-16 | none: no reviewer was dispatched; written while building | 0 | 0 | 0 | 0 | 0 | 0 | **Implementation fold-back.** § 4.1 named a path function per file; the Store has one `look_path_for`, plus `read_look_file`, `write_look_file` and `copy_to_bin`. Records what the build settled. |
 | amend | 2026-11-08 | none: no reviewer was dispatched | 0 | 0 | 0 | 0 | 0 | 0 | **Amended by PRESS-0276** before it was built: a pointer to its spec, no clause rewritten. |
 | pointer | 2026-11-15 | none: pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.4: Look's place in the bar is PRESS-0353 § 4.2's. |
+| amend | 2026-11-16 | none: amended by PRESS-0359; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.1's `layout` row and § 9 point at PRESS-0359's eight layouts. |

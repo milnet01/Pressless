@@ -100,7 +100,7 @@ Every "(decided here)" is open to the maintainer to overturn.
 
 | Field | Values |
 |---|---|
-| `layout` | one of `starter.LOOKS`: `sunrise`, `meadow`, `harbour` |
+| `layout` | one of `starter.LOOKS`; PRESS-0359 § 4.1 lists them |
 | `colours.light`, `colours.dark` | exactly the names in `starter.COLOURS`, each a `#rrggbb` value |
 | `body_font`, `heading_font` | `system`, `serif`, `humanist`, `mono` |
 | `text_size` | `normal`, `large`, `larger`; every layout's default is `large`, today's `118.75%` |
@@ -436,8 +436,7 @@ fail before the code it locks exists.
 
 - An imported site's look — tracked by PRESS-0276.
 - A page's own CSS — tracked by PRESS-0273.
-- More layouts than the three starter arrangements — deferred; not yet
-  queued.
+- More layouts than the three starter arrangements — PRESS-0359.
 
 ## 10. What checks this
 
