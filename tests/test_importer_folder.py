@@ -1001,6 +1001,38 @@ def test_a_page_with_no_body_takes_the_starters_shape(tmp_path):
     assert "HEADER:START" in text and 'href="../look/style.css"' in text
 
 
+def test_a_pages_own_up_mark_is_kept(tmp_path):
+    """§ 4.9 keeps a page's bytes: the `{{UP}}` Pressless fills is its own
+    mark, and the page's own text saying it is not filled. A script holding
+    it would be, so it is not carried; and one in a shared header, which the
+    Builder fills, is listed."""
+    header = "<header><p>Type {{UP}} here</p></header>"
+    into, brought = _brought(tmp_path, {
+        "index.html": _page(f"{header}<p>Home</p>"),
+        "sub/page.html": _page(f'{header}<p>Write {{{{UP}}}} to climb</p>'
+                               '<script src="../run.js"></script>'),
+        "run.js": "var up = '{{UP}}';"})
+    names = dict(brought.report.moved)
+    text = store.read_html(store.html_path_for(into, store.PAGES_FOLDER, names["sub/page.html"]))
+    assert "<p>Write {{UP}} to climb</p>" in text, text
+    assert "run.js" in dict(brought.report.unfetched)
+    assert "header: " in _said(brought) and "{{UP}}" in _said(brought)
+
+
+def test_both_routes_write_the_starters_furniture_alike(tmp_path):
+    """A site whose pages have no body, and one whose pages share nothing,
+    each get the starter's header and footer, written the same way."""
+    files = ("header", "footer", "navigation")
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    no_body, _b = _brought(tmp_path / "a", {"index.html": "<p>Home</p>"})
+    sharing_nothing, _b = _brought(tmp_path / "b", {"index.html": _page("<p>Home</p>")})
+    for name in files:
+        assert (store.html_path_for(no_body, store.FURNITURE_FOLDER, name).read_bytes()
+                == store.html_path_for(sharing_nothing, store.FURNITURE_FOLDER, name)
+                .read_bytes()), name
+
+
 def test_a_page_keeps_its_own_line_endings_and_bytes(tmp_path):
     """§ 4.9: the head and body keep their bytes but for what the spec names."""
     head = '<title>Home</title>\r\n  <meta name="x"   content="y" >\r\n'

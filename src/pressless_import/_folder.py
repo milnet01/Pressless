@@ -44,6 +44,7 @@ BROUGHT = "brought.json"             # in IMPORT_FOLDER: answers a Finish presse
 FOLDER_LEFT = "folder-left.json"     # in IMPORT_FOLDER: what laying the folder out left out
 
 _UP = "{{UP}}"                       # the Builder fills it in the furniture files alone
+_KEPT_UP = "\ue000UP\ue000"           # a page's own {{UP}}, held apart while _UP is filled
 _NAVIGATION = "{{NAVIGATION}}"
 _STYLE_LINK = f'<link rel="stylesheet" href="{_UP}{builder.STYLE_CODE}">'
 _HOME = "Home"                       # what menu._nav and starter.home_page call the front page
@@ -653,7 +654,7 @@ def _can_carry_script(folder: Path, path: str) -> bool:
     a browser reads the element's end, and a Builder mark would be filled."""
     decoded = _decoded((folder / path).read_bytes())
     return (decoded is not None and not _SCRIPT_CLOSES.search(decoded[0])
-            and not _BUILDER_MARK.search(decoded[0]))
+            and not _BUILDER_MARK.search(decoded[0]) and _UP not in decoded[0])
 
 
 def read_folder(folder: Path) -> Found:
@@ -1292,10 +1293,17 @@ def _sharing_said(shared: _Shared, navigation: str, marked: bool) -> list[Droppe
     return [Dropped(where, say(key)) for where, key in said]
 
 
+def _parting(header: str, footer: str, navigation: str, listed: list[Dropped]) -> _Parting:
+    """The furniture files as written, each ending in one newline, whichever
+    way they were found."""
+    return _Parting(f"{header.rstrip()}\n", f"{footer.rstrip()}\n", navigation, listed)
+
+
 def _part_out(texts: dict[str, str], names: dict[str, str]
               ) -> tuple[dict[str, str], _Parting]:
     """Each page with its shared blocks replaced by the Builder's marker pairs.
-    `texts` holds addresses written with {{UP}}, so depth does not differ."""
+    A page's addresses are written with {{UP}}, so depth does not differ, but
+    for one holding a `<base>`, whose addresses stay as written."""
     found = {path: _furniture_blocks(text) for path, text in texts.items()}
     shared = _shared(texts, found)
     pages: dict[str, str] = {}
@@ -1310,8 +1318,8 @@ def _part_out(texts: dict[str, str], names: dict[str, str]
         any_marked = any_marked or marked
     navigation = _data_nav(shared.nav, names) if shared.menu_goes else starter.navigation()
     listed += _sharing_said(shared, navigation, any_marked)
-    footer = shared.footer or starter.footer().rstrip()
-    return pages, _Parting(f"{_header_file(shared)}\n", f"{footer}\n", navigation, listed)
+    return pages, _parting(_header_file(shared), shared.footer or starter.footer(),
+                           navigation, listed)
 
 
 # ------------------------------------------------- a page's shape (§ 4.9) ----
@@ -1478,6 +1486,7 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
         text = _BUILDER_MARK.sub("", raw)
         if text != raw:
             listed.append(Dropped(where, say("import.folder.marks")))
+        text = text.replace(_UP, _KEPT_UP)
         if older:
             text = _declares_utf8(text)
             listed.append(Dropped(where, say("import.folder.older")))
@@ -1493,13 +1502,20 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
 
     style_code, said = _style_code(held, writer)
     listed += [Dropped(store.LOOK_FOLDER, what) for what in dict.fromkeys(said)]
-    parted, parting = _part_out(furniture_able, names) if furniture_able else ({}, _Parting(
+    parted, parting = _part_out(furniture_able, names) if furniture_able else ({}, _parting(
         starter.header(), starter.footer(), starter.navigation(), []))
     listed += parting.listed
     texts.update(parted)
     shaped = {names[path]: _shaped(text, names[path], deferred[path],
-                                   f"{store.PAGES_FOLDER}/{names[path]}", listed)
+                                   f"{store.PAGES_FOLDER}/{names[path]}", listed
+                                   ).replace(_KEPT_UP, _UP)
               for path, text in texts.items()}
+    furniture = {}
+    for name, text in (("header", parting.header), ("footer", parting.footer),
+                       ("navigation", parting.navigation)):
+        if _KEPT_UP in text:
+            listed.append(Dropped(name, say("import.folder.up")))
+        furniture[name] = text.replace(_KEPT_UP, _UP)
 
     for path in (*held.photographs, *held.files):
         if path not in writer.named:
@@ -1518,9 +1534,9 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
         sheets_for_some=tuple(path for path in held.style
                               if held.sheet_pages.get(path, set()) != set(held.pages)),
         folder=True)
-    return _Written(shaped, parting.header, parting.footer, parting.navigation, style_code,
-                    forwards, photographs, files, _identity(held.pages[front_path][0]), report,
-                    roots)
+    return _Written(shaped, furniture["header"], furniture["footer"], furniture["navigation"],
+                    style_code, forwards, photographs, files,
+                    _identity(held.pages[front_path][0]), report, roots)
 
 
 def bring_in_folder(folder: Path, into: Path, *,

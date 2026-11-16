@@ -1751,6 +1751,8 @@ _WORDS: dict[str, str] = {
     ),
     "import.folder.older": "it was in an older encoding, and is now UTF-8",
     "import.folder.marks": "it held marks Pressless itself uses, which were removed",
+    "import.folder.up": (
+        "it holds the words {{{{UP}}}}, which Pressless fills with the way up to the site's root"),
     "import.folder.no_main": (
         "its main content could not be marked out, so the visual editor cannot reach it"
     ),

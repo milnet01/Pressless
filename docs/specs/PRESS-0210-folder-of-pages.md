@@ -231,7 +231,8 @@ A page holding a `<base>` element has its addresses left alone, and is listed.
 `<script src>` naming a `.js` file in the folder has the file's text placed
 inside the element, and `src` removed. An inline script ignores `defer` (run in
 Firefox, 2026-10-31), so an element with `defer` also moves to the end of the
-body, in its order. Where the text holds `</script`, a Builder mark, or `<!--` before
+body, in its order. Where the text holds `</script`, a Builder mark, `{{UP}}`, which
+Pressless fills, or `<!--` before
 `<script`, which changes where a browser reads the element's end, or the element has
 `type="module"`, the element is left as § 4.5 writes it, and the file is `left`.
 Each script carried is listed, once per file.
@@ -311,7 +312,9 @@ label naming no encoding there counts as none. With none, it is decoded as
 page is listed. A file that none of these decode is `left`.
 
 Any Builder marker comment or `pressless:page` mark the page holds is removed
-and listed, because the Builder would otherwise fill or read it.
+and listed, because the Builder would otherwise fill or read it. The words
+`{{UP}}` in a page are kept as written. In a shared header, footer or menu the
+Builder fills them, and that file is listed.
 
 The head keeps its bytes but for § 4.5's addresses, § 4.6, each local stylesheet
 link removed, and one link to `builder.STYLE_CODE` in place of the first.
