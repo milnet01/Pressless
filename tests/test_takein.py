@@ -713,14 +713,16 @@ def test_finish_again_saves_without_a_second_bring(tmp_path, monkeypatch):
             def save_fails(*args, **kwargs):
                 raise settings.SettingsError("the settings file could not be written")
 
-            def moves_stop(_into):
-                return "the moves stopped"
+            def moves_stop(at, real=pressless_import.finish):
+                # Once the moves have begun; `recover`, asking first, finds none.
+                return "the moves stopped" if (
+                    at / "import" / "moving").exists() else real(at)
 
             with monkeypatch.context() as patched:
                 if failing == "save":
                     patched.setattr(settings, "save", save_fails)
                 else:
-                    patched.setattr("pressless_import._folder.finish", moves_stop)
+                    patched.setattr("pressless_import._bring.finish", moves_stop)
                 after = _next(browser, page)
             assert _step(after) == "site", failing
             assert not settings.path_for(folder).exists(), failing

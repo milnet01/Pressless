@@ -747,12 +747,13 @@ def test_a_stop_during_the_moves_finishes_next_start(tmp_path, monkeypatch):
     target = into / "import" / "folder"
     held.rename(target)
 
-    real = pressless_import._folder.finish
+    real = pressless_import.finish
 
-    def stops(_into):
-        return "the moves stopped"
+    def stops(at):
+        # Once the moves have begun; `recover`, asking first, finds none.
+        return "the moves stopped" if (at / "import" / "moving").exists() else real(at)
 
-    monkeypatch.setattr("pressless_import._folder.finish", stops)
+    monkeypatch.setattr("pressless_import._bring.finish", stops)
     with pytest.raises(ImportStopped):
         pressless_import.bring_in_folder(target, into)
     assert (into / "import" / "moving").exists()
@@ -762,6 +763,89 @@ def test_a_stop_during_the_moves_finishes_next_start(tmp_path, monkeypatch):
     assert store.list_html(into, store.PAGES_FOLDER) == ("index",)
     assert not (into / "import" / "moving").exists()
     assert not target.exists(), "finish deletes the folder"
+
+
+def _held_in(tmp_path: Path, into: Path, files: dict[str, str | bytes]) -> Path:
+    """`files` laid out at import/folder/, as the wizard leaves them."""
+    target = into / "import" / "folder"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _laid_out(tmp_path, files).rename(target)
+    return target
+
+
+def test_a_second_bring_after_a_stop_in_the_moves_loses_nothing(tmp_path, monkeypatch):
+    """PRESS-0125 § 4.7, here too: a second bring finishes the moves rather
+    than deleting import/work/ and the files in it.
+
+    Breaks when bring_in_folder deletes import/work/ without asking
+    import/moving."""
+    real = os.rename
+    into = tmp_path / "site"
+    moving = into / "import" / "moving"
+
+    def first_move_fails(source, target):
+        if moving.exists():
+            monkeypatch.setattr(os, "rename", real)
+            raise OSError(13, "the file is in use")
+        return real(source, target)
+
+    held = _held_in(tmp_path, into, {"index.html": _page("<p>Home</p>"), "pic.png": _png()})
+    monkeypatch.setattr(os, "rename", first_move_fails)
+    with pytest.raises(ImportStopped, match="Nothing was lost"):
+        pressless_import.bring_in_folder(held, into)
+    assert not store.holds_a_site(into)
+
+    with pytest.raises(ImportStopped, match="already holds a site"):
+        pressless_import.bring_in_folder(held, into)
+    assert store.list_html(into, store.PAGES_FOLDER) == ("index",)
+    assert store.list_photographs(into) == ("pic.png",)
+
+
+def test_a_note_that_cannot_be_written_puts_every_file_back(tmp_path, monkeypatch):
+    """INV-11: where import/moving cannot be written, the held files go back.
+
+    Breaks when the note is written outside the stop's putting back."""
+    real = Path.write_bytes
+
+    def no_note(self, data):
+        if self.name == "moving":
+            raise OSError(28, "No space left on device")
+        return real(self, data)
+
+    into = tmp_path / "site"
+    held = _held_in(tmp_path, into, {"index.html": _page("<p>Home</p>"), "pic.png": _png()})
+    monkeypatch.setattr(Path, "write_bytes", no_note)
+    with pytest.raises(ImportStopped):
+        pressless_import.bring_in_folder(held, into)
+    assert (held / "pic.png").is_file()
+    assert not (into / "import" / "work").exists() and not (into / "import" / "moving").exists()
+
+
+def test_a_file_that_would_not_go_back_goes_back_at_the_next_bring(tmp_path, monkeypatch):
+    """A move back that fails is not swallowed: import/moved.jsonl keeps it,
+    and the next bring puts it back before reading the folder."""
+    into = tmp_path / "site"
+    held = _held_in(tmp_path, into, {"index.html": _page("<p>Home</p>"), "pic.png": _png()})
+    real = os.rename
+
+    def refuses(*args, **kwargs):
+        raise store.StoreError("the templates were refused")
+
+    def no_way_back(source, target):
+        if Path(target).parent == held:
+            raise OSError(13, "the file is in use")
+        return real(source, target)
+
+    monkeypatch.setattr("pressless.templates.seed", refuses)
+    monkeypatch.setattr(os, "rename", no_way_back)
+    with pytest.raises(ImportStopped):
+        pressless_import.bring_in_folder(held, into)
+    assert not (held / "pic.png").exists()
+    monkeypatch.undo()
+
+    brought = pressless_import.bring_in_folder(held, into)
+    assert brought.report.photographs == 1
+    assert store.list_photographs(into) == ("pic.png",)
 
 
 def test_a_store_holding_a_site_is_refused(tmp_path):
@@ -786,6 +870,22 @@ def test_a_brought_record_is_written_before_the_moves(tmp_path):
     assert pressless_import.read_brought(into, "another") is None
     assert ("too/big.pdf", "it is too large") in brought.report.unfetched
     assert not (into / "import" / "folder").exists()
+
+
+def test_a_brought_record_from_another_version_is_still_read(tmp_path):
+    """INV-17 across an update between a failed Settings save and the retry:
+    a Report field a later version dropped, or one this record lacks, does
+    not make Finish read no record and refuse a Store holding the site."""
+    import json
+
+    into, brought = _brought(tmp_path, {"index.html": _page("<p>Home</p>")}, commit="abc")
+    record_path = into / "import" / pressless_import._folder.BROUGHT
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record["report"]["a_field_since_dropped"] = 1
+    del record["report"]["moved"]
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    again = pressless_import.read_brought(into, "abc")
+    assert again is not None and again.report.pages == brought.report.pages
 
 
 # ---------------------------------------------------------------- INV-20 ---

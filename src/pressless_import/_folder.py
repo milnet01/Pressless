@@ -33,7 +33,7 @@ from pressless import blocks, builder, menu, safe_write, sitefile, starter, stor
 from pressless.words import say
 
 from . import Dropped, ImportStopped, Report, _writing, resolve_slug
-from ._bring import _MOVING, _WORK, IMPORT_FOLDER, finish
+from ._bring import _NOT_EMPTY, IMPORT_FOLDER, _holds_a_site, _page_refused, recover, staged
 
 MEMBERS_MOST = 20_000                # a ZIP holding more is refused
 SVG_LARGEST = 256 * 1024             # § 4.6
@@ -815,14 +815,6 @@ def _reach_sheets(root: Path, folder: _Folder, uses: _Uses, rest: set[str]) -> l
 # --------------------------------------------------------- names (§ 4.4) ----
 
 
-def _page_refused(name: str) -> bool:
-    try:
-        store.html_path_for(Path(), store.PAGES_FOLDER, name)
-    except store.StoreError:
-        return True
-    return False
-
-
 def _without_suffix(path: str) -> str:
     return path.rpartition(".")[0]
 
@@ -1534,44 +1526,30 @@ def _work_out(held: _Read, left: tuple[tuple[str, str], ...]) -> _Written:
 def bring_in_folder(folder: Path, into: Path, *,
                     left: tuple[tuple[str, str], ...] = (),
                     commit: str = "") -> Brought:
-    """§ 4.9: the whole or nothing, as PRESS-0125 § 4.7 writes an export. `left`
-    is what `unpack_folder` left out; `commit`, the repository state read."""
+    """§ 4.9: the whole or nothing, as PRESS-0125 § 4.7 writes an export, by
+    the same `staged`. `left` is what `unpack_folder` left out; `commit`, the
+    repository state read. What an earlier stop left is put right first."""
     folder, into = Path(folder), Path(into)
-    if store.holds_a_site(into):
-        raise ImportStopped("this site already holds a site, and Import writes only "
-                            "into an empty one")
+    recover(into)
+    if _holds_a_site(into):
+        raise ImportStopped(_NOT_EMPTY)
     held = _read_folder(folder)
     if not held.pages:
         raise ImportStopped("the folder holds no page")
     written = _work_out(held, left)
-    held_folder = into / IMPORT_FOLDER
-    work = held_folder / _WORK
-    if work.exists():
-        shutil.rmtree(work)
-    work.mkdir(parents=True)
-    moved: list[tuple[Path, Path]] = []
-    try:
-        _write_all(work, into, folder, written, moved)
-        brought = Brought(written.report, written.roots)
+    brought = Brought(written.report, written.roots)
+
+    def write(work: Path, move: Callable[[Path, Path], None]) -> None:
+        _write_all(work, into, folder, written, move)
         with _writing("the record of what was brought in"):
             _write_brought(into, brought, commit)
-    except BaseException:
-        for source, target in reversed(moved):
-            try:
-                os.rename(target, source)
-            except OSError:
-                pass
-        shutil.rmtree(work, ignore_errors=True)
-        raise
-    (held_folder / _MOVING).write_bytes(b"")
-    stopped = finish(into)
-    if stopped is not None:
-        raise ImportStopped(stopped)
+
+    staged(into, write)
     return brought
 
 
 def _write_all(work: Path, into: Path, folder: Path, written: _Written,
-               moved: list[tuple[Path, Path]]) -> None:
+               move: Callable[[Path, Path], None]) -> None:
     for name, text in written.pages.items():
         with _writing(f"the page {name}"):
             store.write_html(work, store.PAGES_FOLDER, name, text)
@@ -1587,10 +1565,7 @@ def _write_all(work: Path, into: Path, folder: Path, written: _Written,
                            (written.files, store.file_path_for)):
         for path, name in kept.items():
             with _writing(f"the file {path}"):
-                target = path_for(work, name)
-                target.parent.mkdir(exist_ok=True)
-                os.rename(folder / path, target)
-                moved.append((folder / path, target))
+                move(folder / path, path_for(work, name))
     with _writing("the templates"):
         templates.seed(work)
     with _writing("the journal switch"):
@@ -1621,11 +1596,16 @@ def read_brought(into: Path, commit: str) -> Brought | None:
         record = json.loads((Path(into) / IMPORT_FOLDER / BROUGHT).read_text(encoding="utf-8"))
         if record["commit"] != commit:
             return None
-        report = dict(record["report"])
+        # Only the fields this version's Report has: one a later version
+        # dropped is ignored, and one it lacks takes its default.
+        fields = {field.name for field in dataclasses.fields(Report)}
+        report = {name: value for name, value in record["report"].items() if name in fields}
         for name in _REPORT_PAIRS:
-            report[name] = tuple(tuple(row) for row in report[name])
+            if name in report:
+                report[name] = tuple(tuple(row) for row in report[name])
         for name in _REPORT_NAMES:
-            report[name] = tuple(report[name])
+            if name in report:
+                report[name] = tuple(report[name])
         report["dropped"] = tuple(Dropped(**row) for row in report["dropped"])
         return Brought(Report(**report), tuple(record["roots"]))
     except (OSError, ValueError, KeyError, TypeError):

@@ -325,8 +325,10 @@ what a browser builds, none is made and the page is listed. A page with no `<bod
 fits is a code section, kept byte for byte (`docs/design.md` § Pages, and how
 they are held).
 
-**The whole or nothing.** `bring_in_folder` refuses with `ImportStopped` where
-`store.holds_a_site(into)`, and otherwise follows PRESS-0125 § 4.7: every Store
+**The whole or nothing.** `bring_in_folder` first puts right what an earlier
+stop left, by `_bring.recover`. It refuses with `ImportStopped` where
+`store.holds_a_site(into)`, and otherwise follows PRESS-0125 § 4.7 by the same
+`_bring.staged` an export's bring-in uses: every Store
 file is written into `import/work/` through Store calls, then `import/moving`
 is written and each folder moved in by `pressless_import.finish`, which also
 deletes `import/folder/`. It writes the pages, furniture, style code, address
@@ -419,7 +421,8 @@ is published.
 shown. The done page says the site came in, and shows the Report.
 
 **A Finish pressed again.** Where `store.holds_a_site` and `import/brought.json`
-names the commit, `bring_folder` writes nothing and answers from the file. So a
+names the commit, `bring_folder` writes nothing and answers from the file, read
+for the `Report` fields this version has. So a
 failed Settings save (PRESS-0021 § 4.6), or a close during the moves, is retried
 without a second bring. Nothing is reversed, which needs no second caller of
 `store.unplace_photograph` (PRESS-0218 INV-12).
