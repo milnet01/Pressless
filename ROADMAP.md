@@ -7912,7 +7912,7 @@ does not wait on them.
   which date it takes instead. Recommended: post_date_gmt, then pubDate,
   then post_modified, and the Report lists the post with the date used.
   **Layman:** One badly dated post in a WordPress export stops everything coming in, instead of coming in with the best date the export holds.
-  Kind: fix.
+  Kind: review-fix.
   Source: review-code-2026-11-16 lane-14 open question.
   Lanes: Import.
 
