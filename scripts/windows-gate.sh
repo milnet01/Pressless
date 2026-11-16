@@ -23,11 +23,12 @@
 # folder, never installed and never on PATH, so the packaged Pressless tested
 # on the same machine cannot see it. docs/working-here.md says how.
 #
-# What is copied is what the Linux suite just ran on: HEAD as a git clone, so
-# the tests that ask git have a checkout, with the working tree's tracked and
-# not-ignored files laid over it. A tracked file deleted but not staged is the
-# exception: the box keeps HEAD's copy. An ignored file, the Google secret among
-# them, never leaves this machine.
+# What is copied is what the Linux suite just ran on: HEAD's history as a git
+# clone, so the tests that ask git have a repository, and the working tree's
+# tracked and not-ignored files as the only files. The clone checks nothing
+# out, so a file deleted here, staged or not, or the old name of a move, is
+# absent there too. An ignored file, the Google secret among them, never
+# leaves this machine.
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
@@ -50,8 +51,7 @@ scratch=$(mktemp -d "$(git rev-parse --path-format=absolute --git-common-dir)/wi
 trap 'rm -rf "$scratch"' EXIT
 run="run-$(date +%s)-$$"
 
-# The same dependency list CI installs: the project's own and the dev extra,
-# upgraded on each run, because a fresh CI install resolves today's versions.
+# The same dependency list CI installs: the project's own and the dev extra.
 deps=$(python3 - <<'PY'
 import tomllib
 project = tomllib.load(open("pyproject.toml", "rb"))["project"]
@@ -59,6 +59,14 @@ print(" ".join(f'"{d}"' for d in project["dependencies"] + project["optional-dep
 PY
 )
 
+# $body is pasted into the PowerShell script below, inside its try block. It
+# runs in the clone, may use $python, the portable Python, and must set $code:
+# 0 for a pass, anything else for a failure. \$ is PowerShell's; a bare $ is
+# expanded here.
+#
+# The suite's dependencies are upgraded on each run, because a fresh CI
+# install resolves today's versions. The browser checks are not CI's mirror,
+# and keep what their kept venv already holds.
 if ((${#browsers[@]} == 0)); then
     body=$(cat <<EOF
     & \$python -m pip install --quiet --disable-pip-version-check --upgrade --upgrade-strategy eager $deps
@@ -91,7 +99,7 @@ EOF
 fi
 
 # ls-files also lists a tracked file deleted but not yet staged. It is not on
-# disk to send, so it is left out, and the box keeps HEAD's copy of it.
+# disk to send, so it is left out, and so it is absent on the box too.
 git ls-files -co --exclude-standard -z | python3 -c '
 import os, sys, zipfile
 names = [n for n in sys.stdin.buffer.read().decode().split("\0") if n]
@@ -109,8 +117,11 @@ cat > "$scratch/$run.ps1" <<EOF
 \$code = 1
 try {
     if (-not (Test-Path \$python)) { throw "no portable Python at \$python" }
-    git clone --quiet "\$env:USERPROFILE\\$run.bundle" \$work
+    git clone --quiet --no-checkout "\$env:USERPROFILE\\$run.bundle" \$work
     if (\$LASTEXITCODE -ne 0) { throw "git could not clone the bundle" }
+    # The index from HEAD, and no file but the zip's.
+    git -C \$work reset --quiet
+    if (\$LASTEXITCODE -ne 0) { throw "git could not read the bundle's HEAD" }
     Expand-Archive -Force "\$env:USERPROFILE\\$run.zip" \$work
     Set-Location \$work
 $body
@@ -126,15 +137,30 @@ EOF
 
 git bundle create -q "$scratch/$run.bundle" HEAD
 # Exit 2 means the box could not be reached, which local-ci.sh reports and
-# passes; any other non-zero is the suite's failure. ssh's own failure is 255,
-# and the remote's own 2 -- pytest's, for an interrupted run or a collection
-# error -- becomes 1, so only unreachable() ever exits 2.
-unreachable() { printf 'windows gate: %s is not reachable\n' "$host" >&2; exit 2; }
+# passes; any other non-zero is a failure. The remote's own 2 -- pytest's, for
+# an interrupted run or a collection error -- becomes 1, so only the probe
+# below ever exits 2.
+#
+# ssh exits 255 for an unreachable box, but also for a changed host key, a
+# refused key, or a connection lost mid-run, and those must fail the gate. So
+# a probe asks first, and only a connection that never formed is unreachable.
+# Once it has answered, any failure is the gate's.
+probe=0
+said=$(ssh -o ConnectTimeout=8 "$host" exit 2>&1) || probe=$?
+if ((probe != 0)); then
+    case $said in
+        *"Could not resolve hostname"* | *"No route to host"* | *"timed out"* \
+            | *"Connection refused"* | *"Network is unreachable"*)
+            printf 'windows gate: %s is not reachable\n' "$host" >&2
+            exit 2 ;;
+    esac
+    printf 'windows gate: ssh to %s failed: %s\n' "$host" "$said" >&2
+    exit 1
+fi
 scp -q -o ConnectTimeout=8 "$scratch/$run.zip" "$scratch/$run.bundle" "$scratch/$run.ps1" "$host:" \
-    || unreachable
+    || { printf 'windows gate: could not copy the run to %s\n' "$host" >&2; exit 1; }
 status=0
 ssh -o ConnectTimeout=8 "$host" "powershell -NoProfile -ExecutionPolicy Bypass -File $run.ps1" \
     || status=$?
-((status != 255)) || unreachable
 ((status != 2)) || status=1
 exit "$status"

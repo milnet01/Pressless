@@ -6,6 +6,7 @@ as a suite that passed. No machine is reached.
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -34,16 +35,35 @@ def _repository(root: Path) -> None:
         subprocess.run([_GIT, *command], cwd=root, check=True)  # noqa: S603 -- fixed arguments
 
 
-def _stand_ins(bin_dir: Path, kept: Path) -> None:
+def _stand_ins(bin_dir: Path, kept: Path, *, ssh_fails: str = "", scp_fails: str = "") -> None:
+    """`ssh_fails` and `scp_fails` are what that command prints on stderr
+    before exiting as it does on a failure: 255 for ssh, 1 for scp."""
     bin_dir.mkdir()
-    (bin_dir / "scp").write_text(
-        "#!/usr/bin/env bash\n"
-        "args=()\n"
-        "for a; do [[ $a == -* || $a == ConnectTimeout=* ]] || args+=(\"$a\"); done\n"
-        f"cp \"${{args[@]:0:${{#args[@]}}-1}}\" '{kept}'\n", encoding="utf-8")
-    (bin_dir / "ssh").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    scp = ("#!/usr/bin/env bash\n"
+           "args=()\n"
+           "for a; do [[ $a == -* || $a == ConnectTimeout=* ]] || args+=(\"$a\"); done\n"
+           f"cp \"${{args[@]:0:${{#args[@]}}-1}}\" '{kept}'\n")
+    if scp_fails:
+        scp = f"#!/usr/bin/env bash\necho '{scp_fails}' >&2\nexit 1\n"
+    ssh = f"#!/usr/bin/env bash\necho '{ssh_fails}' >&2\nexit 255\n" if ssh_fails else \
+        "#!/usr/bin/env bash\nexit 0\n"
+    (bin_dir / "scp").write_text(scp, encoding="utf-8")
+    (bin_dir / "ssh").write_text(ssh, encoding="utf-8")
     for name in ("scp", "ssh"):
         (bin_dir / name).chmod(0o755)
+
+
+def _gate(tmp_path: Path, **failing: str) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+    """The gate run against a stand-in box. Returns the run, the repository and
+    the folder holding what scp was given."""
+    repo, kept = tmp_path / "repo", tmp_path / "sent"
+    _repository(repo)
+    kept.mkdir()
+    _stand_ins(tmp_path / "bin", kept, **failing)
+    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
+                         capture_output=True, text=True, timeout=60, check=False)
+    return ran, repo, kept
 
 
 def test_a_tracked_file_deleted_but_not_staged_does_not_fail_the_gate(tmp_path: Path):
@@ -63,3 +83,65 @@ def test_a_tracked_file_deleted_but_not_staged_does_not_fail_the_gate(tmp_path: 
         names = set(archive.namelist())
     assert "kept.txt" in names
     assert "removed.txt" not in names
+
+
+@pytest.mark.parametrize("said", ["ssh: connect to host box port 22: No route to host",
+                                  "ssh: connect to host box port 22: Connection timed out",
+                                  "ssh: Could not resolve hostname box: Name or service not known"])
+def test_a_box_that_cannot_be_reached_exits_2(tmp_path: Path, said: str):
+    """The control: local-ci.sh warns and goes on for exit 2, and only for it."""
+    ran, _, _ = _gate(tmp_path, ssh_fails=said, scp_fails=said)
+    assert ran.returncode == 2, ran.stderr
+    assert "not reachable" in ran.stderr
+
+
+@pytest.mark.parametrize("said", ["Host key verification failed.",
+                                  "box: Permission denied (publickey)."])
+def test_a_box_that_answers_and_refuses_fails_the_gate(tmp_path: Path, said: str):
+    """Breaks when every ssh 255 is read as an unreachable box, so a changed
+    host key or a refused key passes the gate with a warning."""
+    ran, _, _ = _gate(tmp_path, ssh_fails=said, scp_fails=said)
+    assert ran.returncode == 1, ran.stderr
+    assert said in ran.stderr
+
+
+def test_a_copy_that_fails_once_the_box_answered_fails_the_gate(tmp_path: Path):
+    """Breaks when any scp failure, a full disk on the box for one, is read
+    as an unreachable box."""
+    ran, _, _ = _gate(tmp_path, scp_fails="scp: write: No space left on device")
+    assert ran.returncode == 1, ran.stderr
+    assert "could not copy" in ran.stderr
+
+
+def test_a_file_deleted_here_is_absent_on_the_box(tmp_path: Path):
+    """Breaks when the box checks HEAD out under the zip, and a file deleted
+    and staged here, or the old name of a move, comes back from HEAD: a
+    deleted test still runs, a removed module still imports.
+
+    The box's own steps are PowerShell, so they are replayed here with the
+    same git commands the script sends, on what the script sent."""
+    repo, kept = tmp_path / "repo", tmp_path / "sent"
+    _repository(repo)
+    kept.mkdir()
+    _stand_ins(tmp_path / "bin", kept)
+    subprocess.run([_GIT, "rm", "-q", "removed.txt"], cwd=repo, check=True)  # noqa: S603
+    subprocess.run([_GIT, "mv", "kept.txt", "moved.txt"], cwd=repo, check=True)  # noqa: S603
+    env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    ran = subprocess.run([_BASH, "scripts/windows-gate.sh", "box"], cwd=repo, env=env,  # noqa: S603
+                         capture_output=True, text=True, timeout=60, check=False)
+    assert ran.returncode == 0, ran.stderr
+    script = next(kept.glob("*.ps1")).read_text(encoding="utf-8")
+    clone = re.search(r"git clone --quiet (.*?)\"", script).group(1)
+    assert "--no-checkout" in clone
+    assert "git -C $work reset --quiet" in script
+    box = tmp_path / "box"
+    git = [_GIT, "-c", "core.autocrlf=false"]
+    bundle = next(kept.glob("*.bundle"))
+    subprocess.run([*git, "clone", "--quiet", *clone.split(), str(bundle), str(box)],  # noqa: S603
+                   check=True, capture_output=True)
+    subprocess.run([*git, "-C", str(box), "reset", "--quiet"], check=True)  # noqa: S603
+    with zipfile.ZipFile(next(kept.glob("*.zip"))) as archive:
+        archive.extractall(box)
+    assert (box / "moved.txt").is_file()
+    assert not (box / "removed.txt").exists()
+    assert not (box / "kept.txt").exists()
