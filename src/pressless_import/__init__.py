@@ -441,12 +441,12 @@ def _folded(name: str) -> str:
                    for letter in name)
 
 
-def _photographs(channel, ns, originals: Path, *, strict: bool = True,
+def _attachments(channel, ns, originals: Path, *, strict: bool = True,
                  shown: Callable[[Path], bool] | None = None):
-    """Every attachment -- a file as well as a photograph, whatever the
-    name says -- whose original is in `originals`, by its upload path,
-    with its Store name; the two lookups, answering for those `shown` admits
-    (all, where none is given); and each attachment not held, with why. A
+    """Every attachment, a file as well as a photograph, whose original is
+    in `originals`, by its upload path, with its Store name; the two
+    lookups, answering for those `shown` admits (all, where none is given);
+    and each attachment not held, with why. A
     name two attachments share, compared without regard to case, takes its
     upload month in front (decision 6). Where not `strict`, an attachment
     with no usable place, a name the Store refuses, or a name differing
@@ -722,7 +722,7 @@ def run(export: Path, originals: Path, live_site: Path, templates: Path,
     channel, ns = read_in.channel, read_in.ns
     items = _items(channel, ns)
     renamed_slugs = _resolve(items)
-    names, by_address, by_id, unfetched = _photographs(channel, ns, originals)
+    names, by_address, by_id, unfetched = _attachments(channel, ns, originals)
     old_site = _old_site(channel, ns)
     pages = _fixed_pages(live_site)
     furniture = _furniture(templates)

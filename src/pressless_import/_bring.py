@@ -32,6 +32,7 @@ from . import (
     Dropped,
     ImportStopped,
     Report,
+    _attachments,
     _convert,
     _counts,
     _entry,
@@ -39,7 +40,6 @@ from . import (
     _Item,
     _items,
     _old_site,
-    _photographs,
     _place_refused,
     _resolve,
     _upload_path,
@@ -143,7 +143,7 @@ _ADDRESSED = re.compile(r"""(\b(?:src|href|srcset|poster)\s*=\s*)(["'])(.*?)\2""
                         re.I | re.S)
 
 
-def _addresses(body: str, up: str, held: Mapping[str, str], old_site: str
+def _addresses(body: str, up: str, web: Mapping[str, str], old_site: str
                ) -> tuple[str, list[str]]:
     """Each address under the old site's uploads folder whose file Import
     holds, pointed at the Store's copy from a page `up` from the root; any
@@ -157,11 +157,11 @@ def _addresses(body: str, up: str, held: Mapping[str, str], old_site: str
         place = _upload_path(decoded)
         if place is None or _host(decoded) not in ("", old):
             return address
-        web = held.get(place) or held.get(_RESIZED.sub("", place))
-        if web is None:
+        found = web.get(place) or web.get(_RESIZED.sub("", place))
+        if found is None:
             listed.append(f"an address still pointing at the old site: {decoded}")
             return address
-        return up + web
+        return up + found
 
     def attribute(found: re.Match) -> str:
         return (found.group(1) + found.group(2) + re.sub(r"[^\s,]+", token, found.group(3))
@@ -170,14 +170,14 @@ def _addresses(body: str, up: str, held: Mapping[str, str], old_site: str
     return _ADDRESSED.sub(attribute, body), listed
 
 
-def _page_html(page: _Page, sheets: tuple[str, ...], held: Mapping[str, str],
+def _page_html(page: _Page, sheets: tuple[str, ...], web: Mapping[str, str],
                old_site: str) -> str:
     """The page in starter.new_page's shape, its body as its area after the
     markup rule, and its addresses moved; Blocks reads what sections it can,
     and the rest is code."""
     root = page.name == "index"
     body = prepared(page.body, wordpress_markup)
-    body, listed = _addresses(body, "" if root else "../", held, old_site)
+    body, listed = _addresses(body, "" if root else "../", web, old_site)
     page.dropped.extend(listed)
     text = starter.new_page("Home" if root else page.name, page.title, sheets,
                             main=body, root=root)
@@ -504,7 +504,7 @@ def _held(channel, ns, media: Path):
             photo[path] = builder.is_photograph(path)
         return photo[path]
 
-    names, by_address, by_id, unheld = _photographs(channel, ns, media, strict=False,
+    names, by_address, by_id, unheld = _attachments(channel, ns, media, strict=False,
                                                     shown=is_photo)
     kept: dict[str, tuple[str, str]] = {}
     for place, name in names.items():

@@ -225,7 +225,7 @@ def test_fetching_an_export_resumes_and_lists_what_failed(tmp_path):
 
 
 def test_a_place_a_folder_cannot_hold_is_never_fetched(tmp_path):
-    """§ 4.4: a place is checked as `_photographs` checks it. A decoded
+    """§ 4.4: a place is checked as `_attachments` checks it. A decoded
     backslash is a separator on Windows, so `..%5C` would climb out of the
     media folder there; it is listed and nothing is fetched."""
     from test_importer import _export, _item

@@ -37,7 +37,7 @@ on every part of the site is edited in Pressless. Sign of success: S13.
    it. No module under `src/pressless/` imports `pressless_import`.
 2. **It needs files a general user does not have.** `_fixed_pages` reads
    the live site's built pages and `_furniture` the generator's templates.
-   `_photographs` checks every original in a local folder laid out as the
+   `_attachments` checks every original in a local folder laid out as the
    uploads folder is, and raises `ImportStopped` where one is missing.
 3. **It reads the export as trusted.** `_read` parses with `xml.etree`,
    and `pyproject.toml` exempts the package from ruff's S314 because the
@@ -157,7 +157,7 @@ package that reaches the network; the maintainer's `run` never calls it
 setup (`fetch_site`, PRESS-0333 § 4.2).
 
 For each attachment, the address is its `attachment_url`, and its place is
-`_upload_path` of that address, checked as `_photographs` checks it, each
+`_upload_path` of that address, checked as `_attachments` checks it, each
 part of it a single name the Store would hold; a place it would stop on
 is refused, as below. The file goes to `import/media/<place>`. A file
 already there is not fetched again, so a stopped fetch resumes.
