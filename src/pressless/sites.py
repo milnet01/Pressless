@@ -26,7 +26,9 @@ OPEN_FILE = "sites.json"
 _MOVING = ".moving"
 _NAME = re.compile(r"site-[1-9][0-9]*")
 
-# § 4.2: what belongs to a site, moved into site-1 by move_in.
+# § 4.2: what belongs to a site, moved into site-1 by move_in. It also
+# decides what travels: each name must be placed in sitefile.KEPT or
+# sitefile.LEFT_OUT, and KEPT goes into every saved site file and backup.
 SITE_NAMES = frozenset({
     "published", "drafts", "bin", "pages", "furniture", "pages-waiting",
     "furniture-waiting", "templates", "comments", "photographs", "files", "forwards",
@@ -58,41 +60,57 @@ def all_sites(own: Path) -> list[Path]:
                    if _NAME.fullmatch(path.name) and path.is_dir()), key=_number)
 
 
-def _write_open(own: Path, name: str) -> None:
-    write_whole(Path(own) / OPEN_FILE, json.dumps({"version": 1, "open": name}) + "\n",
-                prefix=f".{OPEN_FILE}.")
-
-
-def _named(own: Path) -> str | None:
+def _record(own: Path) -> dict:
+    """sites.json as this Pressless wrote it, else {}. An OSError other than
+    its absence is the caller's: a file that is there but cannot be read
+    now is never written over."""
     try:
         data = json.loads((Path(own) / OPEN_FILE).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    if not isinstance(data, dict) or data.get("version") != 1:
-        return None
-    name = data.get("open")
-    return name if isinstance(name, str) and _NAME.fullmatch(name) else None
+    except (FileNotFoundError, ValueError):
+        return {}
+    return data if isinstance(data, dict) and data.get("version") == 1 else {}
+
+
+def _write(own: Path, **changes: object) -> None:
+    data = {**_record(own), **changes, "version": 1}
+    write_whole(Path(own) / OPEN_FILE, json.dumps(data) + "\n", prefix=f".{OPEN_FILE}.")
+
+
+def _write_open(own: Path, name: str) -> None:
+    _write(own, open=name)
 
 
 def open_site(own: Path) -> Path:
     """The open site's folder. Where sites.json names no site there is, the
     lowest-numbered one opens, made as site-1 where there is none, and
-    sites.json is written to say so."""
-    named = _named(own)
-    if named is not None and (Path(own) / SITES_FOLDER / named).is_dir():
+    sites.json is written to say so. Where sites.json cannot be read now,
+    the lowest opens and the file is left as it is."""
+    try:
+        named, readable = _record(own).get("open"), True
+    except OSError:
+        named, readable = None, False
+    if isinstance(named, str) and _NAME.fullmatch(named) \
+            and (Path(own) / SITES_FOLDER / named).is_dir():
         return Path(own) / SITES_FOLDER / named
     held = all_sites(own)
     site = held[0] if held else Path(own) / SITES_FOLDER / "site-1"
     site.mkdir(parents=True, exist_ok=True)
-    _write_open(own, site.name)
+    if readable:
+        _write_open(own, site.name)
     return site
 
 
 def new_site(own: Path) -> Path:
-    """Make the next site's folder, one past the highest, and return it."""
+    """Make the next site's folder, one past the highest ever made, and
+    return it. sites.json keeps that number, so a removed site's number,
+    and with it its keys and backups, never goes to another (§ 4.1)."""
     held = all_sites(own)
-    site = Path(own) / SITES_FOLDER / f"site-{_number(held[-1]) + 1 if held else 1}"
+    made = _record(own).get("made")
+    highest = max(_number(held[-1]) if held else 0,
+                  made if isinstance(made, int) and not isinstance(made, bool) else 0)
+    site = Path(own) / SITES_FOLDER / f"site-{highest + 1}"
     site.mkdir(parents=True)
+    _write(own, made=highest + 1)
     return site
 
 

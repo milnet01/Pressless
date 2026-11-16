@@ -93,6 +93,41 @@ def test_the_sites_are_listed_in_number_order_and_a_new_one_follows(tmp_path: Pa
     assert _opened(own) == "site-2"
 
 
+def test_a_removed_sites_number_is_never_given_again(tmp_path: Path) -> None:
+    """§ 4.1. Breaks when a new site takes the number of the highest one
+    removed, and with it that site's key and its backups."""
+    own = tmp_path / "own"
+    sites.open_site(own)
+    second = sites.new_site(own)
+    assert second.name == "site-2"
+    sites.remove(second)
+    third = sites.new_site(own)
+    assert third.name == "site-3"
+    assert sites.account("github", third) != sites.account("github", second)
+    assert _opened(own) == "site-1"
+
+
+def test_a_sites_file_that_cannot_be_read_now_is_left_alone(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """INV-1. Breaks when a passing read failure, an antivirus holding the
+    file on Windows, is taken for no choice and the choice is written over."""
+    own = tmp_path / "own"
+    for name in ("site-1", "site-2"):
+        (own / SITES / name).mkdir(parents=True)
+    (own / OPEN).write_text(json.dumps({"version": 1, "open": "site-2"}), encoding="utf-8")
+    read_text = Path.read_text
+
+    def held(path: Path, *args: object, **kwargs: object) -> str:
+        if path.name == OPEN:
+            raise PermissionError(13, "Permission denied")
+        return read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", held)
+    assert sites.open_site(own) == own / SITES / "site-1"
+    monkeypatch.undo()
+    assert _opened(own) == "site-2"
+
+
 # ------------------------------------------------------------------ INV-2 ---
 
 

@@ -60,7 +60,7 @@ opens another, and an existing install's one site is moved into
 
 ```
 Pressless-data/
-  sites.json          {"version": 1, "open": "site-1"}
+  sites.json          {"version": 1, "open": "site-1", "made": 1}
   sites/
     site-1/           one site: every name in SITE_NAMES
     site-2/
@@ -80,14 +80,19 @@ MACHINE_NAMES = frozenset({...})  # § 4.2: what belongs to the machine
 
 def open_site(own: Path) -> Path: ...      # the open site's folder, created
 def all_sites(own: Path) -> list[Path]: ... # site-1, site-2, ... in number order
-def new_site(own: Path) -> Path: ...       # creates site-<highest + 1>
+def new_site(own: Path) -> Path: ...       # creates site-<highest ever made + 1>
 def choose(own: Path, site: str) -> None:  # writes OPEN_FILE
 def move_in(own: Path) -> OSError | None: ...  # § 4.3
 ```
 
-`open_site` reads `OPEN_FILE`. Where it is missing, unreadable, or names
+`open_site` reads `OPEN_FILE`. Where it is missing, not JSON, or names
 a folder that is not under `sites/`, it opens the lowest-numbered site,
-creating `site-1` where there is none, and writes `OPEN_FILE`. A name
+creating `site-1` where there is none, and writes `OPEN_FILE`. Where it
+cannot be read now (an `OSError`), the lowest site opens and the file is
+left as it is.
+
+`new_site` keeps the highest number it made as `made`, so a removed
+site's number, and with it its keys and backups, never goes to another. A name
 is accepted only where it matches `site-[1-9][0-9]*`, so no value in the
 file can reach outside `sites/`.
 
