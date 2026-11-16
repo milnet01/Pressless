@@ -32,6 +32,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit
 from PIL import Image, ImageOps, ImageSequence
 
 from pressless import blocks, jpegxl, marks, store, votes
+from pressless.safe_write import patiently
 from pressless.settings import Settings
 
 # Every top-level name a build writes must be here, or the next build refuses
@@ -475,14 +476,16 @@ def _replace(into: Path, folder: Path, publishing: bool, write):
             raise SiteFolderUnusable(f"{shown} could not be written: {_why(exc)}") from None
         raise
 
+    # On the Windows box these renames were refused for a moment ("Access is
+    # denied"), as a file another program holds open is (PRESS-0365).
     try:
         if into.exists():
-            os.rename(into, old)
-        os.rename(new, into)
+            patiently(lambda: os.rename(into, old))
+        patiently(lambda: os.rename(new, into))
     except OSError as exc:
         if old.exists() and not into.exists():
             try:
-                os.rename(old, into)
+                patiently(lambda: os.rename(old, into))
             except OSError:
                 pass  # the next build renames it back (§4.8)
         shutil.rmtree(new, ignore_errors=True)

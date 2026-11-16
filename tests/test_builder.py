@@ -29,7 +29,7 @@ import pytest
 from PIL import Image
 
 import pressless.builder as builder
-from pressless import blocks, marks, starter, store
+from pressless import blocks, marks, safe_write, starter, store
 from pressless import look as starter_look
 from pressless.builder import (
     LONGEST_SIDE,
@@ -352,6 +352,43 @@ def test_an_interrupted_build_is_recovered(tmp_path):
     build(folder, _settings(), into)
     assert not old.exists()
     assert _digest(into) == before
+
+
+def test_a_folder_held_for_a_moment_on_windows_is_still_replaced(
+    tmp_path, monkeypatch
+):
+    """§4.8 step 2 on Windows (PRESS-0365): a program holding a file inside a
+    folder for a moment makes Windows refuse that folder's rename, as a
+    scanner refuses a file's (PRESS-0001 §4.4). Each of the two renames is
+    refused once here, and the build still replaces the folder.
+
+    Breaks when a step-2 rename is made without safe_write.patiently: the
+    build then stops with SiteFolderUnusable, as it did on the Windows box.
+    """
+    folder = _store(tmp_path)
+    store.write(folder, _entry("first"), draft=False)
+    into = tmp_path / "site"
+    build(folder, _settings(), into)
+    store.write(folder, _entry("second"), draft=False)
+    monkeypatch.setattr(safe_write, "_is_windows", lambda: True)
+    monkeypatch.setattr(safe_write.time, "sleep", lambda seconds: None)
+    refused = []
+    real_rename = os.rename
+
+    def held_once(source, target):
+        step = (Path(source).name, Path(target).name)
+        if step not in refused:
+            refused.append(step)
+            raise PermissionError(13, "Access is denied")
+        return real_rename(source, target)
+
+    monkeypatch.setattr(os, "rename", held_once)
+
+    build(folder, _settings(), into)
+
+    assert refused == [("site", "site.pressless-old"), ("site.pressless-new", "site")]
+    assert _entry_page(into, _entry("second")).is_file()
+    assert not (tmp_path / "site.pressless-old").exists()
 
 
 # ------------------------------------------------------------------ INV-6 ---
@@ -704,6 +741,7 @@ _ALLOWED_IMPORTS = {
     "pressless", "pressless.blocks", "pressless.marks", "pressless.settings", "pressless.store",
     "pressless.votes",                       # PRESS-0211 § 4.3: text alone, no disk or network
     "pressless.jpegxl",                      # PRESS-0275 § 4.1: runs the decoder, no network
+    "pressless.safe_write",                  # PRESS-0365: a Windows retry, no network
 }
 
 

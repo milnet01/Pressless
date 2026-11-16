@@ -13,3 +13,4 @@
 | impl | 2026-10-31 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0210 § 11: forwards at old addresses, `roots_produced`, what a build publishes, and the forwards file in `content/`. |
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.3 and INV-11's allowlist. |
 | amend | 2026-11-08 | none: no reviewer was dispatched | 0 | 0 | 0 | 0 | **Amended by PRESS-0276** before it was built: a pointer to its spec, no clause rewritten. |
+| amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365: § 4.8's renames go through `patiently`; INV-11 admits `pressless.safe_write`. |

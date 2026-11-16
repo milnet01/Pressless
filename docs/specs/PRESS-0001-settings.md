@@ -320,8 +320,9 @@ translation, flushes, fsyncs, and replaces `target`. On Windows a
 scanner opening the file just written refuses it briefly (PRESS-0159).
 Whether it is Windows is read at call time from `safe_write._is_windows()`,
 and that is what a retry test patches. The retry is `patiently(step)`, which
-returns what `step` returns. The Store runs its own rename through it, and
-the wizard its read of the progress file (PRESS-0351). On
+returns what `step` returns. The Store runs its own rename through it, the
+Builder its folder swap (PRESS-0365), and the wizard its read of the
+progress file (PRESS-0351). On
 any failure the descriptor is closed, the temporary is removed, and the
 exception propagates unchanged; turning it into a module's own error is the
 caller's. It imports no `pressless` module and no network module.
@@ -719,6 +720,8 @@ loading or saving does anything.
   write and `shortcuts.py`'s Linux launcher (PRESS-0183) call it, and the Store's no-overwrite rename calls `patiently`, with
   no spec change, as no invariant of theirs forbids
   that import. Each module keeps its own error type.
+- **PRESS-0008 INV-11 admits `pressless.safe_write`** (PRESS-0365): the
+  Builder's folder swap calls `patiently`.
 - No other sibling spec changes. PRESS-0004 does not read Settings.
 
 ## 12. Cold-eyes loop log
@@ -741,3 +744,4 @@ loading or saving does anything.
 | 13 | 2026-10-03 | 2, cold — genre pinned `spec`; armed by PRESS-0141 (`safe_write`). Packet carried the six modules' write code, the import tests, the retry tests and PRESS-0005 §4.5 / §11. Windows unrunnable | 0 | 2 | 1 | 1 | **Four verified, four fixed, none dismissed.** Both lanes: §4.4's "every module" against §11's "no other sibling spec changes"; *depends on nothing* read as barring the import; the Windows retry's test seam unnamed. One lane: "one copy" had no falsifier, so INV-1 now checks `settings.py` calls no `fsync`. One round by the user's budget; the fixes are read by no lane. |
 | amend | 2026-11-01 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0211 § 4.1: Settings gains `votes`. |
 | amend | 2026-11-12 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0351 § 4.4: `patiently` returns what `step` returns; the wizard reads its progress file through it. |
+| amend | 2026-11-16 | none — no reviewer dispatched | 0 | 0 | 0 | 0 | PRESS-0365 § 4.4 and § 11: the Builder's folder swap calls `patiently`. |

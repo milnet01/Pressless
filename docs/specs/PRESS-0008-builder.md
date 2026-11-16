@@ -365,7 +365,9 @@ build writes `content/` too, and it is never published.
 
 1. Build everything into `<into>.pressless-new`, beside `into`.
 2. On success, rename `into` to `<into>.pressless-old`, rename the new
-   folder to `into`, then remove the old one.
+   folder to `into`, then remove the old one. Each rename here and in
+   step 3 goes through `safe_write.patiently`, so a brief refusal on
+   Windows is retried (PRESS-0001 §4.4, PRESS-0365).
 3. On a failure before the new folder is renamed to `into`, rename
    `<into>.pressless-old` back where it exists, then remove the new folder;
    `into` is as it was. Failing to remove the old folder is not a failed
@@ -546,7 +548,8 @@ Sitemap: <the address>/sitemap.xml
   — walks `builder.py`'s imports against an allowlist of full dotted names,
   as PRESS-0007 INV-10's test does: `pressless.store`, `pressless.marks`,
   `pressless.blocks` (PRESS-0215), `pressless.votes` (PRESS-0211),
-  `pressless.jpegxl` (PRESS-0275), `pressless.settings`, `PIL` and named
+  `pressless.jpegxl` (PRESS-0275), `pressless.safe_write` (PRESS-0365),
+  `pressless.settings`, `PIL` and named
   standard-library modules.
   *Breaks when:* a missing photograph is fetched from the old site, or the
   Builder calls the Publisher.

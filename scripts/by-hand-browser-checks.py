@@ -2091,8 +2091,13 @@ def switch_in_place(page, origin: str, folder: Path) -> None:
         except PlaywrightTimeout:  # the check says what it saw
             pass
     added_shown = back and added_para.count() == 1
+    seen = "" if added_shown else page.evaluate(
+        "() => { const f = document.getElementById('preview'); const d = f.contentDocument;"
+        " return [f.src, d && d.body ? d.body.innerText.slice(0, 160) : 'no body',"
+        " document.getElementById('save-status').textContent,"
+        " document.getElementById('failure').textContent.slice(-240)].join(' | '); }")
     check("PRESS-0285 INV-2: code typed in the box shows in the frame at once",
-          added_shown, f"back={back}")
+          added_shown, f"back={back} frame={seen!r} copy={copy()[-160:]!r}")
     check("PRESS-0285 INV-1: the switch to the page loads no new page",
           back and kept() and page.locator("#panel").is_visible(), page.url)
 
