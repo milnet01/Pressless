@@ -2,14 +2,15 @@
 
 The contract is docs/specs/PRESS-0019-insights.md, which carries the
 invariants this file cites. This
-module imports no other part of Pressless than Settings (INV-1): it is handed
+module imports no other part of Pressless than Settings, the shared `https`
+client and `safe_write` (INV-1): it is handed
 the Google access token as an argument and never reaches Credentials, which is
 what keeps docs/design.md rule 10 true. Obtaining and refreshing that token is
 setup's work, not this module's.
 
-It answers how the site was read over the last so many days, in four tables:
-readers by country with their total, readers over time, the pages read, and
-where readers came from. It is the one part of Pressless allowed a
+It answers how the site was read over the last so many days, in five tables:
+readers by country with their total, readers over time, the pages read,
+where readers came from, and readers by province or state. It is the one part of Pressless allowed a
 cache (ADR-0005, docs/design.md § State), because Google limits how often it
 will answer. The cache is one file, holding the last reply for each window
 asked for with the time it was fetched, and deleting it costs nothing but a
@@ -30,6 +31,7 @@ import dataclasses
 import datetime
 import json
 import math
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +51,8 @@ CACHE_NAME = "insights.json"
 # per window and no migration code that must then be kept correct forever
 # (PRESS-0019 § 4.2).
 CACHE_VERSION = 3
+# Orders `_store`'s read and write of the cache across the Face's threads.
+_CACHE_LOCK = threading.Lock()
 
 # How many pages and how many sources the dashboard lists. Google is asked
 # for this many, most-read first, so the rest never cross the wire.
@@ -176,9 +180,9 @@ class RateLimited(InsightsError):
 
 
 class Transport(Protocol):
-    """The one seam to Google. google_signin and google_setup take it too,
-    and `usage._Opener` and the tests' doubles implement it, so a change here
-    reaches all of them.
+    """The one seam to Google. google_signin, google_setup and youtube take
+    it too, and `usage._Opener` and the tests' doubles implement it, so a
+    change here reaches all of them.
 
     Two things about it are part of the contract, because a test double must
     supply both. It returns the response HEADERS alongside the status, and it
@@ -238,6 +242,12 @@ class _Unbuilt:
 
 def cache_path(folder: Path) -> Path:
     return Path(folder) / CACHE_NAME
+
+
+def kept(folder: Path, days: int) -> Report | None:
+    """The last reply kept for this window, or None. Reads the cache alone and
+    never asks Google, for the pages that must not wait on it (ADR-0005)."""
+    return _cached(cache_path(folder), days)
 
 
 def forget(folder: Path) -> None:
@@ -345,7 +355,9 @@ def _fetch(transport: Transport, property_id: str, token: str,
     # over a figure that holds still (PRESS-0070).
     window = [{"startDate": f"{days}daysAgo", "endDate": "today"}]
     period = "yearMonth" if days > MONTHLY_ABOVE else "date"
-    body = json.dumps({"requests": [
+    # Google answers in this order, and the answer is unpacked by position
+    # below: reorder both together.
+    requests = [
         {
             "dateRanges": window,
             # countryId, never country: the first is the ISO alpha-2 code the
@@ -387,7 +399,8 @@ def _fetch(transport: Transport, property_id: str, token: str,
             "orderBys": [{"metric": {"metricName": "activeUsers"}, "desc": True}],
             "limit": TABLE_LIMIT,
         },
-    ]}).encode("utf-8")
+    ]
+    body = json.dumps({"requests": requests}).encode("utf-8")
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -418,12 +431,11 @@ def _fetch(transport: Transport, property_id: str, token: str,
         raise _failure(status, data)
 
     reports = _parse(data).get("reports")
-    if (not isinstance(reports, list) or len(reports) != 5
+    if (not isinstance(reports, list) or len(reports) != len(requests)
             or not all(isinstance(each, dict) for each in reports)):
         # Never read by position from a short answer: a table would show
         # another's rows, or a missing one be cached as empty (INV-32).
-        raise InsightsError("Google's answer does not carry the five reports "
-                            "asked for")
+        raise InsightsError("Google's answer does not carry the reports asked for")
     countries, over_time, pages, sources, regions = reports
     return Report(_total(countries), _countries(countries), days, when, False,
                   _daily(over_time, days, when), _pages(pages),
@@ -686,7 +698,7 @@ def _cached(target: Path, days: int) -> Report | None:
             for country in entry["countries"]
         )
         # Every table, so a reply from the cache is the reply that was
-        # fetched; the dashboard calls this directly too (INV-31).
+        # fetched; `kept` hands it to the pages too (INV-31).
         daily = tuple(Day(str(day["label"]), int(day["people"]))
                       for day in entry["daily"])
         pages = tuple(Page(str(page["path"]), int(page["views"]),
@@ -699,8 +711,13 @@ def _cached(target: Path, days: int) -> Report | None:
         # the hour; refusing it would lose the only numbers Google may not give again.
         regions = tuple(Region(str(each["country"]), str(each["name"]), int(each["people"]))
                         for each in entry.get("regions", ()))
+        fetched_at = float(entry["fetched_at"])
+        if not math.isfinite(fetched_at):
+            # NaN fails every age comparison, so it would pass as a stale
+            # fallback and fail where its time is drawn (INV-14).
+            return None
         return Report(int(entry["people"]), countries, days,
-                      float(entry["fetched_at"]), False, daily, pages, sources, regions)
+                      fetched_at, False, daily, pages, sources, regions)
     except (KeyError, TypeError, ValueError, OverflowError):
         return None
 
@@ -718,27 +735,30 @@ def _store(target: Path, report: Report) -> None:
     no temporary is left behind (INV-24). A cache that cannot be written is not
     worth failing a fetch over — the numbers in hand are still good.
     """
-    windows = _windows(target)
-    windows[str(report.days)] = {
-        "fetched_at": report.fetched_at,
-        "people": report.people,
-        "countries": [
-            {"code": country.code, "people": country.people}
-            for country in report.countries
-        ],
-        "daily": [dataclasses.asdict(day) for day in report.daily],
-        "pages": [dataclasses.asdict(page) for page in report.pages],
-        "sources": [dataclasses.asdict(each) for each in report.sources],
-        "regions": [dataclasses.asdict(each) for each in report.regions],
-    }
-    data = {
-        "version": CACHE_VERSION,
-        "windows": windows,
-    }
-    # newline is named rather than left to the platform, so the cache is the
-    # same bytes on both systems (PRESS-0039).
-    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-    try:
-        write_whole(target, text, prefix=".insights-")
-    except OSError:
-        return
+    # Held from the read to the write: two windows stored at once on the
+    # Face's threads would otherwise lose one (INV-17).
+    with _CACHE_LOCK:
+        windows = _windows(target)
+        windows[str(report.days)] = {
+            "fetched_at": report.fetched_at,
+            "people": report.people,
+            "countries": [
+                {"code": country.code, "people": country.people}
+                for country in report.countries
+            ],
+            "daily": [dataclasses.asdict(day) for day in report.daily],
+            "pages": [dataclasses.asdict(page) for page in report.pages],
+            "sources": [dataclasses.asdict(each) for each in report.sources],
+            "regions": [dataclasses.asdict(each) for each in report.regions],
+        }
+        data = {
+            "version": CACHE_VERSION,
+            "windows": windows,
+        }
+        # newline is named rather than left to the platform, so the cache is the
+        # same bytes on both systems (PRESS-0039).
+        text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+        try:
+            write_whole(target, text, prefix=".insights-", newline="\n")
+        except OSError:
+            return

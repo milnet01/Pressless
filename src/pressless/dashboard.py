@@ -163,7 +163,7 @@ def _kept(folder: Path, days: int) -> insights.Report | None:
     answers from its cache only where it was handed a token, so the page asks
     the cache itself rather than show an error over numbers it holds.
     """
-    kept = insights._cached(insights.cache_path(folder), days)
+    kept = insights.kept(folder, days)
     return dataclasses.replace(kept, stale=True) if kept is not None else None
 
 

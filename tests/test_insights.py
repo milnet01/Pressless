@@ -40,6 +40,7 @@ import http.client
 import inspect
 import json
 import os
+import threading
 import traceback
 import urllib.error
 import urllib.request
@@ -1969,3 +1970,54 @@ def test_provinces_survive_the_cache_and_an_older_cache_still_reads(tmp_path):
         del entry["regions"]
     target.write_text(json.dumps(kept), encoding="utf-8")
     assert read(_settings(), "a-token", tmp_path, client=transport).regions == ()
+
+
+def test_a_kept_reply_with_no_honest_time_reads_as_absent(tmp_path):
+    """INV-14. Breaks when a kept reply whose `fetched_at` is not a finite
+    number loads: every age comparison is then false, so it is answered as
+    the stale fallback, and the page that draws its time fails."""
+    _seed(tmp_path, _Transport())
+    target = cache_path(tmp_path)
+    held = json.loads(target.read_text(encoding="utf-8"))
+    held["windows"][str(DEFAULT_DAYS)]["fetched_at"] = float("nan")
+    target.write_text(json.dumps(held), encoding="utf-8")   # json writes NaN
+    with pytest.raises(Unreachable):
+        read(_settings(), "a-token", tmp_path, client=_Transport(unreachable=True))
+
+
+def test_kept_answers_from_the_cache_alone(tmp_path):
+    """§ 4.1's `kept`, for the pages that must never wait on Google. Breaks
+    when it answers another window's reply, or none where one is kept."""
+    assert insights_module.kept(tmp_path, DEFAULT_DAYS) is None
+    _seed(tmp_path, _Transport())
+    kept = insights_module.kept(tmp_path, DEFAULT_DAYS)
+    assert kept is not None and kept.people == TOTAL and kept.days == DEFAULT_DAYS
+    assert insights_module.kept(tmp_path, 7) is None
+
+
+def test_two_windows_stored_at_once_are_both_kept(tmp_path, monkeypatch):
+    """INV-17 under the Face's threads. Breaks when `_store` reads the cache
+    and writes it back without holding off a second store: a window stored
+    between the two is overwritten, and asked for again."""
+    real = insights_module.write_whole
+    started, stored = threading.Event(), threading.Event()
+
+    def write_whole(target, text, **kwargs):
+        if not started.is_set():
+            started.set()
+            stored.wait(0.5)   # the other store lands here, unless a lock holds it off
+        real(target, text, **kwargs)
+
+    def other() -> None:
+        started.wait(10)
+        _seed(tmp_path, _Transport(default=_ok(_google(rows=(("ZA", 30),), total=44))),
+              days=7)
+        stored.set()
+
+    monkeypatch.setattr(insights_module, "write_whole", write_whole)
+    thread = threading.Thread(target=other)
+    thread.start()
+    _seed(tmp_path, _Transport(), days=28)
+    thread.join(10)
+    held = json.loads(cache_path(tmp_path).read_text(encoding="utf-8"))["windows"]
+    assert set(held) == {"7", "28"}

@@ -193,7 +193,7 @@ def _visitors(face: Face, folder: Path) -> str:
     if saved is None or not dashboard._set_up(saved):
         figures = say("overview.visitors.not_set_up")
     else:
-        kept = insights._cached(insights.cache_path(folder), dashboard.DEFAULT_DAYS)
+        kept = insights.kept(folder, dashboard.DEFAULT_DAYS)
         figures = (say("overview.visitors.none_yet") if kept is None else say(
             "overview.visitors.read", people=dashboard._people(kept.people),
             window=dashboard._sentence(dashboard.DEFAULT_DAYS)))

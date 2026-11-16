@@ -90,7 +90,7 @@ does not reopen them.
 
 ### 4.1 The public surface
 
-`src/pressless/insights.py` exports `read`, `cache_path`, `forget`, the `Report`,
+`src/pressless/insights.py` exports `read`, `kept`, `cache_path`, `forget`, the `Report`,
 `Country`, `Day`, `Page` and `Source` results, `UNKNOWN_COUNTRY`, the
 `Transport` seam, and the failure types
 `InsightsError`, `NotConfigured`, `Unreachable`, `Refused` and `RateLimited`.
@@ -100,9 +100,13 @@ def read(settings: Settings, token: str, folder: Path, *,
          days: int = DEFAULT_DAYS,
          max_age_seconds: float = DEFAULT_MAX_AGE,
          client: Transport | None = None) -> Report
+def kept(folder: Path, days: int) -> Report | None
 def cache_path(folder: Path) -> Path
 def forget(folder: Path) -> None
 ```
+
+`kept` answers the window's last kept reply from the cache alone, or `None`,
+and never asks Google: the way in for the pages that must not wait on it.
 
 `forget` removes the cache file for Turn off (PRESS-0122 §3 decision 5).
 
@@ -646,7 +650,7 @@ when none is handed in. Proving it would mean letting a test reach Google.
 - `CHANGELOG.md` — an entry when the cache change ships, not for this
   document. PRESS-0020's tables ride that item's own entry.
 - `src/pressless/dashboard.py` — draws the three tables. Where no token can
-  be had it reads the cache itself through `_cached(target, days)`, so that
+  be had it reads the cache itself through `kept(folder, days)`, so that
   function's signature binds it, and INV-31 holds for it as for `read()`.
 - `insights.py`'s docstring — it says the invariants live in the test header
   and that there is no specs file. Both stop being true when this is accepted.
