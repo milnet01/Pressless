@@ -3,12 +3,20 @@
 The manifest holds floors, so two builds of one commit could bundle different
 libraries. The release jobs therefore install packaging/release-requirements.txt,
 exact versions with their hashes, and nothing else from pip (PRESS-0150).
+
+Its last test runs the Linux job's Build step itself: a build that fails must
+fail that step.
 """
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
+import pytest
 import tomllib
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -65,3 +73,42 @@ def test_release_installs_only_the_lock():
                 if "pip install" in line]
     assert len(installs) == 2, installs  # the Linux job and the Windows job
     assert all(install == _INSTALL for install in installs), installs
+
+
+# GitHub's documented commands for a step's shell on Linux: unnamed, and `bash`.
+_SHELLS = {None: ["bash", "-e"], "bash": ["bash", "--noprofile", "--norc", "-eo", "pipefail"]}
+
+
+def _linux_build_step() -> tuple[str | None, str]:
+    """The Linux job's Build step: its `shell:` (or the job's default) and its script."""
+    text = _WORKFLOW.read_text(encoding="utf-8")
+    job = re.search(r"^  linux:\n(.*?)(?=^  \S)", text, re.M | re.S).group(1)
+    step = re.search(r"^      - name: Build\n(.*?)(?=^      - |\Z)", job, re.M | re.S).group(1)
+    shell = re.search(r"^        shell: (\S+)", step, re.M) or re.search(
+        r"^    defaults:\n      run:\n        shell: (\S+)", job, re.M)
+    lines = []
+    for line in step.split("        run: |\n", 1)[1].splitlines():
+        if line.strip() and not line.startswith("          "):
+            break  # the block ends where its indent does
+        lines.append(line.removeprefix("          "))
+    return (shell.group(1) if shell else None), "\n".join(lines) + "\n"
+
+
+@pytest.mark.skipif(sys.platform == "win32" or shutil.which("bash") is None,
+                    reason="the Linux job's step runs under bash")
+def test_a_failed_linux_build_fails_the_build_step(tmp_path: Path):
+    """Breaks when the build's exit status is lost, as it is inside `echo
+    "artefact=$(...)"` or a pipeline without pipefail, and Build goes green
+    with an empty artefact."""
+    shell, script = _linux_build_step()
+    (tmp_path / "scripts").mkdir()
+    build = tmp_path / "scripts" / "build-linux.sh"
+    build.write_text("#!/bin/sh\necho building >&2\nexit 1\n", encoding="utf-8")
+    build.chmod(0o755)
+    (tmp_path / "step.sh").write_text(script, encoding="utf-8")
+    output = tmp_path / "output.txt"
+    env = {**os.environ, "GITHUB_OUTPUT": str(output), "RUNNER_TEMP": str(tmp_path)}
+    ran = subprocess.run([*_SHELLS[shell], "step.sh"], cwd=tmp_path, env=env,  # noqa: S603 -- the workflow's own step
+                         capture_output=True, text=True, timeout=60, check=False)
+    assert ran.returncode != 0, (shell, script)
+    assert "building" in ran.stderr

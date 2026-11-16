@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/python.sh
 . scripts/python.sh
 
+# release.yml's Windows INV-6 step runs the program at
+# $work/dist/Pressless/Pressless.exe: change both together.
 work=build/freeze
 stage=build/zip
 rm -rf "$work" "$stage"

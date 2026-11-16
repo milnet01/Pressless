@@ -26,6 +26,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # The same Python as ci.yml and the Windows job below: change all three.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
@@ -81,10 +82,15 @@ jobs:
 
       - name: Build
         id: build
+        # `shell: bash` adds pipefail, and the assignment stands alone so its
+        # status counts: a failed build fails here, not two steps later as a
+        # missing artefact.
+        shell: bash
         run: |
-          echo "artefact=$(APPIMAGETOOL="$RUNNER_TEMP/appimagetool" \
+          artefact=$(APPIMAGETOOL="$RUNNER_TEMP/appimagetool" \
             APPIMAGE_RUNTIME="$RUNNER_TEMP/runtime-x86_64" \
-            ./scripts/build-linux.sh | tail -n 1)" >> "$GITHUB_OUTPUT"
+            ./scripts/build-linux.sh | tail -n 1)
+          echo "artefact=$artefact" >> "$GITHUB_OUTPUT"
 
       # The wrapped AppImage, never the bare frozen folder: $APPIMAGE is set by
       # the AppImage runtime and nothing else (§ 7).
@@ -130,6 +136,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # The same Python as ci.yml and the Linux job above: change all three.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
@@ -139,6 +146,8 @@ jobs:
       - name: Install
         run: python -m pip install --require-hashes -r packaging/release-requirements.txt
 
+      # tr -d: Python on Windows prints CRLF, and the Linux job's check has
+      # no carriage return to strip.
       - name: The tag is the version
         env:
           TAG: ${{ github.ref_name }}
@@ -169,6 +178,7 @@ jobs:
 
       # No clean room here: windows-latest ships Python, so none can be made by
       # clearing variables. The staged test box is INV-7's Windows evidence.
+      # build-windows.sh's work=build/freeze decides this path.
       - name: INV-6 (step 3)
         run: |
           PRESSLESS_ARTEFACT="$GITHUB_WORKSPACE/build/freeze/dist/Pressless/Pressless.exe" \
