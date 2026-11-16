@@ -7,6 +7,7 @@ through Face.add_piece.
 from __future__ import annotations
 
 import html
+import re
 import urllib.parse
 from pathlib import Path
 
@@ -34,18 +35,18 @@ def register(face: Face, folder: Path) -> None:
 def _show(face: Face, folder: Path) -> str:
     """§ 4.3, in an order that does not change with the site's state."""
     with face.capture() as notices:
-        site = editor._site_line(folder)
+        site = _site_line(folder)
         tiles = "".join(tile(folder) for tile in (_pages, _journal, _look))
         tiles += _parts(folder) + _files(folder) + _visitors(face, folder)
         below = checklist.render(folder)
     with face.capture():  # its reads repeat the tiles', and Pages shows the rest
-        waiting = _waiting(folder)
+        waiting, nothing = _waiting(folder)
     # PRESS-0235 § 4.5: the press row is the undo line, and Publish shares it.
     said, running, ended = pressing.shown("")
     buttons = (f'{face.view_site()} <button type="button" data-editor="publish" '
                f'data-publish-site>{say("overview.publish")}</button> ')
     return (render_notices(notices) + f"<h1>{say('face.your_site')}</h1>" + site
-            + editor._undo_row(said, running=running, before=buttons) + waiting
+            + editor._undo_row(said, running=running, before=buttons) + waiting + nothing
             + "".join(face.pieces("site-notices"))
             # PRESS-0236: a press's failure opens over the screen.
             + message_box("failure", ended or "", forgets=True)
@@ -55,12 +56,32 @@ def _show(face: Face, folder: Path) -> str:
             + f"<script>{editor._UNDO_SCRIPT}{_PUBLISH_SCRIPT}</script>")
 
 
-def _waiting(folder: Path) -> str:
+def _site_line(folder: Path) -> str:
+    """PRESS-0353 § 4.3: which site this is, its name and its address. Empty
+    where either cannot be read, which the rest of the page does not depend
+    on."""
+    try:
+        identity = store.read_identity(folder)
+        address = settings.load(folder).site_address
+    except (store.StoreError, settings.SettingsError, settings.NotSetUp):
+        return ""
+    e = html.escape
+    name = (identity.name if identity is not None and identity.name
+            else say("editor.site_line.unnamed"))
+    shown = re.sub(r"^https?://", "", address).rstrip("/")
+    link = (f'<a href="{e(address, quote=True)}" target="_blank" rel="noopener">'
+            f"{e(shown)}</a>")
+    return f'<p class="site-line">{say("editor.site_line", name=e(name), address=link)}</p>'
+
+
+def _waiting(folder: Path) -> tuple[str, str]:
     """PRESS-0364: how many changes are not on the site yet, by kind, each
     kind linking to the screen that publishes it. Counted from the Store
     alone, so a change only GitHub holds is missed. Its own line, apart from
-    Publish, which sends none of them. Nothing waiting, or nothing readable,
-    draws nothing."""
+    Publish, which sends none of them; PRESS-0366: both the line and
+    Publish's nothing-would-change answer say so, the answer in a template
+    the plan box shows. Nothing waiting, or nothing readable, draws
+    nothing."""
     try:
         counts = [
             (len(store.list_html(folder, store.PAGES_FOLDER, waiting=True)),
@@ -75,24 +96,28 @@ def _waiting(folder: Path) -> str:
                 ("overview.waiting.entries.one", "overview.waiting.entries.many"),
                 editor.JOURNAL_ADDRESS))
     except store.StoreError:
-        return ""
+        return "", ""
     total = sum(count for count, _, _ in counts)
     if not total:
-        return ""
+        return "", ""
     kinds = ", ".join(
         f'<a href="{html.escape(address, quote=True)}">'
         f'{say(keys[0] if count == 1 else keys[1], count=count)}</a>'
         for count, keys, address in counts if count)
     said = say("overview.waiting.one" if total == 1 else "overview.waiting.many",
                count=total, kinds=kinds)
-    return f'<p class="waiting">{said}</p>'
+    nothing = say("overview.publish.nothing", kinds=kinds)
+    return (f'<p class="waiting">{said}</p>',
+            f'<template id="publish-nothing"><p>{nothing}</p></template>')
 
 
-def _tile(heading: str, figures: str, links: str) -> str:
-    """One part of the site: its heading, a line of figures where it has one,
-    and its links. A figure that cannot be read is left out (§ 6)."""
+def _tile(heading_key: str, figures: str, links: str) -> str:
+    """One part of the site: the heading its words key names, a line of
+    figures where it has one, and its links, both finished HTML. A figure
+    that cannot be read is left out (§ 6)."""
     line = f"<p>{figures}</p>" if figures else ""
-    return f'<section class="card tile"><h2>{say(heading)}</h2>{line}<p>{links}</p></section>'
+    return (f'<section class="card tile"><h2>{say(heading_key)}</h2>{line}<p>{links}</p>'
+            "</section>")
 
 
 def _link(address: str, key: str) -> str:
@@ -190,7 +215,9 @@ _PUBLISH_SCRIPT = """
     button.disabled = true;
     try {
       said.textContent = say("script.press.checking");
-      if (!await window.presslessCheck(new URLSearchParams())) {
+      // PRESS-0366: where changes wait, nothing-would-change says where they go.
+      const nothing = document.getElementById("publish-nothing");
+      if (!await window.presslessCheck(new URLSearchParams(), {nothing})) {
         said.textContent = "";
         return;
       }

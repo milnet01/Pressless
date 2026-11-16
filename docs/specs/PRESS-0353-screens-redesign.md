@@ -98,8 +98,8 @@ the rest to Your site.
 
 In this order, and the order does not change with the site's state:
 
-1. **The site's line**: its name and address (`editor._site_line` moves
-   here), View your site, Publish, and Undo the last press
+1. **The site's line**: its name and address (`overview._site_line`),
+   View your site, Publish, and Undo the last press
    (`editor._undo_row`), then the count of changes not on the site
    yet, by kind, each linking to Pages or Journal (decision 5).
 2. **Notices**: the place `site-notices` (§ 4.6), then the press's
@@ -121,7 +121,9 @@ In this order, and the order does not change with the site's state:
 4. **Finish setting up**: `checklist.render`, then the place `site-below`.
 
 **Publish** asks `publishing.PLAN_ADDRESS` for the site as it stands and
-shows PRESS-0345's box. Publish now posts to a new `/publish/site`, which
+shows PRESS-0345's box. Where changes wait, the count line says each goes out
+from its own Press to site, and the box's nothing-would-change answer
+says the same and links them (PRESS-0366). Publish now posts to a new `/publish/site`, which
 runs `publishing.press_site` through `pressing.run` as a page's press
 does. The plan route gains the site form: a request naming neither a
 slug nor a page.

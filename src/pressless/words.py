@@ -516,8 +516,18 @@ _WORDS: dict[str, str] = {
     "overview.visitors.not_set_up": "Not set up yet.",
     "overview.visitors.none_yet": "No figures yet.",
     "overview.visitors.read": "{people} read your site in {window}.",
-    "overview.waiting.one": "1 change is not on your site yet: {kinds}.",
-    "overview.waiting.many": "{count} changes are not on your site yet: {kinds}.",
+    "overview.waiting.one": (
+        "1 change is not on your site yet: {kinds}. It goes out from its own Press to site."
+    ),
+    "overview.waiting.many": (
+        "{count} changes are not on your site yet: {kinds}. Each goes out from its own "
+        "Press to site."
+    ),
+    # PRESS-0366: Publish's answer where it would change nothing but changes wait.
+    "overview.publish.nothing": (
+        "Nothing on your site would change. Not on your site yet: {kinds}. Each goes out "
+        "from its own Press to site, not from Publish."
+    ),
     "overview.waiting.pages.one": "1 page",
     "overview.waiting.pages.many": "{count} pages",
     "overview.waiting.parts.one": "1 part of every page",

@@ -850,10 +850,10 @@ def test_view_your_site_sits_by_press_to_site_in_both_editors(tmp_path):
 def test_the_list_names_the_site_it_edits(tmp_path):
     """The list says which site it is for: the Store's name, Settings'
     address. Nothing where the address cannot be read yet."""
-    assert editor._site_line(tmp_path) == ""
+    assert overview._site_line(tmp_path) == ""
     _saved(tmp_path)
     store.write_identity(tmp_path, store.Identity("Field Notes"))
-    line = editor._site_line(tmp_path)
+    line = overview._site_line(tmp_path)
     assert "<b>Field Notes</b>" in line
     assert 'href="https://example.org"' in line and ">example.org</a>" in line
 

@@ -24,6 +24,7 @@ from pressless import (
     google_setup,
     overview,
     page_editor,
+    pressing,
     settings,
     store,
     templates,
@@ -187,7 +188,32 @@ def test_your_site_counts_the_changes_not_on_it(tmp_path: Path) -> None:
         "4 changes are not on your site yet: "
         f'<a href="{editor.PAGES_ADDRESS}">1 page</a>, '
         f'<a href="{editor.PAGES_ADDRESS}">1 part of every page</a>, '
-        f'<a href="{editor.JOURNAL_ADDRESS}">2 journal entries</a>.')
+        f'<a href="{editor.JOURNAL_ADDRESS}">2 journal entries</a>. '
+        "Each goes out from its own Press to site.")
+
+
+def test_publish_says_where_waiting_changes_go(tmp_path: Path) -> None:
+    """PRESS-0366. Publish sends none of the changes the count line counts,
+    so its nothing-would-change answer says where they go and links them.
+    Breaks when the answer is the bare sentence while changes wait, or the
+    box takes it as text rather than the template's links."""
+    folder = _site(tmp_path)
+    store.path_for(folder, "seaside", draft=True).unlink()
+    store.write_html(folder, store.PAGES_FOLDER, "index", "<p>New home.</p>", waiting=True)
+    with _served(folder) as browser:
+        page = browser.get("/")
+    template = page.split('<template id="publish-nothing">', 1)[1].split("</template>", 1)[0]
+    assert template == (
+        "<p>Nothing on your site would change. Not on your site yet: "
+        f'<a href="{editor.PAGES_ADDRESS}">1 page</a>. '
+        "Each goes out from its own Press to site, not from Publish.</p>")
+    assert 'getElementById("publish-nothing")' in page and "{nothing})" in page
+    plan = pressing.SCRIPT[pressing.SCRIPT.index("window.presslessPlan ="):]
+    assert "options.nothing.content.cloneNode(true)" in plan
+    assert "window.presslessPlan(plan, options)" in pressing.SCRIPT
+    store.html_path_for(folder, store.PAGES_FOLDER, "index", waiting=True).unlink()
+    with _served(folder) as browser:
+        assert 'id="publish-nothing"' not in browser.get("/")
 
 
 def test_your_site_says_nothing_when_nothing_waits(tmp_path: Path) -> None:

@@ -191,18 +191,20 @@ window.presslessPress = window.presslessPress || (() => {
 // PRESS-0345 § 4.3: ask what a press of `body` would change, and show it. True
 // to go on; false where the box was turned down or the plan failed, whose words
 // go in the failure box. A dropped connection throws, as a fetch does.
-window.presslessCheck = window.presslessCheck || (async (body) => {
+// `options` are presslessPlan's.
+window.presslessCheck = window.presslessCheck || (async (body, options = {}) => {
   const plan = await (await fetch("/publish/plan", {method: "POST", body: body})).json();
   if (plan.failure) {
     document.getElementById("failure").innerHTML = plan.failure;
     return false;
   }
-  return window.presslessPlan(plan);
+  return window.presslessPlan(plan, options);
 });
 // PRESS-0345 § 4.4: what a press would change, in a box over the page. True
 // for Publish now; false for Not yet, Escape or a box that cannot open.
 // PRESS-0337 § 4.6: `plan.lines` are more sentences; `options` names the words
-// of the title and the two buttons, and the request the box shows.
+// of the title and the two buttons, and the request the box shows. PRESS-0366:
+// `options.nothing`, a template, is shown in place of script.plan.nothing.
 window.presslessPlan = window.presslessPlan || ((plan, options = {}) => new Promise((resolve) => {
   const make = (tag, text) => {
     const made = document.createElement(tag);
@@ -227,7 +229,8 @@ window.presslessPlan = window.presslessPlan || ((plan, options = {}) => new Prom
   if (removed) box.append(make("p", say(removed === 1 ? "script.plan.removed_one"
     : "script.plan.removed", {count: removed})));
   if (!pages.length && !added && !removed && !lines.length) {
-    box.append(make("p", say("script.plan.nothing")));
+    box.append(options.nothing ? options.nothing.content.cloneNode(true)
+      : make("p", say("script.plan.nothing")));
   }
   const go = make("button", say(options.go || "script.plan.go"));
   const wait = make("button", say(options.wait || "script.plan.wait"));

@@ -356,23 +356,6 @@ def _journal_switch(journal: bool | None, published: bool) -> str:
             f'<span{when_on}>{say("editor.journal.turn_off")}</span></span></button></form>')
 
 
-def _site_line(folder: Path) -> str:
-    """Which site this list is for: its name and its address. Empty where
-    either cannot be read, which the rest of the page does not depend on."""
-    try:
-        identity = store.read_identity(folder)
-        address = settings.load(folder).site_address
-    except (store.StoreError, settings.SettingsError, settings.NotSetUp):
-        return ""
-    e = html.escape
-    name = (identity.name if identity is not None and identity.name
-            else say("editor.site_line.unnamed"))
-    shown = re.sub(r"^https?://", "", address).rstrip("/")
-    link = (f'<a href="{e(address, quote=True)}" target="_blank" rel="noopener">'
-            f"{e(shown)}</a>")
-    return f'<p class="site-line">{say("editor.site_line", name=e(name), address=link)}</p>'
-
-
 def _journal(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
     """PRESS-0214 § 4.5: switch the journal to the opposite of what it is."""
     with lock, face.capture() as notices:
@@ -1241,7 +1224,8 @@ def _throw(face: Face, folder: Path, lock: threading.Lock, request: Request) -> 
     return json_reply({"thrown": True, "notices": render_notices(notices)})
 
 
-# PRESS-0015 s 4.6. Both pages carry this. Neither reloads itself (s 4.2):
+# PRESS-0015 s 4.6. Both pages carry this, and Your site (overview.py) and the
+# page editor read it from here. Neither page reloads itself (s 4.2):
 # the reply is the only place the summary and the gathered notices exist, and a
 # reload throws both away before he has read them. So the box is replaced with
 # what came back, and a link back to his list is offered instead.
