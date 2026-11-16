@@ -10,3 +10,4 @@
 | impl | 2026-11-03 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | § 4.5 and INV-6: the § 7 hand check saw no build after the switch, so the old site stayed up. The switch now asks for a build last. |
 | amend | 2026-11-08 | no reviewer dispatched; an amendment owes none | 0 | 0 | 0 | 0 | PRESS-0336: a branch build a workflow pushes to is taken over too. § 3 decision 8, §§ 4.1, 4.4, 4.5, 8, 9; INV-2 narrowed, INV-16 added. |
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.3: the notice moved to Your site. |
+| fix | 2026-11-17 | none: closing the 2026-11-16 reviews, no reviewer dispatched | - | - | - | - | PRESS-0385 amended § 4.2: a backslash in an address's path is read as a slash. No direction changed, so no gate. |
