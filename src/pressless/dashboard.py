@@ -3,8 +3,8 @@
 A Face page. It asks `google_setup.token` for an access token and
 `insights.read` for the numbers, and turns every failure into the Face's
 sentence. Nothing about writing or publishing depends on it (ADR-0005): the
-card it adds to the list reads only the cache, so the list never waits on
-Google.
+Visitors tile on Your site, drawn by `overview.py`, reads only the cache, so
+Your site never waits on Google.
 
 It offers three windows and no others, which is the fixed, small set
 PRESS-0019 § 4.2 requires of it: the cache keeps one reply per window asked
@@ -128,21 +128,32 @@ def _set_up(saved: settings.Settings) -> bool:
 
 def figures(folder: Path, days: int, *, client: insights.Transport | None = None
             ) -> insights.Report:
-    """The figures `_show` shows, with the Google token fetched here so it never
-    reaches the caller (PRESS-0337 § 4.5): the last reply kept for the window
-    where Google cannot be reached for a token. Raises NotConfigured where the
-    dashboard was never set up."""
+    """The figures `_show` shows, for the AI door (PRESS-0337 § 4.5), with the
+    Google token fetched here so it never reaches the caller. A `days` value
+    outside WINDOWS is answered as the default, as the page does. Raises
+    NotConfigured where the dashboard was never set up."""
+    days = _days(str(days))
     saved = settings.load(folder)
     if not _set_up(saved):
-        raise insights.NotConfigured("no Analytics property id in Settings")
+        raise insights.NotConfigured(
+            "no Analytics property id or no Google sign-in in Settings")
+    token = _token(folder, days)
+    if isinstance(token, insights.Report):
+        return token
+    return insights.read(saved, token, folder, days=days, client=client)
+
+
+def _token(folder: Path, days: int) -> str | insights.Report:
+    """A Google token, or, where Google cannot be reached for one, the last
+    reply kept for the window. Raises Unreachable where none is kept. The page
+    and `figures` both start here, so they fall back alike."""
     try:
-        token = google_setup.token(folder)
+        return google_setup.token(folder)
     except insights.Unreachable:
         kept = _kept(folder, days)
         if kept is None:
             raise
         return kept
-    return insights.read(saved, token, folder, days=days, client=client)
 
 
 def _kept(folder: Path, days: int) -> insights.Report | None:
@@ -170,15 +181,15 @@ def _show(face: Face, folder: Path, request: Request,
         return shown + head + f'<p>{say("dashboard.off", page=google_setup.PAGE)}</p>'
     head += _windows(days)
     try:
-        token = google_setup.token(folder)
+        token = _token(folder, days)
     except insights.Unreachable as exc:
-        report = _kept(folder, days)
-        if report is None:
-            return shown + head + face.fail(exc, publishing=False)
+        return shown + head + face.fail(exc, publishing=False)
     except (insights.InsightsError, *credentials.FAILURES) as exc:
         return (shown + head
                 + face.fail(exc, publishing=False, secret=say("failure.secret.google_sign_in"))
                 + _sign_in_again())
+    if isinstance(token, insights.Report):
+        report = token
     else:
         try:
             report = insights.read(saved, token, folder, days=days, client=client)

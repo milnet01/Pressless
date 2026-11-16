@@ -133,6 +133,16 @@ def test_only_the_three_windows_are_ever_asked_for(tmp_path: Path) -> None:
     assert set(google.windows_asked()) == {f"{d}daysAgo" for d, _, _ in dashboard.WINDOWS}
 
 
+def test_the_door_asks_only_for_the_three_windows_too(tmp_path: Path) -> None:
+    """PRESS-0019 § 4.2, through `figures`, the AI door's entry. Breaks when
+    a days value outside the set reaches Google as it was passed."""
+    _saved(tmp_path)
+    google = _Google()
+    with _served(tmp_path, google):
+        dashboard.figures(tmp_path, 90, client=google)
+    assert google.windows_asked() == [f"{dashboard.DEFAULT_DAYS}daysAgo"]
+
+
 def test_flags_are_pictures_and_countries_have_names(tmp_path: Path) -> None:
     """Breaks when a flag is drawn as a flag character, which Windows shows as
     two letters, or a country shows as its code."""
