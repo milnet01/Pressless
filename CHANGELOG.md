@@ -12,6 +12,43 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+### Changed
+
+- **Your site says where waiting changes go out** (PRESS-0366)
+  The line counting changes not on your site yet now says each goes out from its
+  own Press to site. Where Publish has nothing of its own to send, it names the
+  waiting changes as links.
+
+### Fixed
+
+- **Navigation, Header and Footer no longer open an error before setup** (PRESS-0367)
+  Before setup writes them, Your site and Pages no longer link the parts of every
+  page, which said Pressless could not find that entry. The tile says they are not
+  set up yet.
+
+- **A new site's Look screen no longer offers to keep stylesheets it lacks** (PRESS-0368)
+  Before setup, the Look screen offered "Keep its own stylesheets" and opened on
+  it. A site with nothing of its own to keep now gets the Pressless designs alone.
+
+- **Saving, opening and backing up sites is more robust** (PRESS-0383)
+  A removed site's number is never given to a new one. Daily backups carry on after
+  a failed one, and leftover files from a stopped save or open are cleared at start.
+
+- **A stopped WordPress import loses nothing** (PRESS-0384)
+  A bring-in stopped part way keeps the files it held and its Report, and finishes
+  its moves at the next start. Classic posts keep every line they show.
+
+### Security
+
+- **A site file can no longer write outside its folder on Windows** (PRESS-0383)
+  Opening a site file now checks every part of every name inside it. Before, a
+  crafted file could name another drive part way through a name and write there.
+  Very large or oddly packed site files are refused before they are read.
+
+- **A WordPress media download writes only into its own folder** (PRESS-0384)
+  A crafted export and media ZIP could name a place outside the import folder and
+  write a file there. Every file is now checked to land inside it first.
+
 ## [1.0.0] - 2026-11-16
 
 **Theme:** Every sign holds, and the format is frozen
