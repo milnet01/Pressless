@@ -8,8 +8,9 @@ in its code, a class name -- never the user's writing, names, addresses or
 paths. The last reports sent are kept on this computer, word for word, and
 the Usage reports screen lists them.
 
-The fourth module that may reach the network (§ 5 INV-9). Nothing waits for a
-report: each goes on a thread of its own, and a failure is one log line.
+It reaches the network only through the shared `https` client (§ 5 INV-9).
+Nothing waits for a report: each goes on a thread of its own, and a failure
+is one log line.
 """
 from __future__ import annotations
 
@@ -154,19 +155,22 @@ def report(name: str, **params: str) -> None:
         folder, transport, note, session = _folder, _transport, _note, _session
     if folder is None or transport is None or not can_send():
         return
-    record = _record(folder)
-    client = record.get("client") if record else None
-    if not (record and record.get("yes") is True and isinstance(client, str) and client):
-        return
-    body = {"client_id": client, "events": [{"name": name, "params": {
-        **{key: value[:_LONGEST] for key, value in params.items()},
-        "app_version": __version__[:_LONGEST],
-        "system": system()[:_LONGEST],
-        "session_id": session,
-        "engagement_time_msec": 1,
-    }}]}
     try:
         with _LOCK:
+            # The answer is read under the lock set_answer takes, so a No
+            # cannot land between this read and the list's write (INV-1, INV-6).
+            record = _record(folder)
+            client = record.get("client") if record else None
+            if not (record and record.get("yes") is True and isinstance(client, str)
+                    and client):
+                return
+            body = {"client_id": client, "events": [{"name": name, "params": {
+                **{key: value[:_LONGEST] for key, value in params.items()},
+                "app_version": __version__[:_LONGEST],
+                "system": system()[:_LONGEST],
+                "session_id": session,
+                "engagement_time_msec": 1,
+            }}]}
             kept = (sent(folder) + [body])[-KEPT:]
             safe_write.write_whole(folder / SENT_NAME, json.dumps(kept, indent=1) + "\n",
                                    prefix=".usage-sent-")

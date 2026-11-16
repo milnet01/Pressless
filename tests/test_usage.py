@@ -349,6 +349,37 @@ def test_no_forgets_the_client(tmp_path, monkeypatch):
     assert isinstance(again, str) and len(again) == 32
 
 
+def test_a_no_during_a_report_is_kept(tmp_path, monkeypatch):
+    """Breaks when `report` reads the answer outside the lock `set_answer`
+    takes: a No landing just after the read is undone, as the report is
+    listed again and sent (INV-1, INV-6)."""
+    _keyed(monkeypatch)
+    usage.set_answer(tmp_path, True)
+    usage.register(_NoFace(), tmp_path, transport=_Recorder())
+    read, said_no = threading.Event(), threading.Event()
+    real = usage._record
+
+    def record(folder: Path) -> dict | None:
+        found = real(folder)
+        read.set()
+        said_no.wait(0.5)   # the No lands here, unless the lock holds it off
+        return found
+
+    def no() -> None:
+        read.wait(10)
+        usage.set_answer(tmp_path, False)
+        said_no.set()
+
+    monkeypatch.setattr(usage, "_record", record)
+    other = threading.Thread(target=no)
+    other.start()
+    usage.report("screen", screen="/")
+    other.join(10)
+    _settle()
+    assert usage.answer(tmp_path) is False
+    assert not (tmp_path / usage.SENT_NAME).exists()
+
+
 # ------------------------------------------------------------------ INV-7 ---
 
 
