@@ -14,12 +14,24 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **The privacy policy describes the opt-in usage reports** (PRESS-0380)
+  PRIVACY.md now says what a usage report holds, where it goes, how to see the ones
+  sent, and how to turn them off. It used to say the makers receive nothing.
+
 - **Your site says where waiting changes go out** (PRESS-0366)
   The line counting changes not on your site yet now says each goes out from its
   own Press to site. Where Publish has nothing of its own to send, it names the
   waiting changes as links.
 
 ### Fixed
+
+- **Saying No to usage reports stops one already being sent** (PRESS-0380)
+  A No given while a report was on its way could arrive too late to stop it. The
+  answer is now read at the moment of sending.
+
+- **YouTube figures show each video's date as your local day** (PRESS-0380)
+  The published date was the day in UTC. Setup also refuses a key that cannot be
+  one, and shows the paste-your-key hint without asking the key store.
 
 - **Navigation, Header and Footer no longer open an error before setup** (PRESS-0367)
   Before setup writes them, Your site and Pages no longer link the parts of every

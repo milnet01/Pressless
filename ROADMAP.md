@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=393 -->
+<!-- ants-roadmap-id-high-water: PRESS=395 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7749,7 +7749,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Setup.
 
-- 📋 [PRESS-0380] **Review fixes: Insights and usage reports, and the privacy policy.**
+- ✅ [PRESS-0380] **Review fixes: Insights and usage reports, and the privacy policy.**
   Subject 10 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 8 low. review-readability: 4 medium, 6 low.
   Among them: usage.py reads the yes/no answer outside its lock, so a
@@ -7757,6 +7757,14 @@ does not wait on them.
   says nobody who makes Pressless receives any data, while opt-in usage
   reports go to the makers' property: the policy is amended (calibrated
   HIGH), and the Hub's policy text follows.
+  Ledger: close-findings-2026-11-17/lane-10-insights-usage.json.
+  Shipped 2026-11-17, 4371b0c..585f35e. 23 findings: 22 fixed, 1 queued
+  (PRESS-0395), 0 dismissed. A No during a usage report stops it.
+  PRIVACY.md describes the opt-in reports from the code: the opening
+  paragraph, the visitor-figures bullet and "Who it is shared with"
+  changed, and a new Usage reports section was added. Insights' cache
+  write is locked; YouTube figures are typed, and the published date is
+  local. PRESS-0019 and PRESS-0081 amended. Hub alignment: PRESS-0394.
   Ledger: close-findings-2026-11-17/lane-10-insights-usage.json.
   **Layman:** Fixes in visitor figures and usage reports, and the privacy policy now describes the opt-in reports truthfully.
   Kind: review-fix.
@@ -7945,6 +7953,35 @@ does not wait on them.
   Kind: investigate.
   Source: by-hand-check-2026-11-16 1.0.0 draft round (PRESS-0366, also seen).
   Lanes: Sites.
+
+- 📋 [PRESS-0394] **PRIVACY.md and the Hub's policy disagree on what usage reports keep.**
+  From PRESS-0380 (2026-11-17), which rewrote PRIVACY.md from usage.py.
+  The Hub's src/policies/pressless.md also says reports are kept two
+  months, carry country only, are never used for advertising, list the
+  last 50, and name the system as "Windows 11". Those rest on the usage
+  property's settings, which the user set on 2026-10-15 (retention two
+  months, granular location off, ads personalisation off). The connector
+  cannot read retention, so ask the user for a screenshot of Admin, Data
+  retention, then add the confirmed sentences to PRIVACY.md. Send the Hub
+  drop-in text for every sentence PRIVACY.md changed, as listed in
+  PRESS-0380's note. Also check on the Windows box whether usage.system()
+  reports Windows 11 as "10".
+  **Layman:** The privacy policy in the app's files and the one on the website should say exactly the same, true things about usage reports.
+  Kind: doc-fix.
+  Source: review-readability-2026-11-16 (PRESS-0380 sweep).
+  Lanes: Insights.
+
+- 📋 [PRESS-0395] **Names used across modules in Insights and the dashboard become public.**
+  Queued from PRESS-0380 (review-readability lane-10:26). insights._own_client,
+  _within, _detail and dashboard._set_up, _people, _sentence, _STYLE,
+  _when, _panel are used from other modules, against design.md rule 7.
+  The _cached part is fixed (insights.kept). Rename the rest in one pass
+  once subjects 09, 13 and 19 have merged, and update PRESS-0019, 0081
+  and 0337 where they name them.
+  **Layman:** A tidy-up so one part of the program stops reaching into another's private names.
+  Kind: review-fix.
+  Source: review-readability-2026-11-16 (PRESS-0380 sweep).
+  Lanes: Insights.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
