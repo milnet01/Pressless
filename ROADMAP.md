@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=370 -->
+<!-- ants-roadmap-id-high-water: PRESS=390 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7566,6 +7566,10 @@ does not wait on them.
   says entries and pages go out from their own Press to site.
   Also seen: Finish setting up ticked "Put your site on the web" before
   anything was published, on a repository that already held a site.
+  User decision 2026-11-16: both say where the change goes. The count
+  line adds that each change goes out from its own Press to site, and
+  Publish's "nothing would change" answer says the same and links the
+  waiting changes. Fixed with PRESS-0383 (subject 13).
   **Layman:** Your site says a change is waiting, but pressing Publish there says nothing would change; the change goes out from the entry's own button.
   Kind: ux.
   Source: by-hand-check-2026-11-16 1.0.0 draft round.
@@ -7624,6 +7628,246 @@ does not wait on them.
   Kind: test.
   Source: verify-delivery-2026-11-16.
   Lanes: Publishing.
+
+- 📋 [PRESS-0371] **Review fixes: the Face core (server, log, themes, choices, report).**
+  Subject 01 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 3 medium, 7 low. review-readability: 1 high, 5 medium,
+  9 low, plus leads. Among them: themes.py writes with no lock on the
+  threaded server; log.py and face.py files at the umask's mode against
+  SECURITY.md; face.py's comment claims a 60 KB client cap that nothing
+  enforces; a file handle left open when fstat fails.
+  Ledger: the scratchpad's close-findings-2026-11-17/lane-01-face-core.json,
+  kept outside this public repository.
+  **Layman:** Tidy-ups and small bug fixes in the part of Pressless that serves its screens to your browser.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Face.
+
+- 📋 [PRESS-0372] **Review fixes: the entry editor and files.**
+  Subject 02 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 2 low. review-readability: 2 high, 4 medium,
+  9 low, plus leads. Among them: an empty body doubles on each save
+  (put_blocks); notices rendered empty when a route fails inside
+  face.capture; the visual editor's key handling hand-copied from the
+  page editor's and drifted (PRESS-0346 § 4.4 names one shared script).
+  Ledger: close-findings-2026-11-17/lane-02-entry-editor.json.
+  **Layman:** Fixes in the screen where you write journal entries, and in uploads.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Editor.
+
+- 📋 [PRESS-0373] **Review fixes: the page editor and menu.**
+  Subject 03 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 4 low. review-readability: 1 high, 4 medium,
+  8 low, plus leads. Among them: failures during a publish reported as
+  "site unchanged" (publishing=False at page_editor.py 943 and 1228);
+  the empty-menu save; key handling drifted from the entry editor's.
+  Ledger: close-findings-2026-11-17/lane-03-page-editor.json.
+  **Layman:** Fixes in the screen where you edit pages, the header, the footer and the menu.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Editor.
+
+- 📋 [PRESS-0374] **Review fixes: blocks, the look and templates.**
+  Subject 04 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 5 low. review-readability: 2 medium, 10 low.
+  Among them: a raw OSError escaping look.py's typed failures.
+  Ledger: close-findings-2026-11-17/lane-04-blocks-look.json.
+  **Layman:** Fixes in how page sections, colours and fonts are saved.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Look.
+
+- 📋 [PRESS-0375] **Review fixes: marks and the site builder.**
+  Subject 05 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 5 low. review-readability: 8 medium, 6 low.
+  Ledger: close-findings-2026-11-17/lane-05-marks-builder.json.
+  **Layman:** Fixes in the part that turns your writing into the finished website.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Builder.
+
+- 📋 [PRESS-0376] **Review fixes: the Store, undo and safe writes.**
+  Subject 06 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 8 low. review-readability: 3 medium, 5 low.
+  Among them: safe_write's folder is not fsynced; leftover .tmp files
+  counted by holds_a_site.
+  User decision 2026-11-16: installing an older Pressless over newer
+  files is not supported; docs/design.md says so, and the downgrade
+  findings across the review are dismissed with that reason.
+  Ledger: close-findings-2026-11-17/lane-06-store-undo.json.
+  **Layman:** Fixes in how Pressless keeps your files safe and undoes a publish.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Store.
+
+- 📋 [PRESS-0377] **Review fixes: publishing.**
+  Subject 07 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 3 medium, 9 low. review-readability: 6 medium, 5 low.
+  Among them: _plan runs without editor.LOCK; takeover failures say the
+  wrong site state; a 409/422 on Pages reported as "the branch moved".
+  Ledger: close-findings-2026-11-17/lane-07-publish.json.
+  **Layman:** Fixes in how your site is sent to GitHub.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Publishing.
+
+- 📋 [PRESS-0378] **Review fixes: setup, settings and credentials.**
+  Subject 08 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 4 medium, 1 low. review-readability: 5 medium, 12 low.
+  Among them: the file credential store's unlocked read-modify-write;
+  a retried Finish re-runs the bring-in.
+  Ledger: close-findings-2026-11-17/lane-08-setup-settings-credentials.json.
+  **Layman:** Fixes in first-time setup, Settings, and where your keys are kept.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Setup.
+
+- 📋 [PRESS-0379] **Review fixes: sign-in, take-in and the web address wizard.**
+  Subject 09 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 10 low. review-readability: 4 medium, 7 low.
+  Among them: re-sign-in outside state.lock; domain.py's IDNA 2003
+  folding turns ß into ss (probed); private names reached across parts.
+  Ledger: close-findings-2026-11-17/lane-09-signin-takein.json.
+  **Layman:** Fixes in GitHub and Google sign-in, copying in an existing site, and your own web address.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Setup.
+
+- 📋 [PRESS-0380] **Review fixes: Insights and usage reports, and the privacy policy.**
+  Subject 10 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 8 low. review-readability: 4 medium, 6 low.
+  Among them: usage.py reads the yes/no answer outside its lock, so a
+  report can go after No; the Insights cache is unlocked. PRIVACY.md
+  says nobody who makes Pressless receives any data, while opt-in usage
+  reports go to the makers' property: the policy is amended (calibrated
+  HIGH), and the Hub's policy text follows.
+  Ledger: close-findings-2026-11-17/lane-10-insights-usage.json.
+  **Layman:** Fixes in visitor figures and usage reports, and the privacy policy now describes the opt-in reports truthfully.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Insights.
+
+- 📋 [PRESS-0381] **Review fixes: updates, start-up and shortcuts.**
+  Subject 11 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 4 medium, 7 low. review-readability: 2 medium, 10 low.
+  Among them: two Update now presses race; leftover update files are
+  never swept; a raw OSError escapes updater's typed failures.
+  Ledger: close-findings-2026-11-17/lane-11-update-entry.json.
+  **Layman:** Fixes in how Pressless checks for, proves and installs a new version.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Updates.
+
+- 📋 [PRESS-0382] **Review fixes: the AI helper and its bridge.**
+  Subject 12 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 4 medium, 5 low. review-readability: 6 medium, 7 low.
+  Among them: an answer not marked taken; _said always says not
+  publishing; the door token file's Windows ACL; a KeyError escaping
+  _Door.call.
+  Ledger: close-findings-2026-11-17/lane-12-assistant.json.
+  **Layman:** Fixes in how an AI app works on your site through Pressless.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: AI helper.
+
+- 📋 [PRESS-0383] **Review fixes: sites, site files, backups and Your site.**
+  Subject 13 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 1 critical (calibrated high), 7 medium, 12 low.
+  review-readability: 1 high, 5 medium, 8 low.
+  The critical: sitefile.stays_inside tests a drive letter only at the
+  start of a member name, so on Windows a crafted site file can write
+  outside the folder (zip slip, CWE-22). Also: an unbounded manifest
+  read; backups' unlocked state; SITE_NAMES' comment hides that it
+  decides what every saved file and backup holds.
+  PRESS-0366's wording rides here (user decision 2026-11-16).
+  Ledger: close-findings-2026-11-17/lane-13-sites.json.
+  **Layman:** Fixes in keeping several sites, saving a site to one file, and daily backups, including a security hole on Windows.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Sites.
+
+- 📋 [PRESS-0384] **Review fixes: the WordPress import.**
+  Subject 14 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 1 high, 8 medium, 7 low. review-readability: 4 medium,
+  4 low. The high: _bring.py keys a place-less attachment by its raw
+  URL, and media / place with an absolute place discards media, so a
+  crafted export and media ZIP can write anywhere the user can.
+  Ledger: close-findings-2026-11-17/lane-14-import-wordpress.json.
+  **Layman:** Fixes in bringing a WordPress site in, including a hole where a crafted export could write files anywhere.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Import.
+
+- 📋 [PRESS-0385] **Review fixes: the folder import and fetch.**
+  Subject 15 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 6 medium, 9 low. review-readability: 3 medium, 6 low.
+  Among them: NAT64 addresses count as global (probed; calibrated low);
+  iso-8859-1 decoded as Latin-1, not windows-1252 (probed); names a
+  system cannot hold pass _why_not_kept.
+  Ledger: close-findings-2026-11-17/lane-15-import-folder-fetch.json.
+  **Layman:** Fixes in bringing in a folder of web pages and downloading a site.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Import.
+
+- 📋 [PRESS-0386] **Review fixes: votes and JPEG XL.**
+  Subject 16 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 3 medium, 3 low. review-readability: 3 medium, 4 low.
+  Among them: a double-click installs JPEG XL twice; every non-Windows
+  system gets the x86_64 Linux decoder.
+  Ledger: close-findings-2026-11-17/lane-16-votes-jxl.json.
+  **Layman:** Fixes in the Like buttons' setup and the JPEG XL picture support.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Votes.
+
+- 📋 [PRESS-0387] **Review fixes: words and the manual.**
+  Subject 17 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 1 low. review-readability: 5 low.
+  Ledger: close-findings-2026-11-17/lane-17-words-manual.json.
+  **Layman:** Small fixes in the text table and the built-in manual.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Words.
+
+- 📋 [PRESS-0388] **Review fixes: the gate, hooks, workflows and builds.**
+  Subject 18 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 1 high, 1 medium, 11 low. review-readability: 2 medium,
+  8 low. The high: local-ci.sh's sweep drops git grep's "Binary file
+  X matches" lines, so a binary file naming the writer passes both the
+  tree and the history sweep (probed). Also release.yml hides a
+  build's failure inside echo.
+  Ledger: close-findings-2026-11-17/lane-18-pipeline-shell-yaml.json.
+  **Layman:** Fixes in the checks that run before each push, including one that could let a private name slip into the public repository.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Pipeline.
+
+- 📋 [PRESS-0389] **Review fixes: the maintainer's scripts and the practice copy.**
+  Subject 19 of the 2026-11-16 full review, closed with close-findings.
+  review-code: 2 medium, 3 low. review-readability: 1 high, 1 medium,
+  5 low. Among them: practice.py's disarm misses four network routes
+  (YouTube, usage, votes setup, Import's fetch) while its docstring says
+  none is reached.
+  User decision 2026-11-16: make-signing-key.py and sign-release.py are
+  Linux-only; they say so, and their Windows findings are dismissed.
+  Ledger: close-findings-2026-11-17/lane-19-scripts-python.json.
+  **Layman:** Fixes in the tools used to sign releases and to make the manual's pictures.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Pipeline.
+
+- 📋 [PRESS-0390] **Review fixes: the by-hand browser checks.**
+  Subject 20 of the 2026-11-16 readability review, closed with
+  close-findings. review-readability: 7 medium, 9 low, plus leads.
+  Among them: rows run whether or not the press they guard happened; a
+  dialog never answered; an assert that vanishes under -O.
+  Ledger: close-findings-2026-11-17/lane-20-by-hand-checks.json.
+  **Layman:** Fixes in the scripts that check Pressless in a real browser before each release.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 + review-readability-2026-11-16.
+  Lanes: Tests.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
