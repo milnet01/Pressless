@@ -59,6 +59,7 @@ _MOVING = "moving"
 # In IMPORT_FOLDER: each held file moved into import/work/, one JSON line
 # each, written before it moves, so a stop can put every one back.
 _MOVED = "moved.jsonl"
+_NOT_EMPTY = "this site already holds a site, and Import writes only into an empty one"
 _NOT_PUT_BACK = ("files an earlier try moved could not be put back where they were. Nothing "
                  "was lost. Close anything using the site's folder and try again")
 # What becomes something, and what is the Report's count of the rest (§ 4.3).
@@ -410,8 +411,7 @@ def bring_in(export: Path, media: Path, into: Path, layout: str, *,
     unfetched = unfetched or {}
     recover(into)
     if _holds_a_site(into):
-        raise ImportStopped("this site already holds a site, and Import writes only "
-                            "into an empty one")
+        raise ImportStopped(_NOT_EMPTY)
     # The wizard's check_look refuses an unknown look first; any other
     # caller gets the first look rather than a stop.
     layout = layout if layout in starter.LOOKS else starter.LOOKS[0]
@@ -695,6 +695,10 @@ def staged(into: Path, write: Callable[[Path, Callable[[Path, Path], None]], Non
                 os.rename(source, target)
 
             write(work, move)
+        # Asked again: another window may have written a site meanwhile, and
+        # the moves would merge the two (PRESS-0125 INV-1).
+        if _holds_a_site(into):
+            raise ImportStopped(_NOT_EMPTY)
         with _writing("the note that the moves have begun"):
             moving.write_bytes(b"")
     except BaseException:

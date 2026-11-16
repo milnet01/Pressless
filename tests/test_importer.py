@@ -1587,6 +1587,26 @@ def test_the_report_is_given_before_the_moves(tmp_path, monkeypatch):
     assert order[0] is report and "move" in order[1:], order
 
 
+def test_a_site_written_while_bringing_in_stops_it_before_the_moves(tmp_path, monkeypatch):
+    """PRESS-0125 INV-1: where another window writes a site while bring_in
+    converts, the moves never begin, and the held files go back.
+
+    Breaks when the Store is asked only at the start, so the two sites merge."""
+    real = store.holds_a_site
+    asked = []
+
+    def written_meanwhile(folder):
+        asked.append(folder)
+        return len(asked) > 1 or real(folder)
+
+    monkeypatch.setattr(store, "holds_a_site", written_meanwhile)
+    with pytest.raises(ImportStopped, match="already holds a site"):
+        _bring(tmp_path, _export(*_TWO_FILES), {"2012/05/a.jpg": _jpeg(), "2012/05/b.jpg": _jpeg()})
+    held = tmp_path / "site" / "import"
+    assert not (held / "moving").exists() and not (held / "work").exists()
+    assert (held / "media" / "2012" / "05" / "a.jpg").is_file()
+
+
 def test_a_store_that_cannot_be_read_stops_import_in_its_own_words(tmp_path, monkeypatch):
     """PRESS-0125 § 4.7: a Store whose folders cannot be read stops Import
     with ImportStopped, which the wizard shows, never a raw StoreError.
