@@ -1,7 +1,7 @@
 <!-- ants-spec-format: 1 -->
 # PRESS-0359 — Eight layouts and eleven colour styles on the Look screen
 
-**Status:** spec draft (2026-11-16).
+**Status:** accepted (2026-11-16).
 **Kind:** feature.
 **Source:** ROADMAP PRESS-0359 (user request 2026-11-13).
 **Pairs with:** PRESS-0196, whose § 4.1 table and § 9 this item changes.
@@ -87,7 +87,10 @@ LAYOUTS = ("sunrise", "meadow", "harbour", "studio", "market", "stage",
 The shapes give the implementer direction; the CSS is settled while
 writing it. Each new layout has an entry in `_LAYOUT_RULES`, `_OWN_WIDTH`
 and `_HEADING_FONT`. Its rules name colours only through the custom
-properties of `look.COLOURS`, as the three do now.
+properties of `look.COLOURS`, as the three do now. They set each text
+colour only on the background `look.TEXT_PAIRS` pairs it with, which is
+what INV-2 measures. So a header with no band does not take
+`_HEADER_LINK_RULES`' `--on-band`: its words sit on `paper`.
 
 ### 4.2 Colour styles
 
@@ -125,7 +128,7 @@ values are the implementer's, held to INV-2.
 
 A drawing's shape comes from its class, as now. **Its colours come from the
 palette**, written onto the drawing as the custom properties `--band`,
-`--paper`, `--foot` and `--link`, from the light set. `face`'s
+`--paper`, `--foot`, `--link` and `--line`, from the light set. `face`'s
 `.mini-<layout>` rules keep the shape and lose their hex values. The
 Face's own pages set no `style-src`, and `dashboard.py` already writes
 custom properties inline this way.
@@ -223,14 +226,14 @@ eight. `version` stays 1. `look.from_json` already refuses a layout not in
 - **INV-7** — The screen marks the style whose 26 values equal the saved
   colours, or none.
   *Test:* `tests/test_look_screen.py` saves `defaults("market")` and finds
-  `slate` checked and no other; then saves the same with one box changed
-  and finds none checked.
+  `slate` checked and no other; then saves the same with one dark box
+  changed and finds none checked.
   *Breaks when:* the mark compares the light set only, or marks the
   layout's own style regardless of the boxes.
 
 - **INV-8** — Every drawing's colours are its palette's. Each layout
-  drawing carries `OWN_STYLE[layout]`'s light `band`, `paper`, `foot` and
-  `link` as custom properties, and each colour drawing its own style's.
+  drawing carries `OWN_STYLE[layout]`'s light `band`, `paper`, `foot`,
+  `link` and `line` as custom properties, and each colour drawing its own style's.
   No `.mini-` rule in `face` names a hex colour.
   *Test:* `tests/test_setup.py` parses `setup.look_choices` and the Look
   screen's style fieldset and compares each drawing to `look.palette`;
@@ -268,6 +271,9 @@ or with its rule deleted:
 - INV-5: `tests/test_builder.py`.
 - INV-6, INV-7: `tests/test_look_screen.py`.
 - INV-8: `tests/test_setup.py`.
+- `tests/test_look.py`'s two tests reading `SAVED_BY_0_10_1` are
+  parametrized over the three old layouts instead of `look.LAYOUTS`,
+  their hashes unchanged: 0.10.1 had no other layouts.
 - `tests/test_starter.py::test_each_look_turns_dark_with_the_computer_and_names_no_other_colour`
   is already parametrized over `starter.LOOKS`, so it covers the new
   layouts with no change.
