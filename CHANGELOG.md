@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-16
+
+**Theme:** Every sign holds, and the format is frozen
+
 ### Added
 
 - **Your site says how many changes are not on the site yet** (PRESS-0364)
