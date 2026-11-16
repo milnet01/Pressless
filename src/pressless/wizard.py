@@ -26,7 +26,7 @@ from pressless.words import say
 
 Answers = dict[str, str]
 
-FOLDER = "wizards"          # inside Pressless's own folder
+FOLDER = "wizards"          # inside the open site's folder, one per site
 VERSION = 1
 
 

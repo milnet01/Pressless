@@ -295,10 +295,6 @@ def register(face: Face, folder: Path, *,
                   lambda request: _reshape(face, folder, request, transport, renaming=True))
 
 
-def _page_address(kind: str, name: str, **more: str) -> str:
-    return "/page?" + urllib.parse.urlencode({"kind": kind, "name": name, **more})
-
-
 def _view(asked: str) -> str:
     """A page or a furniture file opens in the visual view unless the code was
     asked for (PRESS-0260 § 4.1, PRESS-0216 § 3 decision 5), so an old
@@ -516,7 +512,7 @@ def _switch(face: Face, folder: Path, lock: threading.Lock, request: Request) ->
         return editor.failed(face, notices, failure)
     _remember(folder, kind, name, request)
     reply: dict[str, object] = {
-        "view": opened.view, "address": _page_address(kind, name, view=opened.view),
+        "view": opened.view, "address": editor.page_address(kind, name, view=opened.view),
         "base": opened.base, "waiting": opened.waiting, "broken": opened.broken or "",
         "notices": render_notices(notices), "preview": opened.preview,
         "failure": opened.failure}
@@ -555,18 +551,18 @@ def _page(kind: str, name: str, opened: _Opened, sheets: tuple[str, ...], visit:
     # PRESS-0285 § 4.3: one link to each view, in one place, the one to the
     # view shown hidden; the script swaps them.
     switch = '<p class="nav">' + "".join(
-        f'<a data-switch="{to}" href="{attr(_page_address(kind, name, view=to))}"'
+        f'<a data-switch="{to}" href="{attr(editor.page_address(kind, name, view=to))}"'
         f'{" hidden" if to == view else ""}>{say(key)}</a>'
         for to, key in ((CODE, "page_editor.show_code"),
                         (VISUAL, "page_editor.show_visual"))) + "</p>"
     picker = ""
     if kind == store.FURNITURE_FOLDER:
         shows = [link(say("editor.pages.home") if page == HOME else page,
-                      _page_address(kind, name, show=page), page == show)
+                      editor.page_address(kind, name, show=page), page == show)
                  for page in held]
         if opened.entries:
-            shows.append(link(say("page_editor.newest"), _page_address(kind, name, show=NEWEST),
-                              show is None))
+            shows.append(link(say("page_editor.newest"),
+                              editor.page_address(kind, name, show=NEWEST), show is None))
         picker = f"<p>{say('page_editor.show_on')} " + " ".join(shows) + "</p>"
     # PRESS-0195 § 4.4: every fixed page but the homepage.
     reshape = ""
@@ -834,7 +830,7 @@ def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -
     # has nothing left to open.
     live = store.html_path_for(folder, kind, name)
     return Reply(b"", "text/plain; charset=utf-8", status=303,
-                 location=_page_address(kind, name) if live.is_file()
+                 location=editor.page_address(kind, name) if live.is_file()
                  else editor.PAGES_ADDRESS)
 
 
@@ -1092,7 +1088,7 @@ def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Re
     named = editor.form_fields(request).get("name", "").strip()
     with lock, face.capture() as notices:
         try:
-            location = _page_address(store.PAGES_FOLDER, new_page(folder, named))
+            location = editor.page_address(store.PAGES_FOLDER, new_page(folder, named))
         except NameRefused as refused:
             location = (editor.PAGES_ADDRESS + "?"
                         + urllib.parse.urlencode({"page_hint": refused.code}))
@@ -1166,7 +1162,7 @@ def _reshape(face: Face, folder: Path, request: Request,
         """Nothing written (PRESS-0235 § 4.4)."""
         return editor.json_reply({"published": False, "failure": None, "hint": None, "notices": "",
                       "busy": True, "said": said,
-                      "address": _page_address(store.PAGES_FOLDER, form.get("name", ""))})
+                      "address": editor.page_address(store.PAGES_FOLDER, form.get("name", ""))})
 
     return pressing.run(pressing.PUBLISH, busy,
                         lambda told: _reshaped(face, folder, form, transport, told,
@@ -1230,10 +1226,10 @@ def _reshaped(face: Face, folder: Path, form: dict[str, str],
                        + publishing.replace_link(exc))
         # Where he goes next, read from disk: the page where it still is.
         if store.html_path_for(folder, store.PAGES_FOLDER, name).is_file():
-            address = _page_address(store.PAGES_FOLDER, name)
+            address = editor.page_address(store.PAGES_FOLDER, name)
         elif renaming and hint is None and store.html_path_for(
                 folder, store.PAGES_FOLDER, editor.name_address(to)).is_file():
-            address = _page_address(store.PAGES_FOLDER, editor.name_address(to))
+            address = editor.page_address(store.PAGES_FOLDER, editor.name_address(to))
         else:
             address = "/"
     published = hint is None and failure is None

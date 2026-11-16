@@ -6,12 +6,13 @@ and the list goes once every item is done. Your site draws it.
 from __future__ import annotations
 
 import html
+from collections.abc import Callable
 from pathlib import Path
 
-from pressless import starter, store
+from pressless import editor, starter, store
 from pressless.words import say
 
-_HOME = "/page?kind=pages&name=index"
+_HOME = editor.page_address(store.PAGES_FOLDER, "index")
 
 
 def render(folder: Path) -> str:
@@ -24,9 +25,12 @@ def render(folder: Path) -> str:
             ("checklist.describe", "/setup", bool(identity.description)),
             ("checklist.icon", "/setup", bool(identity.icon)),
             ("checklist.home", _HOME, _own(folder, store.PAGES_FOLDER, "index",
-                                           starter.home_page(identity.name))),
-            ("checklist.menu", "/page?kind=furniture&name=navigation",
-             _own(folder, store.FURNITURE_FOLDER, "navigation", starter.navigation())),
+                                           lambda: starter.home_page(identity.name))),
+            ("checklist.menu", editor.page_address(store.FURNITURE_FOLDER, "navigation"),
+             _own(folder, store.FURNITURE_FOLDER, "navigation", starter.navigation)),
+            # Any publish that lands removes the starter's marker (PRESS-0126
+            # § 4.5), a page's Press to site included, so the link opens Home,
+            # the starter's first page, rather than Publish.
             ("checklist.publish", _HOME, not starter.unpublished(folder)),
         )
     except store.StoreError:
@@ -44,10 +48,16 @@ def render(folder: Path) -> str:
             f"<p>{count}</p><ul>{rows}</ul></section>")
 
 
-def _own(folder: Path, kind: str, name: str, started: str) -> bool:
-    """Whether the page or part differs from the starter's, a change waiting to
-    be pressed included. One that is gone has nothing left to do."""
+def _own(folder: Path, kind: str, name: str, started: Callable[[], str]) -> bool:
+    """Whether the page or part differs from what the starter wrote, a change
+    waiting to be pressed included. One that is gone, or that the starter did
+    not write, has nothing left to do. A site filled before starter.FILLED is
+    compared with `started()`, the starter's text as worded today."""
     held = [store.read_html(path) for path in
             (store.html_path_for(folder, kind, name, waiting=waiting) for waiting in (False, True))
             if path.is_file()]
-    return not held or any(text != started for text in held)
+    wrote = starter.filled(folder)
+    if wrote is not None:
+        return not held or name not in wrote or any(
+            starter.digest(text) != wrote[name] for text in held)
+    return not held or any(text != started() for text in held)

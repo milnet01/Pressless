@@ -79,7 +79,7 @@ JSON:
 | Key | Holds |
 |---|---|
 | `view` | the view granted: `visual` or `code` |
-| `address` | the address that opens the file in the view granted, as `_page_address(kind, name, view=…)` writes it |
+| `address` | the address that opens the file in the view granted, as `editor.page_address(kind, name, view=…)` writes it |
 | `base`, `waiting` | as a save's reply |
 | `text` | the file's text, in the code view |
 | `sections` | `outline`'s list, in a page's or furniture file's visual view |

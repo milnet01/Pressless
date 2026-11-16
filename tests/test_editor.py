@@ -39,6 +39,7 @@ from pressless import (
     setup,
     starter,
     store,
+    words,
 )
 from pressless.words import say
 
@@ -1075,8 +1076,23 @@ def test_the_list_opens_on_a_checklist_that_ticks_as_the_site_is_set_up(tmp_path
                      waiting=True)
     assert [done for done, _ in _checklist(folder)] == [True, True, True, False, False]
     store.write_html(folder, store.FURNITURE_FOLDER, "navigation", "<nav>Mine</nav>")
-    starter.published(folder)
+    starter.mark_published(folder)
     assert _checklist(folder) == []
+
+
+def test_an_untouched_starter_stays_to_do_after_a_rename_or_new_words(tmp_path):
+    """PRESS-0383. Home and the menu are compared with what fill wrote, not
+    with the starter as worded now. Breaks when renaming the site, or a
+    Pressless that rewords the starter, ticks them though nothing changed."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    starter.fill(folder, "Field Notes")
+    store.write_identity(folder, store.Identity("Shore Notes"))
+    with words.use({"starter.welcome": "Welcome, {name}, reworded",
+                    "starter.home": "Home, reworded"}):
+        assert [done for done, _ in _checklist(folder)] == [False] * 5
+    store.write_html(folder, store.PAGES_FOLDER, "index", "<p>My own words.</p>")
+    assert [done for done, _ in _checklist(folder)] == [False, False, True, False, False]
 
 
 def test_the_cards_stand_open_and_a_refused_names_hint_shows(tmp_path):

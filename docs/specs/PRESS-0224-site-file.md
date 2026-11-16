@@ -63,7 +63,8 @@ A new module, `src/pressless/sitefile.py`:
 MANIFEST = "pressless-site.json"
 VERSION = 1
 KEPT = frozenset({...})     # the Store's folders, settings.json,
-                            # preview-assets, starter-unpublished
+                            # preview-assets, starter-unpublished,
+                            # starter-filled.json
 LEFT_OUT = frozenset({...}) # credentials.json, site, preview, fetch,
                             # insights.json, youtube.json, wizards, choices.json,
                             # jpeg-xl-views (PRESS-0275)

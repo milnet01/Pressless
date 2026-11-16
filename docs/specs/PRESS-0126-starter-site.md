@@ -95,7 +95,7 @@ LOOKS = ("sunrise", "meadow", "harbour")     # PRESS-0239
 
 def fill(folder: Path, site_name: str, look: str = LOOKS[0]) -> None: ...
 def unpublished(folder: Path) -> bool: ...      # MARKER exists
-def published(folder: Path) -> None: ...        # removes MARKER; absent is fine
+def mark_published(folder: Path) -> None: ...   # removes MARKER; absent is fine
 ```
 
 ```python
@@ -146,7 +146,10 @@ site on its own.
 
 1. Write `MARKER`.
 2. Write each file below **only where it is absent** — never over one the
-   Store holds.
+   Store holds. `FILLED` (`starter-filled.json`) gains a digest of the
+   Home page and the menu where this step wrote them, which
+   `checklist` compares with, so a rename or reworded starter never
+   reads as the site made its own (PRESS-0383).
 3. `templates.seed(folder)`, which writes nothing where `templates/` exists.
 4. `store.write_journal(folder, False)` (PRESS-0214 § 4.1).
 
@@ -201,7 +204,7 @@ In `publishing.publish`, the guard step gains a check that runs first:
 Both run before the build, so a refusal leaves the site folder and GitHub
 untouched, and the entry move is put back as for `NothingToPublish`.
 
-After `publisher.publish` returns, `starter.published(folder)` removes the
+After `publisher.publish` returns, `starter.mark_published(folder)` removes the
 marker. An `OSError` there is caught and given to the log; the publish's
 result stands.
 
@@ -219,7 +222,7 @@ publish again after it.
 - `POST /publish/replace` — where the typed name, stripped, is not exactly
   `settings.repository`, the page is shown again with a hint, and nothing is
   written or requested. Otherwise, where any entry was unticked,
-  `settings.save` writes the list without it. Then `starter.published(folder)`
+  `settings.save` writes the list without it. Then `starter.mark_published(folder)`
   removes the marker, and the page says to publish again from where the user
   was. **It publishes nothing itself**: a refused page publish puts its change
   back (`page_editor`'s publish), so the change is still waiting, and the next

@@ -371,6 +371,12 @@ PAGES_ADDRESS = "/pages"
 JOURNAL_ADDRESS = "/journal"
 
 
+def page_address(kind: str, name: str, **more: str) -> str:
+    """The address the page editor opens the page or part `name` at; `more`
+    adds fields, such as the view (PRESS-0285)."""
+    return "/page?" + urllib.parse.urlencode({"kind": kind, "name": name, **more})
+
+
 @dataclasses.dataclass(frozen=True)
 class Entries:
     """The entries the Journal screen and Your site's tile read: the drafts
@@ -563,7 +569,7 @@ def _pages(folder: Path, hint: str = "") -> _Listed:
     carry_on = ""
     last = choices.read(folder).page  # PRESS-0263: where he left off, while it is held
     for kind, name, label in rows:
-        address = "/page?" + urllib.parse.urlencode({"kind": kind, "name": name})
+        address = page_address(kind, name)
         if (kind, name) == last:
             carry_on = (f'<p>{say("editor.list.carry_on")} <a href="'
                         f'{html.escape(address, quote=True)}">{html.escape(label)}</a></p>')

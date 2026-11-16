@@ -945,7 +945,7 @@ def test_a_finished_setup_says_how_to_publish_the_starter(tmp_path, monkeypatch)
         overview.register(served, tmp_path)
         browser = Browser(served)
         assert 'id="starter-unpublished"' in browser.request("GET", "/")[2]
-        starter.published(tmp_path)
+        starter.mark_published(tmp_path)
         assert 'id="starter-unpublished"' not in browser.request("GET", "/")[2]
     finally:
         served.stop()

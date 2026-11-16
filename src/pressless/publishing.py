@@ -223,7 +223,7 @@ def publish(folder: Path, settings: settings.Settings, key: str, *, entry: str |
     def forget_the_starter() -> None:
         # PRESS-0126 § 4.5: the publish landed, so the starter is on the web.
         try:
-            starter.published(folder)
+            starter.mark_published(folder)
         except OSError:
             warnings.warn(store.StoreNotice("notice.publishing.starter_kept"), stacklevel=2)
 
@@ -635,7 +635,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
             try:
                 if kept != saved.untouchable:
                     settings.save(folder, dataclasses.replace(saved, untouchable=kept))
-                starter.published(folder)
+                starter.mark_published(folder)
             except (settings.SettingsError, OSError) as exc:
                 return face.fail(exc, publishing=False)
             pressing.forget()  # PRESS-0272: this answers the refusal's box

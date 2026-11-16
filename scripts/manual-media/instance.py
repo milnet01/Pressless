@@ -57,7 +57,7 @@ def seed(site) -> None:
             store="file", github_account="github", google_account="google"),
         analytics_property_id="999", measurement_id="G-DEMO000000"))
     starter.fill(site, "Seaside Notes", "harbour")
-    starter.published(site)
+    starter.mark_published(site)
     store.write_identity(site, store.Identity("Seaside Notes", "Notes from a small harbour town"))
     store.write_journal(site, True)
     for slug, title, body, date, draft in ENTRIES:

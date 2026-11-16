@@ -10,14 +10,21 @@ publishing refuse to replace a site already on GitHub
 """
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 import re
 from pathlib import Path
 
 from pressless import blocks, builder, look, settings, store, templates
+from pressless.safe_write import write_whole
 from pressless.words import say
 
 MARKER = "starter-unpublished"   # in the site's folder; empty file
+# In the site's folder: a digest of the Home page and the menu as fill wrote
+# them, which checklist compares with, so a rename or reworded starter words
+# never reads as the site made its own (PRESS-0383).
+FILLED = "starter-filled.json"
 
 # Shipped to every install, so they name nobody and assume nothing about the
 # user (§ 4.3). The header and footer name the site by placeholder, so a
@@ -123,7 +130,8 @@ def new_page(name: str, title: str, sheets: tuple[str, ...], *,
 
 
 def home_page(site_name: str) -> str:
-    """The starter's Home page, which sits at the root."""
+    """The starter's Home page, which sits at the root. A site filled before
+    FILLED existed is compared with this by checklist, as worded today."""
     name = html.escape(site_name, quote=True)
     return _PAGE.format(title=name, links=_links(_OWN_SHEET, ""), page="Home",
                         area=_area(say("starter.welcome", name=site_name),
@@ -181,6 +189,9 @@ def _with_missing_words(text: str, *, counting: bool, votes: bool, recaptcha: bo
     not mention, so each is added once and a writer's own wording stands. A page
     with no sections area gets plain paragraphs: section marks outside one are
     marks that do not pair."""
+    # Each product's name, as starter.privacy.counting, starter.privacy.votes
+    # and starter.privacy.recaptcha in words.py spell it: a rewording that
+    # drops the name adds the paragraph again at every run.
     lower = text.lower()
     words = ((_counting_words() if counting and "google analytics" not in lower else ())
              + (_votes_words() if votes and "firebase" not in lower else ())
@@ -222,10 +233,10 @@ def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
         changed = _with_missing_words(text, counting=counting, votes=votes, recaptcha=recaptcha)
         if changed != text:
             store.write_html(folder, store.PAGES_FOLDER, "privacy", changed, waiting=waiting)
-    footer =store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
+    footer_path = store.html_path_for(folder, store.FURNITURE_FOLDER, "footer")
     added_link = False
-    if footer.exists():
-        text = store.read_html(footer)
+    if footer_path.exists():
+        text = store.read_html(footer_path)
         if "pages/privacy.html" not in text:
             end = _FOOTER_END.search(text)
             at = end.start() if end else len(text)
@@ -233,6 +244,33 @@ def add_privacy(folder: Path, site_name: str, *, counting: bool, votes: bool,
                              text[:at] + privacy_link() + "\n" + text[at:])
             added_link = True
     return added_page, added_link
+
+
+def digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def filled(folder: Path) -> dict[str, str] | None:
+    """FILLED's digests by file name, or None for a site filled before it
+    existed, or never filled. A file fill did not write has no digest."""
+    try:
+        data = json.loads((Path(folder) / FILLED).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("version") != 1:
+        return None
+    return {name: value for name, value in data.items()
+            if name != "version" and isinstance(value, str)}
+
+
+def _note_filled(folder: Path, wrote: dict[str, str]) -> None:
+    """Add what this fill wrote to FILLED; a fill finished later keeps the
+    digests of the first."""
+    data = {**(filled(folder) or {}), **wrote, "version": 1}
+    try:
+        write_whole(Path(folder) / FILLED, json.dumps(data) + "\n", prefix=f".{FILLED}.")
+    except OSError as exc:
+        raise store.StoreError(f"{FILLED} could not be written: {exc.strerror}") from exc
 
 
 def offered(folder: Path) -> bool:
@@ -244,7 +282,7 @@ def unpublished(folder: Path) -> bool:
     return (Path(folder) / MARKER).is_file()
 
 
-def published(folder: Path) -> None:
+def mark_published(folder: Path) -> None:
     """Remove the marker; absent is fine. An OSError is the caller's."""
     (Path(folder) / MARKER).unlink(missing_ok=True)
 
@@ -276,9 +314,14 @@ def fill(folder: Path, site_name: str, layout: str = LOOKS[0]) -> None:
             page="about",
             area=_area(say("starter.about"), _words("starter.about.words")))),
     )
+    wrote = {}
     for kind, file_name, text in files:
-        if not store.html_path_for(folder, kind, file_name).exists():
+        path = store.html_path_for(folder, kind, file_name)
+        if not path.exists():
             store.write_html(folder, kind, file_name, text)
+            wrote[file_name] = digest(store.read_html(path))
+    _note_filled(folder, {name: wrote[name] for name in ("index", "navigation")
+                          if name in wrote})
     if not store.style_code_path(folder).exists():
         look.save(folder, look.defaults(layout), "")
     templates.seed(folder)

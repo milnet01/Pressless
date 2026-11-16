@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import html
 import re
-import urllib.parse
 from pathlib import Path
 
 from pressless import (
@@ -168,8 +167,7 @@ def _parts(folder: Path) -> str:
     except store.StoreError:
         return _tile("overview.parts", "", "")
     links = " ".join(
-        _link("/page?" + urllib.parse.urlencode({"kind": store.FURNITURE_FOLDER, "name": name}),
-              key)
+        _link(editor.page_address(store.FURNITURE_FOLDER, name), key)
         for name, key in (("navigation", "editor.pages.navigation"),
                           ("header", "editor.pages.header"), ("footer", "editor.pages.footer"))
         if name in held)
