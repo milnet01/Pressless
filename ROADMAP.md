@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=366 -->
+<!-- ants-roadmap-id-high-water: PRESS=370 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7569,6 +7569,54 @@ does not wait on them.
   **Layman:** Your site says a change is waiting, but pressing Publish there says nothing would change; the change goes out from the entry's own button.
   Kind: ux.
   Source: by-hand-check-2026-11-16 1.0.0 draft round.
+
+- 📋 [PRESS-0367] **Navigation, Header and Footer open an error on a site whose parts are not written yet.**
+  verify-delivery 2026-11-16, PRESS-0341 and PRESS-0353 partial.
+  On a fresh, empty install (scripts/manual-media/instance.py fresh), the
+  Your site tile "Menu, header and footer" (overview.py `_parts`) and the
+  Pages list's parts (editor.py `_pages`) always link the three parts.
+  page_editor.py `_read` raises store.EntryNotFound when neither the
+  waiting copy nor the live file exists, so the user sees words.py's
+  "Pressless could not find that entry ... Go back to Journal" message.
+  Fix: open an empty part to write, or do not draw a link to a part that
+  cannot open. The Journal wording is wrong for a part either way.
+  **Layman:** On a brand-new install, clicking Navigation, Header or Footer says Pressless could not find that entry, instead of opening an empty part to fill in.
+  Kind: fix.
+  Source: verify-delivery-2026-11-16.
+  Lanes: Editor.
+
+- 📋 [PRESS-0368] **Before any site exists, the Look screen offers to keep stylesheets there are none of.**
+  verify-delivery 2026-11-16, seen on a fresh, empty install.
+  look_screen.py `_offers_routes` offers both routes whenever the site has
+  no style code (PRESS-0276 § 4.3), which also holds before setup or
+  before the starter site writes one. Investigate which states reach it,
+  and offer the own-stylesheets route only where the pages link
+  stylesheets of their own.
+  **Layman:** A new user's Look screen shows a choice meant for sites brought in from elsewhere, "Keep its own stylesheets", when there is nothing to keep.
+  Kind: ux.
+  Source: verify-delivery-2026-11-16.
+  Lanes: Look.
+
+- 📋 [PRESS-0369] **The README still lists the new looks and the redesigned screens as still to come.**
+  verify-delivery 2026-11-16. README.md "Still to come" names "many more
+  ready-made looks" and "screens redesigned"; both shipped in 1.0.0
+  (PRESS-0359, PRESS-0353).
+  **Layman:** The front page of the project says two things are coming that already shipped in 1.0.0.
+  Kind: doc-fix.
+  Source: verify-delivery-2026-11-16.
+  Lanes: Docs.
+
+- 📋 [PRESS-0370] **No test checks that a finished publish offers View your site.**
+  verify-delivery 2026-11-16, PRESS-0232 partial. CHANGELOG 0.8.0
+  promised "View your site" after a publish. Since PRESS-0353 it is a
+  button on Your site and in each editor (face.py `view_site`), and
+  no test was found that a publish's result carries it. Confirm what a
+  user sees after a publish, then lock it with a test or record that
+  the button beside Publish serves the promise.
+  **Layman:** Nothing automatically checks that the link to your live site appears after you publish, as 0.8.0 promised.
+  Kind: test.
+  Source: verify-delivery-2026-11-16.
+  Lanes: Publishing.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
