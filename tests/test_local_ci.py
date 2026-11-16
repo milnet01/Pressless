@@ -254,9 +254,13 @@ def test_the_patterns_never_reach_a_command_line(tmp_path):
     assert _STAND_IN not in arguments
 
 
-def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str]) -> tuple[Path, str]:
+def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str],
+                                  keys: dict[str, str] | None = None,
+                                  prepare=None) -> tuple[Path, str]:
     """The real gate script, run in a throwaway repository with a stand-in for
-    Python that records each call and answers yes. Returns the repository and
+    Python that records each call, and the PRESSLESS_ variables pytest is given,
+    and answers yes. `keys` are set in the repository's own config, and
+    `prepare` gets the repository before the run. Returns the repository and
     the record."""
     repository = tmp_path / "repository"
     (repository / "scripts").mkdir(parents=True)
@@ -268,6 +272,7 @@ def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str]) -> tuple[
     stand_ins.mkdir()
     # `-m venv <where>` makes <where>/bin/python, the stand-in again.
     python = (f'#!/bin/sh\necho "$0 $*" >> "{record}"\n'
+              f'if [ "$2 $3" = "pytest -ra" ]; then env | grep "^PRESSLESS_" >> "{record}"; fi\n'
               'if [ "$1 $2" = "-m venv" ]; then mkdir -p "$3/bin"; cp "$0" "$3/bin/python"; fi\n')
     (stand_ins / "python3").write_text(python, encoding="utf-8")
     (stand_ins / "python3").chmod(0o755)
@@ -275,13 +280,17 @@ def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str]) -> tuple[
                    "GIT_CONFIG_NOSYSTEM": "1", **env}
     identity = ["-c", "user.name=gate", "-c", "user.email=gate@example.invalid"]
     git = shutil.which("git")
-    for arguments in (["init", "-q"], ["add", "."], [*identity, "commit", "-qm", "scratch"]):
+    settings = [["config", f"ants.pressless.{key}", value] for key, value in (keys or {}).items()]
+    commit = [*identity, "commit", "-qm", "scratch"]
+    for arguments in (["init", "-q"], *settings, ["add", "."], commit):
         subprocess.run([git, *arguments], cwd=repository, env=environment,  # noqa: S603 -- a scratch repository
                        check=True, capture_output=True)
+    if prepare:
+        prepare(repository)
     ran = subprocess.run([_BASH, str(repository / "scripts" / "local-ci.sh")],  # noqa: S603 -- this repository's own gate
                          env=environment, capture_output=True, text=True, timeout=120, check=False)
     assert ran.returncode == 0, ran.stdout + ran.stderr
-    return repository, record.read_text(encoding="utf-8")
+    return repository, record.read_text(encoding="utf-8") + ran.stdout
 
 
 def test_a_local_run_uses_the_versions_github_would_install(tmp_path):
@@ -310,3 +319,36 @@ def test_github_keeps_the_environment_it_installed(tmp_path):
     assert "-m venv" not in record
     assert "pip install" not in record
     assert not (repository / ".venv").exists()
+
+
+def test_a_venv_whose_python_no_longer_runs_is_made_afresh(tmp_path):
+    """Breaks when the gate keeps a .venv whose interpreter a system Python
+    upgrade left dangling, and every tool then fails with an error naming
+    neither cause."""
+    def dangling(repository: Path) -> None:
+        (repository / ".venv" / "bin").mkdir(parents=True)
+        (repository / ".venv" / "bin" / "python").symlink_to(tmp_path / "python3.12-gone")
+
+    repository, record = _gate_in_a_scratch_repository(tmp_path, {}, prepare=dangling)
+    assert "-m venv .venv" in record
+    assert "no longer runs" in record
+    assert (repository / ".venv" / "bin" / "python").resolve().exists()
+
+
+def test_the_archive_keys_reach_the_suite(tmp_path):
+    """Each machine-local key becomes the variable its tests read. A key naming
+    no such file or folder says so and is not passed on, and an already-set
+    variable wins.
+
+    Breaks when one of the keys is dropped, or a missing folder is passed."""
+    export = tmp_path / "export.xml"
+    export.write_text("<rss/>", encoding="utf-8")
+    keys = {"archive": str(export), "originals": str(tmp_path / "absent"),
+            "siteName": "A Site", "siteAddress": "https://site.example.invalid"}
+    _, record = _gate_in_a_scratch_repository(
+        tmp_path, {"PRESSLESS_SITE_ADDRESS": "https://set.example.invalid"}, keys=keys)
+    assert f"PRESSLESS_ARCHIVE={export}" in record
+    assert "PRESSLESS_SITE_NAME=A Site" in record
+    assert "PRESSLESS_SITE_ADDRESS=https://set.example.invalid" in record
+    assert "PRESSLESS_ORIGINALS" not in record
+    assert "ants.pressless.originals is set but" in record

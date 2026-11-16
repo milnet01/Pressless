@@ -137,19 +137,30 @@ fi
 . scripts/python.sh
 
 # ── The same tools GitHub resolves ──────────────────────────────────────────
-# GitHub installs afresh on every run, so it always has today's versions. Here
-# the machine's own copies age, and a gate on older tools passes what GitHub
-# then fails. So a local run keeps its own gitignored .venv, brought up to what
-# a fresh install resolves. It never touches the machine's shared tools, which
-# other projects use. GitHub sets CI and has just installed, so it skips this.
+# ci.yml installs afresh on every run, so it always has today's versions. (The
+# release jobs run this script on the hash-locked versions in
+# packaging/release-requirements.txt instead.) Here the machine's own copies
+# age, and a gate on older tools passes what GitHub then fails. So a local run
+# keeps its own gitignored .venv, brought up to what a fresh install resolves.
+# It never touches the machine's shared tools, which other projects use. GitHub
+# sets CI and has just installed, so it skips this.
 if [[ -z ${CI-} ]]; then
     step "gate environment"
-    [[ -d .venv ]] || "$PY" -m venv .venv || fail "could not make .venv"
-    if [[ -x .venv/Scripts/python.exe ]]; then
-        PY=.venv/Scripts/python.exe
-    else
-        PY=.venv/bin/python
+    own_python() {
+        if [[ -x .venv/Scripts/python.exe ]]; then
+            echo .venv/Scripts/python.exe
+        else
+            echo .venv/bin/python
+        fi
+    }
+    # A system Python upgrade can leave .venv's interpreter a dangling link,
+    # and every tool would then fail with an error naming neither cause.
+    if [[ -d .venv ]] && ! "$(own_python)" -c 'import sys' 2>/dev/null; then
+        printf 'note: .venv'"'"'s Python no longer runs -- making .venv afresh\n'
+        rm -rf .venv
     fi
+    [[ -d .venv ]] || "$PY" -m venv .venv || fail "could not make .venv"
+    PY=$(own_python)
     # Offline, the versions already there still run, and the note says so.
     "$PY" -m pip install --quiet --disable-pip-version-check \
         --upgrade --upgrade-strategy eager -e '.[dev]' \
@@ -186,57 +197,39 @@ PY
 step "ruff"
 "$PY" -m ruff check src/ tests/ || fail "lint"
 
-# The archive test proves S2 against the real WordPress export, which is
-# personal data and cannot live here -- so CI is permanently silent about the
-# project's most important invariant. The one machine that CAN run it is the
-# maintainer's, which is where the pre-push hook fires. Point a machine-local
-# config key at the export and it runs automatically:
+# The archive tests read the writer's own material, which is personal data and
+# cannot live here -- so CI is permanently silent about them, S2 included: the
+# project's most important invariant, proven against the real WordPress
+# export. The one machine that CAN run them is the maintainer's, which is where
+# the pre-push hook fires. A machine-local config key per input runs them
+# automatically, and keeps it out of this public repository:
 #
-#   git config ants.pressless.archive /path/to/wordpress-export.xml
+#   ants.pressless.archive      the WordPress export, a file (S2)
+#   ants.pressless.originals    the photograph originals, a folder (PRESS-0007 § 7)
+#   ants.pressless.liveSite     the live site's folder (PRESS-0007 § 7)
+#   ants.pressless.templates    today's header and footer templates, a folder
+#   ants.pressless.siteName     the name in every page title (PRESS-0008 § 7)
+#   ants.pressless.siteAddress  the site's address (PRESS-0008 § 7)
 #
-# The path stays out of this public repository. An already-set
-# PRESSLESS_ARCHIVE wins, so CI and a one-off run are unaffected.
-if [[ -z ${PRESSLESS_ARCHIVE-} ]]; then
-    archive=$(git config --get ants.pressless.archive || true)
-    if [[ -n $archive && -f $archive ]]; then
-        export PRESSLESS_ARCHIVE="$archive"
-    elif [[ -n $archive ]]; then
-        printf 'note: ants.pressless.archive is set but %s is missing -- S2 not proven\n' "$archive"
+# An already-set variable wins, so CI and a one-off run are unaffected. A key
+# naming no such file or folder says so, and never prints the path.
+while read -r variable key kind; do
+    [[ -z ${!variable-} ]] || continue
+    value=$(git config --get "ants.pressless.$key" || true)
+    [[ -n $value ]] || continue
+    if [[ $kind == file && ! -f $value || $kind == folder && ! -d $value ]]; then
+        printf 'note: ants.pressless.%s is set but names no %s -- its tests do not run\n' "$key" "$kind"
+        continue
     fi
-fi
-# Import's archive tests also read the photograph originals, the live site's
-# folder and today's header and footer templates (PRESS-0007 §7). All
-# identify the writer and stay out of this repository the same way:
-#   git config ants.pressless.originals /path/to/originals
-#   git config ants.pressless.liveSite /path/to/the/live/site
-#   git config ants.pressless.templates /path/to/the/templates
-for pair in "PRESSLESS_ORIGINALS originals" "PRESSLESS_LIVE_SITE liveSite" \
-    "PRESSLESS_TEMPLATES templates"; do
-    set -- $pair
-    if [[ -z ${!1-} ]]; then
-        folder=$(git config --get "ants.pressless.$2" || true)
-        if [[ -n $folder && -d $folder ]]; then
-            export "$1=$folder"
-        elif [[ -n $folder ]]; then
-            printf 'note: ants.pressless.%s is set but that folder is missing\n' "$2"
-        fi
-    fi
-done
-
-# The Builder's archive run builds with the site's own name and address
-# (PRESS-0008 § 7). Both identify the writer, so they are values rather than
-# folders and stay out of this repository the same way:
-#   git config ants.pressless.siteName '<the name in every page title>'
-#   git config ants.pressless.siteAddress '<https://the site's address>'
-for pair in "PRESSLESS_SITE_NAME siteName" "PRESSLESS_SITE_ADDRESS siteAddress"; do
-    set -- $pair
-    if [[ -z ${!1-} ]]; then
-        value=$(git config --get "ants.pressless.$2" || true)
-        if [[ -n $value ]]; then
-            export "$1=$value"
-        fi
-    fi
-done
+    export "$variable=$value"
+done <<'KEYS'
+PRESSLESS_ARCHIVE archive file
+PRESSLESS_ORIGINALS originals folder
+PRESSLESS_LIVE_SITE liveSite folder
+PRESSLESS_TEMPLATES templates folder
+PRESSLESS_SITE_NAME siteName value
+PRESSLESS_SITE_ADDRESS siteAddress value
+KEYS
 
 # The suite errors at COLLECTION if a module is missing, and an exit code alone
 # does not distinguish that from a clean run. -ra prints the collected count.
