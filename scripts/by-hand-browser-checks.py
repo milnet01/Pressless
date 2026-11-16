@@ -595,7 +595,8 @@ def run(origin: str, secret: str, folder: Path, helper_own: Path) -> None:
         votes_screen(page, origin, folder)
         votes_buttons(page, folder)
         helper_publish(page, origin, folder, helper_own)
-        layout_colours(page, origin, folder)    # last: it saves a look
+        layout_colours(page, origin, folder)    # these two last: they save a look
+        layouts_and_styles(page, origin, folder)
 
         print("\n  console during the run:")
         for line in console[-12:]:
@@ -1335,6 +1336,46 @@ def layout_colours(page, origin: str, folder: Path) -> None:
           kept == look.defaults("harbour").light["paper"], kept)
     check("PRESS-0352: the button fills the boxes with the layout's own colours",
           filled == meadow.light, f"{filled}"[:160])
+
+
+def layouts_and_styles(page, origin: str, folder: Path) -> None:
+    """PRESS-0359 INV-9 and § 4.4's script: choosing any layout or colour
+    style moves no control, a style fills every box and is marked, and a
+    changed box clears the mark."""
+    look.save(folder, look.defaults("market"), "")
+    page.goto(f"{origin}/look", wait_until="networkidle")
+    controls = "label.look, fieldset, table.look-colours, form#look button"
+    # Measured from the page's top, not the window's: checking a cell scrolls.
+    where = ("els => els.map(e => { const r = e.getBoundingClientRect(); return [r.x + scrollX,"
+             " r.y + scrollY, r.width, r.height].map(Math.round).join(); })")
+    before = page.eval_on_selector_all(controls, where)
+    moved = []
+    for field, names in (("layout", look.LAYOUTS), ("style", look.STYLES)):
+        for name in names:
+            page.check(f"input[name={field}][value={name}]")
+            page.wait_for_timeout(150)
+            if page.eval_on_selector_all(controls, where) != before:
+                moved.append(f"{field} {name}")
+    check("PRESS-0359 INV-9: choosing each layout and colour style moves no control",
+          not moved, ", ".join(moved))
+
+    page.check("input[name=style][value=plum]")
+    page.wait_for_timeout(400)
+    boxes = {f"{scheme}.{name}": page.input_value(f'input[name="{scheme}.{name}"]')
+             for scheme in ("light", "dark") for name in look.COLOURS}
+    plum = {f"{scheme}.{name}": value for scheme, dark in (("light", False), ("dark", True))
+            for name, value in look.palette("plum", dark).items()}
+    marked = page.eval_on_selector_all("input[name=style]:checked", "els => els.map(e => e.value)")
+    check("PRESS-0359 § 4.4: a colour style fills every box, light and dark, and is marked",
+          boxes == plum and marked == ["plum"], f"{marked}")
+    page.fill('input[name="dark.ink"]', "#fefefe")
+    page.wait_for_timeout(200)
+    cleared = page.eval_on_selector_all("input[name=style]:checked", "els => els.length")
+    page.fill('input[name="dark.ink"]', plum["dark.ink"])
+    page.wait_for_timeout(200)
+    again = page.eval_on_selector_all("input[name=style]:checked", "els => els.map(e => e.value)")
+    check("PRESS-0359 § 4.4: changing a box clears the mark; matching again re-marks",
+          cleared == 0 and again == ["plum"], f"{cleared} {again}")
 
 
 def tiles_open(page, origin: str) -> None:
