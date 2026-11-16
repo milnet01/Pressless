@@ -7574,7 +7574,7 @@ does not wait on them.
   Kind: ux.
   Source: by-hand-check-2026-11-16 1.0.0 draft round.
 
-- 📋 [PRESS-0367] **Navigation, Header and Footer open an error on a site whose parts are not written yet.**
+- ✅ [PRESS-0367] **Navigation, Header and Footer open an error on a site whose parts are not written yet.**
   verify-delivery 2026-11-16, PRESS-0341 and PRESS-0353 partial.
   On a fresh, empty install (scripts/manual-media/instance.py fresh), the
   Your site tile "Menu, header and footer" (overview.py `_parts`) and the
@@ -7584,18 +7584,24 @@ does not wait on them.
   "Pressless could not find that entry ... Go back to Journal" message.
   Fix: open an empty part to write, or do not draw a link to a part that
   cannot open. The Journal wording is wrong for a part either way.
+  Shipped 2026-11-17 in dc4881d: Your site and Pages link only the parts
+  the site holds; the tile says "Not set up yet." while it holds none.
+  tests/test_screens.py test_every_part_linked_opens.
   **Layman:** On a brand-new install, clicking Navigation, Header or Footer says Pressless could not find that entry, instead of opening an empty part to fill in.
   Kind: fix.
   Source: verify-delivery-2026-11-16.
   Lanes: Editor.
 
-- 📋 [PRESS-0368] **Before any site exists, the Look screen offers to keep stylesheets there are none of.**
+- ✅ [PRESS-0368] **Before any site exists, the Look screen offers to keep stylesheets there are none of.**
   verify-delivery 2026-11-16, seen on a fresh, empty install.
   look_screen.py `_offers_routes` offers both routes whenever the site has
   no style code (PRESS-0276 § 4.3), which also holds before setup or
   before the starter site writes one. Investigate which states reach it,
   and offer the own-stylesheets route only where the pages link
   stylesheets of their own.
+  Shipped 2026-11-17 in 1354d48: the route choice needs a part of every
+  page or the site's own sheets; PRESS-0276 § 4.3 amended.
+  tests/test_look_screen.py test_a_site_before_setup_offers_no_route.
   **Layman:** A new user's Look screen shows a choice meant for sites brought in from elsewhere, "Keep its own stylesheets", when there is nothing to keep.
   Kind: ux.
   Source: verify-delivery-2026-11-16.
