@@ -7607,13 +7607,19 @@ does not wait on them.
   Source: verify-delivery-2026-11-16.
   Lanes: Docs.
 
-- 📋 [PRESS-0370] **No test checks that a finished publish offers View your site.**
+- 🚫 [PRESS-0370] **No test checks that a finished publish offers View your site.**
   verify-delivery 2026-11-16, PRESS-0232 partial. CHANGELOG 0.8.0
   promised "View your site" after a publish. Since PRESS-0353 it is a
   button on Your site and in each editor (face.py `view_site`), and
   no test was found that a publish's result carries it. Confirm what a
   user sees after a publish, then lock it with a test or record that
   the button beside Publish serves the promise.
+  Dropped 2026-11-16: already tested. tests/test_editor.py
+  test_view_your_site_sits_by_press_to_site_in_both_editors breaks "when ...
+  a publish in the page leaves the button greyed out", and
+  test_publishing.py's PRESS-0126 tests check a publish clears the starter
+  marker that greys it (setup.py add_unseen). Since PRESS-0353 the button
+  beside Publish and Press to site serves 0.8.0's promise.
   **Layman:** Nothing automatically checks that the link to your live site appears after you publish, as 0.8.0 promised.
   Kind: test.
   Source: verify-delivery-2026-11-16.
