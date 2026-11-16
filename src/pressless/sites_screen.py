@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import datetime
 import html
-import urllib.parse
 from collections.abc import Callable
 from pathlib import Path
 
@@ -46,7 +45,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         return _screen(own)
 
     def open_one(request: Request) -> str:
-        form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+        form = request.form()
         try:
             sites.choose(own, form.get("site", [""])[0])
         except ValueError:
@@ -78,7 +77,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         return _going(face, restart)
 
     def keep_backups_in(request: Request) -> str:
-        form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+        form = request.form()
         try:
             backups.set_folder(own, form.get("folder", [""])[0])
         except ValueError:
@@ -88,7 +87,7 @@ def register(face: Face, own: Path, restart: Callable[[], None]) -> None:
         return _screen(own, say("sites_screen.backups.chosen"))
 
     def remove(request: Request) -> str:
-        form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+        form = request.form()
         held = {path.name: path for path in sites.all_sites(own)}
         site = held.get(form.get("site", [""])[0])
         if site is None or site in (served, sites.open_site(own)):

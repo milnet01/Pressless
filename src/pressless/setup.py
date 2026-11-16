@@ -17,7 +17,6 @@ from __future__ import annotations
 import dataclasses
 import html
 import re
-import urllib.parse
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 
@@ -229,7 +228,7 @@ def _setup(face: Face, folder: Path, request: Request,
     if request.method != "POST":
         return render_notices(notices) + _sections()
     return render_notices(notices) + _submit(face, folder, saved,
-                                             _read_answers(request.body), transport, offer)
+                                             _read_answers(request), transport, offer)
 
 
 def _submit(face: Face, folder: Path, saved: settings.Settings,
@@ -469,8 +468,8 @@ def _candidate(folder: Path, saved: settings.Settings | None,
     )
 
 
-def _read_answers(body: bytes) -> dict[str, str]:
-    parsed = urllib.parse.parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
+def _read_answers(request: Request) -> dict[str, str]:
+    parsed = request.form(blanks=True)
     return {name: (parsed.get(name) or [""])[0].strip()
             for name in (*_FIELDS, "key", "start", "look")}
 
@@ -648,7 +647,7 @@ def _section(face: Face, folder: Path, request: Request, name: str,
         return render_notices(notices) + _form(
             values, {}, google_on=_google_on(saved), start=False if offer else None,
             signed_in=_signed_in(folder, saved), section=name)
-    posted = _read_answers(request.body)
+    posted = _read_answers(request)
     answers = {**values, "key": "", "start": "", "look": ""}
     answers.update({field: posted[field] for field in _SECTION_FIELDS[name]})
     return render_notices(notices) + _submit(face, folder, saved, answers, transport, offer,
@@ -874,7 +873,7 @@ def _shortcuts(face: Face, where: shortcuts.Places | None, request: Request) -> 
     """PRESS-0183: make or remove the menu entry and the desktop icon, as ticked."""
     if where is None:
         return f"<p>{say('setup.shortcuts.unavailable')}</p>"
-    parsed = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+    parsed = request.form()
     menu, desktop = parsed.get("menu") == ["on"], parsed.get("desktop") == ["on"]
     before = shortcuts.present(where)
     try:

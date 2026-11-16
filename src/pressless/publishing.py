@@ -439,8 +439,8 @@ def _plan(face: Face, folder: Path, request: Request,
     """PRESS-0345 § 4.3: `plan` for the entry `slug`, or the page or part
     `kind` and `name`, or the site where the form names neither (PRESS-0353
     § 4.3). The editor saves first, so the Store holds what would be pressed."""
-    form = {name: values[0] for name, values in urllib.parse.parse_qs(
-        request.body.decode("utf-8"), keep_blank_values=True).items()}
+    form = {name: values[0]
+            for name, values in request.form(blanks=True, strict=True).items()}
     try:
         if "slug" in form:
             shown = plan(folder, entry=form["slug"], transport=transport)
@@ -462,7 +462,7 @@ def _plan(face: Face, folder: Path, request: Request,
 def _publish(face: Face, folder: Path, request: Request,
              transport: publisher.Transport | None) -> Reply:
     """§ 4.2, run as a press (PRESS-0235 § 4.4)."""
-    fields = urllib.parse.parse_qs(request.body.decode("utf-8"), keep_blank_values=True)
+    fields = request.form(blanks=True, strict=True)
     form = {name: values[0] for name, values in fields.items()}
 
     def busy(said: str) -> Reply:
@@ -626,8 +626,7 @@ def _replace_page(face: Face, folder: Path, request: Request) -> str:
         return face.fail(exc, publishing=False)
     hint = ""
     if request.method == "POST":
-        fields = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"),
-                                       keep_blank_values=True)
+        fields = request.form(blanks=True)
         typed = (fields.get("repository") or [""])[0].strip()
         if typed == saved.repository:
             keep = set(fields.get("keep", []))

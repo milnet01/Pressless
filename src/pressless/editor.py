@@ -268,7 +268,7 @@ def digest(path: Path) -> str:
 
 def form_fields(request: Request) -> dict[str, str]:
     """Every POST body is form-encoded, read as setup reads its own (§ 4.4)."""
-    fields = urllib.parse.parse_qs(request.body.decode("utf-8"), keep_blank_values=True)
+    fields = request.form(blanks=True, strict=True)
     return {name: values[0] for name, values in fields.items()}
 
 

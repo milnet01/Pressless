@@ -414,6 +414,14 @@ class Request:
     query: dict[str, str]
     body: bytes
 
+    def form(self, *, blanks: bool = False, strict: bool = False) -> dict[str, list[str]]:
+        """The posted form, read with parse_qs. `blanks` keeps fields left
+        empty. A body that is not UTF-8 reads with replacement characters, or
+        raises UnicodeDecodeError where `strict`, which a page saving his
+        words asks for rather than keep a character he did not type."""
+        return urllib.parse.parse_qs(self.body.decode("utf-8", "strict" if strict else "replace"),
+                                     keep_blank_values=blanks)
+
 
 @dataclass(frozen=True)
 class Reply:

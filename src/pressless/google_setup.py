@@ -18,7 +18,6 @@ import dataclasses
 import hmac
 import html
 import threading
-import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -248,7 +247,7 @@ def _choose(state: _State, request: Request) -> str:
     saved, shown = _load(state)
     if saved is None:
         return shown
-    fields = urllib.parse.parse_qs(request.body.decode("utf-8", errors="replace"))
+    fields = request.form()
     chosen = (fields.get("property") or [""])[0]
     with state.lock:
         pending = state.pending

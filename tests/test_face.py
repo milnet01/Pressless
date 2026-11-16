@@ -1299,3 +1299,14 @@ def test_a_folder_too_large_for_a_plain_zip_is_not_sent(tmp_path):
     assert _run_folder_box(tmp_path, files) == {
         "sent": None, "disabled": False, "label": "Send",
         "message": "<script.file_box.too_large>"}
+
+
+def test_a_posted_form_is_read_one_way() -> None:
+    """PRESS-0383: every page reads its form through Request.form. Breaks
+    when a blank field is kept without being asked for, or a body that is
+    not UTF-8 is read with replacement where a page asked for strict."""
+    request = face.Request("POST", "/x", {}, b"a=1&b=&c=caf%C3%A9&d=%FF")
+    assert request.form() == {"a": ["1"], "c": ["café"], "d": ["�"]}
+    assert request.form(blanks=True)["b"] == [""]
+    with pytest.raises(UnicodeDecodeError):
+        face.Request("POST", "/x", {}, b"a=\xff").form(strict=True)

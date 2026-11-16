@@ -15,7 +15,6 @@ from __future__ import annotations
 import html
 import json
 import threading
-import urllib.parse
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,8 +131,7 @@ class Wizard:
             index, answers = self._read()
             if request.method != "POST":
                 return self._show(index, answers)
-            posted = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"),
-                                           keep_blank_values=True)
+            posted = request.form(blanks=True)
 
             def one(name: str) -> str:
                 return (posted.get(name) or [""])[0]

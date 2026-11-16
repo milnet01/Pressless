@@ -15,7 +15,6 @@ import os
 import re
 import sys
 import threading
-import urllib.parse
 from pathlib import Path
 
 from pressless import __version__, editor, installer, paths, updater
@@ -99,7 +98,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
         return _home()
 
     def checking(request: Request) -> Reply:
-        form = urllib.parse.parse_qs(request.body.decode("utf-8", "replace"))
+        form = request.form()
         wanted = (form.get("check") or ["true"])[0] != "false"
         updater.write_state(own, check=wanted, skip=updater.read_state(own)[1])
         return Reply(b"", "text/plain", status=303, location="/setup/computer")  # the switch
