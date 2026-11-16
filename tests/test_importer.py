@@ -1296,10 +1296,13 @@ def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
     as fetch_all keys one with no usable place, is never filled, so no member
     lands outside import/media/ or under a name the Store never reads.
 
+    A member whose name holds a `:` is refused with the whole download
+    (sitefile.stays_inside, PRESS-0383), which writes nothing either.
+
     Breaks when unpack_media joins a place onto media/ without checking it."""
     import zipfile
 
-    from pressless_import import unpack_media
+    from pressless_import import ImportStopped, unpack_media
 
     outside = tmp_path / "outside" / "x.desktop"
     place = outside.as_posix() if place == "ABSOLUTE" else place
@@ -1309,7 +1312,11 @@ def test_a_media_zip_fills_only_places_import_may_use(tmp_path, place):
     with zipfile.ZipFile(made, "w") as out:
         out.writestr(f"a/{place}", "planted")
 
-    assert unpack_media(made, media, (place,), lambda: 10**9) == ()
+    if ":" in place:
+        with pytest.raises(ImportStopped):
+            unpack_media(made, media, (place,), lambda: 10**9)
+    else:
+        assert unpack_media(made, media, (place,), lambda: 10**9) == ()
     assert not outside.exists(), "a member was written outside import/media/"
     assert not list(media.rglob("*")), "a member was written under a raw address"
 
