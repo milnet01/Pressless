@@ -7335,6 +7335,10 @@ owned by docs/standards/versioning-overrides.md.
   drawing. Then 8 layouts and 11 colour sets give many looks without a
   long list. It needs a spec before building, since it changes the
   Look screen, the starter and the saved look.
+  Spec reviewed 2026-11-16 (review-contract, one round, the user's
+  budget for a new spec): four findings verified and fixed in 7e24ae0,
+  two dismissed, none deferred. Status: accepted. Ready to build.
+  Loop log: docs/reviews/PRESS-0359-layouts-and-colour-styles-loop-log.md.
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.
