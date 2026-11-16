@@ -30,11 +30,14 @@ def _sweep(*files: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_a_named_file_naming_the_writer_fails(tmp_path):
+    """Breaks when a hit prints its text: GitHub's log is public, and would
+    publish the very thing the sweep found. Where it is, and only that."""
     packet = tmp_path / "packet.md"
     packet.write_text(f"Plain words.\nA line by {_NAMED} here.\n", encoding="utf-8")
     ran = _sweep(packet)
     assert ran.returncode == 1
-    assert "2:A line by" in ran.stderr
+    assert f"{packet}:2" in ran.stderr
+    assert "A line by" not in ran.stderr
     assert f"{packet} names the writer" in ran.stderr
 
 
@@ -87,6 +90,168 @@ def test_an_unknown_option_is_refused_before_anything_runs(tmp_path):
     assert ran.returncode == 1
     assert "unknown option --doc" in ran.stderr
     assert "=== " not in ran.stdout
+
+
+# The machine-local key's patterns, as a harmless stand-in: a scratch
+# repository sets it, so no real identifying string is ever written here.
+_STAND_IN = "zebra" + "quokka"
+_GIT = shutil.which("git")
+
+
+class _Scratch:
+    """A throwaway repository holding the real gate script, with the stand-in
+    as its machine-local pattern and no config from this machine."""
+
+    def __init__(self, tmp_path: Path, patterns: str = _STAND_IN) -> None:
+        self.root = tmp_path / "repository"
+        (self.root / "scripts").mkdir(parents=True)
+        shutil.copy(_SCRIPT, self.root / "scripts" / "local-ci.sh")
+        self.env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "GIT_CONFIG_NOSYSTEM": "1"}
+        self.git("init", "-q")
+        self.git("config", "ants.pressless.leakPatterns", patterns)
+        self.commit("start")
+
+    def git(self, *arguments: str) -> str:
+        return subprocess.run([_GIT, *arguments], cwd=self.root, env=self.env,  # noqa: S603 -- a scratch repository
+                              check=True, capture_output=True, text=True).stdout
+
+    def commit(self, message: str, *, who: str = "gate <gate@example.invalid>") -> None:
+        name, email = who.removesuffix(">").split(" <")
+        self.git("add", "-A")
+        self.git("-c", f"user.name={name}", "-c", f"user.email={email}",
+                 "commit", "-q", "--allow-empty", "-m", message)
+
+    def sweep(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([_BASH, str(self.root / "scripts" / "local-ci.sh"), *arguments],  # noqa: S603
+                              cwd=self.root, env=self.env, capture_output=True, text=True,
+                              timeout=120, check=False)
+
+
+def _picture(scratch: _Scratch, words: str) -> None:
+    """A file git calls binary (it holds a NUL), with `words` among its bytes."""
+    (scratch.root / "picture.png").write_bytes(b"\x89PNG\x00\x01" + words.encode() + b"\x00")
+
+
+def test_the_stand_in_is_found_in_a_text_file(tmp_path):
+    """The control for the binary case below: the same words, in a file git
+    reads as text."""
+    scratch = _Scratch(tmp_path)
+    (scratch.root / "notes.txt").write_text(f"one\n{_STAND_IN}\n", encoding="utf-8")
+    scratch.commit("notes")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "notes.txt:2" in ran.stderr
+    assert "tree names the writer" in ran.stderr
+
+
+def test_a_binary_file_naming_the_writer_fails_the_tree_sweep(tmp_path):
+    """Breaks when a binary match, which git grep reports as `Binary file X
+    matches` with no text, is dropped as a line the pattern does not match.
+    A picture's metadata is where a name most easily hides."""
+    scratch = _Scratch(tmp_path)
+    _picture(scratch, _STAND_IN)
+    scratch.commit("picture")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "picture.png" in ran.stderr.splitlines()
+    assert "tree names the writer" in ran.stderr
+
+
+def test_a_binary_file_only_in_history_fails_the_history_sweep(tmp_path):
+    """Breaks the same way, for a file a later commit removed."""
+    scratch = _Scratch(tmp_path)
+    _picture(scratch, _STAND_IN)
+    scratch.commit("picture")
+    scratch.git("rm", "-q", "picture.png")
+    scratch.commit("no picture")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "clean: tree" in ran.stdout
+    assert any(line.endswith(":picture.png") for line in ran.stderr.splitlines())
+    assert "history names the writer" in ran.stderr
+
+
+@pytest.mark.parametrize("who", [f"{_STAND_IN} <someone@example.invalid>",
+                                 f"someone <{_STAND_IN}@example.invalid>"])
+def test_a_commit_identity_naming_the_writer_fails(tmp_path, who):
+    """Breaks when the sweep reads a commit's message but not who wrote it.
+    A push publishes the author's and committer's names and addresses."""
+    scratch = _Scratch(tmp_path)
+    scratch.commit("plain words", who=who)
+    head = scratch.git("rev-parse", "HEAD").strip()
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert head in ran.stderr
+    assert _STAND_IN not in ran.stderr
+
+
+def test_a_tagger_naming_the_writer_fails(tmp_path):
+    """Breaks when the refs surface reads a tag's message but not its tagger."""
+    scratch = _Scratch(tmp_path)
+    scratch.git("-c", f"user.name={_STAND_IN}", "-c", "user.email=someone@example.invalid",
+                "tag", "-a", "v1", "-m", "plain words")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "refs/tags/v1" in ran.stderr
+
+
+def test_a_path_naming_the_writer_fails(tmp_path):
+    """Breaks when only file CONTENTS are searched: a push publishes every
+    path in every commit, and git grep never reads a path."""
+    scratch = _Scratch(tmp_path)
+    (scratch.root / f"{_STAND_IN}.txt").write_text("plain words\n", encoding="utf-8")
+    scratch.commit("a file")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 1
+    assert "names the writer" in ran.stderr
+
+
+def test_a_clean_scratch_repository_passes(tmp_path):
+    """The control for the cases above: a binary file, a tag and the gate
+    script's own spelling of the pattern, the stand-in nowhere, and the sweep
+    passes every surface."""
+    scratch = _Scratch(tmp_path)
+    _picture(scratch, "plain")
+    scratch.commit("picture")
+    scratch.git("-c", "user.name=gate", "-c", "user.email=gate@example.invalid",
+                "tag", "-a", "v1", "-m", "plain words")
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 0, ran.stderr
+    for surface in ("tree", "history", "refs and tag messages"):
+        assert f"clean: {surface}" in ran.stdout
+
+
+def test_a_malformed_pattern_key_fails_rather_than_matching_nothing(tmp_path):
+    """Breaks when grep's exit 2, a pattern it cannot read, is taken for its
+    exit 1, no match, and every file reports clean."""
+    scratch = _Scratch(tmp_path, patterns="unclosed(")
+    packet = tmp_path / "packet.md"
+    packet.write_text("plain words\n", encoding="utf-8")
+    ran = scratch.sweep("--sweep", str(packet))
+    assert ran.returncode == 1
+    assert "clean:" not in ran.stdout
+    assert "ants.pressless.leakPatterns" in ran.stderr
+
+
+def test_the_patterns_never_reach_a_command_line(tmp_path):
+    """Breaks when the pattern is passed as an argument, where any process on
+    the machine can read it in /proc/<pid>/cmdline. Every program the sweep
+    starts is a stand-in on PATH that records its arguments."""
+    scratch = _Scratch(tmp_path)
+    record = tmp_path / "arguments.txt"
+    stand_ins = tmp_path / "bin"
+    stand_ins.mkdir()
+    for name in ("git", "grep", "sh", "xargs", "awk", "sed", "tr", "cut"):
+        real = shutil.which(name, path="/usr/bin:/bin")
+        recorder = f'#!/bin/bash\nprintf "%s\\n" "$*" >> "{record}"\nexec {real} "$@"\n'
+        (stand_ins / name).write_text(recorder, encoding="utf-8")
+        (stand_ins / name).chmod(0o755)
+    scratch.env["PATH"] = f"{stand_ins}:/usr/bin:/bin"
+    ran = scratch.sweep("--docs")
+    assert ran.returncode == 0, ran.stderr
+    arguments = record.read_text(encoding="utf-8")
+    assert "grep" in arguments
+    assert _STAND_IN not in arguments
 
 
 def _gate_in_a_scratch_repository(tmp_path: Path, env: dict[str, str]) -> tuple[Path, str]:

@@ -41,8 +41,10 @@ cd "$(dirname "$0")/.."
 
 # ── Leak sweep ──────────────────────────────────────────────────────────────
 # Four surfaces, because a push publishes all four: the tree, the files in
-# every commit, the commit messages, and the refs, a tag's message among them.
-# `git grep` reads trees only, so a name in a subject line passes it unseen.
+# every commit, the commits themselves (message, author, committer and the
+# paths they touch), and the refs, a tag's message and tagger among them.
+# `git grep` reads file contents only, so a name in a subject line, an
+# address or a file name passes it unseen.
 #
 # This script, and earlier CLAUDE.md in the history, spell these patterns, so
 # those lines match. They carry the pipe-separated pattern itself; a real leak
@@ -65,36 +67,65 @@ if [[ -n $extra ]]; then
 else
     printf 'note: ants.pressless.leakPatterns is not set -- only the pattern above is swept\n'
 fi
-# Each surface is fed in as text and matched here, so all are matched the same
-# way -- and the message and ref surfaces have no matcher of their own.
+# The pattern reaches every search through a file, never a command line, which
+# any process on this machine can read. Inside .git, as windows-gate.sh's
+# scratch is: on the repository's own disk, never /tmp, which is RAM here.
+patterns=$(mktemp "$(git rev-parse --path-format=absolute --git-common-dir)/leak-sweep.XXXXXX")
+trap 'rm -f "$patterns"' EXIT
+printf '%s\n' "$PAT" >"$patterns"
+# grep exits 1 for no match and 2 for a pattern it cannot read. A malformed key
+# would otherwise match nothing, everywhere, and pass.
+status=0
+grep -E -f "$patterns" </dev/null || status=$?
+((status == 1)) || fail "the leak pattern does not compile; check ants.pressless.leakPatterns"
+
+# Every surface arrives as `where<TAB>text` lines that already match. A line
+# that only quotes the pattern is dropped, and the rest fail the gate. Only
+# WHERE is printed: GitHub's log is public, and the text is the leak itself.
 scan() {
     local what=$1 hits
-    hits=$(grep -inE "$PAT" | grep -vF "$SELF" || true)
+    hits=$(grep -avF -- "$SELF" | cut -f1 || true)
     [[ -z $hits ]] || {
         printf '%s\n' "$hits" >&2
         fail "$what names the writer"
     }
     printf 'clean: %s\n' "$what"
 }
+matching() { grep -a -iE -f "$patterns" || (($? == 1)); }
+# git grep's lines. --null keeps a `:` in a path from shifting the fields. A
+# binary file's match carries no text, only `Binary file X matches`, and fails
+# the gate all the same: a picture's metadata can hold a name.
+from_git_grep() {
+    tr '\0' '\t' | sed -e 's/\t/:/' -e 's/^Binary file \(.*\) matches$/\1\tbinary file/'
+}
+# Commits and refs carry no location on each line, so each line is tagged with
+# the commit or ref above it. Git writes that header line after a \001 mark.
+tagged() {
+    awk -v mark="$(printf '\001')" \
+        'index($0, mark) == 1 { where = substr($0, 2) } { print where "\t" $0 }'
+}
 if ((${#SWEEP[@]})); then
     for file in "${SWEEP[@]}"; do
-        # shellcheck disable=SC2094  # scan only names the file in its message
-        scan "$file" <"$file"
+        awk '{ print FILENAME ":" FNR "\t" $0 }' "$file" | matching | scan "$file"
     done
     exit 0
 fi
-git grep -n -iE "$PAT" -- . | scan "tree"
-git log --all --format='%H %s%n%b' | scan "commit messages"
-# An annotated tag carries a message of its own, which no commit log shows.
-git for-each-ref --format='%(refname) %(contents)' | scan "refs and tag messages"
+{ git grep -n --null -iE -f "$patterns" -- . || (($? == 1)) || fail "git grep could not search the tree"; } \
+    | from_git_grep | scan "tree"
+git log --all --name-only --format='%x01%H%n%an <%ae>%n%cn <%ce>%n%B' \
+    | tagged | matching | scan "commits: messages, authors and paths"
+# An annotated tag carries a message and a tagger, which no commit log shows.
+git for-each-ref --format='%01%(refname)%0a%(taggername) %(taggeremail)%0a%(contents)' \
+    | tagged | matching | scan "refs and tag messages"
 # In batches: one command line holding every revision passes Windows' limit
 # (about 790 of them) as the history grows, and the release job runs this on
 # windows-latest (PRESS-0135). git grep exits 1 for a batch with no match, which
 # is not a failure; any other exit still fails the gate.
 # shellcheck disable=SC2016  # $0 and $@ belong to the inner shell
 git rev-list --all \
-    | xargs -n 200 sh -c 'git grep -n -iE "$0" "$@" -- . || [ $? -eq 1 ]' "$PAT" \
-    | scan "history"
+    | { xargs -n 200 sh -c 'git grep -n --null -iE -f "$0" "$@" -- . || [ $? -eq 1 ]' "$patterns" \
+        || fail "git grep could not search the history"; } \
+    | from_git_grep | scan "history"
 
 if ((DOCS_ONLY)); then
     printf '\ndocumentation-only: no test here reads a document, so nothing else to run.\n'

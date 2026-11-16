@@ -142,9 +142,10 @@ not catch the directory name.
 file changes nothing about what `git log` serves.
 
 The gate sweeps what a push publishes: the tree, the files in every
-commit, the commit messages, and every ref with its message, a tag's
-included. `git grep` reads trees only, so a name in a subject line
-passes a tree sweep. Where no hook runs the gate, run its leak step by
+commit, binary ones included, each commit's message, author, committer
+and paths, and every ref with its message and tagger. `git grep` reads
+file contents only, so a name in a subject line passes a tree sweep. A
+hit prints where it is, never its text, because GitHub's log is public. Where no hook runs the gate, run its leak step by
 hand:
 
 ```

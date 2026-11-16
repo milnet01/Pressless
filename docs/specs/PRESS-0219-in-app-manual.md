@@ -297,7 +297,7 @@ picture and video for anything naming a real site or person.
 | INV-7 | **Partial:** `tests/test_manual.py::test_freeze_bundles_the_manual` checks the flag; only a built artefact proves the files arrive (§ 7) |
 | INV-8 | **Partial:** `scripts/by-hand-browser-checks.py`, run on request by `windows-gate.sh --browsers`, not by the push gate |
 | Every task Pressless offers has a manual entry | **nothing** — a by-hand read against the roadmap's shipped items |
-| No picture or video shows a real site or person | **nothing** — the leak sweep reads text only; the § 7 by-hand read |
+| No picture or video shows a real site or person | **nothing** — the leak sweep finds a name in a file's bytes, never what a picture shows; the § 7 by-hand read |
 | Pictures match the current screens | **nothing** — see § 9 |
 
 ## 11. Cross-doc impact
