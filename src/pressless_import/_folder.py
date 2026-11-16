@@ -14,6 +14,7 @@ import base64
 import dataclasses
 import html
 import json
+import lzma
 import os
 import posixpath
 import re
@@ -22,6 +23,7 @@ import zipfile
 import zlib
 from collections import Counter
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote, unquote
@@ -104,21 +106,30 @@ class _Paths:
 
     def __init__(self) -> None:
         self._files: set[str] = set()
-        self._folders: set[str] = set()
+        self._folders: dict[str, str] = {}   # folded: as first written
 
-    def take(self, path: str) -> bool:
+    def take(self, path: str) -> str | None:
+        """None where `path` is taken; else the words key saying why not."""
+        written = path.split("/")
         folded = path.casefold().split("/")
-        above = {"/".join(folded[:n]) for n in range(1, len(folded))}
+        above = {"/".join(folded[:n]): "/".join(written[:n]) for n in range(1, len(folded))}
         whole = "/".join(folded)
-        if whole in self._files or whole in self._folders or above & self._files:
-            return False
+        if whole in self._files or whole in self._folders or above.keys() & self._files:
+            return "import.folder.why.twin"
+        # `A/` and `a/` are one folder on Windows and two elsewhere.
+        if any(self._folders.get(key, spelled) != spelled for key, spelled in above.items()):
+            return "import.folder.why.twin_folder"
         self._files.add(whole)
-        self._folders |= above
-        return True
+        for key, spelled in above.items():
+            self._folders.setdefault(key, spelled)
+        return None
+
+
+_NAME_LONGEST = 255     # bytes of UTF-8: Linux's limit, never looser than Windows' 255 UTF-16 units
 
 
 def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
-    """§ 4.1's three tests, which § 4.3 makes again for a repository's paths."""
+    """§ 4.1's tests, which § 4.3 makes again for a repository's paths."""
     if size > builder.FILE_LARGEST:
         return say("import.folder.why.large", **builder.largest_slots())
     try:
@@ -126,9 +137,11 @@ def _why_not_kept(path: str, size: int, taken: _Paths) -> str | None:
             store.file_path_for(Path(), segment)
     except store.StoreError:
         return say("import.folder.why.segment")
-    if not taken.take(path):
-        return say("import.folder.why.twin")
-    return None
+    if any(len(segment.encode("utf-8", "surrogatepass")) > _NAME_LONGEST
+           for segment in path.split("/")):
+        return say("import.folder.why.long")
+    twin = taken.take(path)
+    return say(twin) if twin else None
 
 
 def read_folder_left(held: Path) -> tuple[tuple[str, str], ...]:
@@ -148,10 +161,22 @@ def _one_top_folder(names: list[str]) -> str:
     return ""
 
 
+# What reading a damaged or unsupported ZIP raises; zipfile raises
+# UnicodeDecodeError for a name flagged UTF-8 that is not.
+_UNREADABLE = (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError, EOFError,
+               zlib.error, lzma.LZMAError, UnicodeDecodeError)
+_PIECE = 1 << 20
+
+
+class _NotWritten(Exception):
+    """Writing on this computer failed, as reading the ZIP did not."""
+
+
 def unpack_folder(source: Path, into: Path, room: Callable[[], int]
                   ) -> tuple[tuple[str, str], ...]:
     """§ 4.1: every member checked first, and any failure refuses the ZIP and
-    writes nothing. What is left out is returned with why. `into` is replaced."""
+    writes nothing. What is left out is returned with why, a member whose place
+    this computer cannot make among them. `into` is replaced."""
     into = Path(into)
     staged = into.with_name(f".{into.name}.part")
     try:
@@ -178,24 +203,52 @@ def unpack_folder(source: Path, into: Path, room: Callable[[], int]
                     left.append((path, why))
             if sum(info.file_size for _path, info in kept) > room():
                 raise ImportStopped("the ZIP's files are larger than the room on this drive")
-            shutil.rmtree(staged, ignore_errors=True)
-            staged.mkdir(parents=True)
-            for path, info in kept:
-                target = staged / path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with held.open(info) as unpacked, open(target, "wb") as out:
-                    shutil.copyfileobj(unpacked, out)
-        if into.exists():
-            shutil.rmtree(into)
-        os.replace(staged, into)
-    except (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError, EOFError,
-            zlib.error) as exc:
+            _written(held, kept, staged, left)
+        with _writing_here():
+            if into.exists():
+                shutil.rmtree(into)
+            os.replace(staged, into)
+    except _NotWritten as exc:
+        shutil.rmtree(staged, ignore_errors=True)
+        raise ImportStopped(f"the ZIP's files could not be written on this computer ({exc})"
+                            ) from None
+    except _UNREADABLE as exc:
         shutil.rmtree(staged, ignore_errors=True)
         raise ImportStopped(f"the ZIP could not be read ({type(exc).__name__})") from None
     except ImportStopped:
         shutil.rmtree(staged, ignore_errors=True)
         raise
     return tuple(left)
+
+
+@contextmanager
+def _writing_here() -> Iterator[None]:
+    """An OSError inside becomes _NotWritten, naming what the system said."""
+    try:
+        yield
+    except OSError as exc:
+        raise _NotWritten(exc.strerror or type(exc).__name__) from None
+
+
+def _written(held: zipfile.ZipFile, kept: list, staged: Path, left: list) -> None:
+    """Each kept member under `staged`. One whose place this computer cannot
+    make, as a path too long for Windows, joins `left`."""
+    with _writing_here():
+        shutil.rmtree(staged, ignore_errors=True)
+        staged.mkdir(parents=True)
+    for path, info in kept:
+        target = staged / path
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            out = open(target, "wb")  # noqa: SIM115 -- closed below
+        except OSError as exc:
+            left.append((path, say("import.folder.why.unwritable",
+                                   why=exc.strerror or type(exc).__name__)))
+            continue
+        with held.open(info) as unpacked, out:
+            while piece := unpacked.read(_PIECE):     # a read failure is the ZIP's
+                with _writing_here():
+                    out.write(piece)
 
 
 # ------------------------------------------------------------ text (§ 4.9) ----

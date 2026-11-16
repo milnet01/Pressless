@@ -426,11 +426,21 @@ class _Crawl:
             self.part.unlink(missing_ok=True)
             return False
         target = self.into / landing
-        target.parent.mkdir(parents=True, exist_ok=True)
-        self.part.replace(target)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            self.part.replace(target)
+        except OSError as exc:
+            # A whole path longer than the system holds, as Windows' 260 characters.
+            self.left.append((landing, _not_written(exc) or f"it could not be written here "
+                              f"({type(exc).__name__})"))
+            self.part.unlink(missing_ok=True)
+            return False
         self.landed[asked] = self.landed[final] = landing
         self.urls[landing] = final
-        self._read(landing, final, target)
+        try:
+            self._read(landing, final, target)
+        except OSError:
+            pass    # it landed; what it names is not followed
         return True
 
     def _read(self, landing: str, final: str, target: Path) -> None:

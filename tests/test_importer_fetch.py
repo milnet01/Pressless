@@ -550,6 +550,28 @@ def test_a_path_decoding_to_an_absolute_one_lands_nowhere_outside(tmp_path):
     assert not outside.exists() and _landed(into) == {"index.html"} and crawled.left
 
 
+def test_a_landing_this_computer_cannot_make_is_left_and_the_rest_come(tmp_path):
+    """PRESS-0333 § 4.2: a path that fails is `left`. A name past 255 bytes is
+    refused on every system; a whole path past the system's limit fails here."""
+    long_name = "%C3%A9" * 128 + ".html"
+    deep = "/".join(["d" * 250] * 20) + "/a.html"
+    network = _live({"sites.example.org": [GLOBAL]}, {
+        "sites.example.org/": _html(f'<a href="{long_name}">L</a> <a href="{deep}">D</a> '
+                                    '<a href="Blog/a.html">A</a> <a href="blog/b.html">B</a> '
+                                    '<a href="z.html">Z</a>'),
+        f"sites.example.org/{long_name}": _html("<p>L</p>"),
+        f"sites.example.org/{deep}": _html("<p>D</p>"),
+        "sites.example.org/Blog/a.html": _html("<p>A</p>"),
+        "sites.example.org/blog/b.html": _html("<p>B</p>"),
+        "sites.example.org/z.html": _html("<p>Z</p>"),
+    })
+    into = tmp_path / "folder"
+    crawled = _download(network, "https://sites.example.org/", into)
+    assert _landed(into) == {"index.html", "Blog/a.html", "z.html"}
+    assert sorted(path for path, _why in crawled.left) == sorted(
+        [deep, "blog/b.html", "é" * 128 + ".html"])
+
+
 def test_a_relative_address_that_lands_elsewhere_still_resolves(tmp_path):
     """`team` lands at team.html, and `../other/` from a project site is not the site's."""
     from test_importer_folder import _built, _unresolved

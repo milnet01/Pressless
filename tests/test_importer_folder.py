@@ -23,6 +23,7 @@ from test_builder import _settings
 
 import pressless_import
 from pressless import builder, face, look, look_screen, menu, store
+from pressless.words import say
 from pressless_import import ImportStopped
 
 
@@ -184,6 +185,81 @@ def test_unpacking_drops_the_one_top_folder_and_answers_what_it_left(tmp_path, m
     assert [path.name for path in (into / "sub").iterdir()] == ["Page.html"]
     assert (into / "sub/Page.html").read_text(encoding="utf-8") == "<p>One</p>"
     assert all(left.values())
+
+
+def _zip(tmp_path: Path, members: dict[str, str], **kwargs) -> Path:
+    source = tmp_path / "held.zip"
+    with zipfile.ZipFile(source, "w", **kwargs) as made:
+        for name, text in members.items():
+            made.writestr(name, text)
+    return source
+
+
+def test_a_member_no_system_can_hold_is_left_not_the_zip(tmp_path):
+    """§ 4.1: a name past 255 bytes, which Linux cannot hold, is left on every
+    system; a path this computer cannot make is left as well, and neither
+    refuses the rest of the ZIP."""
+    long_name = "é" * 128 + ".html"             # 261 bytes in UTF-8
+    deep = "/".join(["d" * 250] * 20) + "/a.html"  # past every system's whole-path limit
+    into = tmp_path / "folder"
+    left = dict(pressless_import.unpack_folder(
+        _zip(tmp_path, {"index.html": "<p>Home</p>", long_name: "x", deep: "y"}),
+        into, lambda: 10**9))
+    assert (into / "index.html").is_file()
+    assert set(left) == {long_name, deep} and all(left.values()), left
+    # Said for its name, so on Windows, which could hold it, too.
+    assert left[long_name] == say("import.folder.why.long")
+    assert not into.with_name(".folder.part").exists()
+
+
+def test_a_folder_twin_by_capitals_is_left(tmp_path):
+    """§ 4.1: `A/` and `a/` are one folder on Windows and two elsewhere, so the
+    second is left on every system."""
+    into = tmp_path / "folder"
+    left = dict(pressless_import.unpack_folder(
+        _zip(tmp_path, {"A/c.html": "<p>C</p>", "a/b.html": "<p>B</p>"}), into,
+        lambda: 10**9))
+    assert list(left) == ["a/b.html"] and (into / "A/c.html").is_file()
+
+
+def test_a_member_name_that_is_not_its_flagged_utf8_is_refused(tmp_path):
+    """§ 6: a ZIP that cannot be read says so, and leaves nothing behind."""
+    source = _zip(tmp_path, {"good.html": "<p>Good</p>", "ab.html": "<p>Bad</p>"})
+    data = bytearray(source.read_bytes())
+    for at in [found.start() for found in re.finditer(rb"ab\.html", bytes(data))]:
+        data[at:at + 2] = b"\xff\xfe"
+    # The UTF-8 flag, in the central directory's record for that member.
+    record = bytes(data).rindex(b"PK\x01\x02")
+    data[record + 9] |= 0x08
+    source.write_bytes(bytes(data))
+    into = tmp_path / "folder"
+    with pytest.raises(ImportStopped, match="could not be read"):
+        pressless_import.unpack_folder(source, into, lambda: 10**9)
+    assert not into.exists() and not into.with_name(".folder.part").exists()
+
+
+def test_a_damaged_lzma_member_is_refused(tmp_path):
+    words = " ".join(f"{number * 7919 % 10007:05d}" for number in range(5000))
+    source = _zip(tmp_path, {"a.html": f"<p>{words}</p>"}, compression=zipfile.ZIP_LZMA)
+    data = bytearray(source.read_bytes())
+    for at in range(200, 400):
+        data[at] ^= 0x5A
+    source.write_bytes(bytes(data))
+    into = tmp_path / "folder"
+    with pytest.raises(ImportStopped, match="could not be read"):
+        pressless_import.unpack_folder(source, into, lambda: 10**9)
+    assert not into.with_name(".folder.part").exists()
+
+
+def test_a_zip_this_computer_cannot_write_is_not_called_unreadable(tmp_path, monkeypatch):
+    def refuses(*args):
+        raise PermissionError(13, "Access is denied", "folder")
+
+    monkeypatch.setattr("pressless_import._folder.os.replace", refuses)
+    with pytest.raises(ImportStopped, match="could not be written") as stopped:
+        pressless_import.unpack_folder(_zip(tmp_path, {"index.html": "<p>H</p>"}),
+                                       tmp_path / "folder", lambda: 10**9)
+    assert "read" not in str(stopped.value)
 
 
 # ---------------------------------------------------------------- INV-10 ---

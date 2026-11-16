@@ -1723,6 +1723,10 @@ _WORDS: dict[str, str] = {
     "import.folder.why.large": "it is larger than the {mib} MiB Pressless keeps",
     "import.folder.why.segment": "Windows cannot hold a name in its path",
     "import.folder.why.twin": "another file has the same name, but for capital letters",
+    "import.folder.why.twin_folder": (
+        "a folder in its path has the same name as another, but for capital letters"),
+    "import.folder.why.long": "a name in its path is longer than Linux can hold",
+    "import.folder.why.unwritable": "this computer could not write it there ({why})",
     "import.folder.why.cname": "it says which web address GitHub serves, and stays on GitHub",
     "import.folder.why.lost": (
         "GitHub would serve it at every missing address, where an old address's forward "

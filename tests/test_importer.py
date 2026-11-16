@@ -869,6 +869,8 @@ _ALLOWED_IMPORTS = {
     # PRESS-0210: a folder of pages: an SVG as a data: address, a page's old
     # path, a damaged ZIP, the record of what came in, and the Report's words.
     "base64", "posixpath", "zlib", "pressless.safe_write", "pressless.words",
+    # PRESS-0385: a damaged LZMA member named as a damaged ZIP.
+    "lzma",
 }
 
 

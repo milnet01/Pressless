@@ -113,9 +113,18 @@ class Brought:
 `unpack_folder` checks every member first, by `sitefile.stays_inside` and
 `sitefile.is_link`, and refuses the ZIP on any failure, writing nothing. It
 also refuses a ZIP with more than `MEMBERS_MOST` members, or whose members do
-not fit `room()`. A member larger than `builder.FILE_LARGEST`, one with a path
-segment `store.file_path_for` refuses, and one whose path folds to the same
-`casefold()` as an earlier member are not unpacked. Each is returned with why.
+not fit `room()`. These members are not unpacked:
+
+- one larger than `builder.FILE_LARGEST`;
+- one with a path segment `store.file_path_for` refuses, or longer than the
+  255 bytes of UTF-8 Linux holds;
+- one whose path folds to the same `casefold()` as an earlier member's, or
+  names a folder an earlier member names in other capitals, as Windows holds
+  `A/` and `a/` as one;
+- one whose place this computer cannot make, as a path too long for Windows.
+
+Each is returned with why. A ZIP that cannot be read, or whose files cannot be
+written, is refused, and says which.
 Where every member sits inside one top folder, that folder is removed from
 each path, because a zipped folder arrives that way.
 
@@ -594,6 +603,7 @@ A carried file nothing names stays in the Store, is not published, and is listed
 | The ZIP is not a ZIP, or holds no page | `folder` step says so; nothing is kept |
 | The ZIP is larger than the drive's room | Refused before anything is unpacked; nothing is kept |
 | A member cannot be held on Windows | Not unpacked on any system, and listed (§ 4.1) |
+| A member's place cannot be made on this computer | Not unpacked, and listed (§ 4.1) |
 | A repository path cannot be held on Windows | On Windows, `UnfetchablePath` from `fetch_state`, and the *pages* step is a `Stop` (PRESS-0009 § 4.5); elsewhere `left` (§ 4.3) |
 | The fetch fails part-way | Nothing lands (PRESS-0218 INV-10); the *pages* step or Finish is a `Stop` |
 | The held folder has gone before Finish | `bring_folder` fetches `bring_in_commit` again; `RemoteStateMissing` is a `Stop` saying to go Back |
