@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=364 -->
+<!-- ants-roadmap-id-high-water: PRESS=365 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7318,7 +7318,7 @@ owned by docs/standards/versioning-overrides.md.
   Kind: fix.
   Source: by-hand-check-2026-11-13 PRESS-0355.
 
-- 📋 [PRESS-0359] **Many more layouts and styles to choose from on the Look screen.**
+- ✅ [PRESS-0359] **Many more layouts and styles to choose from on the Look screen.**
   User, 2026-11-13: "We will probably have to add a lot of themes and
   styles that users can choose from."
   Open: how many, which kinds of site they serve, and how a long list
@@ -7341,6 +7341,17 @@ owned by docs/standards/versioning-overrides.md.
   Loop log: docs/reviews/PRESS-0359-layouts-and-colour-styles-loop-log.md.
   Spec: docs/specs/PRESS-0359-layouts-and-colour-styles.md. It
   amends docs/specs/PRESS-0196-site-look.md § 4.1's layout row and § 9.
+  Shipped 2026-11-16 in a92f4ea and cc20acf. Every invariant's test
+  was seen failing first, or seen failing with its rule broken by hand
+  (INV-5, INV-6, INV-7). INV-4: the 0.10.1 hashes still pass. Gate green
+  on Linux and the Windows box. Hand check in Chrome on Linux: each new
+  layout in its own style and two others, wide and narrow, light and
+  dark, on a page of every block; nothing wrong found. INV-9 and the
+  style script's re-marking are now rows in by-hand-browser-checks.py:
+  they passed in Chrome on Linux, and in Chrome and Edge on the Windows
+  box. look.png and changing-the-look.webm retaken; setup-welcome.png
+  came out pixel-identical, so it is unchanged. The same box run found
+  two PRESS-0285 rows failing in Edge, before this item too: PRESS-0365.
   **Layman:** The Look screen offers many more ready-made themes and styles, so a site need not look like every other Pressless site.
   Kind: feature.
   Source: user-request-2026-11-13.
@@ -7413,6 +7424,22 @@ owned by docs/standards/versioning-overrides.md.
   **Layman:** Your site's first screen says how many of your changes are still waiting to be published.
   Kind: ux.
   Source: PRESS-0353-decision-5-2026-11-15.
+
+- 📋 [PRESS-0365] **In Edge on Windows, code typed in the page editor does not reach the page view.**
+  Found 2026-11-16 while checking PRESS-0359 on the Windows box:
+  `scripts/windows-gate.sh wintest --browsers edge` fails two rows of
+  scripts/by-hand-browser-checks.py, twice in a row: "PRESS-0285 INV-2:
+  code typed in the box shows in the frame at once" and "PRESS-0285
+  INV-3: a section added in the code is picked and saved". The second
+  follows from the first. Both fail the same way at 22926a3, before
+  PRESS-0359, so that item did not cause it. Both pass in Chrome on the
+  box and on Linux. The row fills the code box, then switches to the
+  page view at once and waits 15 seconds for the new words. Not yet
+  known: whether the edit is lost, saved late, or the row's timing is
+  wrong for Edge. Start with locate-defect, on the box, in Edge.
+  **Layman:** On Windows in Edge, a change typed in a page's code view may not show when you switch back to the page.
+  Kind: fix.
+  Source: hand-check-2026-11-16.
 
 ## 1.1.0 — music figures
 
