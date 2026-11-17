@@ -2108,6 +2108,7 @@ def test_a_stranded_twin_notice_points_at_the_caller(tmp_path):
     assert [each.filename for each in caught] == [__file__]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows opens no folder descriptor to sync")
 def test_a_move_syncs_both_folders(tmp_path, monkeypatch):
     """PRESS-0376: the POSIX move is a link and an unlink, two changes to two
     folders. Each folder is synced, or a power loss can bring the entry back
