@@ -1017,6 +1017,10 @@ _WORDS: dict[str, str] = {
         "Pressless could not remove the Google key or the visitor figures, so they may still "
         "be on this computer."
     ),
+    "google_setup.not_forgotten": (
+        "Pressless could not clear the last property's visitor figures from this computer, "
+        "so the dashboard may show them as this one's until it next asks Google."
+    ),
     # Setup: the first-run wizard, Settings and the shortcuts (setup.py).
     "setup.step.welcome": "Set up Pressless",
     "setup.step.account": "A GitHub account",

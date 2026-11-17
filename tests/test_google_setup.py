@@ -346,6 +346,22 @@ def test_a_failed_removal_is_reported_and_still_turns_off(
     assert MAY_STILL_BE_HERE in page
 
 
+def test_turning_off_removes_the_key_settings_names_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None
+) -> None:
+    """INV-18. Breaks when Turn off revokes the key Settings names but deletes
+    only the one this site files under, so where the two differ the key
+    Pressless used stays on the computer."""
+    held = _Store(monkeypatch)
+    _saved(tmp_path, credentials=settings.Credentials(
+        store="keyring", github_account="github", google_account="google-by-hand"),
+        analytics_property_id="999")
+    with _served(tmp_path, _Google()) as browser:
+        _, _, page = browser.send("POST", "/setup/google/off")
+    assert set(held.deletes) == {("keyring", "google-by-hand"), ("keyring", "google")}
+    assert MAY_STILL_BE_HERE not in page
+
+
 # -------------------------------------------------------------- INV-14 ----
 
 
@@ -635,3 +651,40 @@ def test_the_page_says_while_google_has_not_approved_pressless(
     assert "Sign in with Google" in page
     assert ("still checking Pressless" in page) is not approved
     assert ("<strong>Go to Pressless</strong>" in page) is not approved
+
+
+def test_figures_that_cannot_be_forgotten_are_said(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None,
+) -> None:
+    """Breaks when a switch of property cannot clear the last one's cached
+    figures and the page says nothing, though the dashboard may show them."""
+    _Store(monkeypatch)
+    _saved(tmp_path, credentials=settings.Credentials(
+        store="keyring", github_account="github", google_account="google"),
+        analytics_property_id="999")
+    (tmp_path / CACHE).mkdir()   # a directory: unlink cannot remove it
+    with _served(tmp_path, _Google(streams={"111": []})) as browser:
+        browser.come_back(browser.start())
+        _, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+    assert settings.load(tmp_path).analytics_property_id == "111"
+    assert "could not clear the last property's visitor figures" in page
+
+
+@pytest.mark.parametrize("later, renewed", [(60.0, False), (2 * 3600.0, True)])
+def test_a_property_chosen_late_is_read_with_a_fresh_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, registered: None,
+    later: float, renewed: bool,
+) -> None:
+    """Breaks when the streams are read with the token from the return however
+    long ago that was: past its hour Google refuses it, and the page says to
+    sign in again straight after a sign-in."""
+    _Store(monkeypatch)
+    _signed_in(tmp_path)
+    google = _Google(streams=[_web("G-FRESH1")])
+    with _served(tmp_path, google) as browser:
+        browser.come_back(browser.start())
+        asked = google.token_requests()
+        google.clock += later
+        _, _, page = browser.send("POST", "/setup/google/choose", {"property": "111"})
+    assert google.token_requests() == asked + renewed
+    assert settings.load(tmp_path).measurement_id == "G-FRESH1", page

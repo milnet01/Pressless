@@ -13,7 +13,6 @@ property, so a sign-in left half-way leaves the dashboard as it was.
 
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import hmac
 import html
@@ -262,56 +261,76 @@ def _choose(state: _State, request: Request) -> str:
         return shown + state.face.fail(exc, publishing=False,
                                        secret=say("failure.secret.google_sign_in"))
     # PRESS-0199 § 4.3: the property's web streams, read with the token in
-    # hand. A failure here keeps today's save, and any id Settings held.
+    # hand, renewed where its hour is nearly up. A failure here keeps today's
+    # save, and any id Settings held.
+    access = pending.access
     found: tuple[str, ...] = ()
     lookup_failure = ""
     try:
-        found = google_signin.measurement_ids(pending.access.value, chosen,
+        if access.expires_at - state.transport().now() <= _REFRESH_MARGIN:
+            access = google_signin.access_token(pending.refresh_token, state.client)
+        found = google_signin.measurement_ids(access.value, chosen,
                                               saved.site_address, state.client)
     except insights.InsightsError as exc:
         lookup_failure = state.face.fail(exc, publishing=False)
-    measurement_id = saved.measurement_id
-    removed = None
-    if not lookup_failure and _found_by_us(state, pending, saved, chosen):
-        removed, measurement_id = measurement_id, None   # PRESS-0253
-    if measurement_id is None and len(found) == 1:
-        measurement_id = found[0]
+    code = _counting_code(saved, found, failed=lookup_failure != "", replaced=(
+        not lookup_failure and _found_by_us(state, access.value, saved, chosen)))
     candidate = dataclasses.replace(
         saved,
         credentials=dataclasses.replace(saved.credentials, google_account=filed),
         analytics_property_id=chosen,
-        measurement_id=measurement_id,
+        measurement_id=code.saved,
     )
     with state.face.capture() as notices:
         settings.check(candidate)
         settings.save(state.folder, candidate)
+    not_forgotten = ""
     if chosen != saved.analytics_property_id:
         # The cache holds the last property's numbers, read as this one's.
-        with contextlib.suppress(OSError):
+        try:
             insights.forget(state.folder)
+        except OSError:
+            not_forgotten = f"<p>{say('google_setup.not_forgotten')}</p>"
     with state.lock:
-        state.held = pending.access
+        state.held = access
         state.pending = None
-    privacy = ""
+    privacy_page = ""
     if candidate.measurement_id is not None:
         with state.face.capture() as privacy_notices:
             try:
                 starter.add_privacy(state.folder, starter.privacy_name(state.folder),
                                     **starter.disclosures(candidate))
             except StoreError as exc:
-                privacy = (f"<p>{say('google_setup.privacy_failed')}</p>"
-                           + state.face.fail(exc, publishing=False))
-        privacy = render_notices(privacy_notices) + privacy
-    # The id Settings held and still holds; None where the switch replaced it.
-    kept_id = saved.measurement_id if removed is None else None
+                privacy_page = (f"<p>{say('google_setup.privacy_failed')}</p>"
+                                + state.face.fail(exc, publishing=False))
+        privacy_page = render_notices(privacy_notices) + privacy_page
     return (shown + render_notices(notices) + lookup_failure
             + f"<h1>{say('google_setup.ready')}</h1>"
-            + _counting(kept_id, found, lookup_failure != "", removed)
-            + privacy
+            + _counting(code.kept, found, lookup_failure != "", code.removed)
+            + not_forgotten + privacy_page
             + f'<p><a href="/">{say("script.undo.back")}</a></p>')
 
 
-def _found_by_us(state: _State, pending: _Pending, saved: settings.Settings,
+@dataclass(frozen=True)
+class _CountingCode:
+    saved: str | None     # the id Settings will hold
+    kept: str | None      # the id Settings held and still holds
+    removed: str | None   # the id a switch of property replaced
+
+
+def _counting_code(saved: settings.Settings, found: tuple[str, ...], *, failed: bool,
+                   replaced: bool) -> _CountingCode:
+    """PRESS-0199 § 4.3 and PRESS-0253, in one place: the held id survives
+    unless `replaced` says it was the previous property's own, and an empty
+    place takes the one id found, where exactly one was."""
+    held = saved.measurement_id
+    removed = held if replaced and not failed else None
+    kept = held if removed is None else None
+    to_save = kept if kept is not None or len(found) != 1 else found[0]
+    return _CountingCode(to_save, kept, removed)
+
+
+def _found_by_us(state: _State, token: str, saved: settings.Settings,
                  chosen: str) -> bool:
     """PRESS-0253: whether the held id is one of the previous property's own
     web streams, so a switch replaces it. An id that cannot be traced, the
@@ -320,8 +339,7 @@ def _found_by_us(state: _State, pending: _Pending, saved: settings.Settings,
     if saved.measurement_id is None or previous is None or previous == chosen:
         return False
     try:
-        streams = google_signin.measurement_ids(pending.access.value, previous, "",
-                                                state.client)
+        streams = google_signin.measurement_ids(token, previous, "", state.client)
     except insights.InsightsError:
         return False
     return saved.measurement_id in streams
@@ -335,6 +353,8 @@ def _counting(kept: str | None, found: tuple[str, ...], failed: bool,
         if kept is not None:
             return f"<p>{say('google_setup.counting.failed_kept', id=e(kept))}</p>"
         return f"<p>{say('google_setup.counting.failed')}</p>"
+    # With exactly one id found, the found sentence below names what took the
+    # removed one's place; otherwise the removal is said on its own.
     gone = (say("google_setup.counting.removed", id=e(removed)) + " "
             if removed is not None and len(found) != 1 else "")
     if kept is not None:
@@ -364,12 +384,15 @@ def _off(state: _State) -> str:
     # Whatever the revoke did, delete what Pressless kept (§ 3 decision 5):
     # the privacy policy promises Turn off removes both. Neither failure
     # stops the other or the save; the page says what may remain.
+    # Both the name Settings gives and the one this site files under, where
+    # they differ: the first is the key Pressless used, the second what
+    # `_choose` writes, even where Settings names none.
     removed = True
-    try:
-        credentials.delete(saved.credentials.store, state.folder,
-                           sites.account("google", state.folder))
-    except credentials.FAILURES:
-        removed = False
+    for name in dict.fromkeys(n for n in (account, sites.account("google", state.folder)) if n):
+        try:
+            credentials.delete(saved.credentials.store, state.folder, name)
+        except credentials.FAILURES:
+            removed = False
     try:
         insights.forget(state.folder)
     except OSError:

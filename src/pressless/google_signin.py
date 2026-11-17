@@ -272,15 +272,16 @@ def _request(transport: Transport, method: str, url: str, body: bytes | None,
 def _failure(status: int, data: bytes, secret: tuple[str, ...]) -> InsightsError:
     """§ 4.1's table. `detail` carries Google's error code, never its free text,
     which may quote what was sent (INV-7)."""
-    detail = _error_detail(data, secret)
-    if status in (401, 403) or (status == 400 and _error_code(data) == "invalid_grant"):
+    code = _error_code(data)
+    detail = _scrub(code, secret)[:insights.DETAIL_LIMIT] if code else None
+    if status in (401, 403) or (status == 400 and code == "invalid_grant"):
         return insights.Refused(f"Google refused the sign-in ({status})", detail)
     if status == 429:
         return insights.RateLimited("Google asked us to slow down", detail)
     return InsightsError(f"Google answered {status}", detail)
 
 
-def _error_detail(data: bytes, secret: tuple[str, ...]) -> str | None:
+def _error_code(data: bytes) -> str | None:
     """The sign-in endpoints' `error` code, or the Admin API's `error.status`.
     Their descriptions and messages are free text and are left out."""
     try:
@@ -290,18 +291,7 @@ def _error_detail(data: bytes, secret: tuple[str, ...]) -> str | None:
     error = answer.get("error") if isinstance(answer, dict) else None
     if isinstance(error, dict):
         error = error.get("status")
-    if not isinstance(error, str) or not error:
-        return None
-    return _scrub(error, secret)[:insights.DETAIL_LIMIT]
-
-
-def _error_code(data: bytes) -> str | None:
-    try:
-        answer = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        return None
-    error = answer.get("error") if isinstance(answer, dict) else None
-    return error if isinstance(error, str) else None
+    return error if isinstance(error, str) and error else None
 
 
 def _field(answer: dict, name: str) -> str:

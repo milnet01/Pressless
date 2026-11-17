@@ -138,7 +138,8 @@ does, and keeps each stream whose `type` is `WEB_DATA_STREAM` and whose
 - Otherwise the answer is every web stream's id, in Google's order.
 
 **After the Google step's property is chosen** (`google_setup._choose`),
-with the access token already in hand:
+with the access token already in hand, renewed from the pending refresh
+token where it is within a minute of its end:
 
 - one id, and Settings holding none → it is saved with the property id;
 - none → the page says how to add a web stream in Google Analytics
