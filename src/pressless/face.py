@@ -9,8 +9,8 @@ in the words table (PRESS-0242).
 
 Nothing here keeps state between requests (`docs/design.md` § State) beyond
 what the server itself needs: the secret made at launch, whether its link is
-spent, the pages later items add, the log it holds open, and the chosen theme,
-which a request may change.
+spent, the pages later items add, the log it holds open, and the chosen theme
+and text size, which a request may change.
 """
 
 from __future__ import annotations
@@ -93,9 +93,10 @@ class NoRoom(Exception):
     space cannot be read (PRESS-0224 § 4.5)."""
 
 
-def _keys(what: str, next_step: str, site: Site = Site.UNCHANGED, *,
+def _keys(what: str, next_step: str, *, site: Site = Site.UNCHANGED,
           link: tuple[str, str] | None = None) -> Sentence:
-    """A SENTENCES entry: it holds words keys, which sentence_for looks up."""
+    """A SENTENCES entry: it holds words keys, which sentence_for looks up.
+    `site` is keyword-only: Sentence takes it second, this takes it third."""
     return Sentence(what, site, next_step, link)
 
 
@@ -196,7 +197,7 @@ SENTENCES: dict[type[Exception], Sentence] = {
     publisher.OutcomeUnknown: _keys(
         "failure.publisher.OutcomeUnknown.what",
         "failure.publisher.OutcomeUnknown.next",
-        Site.UNKNOWN,
+        site=Site.UNKNOWN,
     ),
     publisher.Refused: _keys(
         "failure.publisher.Refused.what",
@@ -689,9 +690,12 @@ document.addEventListener("change", (event) => {
 });
 """
 
-# PRESS-0242 § 4.3: a page script's words, gaps filled as words.say fills them.
-# It reads the words block on each call and declares nothing else, because a
-# failure page written over this one by document.write runs it a second time.
+# PRESS-0242 § 4.3: a page script's words. It fills `{name}` gaps and turns
+# `{{` and `}}` into braces, as words.say does, and nothing more: a lone brace
+# stays as written here where say raises, and say's `{name:spec}` forms are
+# not filled. It reads the words block on each call and declares nothing
+# else, because a failure page written over this one by document.write runs
+# it a second time.
 _SAY = r"""
 function say(key, slots = {}) {
   const table = JSON.parse(document.getElementById("pressless-words").textContent);
@@ -1326,6 +1330,19 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         return False
 
     def _dispatch(self, method: str) -> None:
+        """Every request, checked in the order § 4.5 sets. The order is the
+        security policy: each check refuses before the next runs.
+
+        1. Host, for every request, doors included.
+        2. A door (PRESS-0337 § 4.3), which takes its own Authorization and
+           never the cookie.
+        3. The one-time link, which sets the cookie.
+        4. The cookie, except a GET to a return page (PRESS-0122 § 4.3).
+        5. A POST's Origin.
+
+        Only then is the request answered: the Face's own routes (_OWN), then
+        uploads, pages and files. A new route belongs after step 5.
+        """
         face = self.server.face
         if self.headers.get("Host") != face._host:
             self._refuse()
@@ -1337,61 +1354,26 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._through_door(face, method, parts.path, query, *door)
             return
         if method == "GET" and "t" in query:
-            # The link is honoured once: it reached the browser on its command
-            # line, so it must not stay the key for the whole run (§ 4.5).
-            with face._link_lock:
-                honoured = not face._link_spent and _is_secret(query["t"], face._secret)
-                face._link_spent = face._link_spent or honoured
-            if not honoured:
-                # PRESS-0245: a reload, Back or a restored session lands on the
-                # spent link. The session already lets this browser in, so it
-                # goes on to the page, with no new cookie; any other is told
-                # to start Pressless again.
-                if self._has_cookie(face):
-                    self._send(303, "", "text/plain", (("Location", parts.path or "/"),))
-                else:
-                    self._refuse("face.link_spent")
-                return
-            cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"
-            self._send(
-                303,
-                "",
-                "text/plain",
-                (("Set-Cookie", cookie), ("Location", parts.path or "/")),
-            )
+            self._follow_link(face, parts.path or "/", query["t"])
             return
         if not self._has_cookie(face) and not (method == "GET" and parts.path in face._returns):
-            # The one door without the cookie: a page Google's redirect lands on,
-            # which authenticates the request itself (PRESS-0122 § 4.3).
+            # Besides a door, the one page reached without the cookie is one
+            # Google's redirect lands on, which authenticates the request
+            # itself (PRESS-0122 § 4.3).
             self._refuse()
             return
         if method == "POST":
+            # A POST from any other origin names it, as "null" where its page
+            # hides it, so one naming none is from here; the cookie admits it.
             origin = self.headers.get("Origin")
             if origin is not None and origin != face._origin:
                 self._refuse()
                 return
 
-        if method == "GET" and parts.path == "/folder/location":
-            self._send(200, str(face._folder), "text/plain")
+        own = self._OWN.get((method, parts.path))
+        if own is not None:
+            own(self, face)
             return
-        if method == "POST" and parts.path == "/folder/open":
-            try:
-                _open_folder(face._folder)
-            except FolderNotOpened as exc:
-                self._send_page(face, 500, face.fail(exc, publishing=False))
-                return
-            self._send(204, "", "text/plain")
-            return
-        if method == "POST" and parts.path == "/theme":
-            self._choose_theme(face)
-            return
-        if method == "POST" and parts.path == "/text-size":
-            self._choose_size(face)
-            return
-        if method == "POST" and parts.path == "/true-colours":
-            self._choose_true_colours(face)
-            return
-
         upload = face._uploads.get(parts.path) if method == "POST" else None
         if upload is not None:
             self._take_upload(face, upload, parts.path, query)
@@ -1407,6 +1389,34 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         request = Request(method, parts.path, query, self.rfile.read(length) if length else b"")
         self._answer_then(face, page, request, publishing)
+
+    def _follow_link(self, face: Face, path: str, offered: str) -> None:
+        """The link is honoured once: it reached the browser on its command
+        line, so it must not stay the key for the whole run (§ 4.5)."""
+        with face._link_lock:
+            honoured = not face._link_spent and _is_secret(offered, face._secret)
+            face._link_spent = face._link_spent or honoured
+        if honoured:
+            cookie = f"{face._cookie}={face._session}; HttpOnly; SameSite=Strict; Path=/"
+            self._send(303, "", "text/plain", (("Set-Cookie", cookie), ("Location", path)))
+        elif self._has_cookie(face):
+            # PRESS-0245: a reload, Back or a restored session lands on the
+            # spent link. The session already lets this browser in, so it goes
+            # on to the page, with no new cookie.
+            self._send(303, "", "text/plain", (("Location", path),))
+        else:
+            self._refuse("face.link_spent")
+
+    def _send_location(self, face: Face) -> None:
+        self._send(200, str(face._folder), "text/plain")
+
+    def _open_the_folder(self, face: Face) -> None:
+        try:
+            _open_folder(face._folder)
+        except FolderNotOpened as exc:
+            self._send_page(face, 500, face.fail(exc, publishing=False))
+            return
+        self._send(204, "", "text/plain")
 
     def _through_door(self, face: Face, method: str, path: str, query: dict[str, str],
                       page: Page, admits: Callable[[str], bool]) -> None:
@@ -1487,6 +1497,16 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send(500, "", "text/plain")
             return
         self._send(204, "", "text/plain")
+
+    # The Face's own routes, answered after every check and before any
+    # route a part registers (add_page's docstring names them too).
+    _OWN: dict[tuple[str, str], Callable[[_Handler, Face], None]] = {
+        ("GET", "/folder/location"): _send_location,
+        ("POST", "/folder/open"): _open_the_folder,
+        ("POST", "/theme"): _choose_theme,
+        ("POST", "/text-size"): _choose_size,
+        ("POST", "/true-colours"): _choose_true_colours,
+    }
 
     def _answer(self, face: Face, page: Page, request: Request, publishing: bool) -> None:
         try:
@@ -1624,14 +1644,15 @@ _POLL_SECONDS = 0.5
 # the browser is on this machine.
 _STALL_SECONDS = 60
 
-# The longest body the theme and true-colours routes take: the longest theme
-# key with room to spare. A longer body is no choice of either.
+# The longest body the theme, text-size and true-colours routes take: the
+# longest theme key with room to spare. A longer body is no choice of any.
 _CHOICE_LIMIT = 64
 
 # The ceiling on a registered page's POST body, read whole into memory. It sits
-# far above any real page save (capped at ~60 KB client-side) or photograph, and
-# far below a size that would exhaust memory; a declared length past it is
-# refused with 413 before a byte is read.
+# above any file the page editor sends, which its script caps at
+# builder.FILE_LARGEST first, and far below a size that would exhaust memory.
+# Nothing caps a page save below it. A declared length past it is refused with
+# 413 before a byte is read.
 _MAX_BODY = 64 * 1024 * 1024
 
 # PRESS-0224 § 4.5: an upload or a download moves in pieces of this size, and
@@ -1687,6 +1708,8 @@ class Face:
         self._size = themes.read_size(self._folder)
         self._secret = secrets.token_urlsafe(32)
         self._session = secrets.token_urlsafe(32)
+        # The link carrying the secret travels on a command line, where other
+        # programs can read it, so it must never also be the cookie (§ 4.5).
         while self._session == self._secret:
             self._session = secrets.token_urlsafe(32)
         self._link_spent = False
@@ -1724,9 +1747,9 @@ class Face:
     def add_page(self, method: str, path: str, page: Page, *, publishing: bool = False) -> None:
         """Register `page` for `method` and `path`, replacing any before it.
 
-        The Face's own routes (/folder/location, /folder/open, /theme and
-        /true-colours) and an upload's path answer first, so a page
-        registered at one of those is never reached."""
+        A door's path, the Face's own routes (/folder/location, /folder/open,
+        /theme, /text-size and /true-colours) and an upload's path answer
+        first, so a page registered at one of those is never reached."""
         self._pages[(method.upper(), path)] = (page, publishing)
 
     def add_upload(self, path: str, handler: Callable[[Path], str | Reply], into: Path, *,
