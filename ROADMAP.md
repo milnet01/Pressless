@@ -8239,13 +8239,18 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0371 close-findings).
   Lanes: Face.
 
-- 📋 [PRESS-0398] **One shared helper for the versioned-JSON readers and writers.**
+- ✅ [PRESS-0398] **One shared helper for the versioned-JSON readers and writers.**
   Queued from PRESS-0371 (review-readability lane-01-face-core :44).
   Themes, choices, backups, sites and the updater each read and write a
   versioned JSON file by hand. Subject 01's part is fixed (theme lock,
   version written last). Do it after PRESS-0381 merges, since it edits
   updater.py. Keep the name
   choices.remember, which PRESS-0285 uses.
+  Shipped 2026-11-17: json_record.read and write serve themes,
+  choices (choices.remember kept), backups, sites, the updater's state,
+  and a sixth copy in starter. One format for all six: indented, final
+  newline, version written last. PRESS-0023 § 4.9, PRESS-0223 § 4.1,
+  PRESS-0001 § 11 amended. Full suite 2452 passed, 27 skipped.
   **Layman:** Five copies of the same file-saving code become one, so a fix to one is a fix to all.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0371 close-findings).
@@ -8432,11 +8437,17 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
   Lanes: Updates.
 
-- 📋 [PRESS-0409] **Move sitefile.stays_inside to a module that imports no other Pressless part.**
+- ✅ [PRESS-0409] **Move sitefile.stays_inside to a module that imports no other Pressless part.**
   Surfaced by PRESS-0381. updater.py now imports sitefile, which
   imports settings, credentials and store. PRESS-0023 § 4.1 forbids
   opening those, not importing them, but a 2026-10-23 readability lane
   read it as an import ban. A leaf module settles both readings.
+  Shipped 2026-11-17: stays_inside moved to zip_member, which imports
+  nothing; sitefile, updater and the importer call it there.
+  updater.py now loads no Store, settings or credentials
+  (test_the_updater_reaches_no_store_settings_or_credentials), and its
+  failed() uses os_reason.of, PRESS-0401's last copy. PRESS-0023 §§ 4.1,
+  4.6, INV-9; PRESS-0224, 0125, 0210 amended.
   **Layman:** A behind-the-scenes tidy so the updater depends on as little as possible.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
