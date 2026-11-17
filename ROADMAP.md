@@ -7687,6 +7687,10 @@ does not wait on them.
   "site unchanged" (publishing=False at page_editor.py 943 and 1228);
   the empty-menu save; key handling drifted from the entry editor's.
   Ledger: close-findings-2026-11-17/lane-03-page-editor.json.
+  From PRESS-0377 (2026-11-17): page_editor.py keeps its own copies of
+  the press failure rendering and the key fetch (lane 03's
+  page_editor.py:943-945 row). Replace them with
+  publishing.press_failure and publishing.settings_and_key, now on main.
   **Layman:** Fixes in the screen where you edit pages, the header, the footer and the menu.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -7736,11 +7740,22 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Store.
 
-- 📋 [PRESS-0377] **Review fixes: publishing.**
+- ✅ [PRESS-0377] **Review fixes: publishing.**
   Subject 07 of the 2026-11-16 full review, closed with close-findings.
   review-code: 3 medium, 9 low. review-readability: 6 medium, 5 low.
   Among them: _plan runs without editor.LOCK; takeover failures say the
   wrong site state; a 409/422 on Pages reported as "the branch moved".
+  Ledger: close-findings-2026-11-17/lane-07-publish.json.
+  Shipped 2026-11-17, 6d1fa3a..9fa979c. 28 findings: 26 fixed, 0
+  queued, 2 dismissed (both decided by a spec: PRESS-0126 § 6 keeps the
+  starter mark after an unknown outcome; PRESS-0127 § 6 records the
+  "unchanged" sentence as knowingly imprecise). The plan route runs
+  under editor.LOCK; a refused Pages change and an empty repository are
+  no longer called "the branch moved"; a rate-limit 403 with no wait
+  header is waited out; Windows retries a move a virus scanner holds;
+  a page whose status checks go unanswered stops and says so. Specs
+  amended: PRESS-0009 (loop log moved to docs/reviews/), 0013, 0015,
+  0235. Full suite 2267 passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-07-publish.json.
   **Layman:** Fixes in how your site is sent to GitHub.
   Kind: review-fix.
@@ -7779,6 +7794,10 @@ does not wait on them.
   sign-in-again writes under saved.credentials.github_account, so a site
   sharing another's sign-in (PRESS-0347) replaces the shared entry. Same
   class as review-code lane-08 :33; reuse subject 08's fix.
+  From PRESS-0377 (2026-11-17): domain.py:122-129 holds the same two
+  copies; use publishing.press_failure and publishing.settings_and_key.
+  github_signin.py reaches publisher._Urllib, _retry_hint, _failure and
+  _parse (synthesis theme 7).
   **Layman:** Fixes in GitHub and Google sign-in, copying in an existing site, and your own web address.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.

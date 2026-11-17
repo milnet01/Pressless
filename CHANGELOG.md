@@ -25,6 +25,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Publishing reports what really went wrong** (PRESS-0377)
+  When GitHub refuses a Pages change or the repository is empty, Pressless no longer
+  says someone else changed the site. A short GitHub rate limit is waited out rather
+  than reported as a refused key. On Windows, a file held briefly by a virus scanner
+  no longer stops a publish. A page that loses touch with Pressless stops waiting,
+  says so, and gives its buttons back.
+
 - **Setup and Settings keep shared sign-ins and report a failed save** (PRESS-0378)
   A key typed in Settings no longer replaces the GitHub sign-in another of your sites
   shares. If setup cannot save over a settings file brought from another computer, it
