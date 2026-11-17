@@ -1,12 +1,12 @@
 """Put a checked update in place of the running Pressless -- PRESS-0023 § 4.7.
 
-On Linux the new version is put in place, then a helper is started to open
-it. On Windows a helper is started that swaps it in once this process has
-gone. Either way the caller then exits. Nothing re-executes in place:
-finbreak's relaunch did, and the app closed without reopening.
+On Linux the new version is put in place, and once this process has stopped,
+the new file replaces it in the same process (PRESS-0408), so it keeps his
+terminal. On Windows a helper is started that swaps it in once this process
+has gone, and the caller exits.
 
-The helpers are handed every path as an argument and never as script text
-(FIBR-0327), so no quoting rule stands between a folder named with an
+The Windows helper is handed every path as an argument and never as script
+text (FIBR-0327), so no quoting rule stands between a folder named with an
 apostrophe and the command that runs. update.log holds fixed words only, each
 after a timestamp -- never a path or an error text (docs/design.md § Logging).
 
@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import secrets
 import shutil
+import signal
 import subprocess
 import time
 from collections.abc import MutableMapping
@@ -31,30 +32,13 @@ class InstallFailed(UpdateError):
     """The new version could not be put in place; this one is still installed."""
 
 
-# One line per word, `YYYY-MM-DD HH:MM:SS <word>`, written by _stamp here,
-# stamp() in WAITER and Stamp in WINDOWS_SCRIPT. The three are in different
-# languages, so a change to the format is made in all three.
+# One line per word, `YYYY-MM-DD HH:MM:SS <word>`, written by _stamp here and
+# Stamp in WINDOWS_SCRIPT. The two are in different languages, so a change to
+# the format is made in both.
 LOG_NAME = "update.log"
 # The Windows helper's script, beside the program until it removes itself. A
 # start removes one a helper that died left (updating).
 SCRIPT_PREFIX = "pressless-update-"
-
-# $1 the AppImage, $2 the process to outlive, $3 update.log. Polls every 0.1 s
-# for at most 60 s, then starts the new file whether or not the old process
-# has gone -- by then the swap is done and the old process is the only thing
-# the wait was for.
-WAITER = r"""
-program=$1 old=$2 log=$3
-stamp() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$log"; }
-stamp waiting
-tries=0
-while kill -0 "$old" 2>/dev/null && [ "$tries" -lt 600 ]; do
-    sleep 0.1
-    tries=$((tries + 1))
-done
-stamp started
-exec "$program"
-"""
 
 # $Program the running Pressless folder, $Staged the unpacked update beside
 # it, $Log update.log. Waits on image paths, never a process id (FIBR-0131):
@@ -160,9 +144,10 @@ def _reason(exc: OSError) -> str:
 
 
 def _helper_environment() -> dict[str, str]:
-    """The environment a helper, and the new program it starts, run in
-    (FIBR-0122). PYINSTALLER_RESET_ENVIRONMENT makes the new program start
-    afresh rather than as part of the old bundle, on either system.
+    """The environment the new program starts in, and on Windows the helper
+    that starts it (FIBR-0122). PYINSTALLER_RESET_ENVIRONMENT makes the new
+    program start afresh rather than as part of the old bundle, on either
+    system.
 
     On Linux the AppImage runtime sets its own variables afresh for the new
     file, and PyInstaller's bundle path must not reach it: a /bin/sh that
@@ -191,9 +176,9 @@ def restore_loader_paths(env: MutableMapping[str, str], *, drop_copies: bool = F
             env[name] = before
 
 
-def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool:
-    """Replace `appimage` with `staged` and start a helper that opens it once
-    this process has gone. True where the helper started.
+def apply_linux(appimage: Path, staged: Path, folder: Path) -> None:
+    """Replace `appimage` with `staged`. reopen_linux opens it once this
+    process has stopped.
 
     Raises InstallFailed only while nothing has changed. The file keeps its
     name, whose version is now stale, because a rename would break any
@@ -206,18 +191,46 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool:
         staged.unlink(missing_ok=True)
         raise InstallFailed(f"the new version could not replace the old: "
                             f"{_reason(exc)}") from exc
+    _stamp(Path(folder) / LOG_NAME, "swapped", first=True)
 
+
+# What Python ignores and a program it starts gets back at their defaults, as
+# subprocess's restore_signals does; an exec would otherwise keep them ignored.
+_RESTORED_SIGNALS = ("SIGPIPE", "SIGXFSZ")
+
+
+def reopen_linux(appimage: Path, folder: Path) -> None:
+    """Replace this process with the AppImage apply_linux put in place
+    (PRESS-0408), with no arguments, as a double-click starts it. The same
+    process keeps his terminal, so Ctrl+C and closing the window still stop
+    Pressless, and a later Restart works. Call it once the stop steps have
+    run and from the main thread. Returns only where the new file could not
+    be run; update.log then ends `not started`.
+
+    The AppImage runtime leaves descriptors open across an exec, the pipe
+    that keeps the old file's mount up among them. Each is closed by the exec
+    itself, so the old mount goes with this process and nothing runs from it
+    afterwards.
+    """
     log = Path(folder) / LOG_NAME
-    _stamp(log, "swapped", first=True)
+    _stamp(log, "started")
     try:
-        subprocess.Popen(  # noqa: S603 -- a fixed script; every path is an argument
-            ["/bin/sh", "-c", WAITER, "sh", str(appimage), str(os.getpid()), str(log)],
-            env=_helper_environment(), start_new_session=True,
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        held = [int(fd) for fd in os.listdir("/proc/self/fd")]
+    except OSError:   # no /proc: the old mount stays up until the new process ends
+        held = []
+    for fd in held:
+        if fd > 2:
+            try:
+                os.set_inheritable(fd, False)
+            except OSError:   # the listing's own descriptor, closed by now
+                pass
+    for name in _RESTORED_SIGNALS:
+        if hasattr(signal, name):   # a test on Windows has neither
+            signal.signal(getattr(signal, name), signal.SIG_DFL)
+    try:
+        os.execve(str(appimage), [str(appimage)], _helper_environment())  # noqa: S606 -- no shell
     except OSError:
         _stamp(log, "not started")
-        return False
-    return True
 
 
 def powershell() -> str:

@@ -81,14 +81,14 @@ def main(argv: list[str]) -> int:
     `--self-check` is non-zero only where a report question could not be
     answered at all -- NotPackaged, FolderUnusable, or choose() raising. A
     double-click also returns 1 where moving in, an Import's moves or the
-    launch failed, 3 where another Pressless holds the folder, and 130 for an
-    interrupt before the Face was waiting. An unknown argument exits 2, and
-    `--assistant` returns the bridge's own code. A source run's `--assistant`
-    takes the folder its Face uses (PRESS-0337 § 4.4); a packaged one finds
-    its own, so a settings file cannot send its calls to another door.
-    `store: file` is not a failure: this program cannot tell a machine with
-    no store from a bundle that lost its metadata, and PRESS-0022 § 7 decides
-    which by controlling the machine.
+    launch failed, or an updated version could not be opened, 3 where another
+    Pressless holds the folder, and 130 for an interrupt before the Face was
+    waiting. An unknown argument exits 2, and `--assistant` returns the
+    bridge's own code. A source run's `--assistant` takes the folder its Face
+    uses (PRESS-0337 § 4.4); a packaged one finds its own, so a settings file
+    cannot send its calls to another door. `store: file` is not a failure: this
+    program cannot tell a machine with no store from a bundle that lost its
+    metadata, and PRESS-0022 § 7 decides which by controlling the machine.
     """
     told_folder = (len(argv) == 2 and argv[0] == "--assistant"
                    and not getattr(sys, "frozen", False))
@@ -189,6 +189,21 @@ _HELD = frozenset({errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES, errno.EDEADLK}
 
 
 def _serve(own: Path) -> int:
+    """Serve behind the folder's lock until stopped. Where a Linux Update now
+    put a new version in place, it then replaces this process (PRESS-0408),
+    once the stop steps have run and the lock is let go."""
+    updates = updating.Updates()
+    code = _serve_behind_lock(own, updates)
+    if updates.installed is None:
+        return code
+    program, version = updates.installed
+    print(say("restarting.going.title"), flush=True)
+    installer.reopen_linux(program, own)   # returns only where it could not
+    print(say("updating.not_reopened", version=version))
+    return 1
+
+
+def _serve_behind_lock(own: Path, updates: updating.Updates) -> int:
     """PRESS-0013 § 4.5 steps 3 to 6, behind the folder's lock."""
     held = _hold(own)
     if held is None:
@@ -213,7 +228,7 @@ def _serve(own: Path) -> int:
         stopped = threading.Event()
         unwatch = _watch_console(stopped)
         try:
-            return _serve_held(own)
+            return _serve_held(own, updates)
         finally:
             stopped.set()   # the stop steps have run: a closing console may end us
             unwatch()
@@ -289,10 +304,9 @@ def _console_handler(on_event: Callable[[int], bool]) -> Callable[[], None]:
     return lambda: windll.kernel32.SetConsoleCtrlHandler(routine, False)
 
 
-def _serve_held(own: Path) -> int:
-    # One per process: a restart keeps the update offer and a Later, and does
-    # not check again (PRESS-0023 § 4.9).
-    updates = updating.Updates()
+def _serve_held(own: Path, updates: updating.Updates) -> int:
+    # `updates` is one per process: a restart keeps the update offer and a
+    # Later, and does not check again (PRESS-0023 § 4.9).
     while _serve_once(own, updates):
         print(say("restarting.going.title"))
     return 0
@@ -331,7 +345,7 @@ def _serve_once(own: Path, updates: updating.Updates) -> bool:
         look_screen.register(served, folder)
         files_screen.register(served, folder)
         pressing.register(served)
-        updating.register(served, own, state=updates)
+        updating.register(served, own, state=updates, stop=restart.set)
         jpegxl_screen.register(served, own)
         restarting.register(served, restart.set)
         sites_screen.register(served, own, restart.set)
@@ -366,9 +380,11 @@ def _serve_once(own: Path, updates: updating.Updates) -> bool:
         # PRESS-0225: today's backups, then a look every hour, behind this Face.
         backups.start(own, stopping, served.note)
         try:
-            again = _wait(restart)
+            # An update stops the Face as a restart does, but serves no new
+            # one: _serve opens the new version in this process's place.
+            again = _wait(restart) and updates.installed is None
         except KeyboardInterrupt:
-            pass
+            updates.installed = None   # he asked it to stop: it stays stopped
     finally:
         stopping.set()
         if again:

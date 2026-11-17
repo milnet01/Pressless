@@ -577,3 +577,76 @@ def test_a_closed_windows_console_waits_for_the_stop(monkeypatch, tmp_path, caps
     assert seen == {"ctrl_c": False, "close": True, "door": False}
     assert removed == handlers
 
+
+
+class _Replaced(BaseException):
+    """What a real os.execve does to the caller: nothing after it runs."""
+
+
+def test_an_update_reopens_in_this_process_once_it_has_stopped(monkeypatch, tmp_path,
+                                                                capsys):
+    """PRESS-0408: after a Linux update the stop steps run -- the AI helper's
+    door file goes and the folder's lock is let go -- and then the new
+    AppImage replaces this process, so it keeps the terminal, Ctrl+C and a
+    later Restart. A Ctrl+C before that stops it, and nothing reopens.
+
+    Breaks when the new program is started before the stop, beside this
+    process, or not at all."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    _Opened(monkeypatch)
+    own = artefact.parent / _FOLDER_NAME
+    own.mkdir(parents=True, exist_ok=True)
+    (own / "assistant.json").write_text('{"on": true}', encoding="utf-8")
+    door = own / "assistant-door.json"
+    handed: dict[str, object] = {}
+    real_register = main_module.updating.register
+
+    def register(served, own, **kwargs):
+        handed.update(kwargs)
+        return real_register(served, own, **kwargs)
+
+    monkeypatch.setattr(main_module.updating, "register", register)
+    seen = []
+
+    def execve(path, args, env):
+        held = main_module._hold(own)
+        seen.append((path, args, door.exists(), held is not None))
+        if held is not None:
+            held.close()
+        raise _Replaced
+
+    monkeypatch.setattr(main_module.installer.os, "execve", execve)
+    # The exec gives the new program default signal dispositions; the test
+    # runner gets its own back.
+    kept = {name: signal.getsignal(getattr(signal, name))
+            for name in ("SIGPIPE", "SIGXFSZ") if hasattr(signal, name)}
+    try:
+        waits = []
+
+        def updated(restart):
+            """What Update now does once its page is sent (updating._update_now)."""
+            waits.append(restart)
+            assert len(waits) == 1, "a new Face was served after the update"
+            assert door.exists()
+            handed["state"].installed = (artefact, "9.9.9")
+            handed["stop"]()
+            return _REAL_WAIT(restart)
+
+        monkeypatch.setattr(main_module, "_wait", updated)
+        with pytest.raises(_Replaced):
+            main_module.main([])
+        assert seen == [(str(artefact), [str(artefact)], False, True)], seen
+
+        def interrupted(restart):
+            handed["state"].installed = (artefact, "9.9.9")
+            raise KeyboardInterrupt
+
+        seen.clear()
+        monkeypatch.setattr(main_module, "_wait", interrupted)
+        assert main_module.main([]) == 0
+        assert seen == [] and not door.exists()
+    finally:
+        for name, handler in kept.items():
+            signal.signal(getattr(signal, name), handler)

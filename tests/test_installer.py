@@ -1,14 +1,14 @@
 # Putting a checked update in place (PRESS-0023 § 4.7).
 #
-# The helpers' runtime is proved by hand (§ 7.1); what the suite holds is the
-# swap, and the command and environment each helper is handed. Popen is always
-# replaced, so no test starts a program -- except the two that run a helper
-# itself: the Linux waiter against a process that has already ended, and the
-# Windows helper against a folder no process runs from.
+# The new version's start is proved by hand (§ 7.1); what the suite holds is
+# the swap, and the command and environment each start is handed. Popen and
+# os.execve are always replaced, so no test starts a program -- except the one
+# that runs the Windows helper against a folder no process runs from.
 from __future__ import annotations
 
 import ntpath
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -62,6 +62,7 @@ def test_linux_swap(tmp_path, monkeypatch):
     staged = apps / ".pressless-update-a"
     staged.write_bytes(b"new program")
     spawned = _Spawned(monkeypatch)
+    execs = _no_exec(monkeypatch)
     real_replace = os.replace
 
     def refuse(*args):
@@ -72,41 +73,72 @@ def test_linux_swap(tmp_path, monkeypatch):
         installer.apply_linux(appimage, staged, folder)
     assert appimage.read_bytes() == b"old program"
     assert not staged.exists()
-    assert spawned.calls == []
 
+    # The swap alone: the program opens the new file itself once it has
+    # stopped (reopen_linux), so nothing is started here.
     monkeypatch.setattr(installer.os, "replace", real_replace)
     staged.write_bytes(b"new program")
-    _no_exec(monkeypatch)
-    assert installer.apply_linux(appimage, staged, folder) is True
+    installer.apply_linux(appimage, staged, folder)
     assert appimage.read_bytes() == b"new program"
     assert not staged.exists()
     if os.name == "posix":
         assert appimage.stat().st_mode & 0o777 == 0o755
     assert _log(folder) == ["swapped"]
-    assert len(spawned.calls) == 1
-
-    # A helper that cannot start: the new bytes stay, and it says so.
-    staged.write_bytes(b"newer program")
-    _Spawned(monkeypatch, fails=True)
-    assert installer.apply_linux(appimage, staged, folder) is False
-    assert appimage.read_bytes() == b"newer program"
-    assert _log(folder) == ["swapped", "not started"]
+    assert spawned.calls == [] and execs == []
 
 
 # ----------------------------------------------------------------- INV-11 ---
 
 
-def test_linux_helper(tmp_path, monkeypatch):
-    """Breaks when a path is spliced into the script, or the helper inherits
+class _Exec:
+    """Records what os.execve was handed, instead of replacing the process,
+    and which descriptors would have outlived it."""
+
+    def __init__(self, monkeypatch, *, fails: bool = False) -> None:
+        self.calls: list[tuple[str, list[str], dict[str, str]]] = []
+        self.kept: list[int] = []
+        self.fails = fails
+        monkeypatch.setattr(installer.os, "execve", self)
+
+    def __call__(self, path, args, env):
+        self.kept = [int(fd) for fd in os.listdir("/proc/self/fd")
+                     if int(fd) > 2 and _inheritable(int(fd))]
+        if self.fails:
+            raise OSError("cannot run")
+        self.calls.append((path, list(args), dict(env)))
+
+
+def _inheritable(fd: int) -> bool:
+    try:
+        return os.get_inheritable(fd)
+    except OSError:   # the listing's own descriptor, gone by now
+        return False
+
+
+@pytest.fixture
+def _signals_put_back():
+    """reopen_linux gives the new program the signal dispositions a started
+    program gets; the test runner's are put back afterwards."""
+    names = [name for name in ("SIGPIPE", "SIGXFSZ") if hasattr(signal, name)]
+    kept = {name: signal.getsignal(getattr(signal, name)) for name in names}
+    yield names
+    for name, handler in kept.items():
+        signal.signal(getattr(signal, name), handler)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the AppImage is Linux's")
+def test_linux_reopen(tmp_path, monkeypatch, _signals_put_back):
+    """PRESS-0408: the new AppImage replaces this process, so it keeps the
+    terminal, Ctrl+C and a later Restart. Breaks when it is started beside
+    this process, a path reaches a shell, the AppImage runtime's descriptors
+    outlive the exec (the old file's mount stays up), or it inherits
     LD_LIBRARY_PATH pointing into the bundle."""
     folder = tmp_path / "Pressless-data"
     folder.mkdir()
     apps = tmp_path / "it's my apps"
     apps.mkdir()
     appimage = apps / "Pressless-0.1.2-x86_64.AppImage"
-    appimage.write_bytes(b"old")
-    staged = apps / ".pressless-update-b"
-    staged.write_bytes(b"new")
+    appimage.write_bytes(b"new")
     for name, value in (("APPDIR", "/mount"), ("APPIMAGE", str(appimage)),
                         ("ARGV0", "./x"), ("LD_LIBRARY_PATH", "/mount/_internal"),
                         ("LD_LIBRARY_PATH_ORIG", "/usr/lib/before"),
@@ -114,47 +146,35 @@ def test_linux_helper(tmp_path, monkeypatch):
         monkeypatch.setenv(name, value)
     monkeypatch.delenv("LD_PRELOAD_ORIG", raising=False)
     spawned = _Spawned(monkeypatch)
-    execs = _no_exec(monkeypatch)
+    execs = _Exec(monkeypatch)
+    for name in _signals_put_back:
+        signal.signal(getattr(signal, name), signal.SIG_IGN)
+    # What the AppImage runtime leaves open: the pipe that keeps the old
+    # file's mount up for as long as anything holds it.
+    keepalive, other_end = os.pipe()
+    os.set_inheritable(keepalive, True)
+    try:
+        installer.reopen_linux(appimage, folder)
+        assert execs.kept == [], execs.kept
+    finally:
+        os.close(keepalive)
+        os.close(other_end)
 
-    assert installer.apply_linux(appimage, staged, folder) is True
-    [(args, kwargs)] = spawned.calls
-    assert args == ["/bin/sh", "-c", installer.WAITER, "sh", str(appimage),
-                    str(os.getpid()), str(folder / "update.log")], args
-    assert str(apps) not in installer.WAITER and "it's" not in installer.WAITER
-    env = kwargs["env"]
+    [(path, args, env)] = execs.calls
+    assert path == str(appimage) and args == [str(appimage)], (path, args)
     for gone in ("APPDIR", "APPIMAGE", "ARGV0", "LD_PRELOAD"):
         assert gone not in env, gone
     assert env["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
     assert env["LD_LIBRARY_PATH"] == "/usr/lib/before"
-    assert kwargs["start_new_session"] is True
-    for stream in ("stdin", "stdout", "stderr"):
-        assert kwargs[stream] is subprocess.DEVNULL, stream
-    assert execs == []
+    for name in _signals_put_back:
+        assert signal.getsignal(getattr(signal, name)) == signal.SIG_DFL, name
+    assert spawned.calls == []
+    assert _log(folder) == ["started"]
 
-    monkeypatch.delenv("LD_LIBRARY_PATH_ORIG")
-    staged.write_bytes(b"newer")
-    spawned = _Spawned(monkeypatch)
-    installer.apply_linux(appimage, staged, folder)
-    assert "LD_LIBRARY_PATH" not in spawned.calls[0][1]["env"]
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="the waiter is a POSIX sh script")
-def test_the_waiter_runs(tmp_path):
-    """The waiter itself, against a process that has already ended: it logs
-    waiting then started, and execs its first argument, which is a path
-    holding a space and an apostrophe."""
-    started = tmp_path / "it's started"
-    program = tmp_path / "new program's"
-    program.write_text(f"#!/bin/sh\ntouch \"{started}\"\n", encoding="utf-8")
-    program.chmod(0o755)
-    ended = subprocess.Popen(["true"])  # noqa: S607 -- a process that ends at once
-    ended.wait()
-    log = tmp_path / "update.log"
-    log.write_text("x swapped\n", encoding="ascii")
-    subprocess.run(["/bin/sh", "-c", installer.WAITER, "sh", str(program),  # noqa: S603
-                    str(ended.pid), str(log)], check=True, timeout=30)
-    assert started.exists()
-    assert _log(tmp_path) == ["swapped", "waiting", "started"]
+    # One that cannot run returns, and says so.
+    _Exec(monkeypatch, fails=True)
+    installer.reopen_linux(appimage, folder)
+    assert _log(folder) == ["started", "started", "not started"]
 
 
 # ----------------------------------------------------------------- INV-12 ---

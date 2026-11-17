@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from pressless import __version__, editor, installer, paths, updater
@@ -68,6 +69,10 @@ class Updates:
         self.busy = threading.Lock()
         # The Face now served: a check that ends after a Restart notes to it.
         self.face: Face | None = None
+        # The AppImage a Linux Update now put in place, and its version.
+        # __main__ opens it in this process's place once the Face has stopped
+        # (PRESS-0408).
+        self.installed: tuple[Path, str] | None = None
         self._thread: threading.Thread | None = None
 
     def wait(self, timeout: float | None = None) -> None:
@@ -79,12 +84,15 @@ class Updates:
 def register(face: Face, own: Path, *, artefact: Path | None = None,
              platform: str | None = None, running: str = __version__,
              transport: updater.Transport | None = None,
-             state: Updates | None = None) -> Updates:
+             state: Updates | None = None,
+             stop: Callable[[], None] = lambda: _exit(0)) -> Updates:
     """Add the offer, the switch and their routes to `face`, and start the
     check where this is a packaged run. `own` is Pressless's own folder.
 
     `state` is what an earlier Face of this process registered against: its
-    offer and Later stand, and its check is not started again."""
+    offer and Later stand, and its check is not started again. `stop` ends
+    this Face once a Linux Update now's page is sent; __main__'s then opens
+    the new version in this process's place (PRESS-0408)."""
     own = Path(own)
     if artefact is None:
         try:
@@ -123,7 +131,7 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
         # than downloading beside the first.
         if offer is None or artefact is None or not state.busy.acquire(blocking=False):
             return _home()
-        return _update_now(face, own, offer, artefact, platform, transport, state.busy)
+        return _update_now(face, own, offer, artefact, platform, transport, state, stop)
 
     face.add_page("POST", "/update", update_now)
     face.add_page("POST", "/update/later", later)
@@ -246,8 +254,9 @@ def _switch_html(checking: bool) -> str:
 
 def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
                 platform: str, transport: updater.Transport | None,
-                busy: threading.Lock) -> str:
-    """§ 4.9's five steps, holding `busy`, which only a failure releases."""
+                state: Updates, stop: Callable[[], None]) -> str:
+    """§ 4.9's five steps, holding `state.busy`, which only a failure
+    releases."""
     going = False
     try:
         try:
@@ -258,14 +267,13 @@ def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
             return face.fail(exc, publishing=False)
 
         # Never released on the success path: no save or publish may start
-        # between the swap and the exit.
+        # between the swap and this process's end.
         editor.LOCK.acquire()
         try:
             if platform == "windows":
                 installer.apply_windows(artefact, staged, own)
-                started = True
             else:
-                started = installer.apply_linux(artefact, staged, own)
+                installer.apply_linux(artefact, staged, own)
         except installer.UpdateError as exc:
             editor.LOCK.release()
             return face.fail(exc, publishing=False)
@@ -275,14 +283,14 @@ def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
         going = True
     finally:
         if not going:
-            busy.release()
+            state.busy.release()
 
-    # Windows only: Start Pressless.bat ends with `pause`, so the old console
-    # stays open once this process has gone (scripts/build-windows.sh).
     if platform == "windows":
+        # Start Pressless.bat ends with `pause`, so the old console stays open
+        # once this process has gone (scripts/build-windows.sh).
         print(say("updating.console"), flush=True)
-    face.after_reply(lambda: _exit(0))
-    version = html.escape(offer.version)
-    if not started:
-        return f'<p>{say("updating.not_reopened", version=version)}</p>'
-    return f'<p>{say("updating.installing", version=version)}</p>'
+        face.after_reply(lambda: _exit(0))
+    else:
+        state.installed = (artefact, offer.version)
+        face.after_reply(stop)
+    return f'<p>{say("updating.installing", version=html.escape(offer.version))}</p>'

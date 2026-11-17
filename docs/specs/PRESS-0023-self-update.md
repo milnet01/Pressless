@@ -262,34 +262,41 @@ fails the same way on a full disk (PRESS-0174). Python maps Windows'
 ### 4.7 Putting it in place
 
 ```python
-def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool: ...  # helper started
+def apply_linux(appimage: Path, staged: Path, folder: Path) -> None: ...
+def reopen_linux(appimage: Path, folder: Path) -> None: ...  # returns only on failure
 def apply_windows(program: Path, staged: Path, folder: Path) -> None: ...
 ```
 
-Each raises `InstallFailed` where nothing has changed yet, and otherwise
-returns: on Linux once `os.replace` has succeeded, whether or not the helper
-then starts, returning whether it did; on Windows once the helper is
-spawned. The caller then exits
-(§ 4.9); nothing re-executes in place. `folder` is Pressless's own folder, where the helper
-writes `update.log`.
+Each `apply_` raises `InstallFailed` where nothing has changed yet, and
+otherwise returns: on Linux once `os.replace` has succeeded, on Windows once
+the helper is spawned. `folder` is Pressless's own folder, where `update.log`
+is written.
 
 **Linux.** `chmod 0o755` the staged file, then `os.replace` it over
-`appimage`. A failure before the replace removes the staged file and raises
-`InstallFailed`; the old file is untouched. Then spawn:
+`appimage`, then overwrite `update.log` with `swapped`. A failure before the
+replace removes the staged file and raises `InstallFailed`; the old file is
+untouched.
 
-```python
-["/bin/sh", "-c", WAITER, "sh", str(appimage), str(os.getpid()), str(log)]
-```
+**The new file then replaces this process** (PRESS-0408), so it keeps his
+terminal: Ctrl+C and closing the window still stop Pressless, and a later
+Restart works. Once the Face has stopped (§ 4.9 step 5), `__main__` calls
+`reopen_linux` from the main thread. It appends `started` and calls
+`os.execve(appimage, [appimage], env)`: no arguments, as a double-click
+starts it. Before the call it:
 
-Before the spawn, Python overwrites `update.log` with `swapped`. `WAITER` is a
-constant: it appends `waiting` to `"$3"`, polls `kill -0 "$2"` every 0.1 s for
-at most 60 s, appends `started`, then `exec "$1"`. A spawn that fails writes
-`not started` and returns `False`, because the new file is already in place. **The paths arrive as arguments and never appear in the
-script text** (FIBR-0327). The environment drops `APPDIR`, `APPIMAGE` and
-`ARGV0`, sets `PYINSTALLER_RESET_ENVIRONMENT=1`, and restores
-`LD_LIBRARY_PATH` and `LD_PRELOAD` from their `_ORIG` copies, dropping each
-where there is none (FIBR-0122). `start_new_session=True`, stdin, stdout and
-stderr to `/dev/null`.
+- makes every descriptor above 2 close on exec. The AppImage runtime leaves
+  open the pipe that keeps the old file's mount up; held across the exec, it
+  would keep that mount for the life of the new process.
+- puts `SIGPIPE` and `SIGXFSZ` back to their defaults, which Python ignores
+  and an exec would pass on, as `subprocess`'s `restore_signals` does.
+
+`env` drops `APPDIR`, `APPIMAGE` and `ARGV0`, sets
+`PYINSTALLER_RESET_ENVIRONMENT=1`, and restores `LD_LIBRARY_PATH` and
+`LD_PRELOAD` from their `_ORIG` copies, dropping each where there is none
+(FIBR-0122). The reset stops the new bootloader from reading the old bundle's
+`_PYI_*` variables, which name the old mount. An exec that fails appends
+`not started` and returns; `__main__` prints § 4.9's could-not-open words to
+the console and exits 1.
 
 **Windows.** Spawn `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`
 by absolute path, with `-NoProfile -NonInteractive -ExecutionPolicy Bypass
@@ -318,7 +325,7 @@ script:
 4. Starts `Start Pressless.bat` with the working directory set to its folder,
    appends `started`, then removes its own script file.
 
-The environment is the Linux helper's, so `PYINSTALLER_RESET_ENVIRONMENT=1`
+The environment is Linux's `env` above, so `PYINSTALLER_RESET_ENVIRONMENT=1`
 reaches the new program and it starts afresh rather than as part of the old
 bundle. `CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP`, read with `getattr(..., 0)` so
 the module loads on Linux. Not `DETACHED_PROCESS`: Windows PowerShell given no
@@ -329,7 +336,7 @@ raises `InstallFailed`.
 **`update.log` is overwritten by each update, not appended**, so it stays one
 update long. It holds fixed words only — `waiting`, `swapped`, `rolled back`,
 `rollback failed`, `gave up`, `started`, `not started` — each after a
-timestamp. Writing it is best effort in all three writers: a log that cannot be
+timestamp. Writing it is best effort in both writers: a log that cannot be
 written never stops an update, and the Windows script, which runs under
 `$ErrorActionPreference = 'Stop'`, catches its own write. No path and no error text reach
 it, because § Logging forbids a full path in anything Pressless writes down.
@@ -420,12 +427,14 @@ start.
 4. Answer with a page: *"Pressless is installing version <X.Y.Z> and will open
    again by itself in a moment. You can close this tab."* On Windows the
    console also prints *"Pressless is updating. You can close this window."*
-   Where `apply_linux` returned `False` the page says instead: *"Pressless is
-   updated to version <X.Y.Z> but could not open again by itself. Close its
-   window and start it again."*
-5. Exit once the answer is sent, through a new `Face.after_reply(action)` that
-   runs `action` once the current response is flushed. The new process opens a
-   fresh tab as any start does.
+5. Once the answer is sent, through `Face.after_reply(action)`, which runs
+   `action` once the current response is flushed: on Windows, exit. On Linux,
+   stop the Face as Ctrl+C does, serve no new one, print *"Pressless is
+   restarting."* to the console, and call `reopen_linux` (§ 4.7). A Ctrl+C or
+   a closed window before that stops Pressless, and nothing reopens. Where the
+   exec fails the console prints *"Pressless is updated to version <X.Y.Z> but
+   could not open again by itself. Close its window and start it again."* The
+   new process opens a fresh tab as any start does.
 
 ### 4.10 Failures he can see
 
@@ -538,18 +547,22 @@ address. A roadmap id in brackets is left out.
   is refused, or a drive letter or `.. ` after the first part passes.
 - **INV-10** — On Linux a failure before `os.replace` leaves the AppImage
   byte-for-byte as it was and removes the staged file; success leaves the new
-  bytes at mode 0755. *Test:* `tests/test_installer.py::test_linux_swap`, with
-  `Popen` and `os._exit` replaced. *Breaks when:* the file is written in
-  place.
-- **INV-11** — The Linux helper gets the paths as arguments, the environment
-  of § 4.7 and a new session, and nothing re-executes in place.
-  *Test:* `tests/test_installer.py::test_linux_helper` — an AppImage path
-  holding an apostrophe and a space: the script element of the argv handed to
-  `Popen` equals `WAITER` and holds neither path; the `env` handed to it has
-  no `APPDIR`, `APPIMAGE` or `ARGV0`, sets `PYINSTALLER_RESET_ENVIRONMENT=1`,
-  and takes `LD_LIBRARY_PATH` from `LD_LIBRARY_PATH_ORIG` or drops it;
-  `start_new_session` is true; and `os.execv` is never called. *Breaks when:* a path is spliced into the script, or the
-  helper inherits `LD_LIBRARY_PATH` pointing into the bundle.
+  bytes at mode 0755 and starts nothing. *Test:*
+  `tests/test_installer.py::test_linux_swap`, with `Popen` and `os.execve`
+  replaced. *Breaks when:* the file is written in place.
+- **INV-11** — On Linux the new AppImage replaces this process, after the stop
+  steps, with the environment of § 4.7 and no descriptor above 2 left open.
+  *Test:* `tests/test_installer.py::test_linux_reopen` — an AppImage path
+  holding an apostrophe and a space: `os.execve` gets that path and an argv of
+  it alone; its `env` has no `APPDIR`, `APPIMAGE` or `ARGV0`, sets
+  `PYINSTALLER_RESET_ENVIRONMENT=1`, and takes `LD_LIBRARY_PATH` from
+  `LD_LIBRARY_PATH_ORIG` or drops it; an inheritable pipe is closed by the
+  exec; `SIGPIPE` is back at its default; `Popen` is never called. And
+  `tests/test_main.py::test_an_update_reopens_in_this_process_once_it_has_stopped`
+  — the exec comes after the AI helper's door file is gone and the folder's
+  lock is free, and not after a Ctrl+C. *Breaks when:* the new program starts
+  beside this process, before the stop, or with `LD_LIBRARY_PATH` pointing
+  into the bundle.
 - **INV-12** — The Windows helper waits by image path, not PID, and names
   PowerShell by absolute path. *Test:* `tests/test_installer.py::test_windows_helper`
   reads the command and script: no `-Id`, an absolute `powershell.exe`, the
@@ -651,12 +664,13 @@ address. A roadmap id in brackets is left out.
 - **The Windows swap fails halfway.** The rollback renames the old folder back.
   A rollback that also fails leaves `Pressless.old` beside `Pressless-data`,
   and `update.log` ends without `started`. His writing is untouched.
-- **The Linux helper cannot start after the swap.** The new file is in place
-  and the process exits anyway; starting Pressless by hand runs the new
-  version.
-- **He double-clicks Pressless while the helper waits.** Whichever process
-  takes the folder lock first serves; the other says Pressless is already
-  running (§ 4.11). On Windows the manual start holds the image, the helper
+- **The new Linux file cannot be run after the swap.** The new file is in
+  place; the console says so and the process exits. Starting Pressless by hand
+  runs the new version.
+- **He double-clicks Pressless during an update.** Whichever process takes
+  the folder lock first serves; the other says Pressless is already running
+  (§ 4.11). On Linux the lock is let go only after the swap, so either way the
+  new version serves. On Windows the manual start holds the image, the helper
   gives up at 60 s, and he keeps the old version until the next offer.
 - **The old Windows console stays open** with the old batch file's pause
   prompt. It says Pressless is updating first, so closing it is safe.
@@ -666,7 +680,7 @@ address. A roadmap id in brackets is left out.
 
 `tests/test_updater.py`, `tests/test_installer.py`, `tests/test_updating.py`,
 `tests/test_network_confined.py`, `tests/test_version.py`,
-`tests/test_no_private_key.py`, `tests/test_sign_release.py`, and one case in
+`tests/test_no_private_key.py`, `tests/test_sign_release.py`, and cases in
 `tests/test_main.py`. No test reaches the network: the `Transport` double
 answers by URL, per `CLAUDE.md`'s warning about positional doubles. Signing
 uses a key generated inside the test.
@@ -676,15 +690,18 @@ were, and each invariant gets one mutation per route its *Breaks when* names.
 
 ### 7.1 By hand, on the Windows box and on Linux
 
-A helper's runtime cannot be proved by the suite, only its command. So, for
+How the new version starts cannot be proved by the suite, only what that
+start is handed. So, for
 each system, two cycles — a restart fix proves out only on the update after
 the one that ships it:
 
 1. Build releases N+1 and N+2 into a scratch repository, sign and publish
    N+1 only, and start release N with `PRESSLESS_UPDATE_REPOSITORY` naming it.
 2. Start release N, click Update now. It reopens by itself as N+1, and
-   `update.log` reads `swapped`, `waiting`, `started` on Linux and `waiting`,
-   `swapped`, `started` on Windows.
+   `update.log` reads `swapped`, `started` on Linux and `waiting`,
+   `swapped`, `started` on Windows. On Linux, start N in a terminal: N+1
+   comes back in that terminal as the same process, one AppImage mount is
+   left, and after both cycles Ctrl+C stops it and leaves no mount.
 3. Only now publish N+2 — published earlier, it is what N is offered — and
    from N+1 update to it the same way.
 4. `Pressless-data`'s file list and every file's hash are unchanged across
@@ -692,6 +709,11 @@ the one that ships it:
 
 On Windows this runs in the logged-on session (`CLAUDE.md`: a program started
 over SSH cannot reach the credential vault).
+
+**Linux's step 2 has been run from local builds**, with only the check and
+the download stood in for, since a scratch release would be public. The run
+and its result are in the loop log. Steps 1 and 3 still run with a real
+release.
 
 ## 8. Alternatives considered (and rejected)
 
@@ -706,8 +728,13 @@ over SSH cannot reach the credential vault).
 - **Replace the Windows program file by file.** A failure halfway leaves a
   folder of two versions. A rename of the whole folder is all or nothing, and
   can be undone.
-- **Relaunch by re-executing in place.** finbreak's relaunch did this and the
-  app closed without reopening.
+- **On Linux, start the new version beside this process** (a detached helper,
+  as before PRESS-0408). It came back with no terminal: its output went
+  nowhere, Ctrl+C could not reach it, and a closed tab could not get back in.
+  finbreak's in-place relaunch, which this spec first rejected, failed for
+  causes this design removes: a one-file bundle re-run without
+  `PYINSTALLER_RESET_ENVIRONMENT` reuses the old process's unpacked files.
+  Pressless is one folder and sets the reset.
 - **Hold the offer in `updates.json`.** It would survive a restart that is
   meant to re-check, and would need clearing when a newer release appears.
 - **Sign in CI.** The key would live in the repository's secrets, and anyone
@@ -737,7 +764,7 @@ over SSH cannot reach the credential vault).
 | INV-8 | `tests/test_network_confined.py::test_only_the_clients_reach_the_network` (PRESS-0262 INV-9) |
 | INV-9 | `tests/test_updater.py::test_a_stray_zip_member_writes_nothing` |
 | INV-10 | `tests/test_installer.py::test_linux_swap` |
-| INV-11 | `tests/test_installer.py::test_linux_helper` |
+| INV-11 | `tests/test_installer.py::test_linux_reopen`, `tests/test_main.py::test_an_update_reopens_in_this_process_once_it_has_stopped` |
 | INV-12 | Partial: `tests/test_installer.py::test_windows_helper` reads the command; the script's run is § 7.1 by hand |
 | INV-13 | `tests/test_updating.py::test_skip_and_later` |
 | INV-14 | `tests/test_updating.py::test_update_now_leaves_his_folder_alone` |
@@ -752,7 +779,7 @@ over SSH cannot reach the credential vault).
 | INV-23 | `tests/test_updater.py::test_unproven_changes_are_dropped_and_the_offer_stands` |
 | INV-24 | `tests/test_updating.py::test_the_offer_shows_what_changed` |
 | INV-25 | `tests/test_sign_release.py::test_the_changes_file_starts_at_the_release` |
-| § 4.7 the helpers restart the new version | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
+| § 4.7 the new version starts | Partial: `tests/test_installer.py::test_the_windows_helper_runs` runs the Windows helper on the Windows box's gate, over throwaway folders; a real update is § 7.1 by hand, on each system |
 | § 4.8 the release is published only after signing | Partial: INV-19 covers the refusals; the draft flag in `release.yml` is checked by nothing |
 | § 4.12 a real release carries a changes file an installed copy shows | Nothing in the suite: `sign` itself runs only at a release. The first release after 2026-11-13 is its check |
 

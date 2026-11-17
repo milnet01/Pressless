@@ -11,7 +11,6 @@ from __future__ import annotations
 import contextlib
 import json
 import threading
-import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -46,6 +45,15 @@ def _free_the_lock():
         editor.LOCK.release()
 
 
+@pytest.fixture(autouse=True)
+def _never_exit(monkeypatch):
+    """A test reaching the real os._exit would end the test run itself, and
+    with status 0. Each test that expects the exit replaces this with _Exit."""
+    def refuse(code):
+        raise AssertionError(f"updating._exit({code}) would have ended the test run")
+    monkeypatch.setattr(updating, "_exit", refuse)
+
+
 class _Exit:
     def __init__(self, monkeypatch) -> None:
         self.codes: list[int] = []
@@ -69,15 +77,19 @@ def _release(signer, version: str) -> tuple[_Release, dict[str, object]]:
 
 
 @contextlib.contextmanager
-def _pressless(folder: Path, artefact: Path, answers: dict[str, object]) -> Iterator[_Browser]:
-    """One run of Pressless: a fresh Face, Your site, Settings, and updating."""
+def _pressless(folder: Path, artefact: Path, answers: dict[str, object], *,
+               state: updating.Updates | None = None,
+               stop=lambda: None) -> Iterator[_Browser]:
+    """One run of Pressless: a fresh Face, Your site, Settings, and updating.
+    `stop` stands in for __main__'s, which ends the Face after a Linux update."""
     served = face.serve(folder)
     try:
         editor.register(served, folder)
         overview.register(served, folder)
         setup.register(served, folder)
         running = updating.register(served, folder, artefact=artefact, platform="linux",
-                                    running="0.1.2", transport=_Net(answers))
+                                    running="0.1.2", transport=_Net(answers),
+                                    state=state, stop=stop)
         running.wait(10)
         yield _Browser(served)
     finally:
@@ -176,6 +188,8 @@ def test_update_now_leaves_his_folder_alone(tmp_path, signer, monkeypatch):
     monkeypatch.setattr(installer.subprocess, "Popen",
                         lambda args, **kwargs: spawned.append(list(args)) or object())
     exited = _Exit(monkeypatch)
+    stopped = threading.Event()
+    state = updating.Updates()
     # The swap moves the staged file away, so the end state alone cannot show
     # where it sat: that is read at the moment the swap begins.
     at_swap: list[tuple[Path, dict[str, bytes]]] = []
@@ -187,19 +201,19 @@ def test_update_now_leaves_his_folder_alone(tmp_path, signer, monkeypatch):
 
     monkeypatch.setattr(installer, "apply_linux", apply)
 
-    with _pressless(folder, artefact, answers) as browser:
+    with _pressless(folder, artefact, answers, state=state, stop=stopped.set) as browser:
         before = _snapshot(folder)
         status, _, text = browser.request("POST", "/update")
         assert status == 200, text
         assert INSTALLING in text, text
-        for _ in range(50):
-            if exited.codes:
-                break
-            time.sleep(0.1)
+        assert stopped.wait(5), "the Face was never stopped"
     assert _snapshot(folder) == before
     assert at_swap == [(artefact.parent, before)], at_swap
     assert artefact.read_bytes() == NEW
-    assert len(spawned) == 1 and exited.codes == [0]
+    # PRESS-0408: nothing is started beside this process and it does not just
+    # end: __main__ stops the Face, then opens the new file in its place.
+    assert spawned == [] and exited.codes == []
+    assert state.installed == (artefact, "0.1.3"), state.installed
     assert sorted(p.name for p in artefact.parent.iterdir()) == [artefact.name]
 
 
@@ -232,12 +246,11 @@ def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
     def apply(appimage, staged, where):
         assert editor.LOCK.locked()
         applied.set()
-        return True
 
     monkeypatch.setattr(installer, "apply_linux", apply)
-    exited = _Exit(monkeypatch)
+    stopped = threading.Event()
 
-    with _pressless(folder, artefact, answers) as browser:
+    with _pressless(folder, artefact, answers, stop=stopped.set) as browser:
         editor.LOCK.acquire()
         replies: list[tuple[int, str]] = []
         worker = threading.Thread(
@@ -248,11 +261,7 @@ def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
         assert applied.wait(10), "apply never ran once the lock was free"
         worker.join(10)
         assert replies and replies[0][0] == 200, replies
-        for _ in range(50):
-            if exited.codes:
-                break
-            time.sleep(0.1)
-        assert exited.codes == [0]
+        assert stopped.wait(5), "the Face was never stopped"
         assert editor.LOCK.locked(), "the lock was released before the exit"
 
 
