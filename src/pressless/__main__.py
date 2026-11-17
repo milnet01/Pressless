@@ -75,11 +75,15 @@ _LOCK_NAME = "pressless.lock"
 def main(argv: list[str]) -> int:
     """Print the report, then serve unless this is --self-check.
 
-    Non-zero only where a report question could not be answered at all --
-    NotPackaged, FolderUnusable, or choose() raising. `store: file` is not a
-    failure: this program cannot tell a machine with no store from a bundle that
-    lost its metadata, and PRESS-0022 § 7 decides which by controlling the
-    machine.
+    `--self-check` is non-zero only where a report question could not be
+    answered at all -- NotPackaged, FolderUnusable, or choose() raising. A
+    double-click also returns 1 where moving in, an Import's moves or the
+    launch failed, 3 where another Pressless holds the folder, and 130 for an
+    interrupt before the Face was waiting. An unknown argument exits 2, and
+    `--assistant` returns the bridge's own code. `store: file` is not a
+    failure: this program cannot tell a machine with no store from a bundle
+    that lost its metadata, and PRESS-0022 § 7 decides which by controlling
+    the machine.
     """
     if argv not in ([], ["--self-check"], ["--assistant"]):
         print(_USAGE, file=sys.stderr)
@@ -111,6 +115,10 @@ def main(argv: list[str]) -> int:
         return 0
     try:
         return _serve(own)
+    except KeyboardInterrupt:
+        # Ctrl+C, or a closed terminal (_stop_on_close), before the Face was
+        # waiting: he asked it to stop, so no words, and no traceback.
+        return 130
     except Exception as exc:  # noqa: BLE001 -- the last resort at launch
         # A traceback names full paths, which the console must not carry
         # (PRESS-0011 § 4.5's rule, reached before handle_error exists).
@@ -227,12 +235,15 @@ def _interrupt(number: int, frame: object) -> None:
 
 
 def _serve_held(own: Path) -> int:
-    while _serve_once(own):
+    # One per process: a restart keeps the update offer and a Later, and does
+    # not check again (PRESS-0023 § 4.9).
+    updates = updating.Updates()
+    while _serve_once(own, updates):
         print(say("restarting.going.title"))
     return 0
 
 
-def _serve_once(own: Path) -> bool:
+def _serve_once(own: Path, updates: updating.Updates) -> bool:
     """One Face, from start to stop. True where he asked for a restart
     (PRESS-0203): the caller then serves a new one, behind the same lock.
     Each pass opens the site sites.json names now, so opening another site is
@@ -265,7 +276,7 @@ def _serve_once(own: Path) -> bool:
         look_screen.register(served, folder)
         files_screen.register(served, folder)
         pressing.register(served)
-        updating.register(served, own)
+        updating.register(served, own, state=updates)
         jpegxl_screen.register(served, own)
         restarting.register(served, restart.set)
         sites_screen.register(served, own, restart.set)
@@ -306,7 +317,9 @@ def _serve_once(own: Path) -> bool:
     finally:
         stopping.set()
         if again:
-            # A save, publish or undo under way ends before its Face does.
+            # A save, publish or undo under way ends before its Face does,
+            # since the next Face serves the same files. A plain stop does
+            # not wait (PRESS-0013 § 4.5 step 6): the process ends with it.
             with editor.LOCK:
                 served.stop()
         else:
@@ -328,7 +341,8 @@ def _refresh_shortcuts(served: face.Face) -> None:
 
 def _wait(restart: threading.Event) -> bool:
     """Block until `restart` is set, then return True. An interrupt raises,
-    a closed terminal included (_stop_on_close), so it never returns False."""
+    a closed terminal included (_stop_on_close), so it never returns False.
+    Its own function so the tests can replace it (PRESS-0013 § 4.5 step 6)."""
     restart.wait()
     return True
 

@@ -256,6 +256,108 @@ def test_update_waits_for_a_save(tmp_path, signer, monkeypatch):
         assert editor.LOCK.locked(), "the lock was released before the exit"
 
 
+def test_a_second_update_now_goes_home(tmp_path, signer, monkeypatch):
+    """review-code 2026-11-16 lane 11: the Face serves each request on its
+    own thread, so a double click or a second tab downloaded a second copy
+    beside the first, then waited on the lock for good.
+
+    Breaks when a second Update now starts while one is under way, or a
+    failed one keeps the next from starting."""
+    folder = _folder(tmp_path)
+    artefact = _artefact(tmp_path)
+    release, answers = _release(signer, "0.1.3")
+    address = release.url("linux")
+    # Every download fails once let go, so no copy reaches the swap or the
+    # exit, whichever way the test goes.
+    answers[address] = OSError("let go")
+    asked, go_on = threading.Event(), threading.Event()
+
+    class _Slow(_Net):
+        def open(self, url):
+            if url == address:
+                asked.set()
+                go_on.wait(10)
+            return super().open(url)
+
+    exited = _Exit(monkeypatch)
+    net = _Slow(answers)
+    served = face.serve(folder)
+    try:
+        editor.register(served, folder)
+        overview.register(served, folder)
+        updating.register(served, folder, artefact=artefact, platform="linux",
+                          running="0.1.2", transport=net).wait(10)
+        browser = _Browser(served, timeout=5)
+        first = threading.Thread(target=browser.request, args=("POST", "/update"))
+        first.start()
+        assert asked.wait(10), "the first Update now never downloaded"
+        status, headers, _ = browser.request("POST", "/update")
+        assert status == 303 and headers.get("Location") == "/", (status, headers)
+        go_on.set()
+        first.join(10)
+        assert net.requests.count(address) == 1, net.requests
+        # A failed one lets the next try.
+        assert browser.request("POST", "/update")[0] == 200
+        assert net.requests.count(address) == 2, net.requests
+        assert exited.codes == [] and not editor.LOCK.locked()
+    finally:
+        go_on.set()
+        served.stop()
+
+
+def test_a_restart_keeps_the_offer_and_later(tmp_path, signer):
+    """§ 4.9: the offer and a Later are held for the life of the process. A
+    Restart, or opening another site, serves a new Face in the same process
+    and hands it the same Updates (__main__._serve_held).
+
+    Breaks when a Face handed that state checks again, or forgets Later."""
+    folder = _folder(tmp_path)
+    artefact = _artefact(tmp_path)
+    _, answers = _release(signer, "0.1.3")
+    net = _Net(answers)
+    kept = updating.Updates()
+    asked = 0
+    for first in (True, False):
+        served = face.serve(folder)
+        try:
+            editor.register(served, folder)
+            overview.register(served, folder)
+            updating.register(served, folder, artefact=artefact, platform="linux",
+                              running="0.1.2", transport=net, state=kept).wait(10)
+            browser = _Browser(served)
+            if first:
+                assert f"Pressless 0.1.3 {OFFER}" in _shown(browser)
+                assert browser.request("POST", "/update/later")[0] == 303
+                asked = len(net.requests)
+            assert OFFER not in _shown(browser)
+        finally:
+            served.stop()
+    assert len(net.requests) == asked, net.requests
+
+
+def test_a_start_clears_what_a_stopped_update_left(tmp_path, signer):
+    """review-code 2026-11-16 lane 11: a Pressless stopped during a download
+    or an unpack, or a Windows helper that died, left a file or folder the
+    size of the program beside it for good. A packaged start removes those
+    before its check, and nothing else.
+
+    Breaks when one is left, or another file beside the program goes."""
+    folder = _folder(tmp_path)
+    artefact = _artefact(tmp_path)
+    beside = artefact.parent
+    (beside / ".pressless-update-0a1b2c3d").write_bytes(b"half a download")
+    (beside / "Pressless.new-0a1b" / "Pressless").mkdir(parents=True)
+    (beside / "pressless-update-0a1b.ps1").write_text("the helper", encoding="ascii")
+    kept = ("notes.txt", "pressless-update-notes.txt", "Pressless.newer")
+    for name in kept[:2]:
+        (beside / name).write_text("his", encoding="ascii")
+    (beside / "Pressless.newer").mkdir()
+    _, answers = _release(signer, "0.1.3")
+    with _pressless(folder, artefact, answers):
+        pass
+    assert sorted(p.name for p in beside.iterdir()) == sorted((artefact.name, *kept))
+
+
 # ----------------------------------------------------------------- INV-24 ---
 
 

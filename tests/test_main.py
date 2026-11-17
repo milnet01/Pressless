@@ -153,6 +153,50 @@ def test_restart_serves_a_fresh_face(monkeypatch, tmp_path, capsys):
     main_module.editor.LOCK.release()
 
 
+def test_a_restart_keeps_what_the_update_check_found(monkeypatch, tmp_path, capsys):
+    """PRESS-0023 § 4.9: the update offer and a Later last for the life of
+    the process, and a restart is the same process.
+
+    Breaks when each pass registers updating against its own state."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+    _Opened(monkeypatch)
+    answers = iter([True, False])
+    monkeypatch.setattr(main_module, "_wait", lambda restart: next(answers))
+    handed = []
+
+    def register(served, own, **kwargs):
+        handed.append(kwargs.get("state"))
+        return kwargs.get("state")
+
+    monkeypatch.setattr(main_module.updating, "register", register)
+    assert main_module.main([]) == 0
+    assert len(handed) == 2 and handed[0] is not None and handed[0] is handed[1], handed
+
+
+def test_an_interrupt_while_starting_prints_no_traceback(monkeypatch, tmp_path, capsys):
+    """review-code 2026-11-16 lane 11: a Ctrl+C, or a closed terminal, before
+    the Face waits escaped main's `except Exception`, and Python printed a
+    traceback naming full paths. It now ends quietly with 130.
+
+    Breaks when KeyboardInterrupt leaves main."""
+    artefact = _artefact(tmp_path)
+    _frozen_linux(monkeypatch, tmp_path, appimage=artefact)
+    _store(monkeypatch, Choice("keyring", "SecretService"))
+
+    def interrupted(own):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main_module.sites, "move_in", interrupted)
+    try:
+        code = main_module.main([])
+    except KeyboardInterrupt:
+        pytest.fail("the interrupt left main, so Python printed its traceback")
+    assert code == 130
+    assert "Traceback" not in "".join(capsys.readouterr())
+
+
 def test_an_unanswerable_question_exits_non_zero(monkeypatch, tmp_path, capsys):
     """NotPackaged is one of the three reasons to exit non-zero, and the
     report still names no path -- a stale $APPIMAGE value is one."""

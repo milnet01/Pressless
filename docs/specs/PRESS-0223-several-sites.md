@@ -129,7 +129,7 @@ only, prints it and stops with exit code 1.
 
 ### 4.4 Handing folders to the parts
 
-`_serve_once(own)` takes `site = sites.open_site(own)` at the top of each
+`_serve_once` takes `site = sites.open_site(own)` at the top of each
 pass, so a restart opens whichever site `OPEN_FILE` now names.
 
 - **`own`** goes to `face.serve` (the log and the theme),

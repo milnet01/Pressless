@@ -1,18 +1,22 @@
 """The Face side of updating: the offer, the switch, Update now -- PRESS-0023 § 4.9.
 
-The check runs once, in the background, when a packaged Pressless starts. What
-it finds is held in memory for the life of the process, as is a Later: losing
-either costs one check at the next start, and nothing of his is in them. Skip
-and the switch are written to updates.json.
+The check runs once per process, in the background, when a packaged Pressless
+starts. What it finds is held in memory for the life of the process, as is a
+Later. A Restart, or opening another site, serves a new Face in the same
+process, and __main__ registers it against the same Updates. Losing them costs
+one check at the next start, and nothing of his is in them. Skip and the switch
+are written to updates.json.
 
 Imported by __main__ alone. Your site draws the offer, and Settings the switch,
 through Face.add_piece; neither imports this module.
 """
 from __future__ import annotations
 
+import contextlib
 import html
 import os
 import re
+import shutil
 import sys
 import threading
 from pathlib import Path
@@ -54,11 +58,16 @@ def miss_line(miss: updater.Miss) -> str:
 
 
 class Updates:
-    """What this process knows: the offer, and whether Later was chosen."""
+    """What this process knows: the offer, and whether Later was chosen. One
+    per process; each Face it serves is registered against it."""
 
     def __init__(self) -> None:
         self.offer: updater.Offer | None = None
         self.later = False
+        # Taken when an Update now starts; only its failure lets it go.
+        self.busy = threading.Lock()
+        # The Face now served: a check that ends after a Restart notes to it.
+        self.face: Face | None = None
         self._thread: threading.Thread | None = None
 
     def wait(self, timeout: float | None = None) -> None:
@@ -69,9 +78,13 @@ class Updates:
 
 def register(face: Face, own: Path, *, artefact: Path | None = None,
              platform: str | None = None, running: str = __version__,
-             transport: updater.Transport | None = None) -> Updates:
+             transport: updater.Transport | None = None,
+             state: Updates | None = None) -> Updates:
     """Add the offer, the switch and their routes to `face`, and start the
-    check where this is a packaged run. `own` is Pressless's own folder."""
+    check where this is a packaged run. `own` is Pressless's own folder.
+
+    `state` is what an earlier Face of this process registered against: its
+    offer and Later stand, and its check is not started again."""
     own = Path(own)
     if artefact is None:
         try:
@@ -79,11 +92,12 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
         except paths.NotPackaged:
             artefact = None
     platform = platform or ("windows" if sys.platform == "win32" else "linux")
-    state = Updates()
+    state = Updates() if state is None else state
+    state.face = face
 
     def shown() -> updater.Offer | None:
         offer = state.offer
-        if offer is None or state.later or updater.read_state(own)[1] == offer.version:
+        if offer is None or state.later or updater.read_state(own).skip == offer.version:
             return None
         return offer
 
@@ -94,42 +108,67 @@ def register(face: Face, own: Path, *, artefact: Path | None = None,
     def skip(request: Request) -> Reply:
         offer = shown()
         if offer is not None:
-            updater.write_state(own, check=updater.read_state(own)[0], skip=offer.version)
+            updater.write_state(own, check=updater.read_state(own).check, skip=offer.version)
         return _home()
 
     def checking(request: Request) -> Reply:
         form = request.form()
         wanted = (form.get("check") or ["true"])[0] != "false"
-        updater.write_state(own, check=wanted, skip=updater.read_state(own)[1])
+        updater.write_state(own, check=wanted, skip=updater.read_state(own).skip)
         return Reply(b"", "text/plain", status=303, location="/setup/computer")  # the switch
 
     def update_now(request: Request) -> str | Reply:
         offer = shown()
-        if offer is None or artefact is None:
+        # One at a time: a second click, or a second tab, goes home rather
+        # than downloading beside the first.
+        if offer is None or artefact is None or not state.busy.acquire(blocking=False):
             return _home()
-        return _update_now(face, own, offer, artefact, platform, transport)
+        return _update_now(face, own, offer, artefact, platform, transport, state.busy)
 
     face.add_page("POST", "/update", update_now)
     face.add_page("POST", "/update/later", later)
     face.add_page("POST", "/update/skip", skip)
     face.add_page("POST", "/update/checking", checking)
     face.add_piece("site-notices", lambda: _offer_html(shown(), running))
-    face.add_piece("computer", lambda: _switch_html(updater.read_state(own)[0]))
+    face.add_piece("computer", lambda: _switch_html(updater.read_state(own).check))
 
-    if artefact is not None:
+    if artefact is not None and state._thread is None:
+        _clear_leftovers(artefact.parent)
+
         def look() -> None:
             found = updater.check(own, running, platform, transport)
             if isinstance(found, updater.Offer):
                 state.offer = found
             # Step 1 is the switch being off, which is no failure (PRESS-0023
             # § 4.4); every other step stopped a check that was wanted.
-            elif found.step > 1:
-                face.note(miss_line(found))
+            elif found.step > 1 and state.face is not None:
+                state.face.note(miss_line(found))
 
         state._thread = threading.Thread(target=look, name="pressless-update-check",
                                          daemon=True)
         state._thread.start()
     return state
+
+
+def _clear_leftovers(beside: Path) -> None:
+    """Remove what an update stopped part way left beside the program: a
+    download or an unpacked folder, from a Pressless stopped during either,
+    and a Windows helper's script, from a helper that died. Run once per
+    process, before its check, so it never meets this process's own update.
+    Best effort: what stays is tried again at the next start."""
+    try:
+        found = list(Path(beside).iterdir())
+    except OSError:
+        return
+    for path in found:
+        name = path.name
+        if name.startswith(updater.UNPACK_PREFIX):
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path, ignore_errors=True)
+        elif name.startswith(updater.DOWNLOAD_PREFIX) or (
+                name.startswith(installer.SCRIPT_PREFIX) and name.endswith(".ps1")):
+            with contextlib.suppress(OSError):
+                path.unlink()
 
 
 def _home() -> Reply:
@@ -206,31 +245,40 @@ def _switch_html(checking: bool) -> str:
 
 
 def _update_now(face: Face, own: Path, offer: updater.Offer, artefact: Path,
-                platform: str, transport: updater.Transport | None) -> str:
-    """§ 4.9's five steps."""
+                platform: str, transport: updater.Transport | None,
+                busy: threading.Lock) -> str:
+    """§ 4.9's five steps, holding `busy`, which only a failure releases."""
+    going = False
     try:
-        staged = updater.download(offer, artefact.parent, transport)
-        if platform == "windows":
-            staged = updater.unpack(staged, artefact.parent)
-    except installer.UpdateError as exc:
-        return face.fail(exc, publishing=False)
+        try:
+            staged = updater.download(offer, artefact.parent, transport)
+            if platform == "windows":
+                staged = updater.unpack(staged, artefact.parent)
+        except installer.UpdateError as exc:
+            return face.fail(exc, publishing=False)
 
-    # Never released on the success path: no save or publish may start
-    # between the swap and the exit.
-    editor.LOCK.acquire()
-    try:
-        if platform == "windows":
-            installer.apply_windows(artefact, staged, own)
-            started = True
-        else:
-            started = installer.apply_linux(artefact, staged, own)
-    except installer.UpdateError as exc:
-        editor.LOCK.release()
-        return face.fail(exc, publishing=False)
-    except BaseException:
-        editor.LOCK.release()
-        raise
+        # Never released on the success path: no save or publish may start
+        # between the swap and the exit.
+        editor.LOCK.acquire()
+        try:
+            if platform == "windows":
+                installer.apply_windows(artefact, staged, own)
+                started = True
+            else:
+                started = installer.apply_linux(artefact, staged, own)
+        except installer.UpdateError as exc:
+            editor.LOCK.release()
+            return face.fail(exc, publishing=False)
+        except BaseException:
+            editor.LOCK.release()
+            raise
+        going = True
+    finally:
+        if not going:
+            busy.release()
 
+    # Windows only: Start Pressless.bat ends with `pause`, so the old console
+    # stays open once this process has gone (scripts/build-windows.sh).
     if platform == "windows":
         print(say("updating.console"), flush=True)
     face.after_reply(lambda: _exit(0))
