@@ -1792,9 +1792,13 @@ class _FakeGoogle:
             self._reply(route, 200, {})
 
 
+# PRESS-0211 § 4.3 step 3: the note is the project's own.
+VOTE_NOTE = f"pressless-votes-{VOTES.project_id}"
+
+
 def _vote_state(page) -> dict:
-    """The buttons as a visitor finds them, and the note in the browser."""
-    return page.evaluate("""() => ({
+    """The buttons as a visitor finds them, and the project's note in the browser."""
+    return page.evaluate("""(name) => ({
       numbers: [...document.querySelectorAll('.vote-count')].map(c => c.textContent),
       pressed: [...document.querySelectorAll('button.vote')]
         .map(b => b.getAttribute('aria-pressed')),
@@ -1803,8 +1807,8 @@ def _vote_state(page) -> dict:
         const r = b.getBoundingClientRect();
         return [r.x, r.y, r.width, r.height];
       }),
-      note: JSON.parse(localStorage.getItem('pressless-votes')),
-    })""")
+      note: JSON.parse(localStorage.getItem(name)),
+    })""", VOTE_NOTE)
 
 
 def _vote_press(page, google: _FakeGoogle, value: str) -> list[str]:
@@ -1919,6 +1923,18 @@ def _votes_rows(page, address: str, errors: list[str]) -> None:
                                             ("numbers", "pressed", "boxes", "note")),
               f"{steps} {state['numbers']}")
     google.fail = {}
+
+    # The refused refresh token's row below then writes the project's own note.
+    page.evaluate("""(name) => {
+      localStorage.setItem('pressless-votes', localStorage.getItem(name));
+      localStorage.removeItem(name);
+    }""", VOTE_NOTE)
+    page.reload(wait_until="networkidle")
+    page.wait_for_function("[...document.querySelectorAll('button.vote')].every(b => !b.disabled)")
+    state = _vote_state(page)
+    check("PRESS-0211 s4.3 step 3: with no note of the project's, the older shared one is read",
+          state["numbers"] == ["3", "1"] and state["pressed"] == ["true", "false"]
+          and state["note"] is None, f"{state['numbers']} {state['pressed']} {state['note']}")
 
     # ---- a refused refresh token: a new visitor, as § 6 accepts --------------
     google.fail = {"exchange": 400}
