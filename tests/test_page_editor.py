@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import subprocess
+import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -391,7 +392,8 @@ def test_throwing_away_page_changes(tmp_path):
     with _pages(folder) as browser:
         status, _, text = browser.request("POST", "/page/discard", {
             "kind": "pages", "name": "about", "base": _digest(_live(folder, "pages", "about"))})
-        assert status == 409, text
+        # The button is a form, so a failure is a whole Face page.
+        assert status == 200 and text.startswith("<!doctype html>"), text
         assert html.escape(_said(editor.ChangedElsewhere)) in text
         assert _binned(folder) == []
 
@@ -405,6 +407,32 @@ def test_throwing_away_page_changes(tmp_path):
     assert headers["Location"] == "/page?kind=pages&name=about"
     assert _binned(folder) == [f"{PAGES_WAITING}/about.html"]
     assert _live(folder, "pages", "about").read_bytes() == live
+
+
+def _noisy(failure: Exception):
+    def call(*_args, **_kwargs):
+        warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt",
+                                        mode="644"), stacklevel=2)
+        raise failure
+    return call
+
+
+@pytest.mark.parametrize(("route", "called", "form"), [
+    ("/page/new", "new_page", {"name": "Gigs"}),
+    ("/page/discard", "discard", {"kind": "pages", "name": "about", "base": "x"}),
+])
+def test_a_page_form_failure_is_a_whole_page_with_its_notices(route, called, form, tmp_path,
+                                                              monkeypatch):
+    """New page and Throw away changes are forms, so a failure answers a whole
+    Face page carrying the notices raised on the way. Breaks when it is
+    answered inside the capture, which fills its list only as it ends, or as
+    a fragment the browser shows bare."""
+    folder = _folder(tmp_path)
+    monkeypatch.setattr(page_editor, called, _noisy(store.StoreError("made-up refusal")))
+    with _pages(folder) as browser:
+        status, _, page = browser.request("POST", route, form)
+    assert status == 200 and page.startswith("<!doctype html>"), page
+    assert 'class="failure"' in page and "notes.txt" in page
 
 
 # ----------------------------------------------------------------- INV-15 ---

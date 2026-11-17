@@ -326,8 +326,10 @@ the live file.
 ### 4.8 Throwing away changes
 
 Fields: `kind`, `name`, `base`. Under the lock, `editor.ChangedElsewhere`
-unless a waiting copy exists and its digest equals `base`, answered as § 4.6's
-failures are. Then `store.move_to_bin` on it. The live file is not touched.
+unless a waiting copy exists and its digest equals `base`. The button is a
+form, so a failure answers a whole Face page, with its notices and the
+failure's sentence. Then `store.move_to_bin` on it. The live file is not
+touched.
 A page with no live file goes back to the list: PRESS-0195 § 4.3.
 
 ### 4.9 What this item never does

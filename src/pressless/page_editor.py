@@ -815,19 +815,17 @@ def discard(folder: Path, kind: str, name: str, base: str) -> None:
     store.move_to_bin(folder, copy)
 
 
-def _discard(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """§ 4.8, through `discard`."""
+def _discard(face: Face, folder: Path, lock: threading.Lock,
+             request: Request) -> str | Reply:
+    """§ 4.8, through `discard`. The button is a form, so a failure answers a
+    whole Face page."""
     form = editor.form_fields(request)
     kind, name = form.get("kind", ""), form.get("name", "")
-    with lock, face.capture() as notices:
-        try:
-            discard(folder, kind, name, form.get("base", ""))
-        except (store.StoreError, editor.ChangedElsewhere) as exc:
-            failure: Exception | None = exc
-        else:
-            failure = None
+    _, notices, failure = editor.captured(
+        face, lock, lambda: discard(folder, kind, name, form.get("base", "")),
+        (store.StoreError, editor.ChangedElsewhere))
     if failure is not None:
-        return editor.failed(face, notices, failure)
+        return editor.failed_page(face, notices, failure)
     # PRESS-0195 § 4.3: a page never pressed had only this copy, so its editor
     # has nothing left to open.
     live = store.html_path_for(folder, kind, name)
@@ -1085,17 +1083,19 @@ def new_page(folder: Path, named: str) -> str:
     return page
 
 
-def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> Reply:
-    """§ 4.3, through `new_page`."""
+def _new(face: Face, folder: Path, lock: threading.Lock, request: Request) -> str | Reply:
+    """§ 4.3, through `new_page`. The button is a form, so a failure answers a
+    whole Face page."""
     named = editor.form_fields(request).get("name", "").strip()
-    with lock, face.capture() as notices:
-        try:
-            location = editor.page_address(store.PAGES_FOLDER, new_page(folder, named))
-        except NameRefused as refused:
-            location = (editor.PAGES_ADDRESS + "?"
-                        + urllib.parse.urlencode({"page_hint": refused.code}))
-        except store.StoreError as exc:
-            return editor.failed(face, notices, exc)
+    page, notices, failure = editor.captured(
+        face, lock, lambda: new_page(folder, named), (NameRefused, store.StoreError))
+    if isinstance(failure, NameRefused):
+        location = (editor.PAGES_ADDRESS + "?"
+                    + urllib.parse.urlencode({"page_hint": failure.code}))
+    elif failure is not None:
+        return editor.failed_page(face, notices, failure)
+    else:
+        location = editor.page_address(store.PAGES_FOLDER, page)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=location)
 
 

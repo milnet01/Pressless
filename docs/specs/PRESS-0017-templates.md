@@ -216,6 +216,9 @@ revisit it.
 
 ## 6. Failure modes
 
+Every template route is a link or a form, so each failure below answers a
+whole Face page, with its notices and the failure's sentence.
+
 | When | What happens |
 |---|---|
 | The starters cannot be written | the log says so (§4.2); the picker offers whatever was written before the failure, and a blank entry; no later start retries |

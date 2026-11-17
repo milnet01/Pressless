@@ -162,7 +162,9 @@ it, a box and a New page button post `name` to `POST /page/new`. Under
 3. **`pressing.forget()`**, as every other write does (PRESS-0235 §4.4).
 4. **Answer 303** to the page editor for `page`.
 
-The live page and the menu are untouched. **Throw away changes**
+The button is a form, so a Store failure answers a whole Face page, with
+its notices and the failure's sentence. The live page and the menu are
+untouched. **Throw away changes**
 (PRESS-0014 §4.8) on a page with no live file bins its only copy, and
 its 303 goes to the list instead of the page editor.
 

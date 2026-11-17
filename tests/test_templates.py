@@ -8,10 +8,12 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import re
+import warnings
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from test_editor import _Browser, _entry, _folder
 
 from pressless import editor, face, marks, store, templates
@@ -137,7 +139,7 @@ def test_a_stale_template_save_writes_nothing(tmp_path):
         status, _, _ = browser.request("POST", "/template/save", {
             "name": "poem", "base": "stale", "title": "", "categories": "", "tags": "",
             "body": "New."})
-    assert status == 409
+    assert status == 200
     assert path.read_bytes() == before
 
 
@@ -159,8 +161,38 @@ def test_a_stale_template_bin_moves_nothing(tmp_path):
     _template(folder, "poem")
     with _served(folder) as browser:
         status, _, _ = browser.request("POST", "/template/bin", {"name": "poem", "base": "x"})
-    assert status == 409
+    assert status == 200
     assert store.list_templates(folder) == ("poem",)
+
+
+def _noisy_refusal(*_args, **_kwargs):
+    warnings.warn(store.StoreNotice("notice.store.not_private", file="notes.txt", mode="644"),
+                  stacklevel=2)
+    raise store.StoreError("made-up refusal")
+
+
+# The Store call each route fails at. A new template's is the write, since
+# `first_free` passes over a name whose path the Store refuses.
+@pytest.mark.parametrize(("method", "route", "form", "refused"), [
+    ("GET", "/template?name=poem", None, "template_path_for"),
+    ("POST", "/template/save", {"name": "poem", "base": "x", "title": "", "categories": "",
+                                "tags": "", "body": "New."}, "template_path_for"),
+    ("POST", "/template/new", {"name": "Song"}, "write_template"),
+    ("POST", "/template/bin", {"name": "poem", "base": "x"}, "template_path_for"),
+])
+def test_a_template_failure_is_a_whole_page_with_its_notices(method, route, form, refused,
+                                                             tmp_path, monkeypatch):
+    """§ 6: every template route is a form or a link, so a failure answers a
+    whole Face page carrying the notices raised on the way. Breaks when it is
+    answered inside the capture, which fills its list only as it ends, or as
+    a fragment the browser shows bare."""
+    folder = _folder(tmp_path)
+    _template(folder, "poem")
+    monkeypatch.setattr(store, refused, _noisy_refusal)
+    with _served(folder) as browser:
+        status, _, page = browser.request(method, route, form)
+    assert status == 200 and page.startswith("<!doctype html>"), page
+    assert 'class="failure"' in page and "notes.txt" in page
 
 
 # ------------------------------------------------------------------ INV-6 ---

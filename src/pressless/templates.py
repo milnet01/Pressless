@@ -95,13 +95,15 @@ def _listed(folder: Path) -> str:
 def _open(face: Face, folder: Path, request: Request) -> str:
     """§ 4.4."""
     name = request.query.get("name", "")
-    with editor.LOCK, face.capture() as notices:
-        try:
-            path = store.template_path_for(folder, name)
-            template = store.read(path)
-            base = editor.digest(path)
-        except store.StoreError as exc:
-            return render_notices(notices) + face.fail(exc, publishing=False)
+
+    def read() -> tuple[store.Entry, str]:
+        path = store.template_path_for(folder, name)
+        return store.read(path), editor.digest(path)
+
+    opened, notices, failure = editor.captured(face, editor.LOCK, read, (store.StoreError,))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
+    template, base = opened
     return render_notices(notices) + _page(template, base)
 
 
@@ -139,51 +141,61 @@ def _checked(folder: Path, name: str, base: str) -> tuple[Path, store.Entry]:
     return path, template
 
 
-def _save(face: Face, folder: Path, request: Request) -> str | Reply:
+def _save(face: Face, folder: Path, request: Request) -> str:
     """§ 4.4."""
     form = editor.form_fields(request)
     name = form.get("name", "")
-    with editor.LOCK, face.capture() as notices:
-        try:
-            path, template = _checked(folder, name, form.get("base", ""))
-            body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
-            written = store.Entry(
-                slug=name, title=form.get("title", "").strip(), date=template.date,
-                categories=editor._names_of(folder, form.get("categories", ""), "categories"),
-                tags=editor._names_of(folder, form.get("tags", ""), "tags"),
-                body=body, extra=template.extra)
-            store.write_template(folder, written)
-            base = editor.digest(path)
-        except (store.StoreError, editor.ChangedElsewhere) as exc:
-            return editor.failed(face, notices, exc)
+
+    def write() -> tuple[store.Entry, str]:
+        path, template = _checked(folder, name, form.get("base", ""))
+        body = form.get("body", "").replace("\r\n", "\n").replace("\r", "\n")
+        written = store.Entry(
+            slug=name, title=form.get("title", "").strip(), date=template.date,
+            categories=editor._names_of(folder, form.get("categories", ""), "categories"),
+            tags=editor._names_of(folder, form.get("tags", ""), "tags"),
+            body=body, extra=template.extra)
+        store.write_template(folder, written)
+        return written, editor.digest(path)
+
+    saved, notices, failure = editor.captured(
+        face, editor.LOCK, write, (store.StoreError, editor.ChangedElsewhere))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
+    written, base = saved
     return render_notices(notices) + _page(written, base)
 
 
-def _new(face: Face, folder: Path, request: Request) -> Reply:
+def _new(face: Face, folder: Path, request: Request) -> str | Reply:
     """§ 4.5: a free name is one no file sits at, so on Windows a hand-named
     Poem.txt answers for poem and is not overwritten. A name the Store
     refuses, such as `con`, is passed over (PRESS-0311)."""
     typed = editor.form_fields(request).get("name", "")
     wanted = editor.address_for(typed)
-    with editor.LOCK, face.capture() as notices:
-        try:
-            name = photographs.first_free(
-                wanted, lambda name: not store.template_path_for(folder, name).is_file())
-            store.write_template(folder, store.Entry(
-                slug=name, title=typed.strip(), date=datetime.now().replace(microsecond=0),
-                categories=(), tags=(), body="", extra=()))
-        except store.StoreError as exc:
-            return editor.failed(face, notices, exc)
+
+    def write() -> str:
+        name = photographs.first_free(
+            wanted, lambda name: not store.template_path_for(folder, name).is_file())
+        store.write_template(folder, store.Entry(
+            slug=name, title=typed.strip(), date=datetime.now().replace(microsecond=0),
+            categories=(), tags=(), body="", extra=()))
+        return name
+
+    name, notices, failure = editor.captured(face, editor.LOCK, write, (store.StoreError,))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=_address(name))
 
 
-def _bin(face: Face, folder: Path, request: Request) -> Reply:
+def _bin(face: Face, folder: Path, request: Request) -> str | Reply:
     """§ 4.5."""
     form = editor.form_fields(request)
-    with editor.LOCK, face.capture() as notices:
-        try:
-            path, _ = _checked(folder, form.get("name", ""), form.get("base", ""))
-            store.move_to_bin(folder, path)
-        except (store.StoreError, editor.ChangedElsewhere) as exc:
-            return editor.failed(face, notices, exc)
+
+    def bin_it() -> None:
+        path, _ = _checked(folder, form.get("name", ""), form.get("base", ""))
+        store.move_to_bin(folder, path)
+
+    _, notices, failure = editor.captured(
+        face, editor.LOCK, bin_it, (store.StoreError, editor.ChangedElsewhere))
+    if failure is not None:
+        return editor.failed_page(face, notices, failure)
     return Reply(b"", "text/plain; charset=utf-8", status=303, location=editor.JOURNAL_ADDRESS)

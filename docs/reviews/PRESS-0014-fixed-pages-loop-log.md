@@ -12,3 +12,4 @@
 | impl | 2026-11-06 | none — amendment for PRESS-0341; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: the furniture moves to its own card, Parts of every page. |
 | pointer | 2026-11-15 | none — pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: the list at `/` moved to Pages, `/pages`. |
 | pointer | 2026-11-17 | none — pointer from PRESS-0399; no reviewer dispatched | 0 | 0 | 0 | 0 | § 11: what undo does with a waiting copy is PRESS-0015 § 4.4. |
+| amend | 2026-11-17 | none — PRESS-0414; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.8: a failed throw-away answers a whole Face page, since its button is a form. |
