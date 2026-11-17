@@ -12,6 +12,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-17
+
+**Theme:** Every sign holds, and the format is frozen
+
 ### Changed
 
 - **After updating on Linux, Pressless comes back in the same window** (PRESS-0408)
@@ -32,6 +36,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
   waiting changes as links.
 
 ### Fixed
+
+- **After Undo, Pressless tells you if a page went back to waiting** (PRESS-0416)
+
+- **A page you named "footer" is no longer mistaken for the site's footer on the Files screen** (PRESS-0415)
+
+- **Changing your computer's clock can't leave Pressless using an expired Google sign-in** (PRESS-0411)
+
+- **When something goes wrong while an AI app works on your site, the message makes sense in a chat** (PRESS-0402)
+
+- **An AI app knows a page called "footer" from the site's footer** (PRESS-0420)
+
+- **Connecting an AI app works however Pressless was started on Linux** (PRESS-0418)
 
 - **A site you bring in waits for your first publish before it counts as on the web** (PRESS-0422)
   After bringing in a site from WordPress or a folder, Finish setting up waits for
