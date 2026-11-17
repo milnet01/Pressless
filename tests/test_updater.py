@@ -459,11 +459,18 @@ def test_every_part_of_a_member_is_checked(tmp_path):
     such as `D:`, and drops a part's trailing dots and spaces, so `.. `
     climbs out. Members are checked by zip_member.stays_inside, as Import's are.
 
-    Breaks when a name that climbs out on Windows is unpacked."""
+    Breaks when a name that climbs out on Windows is unpacked.
+
+    On Windows, zipfile reads a backslash in a name as `/`, so `a\\b` arrives
+    as the harmless `a/b` and is checked only where the separator is `/`;
+    `..\\evil` climbs out either way (measured on the box, 2026-11-17)."""
     beside = tmp_path / "program"
     beside.mkdir()
-    for stray in ("Pressless/D:/evil", "Pressless/a:b", "Pressless/.. /evil",
-                  "Pressless/evil.", "Pressless/a\\b"):
+    strays = ["Pressless/D:/evil", "Pressless/a:b", "Pressless/.. /evil",
+              "Pressless/evil.", "Pressless/..\\evil"]
+    if os.sep == "/":
+        strays.append("Pressless/a\\b")
+    for stray in strays:
         archive = _zip(beside / "update.zip", {"Pressless/": b"", stray: b"stray"})
         with pytest.raises(updater.UpdateRejected):
             updater.unpack(archive, beside)
