@@ -246,6 +246,27 @@ def test_a_return_page_is_the_only_door_without_the_cookie(tmp_path: Path) -> No
         served.stop()
 
 
+def test_another_programs_odd_cookie_does_not_lock_him_out(tmp_path: Path) -> None:
+    """PRESS-0011 § 4.5: browsers share cookies across every port of
+    127.0.0.1, so another local program's cookies arrive beside Pressless's.
+    Breaks when one the standard parser cannot read throws the whole header
+    away and every page answers 403. A cookie merely named like the session
+    still opens nothing."""
+    served = face.serve(tmp_path)
+    try:
+        served.add_page("GET", "/other", lambda request: "other")
+        client = _Client(served)
+        own = client.cookie
+        for before in ("junk", "path=/", 'a=1; b={"k":"v"}', "a=b c", 'a="x'):
+            client.cookie = f"{before}; {own}"
+            assert client.request("GET", "/other")[0] == 200, before
+        name = own.split("=", 1)[0]
+        client.cookie = f"{name}x={own.split('=', 1)[1]}; {name}=wrong"
+        assert client.request("GET", "/other")[0] == 403
+    finally:
+        served.stop()
+
+
 SPENT = "This link has already been used. Close this tab and start Pressless again."
 
 

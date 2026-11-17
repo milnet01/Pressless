@@ -18,7 +18,6 @@ from __future__ import annotations
 import contextlib
 import enum
 import html
-import http.cookies
 import http.server
 import os
 import secrets
@@ -1257,12 +1256,13 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             left -= len(chunk)
 
     def _has_cookie(self, face: Face) -> bool:
-        try:
-            jar = http.cookies.SimpleCookie(self.headers.get("Cookie", ""))
-        except http.cookies.CookieError:
-            return False
-        morsel = jar.get(face._cookie)
-        return morsel is not None and _is_secret(morsel.value, face._session)
+        """Read by hand: other local programs' cookies arrive here too, and
+        the standard parser drops the whole header at one it cannot read."""
+        for part in self.headers.get("Cookie", "").split(";"):
+            name, _, value = part.strip().partition("=")
+            if name == face._cookie and _is_secret(value, face._session):
+                return True
+        return False
 
     def _dispatch(self, method: str) -> None:
         face = self.server.face
