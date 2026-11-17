@@ -838,6 +838,8 @@ def test_photo_name_cannot_escape_its_folder():
         "a?.jpg",
         "a*.jpg",
         "dot.jpg.",
+        "dot.jpg. ",
+        "a. | a caption",
         "nul .jpg",
         "nul.tar.gz",
         "COM1.jpg",

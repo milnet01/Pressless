@@ -39,6 +39,7 @@ __all__ = [
     "Unwritable",
     "Value",
     "from_inline",
+    "normal",
     "parse",
     "render",
     "sources",
@@ -300,12 +301,14 @@ _HEX_COLOUR = r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$"
 # It also refuses what PRESS-0006 decision 10 refuses so Windows keeps the
 # name as written (PRESS-0164): `< > " ? *`, a trailing dot, and a device
 # name judged on the part before the first dot, spaces trimmed, case ignored.
+# Nor may the name end in whitespace, or a trailing space would step over the
+# trailing-dot refusal: '{photo: a. }' formed a mark named 'a. '.
 _PHOTO_DEVICE = (r"(?i:con|prn|aux|nul|conin\$|conout\$"
                  r"|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])")
 _PHOTO_ARG = (
     r"^\s*(?P<name>(?!\.{1,2}(?:\s|\||$))"
     rf"(?!{_PHOTO_DEVICE} *(?:\.|\s*(?:\||$)))"
-    r'[^\s|/\\:<>"?*\x00-\x1f\x7f][^|/\\:<>"?*\x00-\x1f\x7f]*?(?<!\.))'
+    r'[^\s|/\\:<>"?*\x00-\x1f\x7f][^|/\\:<>"?*\x00-\x1f\x7f]*?(?<![.\s]))'
     r"\s*(?:\|\s*(?P<caption>.+?)\s*)?$"
 )
 
@@ -444,7 +447,8 @@ _WRAP_MARKS: tuple[Mark, ...] = tuple(
 )
 # Every block row needs an `arg` with `name` and `caption` groups: _as_block
 # builds a Photo from them, since photo is the one block mark so far. A second
-# block mark changes _as_block too.
+# block mark changes _as_block too, and `normal` and `write`, which take any
+# block that is not a Paragraph or a Quote for a Photo.
 _BLOCK_MARKS: tuple[Mark, ...] = tuple(
     sorted((row for row in MARKS if row.kind == "block"),
            key=lambda row: len(row.opens), reverse=True)
@@ -721,6 +725,8 @@ def parse(body: str) -> Document:
     otherwise, and looks like a broken test rather than a wrong rule.
     """
     body = body.replace("\r\n", "\n").replace("\r", "\n").strip()
+    # `sources` walks the text as this does, over offsets: a change to how
+    # paragraphs, quotes or block lines are split changes it too.
     blocks: list[Block] = []
     for chunk in _PARAGRAPH_BREAK.split(body):
         pending: list[str] = []
@@ -812,11 +818,13 @@ class Unwritable(ValueError):
 # A word joiner shows as nothing. Between two marks' asterisks it stops them
 # reading as one run, which is how Bold around Italic is spelled (§ 4.5).
 _JOINER = "&#8288;"
-_JOINER_CHARACTER = "⁠"
+_JOINER_CHARACTER = "\u2060"
 # What `write` puts in place of a character that would otherwise begin a
-# mark, where the words are to stay words.
-_ESCAPES = {_RUN_DELIMITER: "&#42;", "{": "&#123;"}
-_PREFIX_ESCAPES = {">": "&gt;"}
+# mark, where the words are to stay words: each row's first character, from
+# MARKS (PRESS-0004 § 4.1), as a character reference.
+_ESCAPES = {row.opens[0]: f"&#{ord(row.opens[0])};"
+            for row in MARKS if row.kind != "prefix"}
+_PREFIX_ESCAPES = {row.opens[0]: f"&#{ord(row.opens[0])};" for row in _PREFIX_MARKS}
 _LINE_END = re.compile(r"\r\n|\r|\n")
 
 
