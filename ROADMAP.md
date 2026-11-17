@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=406 -->
+<!-- ants-roadmap-id-high-water: PRESS=410 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7825,7 +7825,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Insights.
 
-- 📋 [PRESS-0381] **Review fixes: updates, start-up and shortcuts.**
+- ✅ [PRESS-0381] **Review fixes: updates, start-up and shortcuts.**
   Subject 11 of the 2026-11-16 full review, closed with close-findings.
   review-code: 4 medium, 7 low. review-readability: 2 medium, 10 low.
   Among them: two Update now presses race; leftover update files are
@@ -7836,6 +7836,17 @@ does not wait on them.
   passes. The update archive is signature-checked, so the risk is lower.
   Check every part, as sitefile.stays_inside now does, and reuse it
   rather than copying.
+  Shipped 2026-11-17, 2bac308..a4681ce. 27 findings: 23 fixed, 2
+  queued (PRESS-0407, PRESS-0408), 2 dismissed (one empty finding; one
+  downgrade-only). updater._allowed now calls sitefile.stays_inside on
+  every part of a member's path (the PRESS-0383 extra: D:, a:b, "..",
+  trailing dot and backslash refused). One Update now runs at a time; a
+  start sweeps leftover update files; the Windows helper logs best
+  effort and truthfully (its PowerShell is checked by the Windows gate,
+  not run here). PRESS-0023 §§ 4.6, 4.7, 4.9 and PRESS-0223 § 4.4
+  amended. Filed: PRESS-0409, PRESS-0410. Full suite 2277 passed, 27
+  skipped.
+  Ledger: close-findings-2026-11-17/lane-11-update-entry.json.
   **Layman:** Fixes in how Pressless checks for, proves and installs a new version.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8195,6 +8206,46 @@ does not wait on them.
   Kind: doc-fix.
   Source: PRESS-0378 close-findings sweep 2026-11-17.
   Lanes: Setup.
+
+- 📋 [PRESS-0407] **Closing the Windows console skips Pressless's stop steps.**
+  Queued from PRESS-0381 (review-code lane-11-update-entry :43).
+  Windows-only, so it outranks other work. To settle: on the Windows
+  box, close the console window and check whether the AI door file is
+  removed. Likely fix: a SetConsoleCtrlHandler that blocks while the
+  stop runs.
+  **Layman:** Closing Pressless's window on Windows tidies up properly.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 (PRESS-0381 close-findings).
+  Lanes: Updates.
+
+- 📋 [PRESS-0408] **After a Linux update, Pressless reopens with no terminal window.**
+  Queued from PRESS-0381 (review-code lane-11-update-entry :34).
+  Which terminal to reopen in is a design choice; needs a PRESS-0023
+  § 4.7 amendment and a check in a real desktop session.
+  **Layman:** After updating on Linux, Pressless comes back the way you started it.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 (PRESS-0381 close-findings).
+  Lanes: Updates.
+
+- 📋 [PRESS-0409] **Move sitefile.stays_inside to a module that imports no other Pressless part.**
+  Surfaced by PRESS-0381. updater.py now imports sitefile, which
+  imports settings, credentials and store. PRESS-0023 § 4.1 forbids
+  opening those, not importing them, but a 2026-10-23 readability lane
+  read it as an import ban. A leaf module settles both readings.
+  **Layman:** A behind-the-scenes tidy so the updater depends on as little as possible.
+  Kind: refactor.
+  Source: review-code-2026-11-16 (PRESS-0381 close-findings).
+  Lanes: Updates.
+
+- 📋 [PRESS-0410] **Does a plain stop cut a publish off part way?**
+  Surfaced by PRESS-0381. A plain stop does not wait for editor.LOCK,
+  and the Face's threads are daemon threads, so a stop during a publish
+  may end it mid-way. Establish whether that is safe (PRESS-0009's
+  outcome-unknown path) or the stop should wait.
+  **Layman:** Check that closing Pressless during a publish can't leave your site half-sent.
+  Kind: investigate.
+  Source: review-code-2026-11-16 (PRESS-0381 close-findings).
+  Lanes: Updates, Publishing.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

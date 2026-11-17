@@ -25,6 +25,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Updating is safer and tidier** (PRESS-0381)
+  Pressing Update now twice no longer starts two updates. Files a stopped update
+  left behind are cleared at the next start. An update file is checked more strictly
+  before anything in it is unpacked.
+
 - **Publishing reports what really went wrong** (PRESS-0377)
   When GitHub refuses a Pages change or the repository is empty, Pressless no longer
   says someone else changed the site. A short GitHub rate limit is waited out rather
