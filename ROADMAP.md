@@ -7980,6 +7980,14 @@ does not wait on them.
   drop-in text for every sentence PRIVACY.md changed, as listed in
   PRESS-0380's note. Also check on the Windows box whether usage.system()
   reports Windows 11 as "10".
+  2026-11-17: the user's screenshots of the usage property confirm the
+  2026-10-15 settings: event and user retention 2 months, Google signals
+  off, user-provided data off, granular location and device data off,
+  ads personalisation allowed in 0 of 307 regions. Correction: Google's
+  page says region and country metadata is kept for all traffic even with
+  granular location off, so the policy must say "country and region,
+  never the city", not "country only". The Hub's sentence needs the same
+  correction.
   **Layman:** The privacy policy in the app's files and the one on the website should say exactly the same, true things about usage reports.
   Kind: doc-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
