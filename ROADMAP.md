@@ -8008,6 +8008,15 @@ does not wait on them.
   amended. Open design question: PRESS-0396. The full suite on the
   merged tree: 2205 passed, 26 skipped. Ledger:
   close-findings-2026-11-17/lane-15-import-folder-fetch.json.
+  2026-11-17, at the release: the v1.0.1 release build failed on GitHub's
+  Windows runner, whose long paths are on, so the tests' 5,000-character
+  path was made there. eee8fd0 shares a path past every limit
+  (_mode_support.TOO_DEEP); the box gate then showed Python raising
+  ValueError past Windows's 32,767 characters, which the folder import, the
+  site fetch and the media fetch did not catch, so one such file stopped the
+  whole import. 5a24b8d leaves it with import.folder.why.too_long. CI green
+  on windows-latest and ubuntu-latest. v1.0.1 stays a tag with no release;
+  the release is 1.0.2.
   **Layman:** Fixes in bringing in a folder of web pages and downloading a site.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
