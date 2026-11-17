@@ -6,3 +6,4 @@
 | impl | 2026-11-10 | none; no reviewer dispatched | - | - | - | - | 7 | 7 | Build fold-back: the reply's `address`, `is_photograph`, `download_url`, one re-encoder, the line's redirect, INV-3's Linux-only half, the fixture script. |
 | pointer | 2026-11-15 | none: pointer from PRESS-0353 stage 1; no reviewer dispatched | 0 | 0 | 0 | 0 | 0 | 0 | § 4.6 (cited as § 4.3): the line moved to Settings. |
 | fix | 2026-11-17 | none; PRESS-0386 closing review findings; no reviewer dispatched | - | - | - | - | 6 | 6 | No pin off x86_64 Linux and Windows; header size checked before the decoder; plain names in the work folder; execute bit; install's own failures typed; one Add at a time; `program` is `find_program`. |
+| fix | 2026-11-17 | none; PRESS-0389 closing review findings; no reviewer dispatched | - | - | - | - | 1 | 1 | § 4.8: the release is a draft until its assets check, then published. |

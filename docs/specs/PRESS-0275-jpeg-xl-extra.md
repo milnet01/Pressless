@@ -288,15 +288,16 @@ route answers 404, as it does for a missing original.
 2. Extracts `tools/djxl` with `lzma` and `tarfile`, and
    `x64-windows-static/bin/djxl.exe` with `7z`. It requires each to match
    `jpegxl.PINS`, and refuses otherwise.
-3. Creates the release `RELEASE` on `milnet01/Pressless` as a
-   **pre-release, never the latest**. Its body says it is libjxl's decoder,
+3. Creates the release `RELEASE` on `milnet01/Pressless` as a **draft
+   pre-release, never the latest**. Its body says it is libjxl's decoder,
    for Pressless's JPEG XL support. It uploads the two programs under the
    pins' names, and each archive's licence files: the Linux archive's
    `LICENSE.*`, and the Windows archive's
    `x64-windows-static/licenses/LICENSE.*` with a `windows-` prefix. The
    Windows program links libraries, such as libjpeg-turbo and libwebp, whose
    notices only that archive carries.
-4. Reads the asset list back and requires exactly those names.
+4. Reads the asset list back, requires exactly those names, and only then
+   publishes the draft. A failure leaves nothing public.
 
 **The release must exist before any Pressless carrying its pin is
 published.** The pre-release mark keeps it away from the updater:

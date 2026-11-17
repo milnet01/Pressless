@@ -339,7 +339,8 @@ it, because § Logging forbids a full path in anything Pressless writes down.
 `scripts/make-signing-key.py <path>` writes a new Ed25519 private key to
 `<path>`, owner-only, and prints only the public key, in `TRUSTED`'s base64
 form. It refuses a
-path that exists or lies inside the repository. The maintainer runs it once and
+path that exists or lies inside the repository. It and `sign-release.py`
+run on Linux only. The maintainer runs it once and
 pastes the printed key into `update_key.TRUSTED`. **The private key never
 enters the repository or a session's context.**
 
@@ -349,14 +350,16 @@ The release workflow creates the release as a **draft** (`gh release create
 repository — a fork carrying the release workflow — is signed the same way:
 
 1. Reads every key path from `git config --get-all ants.pressless.signingKey`.
-2. Refuses unless the release is a draft and the release workflow run that
-   built it was for the tag's own commit (FIBR-0318).
+2. Refuses unless the release is a draft holding both artefacts and nothing
+   but this release's own files, and the release workflow run that built it
+   was for the tag's own commit (FIBR-0318).
 3. Downloads the two artefacts, writes the list (§ 4.3) and the changes file
    (§ 4.12), and signs each with each key.
 4. **Verifies every signature against `update_key.TRUSTED` as committed at
    the tag**, and refuses to attach anything if one fails.
-5. Uploads both files and their `.sig` files, reads the asset list back, and
-   requires exactly those names beside the two artefacts (FIBR-0275).
+5. Uploads both files and their `.sig` files, replacing any a failed run
+   left, reads the asset list back, and requires exactly those names beside
+   the two artefacts (FIBR-0275).
 6. Publishes the draft.
 
 ### 4.9 What he sees
