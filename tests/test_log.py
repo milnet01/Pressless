@@ -16,6 +16,8 @@ import inspect
 import io
 import os
 import re
+import stat
+import sys
 import threading
 from pathlib import Path
 
@@ -362,3 +364,24 @@ def test_note_waits_for_the_handlers_lock(tmp_path):
     writer.join(5)
     handle.close()
     assert "held back" in log_module.path_for(tmp_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SECURITY.md: Windows has no owner-only mode")
+def test_the_log_and_its_old_copy_are_owner_only(tmp_path):
+    """SECURITY.md: on Linux every file Pressless writes is readable by its
+    owner alone. Breaks when the log, or the fresh one a roll starts, is
+    created at the umask's mode, or a log an older Pressless left readable
+    to all stays that way."""
+    (tmp_path / "pressless.log").write_text("from before\n", encoding="utf-8")
+    os.chmod(tmp_path / "pressless.log", 0o644)
+    old = os.umask(0o022)
+    try:
+        log = log_module.open_log(tmp_path)
+        log.note("first")
+        log._handler.doRollover()
+        log.note("second")
+        log.close()
+    finally:
+        os.umask(old)
+    for name in ("pressless.log", "pressless.log.1"):
+        assert stat.S_IMODE((tmp_path / name).stat().st_mode) == 0o600, name

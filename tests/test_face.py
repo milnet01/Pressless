@@ -13,10 +13,12 @@ import http.client
 import importlib
 import inspect
 import json
+import os
 import pkgutil
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import urllib.parse
@@ -1101,6 +1103,30 @@ def test_an_upload_streams_past_the_page_ceiling(tmp_path: Path, monkeypatch) ->
         served.stop()
     assert seen == [(body, True)]
     assert not list(into.glob(".upload-*"))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SECURITY.md: Windows has no owner-only mode")
+def test_an_upload_is_written_owner_only(tmp_path: Path) -> None:
+    """SECURITY.md: on Linux every file Pressless writes is readable by its
+    owner alone, and a handler may rename the upload into the Store. Breaks
+    when the upload's file is created at the umask's mode."""
+    into = tmp_path / "own"
+    into.mkdir()
+    modes: list[int] = []
+
+    def took(path: Path) -> str:
+        modes.append(stat.S_IMODE(path.stat().st_mode))
+        return "<p>taken</p>"
+
+    old = os.umask(0o022)
+    served = face.serve(into)
+    try:
+        served.add_upload("/up", took, into)
+        assert _Client(served).raw("POST", "/up", b"a file")[0] == 200
+    finally:
+        served.stop()
+        os.umask(old)
+    assert modes == [0o600]
 
 
 def test_a_failed_upload_write_still_answers_with_its_page(tmp_path: Path,

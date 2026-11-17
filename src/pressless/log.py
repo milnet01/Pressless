@@ -18,8 +18,11 @@ that raises, and for a failure nothing in Pressless raised, to the Face --
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import logging.handlers
+import os
+import sys
 from pathlib import Path
 
 FILE_NAME = "pressless.log"
@@ -48,6 +51,18 @@ def path_for(folder: Path) -> Path:
     return Path(folder) / FILE_NAME
 
 
+def owner_only(path: str, flags: int) -> int:
+    """An `opener` for `open`: on Linux the file is readable by its owner
+    alone (SECURITY.md), one left readable to all narrowed where the system
+    allows. The Face writes an upload through it too. Windows keeps its own
+    access lists, which a mode cannot narrow."""
+    descriptor = os.open(path, flags, 0o600)
+    if sys.platform != "win32":
+        with contextlib.suppress(OSError):  # a mount that keeps no modes
+            os.fchmod(descriptor, 0o600)
+    return descriptor
+
+
 class _QuietHandler(logging.handlers.RotatingFileHandler):
     """A rotating handler that says nothing when it fails.
 
@@ -63,6 +78,11 @@ class _QuietHandler(logging.handlers.RotatingFileHandler):
 
     def handleError(self, record: logging.LogRecord) -> None:
         return
+
+    def _open(self):  # noqa: ANN202 -- the stream type logging itself leaves unnamed
+        """The log, and the fresh one each roll starts, owner-only."""
+        return open(self.baseFilename, self.mode, encoding=self.encoding,  # noqa: SIM115
+                    errors=self.errors, opener=owner_only)
 
 
 def open_log(folder: Path) -> Log:

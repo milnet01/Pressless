@@ -1463,7 +1463,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         left = length
         try:
             try:
-                with open(taken, "wb") as out:
+                with open(taken, "xb", opener=log.owner_only) as out:
                     while left > 0:
                         piece = self.rfile.read(min(left, _PIECE))
                         if not piece:
