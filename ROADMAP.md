@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=410 -->
+<!-- ants-roadmap-id-high-water: PRESS=411 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7784,7 +7784,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Setup.
 
-- 📋 [PRESS-0379] **Review fixes: sign-in, take-in and the web address wizard.**
+- ✅ [PRESS-0379] **Review fixes: sign-in, take-in and the web address wizard.**
   Subject 09 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 10 low. review-readability: 4 medium, 7 low.
   Among them: re-sign-in outside state.lock; domain.py's IDNA 2003
@@ -7798,6 +7798,20 @@ does not wait on them.
   copies; use publishing.press_failure and publishing.settings_and_key.
   github_signin.py reaches publisher._Urllib, _retry_hint, _failure and
   _parse (synthesis theme 7).
+  Shipped 2026-11-17, 5852bb8..43a7633. 34 findings: 30 fixed, 1
+  queued (onto PRESS-0395), 3 dismissed (github_signin sharing the
+  Publisher's own helpers is within one part; a hint on the person's
+  own screen is not a log line; escaping a words.py sentence whole is
+  right). Signing in again keeps shared sign-ins and holds state.lock
+  (the routed PRESS-0378 defect; one own_name helper serves both);
+  domain.py uses publishing's shared helpers; the domain wizard refuses
+  names IDNA 2003 would change (faß.de); GitHub sign-in reads every
+  page; Google's Turn off removes both key names and a late choice
+  renews the token; a fetch area held open on Windows no longer
+  replaces a take-in's result (undo.empty_fetch_quietly). Specs
+  amended: PRESS-0231, 0122, 0199, 0333; design.md § State. Filed:
+  PRESS-0411. Full suite 2303 passed, 27 skipped.
+  Ledger: close-findings-2026-11-17/lane-09-signin-takein.json.
   **Layman:** Fixes in GitHub and Google sign-in, copying in an existing site, and your own web address.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8077,6 +8091,9 @@ does not wait on them.
   The _cached part is fixed (insights.kept). Rename the rest in one pass
   once subjects 09, 13 and 19 have merged, and update PRESS-0019, 0081
   and 0337 where they name them.
+  From PRESS-0379 (2026-11-17, review-code lane-09:72): google_setup.py
+  uses insights._own_client for its clock; make it public in this
+  item's one pass. Its domain.py half is done (fetch.addresses).
   **Layman:** A tidy-up so one part of the program stops reaching into another's private names.
   Kind: review-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
@@ -8246,6 +8263,16 @@ does not wait on them.
   Kind: investigate.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
   Lanes: Updates, Publishing.
+
+- 📋 [PRESS-0411] **Google's held token is timed by the wall clock, which can go backwards.**
+  Surfaced by PRESS-0379 (out of scope there). Insights times the
+  held Google token with transport.now(), the wall clock. A clock set
+  back keeps a token past its end; review-code lane-09:36 fixed the
+  same defect in GitHub sign-in with time.monotonic.
+  **Layman:** Changing your computer's clock can't leave Pressless using an expired Google sign-in.
+  Kind: fix.
+  Source: PRESS-0379 close-findings sweep 2026-11-17.
+  Lanes: Insights.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

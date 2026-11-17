@@ -25,6 +25,13 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Sign-in and your own web address are more dependable** (PRESS-0379)
+  Signing in to GitHub again keeps a sign-in your other sites share. The web address
+  wizard refuses a name like faß.de that older rules would turn into a different
+  address. Turning Google off removes every key it stored, and choosing a property
+  long after signing in still works. On Windows, a file another program holds open
+  no longer spoils bringing in a site.
+
 - **Updating is safer and tidier** (PRESS-0381)
   Pressing Update now twice no longer starts two updates. Files a stopped update
   left behind are cleared at the next start. An update file is checked more strictly
