@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=420 -->
+<!-- ants-roadmap-id-high-water: PRESS=424 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8374,10 +8374,12 @@ does not wait on them.
   Source: PRESS-0378 close-findings sweep 2026-11-17.
   Lanes: Insights.
 
-- 📋 [PRESS-0406] **PRESS-0001 and PRESS-0002 still speak of "both secrets".**
+- ✅ [PRESS-0406] **PRESS-0001 and PRESS-0002 still speak of "both secrets".**
   Surfaced by PRESS-0378's sweep. Prose in both specs counts the
   credentials as two secrets in places; there are more kinds now.
   Name them, or say "each secret".
+  Shipped 2026-11-17: PRESS-0001 and PRESS-0002 say "each secret" or
+  "every secret". PRESS-0003 filed as PRESS-0421.
   **Layman:** Two design documents describe the saved sign-ins correctly.
   Kind: doc-fix.
   Source: PRESS-0378 close-findings sweep 2026-11-17.
@@ -8471,11 +8473,14 @@ does not wait on them.
   Source: PRESS-0379 close-findings sweep 2026-11-17.
   Lanes: Insights.
 
-- 📋 [PRESS-0412] **design.md says the Builder writes the preview stylesheet from the look's draft.**
+- ✅ [PRESS-0412] **design.md says the Builder writes the preview stylesheet from the look's draft.**
   Surfaced by PRESS-0375 (out of scope there). docs/design.md's storage
   row says so; PRESS-0196 keeps the look draft only in the browser
   (a style element with id pressless-look-draft) and never writes it,
   and the Builder reads one path. Correct design.md.
+  Shipped 2026-11-17: design.md's storage row says the preview is
+  styled by the look the Store keeps; an unsaved look lives only in the
+  browser.
   **Layman:** A design document describes how the look preview really works.
   Kind: doc-fix.
   Source: PRESS-0375 close-findings sweep 2026-11-17.
@@ -8525,58 +8530,118 @@ does not wait on them.
   Source: PRESS-0372 close-findings sweep 2026-11-17.
   Lanes: Editor.
 
-- 📋 [PRESS-0416] **Undo's reply says nothing of a page it took off the site.**
+- ✅ [PRESS-0416] **Undo's reply says nothing of a page it took off the site.**
   Surfaced by PRESS-0399. Undo's summary counts entries only
   (Undone.demoted, restored), so a page undo now takes off the site and
   keeps waiting goes unmentioned. Also: store._folded's comment should
   cite PRESS-0400's measurement (NTFS keeps U+0131 and U+017F apart)
   beside the Kelvin one.
+  Shipped 2026-11-17: Undone gains waiting; undo's reply says "N
+  page(s) taken off your site and kept waiting" (through words.say_count
+  after the merge with PRESS-0413). store._A_TO_Z's comment cites
+  PRESS-0400's NTFS measurement. PRESS-0015 §§ 4.1, 4.2 amended.
   **Layman:** After Undo, Pressless tells you if a page went back to waiting.
   Kind: fix.
   Source: PRESS-0399 follow-up 2026-11-17.
   Lanes: Store.
 
-- 📋 [PRESS-0417] **A publish an AI app asked for shows no Replace or Switch link when it fails.**
+- ✅ [PRESS-0417] **A publish an AI app asked for shows no Replace or Switch link when it fails.**
   Surfaced by PRESS-0403. When an AI-asked publish fails with
   WouldReplaceASite or TakeoverOwed, the press row lacks the "Replace
   the site" or "Switch your site" link: _Door._yes calls face.fail,
   not publishing.press_failure, which adds replace_link.
+  Shipped 2026-11-17: the AI door builds its failure with
+  publishing.press_failure, which gains a publishing keyword, so a
+  refused AI-asked publish offers Replace or Switch. Filed: PRESS-0424
+  (the door and the screens word an unforeseen failure differently).
   **Layman:** If a publish an AI app asked for is refused, the page offers the same way forward as your own publish.
   Kind: fix.
   Source: PRESS-0402/0403 follow-up 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0418] **A frozen Linux build with no APPIMAGE offers an AI app a program line that cannot work.**
+- ✅ [PRESS-0418] **A frozen Linux build with no APPIMAGE offers an AI app a program line that cannot work.**
   Surfaced by PRESS-0404 (older than it). assistant._program() in a
   frozen Linux build where $APPIMAGE is unset offers
   sys.executable -m pressless, which a frozen program cannot run. Offer
   sys.executable alone, or refuse with a sentence.
+  Shipped 2026-11-17: a frozen run that cannot find its own file
+  re-raises NotPackaged; the setup screen says so (assistant.no_program)
+  and Connect writes nothing. PRESS-0337 § 4.4 amended.
   **Layman:** Connecting an AI app works however Pressless was started on Linux.
   Kind: fix.
   Source: PRESS-0402/0403 follow-up 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0419] **A blank site's checklist ticks steps nobody has done.**
+- ✅ [PRESS-0419] **A blank site's checklist ticks steps nobody has done.**
   Surfaced by PRESS-0393. When setup's starter is not chosen (a blank
   site), the checklist ticks "Make Home your own", "Set up the menu" and
   "Put your site on the web" on an empty site: checklist._own counts
   "nothing left to do" as done, and no starter marker exists. Decide
   what a blank site's checklist shows; a fresh install must not show
   work done that was not.
+  Shipped 2026-11-17. Decision: a blank site shows only steps that can
+  be done there, none ticked before they happen. Home and the menu are
+  left off (no screen can create them; filed PRESS-0423); the web step
+  needs something published. PRESS-0126 § 4.4 amended. Filed: PRESS-0422
+  (an imported site).
   **Layman:** On a brand-new blank site, the getting-started list doesn't claim steps are done.
   Kind: fix.
   Source: PRESS-0393/0415 follow-up 2026-11-17.
   Lanes: Setup.
 
-- 📋 [PRESS-0420] **The AI app's list_files cannot tell a page named footer from the footer.**
+- ✅ [PRESS-0420] **The AI app's list_files cannot tell a page named footer from the footer.**
   Surfaced by PRESS-0415. builder.files_named now returns
   FileUser(kind, name), and the Files screen uses the kind;
   assistant.list_files' used_by still answers bare names. Answer the
   kind too.
+  Shipped 2026-11-17: list_files' used_by answers {kind, name}, kind
+  page, part or look. PRESS-0337 § 4.5 amended. Full suite 2437 passed,
+  27 skipped.
   **Layman:** An AI app working on your site knows a page called "footer" from the site's footer.
   Kind: fix.
   Source: PRESS-0393/0415 follow-up 2026-11-17.
   Lanes: AI helper.
+
+- 📋 [PRESS-0421] **PRESS-0003 still says "either secret".**
+  Surfaced by PRESS-0406, which fixed PRESS-0001 and PRESS-0002 the
+  same way. docs/specs/PRESS-0003-log.md counts the secrets as two.
+  **Layman:** A design document describes the saved sign-ins correctly.
+  Kind: doc-fix.
+  Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
+  Lanes: Setup.
+
+- 📋 [PRESS-0422] **An imported site Pressless never published ticks Put your site on the web.**
+  Surfaced by PRESS-0419. A site brought in from WordPress or a folder
+  has live content and no starter marker, so the checklist ticks the
+  web step before any Pressless publish. Same rule as PRESS-0393: the
+  tick means a Pressless publish has landed.
+  **Layman:** After bringing in a site, the getting-started list waits for your first publish before ticking the web step.
+  Kind: fix.
+  Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
+  Lanes: Setup.
+
+- 📋 [PRESS-0423] **A blank site has no way to add a Home page or a menu.**
+  Surfaced by PRESS-0419. New page refuses the name index, and no
+  screen creates a part, so a site set up without the starter cannot
+  gain a Home page or a menu through Pressless. PRESS-0419 now leaves
+  both off a blank site's checklist rather than show steps that cannot
+  be done.
+  **Layman:** On a site started blank, you can add a home page and a menu.
+  Kind: feature.
+  Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
+  Lanes: Editor.
+
+- 📋 [PRESS-0424] **An AI-asked publish and the writer's own screen word an unforeseen failure differently.**
+  Surfaced by PRESS-0417. Every screen passes publishing=False to
+  publishing.press_failure ("site unchanged"), as PRESS-0013, 0015 and
+  0172 set, since the Publisher raises OutcomeUnknown itself where an
+  upload may be unknown. The AI door passes True ("site unknown"), and
+  test_a_failed_publish_is_unknown_to_the_ai_app_too pins it.
+  Recommendation: the door follows the specs, like the screens.
+  **Layman:** An AI app tells you the same thing about a failed publish as Pressless's own screen does.
+  Kind: fix.
+  Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
+  Lanes: AI helper, Publishing.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

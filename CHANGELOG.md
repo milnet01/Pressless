@@ -33,6 +33,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **A new blank site's getting-started list claims nothing it hasn't done** (PRESS-0419)
+  On a site started without the ready-made pages, the Finish setting up list no
+  longer ticks Home, the menu or putting your site on the web before they happen.
+  After Undo, the message says when a page was taken off your site and kept
+  waiting.
+
+- **An AI app's refused publish offers the same way forward as yours** (PRESS-0417)
+  A publish an AI app asked for, if refused, offers the same "Replace the site" or
+  "Switch your site" link as your own. An AI app can tell a page named "footer" from
+  the site's footer, and the AI helper screen says so plainly when Pressless cannot
+  tell where its own program file is.
+
 - **YouTube and Google sign-ins are kept and removed correctly** (PRESS-0405)
   Turning YouTube off now removes its saved key wherever it was filed, and saving
   YouTube settings without retyping the key no longer loses it. Setting your
