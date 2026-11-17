@@ -214,14 +214,14 @@ class _Request:
     said: str = ""
 
 
-def _said(failure: BaseException, *, publishing: bool = False,
-          secret: str | None = None) -> str:
-    """A failure as plain text: its sentence's three parts (§ 4.3), saying the
-    site's state is unknown where an unforeseen failure struck a publish, as
-    the writer's screen does."""
+def _said(failure: BaseException, *, secret: str | None = None) -> str:
+    """A failure as plain text: its sentence's three parts (§ 4.3), as the
+    writer's screen words it. An unforeseen failure left the site unchanged:
+    the Publisher raises OutcomeUnknown itself where an upload may be unknown
+    (PRESS-0013 § 4.3)."""
     if isinstance(failure, Refused):
         return failure.slots["said"]
-    told = sentence_for(failure, publishing=publishing, secret=secret)
+    told = sentence_for(failure, publishing=False, secret=secret)
     return " ".join(part for part in (told.what, told.site.words, _chat_next(told.next))
                     if part)
 
@@ -723,7 +723,6 @@ class _Door:
         # is not re-entrant, so taking it again here would hang.
         lock = editor.LOCK if told is not None else contextlib.nullcontext()
         with lock:
-            pressed = False
             try:
                 if self.mark() != made.mark:
                     made.plan, _ = self._planned(made.tool, made.arguments)
@@ -732,18 +731,16 @@ class _Door:
                     if told is not None:
                         told(pressing.Outcome(""))     # nothing ran, so nothing to say
                     return _answer({"answered": False, "replanned": True})
-                pressed = kind is not None
-                if pressed:
+                if kind is not None:
                     self._press(made)      # a press captures step by step itself
                 else:
                     with self.face.capture():
                         self._press(made)
             except Exception as exc:  # noqa: BLE001 -- told to the AI app and the writer
-                # Unknown only where a press was under way: a failed re-plan
-                # ran nothing.
-                # The way on, where a refused publish has one (PRESS-0417).
-                failure = publishing.press_failure(self.face, exc, publishing=pressed)
-                status, said = FAILED, _said(exc, publishing=pressed, secret=say(_KEY_WORDS))
+                # As the writer's own press shows it, the way on included
+                # (PRESS-0417, PRESS-0424).
+                failure = publishing.press_failure(self.face, exc)
+                status, said = FAILED, _said(exc, secret=say(_KEY_WORDS))
             else:
                 failure, status, said = None, DONE, say(_STATUS_WORDS[DONE])
             if told is not None:

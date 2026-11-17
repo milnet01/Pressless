@@ -40,6 +40,7 @@ from pressless import (
     look,
     page_editor,
     pressing,
+    publisher,
     publishing,
     starter,
     store,
@@ -601,22 +602,31 @@ def test_a_yes_that_can_no_longer_run_says_so(tmp_path):
         assert pressless.ok("request_status", {"request": asked})["status"] == "failed"
 
 
-def test_a_failed_publish_is_unknown_to_the_ai_app_too(tmp_path, monkeypatch):
-    """design.md § Errors: an unforeseen failure during a publish says the
-    outcome is unknown, to the AI app as on the writer's screen. Breaks when
-    the AI app's words are always made as if nothing was publishing."""
+@pytest.mark.parametrize("failure, words, not_words", [
+    (RuntimeError("the line went down"), UNCHANGED_WORDS, UNKNOWN_WORDS),
+    (publisher.OutcomeUnknown("the upload stopped"), UNKNOWN_WORDS, UNCHANGED_WORDS),
+])
+def test_a_failed_publish_reads_as_on_the_writers_screen(tmp_path, monkeypatch, failure,
+                                                         words, not_words):
+    """PRESS-0424, PRESS-0013 § 4.2: the AI app and the press row say what the
+    writer's own publish says. An unforeseen failure left the site unchanged,
+    since the Publisher raises OutcomeUnknown itself where an upload may be
+    unknown. Breaks when the door words an unforeseen failure as unknown, or
+    an unknown upload as unchanged."""
     _key(monkeypatch)
     with _pressless(tmp_path) as pressless:
         store.write(pressless.folder, _entry("seaside"), draft=False)
         asked = pressless.ok("publish")["request"]
 
         def broken(*args, **kwargs):
-            raise RuntimeError("the line went down")
+            raise failure
 
         monkeypatch.setattr(publishing, "press_site", broken)
         assert pressless.answer(asked, yes=True)["status"] == "failed"
         said = pressless.ok("request_status", {"request": asked})["said"]
-        assert UNKNOWN_WORDS in said and UNCHANGED_WORDS not in said
+        row = pressing.state()["failure"]
+        assert words in said and not_words not in said, said
+        assert words in row and not_words not in row, row
 
 
 def test_only_a_failure_no_press_row_shows_goes_to_the_box(tmp_path, monkeypatch):

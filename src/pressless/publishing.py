@@ -161,12 +161,13 @@ def replace_link(failure: BaseException) -> str:
     return f'<p><a href="{REPLACE_ADDRESS}">{say("publishing.replace")}</a></p>'
 
 
-def press_failure(face: Face, failure: BaseException, *, publishing: bool = False) -> str:
-    """A press's failure as every press screen shows it: the sentence, naming
-    the publishing key, and the way on where the failure has one. `publishing`
-    is Face.fail's; the AI helper's door passes True for a press, so an
-    unforeseen failure there says the site is unknown (design.md § Errors)."""
-    return (face.fail(failure, publishing=publishing,
+def press_failure(face: Face, failure: BaseException) -> str:
+    """A press's failure as every press screen and the AI helper's door show
+    it: the sentence, naming the publishing key, and the way on where the
+    failure has one. An unforeseen failure left the site unchanged, since the
+    Publisher raises OutcomeUnknown itself where an upload may be unknown
+    (PRESS-0013 § 4.2)."""
+    return (face.fail(failure, publishing=False,
                       secret=say("failure.secret.publishing_key"))
             + replace_link(failure))
 
