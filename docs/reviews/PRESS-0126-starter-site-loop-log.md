@@ -11,3 +11,4 @@
 | amend | 2026-11-17 | none: PRESS-0383 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.1 `mark_published`; § 4.3 fill keeps `FILLED`'s digests. |
 | amend | 2026-11-17 | none: PRESS-0376 review fixes; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.2 `holds_a_site` passes over a temporary a killed save left; INV-1 gains a test. |
 | amend | 2026-11-17 | none: PRESS-0393; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.1, 4.5 and INV-12: the replace page records the say-so in the marker, which stays until a publish lands. |
+| amend | 2026-11-17 | none: PRESS-0419; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a blank site's checklist leaves off Home and the menu, and keeps the web to do until something is published. |

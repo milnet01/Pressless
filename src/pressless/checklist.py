@@ -32,13 +32,21 @@ def render(folder: Path) -> str:
             # § 4.5), a page's Press to site included, so the link opens Home,
             # the starter's first page, rather than Publish. A site taken over
             # from GitHub Actions has no marker, and none of Pressless's pages
-            # are on the web until the takeover's publish (PRESS-0393).
+            # are on the web until the takeover's publish (PRESS-0393). A blank
+            # site has no marker either, and has nothing on the web until
+            # something of his is pressed; with no Home, the link opens the
+            # Pages screen, where a page is made (PRESS-0419).
             ("checklist.publish",
-             publishing.TAKEOVER_ADDRESS if takeover.owed(folder) else _HOME,
-             not starter.unpublished(folder) and not takeover.owed(folder)),
+             publishing.TAKEOVER_ADDRESS if takeover.owed(folder)
+             else _HOME if _held(folder, store.PAGES_FOLDER, "index")
+             else editor.PAGES_ADDRESS,
+             not starter.unpublished(folder) and not takeover.owed(folder)
+             and _holds_live(folder)),
         )
     except store.StoreError:
         return ""
+    # A step with nothing to work on is left off, never ticked (PRESS-0419).
+    items = tuple(item for item in items if item[2] is not None)
     if all(done for _, _, done in items):
         return ""
     rows = "".join(
@@ -52,16 +60,32 @@ def render(folder: Path) -> str:
             f"<p>{count}</p><ul>{rows}</ul></section>")
 
 
-def _own(folder: Path, kind: str, name: str, started: Callable[[], str]) -> bool:
+def _own(folder: Path, kind: str, name: str, started: Callable[[], str]) -> bool | None:
     """Whether the page or part differs from what the starter wrote, a change
-    waiting to be pressed included. One that is gone, or that the starter did
-    not write, has nothing left to do. A site filled before starter.FILLED is
-    compared with `started()`, the starter's text as worded today."""
-    held = [store.read_html(path) for path in
+    waiting to be pressed included. One the starter did not write is his own,
+    and one he removed has nothing left to do. None where it was never there:
+    a blank site has no Home page or menu, and nothing on the Face makes
+    either (PRESS-0419). A site filled before starter.FILLED is compared with
+    `started()`, the starter's text as worded today."""
+    held = _held(folder, kind, name)
+    wrote = starter.filled(folder)
+    if not held:
+        return True if wrote is not None and name in wrote else None
+    if wrote is not None:
+        return name not in wrote or any(starter.digest(text) != wrote[name] for text in held)
+    return any(text != started() for text in held)
+
+
+def _held(folder: Path, kind: str, name: str) -> list[str]:
+    """The page or part's text, live and waiting, where each is held."""
+    return [store.read_html(path) for path in
             (store.html_path_for(folder, kind, name, waiting=waiting) for waiting in (False, True))
             if path.is_file()]
-    wrote = starter.filled(folder)
-    if wrote is not None:
-        return not held or name not in wrote or any(
-            starter.digest(text) != wrote[name] for text in held)
-    return not held or any(text != started() for text in held)
+
+
+def _holds_live(folder: Path) -> bool:
+    """Whether anything of his is on the site: a published entry, or a page
+    or part pressed to it. Nothing is, on a blank site (PRESS-0419)."""
+    return bool(store.list_slugs(folder, draft=False)
+                or any(store.list_html(folder, kind)
+                       for kind in (store.PAGES_FOLDER, store.FURNITURE_FOLDER)))

@@ -1144,10 +1144,42 @@ def test_a_site_taken_over_is_not_on_the_web_until_it_is_published(tmp_path):
     folder.mkdir()
     store.write_identity(folder, store.Identity("Field Notes", "Notes from the field",
                                                 icon="shore.jpg"))
+    # The site taken in, with a Home page and a menu of its own.
+    store.write_html(folder, store.PAGES_FOLDER, "index", "<p>Their own home.</p>")
+    store.write_html(folder, store.FURNITURE_FOLDER, "navigation", "<nav>Theirs</nav>")
     takeover.mark(folder, (".github/workflows/pages.yml",))
     assert [done for done, _ in _checklist(folder)] == [True, True, True, True, False]
     assert f'href="{publishing.TAKEOVER_ADDRESS}"' in checklist.render(folder)
     takeover.unmark(folder)
+    assert _checklist(folder) == []
+
+
+def test_a_blank_site_shows_nothing_done_that_was_not_done(tmp_path):
+    """PRESS-0419. Setup without the starter leaves an identity and nothing
+    else. A Home page and a menu were never there, and nothing on the Face
+    makes either, so their steps are left off rather than ticked; the web
+    stays to do until something of his is pressed, its link opening the
+    Pages screen. Breaks when a page or part that never existed, or a site
+    with nothing published, reads as done, or the link opens a failure."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    store.write_identity(folder, store.Identity("Field Notes", "Notes from the field",
+                                                icon="shore.jpg"))
+    assert _checklist(folder) == [(True, "Describe your site in a line"),
+                                  (True, "Choose your site's icon"),
+                                  (False, "Put your site on the web")]
+    link = re.search(r'<a href="([^"]*)">Put your site', checklist.render(folder)).group(1)
+    served = face.serve(folder)
+    try:
+        editor.register(served, folder)
+        page_editor.register(served, folder)
+        status, _, page = _Browser(served).request("GET", html.unescape(link))
+    finally:
+        served.stop()
+    assert status == 200 and 'class="failure"' not in page, link
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>", waiting=True)
+    assert [done for done, _ in _checklist(folder)] == [True, True, False]
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>")
     assert _checklist(folder) == []
 
 

@@ -193,6 +193,13 @@ The second half lets a fill an interruption cut short be completed.
 
 A posted `start` where `offered` is False is ignored.
 
+**Left unticked, the copy is a blank site**: an identity, nothing else, and
+no `MARKER`. Its checklist (`checklist.render`) never ticks what was not
+done. It leaves off Home and the menu: neither was ever there, New page
+refuses Home's name, and no screen makes a part. *Put your site on the web*
+stays to do until the Store holds a published entry or a pressed page or
+part, its link opening the Pages screen (PRESS-0419).
+
 ### 4.5 Publishing
 
 In `publishing.publish`, the guard step gains a check that runs first:
