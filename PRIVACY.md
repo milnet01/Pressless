@@ -119,6 +119,15 @@ address, `region1.google-analytics.com`, over an encrypted connection
 (HTTPS). Pressless's makers read the reports there. Like any request,
 it shows Google your computer's internet address.
 
+The property's settings, as checked on 2026-11-17:
+
+- Google works out your country and region, such as a province, from
+  that address. It does not record your city.
+- Google keeps each report's details for two months. After that, only
+  totals remain, such as how often a screen was opened.
+- The reports cannot be used for advertising, and Google signals is
+  off, so they are not linked to any Google account.
+
 ### Seeing them
 
 The **Usage reports** link at the top of every Pressless screen opens a
