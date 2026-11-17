@@ -25,6 +25,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Setup and Settings keep shared sign-ins and report a failed save** (PRESS-0378)
+  A key typed in Settings no longer replaces the GitHub sign-in another of your sites
+  shares. If setup cannot save over a settings file brought from another computer, it
+  stays on that step and says so instead of finishing.
+
 - **An AI app's requests are answered once, and a slow one says it is still working** (PRESS-0382)
   A request you answer is not asked again, the answer says what actually ran, and a
   request that takes too long now says so instead of failing. Pressless keeps Claude

@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=404 -->
+<!-- ants-roadmap-id-high-water: PRESS=406 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7747,11 +7747,22 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Publishing.
 
-- 📋 [PRESS-0378] **Review fixes: setup, settings and credentials.**
+- ✅ [PRESS-0378] **Review fixes: setup, settings and credentials.**
   Subject 08 of the 2026-11-16 full review, closed with close-findings.
   review-code: 4 medium, 1 low. review-readability: 5 medium, 12 low.
   Among them: the file credential store's unlocked read-modify-write;
   a retried Finish re-runs the bring-in.
+  Ledger: close-findings-2026-11-17/lane-08-setup-settings-credentials.json.
+  Shipped 2026-11-17, e012568..3806e95. 27 findings: 24 fixed, 1 queued
+  (onto PRESS-0401), 2 dismissed (one downgrade-only; a retried Finish
+  does not re-run the bring-in, PRESS-0210 INV-17 covers it). The file
+  credential store's writes hold one lock; a failed save over a carried
+  settings file no longer ends setup as done; a key typed in Settings is
+  filed under this site's own name, so a shared GitHub sign-in survives;
+  settings errors no longer print the file path. Specs amended:
+  PRESS-0001, 0002, 0021. Routed: github_setup's same defect to
+  PRESS-0379. Filed: PRESS-0405, PRESS-0406. Full suite 2252 passed,
+  27 skipped.
   Ledger: close-findings-2026-11-17/lane-08-setup-settings-credentials.json.
   **Layman:** Fixes in first-time setup, Settings, and where your keys are kept.
   Kind: review-fix.
@@ -7764,6 +7775,10 @@ does not wait on them.
   Among them: re-sign-in outside state.lock; domain.py's IDNA 2003
   folding turns ß into ss (probed); private names reached across parts.
   Ledger: close-findings-2026-11-17/lane-09-signin-takein.json.
+  Routed from PRESS-0378 (2026-11-17): github_setup.py's /setup/github
+  sign-in-again writes under saved.credentials.github_account, so a site
+  sharing another's sign-in (PRESS-0347) replaces the shared entry. Same
+  class as review-code lane-08 :33; reuse subject 08's fix.
   **Layman:** Fixes in GitHub and Google sign-in, copying in an existing site, and your own web address.
   Kind: review-fix.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
@@ -8101,6 +8116,12 @@ does not wait on them.
   import-rule amendments in PRESS-0001, PRESS-0002, PRESS-0008 and
   PRESS-0009. Hazard: conflicts with subjects 05, 07 and 08, so do it
   after PRESS-0375, PRESS-0377 and PRESS-0378 merge.
+  Also queued from PRESS-0378 (review-readability lane-08 :53): one
+  shared helper for an OS error's reason without the path. The copies in
+  settings and credentials must stay (PRESS-0001/0002 INV-1); the others
+  are in publisher, store, builder, installer, shortcuts, paths, face,
+  __main__ and pressless_import. Check whether these are the _why
+  copies or a second family before merging.
   **Layman:** Five copies of the code that explains a failure become one.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
@@ -8135,6 +8156,26 @@ does not wait on them.
   Kind: fix.
   Source: PRESS-0382 close-findings sweep 2026-11-17.
   Lanes: AI helper.
+
+- 📋 [PRESS-0405] **YouTube's sign-out deletes under the site's derived name, not the saved account.**
+  Surfaced by PRESS-0378's sweep (review-code open question 5, not in
+  lane 10's ledger). youtube_screen.py deletes the YouTube credential
+  under sites.account("youtube", folder) rather than
+  saved.credentials.youtube_account, so a site using a shared or
+  carried account removes the wrong entry, or none.
+  **Layman:** Signing out of YouTube removes the right sign-in.
+  Kind: fix.
+  Source: PRESS-0378 close-findings sweep 2026-11-17.
+  Lanes: Insights.
+
+- 📋 [PRESS-0406] **PRESS-0001 and PRESS-0002 still speak of "both secrets".**
+  Surfaced by PRESS-0378's sweep. Prose in both specs counts the
+  credentials as two secrets in places; there are more kinds now.
+  Name them, or say "each secret".
+  **Layman:** Two design documents describe the saved sign-ins correctly.
+  Kind: doc-fix.
+  Source: PRESS-0378 close-findings sweep 2026-11-17.
+  Lanes: Setup.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
