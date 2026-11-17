@@ -77,6 +77,7 @@ class Undone:
     restored: tuple[str, ...]  # addresses the fetched state put back
     demoted: tuple[str, ...]   # entries turned back into drafts
     kept: tuple[str, ...]      # addresses his own versions were kept under
+    waiting: tuple[str, ...] = ()   # fixed pages taken off the site, kept waiting
 
 
 def undo(folder: Path, saved: settings.Settings, key: str, *,
@@ -130,7 +131,7 @@ def undo(folder: Path, saved: settings.Settings, key: str, *,
         empty_fetch_quietly(fetch)                                       # step 7
 
     return Undone(published.outcome, tuple(changed.restored),
-                  tuple(changed.demoted), tuple(changed.kept))
+                  tuple(changed.demoted), tuple(changed.kept), tuple(changed.waiting))
 
 
 def empty_fetch(fetch: Path) -> None:
@@ -277,6 +278,7 @@ class _Changed:
     restored: list[str] = field(default_factory=list)
     demoted: list[str] = field(default_factory=list)
     kept: list[str] = field(default_factory=list)
+    waiting: list[str] = field(default_factory=list)
 
 
 def reconcile(folder: Path, state: State, reversals: list[Callable[[], None]]) -> _Changed:
@@ -305,7 +307,7 @@ def reconcile(folder: Path, state: State, reversals: list[Callable[[], None]]) -
     for slug in sorted(published - set(state.entries)):
         _demote(folder, slug, reversals, changed)
 
-    _restore_other_kinds(folder, state, reversals)
+    _restore_other_kinds(folder, state, reversals, changed)
     return changed
 
 
@@ -390,7 +392,7 @@ def _restore_look(folder: Path, fetched: dict[str, str],
 
 
 def _restore_other_kinds(folder: Path, state: State,
-                         reversals: list[Callable[[], None]]) -> None:
+                         reversals: list[Callable[[], None]], changed: _Changed) -> None:
     """Every other kind the fetched state holds is written where it differs or is
     absent, the superseded version going to the bin first. A fixed page the
     fetched state does NOT hold comes off the site as its waiting copy; every
@@ -403,6 +405,7 @@ def _restore_other_kinds(folder: Path, state: State,
         _restore_html(folder, store.PAGES_FOLDER, name, html, reversals)
     for name in sorted(live - set(state.pages)):
         _demote_page(folder, name, reversals)
+        changed.waiting.append(name)
     for name, html in sorted(state.furniture.items()):
         _restore_html(folder, store.FURNITURE_FOLDER, name, html, reversals)
 
@@ -596,7 +599,7 @@ def _pressed(face: Face, folder: Path, transport: publisher.Transport | None,
 
 
 def _summary(result: Undone) -> str:
-    """One clause each for `restored`, `demoted` and `kept` (§ 4.2)."""
+    """One clause each for `restored`, `demoted`, `kept` and `waiting` (§ 4.2)."""
     clauses = []
     if result.restored:
         clauses.append(say("undo.restored", count=_count(len(result.restored))))
@@ -606,6 +609,10 @@ def _summary(result: Undone) -> str:
     if result.kept:
         clauses.append(say_count(len(result.kept), "undo.kept_one", "undo.kept_many",
                                  count=_count(len(result.kept))))
+    if result.waiting:
+        pages = len(result.waiting)
+        clauses.append(say("undo.waiting",
+                           count=say_count(pages, "undo.one_page", "undo.pages")))
     if not clauses:
         return say("undo.unchanged")
     return say("undo.summary", clauses=", ".join(clauses))

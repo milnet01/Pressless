@@ -124,6 +124,7 @@ class Undone:
     restored: tuple[str, ...]  # addresses the fetched state put back
     demoted: tuple[str, ...]   # entries turned back into drafts
     kept: tuple[str, ...]      # addresses his own versions were kept under
+    waiting: tuple[str, ...] = ()   # fixed pages taken off the site, kept waiting
 
 def undo(folder: Path, saved: Settings, key: str, *,
          capture: Callable[[], ContextManager[list[str]]] = nothing_captured,
@@ -186,7 +187,8 @@ the failure beside what it already shows:
 ```
 
 Success answers `"undone": true`, `"failure": null`, and a `summary` fragment
-naming what changed: `restored`, `demoted` and `kept`, one clause each.
+naming what changed: `restored`, `demoted`, `kept` and `waiting`, one clause
+each.
 
 The failure fragment is `publishing.press_failure(face, failure)`, as on the
 Publish route (PRESS-0013 § 4.2), so a `TakeoverOwed` or `WouldReplaceASite`

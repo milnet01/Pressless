@@ -840,6 +840,9 @@ _WORDS: dict[str, str] = {
     "undo.kept_many": "your own versions of {count} kept as drafts",
     "undo.one_entry": "1 entry",
     "undo.entries": "{count} entries",
+    "undo.waiting": "{count} taken off your site and kept waiting",
+    "undo.one_page": "1 page",
+    "undo.pages": "{count} pages",
     # Replacing a site already on GitHub (publishing.py, PRESS-0126 § 4.5).
     "publishing.replace": "Replace the site on GitHub",
     "publishing.replace.intro": (

@@ -211,7 +211,8 @@ def _slugs_in(handed: Path, *, draft: bool) -> set[str]:
 # A-Z to a-z and nothing else (§4.3). str.lower and str.casefold also fold
 # look-alikes -- the Kelvin sign becomes "k" -- which Windows keeps as separate
 # file names (measured, PRESS-0159), so they would report an address taken
-# that no write could reach.
+# that no write could reach. NTFS keeps dotless i and long s (U+0131, U+017F)
+# apart from i and s as well (measured, PRESS-0400).
 _A_TO_Z = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 
 

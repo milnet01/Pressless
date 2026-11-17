@@ -300,7 +300,7 @@ def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
                         templates=(_entry("sonnet", body="The older sonnet."),),
                         comments=(("seaside", (_comment("1"),)),))}
 
-    _undo(folder, _previous(files))
+    result = _undo(folder, _previous(files))
 
     def waiting(name: str) -> str:
         return store.read_html(store.html_path_for(folder, store.PAGES_FOLDER, name,
@@ -325,6 +325,24 @@ def test_a_file_the_previous_state_lacks_is_kept(tmp_path):
     built = sorted(str(p.relative_to(site)) for p in site.rglob("*.html"))
     assert "pages/colophon.html" in built, built
     assert "pages/about.html" not in built and "pages/notes.html" not in built, built
+    # PRESS-0416: the reply names the pages it took off the site.
+    assert result.waiting == ("about", "notes")
+
+
+def test_the_summary_says_a_page_was_taken_off_the_site(tmp_path):
+    """PRESS-0416: a page undo takes off the site is said in the summary, as an
+    entry turned back into a draft is; without it the reply reads as if
+    nothing of his site went missing."""
+    folder = _folder(tmp_path)
+    store.write(folder, _entry("seaside"), draft=False)
+    store.write_html(folder, store.PAGES_FOLDER, "about", "<p>About me.</p>")
+    files = {**_furnished(tmp_path), **_content(tmp_path, published=(_entry("seaside"),))}
+
+    result = _undo(folder, _previous(files))
+
+    assert result.waiting == ("about",)
+    assert undo._summary(result) == (
+        "Your site is back the way it was: 1 page taken off your site and kept waiting.")
 
 
 # ----------------------------------------------------------------- INV-16 ---
