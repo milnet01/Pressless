@@ -25,6 +25,12 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **Saved work survives a power cut, and a half-finished change finishes** (PRESS-0376)
+  On Linux, a save now also records the file's place in its folder, so a
+  power cut cannot bring back the old version. A page move interrupted part way is
+  completed the next time instead of being refused. Undo says plainly when it cannot
+  clear its working folder, and that your site is unchanged.
+
 - **Pressless's screens are sturdier and more private** (PRESS-0371)
   A file too big to bring in is refused before it is written to the drive, and a
   full drive now says so. The log and uploaded files can be read only by you on

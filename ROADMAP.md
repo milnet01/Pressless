@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=398 -->
+<!-- ants-roadmap-id-high-water: PRESS=401 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -7711,7 +7711,7 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Builder.
 
-- 📋 [PRESS-0376] **Review fixes: the Store, undo and safe writes.**
+- ✅ [PRESS-0376] **Review fixes: the Store, undo and safe writes.**
   Subject 06 of the 2026-11-16 full review, closed with close-findings.
   review-code: 2 medium, 8 low. review-readability: 3 medium, 5 low.
   Among them: safe_write's folder is not fsynced; leftover .tmp files
@@ -7719,6 +7719,17 @@ does not wait on them.
   User decision 2026-11-16: installing an older Pressless over newer
   files is not supported; docs/design.md says so, and the downgrade
   findings across the review are dismissed with that reason.
+  Ledger: close-findings-2026-11-17/lane-06-store-undo.json.
+  Shipped 2026-11-17, 4c730a4..7387a21. 22 findings: 17 fixed, 3 queued
+  (PRESS-0399, PRESS-0400, PRESS-0401), 2 dismissed (one downgrade-only;
+  one needs the same path binned twice in one wall-clock second, and is
+  refused visibly with nothing lost). Saves sync their folder on POSIX;
+  a move killed half way finishes on the next; holds_a_site ignores
+  leftover .tmp files; a fetch area that cannot be emptied gets its own
+  message. docs/design.md § Persistence rules out downgrades. Specs
+  amended: PRESS-0001, 0005, 0012, 0015, 0126, 0196. Merge fix:
+  test_settings' path test admits the folder's own sync. Full suite
+  2235 passed, 26 skipped.
   Ledger: close-findings-2026-11-17/lane-06-store-undo.json.
   **Layman:** Fixes in how Pressless keeps your files safe and undoes a publish.
   Kind: review-fix.
@@ -8049,6 +8060,39 @@ does not wait on them.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0371 close-findings).
   Lanes: Face, Sites, Updates, Store.
+
+- 📋 [PRESS-0399] **Undo: should a page the fetched state lacks come off the site?**
+  Queued from PRESS-0376 (review-code lane-06-store-undo :69). Undo
+  keeps a page that the fetched site state does not have. docs/design.md
+  says such a page is demoted; PRESS-0015 INV-7 and the code keep it.
+  A product decision for the user, then one document or the code
+  follows.
+  **Layman:** When you undo a publish, decide whether a page that wasn't on the site before should come off it.
+  Kind: review-fix.
+  Source: review-code-2026-11-16 (PRESS-0376 close-findings).
+  Lanes: Store.
+
+- 📋 [PRESS-0400] **Measure whether NTFS folds dotless i and long s onto ASCII.**
+  Queued from PRESS-0376 (review-code lane-06-store-undo :71, and its
+  INFO line). If Windows' file system treats ı (U+0131) or ſ (U+017F)
+  as i or s, two different slugs could land on one file. Only a run on
+  the Windows box settles it: create both names in one folder and see
+  whether the second overwrites the first.
+  **Layman:** Check on Windows that two page addresses differing only in a rare letter can't overwrite each other.
+  Kind: investigate.
+  Source: review-code-2026-11-16 (PRESS-0376 close-findings).
+  Lanes: Store.
+
+- 📋 [PRESS-0401] **Merge the five _why copies into one shared helper.**
+  Queued from PRESS-0376 (review-readability lane-06-store-undo :35;
+  the comment now names every copy). Needs a shared leaf module and
+  import-rule amendments in PRESS-0001, PRESS-0002, PRESS-0008 and
+  PRESS-0009. Hazard: conflicts with subjects 05, 07 and 08, so do it
+  after PRESS-0375, PRESS-0377 and PRESS-0378 merge.
+  **Layman:** Five copies of the code that explains a failure become one.
+  Kind: refactor.
+  Source: review-code-2026-11-16 (PRESS-0376 close-findings).
+  Lanes: Store, Builder, Publishing, Setup.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
