@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=415 -->
+<!-- ants-roadmap-id-high-water: PRESS=416 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8225,7 +8225,7 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0371 close-findings).
   Lanes: Face, Sites, Updates, Store.
 
-- 📋 [PRESS-0399] **Undo: should a page the fetched state lacks come off the site?**
+- ✅ [PRESS-0399] **Undo: should a page the fetched state lacks come off the site?**
   Queued from PRESS-0376 (review-code lane-06-store-undo :69). Undo
   keeps a page that the fetched site state does not have. docs/design.md
   says such a page is demoted; PRESS-0015 INV-7 and the code keep it.
@@ -8235,17 +8235,30 @@ does not wait on them.
   lacks off the site and keeps it as a draft, as it does an entry;
   design.md is right, and PRESS-0015 § 4.4 and INV-7 change for pages.
   Templates and furniture files have no drafts and stay as INV-7 says.
+  Shipped 2026-11-17, 8506e5f, as the user decided. Undo takes a fixed
+  page the fetched state lacks off the site and keeps it waiting; a page
+  that already has a waiting copy keeps it and only its published
+  version is binned. New INV-16: a second undo bins a waiting copy that
+  matches the fetched page and is not published, so two undos leave no
+  identical copy (a page carries no Undone mark). Templates and
+  furniture stay untouched. Specs amended: PRESS-0015 (INV-7, INV-16),
+  PRESS-0195 § 4.6, PRESS-0014 § 11; design.md § What undo actually
+  does. Full suite 2405 passed, 27 skipped. Filed: PRESS-0416.
   **Layman:** When you undo a publish, decide whether a page that wasn't on the site before should come off it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
   Lanes: Store.
 
-- 📋 [PRESS-0400] **Measure whether NTFS folds dotless i and long s onto ASCII.**
+- ✅ [PRESS-0400] **Measure whether NTFS folds dotless i and long s onto ASCII.**
   Queued from PRESS-0376 (review-code lane-06-store-undo :71, and its
   INFO line). If Windows' file system treats ı (U+0131) or ſ (U+017F)
   as i or s, two different slugs could land on one file. Only a run on
   the Windows box settles it: create both names in one folder and see
   whether the second overwrites the first.
+  Checked 2026-11-17 on the Windows box (C: NTFS): CreateFile and
+  MoveFileExW both keep ſeaside/seaside and ıeaside/ieaside as two
+  files; Seaside/seaside fold, as expected. store.exists's A-Z fold is
+  right; no code change.
   **Layman:** Check on Windows that two page addresses differing only in a rare letter can't overwrite each other.
   Kind: investigate.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
@@ -8409,6 +8422,17 @@ does not wait on them.
   Kind: fix.
   Source: PRESS-0372 close-findings sweep 2026-11-17.
   Lanes: Editor.
+
+- 📋 [PRESS-0416] **Undo's reply says nothing of a page it took off the site.**
+  Surfaced by PRESS-0399. Undo's summary counts entries only
+  (Undone.demoted, restored), so a page undo now takes off the site and
+  keeps waiting goes unmentioned. Also: store._folded's comment should
+  cite PRESS-0400's measurement (NTFS keeps U+0131 and U+017F apart)
+  beside the Kelvin one.
+  **Layman:** After Undo, Pressless tells you if a page went back to waiting.
+  Kind: fix.
+  Source: PRESS-0399 follow-up 2026-11-17.
+  Lanes: Store.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 
