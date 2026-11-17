@@ -29,6 +29,11 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **YouTube and Google sign-ins are kept and removed correctly** (PRESS-0405)
+  Turning YouTube off now removes its saved key wherever it was filed, and saving
+  YouTube settings without retyping the key no longer loses it. Setting your
+  computer's clock back no longer leaves Pressless using an expired Google sign-in.
+
 - **"Put your site on the web" is ticked only once Pressless has published** (PRESS-0393)
   On a site taken over from GitHub, or after you agree to replace a site, the
   getting-started step now stays to do until your first publish from Pressless

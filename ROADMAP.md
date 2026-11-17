@@ -8183,7 +8183,7 @@ does not wait on them.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
   Lanes: Insights.
 
-- 📋 [PRESS-0395] **Names used across modules in Insights and the dashboard become public.**
+- ✅ [PRESS-0395] **Names used across modules in Insights and the dashboard become public.**
   Queued from PRESS-0380 (review-readability lane-10:26). insights._own_client,
   _within, _detail and dashboard._set_up, _people, _sentence, _STYLE,
   _when, _panel are used from other modules, against design.md rule 7.
@@ -8195,6 +8195,11 @@ does not wait on them.
   item's one pass. Its domain.py half is done (fetch.addresses).
   From PRESS-0389 (2026-11-17): youtube.py binds insights._own_client by
   name too. practice.disarm no longer depends on it.
+  Shipped 2026-11-17. insights.own_client, within, detail;
+  dashboard.set_up, people, sentence, STYLE, when, panel made public,
+  every caller updated in one pass; youtube.py calls through the module,
+  so a stand-in client reaches YouTube too. PRESS-0081 §§ 2 and 4.2
+  amended. Full suite 2426 passed, 27 skipped.
   **Layman:** A tidy-up so one part of the program stops reaching into another's private names.
   Kind: review-fix.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
@@ -8345,12 +8350,18 @@ does not wait on them.
   Source: PRESS-0382 close-findings sweep 2026-11-17.
   Lanes: AI helper.
 
-- 📋 [PRESS-0405] **YouTube's sign-out deletes under the site's derived name, not the saved account.**
+- ✅ [PRESS-0405] **YouTube's sign-out deletes under the site's derived name, not the saved account.**
   Surfaced by PRESS-0378's sweep (review-code open question 5, not in
   lane 10's ledger). youtube_screen.py deletes the YouTube credential
   under sites.account("youtube", folder) rather than
   saved.credentials.youtube_account, so a site using a shared or
   carried account removes the wrong entry, or none.
+  Shipped 2026-11-17. YouTube's Turn off deletes the key under the name
+  Settings gives and this site's own name, through a new shared
+  credentials.delete_each that Google's Turn off now uses too. Also
+  fixed beside it: saving YouTube settings with an empty key box no
+  longer points Settings at a name with no key. PRESS-0002 and PRESS-0081
+  amended.
   **Layman:** Signing out of YouTube removes the right sign-in.
   Kind: fix.
   Source: PRESS-0378 close-findings sweep 2026-11-17.
@@ -8426,11 +8437,16 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
   Lanes: Updates, Publishing.
 
-- 📋 [PRESS-0411] **Google's held token is timed by the wall clock, which can go backwards.**
+- ✅ [PRESS-0411] **Google's held token is timed by the wall clock, which can go backwards.**
   Surfaced by PRESS-0379 (out of scope there). Insights times the
   held Google token with transport.now(), the wall clock. A clock set
   back keeps a token past its end; review-code lane-09:36 fixed the
   same defect in GitHub sign-in with time.monotonic.
+  Shipped 2026-11-17. Google's held token and its expiry checks use
+  time.monotonic (google_setup.register and google_signin.access_token
+  take a clock); calendar uses stay on the wall clock. The sign-in
+  attempt's ten-minute window stays on the wall clock: set back, it ends
+  rather than extends. PRESS-0122 §§ 4.1, 4.2 and INV-14 amended.
   **Layman:** Changing your computer's clock can't leave Pressless using an expired Google sign-in.
   Kind: fix.
   Source: PRESS-0379 close-findings sweep 2026-11-17.
