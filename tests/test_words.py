@@ -211,7 +211,8 @@ NOT_SCREEN_WORDS: dict[str, dict[str, str]] = {
     # PRESS-0337 § 4.4: the bridge's JSON-RPC errors are read by the AI app.
     "bridge.py": {
         **dict.fromkeys(("not JSON", "not a JSON-RPC 2.0 message", "params is not an object",
-                         "arguments is not an object", "no tool", "no method"),
+                         "arguments is not an object", "no tool", "no method",
+                         "internal error"),
                         "a JSON-RPC error message, read by the AI app"),
         "Unsupported protocol version": "MCP's own message for its error -32022",
         "Bearer": "the HTTP Authorization header's scheme",

@@ -29,12 +29,15 @@ LEGACY = ("2025-11-25", "2025-06-18")     # newest first
 SUPPORTED = (MODERN, *LEGACY)
 VERSION_META = "io.modelcontextprotocol/protocolVersion"
 DOOR_NAME = "assistant-door.json"          # assistant.DOOR_NAME; a test checks they match
-DOOR_PATH = "/assistant"
+DOOR_PATH = "/assistant"                   # assistant.ADDRESS; a test checks they match
+# A publish ask builds the whole site to plan it, and the door queues calls
+# behind one another (§ 4.3), so a call may wait minutes on a large site.
 TIMEOUT_SECONDS = 300
 LIST_TTL_MS = 3_600_000
 
 # JSON-RPC's codes, and MCP's for a version it does not speak.
 PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS = -32700, -32600, -32601, -32602
+INTERNAL_ERROR = -32603
 UNSUPPORTED_VERSION = -32022
 
 _SERVER = {"name": "pressless", "version": __version__}
@@ -56,7 +59,9 @@ def run(stdin: TextIO, stdout: TextIO, *,
             continue
         reply = _handle(line, post)
         if reply is not None:
-            stdout.write(json.dumps(reply, ensure_ascii=False, separators=(",", ":")) + "\n")
+            # ASCII escapes: a string from the request may hold a lone
+            # surrogate, which UTF-8 cannot write.
+            stdout.write(json.dumps(reply, separators=(",", ":")) + "\n")
             stdout.flush()
 
 
@@ -74,7 +79,11 @@ def _handle(line: str, post: Callable[[str, dict], dict | None]) -> dict | None:
     params = {} if params is None else params
     if not isinstance(params, dict):
         return _reply(message["id"], _error(INVALID_PARAMS, "params is not an object"))
-    return _reply(message["id"], _answer(message.get("method"), params, post))
+    try:
+        answer = _answer(message.get("method"), params, post)
+    except Exception:  # noqa: BLE001 -- one request's fault never ends the bridge
+        answer = _error(INTERNAL_ERROR, "internal error")
+    return _reply(message["id"], answer)
 
 
 def _reply(ident: object, answer: _Answer) -> dict:
@@ -103,8 +112,9 @@ def _answer(method: object, params: dict, post: Callable[[str, dict], dict | Non
         return _error(UNSUPPORTED_VERSION, "Unsupported protocol version",
                       {"supported": list(SUPPORTED), "requested": asked})
     modern = asked == MODERN        # a request naming no version is legacy
-    # 2026-07-28: every result says it is complete, and discovery and the
-    # list carry caching hints; neither holds anything of the writer's.
+    # 2026-07-28: every result below says it is complete, and discovery and
+    # the list carry caching hints; neither holds anything of the writer's.
+    # `ping` answered above is legacy only, and answers {} (§ 4.4).
     complete = {"resultType": "complete"} if modern or method == "server/discover" else {}
     cached = {"ttlMs": LIST_TTL_MS, "cacheScope": "public"}
     if method == "server/discover":
@@ -161,6 +171,9 @@ def _post(tool: str, arguments: dict) -> dict | None:
         response = connection.getresponse()
         data = response.read()
         reply = json.loads(data.decode("utf-8")) if response.status == 200 else None
+    except TimeoutError:
+        # The door may still be doing the call; "closed" would be untrue (§ 6).
+        return {"ok": False, "said": say("assistant.still_working")}
     except (OSError, ValueError, http.client.HTTPException):
         return None
     finally:

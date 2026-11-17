@@ -149,6 +149,8 @@ TOOLS: tuple[Tool, ...] = (
 
 BY_NAME = {tool.name: tool for tool in TOOLS}
 
+# Every schema type TOOLS uses, and an array's "items" type, must be here, or
+# `problem` raises on every call to that tool; a test checks TOOLS against it.
 _TYPES = {"string": str, "integer": int, "array": list, "object": dict}
 
 

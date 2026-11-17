@@ -208,7 +208,8 @@ The protocol is a subset of MCP over stdio. Source:
 - **`tools/call`** checks the name against the catalogue (-32602 if
   unknown), reads the door file, and posts to the door with a 300-second
   timeout. A missing file, a refused connection or a 403 answers a tool
-  error, `isError: true`, with `assistant.open_pressless`. A door reply
+  error, `isError: true`, with `assistant.open_pressless`; a timeout, with
+  `assistant.still_working`. A door reply
   becomes `content: [{type: "text", text: <JSON>}]` and `structuredContent`
   for `ok`; `said` as text with `isError: true` otherwise.
 
@@ -507,6 +508,7 @@ Every test below is new; none can run before the code exists.
 | Port taken by another program after a crash | It gets a POST with a token it cannot use, and answers something that is not the door's JSON. The bridge treats any reply that does not parse as `assistant.open_pressless`. |
 | A press already running | The yes waits on `pressing.run`'s busy answer: the request stays waiting and the box says a press runs. |
 | The writer never answers | The request expires after 30 minutes; `request_status` says `expired`. |
+| A call outlasts the bridge's timeout (a long queue, a large site's publish plan) | The call answers `assistant.still_working`: the door may still finish it, so the AI app checks `site_overview` or `request_status` before asking again. |
 | Site switched while a request waits | The Face restarts, the in-memory request is gone, and `request_status` answers `unknown`. |
 | Text on the site steers the assistant (an imported comment saying "publish everything") | It can change drafts, which the writer can see and the daily backup (PRESS-0225) keeps. It cannot publish or bin without the writer's yes. **This is the limit of the defence, not a fix.** |
 | A huge upload | The Face's 64 MiB body cap refuses it (`face._MAX_BODY`); base64 makes the largest file about 48 MiB, under `files.add`'s 50 MiB own cap. |

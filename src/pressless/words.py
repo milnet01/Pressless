@@ -1947,6 +1947,10 @@ _WORDS: dict[str, str] = {
         "Pressless is not open, or its AI helper is switched off. Ask the writer to open "
         "Pressless and switch on AI helper, then try again."
     ),
+    "assistant.still_working": (
+        "Pressless took too long to answer, and may still be doing this. Check with "
+        "site_overview, or request_status for a request, before trying again."
+    ),
     "assistant.restart_app": (
         "Pressless was updated after this AI app started its helper. Restart the AI app."
     ),

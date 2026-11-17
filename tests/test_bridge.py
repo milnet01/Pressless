@@ -172,3 +172,50 @@ def test_notifications_and_framing():
     assert replies == [{"jsonrpc": "2.0", "id": None,
                         "error": {"code": -32700, "message": "not JSON"}},
                        {"jsonrpc": "2.0", "id": "a", "result": {}}]
+
+
+def test_a_lone_surrogate_is_answered():
+    """§ 4.4 framing: a request id holding a lone surrogate escape parses, and
+    its echo is written as ASCII escapes, since strict UTF-8 cannot write it.
+    Breaks when the reply is written unescaped and the bridge dies."""
+    out = io.TextIOWrapper(io.BytesIO(), encoding="utf-8", newline="\n")
+    bridge.run(io.StringIO('{"jsonrpc":"2.0","id":"\\ud800","method":"ping"}\n'
+                           '{"jsonrpc":"2.0","id":2,"method":"ping"}\n'), out,
+               door=lambda tool, arguments: None)
+    out.flush()
+    replies = [json.loads(line) for line in out.buffer.getvalue().decode("ascii").splitlines()]
+    assert [reply["id"] for reply in replies] == ["\ud800", 2]
+
+
+def test_a_fault_in_one_call_is_answered_and_the_next_runs():
+    """JSON-RPC's internal error: a call that raises inside the bridge is
+    answered -32603, and the bridge reads on. Breaks when the exception
+    ends `run`."""
+    def door(tool, arguments):
+        raise RuntimeError("unforeseen")
+
+    first, second = _talk(_modern(1, "tools/call", name="list_entries", arguments={}),
+                          _modern(2, "tools/list"), door=door)
+    assert first["error"]["code"] == -32603 and first["id"] == 1
+    assert second["id"] == 2 and "tools" in second["result"]
+
+
+def test_a_slow_door_is_not_called_closed(tmp_path, monkeypatch):
+    """§ 6: a door that takes longer than the timeout may still be doing the
+    call, so the AI app is told to check, not that Pressless is closed.
+    Breaks when a timeout is answered as `assistant.open_pressless`."""
+    import socket
+    listening = socket.socket()
+    listening.bind(("127.0.0.1", 0))
+    listening.listen(1)
+    try:
+        (tmp_path / "assistant-door.json").write_text(json.dumps(
+            {"port": listening.getsockname()[1], "token": "a token", "version": "0"}),
+            encoding="utf-8")
+        monkeypatch.setenv("PRESSLESS_FOLDER", str(tmp_path))
+        monkeypatch.setattr(bridge, "TIMEOUT_SECONDS", 0.2)
+        reply = bridge._post("list_entries", {})
+    finally:
+        listening.close()
+    assert reply is not None and reply["ok"] is False
+    assert "took too long to answer" in reply["said"] and OPEN_WORDS not in reply["said"]
