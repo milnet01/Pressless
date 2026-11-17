@@ -141,7 +141,8 @@ def test_every_name_is_on_one_side() -> None:
                   store.FILES_FOLDER, store.FORWARDS_FOLDER, store.OPTIONS_FOLDER,
                   store.IDENTITY_FOLDER, store.LOOK_FOLDER, settings.FILE_NAME,
                   credentials.FILE_NAME, setup.SITE_FOLDER, editor.PREVIEW_FOLDER,
-                  paths.PREVIEW_ASSETS, starter.MARKER, starter.FILLED, takeover.MARKER, publishing.IMPORTED,
+                  paths.PREVIEW_ASSETS, starter.MARKER, starter.FILLED, takeover.MARKER,
+                  publishing.IMPORTED,
                   insights.CACHE_NAME,
                   youtube.CACHE_NAME, undo.FETCH_FOLDER, wizard.FOLDER, choices.FILE_NAME,
                   pressless_import.IMPORT_FOLDER, editor.VIEWS_FOLDER}
