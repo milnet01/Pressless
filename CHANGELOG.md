@@ -14,6 +14,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Changed
 
+- **After updating on Linux, Pressless comes back in the same window** (PRESS-0408)
+  Pressless now restarts itself in the terminal window you started it from, so
+  Ctrl+C, closing the window and starting it again keep working after an update.
+
 - **Undo takes a newly added page off your site again** (PRESS-0399)
   If the press you undo put a new page on your site, Undo now takes it off and keeps
   it waiting in Pressless, as it already did for journal entries. Nothing is deleted.

@@ -8290,7 +8290,7 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
   Lanes: Store.
 
-- 📋 [PRESS-0401] **Merge the five _why copies into one shared helper.**
+- ✅ [PRESS-0401] **Merge the five _why copies into one shared helper.**
   Queued from PRESS-0376 (review-readability lane-06-store-undo :35;
   the comment now names every copy). Needs a shared leaf module and
   import-rule amendments in PRESS-0001, PRESS-0002, PRESS-0008 and
@@ -8302,6 +8302,13 @@ does not wait on them.
   are in publisher, store, builder, installer, shortcuts, paths, face,
   __main__ and pressless_import. Check whether these are the _why
   copies or a second family before merging.
+  Shipped 2026-11-17, 4d14db7 (rebased). New os_reason.of, importing
+  nothing, replaces the _why copies (settings, credentials, publisher,
+  builder), installer's _reason and the inline second family (shortcuts,
+  paths, face, __main__, backups, pressless_import). Store keeps a
+  one-line wrapper. Also fixed: starter's failure said "None" with no
+  reason. INV-1 amended in PRESS-0001, 0002, 0009, 0022; PRESS-0008
+  INV-11. updater.py's copy goes with PRESS-0409.
   **Layman:** Five copies of the code that explains a failure become one.
   Kind: refactor.
   Source: review-code-2026-11-16 (PRESS-0376 close-findings).
@@ -8394,7 +8401,7 @@ does not wait on them.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
   Lanes: Updates.
 
-- 📋 [PRESS-0408] **After a Linux update, Pressless reopens with no terminal window.**
+- ✅ [PRESS-0408] **After a Linux update, Pressless reopens with no terminal window.**
   Queued from PRESS-0381 (review-code lane-11-update-entry :34).
   Which terminal to reopen in is a design choice; needs a PRESS-0023
   § 4.7 amendment and a check in a real desktop session.
@@ -8406,6 +8413,18 @@ does not wait on them.
   old process after the stop (os.execve), reversing PRESS-0023 § 8's
   rejected alternative; prove it with § 7.1's real-AppImage check, and
   fall back to not reopening (the "start it again" words) if it fails.
+  Shipped 2026-11-17, ba1c4c4 (rebased as 4f03ccd), as the user
+  decided. A Linux update swaps the file, runs the stop steps, then
+  replaces the process with the new AppImage (installer.reopen_linux,
+  os.execve): same terminal, Ctrl+C and Restart keep working; a failed
+  exec shows the "start it again" words. Every descriptor above 2 is
+  close-on-exec so the old FUSE mount goes; SIGPIPE and SIGXFSZ reset.
+  finbreak's earlier failure was a one-file bundle re-run without
+  PYINSTALLER_RESET_ENVIRONMENT. Real check by hand: three local
+  AppImages, two updates in one terminal, same PID, one mount at a time,
+  Ctrl+C and terminal close exit 0. PRESS-0023 §§ 4.7, 4.9, 6, 7, 7.1, 8,
+  10 amended. § 7.1 steps 1 and 3 (a signed, published scratch release)
+  remain for the next release.
   **Layman:** After updating on Linux, Pressless comes back the way you started it.
   Kind: review-fix.
   Source: review-code-2026-11-16 (PRESS-0381 close-findings).
@@ -8462,12 +8481,15 @@ does not wait on them.
   Source: PRESS-0375 close-findings sweep 2026-11-17.
   Lanes: Builder.
 
-- 📋 [PRESS-0413] **One shared one-or-many chooser in words.py.**
+- ✅ [PRESS-0413] **One shared one-or-many chooser in words.py.**
   Surfaced by PRESS-0387 (out of scope there). The choice between a
   words key's .one and .many forms is written out by hand in
   overview.py, undo.py, dashboard.py, import_report.counted and
   publishing.py. One helper in words.py needs PRESS-0242 § 4.1's list
   of what words.py offers amended.
+  Shipped 2026-11-17, words.say_count replaces the hand-written choice
+  in overview, dashboard, import_report, publishing and undo. PRESS-0242
+  § 4.1 amended. Full suite 2431 passed, 27 skipped.
   **Layman:** One piece of code decides "1 entry" versus "2 entries", instead of five copies.
   Kind: refactor.
   Source: PRESS-0387 close-findings sweep 2026-11-17.
