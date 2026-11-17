@@ -18,6 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "src" / "pressless" / "_public_suffixes.py"
+# What a rule and the list's version and commit may hold: each is pasted
+# between quotes, so a quote or a backslash could change the module.
+_RULE = re.compile(r"[a-z0-9.*!-]+")
+_STAMP = re.compile(r"[A-Za-z0-9_.:-]+")
 
 
 def ascii_rule(rule: str) -> str:
@@ -34,8 +38,16 @@ def main(source: Path) -> None:
     commit = re.search(r"^// COMMIT: (\S+)$", text, re.M).group(1)
     icann = text.split("// ===BEGIN ICANN DOMAINS===", 1)[1].split(
         "// ===END ICANN DOMAINS===", 1)[0]
-    rules = sorted({ascii_rule(line.strip().lower()) for line in icann.splitlines()
-                    if line.strip() and not line.startswith("//")})
+    # The list's format: a rule runs to the first space; the rest is ignored.
+    lines = (line.strip() for line in icann.splitlines())
+    rules = sorted({ascii_rule(line.split()[0].lower()) for line in lines
+                    if line and not line.startswith("//")})
+    for value in (version, commit):
+        if not _STAMP.fullmatch(value):
+            raise SystemExit(f"refused: the list's version or commit {value!r} is not plain")
+    for rule in rules:
+        if not _RULE.fullmatch(rule):
+            raise SystemExit(f"refused: the rule {rule!r} holds more than a name can")
     body = "\n".join(f'    "{rule}",' for rule in rules)
     TARGET.write_text(
         '"""The public suffix list\'s ICANN section, as the domain wizard reads it.\n\n'

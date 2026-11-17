@@ -101,3 +101,30 @@ def test_a_trailing_line_break_is_ignored(tmp_path: Path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.CLIENT_SECRET == SENTINEL
+
+
+@pytest.mark.parametrize("script, variables", [
+    ("write_google_secret.py", {"GOOGLE_CLIENT_SECRET": SENTINEL}),
+    ("write_usage_key.py", {"PRESSLESS_USAGE_MEASUREMENT_ID": "G-SENTINEL0",
+                            "PRESSLESS_USAGE_API_SECRET": "SENTINEL_secret"}),
+])
+def test_a_failed_write_leaves_the_old_module_whole(tmp_path, monkeypatch, script, variables):
+    """review-code: the module was written in place, so a write cut short left
+    a truncated file. Its SyntaxError at import is not the ImportError
+    PRESS-0122 § 4.7 catches, and the program would not start."""
+    from _scripts import load_script
+
+    writer = load_script(script)
+    for name, value in variables.items():
+        monkeypatch.setenv(name, value)
+    target = tmp_path / "_secret.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    def cut_short(handle):
+        raise OSError("the drive went away")
+
+    monkeypatch.setattr(os, "fsync", cut_short)
+    with pytest.raises(OSError):
+        writer.main([str(target)])
+    assert target.read_text(encoding="utf-8") == "OLD = 1\n"
+    assert [path.name for path in tmp_path.iterdir()] == ["_secret.py"]
