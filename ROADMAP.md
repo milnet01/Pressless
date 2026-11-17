@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=412 -->
+<!-- ants-roadmap-id-high-water: PRESS=413 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8012,9 +8012,18 @@ does not wait on them.
   Source: review-code-2026-11-16 + review-readability-2026-11-16.
   Lanes: Votes.
 
-- 📋 [PRESS-0387] **Review fixes: words and the manual.**
+- ✅ [PRESS-0387] **Review fixes: words and the manual.**
   Subject 17 of the 2026-11-16 full review, closed with close-findings.
   review-code: 1 low. review-readability: 5 low.
+  Ledger: close-findings-2026-11-17/lane-17-words-manual.json.
+  Shipped 2026-11-17, bc00a38..c78dc22. 12 findings: 9 fixed, 0
+  queued, 3 dismissed (search matching part of a word is PRESS-0219
+  § 4.3's design and finds a half-typed word; no stylesheet overrides
+  [hidden] on a manual section; Face.fail logs type and words, never a
+  cause or path, by design). Script words escape every <; the manual
+  reads en.txt with a byte-order mark; one gap, one filled file and one
+  uploaded file read singular. Filed: PRESS-0413. Full suite 2367
+  passed, 27 skipped.
   Ledger: close-findings-2026-11-17/lane-17-words-manual.json.
   **Layman:** Small fixes in the text table and the built-in manual.
   Kind: review-fix.
@@ -8328,6 +8337,17 @@ does not wait on them.
   Kind: doc-fix.
   Source: PRESS-0375 close-findings sweep 2026-11-17.
   Lanes: Builder.
+
+- 📋 [PRESS-0413] **One shared one-or-many chooser in words.py.**
+  Surfaced by PRESS-0387 (out of scope there). The choice between a
+  words key's .one and .many forms is written out by hand in
+  overview.py, undo.py, dashboard.py, import_report.counted and
+  publishing.py. One helper in words.py needs PRESS-0242 § 4.1's list
+  of what words.py offers amended.
+  **Layman:** One piece of code decides "1 entry" versus "2 entries", instead of five copies.
+  Kind: refactor.
+  Source: PRESS-0387 close-findings sweep 2026-11-17.
+  Lanes: Words.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
 

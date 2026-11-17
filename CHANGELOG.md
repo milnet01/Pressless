@@ -25,6 +25,10 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **"1 file", not "1 files"** (PRESS-0387)
+  Bringing in a site and taking over an existing one now say "1 gap" and "1 file"
+  where they used to use the plural for one.
+
 - **Countdowns, the look and keyboard users** (PRESS-0374)
   A countdown now ends at the time you set, wherever in the world a visitor watches
   it. Footer links show where the keyboard is on every layout. Picking a layout to
