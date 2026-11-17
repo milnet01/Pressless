@@ -289,3 +289,56 @@ def test_helper_ends_bridges():
     assert "Invoke-CimMethod -MethodName Terminate" in stop
     assert ".EndsWith('--assistant')" in stop
     assert "$_.ExecutablePath.StartsWith($inside" in stop
+
+
+def test_the_windows_helpers_log_never_stops_it():
+    """review-code 2026-11-16 lane 11: the helper runs under
+    `$ErrorActionPreference = 'Stop'`, so an update.log a scanner held ended
+    it: before the swap, with Pressless already gone, or after it, with
+    nothing restarted. A log that cannot be written never stops an update,
+    as _stamp promises for Python's lines. The run is
+    test_the_windows_helper_runs, on the Windows box.
+
+    Breaks when Stamp's write is outside a try whose catch swallows."""
+    script = installer.WINDOWS_SCRIPT
+    stamp = script[script.index("function Stamp"):script.index("function Retry")]
+    body = stamp[stamp.index("{") + 1:].strip()
+    assert body.startswith("$line =") and "try {" in body, stamp
+    write = body[body.index("try {"):]
+    assert "Set-Content" in write and "Add-Content" in write, stamp
+    assert write.rstrip().removesuffix("}").rstrip().endswith("} catch { }"), stamp
+
+
+def test_a_failed_rollback_is_logged_as_failed():
+    """review-code 2026-11-16 lane 11: the log said `rolled back` even where
+    putting the old folder back failed, which leaves no Pressless folder at
+    all, the worst state an update can end in.
+
+    Breaks when `rolled back` is written without the rename back having
+    succeeded."""
+    script = installer.WINDOWS_SCRIPT
+    start = script.index("if (-not (Retry { Move-Item -LiteralPath (Join-Path $Staged")
+    failed = script[start:script.index("Stamp 'swapped'")]
+    assert "| Out-Null" not in failed, failed
+    assert "if (Retry { Move-Item -LiteralPath $old -Destination $Program })" in failed
+    assert "{ Stamp 'rolled back' }\n    else { Stamp 'rollback failed' }" in failed
+
+
+def test_the_windows_helper_starts_the_new_program_afresh(tmp_path, monkeypatch):
+    """review-code 2026-11-16 lane 11: the Linux helper sets
+    PYINSTALLER_RESET_ENVIRONMENT and the Windows one passed no environment,
+    so the new Pressless.exe inherited the old bundle's variables.
+
+    Breaks when apply_windows hands Popen no environment, or one without the
+    reset."""
+    monkeypatch.setenv("_PYI_APPLICATION_HOME_DIR", "the old bundle")
+    folder = tmp_path / "Pressless-data"
+    folder.mkdir()
+    program = tmp_path / "Pressless"
+    program.mkdir()
+    staged = tmp_path / "Pressless.new-c"
+    (staged / "Pressless").mkdir(parents=True)
+    spawned = _Spawned(monkeypatch)
+    installer.apply_windows(program, staged, folder)
+    [(_, kwargs)] = spawned.calls
+    assert kwargs.get("env", {}).get("PYINSTALLER_RESET_ENVIRONMENT") == "1", kwargs.get("env")

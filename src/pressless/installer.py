@@ -31,7 +31,13 @@ class InstallFailed(UpdateError):
     """The new version could not be put in place; this one is still installed."""
 
 
+# One line per word, `YYYY-MM-DD HH:MM:SS <word>`, written by _stamp here,
+# stamp() in WAITER and Stamp in WINDOWS_SCRIPT. The three are in different
+# languages, so a change to the format is made in all three.
 LOG_NAME = "update.log"
+# The Windows helper's script, beside the program until it removes itself. A
+# start removes one a helper that died left (updating).
+SCRIPT_PREFIX = "pressless-update-"
 
 # $1 the AppImage, $2 the process to outlive, $3 update.log. Polls every 0.1 s
 # for at most 60 s, then starts the new file whether or not the old process
@@ -59,8 +65,11 @@ param([string]$Program, [string]$Staged, [string]$Log)
 $ErrorActionPreference = 'Stop'
 function Stamp([string]$Word, [switch]$First) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $Word
-    if ($First) { Set-Content -LiteralPath $Log -Value $line -Encoding ascii }
-    else { Add-Content -LiteralPath $Log -Value $line -Encoding ascii }
+    # Best effort, as _stamp: under 'Stop' a held log would end the helper.
+    try {
+        if ($First) { Set-Content -LiteralPath $Log -Value $line -Encoding ascii }
+        else { Add-Content -LiteralPath $Log -Value $line -Encoding ascii }
+    } catch { }
 }
 function Retry([scriptblock]$Step) {
     for ($try = 1; $try -le 5; $try++) {
@@ -93,6 +102,7 @@ while ($true) {
     }
     Start-Sleep -Milliseconds 200
 }
+# Not $home: PowerShell names ignore case, and $HOME is read-only.
 $home_ = Split-Path -Parent $Program
 $old = Join-Path $home_ 'Pressless.old'
 Forget $old
@@ -100,8 +110,9 @@ if (-not (Retry { Move-Item -LiteralPath $Program -Destination $old })) {
     Forget $Staged; Stamp 'gave up'; Forget $PSCommandPath; exit 1
 }
 if (-not (Retry { Move-Item -LiteralPath (Join-Path $Staged 'Pressless') -Destination $Program })) {
-    Retry { Move-Item -LiteralPath $old -Destination $Program } | Out-Null
-    Stamp 'rolled back'; Forget $Staged; Forget $PSCommandPath; exit 1
+    if (Retry { Move-Item -LiteralPath $old -Destination $Program }) { Stamp 'rolled back' }
+    else { Stamp 'rollback failed' }
+    Forget $Staged; Forget $PSCommandPath; exit 1
 }
 Stamp 'swapped'
 $batch = Join-Path $home_ 'Start Pressless.bat'
@@ -142,12 +153,20 @@ def _stamp(log: Path, word: str, *, first: bool = False) -> None:
         pass
 
 
-def _helper_environment() -> dict[str, str]:
-    """The environment the new AppImage should start in (FIBR-0122).
+def _reason(exc: OSError) -> str:
+    """An error's own words, never its message, which names the path
+    (docs/design.md § Logging)."""
+    return exc.strerror or type(exc).__name__
 
-    The AppImage runtime sets its own variables afresh for the new file, and
-    PyInstaller's bundle path must not reach it: a /bin/sh that loads the
-    bundle's libraries dies (PRESS-0146).
+
+def _helper_environment() -> dict[str, str]:
+    """The environment a helper, and the new program it starts, run in
+    (FIBR-0122). PYINSTALLER_RESET_ENVIRONMENT makes the new program start
+    afresh rather than as part of the old bundle, on either system.
+
+    On Linux the AppImage runtime sets its own variables afresh for the new
+    file, and PyInstaller's bundle path must not reach it: a /bin/sh that
+    loads the bundle's libraries dies (PRESS-0146).
     """
     env = dict(os.environ)
     for name in ("APPDIR", "APPIMAGE", "ARGV0"):
@@ -186,7 +205,7 @@ def apply_linux(appimage: Path, staged: Path, folder: Path) -> bool:
     except OSError as exc:
         staged.unlink(missing_ok=True)
         raise InstallFailed(f"the new version could not replace the old: "
-                            f"{exc.strerror or type(exc).__name__}") from exc
+                            f"{_reason(exc)}") from exc
 
     log = Path(folder) / LOG_NAME
     _stamp(log, "swapped", first=True)
@@ -215,7 +234,7 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
     Raises InstallFailed, removing the staged folder, where the helper cannot
     be started. Everything after the spawn is the helper's.
     """
-    script = Path(staged).parent / f"pressless-update-{secrets.token_hex(4)}.ps1"
+    script = Path(staged).parent / f"{SCRIPT_PREFIX}{secrets.token_hex(4)}.ps1"
     log = Path(folder) / LOG_NAME
     # A console of its own, never shown. Windows PowerShell started with none
     # at all (DETACHED_PROCESS) exits before its first line: measured on the
@@ -229,11 +248,11 @@ def apply_windows(program: Path, staged: Path, folder: Path) -> None:
              "-File", str(script), str(program), str(staged), str(log)],
             # Not the program's own folder: Windows refuses to rename a folder
             # that is a live process's working folder (PRESS-0135).
-            cwd=str(Path(program).parent),
+            cwd=str(Path(program).parent), env=_helper_environment(),
             creationflags=flags, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL)
     except OSError as exc:
         script.unlink(missing_ok=True)
         shutil.rmtree(staged, ignore_errors=True)
         raise InstallFailed(f"the updater could not be started: "
-                            f"{exc.strerror or type(exc).__name__}") from exc
+                            f"{_reason(exc)}") from exc

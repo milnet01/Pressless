@@ -63,6 +63,12 @@ class ShortcutError(Exception):
     """A shortcut could not be made or removed."""
 
 
+def _failed(what: str, exc: OSError) -> ShortcutError:
+    """`what`, with the error's own words: never its message, which names
+    the path (docs/design.md § Logging)."""
+    return ShortcutError(f"{what}: {exc.strerror or type(exc).__name__}")
+
+
 @dataclasses.dataclass(frozen=True)
 class Places:
     """Where this copy's shortcuts go and what they start.
@@ -126,8 +132,7 @@ def refresh(where: Places) -> None:
         try:
             shutil.copyfile(where.icon, where.icon_copy)
         except OSError as exc:
-            raise ShortcutError(f"the menu's icon could not be renewed: "
-                                f"{exc.strerror or type(exc).__name__}") from exc
+            raise _failed("the menu's icon could not be renewed", exc) from exc
 
 
 def _linux_places(appimage: Path) -> Places:
@@ -208,16 +213,14 @@ def _write(where: Places, target: Path) -> None:
         # The desktop runs an entry only when it is marked as a program.
         os.chmod(target, 0o755)  # noqa: S103 -- his own launcher, in his own folder
     except OSError as exc:
-        raise ShortcutError(f"a shortcut could not be written: "
-                            f"{exc.strerror or type(exc).__name__}") from exc
+        raise _failed("a shortcut could not be written", exc) from exc
 
 
 def _remove(target: Path) -> None:
     try:
         target.unlink(missing_ok=True)
     except OSError as exc:
-        raise ShortcutError(f"a shortcut could not be removed: "
-                            f"{exc.strerror or type(exc).__name__}") from exc
+        raise _failed("a shortcut could not be removed", exc) from exc
 
 
 def _current(where: Places, target: Path) -> bool:
