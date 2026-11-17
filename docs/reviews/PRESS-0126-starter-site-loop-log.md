@@ -13,3 +13,4 @@
 | amend | 2026-11-17 | none: PRESS-0393; no reviewer dispatched | 0 | 0 | 0 | 0 | §§ 4.1, 4.5 and INV-12: the replace page records the say-so in the marker, which stays until a publish lands. |
 | amend | 2026-11-17 | none: PRESS-0419; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: a blank site's checklist leaves off Home and the menu, and keeps the web to do until something is published. |
 | amend | 2026-11-17 | none: PRESS-0422; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: an imported site's web step waits for a publish to land (`publishing.IMPORTED`). |
+| amend | 2026-11-17 | none: PRESS-0425; no reviewer dispatched | 0 | 0 | 0 | 0 | § 4.4: the imported-site marker moves out of `import/` to the site's folder, so a saved site file keeps it. |

@@ -109,6 +109,20 @@ def test_every_site_name_is_kept_or_left_out() -> None:
             "choices.json", "import", "youtube.json", "jpeg-xl-views"} == sitefile.LEFT_OUT
 
 
+def test_an_imported_site_stays_unpublished_in_its_file(tmp_path: Path) -> None:
+    """PRESS-0425. Breaks when the imported-site marker is left out of a saved
+    file, so the opened site ticks the web step before a publish."""
+    from pressless import publishing
+    site = tmp_path / "site"
+    site.mkdir()
+    store.write_identity(site, store.Identity("Field Notes"))
+    publishing.mark_imported(site)
+    target = tmp_path / "out.pressless"
+    sitefile.save(site, target)
+    opened = sitefile.open_into(target, _own(tmp_path))
+    assert publishing.imported_unpublished(opened)
+
+
 # ------------------------------------------------------------------ INV-2 ---
 
 

@@ -64,7 +64,8 @@ MANIFEST = "pressless-site.json"
 VERSION = 1
 KEPT = frozenset({...})     # the Store's folders, settings.json,
                             # preview-assets, starter-unpublished,
-                            # starter-filled.json, takeover-owed
+                            # starter-filled.json, takeover-owed,
+                            # import-unpublished (PRESS-0425)
 LEFT_OUT = frozenset({...}) # credentials.json, site, preview, fetch,
                             # insights.json, youtube.json, wizards, choices.json,
                             # import (PRESS-0125), jpeg-xl-views (PRESS-0275)

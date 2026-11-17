@@ -202,8 +202,8 @@ part, its link opening the Pages screen (PRESS-0419).
 
 **A site imported into it** (PRESS-0125, PRESS-0210) holds live pages that
 Pressless has not published. Before either wizard brings it in,
-`publishing.mark_imported` writes `publishing.IMPORTED` in the import's own
-folder. *Put your site on the web* stays to do while that file exists, and a
+`publishing.mark_imported` writes `publishing.IMPORTED` in the site's folder;
+a saved site file keeps it (PRESS-0425). *Put your site on the web* stays to do while that file exists, and a
 publish that lands removes it (PRESS-0422).
 
 ### 4.5 Publishing

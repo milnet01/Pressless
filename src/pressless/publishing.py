@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-import pressless_import
 from pressless import (
     builder,
     editor,
@@ -64,18 +63,17 @@ TAKEOVER_ADDRESS = "/publish/takeover"
 PLAN_ADDRESS = "/publish/plan"
 SITE_ADDRESS = "/publish/site"
 
-# In the import's own folder, which moves with a site and is never published:
-# an empty file saying the site an import brought in is not yet on the web.
-# The publish that lands removes it, so Finish setting up waits for that
-# (PRESS-0126 § 4.4, PRESS-0422).
-IMPORTED = f"{pressless_import.IMPORT_FOLDER}/unpublished"
+# In the site's folder, kept in a saved site file and never published: an empty
+# file saying the site an import brought in is not yet on the web. The publish
+# that lands removes it, so Finish setting up waits for that (PRESS-0126 § 4.4,
+# PRESS-0422, PRESS-0425).
+IMPORTED = "import-unpublished"
 
 
 def mark_imported(folder: Path) -> None:
     """Note that an import is bringing in a site Pressless has not published.
     An OSError is the caller's."""
     marker = Path(folder) / IMPORTED
-    marker.parent.mkdir(exist_ok=True)
     marker.touch()
 
 
