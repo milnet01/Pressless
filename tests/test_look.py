@@ -286,3 +286,12 @@ def test_each_layouts_defaults_wear_its_own_style(layout):
     choices = starter_look.defaults(layout)
     assert choices.light == starter_look.palette(style, False)
     assert choices.dark == starter_look.palette(style, True)
+
+
+def test_a_warned_ratio_is_never_shown_at_the_bar(monkeypatch):
+    """§ 3 decision 4. Breaks when 4.496:1, warned about as under 4.5:1, is
+    rounded up and shown as 4.50."""
+    monkeypatch.setattr(starter_look, "contrast", lambda one, two: 4.496)
+    found = starter_look.warnings(starter_look.defaults("sunrise"))
+    assert found
+    assert {ratio for _scheme, _text, _ground, ratio in found} == {4.49}

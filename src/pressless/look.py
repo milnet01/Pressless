@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import dataclasses
 from dataclasses import dataclass
@@ -398,13 +399,14 @@ def save(folder: Path, choices: Choices, extra: str) -> None:
 
 def warnings(choices: Choices) -> list[tuple[str, str, str, float]]:
     """(scheme, text, background, ratio) for each TEXT_PAIRS pair under
-    WARN_BELOW, light first (§ 3 decision 4)."""
+    WARN_BELOW, light first (§ 3 decision 4). The ratio is cut to two
+    places, never rounded, so a ratio under the bar never shows as it."""
     found = []
     for scheme, colours in (("light", choices.light), ("dark", choices.dark)):
         for text, ground in TEXT_PAIRS:
             ratio = contrast(colours[text], colours[ground])
             if ratio < WARN_BELOW:
-                found.append((scheme, text, ground, round(ratio, 2)))
+                found.append((scheme, text, ground, math.floor(round(ratio * 100, 6)) / 100))
     return found
 
 
