@@ -854,7 +854,7 @@ _PRESS_0126_SURFACE = {"LOOK_FOLDER", "STYLE_CODE_NAME", "style_code_path",
                        "read_style_code", "write_style_code", "holds_a_site"}
 # copy_to_bin reaches only _BINNABLE's folders, which photographs/ is not.
 _PRESS_0196_SURFACE = {"LOOK_CHOICES_NAME", "EXTRA_CSS_NAME", "LOOK_FILES", "look_path_for",
-                       "read_look_file", "write_look_file", "copy_to_bin"}
+                       "read_look_file", "read_look_bytes", "write_look_file", "copy_to_bin"}
 _PRESS_0197_SURFACE = {"FILES_FOLDER", "file_path_for", "list_files"}
 # PRESS-0218 § 4.3: a take-in removing the photographs it placed. It deletes;
 # it copies nothing toward the site folder.
