@@ -8668,11 +8668,18 @@ does not wait on them.
   Source: PRESS-0406/0417/0419 follow-up 2026-11-17.
   Lanes: AI helper, Publishing.
 
-- 📋 [PRESS-0425] **A saved site file drops the imported-site marker.**
+- ✅ [PRESS-0425] **A saved site file drops the imported-site marker.**
   Surfaced by PRESS-0422. Its marker lives at import/unpublished, and a
   saved site file leaves import/ out, so an imported site saved to a
   file before its first publish and opened elsewhere ticks the web step.
   Carry the marker in the site file, or keep it where the file reaches.
+  Shipped 2026-11-17, 44f4bc4..8400145. The marker moved out of import/
+  to import-unpublished, a top-level name in sites.SITE_NAMES, so a saved
+  site file keeps it. No release ever wrote the old place (PRESS-0422 is
+  unreleased), so nothing migrates. test_sitefile's
+  test_an_imported_site_stays_unpublished_in_its_file red, then green.
+  PRESS-0126 § 4.4 and PRESS-0224's KEPT list amended. Full suite 2456
+  passed, 27 skipped; ruff clean.
   **Layman:** A site you bring in and move to another computer before publishing still waits for its first publish.
   Kind: fix.
   Source: PRESS-0422 follow-up 2026-11-17.

@@ -35,7 +35,8 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 - **A site you bring in waits for your first publish before it counts as on the web** (PRESS-0422)
   After bringing in a site from WordPress or a folder, Finish setting up waits for
-  your first publish from Pressless before ticking Put your site on the web. When a
+  your first publish from Pressless before ticking Put your site on the web, also
+  when you save the site to a file and open it on another computer (PRESS-0425). When a
   publish an AI app asked for fails unexpectedly, Pressless says your site has not
   changed, as its own Publish screen does.
 
