@@ -450,6 +450,55 @@ def test_an_unpack_that_zipfile_cannot_finish_leaves_nothing(tmp_path, monkeypat
         assert not [p for p in beside.iterdir() if p.name.startswith("Pressless.new-")]
 
 
+def test_every_part_of_a_member_is_checked(tmp_path):
+    """INV-9, PRESS-0383's sweep: the drive test looked only at the start of
+    a name, so `Pressless/D:/x` passed. Windows starts a path again at a part
+    such as `D:`, and drops a part's trailing dots and spaces, so `.. `
+    climbs out. Members are checked by sitefile.stays_inside, as Import's are.
+
+    Breaks when a name that climbs out on Windows is unpacked."""
+    beside = tmp_path / "program"
+    beside.mkdir()
+    for stray in ("Pressless/D:/evil", "Pressless/a:b", "Pressless/.. /evil",
+                  "Pressless/evil.", "Pressless/a\\b"):
+        archive = _zip(beside / "update.zip", {"Pressless/": b"", stray: b"stray"})
+        with pytest.raises(updater.UpdateRejected):
+            updater.unpack(archive, beside)
+        assert list(beside.iterdir()) == [], (stray, list(beside.iterdir()))
+
+
+def test_a_held_file_does_not_undo_the_update(tmp_path, monkeypatch):
+    """review-code 2026-11-16 lane 11: on Windows a scanner holding the file
+    just written makes its removal raise PermissionError. From unpack's
+    `finally` that replaced a good unpack with an untyped error, leaving the
+    whole program's folder behind; from a failure's, it replaced the typed
+    error, so the wrong sentence showed.
+
+    Breaks when either removal's error escapes."""
+    real_unlink = Path.unlink
+
+    def held(self, missing_ok=False):
+        if self.suffix == ".zip" or self.name.startswith(".pressless-update-"):
+            raise PermissionError(13, "held by another process")
+        return real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", held)
+    beside = tmp_path / "program"
+    beside.mkdir()
+    good = _zip(beside / "good.zip", {"Pressless/": b"", "Pressless/Pressless.exe": b"exe"})
+    unpacked = updater.unpack(good, beside)
+    assert (unpacked / "Pressless" / "Pressless.exe").read_bytes() == b"exe"
+
+    stray = _zip(beside / "stray.zip", {"evil.txt": b"stray"})
+    with pytest.raises(updater.UpdateRejected):
+        updater.unpack(stray, beside)
+
+    data = b"the new program"
+    offer = _offer(data)
+    with pytest.raises(updater.UpdateRejected):
+        updater.download(offer, beside, _Net({offer.asset_url: data[:-1] + b"?"}))
+
+
 # ----------------------------------------------------------------- INV-21 ---
 
 

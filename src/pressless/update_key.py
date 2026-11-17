@@ -4,7 +4,7 @@ Each is a raw 32-byte Ed25519 public key in base64, decoded where a signature
 is checked. The maintainer makes a key with scripts/make-signing-key.py and
 pastes the line it prints here. An empty tuple offers nothing (INV-3). A new
 key is added beside the old one and shipped before it signs anything (scope
-decision 4).
+decision 4). A fifth key signing at once needs updater._SIG_SIZES raised too.
 
 Imports nothing of Pressless's.
 """

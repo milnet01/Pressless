@@ -15,6 +15,7 @@ the Face (§ 4.1).
 from __future__ import annotations
 
 import base64
+import contextlib
 import errno
 import hashlib
 import json
@@ -27,14 +28,14 @@ import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
-from typing import Protocol
+from pathlib import Path
+from typing import NamedTuple, Protocol
 
 import certifi
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from pressless import update_key
+from pressless import sitefile, update_key
 from pressless.installer import UpdateError
 from pressless.safe_write import write_whole
 
@@ -45,6 +46,10 @@ REPOSITORY = "milnet01/Pressless"
 OVERRIDE = "PRESSLESS_UPDATE_REPOSITORY"
 TIMEOUT_SECONDS = 30.0
 FILE_NAME = "updates.json"
+# Beside the program while an update is under way: the download, and on
+# Windows the unpacked folder. A start removes any left by a stopped one.
+DOWNLOAD_PREFIX = ".pressless-update-"
+UNPACK_PREFIX = "Pressless.new-"
 
 _API_LIMIT = 256 * 1024
 _LIST_LIMIT = 16 * 1024
@@ -52,8 +57,8 @@ _LIST_LIMIT = 16 * 1024
 # cuts the file to fit; tests/test_sign_release.py keeps the two equal.
 CHANGES_LIMIT = 512 * 1024
 # One to four 64-byte signatures (PRESS-0023 § 4.3), one per signing key. A
-# fifth key in update_key.TRUSTED signing at once would make every
-# client refuse the release at step 5, so the cap rises with it.
+# fifth key in update_key.TRUSTED signing at once would make every client
+# refuse the release at step 5, so this must be raised with it.
 _SIG_SIZES = (64, 128, 192, 256)
 _LARGEST = 512 * 1024 * 1024
 _CHUNK = 64 * 1024
@@ -169,18 +174,24 @@ def parse_version(text: str) -> tuple[int, int, int] | None:
 # ------------------------------------------------------------ updates.json ---
 
 
-def read_state(folder: Path) -> tuple[bool, str | None]:
-    """(check, skip). Missing, unparseable or wrong-shaped reads as on with
-    nothing skipped, so the switch shows what is actually in force."""
+class State(NamedTuple):
+    """updates.json: whether to look for updates, and the version skipped."""
+    check: bool
+    skip: str | None
+
+
+def read_state(folder: Path) -> State:
+    """Missing, unparseable or wrong-shaped reads as on with nothing skipped,
+    so the switch shows what is actually in force."""
     try:
         data = json.loads((Path(folder) / FILE_NAME).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return True, None
+        return State(True, None)
     if (not isinstance(data, dict) or data.get("version") != 1
             or not isinstance(data.get("check"), bool)
             or not (data.get("skip") is None or isinstance(data.get("skip"), str))):
-        return True, None
-    return data["check"], data["skip"]
+        return State(True, None)
+    return State(data["check"], data["skip"])
 
 
 def write_state(folder: Path, *, check: bool, skip: str | None) -> None:
@@ -353,7 +364,9 @@ def check(folder: Path, running: str, platform: str,
         version = ".".join(str(part) for part in found)
         # A tag spelled otherwise, v1.02.3 say, parses to the same version but
         # names assets that version's names would not find.
-        if tag.removeprefix("v") != version or version == skipped:
+        if tag.removeprefix("v") != version:
+            return Miss(3)
+        if version == skipped:   # Skip this version (§ 4.9) is a step 3 Miss too
             return Miss(3)
 
         step = 4
@@ -399,7 +412,7 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
     goes (§ 4.6). The file is returned only when size and hash both match;
     every failure removes it."""
     transport = transport or _Urllib()
-    target = Path(beside) / f".pressless-update-{secrets.token_hex(8)}"
+    target = Path(beside) / f"{DOWNLOAD_PREFIX}{secrets.token_hex(8)}"
     try:
         handle = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL
                          | getattr(os, "O_BINARY", 0), 0o600)
@@ -417,7 +430,7 @@ def download(offer: Offer, beside: Path, transport: Transport | None = None) -> 
         return target
     finally:
         if not kept:
-            target.unlink(missing_ok=True)
+            _forget(target)
 
 
 def _stream(offer: Offer, transport: Transport, out) -> None:
@@ -463,28 +476,19 @@ def _stream(offer: Offer, transport: Transport, out) -> None:
 # ----------------------------------------------------------------- unpack ---
 
 
-_DRIVE = re.compile(r"^[A-Za-z]:")
-
-
 def _allowed(name: str) -> bool:
-    """`Start Pressless.bat`, or `Pressless/` or a path under it, with no
-    absolute path, no `..` and no drive letter (§ 4.6). A backslash is a
-    separator on the system that unpacks it."""
-    if name.startswith(("/", "\\")) or _DRIVE.match(name):
-        return False
-    parts = PurePosixPath(name.replace("\\", "/")).parts
-    if ".." in parts or not parts:
-        return False
-    if name == "Start Pressless.bat":
-        return True
-    return name.startswith("Pressless/")
+    """`Start Pressless.bat`, or `Pressless/` or a path under it, that stays
+    inside the folder it is unpacked into (§ 4.6): sitefile.stays_inside
+    checks every part, so a drive letter or `..` anywhere is refused."""
+    return sitefile.stays_inside(name) and (
+        name == "Start Pressless.bat" or name.startswith("Pressless/"))
 
 
 def unpack(archive: Path, beside: Path) -> Path:
     """Unpack the checked Windows zip into a new Pressless.new-<random> folder
     beside the program, checking every member before writing any. The zip is
     removed either way; a refused one leaves nothing."""
-    target = Path(beside) / f"Pressless.new-{secrets.token_hex(4)}"
+    target = Path(beside) / f"{UNPACK_PREFIX}{secrets.token_hex(4)}"
     try:
         with zipfile.ZipFile(archive) as opened:
             members = opened.namelist()
@@ -502,5 +506,14 @@ def unpack(archive: Path, beside: Path) -> Path:
         shutil.rmtree(target, ignore_errors=True)
         raise _failed(exc, "the download could not be unpacked") from exc
     finally:
-        Path(archive).unlink(missing_ok=True)
+        _forget(Path(archive))
     return target
+
+
+def _forget(path: Path) -> None:
+    """Remove a downloaded file. Best effort: on Windows a scanner may hold
+    the file just written, and that must not undo a good unpack or replace a
+    failure's own error. The next start's sweep removes what is left
+    (updating.register)."""
+    with contextlib.suppress(OSError):
+        path.unlink(missing_ok=True)
