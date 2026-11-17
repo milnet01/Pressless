@@ -29,6 +29,18 @@ The `[Unreleased]` block stays at the top, always, even when empty.
 
 ### Fixed
 
+- **"Put your site on the web" is ticked only once Pressless has published** (PRESS-0393)
+  On a site taken over from GitHub, or after you agree to replace a site, the
+  getting-started step now stays to do until your first publish from Pressless
+  has landed.
+
+- **Page and template failures show a proper page** (PRESS-0414)
+  When adding a page, throwing away its changes, or opening, saving, adding or
+  binning a template fails, Pressless shows the reason and any notices. A page you
+  named "footer", "header", "navigation" or "look" is shown by its own name on the
+  Files screen. A folder import now names a link to a file that came across only
+  inside other pages.
+
 - **Closing Pressless's window on Windows shuts it down properly** (PRESS-0407)
   Pressless now runs its stop steps when you close its window on Windows, so the AI
   helper's connection file is removed instead of left behind.

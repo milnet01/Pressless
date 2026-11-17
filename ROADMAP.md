@@ -1,6 +1,6 @@
 <!-- ants-roadmap-format: 1 -->
 <!-- Generated from the Ants Terminal roadmap store. Edit it with roadmap_log; hand edits are discarded by the next write. -->
-<!-- ants-roadmap-id-high-water: PRESS=418 -->
+<!-- ants-roadmap-id-high-water: PRESS=420 -->
 # Pressless — Roadmap
 
 > What is planned, in progress and shipped. [CHANGELOG.md](CHANGELOG.md)
@@ -8136,12 +8136,18 @@ does not wait on them.
   Source: review-code-2026-11-16 lane-14 open question.
   Lanes: Import.
 
-- 📋 [PRESS-0393] **Finish setting up ticks Put your site on the web before Pressless has published anything.**
+- ✅ [PRESS-0393] **Finish setting up ticks Put your site on the web before Pressless has published anything.**
   Split from PRESS-0366 on 2026-11-17, whose wording part shipped with
   PRESS-0383. Seen on the Windows box: the repository already held a
   site, so the tick may be right (a site is on the web), or wrong (none
   of Pressless's own pages are). Decide which the checklist means, then
   fix the words or the check. checklist.py reads starter.unpublished.
+  Shipped 2026-11-17. Decision: the tick means a Pressless publish has
+  landed. A takeover site stays to do while takeover.owed, its link
+  opening /publish/takeover; the replace page records the say-so in the
+  starter marker, and only a landed publish removes it. PRESS-0126
+  §§ 4.1, 4.5 and INV-12 amended. Filed: PRESS-0419 (a blank site's
+  checklist).
   **Layman:** On a site set up over a GitHub repository that already held a website, the checklist says the site is on the web before Pressless has sent anything.
   Kind: investigate.
   Source: by-hand-check-2026-11-16 1.0.0 draft round (PRESS-0366, also seen).
@@ -8194,12 +8200,17 @@ does not wait on them.
   Source: review-readability-2026-11-16 (PRESS-0380 sweep).
   Lanes: Insights.
 
-- 📋 [PRESS-0396] **Decide which wins when a folder import's SVG or script is both carried and linked.**
+- ✅ [PRESS-0396] **Decide which wins when a folder import's SVG or script is both carried and linked.**
   Surfaced by PRESS-0385 (2026-11-17). An SVG or JS file used both ways,
   carried inside a page and also linked by an a href or a module script,
   is carried, so the other link is never warned about. PRESS-0210 § 4.6
   does not say which should win. Recommended: carry it, and list the
   link in the Report as pointing at a carried file.
+  Shipped 2026-11-17, as recommended: carry, and list the link. The
+  Report says the file came across only inside the pages that use it
+  (import.folder.carried_link), and Found.left_links names the link on
+  the site step. PRESS-0210 §§ 4.6 and 4.11 amended. Full suite 2422
+  passed, 27 skipped.
   **Layman:** When a page both shows a picture inside itself and links to it, the folder import keeps one use and never warns about the other; which should win is a design choice.
   Kind: investigate.
   Source: review-code-2026-11-16 (PRESS-0385 sweep).
@@ -8446,22 +8457,31 @@ does not wait on them.
   Source: PRESS-0387 close-findings sweep 2026-11-17.
   Lanes: Words.
 
-- 📋 [PRESS-0414] **The page editor's and templates' form routes lose notices and answer forms with fragments.**
+- ✅ [PRESS-0414] **The page editor's and templates' form routes lose notices and answer forms with fragments.**
   Surfaced by PRESS-0372 (out of scope there). page_editor._new
   (/page/new) answers inside the capture, so it loses notices, and sends
   a bare fragment to a form; page_editor._discard (/page/discard)
   answers a form with the 409 fragment; templates._save answers inside
   the capture. Use editor.captured and editor.failed_page, which
   PRESS-0372 added for the entry editor's routes.
+  Shipped 2026-11-17, dec39d0 (rebased). page_editor._new, _discard
+  and all four template routes (_open, _save, _new, _bin) answer
+  failures as whole pages with their notices, through editor.captured
+  and editor.failed_page. PRESS-0014 § 4.8, PRESS-0017 § 6, PRESS-0195
+  § 4.3 amended.
   **Layman:** When adding or throwing away a page fails, Pressless shows a proper page explaining why.
   Kind: fix.
   Source: PRESS-0372 close-findings sweep 2026-11-17.
   Lanes: Editor.
 
-- 📋 [PRESS-0415] **A fixed page named header, footer, navigation or look shows as that part on the Files screen.**
+- ✅ [PRESS-0415] **A fixed page named header, footer, navigation or look shows as that part on the Files screen.**
   Surfaced by PRESS-0372. The Files screen now names the menu and the
   look in words instead of raw file names; a fixed page whose name is
   header, footer, navigation or look would show under that part's words.
+  Shipped 2026-11-17. builder.files_named returns FileUser(kind,
+  name); the Files screen and a removal refusal name parts and the look
+  by kind and a fixed page by its own name. PRESS-0197 § 4.6 amended.
+  Filed: PRESS-0420 (the AI app's list_files).
   **Layman:** A page you named "footer" is not mistaken for the site's footer on the Files screen.
   Kind: fix.
   Source: PRESS-0372 close-findings sweep 2026-11-17.
@@ -8496,6 +8516,28 @@ does not wait on them.
   **Layman:** Connecting an AI app works however Pressless was started on Linux.
   Kind: fix.
   Source: PRESS-0402/0403 follow-up 2026-11-17.
+  Lanes: AI helper.
+
+- 📋 [PRESS-0419] **A blank site's checklist ticks steps nobody has done.**
+  Surfaced by PRESS-0393. When setup's starter is not chosen (a blank
+  site), the checklist ticks "Make Home your own", "Set up the menu" and
+  "Put your site on the web" on an empty site: checklist._own counts
+  "nothing left to do" as done, and no starter marker exists. Decide
+  what a blank site's checklist shows; a fresh install must not show
+  work done that was not.
+  **Layman:** On a brand-new blank site, the getting-started list doesn't claim steps are done.
+  Kind: fix.
+  Source: PRESS-0393/0415 follow-up 2026-11-17.
+  Lanes: Setup.
+
+- 📋 [PRESS-0420] **The AI app's list_files cannot tell a page named footer from the footer.**
+  Surfaced by PRESS-0415. builder.files_named now returns
+  FileUser(kind, name), and the Files screen uses the kind;
+  assistant.list_files' used_by still answers bare names. Answer the
+  kind too.
+  **Layman:** An AI app working on your site knows a page called "footer" from the site's footer.
+  Kind: fix.
+  Source: PRESS-0393/0415 follow-up 2026-11-17.
   Lanes: AI helper.
 
 ## 1.2.0 — a tray icon, and Pressless in your language
