@@ -31,7 +31,7 @@ from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
+from typing import BinaryIO, TypeVar
 
 from pressless import (
     blocks,
@@ -1551,8 +1551,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         then deleted, sent or not."""
         try:
             try:
-                handle = open(download.path, "rb")  # noqa: SIM115 -- closed below
-                size = os.fstat(handle.fileno()).st_size
+                handle, size = _open_sized(download.path)
             except OSError as exc:
                 self._send_page(face, 500, face.fail(exc, publishing=False))
                 return
@@ -1569,30 +1568,41 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
-                while piece := handle.read(_PIECE):
-                    self.wfile.write(piece)
+                self._send_pieces(handle)
         finally:
             download.path.unlink(missing_ok=True)
 
+    def _send_pieces(self, handle: BinaryIO) -> None:
+        """The rest of `handle`, _PIECE bytes at a time, never held whole."""
+        while piece := handle.read(_PIECE):
+            self.wfile.write(piece)
+
     def _send_file(self, method: str, path: str, face: Face) -> None:
-        """The longest registered prefix's file, or 404 (PRESS-0012 § 4.3)."""
+        """The longest registered prefix's file, or 404 (PRESS-0012 § 4.3).
+        Sent in pieces: a kept song or video is never read whole."""
         prefixes = [prefix for prefix in face._files if path.startswith(prefix)]
         target = None
         if method == "GET" and prefixes:
             prefix = max(prefixes, key=len)
             target = _served_file(path[len(prefix):], face._files[prefix])
-        try:
-            data = target.read_bytes() if target is not None else None
-        except OSError:
-            data = None  # unreadable is answered like absent, never as a failure
-        if target is None or data is None:
+        opened = None
+        if target is not None:
+            with contextlib.suppress(OSError):  # unreadable is answered like absent
+                opened = _open_sized(target)
+        if target is None or opened is None:
             self._send(404, say("face.not_found"), "text/plain")
             return
-        kind = _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream")
-        self._send_bytes(200, data, kind, (
-            ("Content-Security-Policy", FILES_POLICY),
-            ("X-Content-Type-Options", "nosniff"),
-        ))
+        handle, size = opened
+        with handle:
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             _FILE_TYPES.get(target.suffix.lower(), "application/octet-stream"))
+            self.send_header("Content-Length", str(size))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Security-Policy", FILES_POLICY)
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self._send_pieces(handle)
 
 
 # How often the server's loop checks whether it has been asked to stop, in
@@ -1614,6 +1624,17 @@ _MAX_BODY = 64 * 1024 * 1024
 # an upload is refused where it would leave the drive less than _SPARE free.
 _PIECE = 64 * 1024
 _SPARE = 1024 * 1024 * 1024
+
+
+def _open_sized(path: Path) -> tuple[BinaryIO, int]:
+    """`path` open to read, with its size. Closed again where the size
+    cannot be read: Windows will not delete a file held open."""
+    handle = open(path, "rb")  # noqa: SIM115 -- the caller closes it
+    try:
+        return handle, os.fstat(handle.fileno()).st_size
+    except BaseException:
+        handle.close()
+        raise
 
 
 def _room(folder: Path) -> int:

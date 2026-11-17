@@ -521,6 +521,24 @@ def test_files_never_leave_their_folder(tmp_path: Path) -> None:
         served.stop()
 
 
+def test_a_served_file_past_one_piece_arrives_whole(tmp_path: Path) -> None:
+    """A kept song or video is sent in pieces rather than read whole into
+    memory. Breaks when a piece is dropped, repeated or reordered, or the
+    length does not match what is sent."""
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    sent = bytes(range(256)) * (face._PIECE // 256 * 3 + 1)
+    (mounted / "song.mp3").write_bytes(sent)
+    served = face.serve(tmp_path / "own")
+    try:
+        served.add_files("/m/", face.within(mounted))
+        status, headers, body = _Client(served).raw("GET", "/m/song.mp3")
+    finally:
+        served.stop()
+    assert (status, headers["Content-Length"], body == sent) == (200, str(len(sent)), True)
+    assert headers["Content-Security-Policy"] == FILES_POLICY_WORDS
+
+
 def test_files_carry_the_policy(tmp_path: Path) -> None:
     """PRESS-0012 INV-8."""
     mounted = tmp_path / "mounted"
@@ -1308,6 +1326,46 @@ def test_an_upload_needs_the_session(tmp_path: Path) -> None:
         served.stop()
     assert not list(into.glob(".upload-*"))
     assert sent.read_bytes() == b"a file"
+
+
+def test_a_download_whose_size_cannot_be_read_is_still_removed(tmp_path: Path,
+                                                              monkeypatch) -> None:
+    """PRESS-0224 § 4.5: a download is deleted, sent or not. Windows refuses
+    to delete a file still open, which this test's unlink does too. Breaks
+    when the handle is left open after its size cannot be read, so the
+    delete fails and the failure page never arrives."""
+    real_open, real_fstat, real_unlink = open, os.fstat, Path.unlink
+    handles: list = []
+
+    def tracked(path, *args, **kwargs):
+        handle = real_open(path, *args, **kwargs)
+        if str(path).endswith("sent.zip"):
+            handles.append(handle)
+        return handle
+
+    def no_size(descriptor):
+        if any(not h.closed and h.fileno() == descriptor for h in handles):
+            raise OSError("the size cannot be read")
+        return real_fstat(descriptor)
+
+    def as_windows(path, *args, **kwargs):
+        if any(not h.closed for h in handles) and path.name == "sent.zip":
+            raise PermissionError("the file is open")
+        return real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(face, "open", tracked, raising=False)
+    monkeypatch.setattr(face.os, "fstat", no_size)
+    monkeypatch.setattr(Path, "unlink", as_windows)
+    sent = tmp_path / "sent.zip"
+    sent.write_bytes(b"a file")
+    served = face.serve(tmp_path / "own")
+    try:
+        served.add_page("GET", "/down", lambda request: face.Download(sent, "Site.zip"))
+        status = _Client(served).raw("GET", "/down")[0]
+    finally:
+        served.stop()
+    assert status == 500
+    assert not sent.exists()
 
 
 def test_a_download_is_sent_as_an_attachment_and_removed(tmp_path: Path) -> None:
