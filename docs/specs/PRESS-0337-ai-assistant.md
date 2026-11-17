@@ -117,7 +117,9 @@ While the switch is on and a Face serves, the **door file**
 ```
 
 Written when the Face starts or the switch turns on, through
-`safe_write.write_whole`, with owner-only permissions where the system has them.
+`safe_write.write_whole`, with owner-only permissions where the system has them:
+`mkstemp`'s 0600 on Linux and macOS, and on Windows an access list granting
+the owner alone, set while the file is still empty. A FAT or exFAT drive has none.
 Removed when the Face stops or the switch turns off; a closed terminal
 stops it as Ctrl+C does. A Pressless ended outright leaves the file, and
 the bridge's call is refused until the next start replaces it. A new token every

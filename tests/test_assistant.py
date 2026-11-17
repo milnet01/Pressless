@@ -15,6 +15,8 @@ import hashlib
 import http.client
 import io
 import json
+import os
+import sys
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -240,6 +242,49 @@ def test_the_door_file_goes_with_the_face(tmp_path):
         assert door["port"] == pressless.port and door["version"] == pressless_version()
         own = pressless.own
     assert not (own / DOOR_FILE).exists()
+
+
+def test_the_door_file_is_made_private_before_the_token(tmp_path, monkeypatch):
+    """§ 4.2: on Windows, where mkstemp's mode is only the read-only flag, the
+    door file is made owner-only while it is still empty. Breaks when the
+    token is written under the folder's own permissions."""
+    sizes: list[int] = []
+    monkeypatch.setattr(assistant, "_windows_owner_only",
+                        lambda handle: sizes.append(os.fstat(handle).st_size))
+    door = assistant._Door(SimpleNamespace(port=1234), tmp_path, tmp_path, None)
+    monkeypatch.setattr(assistant.sys, "platform", "linux")
+    door.open()
+    assert sizes == []          # mkstemp's 0600 already does it
+    monkeypatch.setattr(assistant.sys, "platform", "win32")
+    door.open()
+    assert sizes == [0]
+    assert json.loads((tmp_path / DOOR_FILE).read_text(encoding="utf-8"))["token"] == door.token
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows access lists")
+def test_the_door_file_is_the_owners_alone_on_windows(tmp_path):
+    """§ 4.2 on real Windows: the door file's access list grants its owner
+    alone, inherits nothing from the folder, and the owner still reads it.
+    Breaks when the access list is not set."""
+    import ctypes
+    from ctypes import wintypes
+
+    door = assistant._Door(SimpleNamespace(port=1234), tmp_path, tmp_path, None)
+    door.open()
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    described, dacl, text = ctypes.c_void_p(), ctypes.c_void_p(), wintypes.LPWSTR()
+    dacl_only = wintypes.DWORD(0x4)
+    assert advapi32.GetNamedSecurityInfoW(str(tmp_path / DOOR_FILE), 1, dacl_only, None, None,
+                                          ctypes.byref(dacl), None,
+                                          ctypes.byref(described)) == 0
+    assert advapi32.ConvertSecurityDescriptorToStringSecurityDescriptorW(
+        described, 1, dacl_only, ctypes.byref(text), None)
+    shown = text.value
+    kernel32.LocalFree(text)
+    kernel32.LocalFree(described)
+    assert shown == "D:P(A;;FA;;;OW)", shown
+    assert json.loads((tmp_path / DOOR_FILE).read_text(encoding="utf-8"))["token"] == door.token
 
 
 # ----------------------------------------------------------------- INV-10 ---

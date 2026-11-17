@@ -137,6 +137,61 @@ def door_path(own: Path) -> Path:
     return Path(own) / DOOR_NAME
 
 
+def _owner_only(handle: int) -> None:
+    """write_whole's check for the door file: the temporary is made private
+    to its owner before the token is written (§ 4.2). mkstemp's 0600 does
+    that elsewhere; on Windows it only sets the read-only flag, so the file
+    would take its folder's permissions, which may let other users read it."""
+    if sys.platform == "win32":
+        _windows_owner_only(handle)
+
+
+# SDDL for a protected access list granting the file's owner everything and
+# no one else anything, nothing inherited from the folder.
+_OWNER_ONLY_SDDL = "D:P(A;;FA;;;OW)"
+_FS_PERSISTENT_ACLS = 0x8
+_SE_FILE_OBJECT = 1
+_DACL_PROTECTED = 0x4 | 0x80000000     # DACL_ and PROTECTED_DACL_SECURITY_INFORMATION
+
+
+def _windows_owner_only(handle: int) -> None:
+    """Give the open file `handle` _OWNER_ONLY_SDDL's access list. A drive
+    with no permissions to set (FAT, exFAT) is left as it is: § 4.2 asks for
+    owner-only "where the system has them". Raises OSError where Windows
+    refuses, so no token is written to a file others may read."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    opened = wintypes.HANDLE(msvcrt.get_osfhandle(handle))
+    flags = wintypes.DWORD()
+    if not kernel32.GetVolumeInformationByHandleW(
+            opened, None, 0, None, None, ctypes.byref(flags), None, 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+    if not flags.value & _FS_PERSISTENT_ACLS:
+        return
+    name = ctypes.create_unicode_buffer(32768)
+    if not kernel32.GetFinalPathNameByHandleW(opened, name, len(name), 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+    described = ctypes.c_void_p()
+    if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            _OWNER_ONLY_SDDL, 1, ctypes.byref(described), None):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        present, defaulted, dacl = wintypes.BOOL(), wintypes.BOOL(), ctypes.c_void_p()
+        if not advapi32.GetSecurityDescriptorDacl(
+                described, ctypes.byref(present), ctypes.byref(dacl), ctypes.byref(defaulted)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        error = advapi32.SetNamedSecurityInfoW(
+            name, _SE_FILE_OBJECT, wintypes.DWORD(_DACL_PROTECTED), None, None, dacl, None)
+        if error:
+            raise ctypes.WinError(error)
+    finally:
+        kernel32.LocalFree(described)
+
+
 # ----------------------------------------------------------- the requests ---
 
 
@@ -186,7 +241,7 @@ class _Door:
         self.token = secrets.token_urlsafe(32)
         safe_write.write_whole(door_path(self.own), json.dumps(
             {"port": self.face.port, "token": self.token, "version": __version__}),
-            prefix=".assistant-door-")
+            prefix=".assistant-door-", check=_owner_only)
 
     def shut(self) -> None:
         door_path(self.own).unlink(missing_ok=True)
